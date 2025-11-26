@@ -1,0 +1,283 @@
+// src/store/projectStore.ts
+import { create } from "zustand";
+
+export type UUID = string;
+
+//Definição da Seção. A seção pode ter um parentId opcional para suportar subseções.
+export type Section = {
+  id: UUID;
+  title: string;
+  content?: string;
+  created_at: string;
+  parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
+  order: number; // Ordem de exibição dentro do mesmo nível (mesmo parentId)
+};
+
+//Definição do Projeto. Um projeto pode ter várias seções.
+export type Project = {
+  id: UUID;
+  title: string;
+  description?: string;
+  sections?: Section[];
+};
+
+interface ProjectStore {
+  projects: Project[];
+  addProject: (name: string, description: string) => string;
+  getProject: (id: UUID) => Project | undefined;
+  addSection: (projectId: UUID, title: string) => void;
+  addSubsection: (projectId: UUID, parentId: UUID, title: string) => void;
+  removeProject: (id: UUID) => void;
+  editProject: (id: UUID, name: string, description: string) => void;
+  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string) => void;
+  removeSection: (projectId: UUID, sectionId: UUID) => void;
+  moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
+  moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
+  countDescendants: (projectId: UUID, sectionId: UUID) => number;
+  hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
+  loadFromStorage: () => void;
+}
+
+const STORAGE_KEY = "gdd_projects_v1";
+
+export const useProjectStore = create<ProjectStore>((set, get) => {
+  // não acessamos localStorage na criação do módulo para evitar erros SSR;
+  // usaremos loadFromStorage no client para carregar os dados.
+
+  const persist = (projects: Project[]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    } catch (e) {
+      console.warn("Could not persist projects to localStorage", e);
+    }
+  };
+
+  // wrappedSet: recebe uma função que transforma a lista de projetos
+  const wrappedSet = (fn: (s: Project[]) => Project[]) => {
+    // atualiza o estado
+    set((state) => {
+      const next = fn(state.projects);
+      return { projects: next };
+    });
+    // persiste a versão atualizada
+    try {
+      const after = get().projects;
+      persist(after);
+    } catch (e) {
+      console.warn("persist failed", e);
+    }
+  };
+
+  return {
+    projects: [],
+
+    addProject: (name: string, description: string) => {
+      const id = crypto.randomUUID();
+      wrappedSet((prev) => [
+        ...prev,
+        {
+          id,
+          title: name,
+          description,
+          sections: [],
+        },
+      ]);
+      return id;
+    },
+
+    getProject: (id: UUID) => {
+      return get().projects.find((p) => p.id === id);
+    },
+
+    addSection: (projectId: UUID, title: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            const siblings = (p.sections || []).filter((s) => !s.parentId);
+            const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
+            return {
+              ...p,
+              sections: [
+                ...(p.sections || []),
+                {
+                  id: crypto.randomUUID(),
+                  title,
+                  content: "",
+                  created_at: new Date().toISOString(),
+                  parentId: undefined,
+                  order: maxOrder + 1,
+                } as Section,
+              ],
+            };
+          }
+          return p;
+        })
+      );
+    },
+
+    addSubsection: (projectId: UUID, parentId: UUID, title: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            const siblings = (p.sections || []).filter((s) => s.parentId === parentId);
+            const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
+            return {
+              ...p,
+              sections: [
+                ...(p.sections || []),
+                {
+                  id: crypto.randomUUID(),
+                  title,
+                  content: "",
+                  created_at: new Date().toISOString(),
+                  parentId,
+                  order: maxOrder + 1,
+                } as Section,
+              ],
+            };
+          }
+          return p;
+        })
+      );
+    },
+
+    removeProject: (id: UUID) => {
+      wrappedSet((prev) => prev.filter((p) => p.id !== id));
+    },
+
+    editProject: (id: UUID, name: string, description: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, title: name, description }
+            : p
+        )
+      );
+    },
+
+    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                sections: (p.sections || []).map((s) =>
+                  s.id === sectionId ? { ...s, title, content } : s
+                ),
+              }
+            : p
+        )
+      );
+    },
+
+    removeSection: (projectId: UUID, sectionId: UUID) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                sections: (p.sections || []).filter((s) => s.id !== sectionId),
+              }
+            : p
+        )
+      );
+    },
+
+    moveSectionUp: (projectId: UUID, sectionId: UUID) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            const sections = p.sections || [];
+            const section = sections.find((s) => s.id === sectionId);
+            if (!section) return p;
+            
+            const siblings = sections.filter((s) => s.parentId === section.parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+            const currentIndex = siblings.findIndex((s) => s.id === sectionId);
+            if (currentIndex <= 0) return p; // já é o primeiro
+            
+            // Trocar order com o anterior
+            const prevSection = siblings[currentIndex - 1];
+            const tempOrder = section.order;
+            
+            return {
+              ...p,
+              sections: sections.map((s) => {
+                if (s.id === sectionId) return { ...s, order: prevSection.order };
+                if (s.id === prevSection.id) return { ...s, order: tempOrder };
+                return s;
+              }),
+            };
+          }
+          return p;
+        })
+      );
+    },
+
+    moveSectionDown: (projectId: UUID, sectionId: UUID) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            const sections = p.sections || [];
+            const section = sections.find((s) => s.id === sectionId);
+            if (!section) return p;
+            
+            const siblings = sections.filter((s) => s.parentId === section.parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+            const currentIndex = siblings.findIndex((s) => s.id === sectionId);
+            if (currentIndex === -1 || currentIndex >= siblings.length - 1) return p; // já é o último
+            
+            // Trocar order com o próximo
+            const nextSection = siblings[currentIndex + 1];
+            const tempOrder = section.order;
+            
+            return {
+              ...p,
+              sections: sections.map((s) => {
+                if (s.id === sectionId) return { ...s, order: nextSection.order };
+                if (s.id === nextSection.id) return { ...s, order: tempOrder };
+                return s;
+              }),
+            };
+          }
+          return p;
+        })
+      );
+    },
+
+    countDescendants: (projectId: UUID, sectionId: UUID) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      if (!project) return 0;
+      
+      const sections = project.sections || [];
+      const countChildren = (parentId: UUID): number => {
+        const children = sections.filter((s) => s.parentId === parentId);
+        return children.reduce((sum, child) => sum + 1 + countChildren(child.id), 0);
+      };
+      
+      return countChildren(sectionId);
+    },
+
+    hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      if (!project) return false;
+      
+      const siblings = (project.sections || []).filter(
+        (s) => s.parentId === parentId && s.id !== excludeId
+      );
+      
+      return siblings.some((s) => s.title.toLowerCase() === title.toLowerCase());
+    },
+
+    loadFromStorage: () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Project[];
+        if (Array.isArray(parsed)) {
+          set({ projects: parsed });
+        }
+      } catch (e) {
+        console.warn("Failed to load projects from localStorage", e);
+      }
+    },
+  };
+});
