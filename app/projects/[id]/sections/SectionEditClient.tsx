@@ -3,6 +3,11 @@
 import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import "@uiw/react-md-editor/markdown-editor.css";
+import "@uiw/react-markdown-preview/markdown.css";
+
+const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 interface Props {
   projectId: string;
@@ -68,12 +73,15 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
             <span className="text-red-500 text-sm mt-1 block">{nameError}</span>
           )}
         </div>
-        <textarea
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          className="border px-2 py-1"
-          placeholder="Descrição da seção"
-        />
+        <div data-color-mode="dark">
+          <MDEditor
+            value={content}
+            onChange={(val) => setContent(val || "")}
+            previewOptions={{
+              disallowedElements: ["img"],
+            }}
+          />
+        </div>
         <div className="flex gap-2">
           <button
             className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"

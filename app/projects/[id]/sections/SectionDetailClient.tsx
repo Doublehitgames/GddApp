@@ -20,6 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Props {
   projectId: string;
@@ -140,7 +142,13 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
           }}
         >Excluir</button>
       </div>
-      <p className="text-gray-400 mb-4">{section.content || "Sem descrição."}</p>
+      <div className="prose prose-invert max-w-none mb-4">
+        {section.content ? (
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
+        ) : (
+          <p className="text-gray-400">Sem descrição.</p>
+        )}
+      </div>
 
       <h2 className="mt-4 font-semibold">Subseções</h2>
       {children.length === 0 && (
