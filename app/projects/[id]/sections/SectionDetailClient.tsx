@@ -22,6 +22,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import "@toast-ui/editor/dist/toastui-editor.css";
+import dynamic from "next/dynamic";
 
 interface Props {
   projectId: string;
@@ -35,6 +37,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const countDescendants = useProjectStore((s) => s.countDescendants);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
+  const editSection = useProjectStore((s) => s.editSection);
   const projects = useProjectStore((s) => s.projects);
   const [section, setSection] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
@@ -43,6 +46,11 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [newSubTitle, setNewSubTitle] = useState("");
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState(false);
+  const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
+  const editorContainerRef = useState<any>(null)[0] as React.MutableRefObject<HTMLDivElement | null>;
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+  const editorRef = useState<any>(null)[0] as React.MutableRefObject<any>;
   const router = useRouter();
 
   const sensors = useSensors(
@@ -79,6 +87,42 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setBreadcrumbs(trail);
     setLoaded(true);
   }, [projectId, sectionId, getProject, projects]);
+
+  // Inicializa/destroi o editor WYSIWYG inline quando modo de edição é ativado
+  useEffect(() => {
+    let instance: any;
+    let cancelled = false;
+    async function mountEditor() {
+      if (!inlineEdit || !containerEl) return;
+      const mod: any = await import("@toast-ui/editor");
+      if (cancelled) return;
+      const ToastEditor = mod.default || mod;
+      instance = new ToastEditor({
+        el: containerEl,
+        initialEditType: editorMode,
+        previewStyle: "vertical",
+        height: "320px",
+        initialValue: section?.content || "",
+        usageStatistics: false,
+        toolbarItems: [
+          ["heading", "bold", "italic", "strike"],
+          ["hr", "quote"],
+          ["ul", "ol", "task"],
+          ["table", "link"],
+          ["code", "codeblock"],
+        ],
+      });
+      (editorRef as any).current = instance;
+    }
+    mountEditor();
+    return () => {
+      cancelled = true;
+      if (instance && instance.destroy) {
+        instance.destroy();
+      }
+      (editorRef as any).current = null;
+    };
+  }, [inlineEdit, containerEl, sectionId, editorMode, section]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -129,6 +173,22 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
           onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}/edit`)}
         >Editar</button>
         <button
+          className="bg-blue-600 text-white px-2 py-1 rounded text-sm"
+          onClick={() => setInlineEdit((v) => !v)}
+        >{inlineEdit ? "Fechar edição inline" : "Editar no preview"}</button>
+        {inlineEdit && (
+          <button
+            className="bg-gray-600 text-white px-2 py-1 rounded text-sm"
+            onClick={() => {
+              const next = editorMode === "wysiwyg" ? "markdown" : "wysiwyg";
+              setEditorMode(next);
+              if ((editorRef as any).current?.changeMode) {
+                (editorRef as any).current.changeMode(next, true);
+              }
+            }}
+          >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
+        )}
+        <button
           className="bg-red-600 text-white px-2 py-1 rounded text-sm"
           onClick={() => {
             const count = countDescendants(projectId, sectionId);
@@ -142,13 +202,34 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
           }}
         >Excluir</button>
       </div>
-      <div className="prose prose-invert max-w-none mb-4">
-        {section.content ? (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
-        ) : (
-          <p className="text-gray-400">Sem descrição.</p>
-        )}
-      </div>
+      {!inlineEdit && (
+        <div className="prose prose-invert max-w-none mb-4">
+          {section.content ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
+          ) : (
+            <p className="text-gray-400">Sem descrição.</p>
+          )}
+        </div>
+      )}
+      {inlineEdit && (
+        <div className="mb-3">
+          <div ref={setContainerEl as any} />
+          <div className="mt-2 flex gap-2">
+            <button
+              className="bg-green-600 text-white px-3 py-1 rounded"
+              onClick={() => {
+                const md = (editorRef as any).current?.getMarkdown?.() || "";
+                editSection(projectId, sectionId, section.title, md);
+                setInlineEdit(false);
+              }}
+            >Salvar</button>
+            <button
+              className="bg-gray-600 text-white px-3 py-1 rounded"
+              onClick={() => setInlineEdit(false)}
+            >Cancelar</button>
+          </div>
+        </div>
+      )}
 
       <h2 className="mt-4 font-semibold">Subseções</h2>
       {children.length === 0 && (
