@@ -2,7 +2,7 @@
 
 import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -22,7 +22,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import "@toast-ui/editor/dist/toastui-editor.css";
 import dynamic from "next/dynamic";
 
 interface Props {
@@ -48,9 +47,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [inlineEdit, setInlineEdit] = useState(false);
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
-  const editorContainerRef = useState<any>(null)[0] as React.MutableRefObject<HTMLDivElement | null>;
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
-  const editorRef = useState<any>(null)[0] as React.MutableRefObject<any>;
+  const editorRef = useRef<any>(null);
   const router = useRouter();
 
   const sensors = useSensors(
@@ -168,25 +166,11 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
       <div className="flex items-center gap-2 mb-2">
         <h1 className="text-2xl font-bold">{section.title}</h1>
-        <button
-          className="bg-yellow-500 text-black px-2 py-1 rounded text-sm"
-          onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}/edit`)}
-        >Editar</button>
-        <button
-          className="bg-blue-600 text-white px-2 py-1 rounded text-sm"
-          onClick={() => setInlineEdit((v) => !v)}
-        >{inlineEdit ? "Fechar edição inline" : "Editar no preview"}</button>
-        {inlineEdit && (
+        {!inlineEdit && (
           <button
-            className="bg-gray-600 text-white px-2 py-1 rounded text-sm"
-            onClick={() => {
-              const next = editorMode === "wysiwyg" ? "markdown" : "wysiwyg";
-              setEditorMode(next);
-              if ((editorRef as any).current?.changeMode) {
-                (editorRef as any).current.changeMode(next, true);
-              }
-            }}
-          >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
+            className="bg-blue-600 text-white px-2 py-1 rounded text-sm"
+            onClick={() => setInlineEdit(true)}
+          >Editar no preview</button>
         )}
         <button
           className="bg-red-600 text-white px-2 py-1 rounded text-sm"
@@ -227,6 +211,16 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
               className="bg-gray-600 text-white px-3 py-1 rounded"
               onClick={() => setInlineEdit(false)}
             >Cancelar</button>
+            <button
+              className="bg-gray-700 text-white px-2 py-1 rounded text-sm"
+              onClick={() => {
+                const next = editorMode === "wysiwyg" ? "markdown" : "wysiwyg";
+                setEditorMode(next);
+                if ((editorRef as any).current?.changeMode) {
+                  (editorRef as any).current.changeMode(next, true);
+                }
+              }}
+            >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
           </div>
         </div>
       )}
