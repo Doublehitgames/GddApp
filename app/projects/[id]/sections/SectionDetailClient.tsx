@@ -3,6 +3,23 @@
 import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Props {
   projectId: string;
@@ -15,8 +32,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const addSubsection = useProjectStore((s) => s.addSubsection);
   const countDescendants = useProjectStore((s) => s.countDescendants);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
-  const moveSectionUp = useProjectStore((s) => s.moveSectionUp);
-  const moveSectionDown = useProjectStore((s) => s.moveSectionDown);
+  const reorderSections = useProjectStore((s) => s.reorderSections);
   const projects = useProjectStore((s) => s.projects);
   const [section, setSection] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
@@ -26,6 +42,15 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const proj = getProject(projectId);
@@ -42,7 +67,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       while (current) {
         trail.unshift(current);
         if (current.parentId) {
-          current = project?.sections?.find((s: any) => s.id === current.parentId) || null;
+          // Use 'proj' (valor atual) e não o state 'project', que ainda pode não ter atualizado
+          current = proj?.sections?.find((s: any) => s.id === current.parentId) || null;
         } else {
           current = null;
         }
@@ -51,6 +77,18 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setBreadcrumbs(trail);
     setLoaded(true);
   }, [projectId, sectionId, getProject, projects]);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = children.findIndex((c) => c.id === active.id);
+    const newIndex = children.findIndex((c) => c.id === over.id);
+
+    const newChildren = arrayMove(children, oldIndex, newIndex);
+    const newOrder = newChildren.map((c) => c.id);
+    reorderSections(projectId, newOrder);
+  }
 
   if (!loaded) return <div className="p-6">Carregando...</div>;
   if (!section) return <div className="p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
@@ -109,29 +147,15 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         <p className="text-gray-500 text-sm">Nenhuma subseção ainda.</p>
       )}
       {children.length > 0 && (
-        <ul className="ml-6 mb-3 space-y-1">
-          {children.map((c, idx) => (
-            <li key={c.id} className="flex items-center gap-2">
-              <div className="flex flex-col">
-                <button 
-                  className="text-xs px-1 py-0 bg-gray-300 hover:bg-gray-400 rounded disabled:opacity-30"
-                  onClick={() => moveSectionUp(projectId, c.id)}
-                  disabled={idx === 0}
-                  title="Mover para cima"
-                >↑</button>
-                <button 
-                  className="text-xs px-1 py-0 bg-gray-300 hover:bg-gray-400 rounded disabled:opacity-30"
-                  onClick={() => moveSectionDown(projectId, c.id)}
-                  disabled={idx === children.length - 1}
-                  title="Mover para baixo"
-                >↓</button>
-              </div>
-              <button className="text-blue-400 underline hover:text-blue-600" onClick={() => router.push(`/projects/${projectId}/sections/${c.id}`)}>
-                {c.title}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={children.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+            <ul className="ml-6 mb-3 space-y-1">
+              {children.map((c) => (
+                <SortableItem key={c.id} id={c.id} title={c.title} projectId={projectId} />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
       <div className="mt-2">
@@ -167,5 +191,47 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+// Componente sortable para cada item da lista
+function SortableItem({ id, title, projectId }: { id: string; title: string; projectId: string }) {
+  const router = useRouter();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 bg-gray-100 p-2 rounded hover:bg-gray-200"
+    >
+      <span
+        className="text-gray-400 cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+        aria-label="Reordenar"
+      >
+        ⋮⋮
+      </span>
+      <button
+        className="text-blue-400 underline hover:text-blue-600"
+        onClick={() => router.push(`/projects/${projectId}/sections/${id}`)}
+      >
+        {title}
+      </button>
+    </li>
   );
 }

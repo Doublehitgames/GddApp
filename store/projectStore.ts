@@ -33,6 +33,7 @@ interface ProjectStore {
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
+  reorderSections: (projectId: UUID, sectionIds: UUID[]) => void;
   countDescendants: (projectId: UUID, sectionId: UUID) => number;
   hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
   loadFromStorage: () => void;
@@ -234,6 +235,27 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               sections: sections.map((s) => {
                 if (s.id === sectionId) return { ...s, order: nextSection.order };
                 if (s.id === nextSection.id) return { ...s, order: tempOrder };
+                return s;
+              }),
+            };
+          }
+          return p;
+        })
+      );
+    },
+
+    reorderSections: (projectId: UUID, sectionIds: UUID[]) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            const sections = p.sections || [];
+            return {
+              ...p,
+              sections: sections.map((s) => {
+                const newIndex = sectionIds.indexOf(s.id);
+                if (newIndex !== -1) {
+                  return { ...s, order: newIndex };
+                }
                 return s;
               }),
             };
