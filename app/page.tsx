@@ -25,24 +25,46 @@ export default function Home() {
         </button>
       </Link>
 
-      <div className="w-full max-w-xl flex flex-col gap-4">
-        {projects.map((p) => (
-          <div key={p.id} className="block p-4 bg-gray-800 rounded hover:bg-gray-700 transition flex items-center justify-between">
-            <Link href={`/projects/${p.id}`} className="flex-1">
-              <h2 className="text-xl font-semibold">{p.title}</h2>
-            </Link>
-            <button
-              className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-              onClick={() => {
-                if (window.confirm(`Tem certeza que deseja remover o projeto "${p.title}"?`)) {
-                  removeProject(p.id);
-                }
-              }}
-            >
-              Remover
-            </button>
-          </div>
-        ))}
+      <div className="w-full max-w-2xl flex flex-col gap-4">
+        {projects.map((p) => {
+          const sections = p.sections || [];
+          const totalSections = sections.length;
+          const rootSections = sections.filter(s => !s.parentId).length;
+          const subsections = totalSections - rootSections;
+          
+          return (
+            <div key={p.id} className="block p-4 bg-gray-800 rounded hover:bg-gray-700 transition flex items-center justify-between">
+              <Link href={`/projects/${p.id}`} className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-semibold">{p.title}</h2>
+                  <div className="flex gap-2 text-xs">
+                    <span className="bg-blue-600 px-2 py-1 rounded" title="Seções raiz">
+                      📑 {rootSections}
+                    </span>
+                    {subsections > 0 && (
+                      <span className="bg-purple-600 px-2 py-1 rounded" title="Subseções">
+                        📄 {subsections}
+                      </span>
+                    )}
+                    <span className="bg-gray-600 px-2 py-1 rounded" title="Total">
+                      ∑ {totalSections}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+              <button
+                className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={() => {
+                  if (window.confirm(`Tem certeza que deseja remover o projeto "${p.title}"?`)) {
+                    removeProject(p.id);
+                  }
+                }}
+              >
+                Remover
+              </button>
+            </div>
+          );
+        })}
 
         {projects.length === 0 && (
           <p className="text-gray-500">Nenhum projeto criado ainda.</p>
