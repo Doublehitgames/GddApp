@@ -1,36 +1,386 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎮 GDD Manager
 
-## Getting Started
+<div align="center">
 
-First, run the development server:
+**Uma aplicação moderna e completa para gerenciar Game Design Documents (GDD)**
+
+[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2-blue?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Zustand](https://img.shields.io/badge/Zustand-5.0-orange)](https://zustand-demo.pmnd.rs/)
+[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+
+</div>
+
+---
+
+## 📋 Sobre o Projeto
+
+**GDD Manager** é uma ferramenta profissional desenvolvida para criar, organizar e gerenciar documentos de Game Design de forma estruturada e hierárquica. Ideal para designers de jogos, produtores e equipes de desenvolvimento que precisam documentar mecânicas, narrativas, sistemas e todo o escopo de um projeto de jogo.
+
+### 🎯 Por que usar o GDD Manager?
+
+- ✅ **Organização Hierárquica**: Estruture seu GDD com seções e subseções ilimitadas
+- ✅ **Editor Rico**: WYSIWYG e Markdown com suporte a imagens, tabelas, código e muito mais
+- ✅ **Busca Inteligente**: Encontre rapidamente qualquer informação no seu documento
+- ✅ **Drag & Drop**: Reordene seções com facilidade
+- ✅ **Persistência Local**: Seus dados ficam seguros no navegador
+- ✅ **Interface Moderna**: Design responsivo e intuitivo
+
+---
+
+## ✨ Funcionalidades
+
+### 📁 Gerenciamento de Projetos
+
+- **Criar múltiplos projetos GDD** com título e descrição
+- **Visualização em lista** com estatísticas de seções
+- **Edição inline** de informações do projeto
+- **Remoção segura** com confirmação
+
+### 📚 Sistema de Seções Hierárquicas
+
+- **Estrutura em árvore ilimitada**: Crie seções, subseções, sub-subseções...
+- **Navegação breadcrumb**: Saiba sempre onde você está na hierarquia
+- **Contadores inteligentes**: Veja quantas seções e subseções cada projeto possui
+- **Expansão/colapso**: Navegue facilmente por estruturas complexas
+
+### ✏️ Editor de Conteúdo Avançado
+
+#### Dois Modos de Edição:
+
+1. **WYSIWYG (What You See Is What You Get)**
+   - Editor visual intuitivo
+   - Toolbar com todas as ferramentas necessárias
+   - Preview em tempo real
+
+2. **Markdown**
+   - Sintaxe Markdown completa
+   - Suporte a GitHub Flavored Markdown (GFM)
+   - Ideal para usuários avançados
+
+#### Recursos de Formatação:
+
+- **Texto**: Negrito, itálico, tachado
+- **Títulos**: H1 até H6
+- **Listas**: Ordenadas, não-ordenadas e tarefas
+- **Links e Imagens**: Suporte completo
+- **Tabelas**: Crie tabelas formatadas
+- **Blocos de código**: Syntax highlighting
+- **Citações**: Blocos de quote
+- **Linhas horizontais**: Separadores visuais
+
+### 🖼️ Sistema de Upload de Imagens
+
+- **Upload direto no editor**: Arraste ou selecione imagens
+- **Formatos suportados**: JPG, PNG, GIF, WebP
+- **Tamanho máximo**: 5MB por imagem
+- **Organização automática**: Imagens organizadas por projeto
+- **URLs públicas**: Acesso direto via `/uploads/[projectId]/[filename]`
+- **Preview automático**: Renderização instantânea no Markdown
+
+### 🔍 Sistema de Busca Avançado
+
+- **Busca em tempo real**: Resultados instantâneos enquanto você digita
+- **Busca em título e conteúdo**: Encontre informações em qualquer lugar
+- **Busca recursiva**: Pesquisa em toda a hierarquia de seções
+- **Highlight de resultados**: Destaque visual das palavras encontradas
+- **Snippets de contexto**: Veja trechos do conteúdo onde o termo foi encontrado
+- **Badge de match**: Identificação visual de seções que correspondem à busca
+- **Expansão automática**: Seções relevantes são automaticamente expandidas
+
+### 🎨 Reordenação com Drag & Drop
+
+- **Arraste seções raiz**: Reordene seções principais do projeto
+- **Arraste subseções**: Reorganize subseções dentro de cada seção
+- **Feedback visual**: Indicadores claros durante o arraste
+- **Persistência automática**: Mudanças salvas instantaneamente
+
+### 🛡️ Validações e Segurança
+
+- **Nomes únicos**: Não permite seções duplicadas no mesmo nível
+- **Confirmação de exclusão**: Aviso ao deletar seções com subseções
+- **Contador de descendentes**: Veja quantas subseções serão removidas
+- **Validação em tempo real**: Feedback imediato sobre erros
+
+### 📝 Edição Inline de Títulos
+
+- **Edição rápida**: Clique no ícone de lápis para editar títulos
+- **Atalhos de teclado**: Enter para salvar, Escape para cancelar
+- **Validação automática**: Verifica duplicatas ao renomear
+
+### 💾 Persistência de Dados
+
+- **LocalStorage**: Dados salvos localmente no navegador
+- **Auto-save**: Todas as alterações são salvas automaticamente
+- **Recuperação automática**: Dados carregados ao abrir o app
+- **Versionamento**: Sistema de chave `gdd_projects_v1` para futuras migrações
+
+---
+
+## 🚀 Começando
+
+### Pré-requisitos
+
+- **Node.js** 20.x ou superior
+- **npm**, **yarn**, **pnpm** ou **bun**
+
+### Instalação
+
+1. **Clone o repositório**
+
+```bash
+git clone https://github.com/Doublehitgames/GddApp.git
+cd gdd_project
+```
+
+2. **Instale as dependências**
+
+```bash
+npm install
+# ou
+yarn install
+# ou
+pnpm install
+```
+
+3. **Execute o servidor de desenvolvimento**
 
 ```bash
 npm run dev
-# or
+# ou
 yarn dev
-# or
+# ou
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. **Abra no navegador**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Acesse [http://localhost:3000](http://localhost:3000)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🏗️ Estrutura do Projeto
 
-To learn more about Next.js, take a look at the following resources:
+```
+gdd_project/
+├── app/                          # App Router do Next.js
+│   ├── page.tsx                 # Página inicial (lista de projetos)
+│   ├── layout.tsx               # Layout raiz
+│   ├── globals.css              # Estilos globais
+│   ├── client-init.tsx          # Inicialização client-side
+│   ├── api/
+│   │   └── upload/
+│   │       └── route.ts         # API de upload de imagens
+│   └── projects/
+│       ├── page.tsx             # Criar novo projeto
+│       └── [id]/
+│           ├── page.tsx         # Detalhes do projeto
+│           ├── ProjectDetailClient.tsx
+│           ├── ProjectEditClient.tsx
+│           ├── edit/
+│           │   └── page.tsx     # Editar projeto
+│           └── sections/
+│               ├── SectionDetailClient.tsx
+│               ├── SectionEditClient.tsx
+│               └── [sectionId]/
+│                   ├── page.tsx          # Visualizar seção
+│                   └── edit/
+│                       └── page.tsx      # Editar seção
+├── store/
+│   └── projectStore.ts          # Estado global (Zustand)
+├── hooks/
+│   └── useInitProjects.ts       # Hook de inicialização
+├── types/
+│   └── toast-ui-editor.d.ts     # Type definitions
+├── public/
+│   └── uploads/                 # Diretório de imagens
+│       └── [projectId]/         # Imagens organizadas por projeto
+├── docs/
+│   └── IMAGES.md                # Documentação do sistema de imagens
+└── package.json                 # Dependências e scripts
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tecnologias Utilizadas
 
-## Deploy on Vercel
+### Core
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **[Next.js 16.0](https://nextjs.org/)** - Framework React com App Router
+- **[React 19.2](https://reactjs.org/)** - Biblioteca UI
+- **[TypeScript 5.0](https://www.typescriptlang.org/)** - Tipagem estática
+- **[TailwindCSS 4.0](https://tailwindcss.com/)** - Framework CSS utility-first
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Estado e Dados
+
+- **[Zustand 5.0](https://zustand-demo.pmnd.rs/)** - Gerenciamento de estado global
+- **LocalStorage API** - Persistência de dados local
+
+### Editor
+
+- **[@toast-ui/editor](https://ui.toast.com/tui-editor)** - Editor WYSIWYG/Markdown
+- **[react-markdown](https://github.com/remarkjs/react-markdown)** - Renderizador Markdown
+- **[remark-gfm](https://github.com/remarkjs/remark-gfm)** - GitHub Flavored Markdown
+- **[@uiw/react-md-editor](https://uiwjs.github.io/react-md-editor/)** - Editor Markdown alternativo
+
+### UI e Interação
+
+- **[@dnd-kit](https://dndkit.com/)** - Drag and Drop
+  - `@dnd-kit/core` - Core functionality
+  - `@dnd-kit/sortable` - Listas reordenáveis
+  - `@dnd-kit/utilities` - Utilitários
+
+### Desenvolvimento
+
+- **[ESLint](https://eslint.org/)** - Linter
+- **[PostCSS](https://postcss.org/)** - Processador CSS
+
+---
+
+## 📦 Scripts Disponíveis
+
+```bash
+# Desenvolvimento
+npm run dev          # Inicia servidor de desenvolvimento
+
+# Produção
+npm run build        # Cria build otimizado
+npm run start        # Inicia servidor de produção
+
+# Qualidade de Código
+npm run lint         # Executa ESLint
+```
+
+---
+
+## 📖 Como Usar
+
+### 1. Criar um Projeto
+
+1. Na página inicial, clique em **"Criar novo projeto"**
+2. Preencha o **título** e **descrição** (suporta Markdown)
+3. Clique em **"Criar Projeto"**
+
+### 2. Adicionar Seções
+
+1. Dentro do projeto, digite o nome da nova seção
+2. Clique em **"Adicionar"**
+3. A seção será criada e você pode clicar nela para editar
+
+### 3. Criar Subseções
+
+1. Entre em uma seção existente
+2. No campo **"Adicionar subseção"**, digite o nome
+3. Clique em **"Adicionar"**
+4. Subseções podem ter suas próprias subseções (hierarquia ilimitada)
+
+### 4. Editar Conteúdo
+
+1. Clique em uma seção para visualizar
+2. Clique em **"Editar no preview"**
+3. Use o editor WYSIWYG ou alterne para Markdown
+4. Adicione imagens clicando no botão 📷 na toolbar
+5. Clique em **"Salvar"** quando terminar
+
+### 5. Reordenar Seções
+
+1. Use as alças **⋮⋮** ao lado de cada seção
+2. Arraste e solte na posição desejada
+3. A ordem é salva automaticamente
+
+### 6. Buscar Conteúdo
+
+1. Use o campo de busca **🔍** na página do projeto ou seção
+2. Digite o termo que deseja encontrar
+3. Seções relevantes serão destacadas e expandidas automaticamente
+4. Veja snippets do conteúdo onde o termo aparece
+
+### 7. Upload de Imagens
+
+1. No editor WYSIWYG, clique no botão **📷 "image"**
+2. Selecione **"Upload arquivo"**
+3. Escolha a imagem (JPG, PNG, GIF, WebP, máx. 5MB)
+4. A imagem será inserida automaticamente no formato Markdown
+
+---
+
+## 🎨 Características de Design
+
+- **Interface Dark**: Design moderno em tons escuros
+- **Responsivo**: Funciona em desktop, tablet e mobile
+- **Feedback Visual**: Animações e transições suaves
+- **Acessibilidade**: Labels e aria-labels apropriados
+- **Tipografia**: Uso da fonte Geist otimizada
+
+---
+
+## 🔮 Roadmap
+
+### Próximas Funcionalidades Planejadas
+
+- [ ] **Exportação para PDF** - Gerar documentos completos em PDF
+- [ ] **Exportação para Markdown** - Baixar GDD em formato .md
+- [ ] **Backend com Banco de Dados** - PostgreSQL/MySQL
+- [ ] **Autenticação** - Login e controle de acesso
+- [ ] **Versionamento** - Histórico de alterações
+- [ ] **Colaboração em Tempo Real** - Múltiplos usuários simultâneos
+- [ ] **Comentários** - Sistema de anotações em seções
+- [ ] **Templates de GDD** - Templates prontos (RPG, FPS, Mobile, etc.)
+- [ ] **Dark/Light Mode** - Toggle de tema
+- [ ] **Atalhos de Teclado** - Navegação rápida
+- [ ] **Anexos diversos** - Upload de PDFs, vídeos, áudios
+- [ ] **Galeria de Assets** - Gerenciamento de recursos do projeto
+
+---
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Se você tem sugestões de melhorias, novos recursos ou encontrou bugs:
+
+1. Faça um Fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
+5. Abra um Pull Request
+
+---
+
+## 📄 Licença
+
+Este projeto está sob licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+---
+
+## 👥 Autores
+
+**Doublehit Games**
+- GitHub: [@Doublehitgames](https://github.com/Doublehitgames)
+
+---
+
+## 📞 Suporte
+
+Se você encontrar problemas ou tiver dúvidas:
+
+- Abra uma [Issue](https://github.com/Doublehitgames/GddApp/issues)
+- Consulte a [documentação do Next.js](https://nextjs.org/docs)
+- Veja a [documentação de imagens](./docs/IMAGES.md)
+
+---
+
+## 🙏 Agradecimentos
+
+- Next.js team pelo framework incrível
+- Toast UI team pelo excelente editor
+- Comunidade open-source por todas as bibliotecas utilizadas
+
+---
+
+<div align="center">
+
+**Feito com ❤️ para a comunidade de desenvolvimento de jogos**
+
+[⬆ Voltar ao topo](#-gdd-manager)
+
+</div>
