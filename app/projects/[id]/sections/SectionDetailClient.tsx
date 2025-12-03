@@ -267,36 +267,16 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       {children.length === 0 && (
         <p className="text-gray-500 text-sm">Nenhuma subseção ainda.</p>
       )}
-      {children.length > 0 && (() => {
-        const filteredChildren = children.filter(c => {
-          if (!searchTerm.trim()) return true;
-          const term = searchTerm.toLowerCase();
-          return c.title.toLowerCase().includes(term) || c.content?.toLowerCase().includes(term);
-        });
-
-        if (filteredChildren.length === 0) {
-          return <p className="text-gray-500 text-sm ml-6">Nenhuma subseção encontrada para "{searchTerm}".</p>;
-        }
-
-        return (
-          <>
-            {searchTerm.trim() && (
-              <p className="text-sm text-gray-600 mb-2 ml-6">
-                {filteredChildren.length} {filteredChildren.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}
-              </p>
-            )}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={filteredChildren.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-                <ul className="ml-6 mb-3 space-y-1">
-                  {filteredChildren.map((c) => (
-                    <SortableItem key={c.id} id={c.id} title={c.title} projectId={projectId} searchTerm={searchTerm} />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
-          </>
-        );
-      })()}
+      {children.length > 0 && (
+        <SubsectionTree 
+          sections={project?.sections || []} 
+          parentId={sectionId} 
+          projectId={projectId} 
+          searchTerm={searchTerm}
+          reorderSections={reorderSections}
+          sensors={sensors}
+        />
+      )}
 
       <div className="mt-2">
         <div className="flex gap-2">
@@ -331,6 +311,227 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+// Componente para renderizar árvore de subseções recursivamente
+function SubsectionTree({ sections, parentId, projectId, searchTerm, reorderSections, sensors }: { 
+  sections: any[]; 
+  parentId: string; 
+  projectId: string; 
+  searchTerm: string;
+  reorderSections: any;
+  sensors: any;
+}) {
+  const matchesSearch = (section: any): boolean => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return section.title.toLowerCase().includes(term) || section.content?.toLowerCase().includes(term);
+  };
+
+  const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
+    const section = allSections.find(s => s.id === sectionId);
+    if (!section) return false;
+    if (matchesSearch(section)) return true;
+    
+    const children = allSections.filter(s => s.parentId === sectionId);
+    return children.some(child => sectionMatchesOrHasMatchingChildren(child.id, allSections));
+  };
+
+  const children = sections
+    .filter((s) => s.parentId === parentId)
+    .filter(s => !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  if (children.length === 0 && searchTerm.trim()) {
+    return <p className="text-gray-500 text-sm ml-6">Nenhuma subseção encontrada para "{searchTerm}".</p>;
+  }
+
+  if (children.length === 0) {
+    return null;
+  }
+
+  function handleDragEnd(event: any) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = children.findIndex((c) => c.id === active.id);
+    const newIndex = children.findIndex((c) => c.id === over.id);
+
+    const newChildren = arrayMove(children, oldIndex, newIndex);
+    const newOrder = newChildren.map((c) => c.id);
+    reorderSections(projectId, newOrder);
+  }
+
+  const totalMatches = searchTerm.trim() ? sections.filter(matchesSearch).length : 0;
+
+  return (
+    <>
+      {searchTerm.trim() && totalMatches > 0 && (
+        <p className="text-sm text-gray-600 mb-2 ml-6">
+          {totalMatches} {totalMatches === 1 ? 'resultado encontrado' : 'resultados encontrados'}
+        </p>
+      )}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={children.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+          <ul className="ml-6 mb-3 space-y-1">
+            {children.map((c) => (
+              <SortableSubsectionItem 
+                key={c.id} 
+                section={c} 
+                sections={sections}
+                projectId={projectId} 
+                searchTerm={searchTerm}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+    </>
+  );
+}
+
+// Componente sortable para cada item da lista com filhos recursivos
+function SortableSubsectionItem({ section, sections, projectId, searchTerm }: { 
+  section: any; 
+  sections: any[];
+  projectId: string; 
+  searchTerm?: string;
+}) {
+  const router = useRouter();
+  
+  const highlightText = (text: string, term?: string) => {
+    if (!term || !term.trim()) return text;
+    const regex = new RegExp(`(${term})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+    );
+  };
+
+  const matchesDirectly = (sec: any): boolean => {
+    if (!searchTerm || !searchTerm.trim()) return false;
+    const term = searchTerm.toLowerCase();
+    return sec.title.toLowerCase().includes(term) || sec.content?.toLowerCase().includes(term);
+  };
+
+  const directMatch = matchesDirectly(section);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const hasChildren = sections.some(s => s.parentId === section.id);
+
+  return (
+    <li ref={setNodeRef} style={style} className="mb-2">
+      <div className="flex items-center gap-2 bg-gray-100 p-2 rounded hover:bg-gray-200">
+        <span
+          className="text-gray-400 cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+          aria-label="Reordenar"
+        >
+          ⋮⋮
+        </span>
+        <button
+          className="text-blue-400 underline hover:text-blue-600"
+          onClick={() => router.push(`/projects/${projectId}/sections/${section.id}`)}
+        >
+          {highlightText(section.title, searchTerm)}
+        </button>
+        {directMatch && searchTerm && searchTerm.trim() && (
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+        )}
+      </div>
+      {hasChildren && (
+        <SubsectionChildren 
+          sections={sections} 
+          parentId={section.id} 
+          projectId={projectId}
+          searchTerm={searchTerm}
+        />
+      )}
+    </li>
+  );
+}
+
+// Componente recursivo para filhos (apenas links, sem DnD nos níveis aninhados)
+function SubsectionChildren({ sections, parentId, projectId, searchTerm }: { 
+  sections: any[]; 
+  parentId: string; 
+  projectId: string;
+  searchTerm?: string;
+}) {
+  const matchesSearch = (section: any): boolean => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return section.title.toLowerCase().includes(term) || section.content?.toLowerCase().includes(term);
+  };
+
+  const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
+    const section = allSections.find(s => s.id === sectionId);
+    if (!section) return false;
+    if (matchesSearch(section)) return true;
+    
+    const children = allSections.filter(s => s.parentId === sectionId);
+    return children.some(child => sectionMatchesOrHasMatchingChildren(child.id, allSections));
+  };
+
+  const children = sections
+    .filter((s) => s.parentId === parentId)
+    .filter(s => !searchTerm || !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections));
+
+  const highlightText = (text: string, term?: string) => {
+    if (!term || !term.trim()) return text;
+    const regex = new RegExp(`(${term})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+    );
+  };
+
+  const matchesDirectly = (sec: any): boolean => {
+    if (!searchTerm || !searchTerm.trim()) return false;
+    const term = searchTerm.toLowerCase();
+    return sec.title.toLowerCase().includes(term) || sec.content?.toLowerCase().includes(term);
+  };
+
+  if (children.length === 0) return null;
+
+  return (
+    <ul className="list-circle ml-6 mt-2">
+      {children.map((sec) => {
+        const directMatch = matchesDirectly(sec);
+        return (
+          <li key={sec.id} className="mb-1">
+            <div className="flex items-center gap-2">
+              <button
+                className="text-blue-300 underline hover:text-blue-500"
+                onClick={() => window.location.href = `/projects/${projectId}/sections/${sec.id}`}
+              >
+                {highlightText(sec.title, searchTerm)}
+              </button>
+              {directMatch && searchTerm && searchTerm.trim() && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+              )}
+            </div>
+            <SubsectionChildren sections={sections} parentId={sec.id} projectId={projectId} searchTerm={searchTerm} />
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
