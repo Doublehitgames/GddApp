@@ -30,7 +30,6 @@ export default function Home() {
           <div key={p.id} className="block p-4 bg-gray-800 rounded hover:bg-gray-700 transition flex items-center justify-between">
             <Link href={`/projects/${p.id}`} className="flex-1">
               <h2 className="text-xl font-semibold">{p.title}</h2>
-              <p className="text-gray-400">{p.description}</p>
             </Link>
             <button
               className="ml-4 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"

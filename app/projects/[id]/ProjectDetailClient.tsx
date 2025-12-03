@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInitProjects } from "@/hooks/useInitProjects";
 import { useProjectStore } from "@/store/projectStore";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   DndContext,
   closestCenter,
@@ -99,7 +101,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
                     onClick={() => router.push(`/projects/${projectId}/edit`)}
                 >Editar</button>
             </div>
-            <p className="text-gray-400"><i>{project.description}</i></p>
+            <div className="prose prose-invert max-w-none mb-4">
+                {project.description ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.description}</ReactMarkdown>
+                ) : (
+                    <p className="text-gray-400 italic">Sem descrição.</p>
+                )}
+            </div>
 
             <div className="mt-6 mb-4">
                 <input
