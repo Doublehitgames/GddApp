@@ -1,0 +1,6 @@
+# Uploads Directory
+
+This directory stores uploaded images for projects.
+Files are organized by projectId: `/uploads/[projectId]/[filename]`
+
+Note: This directory is gitignored to avoid committing user uploads to the repository.

@@ -107,9 +107,35 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
           ["ul", "ol", "task"],
-          ["table", "link"],
+          ["table", "link", "image"],
           ["code", "codeblock"],
         ],
+        hooks: {
+          addImageBlobHook: async (blob: Blob, callback: (url: string, altText: string) => void) => {
+            try {
+              const formData = new FormData();
+              formData.append('image', blob);
+              formData.append('projectId', projectId);
+
+              const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+              });
+
+              if (!response.ok) {
+                const error = await response.json();
+                alert(`Erro ao fazer upload: ${error.error || 'Erro desconhecido'}`);
+                return;
+              }
+
+              const data = await response.json();
+              callback(data.url, 'Uploaded image');
+            } catch (error) {
+              console.error('Upload error:', error);
+              alert('Erro ao fazer upload da imagem');
+            }
+          },
+        },
       });
       (editorRef as any).current = instance;
     }
@@ -121,7 +147,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       }
       (editorRef as any).current = null;
     };
-  }, [inlineEdit, containerEl, sectionId, editorMode, section]);
+  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
