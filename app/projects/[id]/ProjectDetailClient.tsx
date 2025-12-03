@@ -41,6 +41,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -105,13 +106,39 @@ export default function ProjectDetailClient({ projectId }: Props) {
                     type="text"
                     placeholder="🔍 Buscar seções por título ou conteúdo..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                        const term = e.target.value;
+                        setSearchTerm(term);
+                        // Se houver busca, expandir automaticamente todas as seções
+                        if (term.trim()) {
+                            const allIds = new Set<string>();
+                            function collectIds(sectionsList: any[]) {
+                                sectionsList.forEach((s: any) => {
+                                    allIds.add(s.id);
+                                    const children = (project.sections || []).filter((child: any) => child.parentId === s.id);
+                                    if (children.length > 0) {
+                                        collectIds(children);
+                                    }
+                                });
+                            }
+                            collectIds(project.sections || []);
+                            setExpandedSections(allIds);
+                        }
+                    }}
                     className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </div>
 
             <h2 className="mt-4 font-semibold">Seções</h2>
-            <SectionTree sections={project.sections || []} projectId={projectId} reorderSections={reorderSections} sensors={sensors} searchTerm={searchTerm} />
+            <SectionTree 
+                sections={project.sections || []} 
+                projectId={projectId} 
+                reorderSections={reorderSections} 
+                sensors={sensors} 
+                searchTerm={searchTerm}
+                expandedSections={expandedSections}
+                setExpandedSections={setExpandedSections}
+            />
 
             <div className="mt-4">
                 <div className="flex gap-2">
@@ -140,7 +167,15 @@ export default function ProjectDetailClient({ projectId }: Props) {
 }
 
 // Componente auxiliar para renderizar árvore de seções (somente links)
-function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm }: { sections: any[]; projectId: string; reorderSections: any; sensors: any; searchTerm: string }) {
+function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, expandedSections, setExpandedSections }: { 
+    sections: any[]; 
+    projectId: string; 
+    reorderSections: any; 
+    sensors: any; 
+    searchTerm: string;
+    expandedSections: Set<string>;
+    setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
     // Filtrar seções que correspondem ao termo de busca
     const matchesSearch = (section: any): boolean => {
         if (!searchTerm.trim()) return true;
@@ -190,7 +225,15 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
                 <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                     <ul className="ml-6 space-y-1">
                         {roots.map((sec) => (
-                            <SortableRootItem key={sec.id} section={sec} sections={sections} projectId={projectId} searchTerm={searchTerm} />
+                            <SortableRootItem 
+                                key={sec.id} 
+                                section={sec} 
+                                sections={sections} 
+                                projectId={projectId} 
+                                searchTerm={searchTerm}
+                                expandedSections={expandedSections}
+                                setExpandedSections={setExpandedSections}
+                            />
                         ))}
                     </ul>
                 </SortableContext>
@@ -199,7 +242,14 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     );
 }
 
-function SortableRootItem({ section, sections, projectId, searchTerm }: { section: any; sections: any[]; projectId: string; searchTerm: string }) {
+function SortableRootItem({ section, sections, projectId, searchTerm, expandedSections, setExpandedSections }: { 
+    section: any; 
+    sections: any[]; 
+    projectId: string; 
+    searchTerm: string;
+    expandedSections: Set<string>;
+    setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
     const highlightText = (text: string, term?: string) => {
         if (!term || !term.trim()) return text;
         const regex = new RegExp(`(${term})`, 'gi');
@@ -231,6 +281,9 @@ function SortableRootItem({ section, sections, projectId, searchTerm }: { sectio
 
     const directMatch = matchesDirectly(section);
     const contentSnippet = directMatch && section.content ? getContentSnippet(section.content, searchTerm) : '';
+    
+    const hasChildren = sections.some((s: any) => s.parentId === section.id);
+    const isExpanded = expandedSections.has(section.id) || searchTerm.trim();
 
     const {
         attributes,
@@ -258,6 +311,23 @@ function SortableRootItem({ section, sections, projectId, searchTerm }: { sectio
                 >
                     ⋮⋮
                 </span>
+                {hasChildren && (
+                    <button
+                        onClick={() => {
+                            const newExpanded = new Set(expandedSections);
+                            if (expandedSections.has(section.id)) {
+                                newExpanded.delete(section.id);
+                            } else {
+                                newExpanded.add(section.id);
+                            }
+                            setExpandedSections(newExpanded);
+                        }}
+                        className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+                    >
+                        {isExpanded ? '−' : '+'}
+                    </button>
+                )}
+                {!hasChildren && <span className="w-4"></span>}
                 <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-400 underline hover:text-blue-600">
                     {highlightText(section.title, searchTerm)}
                 </Link>
@@ -270,12 +340,28 @@ function SortableRootItem({ section, sections, projectId, searchTerm }: { sectio
                     {highlightText(contentSnippet, searchTerm)}
                 </div>
             )}
-            <SectionChildren parentId={section.id} sections={sections} projectId={projectId} searchTerm={searchTerm} />
+            {hasChildren && isExpanded && (
+                <SectionChildren 
+                    parentId={section.id} 
+                    sections={sections} 
+                    projectId={projectId} 
+                    searchTerm={searchTerm}
+                    expandedSections={expandedSections}
+                    setExpandedSections={setExpandedSections}
+                />
+            )}
         </li>
     );
 }
 
-function SectionChildren({ parentId, sections, projectId, searchTerm }: { parentId: string; sections: any[]; projectId: string; searchTerm?: string }) {
+function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSections, setExpandedSections }: { 
+    parentId: string; 
+    sections: any[]; 
+    projectId: string; 
+    searchTerm?: string;
+    expandedSections: Set<string>;
+    setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
     const matchesSearch = (section: any): boolean => {
         if (!searchTerm || !searchTerm.trim()) return true;
         const term = searchTerm.toLowerCase();
@@ -295,7 +381,8 @@ function SectionChildren({ parentId, sections, projectId, searchTerm }: { parent
 
     const kids = sections
         .filter((s) => s.parentId === parentId)
-        .filter(s => !searchTerm || !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections));
+        .filter(s => !searchTerm || !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
     
     const highlightText = (text: string, term?: string) => {
         if (!term || !term.trim()) return text;
@@ -326,9 +413,29 @@ function SectionChildren({ parentId, sections, projectId, searchTerm }: { parent
             {kids.map((sec) => {
                 const directMatch = matchesSearch(sec);
                 const contentSnippet = directMatch && sec.content && searchTerm ? getContentSnippet(sec.content, searchTerm) : '';
+                const hasChildren = sections.some((s: any) => s.parentId === sec.id);
+                const isExpanded = expandedSections.has(sec.id) || searchTerm?.trim();
+                
                 return (
                     <li key={sec.id} className="mb-2">
                         <div className="flex items-center gap-2">
+                            {hasChildren && (
+                                <button
+                                    onClick={() => {
+                                        const newExpanded = new Set(expandedSections);
+                                        if (expandedSections.has(sec.id)) {
+                                            newExpanded.delete(sec.id);
+                                        } else {
+                                            newExpanded.add(sec.id);
+                                        }
+                                        setExpandedSections(newExpanded);
+                                    }}
+                                    className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+                                >
+                                    {isExpanded ? '−' : '+'}
+                                </button>
+                            )}
+                            {!hasChildren && <span className="w-4"></span>}
                             <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-500">
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
@@ -341,7 +448,16 @@ function SectionChildren({ parentId, sections, projectId, searchTerm }: { parent
                                 {highlightText(contentSnippet, searchTerm || '')}
                             </div>
                         )}
-                        <SectionChildren parentId={sec.id} sections={sections} projectId={projectId} searchTerm={searchTerm} />
+                        {hasChildren && isExpanded && (
+                            <SectionChildren 
+                                parentId={sec.id} 
+                                sections={sections} 
+                                projectId={projectId} 
+                                searchTerm={searchTerm}
+                                expandedSections={expandedSections}
+                                setExpandedSections={setExpandedSections}
+                            />
+                        )}
                     </li>
                 );
             })}
