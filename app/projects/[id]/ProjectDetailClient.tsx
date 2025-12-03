@@ -40,6 +40,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [project, setProject] = useState<any>(null);
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
+    const [searchTerm, setSearchTerm] = useState("");
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -99,8 +100,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
             </div>
             <p className="text-gray-400"><i>{project.description}</i></p>
 
-                        <h2 className="mt-6 font-semibold">Seções</h2>
-                        <SectionTree sections={project.sections || []} projectId={projectId} reorderSections={reorderSections} sensors={sensors} />
+            <div className="mt-6 mb-4">
+                <input
+                    type="text"
+                    placeholder="🔍 Buscar seções por título ou conteúdo..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+            </div>
+
+            <h2 className="mt-4 font-semibold">Seções</h2>
+            <SectionTree sections={project.sections || []} projectId={projectId} reorderSections={reorderSections} sensors={sensors} searchTerm={searchTerm} />
 
             <div className="mt-4">
                 <div className="flex gap-2">
@@ -129,8 +140,32 @@ export default function ProjectDetailClient({ projectId }: Props) {
 }
 
 // Componente auxiliar para renderizar árvore de seções (somente links)
-function SectionTree({ sections, projectId, reorderSections, sensors }: { sections: any[]; projectId: string; reorderSections: any; sensors: any }) {
-    const roots = sections.filter((s) => !s.parentId).sort((a, b) => (a.order || 0) - (b.order || 0));
+function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm }: { sections: any[]; projectId: string; reorderSections: any; sensors: any; searchTerm: string }) {
+    // Filtrar seções que correspondem ao termo de busca
+    const matchesSearch = (section: any): boolean => {
+        if (!searchTerm.trim()) return true;
+        const term = searchTerm.toLowerCase();
+        const titleMatch = section.title.toLowerCase().includes(term);
+        const contentMatch = section.content?.toLowerCase().includes(term) || false;
+        return titleMatch || contentMatch;
+    };
+
+    // Filtrar raízes que correspondem ou têm filhos que correspondem
+    const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
+        const section = allSections.find(s => s.id === sectionId);
+        if (!section) return false;
+        if (matchesSearch(section)) return true;
+        
+        const children = allSections.filter(s => s.parentId === sectionId);
+        return children.some(child => sectionMatchesOrHasMatchingChildren(child.id, allSections));
+    };
+
+    const roots = sections
+        .filter((s) => !s.parentId)
+        .filter(s => !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections))
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const totalMatches = searchTerm.trim() ? sections.filter(matchesSearch).length : 0;
 
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -145,19 +180,58 @@ function SectionTree({ sections, projectId, reorderSections, sensors }: { sectio
     }
 
     return (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
-                <ul className="ml-6 space-y-1">
-                    {roots.map((sec) => (
-                        <SortableRootItem key={sec.id} section={sec} sections={sections} projectId={projectId} />
-                    ))}
-                </ul>
-            </SortableContext>
-        </DndContext>
+        <>
+            {searchTerm.trim() && totalMatches > 0 && (
+                <p className="text-sm text-gray-600 mb-2 ml-6">
+                    {totalMatches} {totalMatches === 1 ? 'resultado encontrado' : 'resultados encontrados'}
+                </p>
+            )}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                    <ul className="ml-6 space-y-1">
+                        {roots.map((sec) => (
+                            <SortableRootItem key={sec.id} section={sec} sections={sections} projectId={projectId} searchTerm={searchTerm} />
+                        ))}
+                    </ul>
+                </SortableContext>
+            </DndContext>
+        </>
     );
 }
 
-function SortableRootItem({ section, sections, projectId }: { section: any; sections: any[]; projectId: string }) {
+function SortableRootItem({ section, sections, projectId, searchTerm }: { section: any; sections: any[]; projectId: string; searchTerm: string }) {
+    const highlightText = (text: string, term?: string) => {
+        if (!term || !term.trim()) return text;
+        const regex = new RegExp(`(${term})`, 'gi');
+        const parts = text.split(regex);
+        return parts.map((part, i) => 
+            regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+        );
+    };
+
+    const matchesDirectly = (sec: any): boolean => {
+        if (!searchTerm || !searchTerm.trim()) return false;
+        const term = searchTerm.toLowerCase();
+        return sec.title.toLowerCase().includes(term) || sec.content?.toLowerCase().includes(term);
+    };
+
+    const getContentSnippet = (content: string, term: string): string => {
+        if (!content || !term) return '';
+        const lowerContent = content.toLowerCase();
+        const lowerTerm = term.toLowerCase();
+        const index = lowerContent.indexOf(lowerTerm);
+        if (index === -1) return '';
+        const start = Math.max(0, index - 40);
+        const end = Math.min(content.length, index + term.length + 40);
+        let snippet = content.substring(start, end);
+        if (start > 0) snippet = '...' + snippet;
+        if (end < content.length) snippet = snippet + '...';
+        return snippet;
+    };
+
+    const directMatch = matchesDirectly(section);
+    const contentSnippet = directMatch && section.content ? getContentSnippet(section.content, searchTerm) : '';
+
     const {
         attributes,
         listeners,
@@ -185,27 +259,92 @@ function SortableRootItem({ section, sections, projectId }: { section: any; sect
                     ⋮⋮
                 </span>
                 <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-400 underline hover:text-blue-600">
-                    {section.title}
+                    {highlightText(section.title, searchTerm)}
                 </Link>
+                {directMatch && searchTerm.trim() && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+                )}
             </div>
-            <SectionChildren parentId={section.id} sections={sections} projectId={projectId} />
+            {contentSnippet && (
+                <div className="ml-8 text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded">
+                    {highlightText(contentSnippet, searchTerm)}
+                </div>
+            )}
+            <SectionChildren parentId={section.id} sections={sections} projectId={projectId} searchTerm={searchTerm} />
         </li>
     );
 }
 
-function SectionChildren({ parentId, sections, projectId }: { parentId: string; sections: any[]; projectId: string }) {
-    const kids = sections.filter((s) => s.parentId === parentId);
+function SectionChildren({ parentId, sections, projectId, searchTerm }: { parentId: string; sections: any[]; projectId: string; searchTerm?: string }) {
+    const matchesSearch = (section: any): boolean => {
+        if (!searchTerm || !searchTerm.trim()) return true;
+        const term = searchTerm.toLowerCase();
+        const titleMatch = section.title.toLowerCase().includes(term);
+        const contentMatch = section.content?.toLowerCase().includes(term) || false;
+        return titleMatch || contentMatch;
+    };
+
+    const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
+        const section = allSections.find(s => s.id === sectionId);
+        if (!section) return false;
+        if (matchesSearch(section)) return true;
+        
+        const children = allSections.filter(s => s.parentId === sectionId);
+        return children.some(child => sectionMatchesOrHasMatchingChildren(child.id, allSections));
+    };
+
+    const kids = sections
+        .filter((s) => s.parentId === parentId)
+        .filter(s => !searchTerm || !searchTerm.trim() || sectionMatchesOrHasMatchingChildren(s.id, sections));
+    
+    const highlightText = (text: string, term?: string) => {
+        if (!term || !term.trim()) return text;
+        const regex = new RegExp(`(${term})`, 'gi');
+        const parts = text.split(regex);
+        return parts.map((part, i) => 
+            regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+        );
+    };
+
+    const getContentSnippet = (content: string, term: string): string => {
+        if (!content || !term) return '';
+        const lowerContent = content.toLowerCase();
+        const lowerTerm = term.toLowerCase();
+        const index = lowerContent.indexOf(lowerTerm);
+        if (index === -1) return '';
+        const start = Math.max(0, index - 40);
+        const end = Math.min(content.length, index + term.length + 40);
+        let snippet = content.substring(start, end);
+        if (start > 0) snippet = '...' + snippet;
+        if (end < content.length) snippet = snippet + '...';
+        return snippet;
+    };
+
     if (kids.length === 0) return null;
     return (
         <ul className="list-circle ml-6 mt-2">
-            {kids.map((sec) => (
-                <li key={sec.id} className="mb-1">
-                    <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-500">
-                        {sec.title}
-                    </Link>
-                    <SectionChildren parentId={sec.id} sections={sections} projectId={projectId} />
-                </li>
-            ))}
+            {kids.map((sec) => {
+                const directMatch = matchesSearch(sec);
+                const contentSnippet = directMatch && sec.content && searchTerm ? getContentSnippet(sec.content, searchTerm) : '';
+                return (
+                    <li key={sec.id} className="mb-2">
+                        <div className="flex items-center gap-2">
+                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-500">
+                                {highlightText(sec.title, searchTerm)}
+                            </Link>
+                            {directMatch && searchTerm && searchTerm.trim() && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+                            )}
+                        </div>
+                        {contentSnippet && (
+                            <div className="text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded ml-4">
+                                {highlightText(contentSnippet, searchTerm || '')}
+                            </div>
+                        )}
+                        <SectionChildren parentId={sec.id} sections={sections} projectId={projectId} searchTerm={searchTerm} />
+                    </li>
+                );
+            })}
         </ul>
     );
 }

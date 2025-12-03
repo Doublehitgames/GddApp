@@ -45,6 +45,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [newSubTitle, setNewSubTitle] = useState("");
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [inlineEdit, setInlineEdit] = useState(false);
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -226,20 +227,50 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       )}
 
       <h2 className="mt-4 font-semibold">Subseções</h2>
+      {children.length > 0 && (
+        <div className="mb-3">
+          <input
+            type="text"
+            placeholder="🔍 Buscar subseções..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
       {children.length === 0 && (
         <p className="text-gray-500 text-sm">Nenhuma subseção ainda.</p>
       )}
-      {children.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={children.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-            <ul className="ml-6 mb-3 space-y-1">
-              {children.map((c) => (
-                <SortableItem key={c.id} id={c.id} title={c.title} projectId={projectId} />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
-      )}
+      {children.length > 0 && (() => {
+        const filteredChildren = children.filter(c => {
+          if (!searchTerm.trim()) return true;
+          const term = searchTerm.toLowerCase();
+          return c.title.toLowerCase().includes(term) || c.content?.toLowerCase().includes(term);
+        });
+
+        if (filteredChildren.length === 0) {
+          return <p className="text-gray-500 text-sm ml-6">Nenhuma subseção encontrada para "{searchTerm}".</p>;
+        }
+
+        return (
+          <>
+            {searchTerm.trim() && (
+              <p className="text-sm text-gray-600 mb-2 ml-6">
+                {filteredChildren.length} {filteredChildren.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}
+              </p>
+            )}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={filteredChildren.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                <ul className="ml-6 mb-3 space-y-1">
+                  {filteredChildren.map((c) => (
+                    <SortableItem key={c.id} id={c.id} title={c.title} projectId={projectId} searchTerm={searchTerm} />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          </>
+        );
+      })()}
 
       <div className="mt-2">
         <div className="flex gap-2">
@@ -278,8 +309,17 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 }
 
 // Componente sortable para cada item da lista
-function SortableItem({ id, title, projectId }: { id: string; title: string; projectId: string }) {
+function SortableItem({ id, title, projectId, searchTerm }: { id: string; title: string; projectId: string; searchTerm?: string }) {
   const router = useRouter();
+  
+  const highlightText = (text: string, term: string) => {
+    if (!term || !term.trim()) return text;
+    const regex = new RegExp(`(${term})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
+    );
+  };
   const {
     attributes,
     listeners,
@@ -313,7 +353,7 @@ function SortableItem({ id, title, projectId }: { id: string; title: string; pro
         className="text-blue-400 underline hover:text-blue-600"
         onClick={() => router.push(`/projects/${projectId}/sections/${id}`)}
       >
-        {title}
+        {highlightText(title, searchTerm || "")}
       </button>
     </li>
   );
