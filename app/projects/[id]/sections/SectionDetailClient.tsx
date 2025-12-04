@@ -686,20 +686,21 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
     <div className="mt-6 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
       <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
         <span>🔗</span>
-        <span>Referenciado por ({backlinks.length})</span>
+        <span>Referenciado por:</span>
       </h3>
-      <ul className="space-y-1">
-        {backlinks.map((link) => (
-          <li key={link.id}>
+      <div className="flex flex-wrap gap-2">
+        {backlinks.map((link, index) => (
+          <span key={link.id} className="inline-flex items-center">
             <button
               onClick={() => router.push(`/projects/${projectId}/sections/${link.id}`)}
-              className="text-blue-600 hover:text-blue-800 underline text-sm"
+              className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
             >
               {link.title}
             </button>
-          </li>
+            {index < backlinks.length - 1 && <span className="text-blue-400 ml-1">,</span>}
+          </span>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
