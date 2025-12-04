@@ -7,6 +7,7 @@ import { useInitProjects } from "@/hooks/useInitProjects";
 import { useProjectStore } from "@/store/projectStore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MarkdownWithReferences } from "@/app/components/MarkdownWithReferences";
 import {
   DndContext,
   closestCenter,
@@ -101,9 +102,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
                     onClick={() => router.push(`/projects/${projectId}/edit`)}
                 >Editar</button>
             </div>
-            <div className="prose prose-invert max-w-none mb-4">
+            <div className="mb-4">
                 {project.description ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.description}</ReactMarkdown>
+                    <MarkdownWithReferences 
+                        content={project.description} 
+                        projectId={projectId} 
+                        sections={project.sections || []} 
+                    />
                 ) : (
                     <p className="text-gray-400 italic">Sem descrição.</p>
                 )}

@@ -4,6 +4,8 @@ import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 
@@ -26,12 +28,19 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
   const [notFound, setNotFound] = useState(false);
   const router = useRouter();
 
+  const project = getProject(projectId);
+  const sections = project?.sections || [];
+  const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections });
+
   useEffect(() => {
     const project = getProject(projectId);
     const sec = project?.sections?.find((s: any) => s.id === sectionId);
     if (sec) {
       setTitle(sec.title);
-      setContent(sec.content || "");
+      // Convert IDs back to names for user-friendly editing
+      const sections = project?.sections || [];
+      const editableContent = convertReferencesToNames(sec.content || "", sections);
+      setContent(editableContent);
       setParentId(sec.parentId);
       setNotFound(false);
     } else {
@@ -42,7 +51,16 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
 
   function handleSave() {
     if (!notFound && projectId && sectionId && !nameError) {
-      editSection(projectId, sectionId, title, content);
+      // Convert name-based references to ID-based references before saving
+      const project = getProject(projectId);
+      const sections = project?.sections || [];
+      const convertedContent = convertReferencesToIds(content, sections);
+      
+      console.log('Original content:', content);
+      console.log('Converted content:', convertedContent);
+      console.log('Available sections:', sections.map((s: any) => ({ id: s.id, title: s.title })));
+      
+      editSection(projectId, sectionId, title, convertedContent);
       router.push(`/projects/${projectId}/sections/${sectionId}`);
     }
   }
@@ -94,6 +112,7 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
           >Cancelar</button>
         </div>
       </div>
+      <AutocompleteDropdown />
     </div>
   );
 }

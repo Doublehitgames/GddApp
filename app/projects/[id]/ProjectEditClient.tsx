@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
+import { convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -22,12 +24,20 @@ export default function ProjectEditClient({ projectId }: Props) {
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const project = getProject(projectId);
+  const sections = project?.sections || [];
+  const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections, containerRef });
 
   useEffect(() => {
     const p = getProject(projectId);
     if (p) {
       setName(p.title);
-      setDescription(p.description || "");
+      // Convert IDs back to names for user-friendly editing
+      const sections = p.sections || [];
+      const editableDescription = convertReferencesToNames(p.description || "", sections);
+      setDescription(editableDescription);
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -100,7 +110,10 @@ export default function ProjectEditClient({ projectId }: Props) {
   function handleSave() {
     if (!notFound && projectId) {
       const md = editorRef.current?.getMarkdown?.() || description;
-      editProject(projectId, name, md);
+      const project = getProject(projectId);
+      const sections = project?.sections || [];
+      const convertedMd = convertReferencesToIds(md, sections);
+      editProject(projectId, name, convertedMd);
       router.push(`/projects/${projectId}`);
     }
   }
@@ -124,7 +137,12 @@ export default function ProjectEditClient({ projectId }: Props) {
         
         <div>
           <label className="block text-sm font-semibold mb-1">Descrição do Projeto</label>
-          <div ref={setContainerEl as any} />
+          <div ref={(el) => {
+            setContainerEl(el);
+            if (el && containerRef) {
+              (containerRef as any).current = el;
+            }
+          }} />
         </div>
 
         <div className="flex gap-2 items-center">
@@ -148,6 +166,7 @@ export default function ProjectEditClient({ projectId }: Props) {
           >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
         </div>
       </div>
+      <AutocompleteDropdown />
     </div>
   );
 }

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MarkdownWithReferences } from "@/app/components/MarkdownWithReferences";
+import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
 import {
   DndContext,
   closestCenter,
@@ -53,6 +56,9 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const router = useRouter();
 
+  const sections = project?.sections || [];
+  const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections });
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -96,12 +102,15 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       const mod: any = await import("@toast-ui/editor");
       if (cancelled) return;
       const ToastEditor = mod.default || mod;
+      const project = getProject(projectId);
+      const sections = project?.sections || [];
+      const contentForEditor = convertReferencesToNames(section?.content || "", sections);
       instance = new ToastEditor({
         el: containerEl,
         initialEditType: editorMode,
         previewStyle: "vertical",
         height: "320px",
-        initialValue: section?.content || "",
+        initialValue: contentForEditor,
         usageStatistics: false,
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
@@ -313,12 +322,14 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   if (!loaded) return <div className="p-6">Carregando...</div>;
   if (!section) return <div className="p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
 
-  return <SectionDetailContent 
-    project={project}
-    projectId={projectId}
-    section={section}
-    sectionId={sectionId}
-    breadcrumbs={breadcrumbs}
+  return (
+    <>
+      <SectionDetailContent 
+        project={project}
+        projectId={projectId}
+        section={section}
+        sectionId={sectionId}
+        breadcrumbs={breadcrumbs}
     isEditingTitle={isEditingTitle}
     setIsEditingTitle={setIsEditingTitle}
     editedTitle={editedTitle}
@@ -345,7 +356,10 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setSearchTerm={setSearchTerm}
     expandedSections={expandedSections}
     setExpandedSections={setExpandedSections}
-  />;
+      />
+      <AutocompleteDropdown />
+    </>
+  );
 }
 
 // Componente sortable para subseções
@@ -471,7 +485,9 @@ function SectionDetailContent({
               onChange={(e) => setEditedTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && editedTitle.trim()) {
-                  editSection(projectId, sectionId, editedTitle.trim(), section.content || '');
+                  const sections = project?.sections || [];
+                  const convertedContent = convertReferencesToIds(section.content || '', sections);
+                  editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
                   setIsEditingTitle(false);
                 } else if (e.key === 'Escape') {
                   setEditedTitle(section.title);
@@ -484,7 +500,9 @@ function SectionDetailContent({
             <button
               onClick={() => {
                 if (editedTitle.trim()) {
-                  editSection(projectId, sectionId, editedTitle.trim(), section.content || '');
+                  const sections = project?.sections || [];
+                  const convertedContent = convertReferencesToIds(section.content || '', sections);
+                  editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
                   setIsEditingTitle(false);
                 }
               }}
@@ -537,9 +555,13 @@ function SectionDetailContent({
         )}
       </div>
       {!inlineEdit && (
-        <div className="prose prose-invert max-w-none mb-4">
+        <div className="mb-4">
           {section.content ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
+            <MarkdownWithReferences 
+              content={section.content} 
+              projectId={projectId} 
+              sections={project?.sections || []} 
+            />
           ) : (
             <p className="text-gray-400">Sem descrição.</p>
           )}
@@ -553,7 +575,9 @@ function SectionDetailContent({
               className="bg-green-600 text-white px-3 py-1 rounded"
               onClick={() => {
                 const md = (editorRef as any).current?.getMarkdown?.() || "";
-                editSection(projectId, sectionId, section.title, md);
+                const sections = project?.sections || [];
+                const convertedMd = convertReferencesToIds(md, sections);
+                editSection(projectId, sectionId, section.title, convertedMd);
                 setInlineEdit(false);
               }}
             >Salvar</button>
@@ -574,6 +598,14 @@ function SectionDetailContent({
           </div>
         </div>
       )}
+
+      {/* Backlinks Section */}
+      <BacklinksSection 
+        projectId={projectId}
+        sectionId={sectionId}
+        sections={project?.sections || []}
+        router={router}
+      />
 
       <h2 className="mt-4 font-semibold">Subseções</h2>
       
@@ -643,3 +675,33 @@ function SectionDetailContent({
     </div>
   );
 }
+
+// Componente de Backlinks (seções que referenciam esta)
+function BacklinksSection({ projectId, sectionId, sections, router }: any) {
+  const backlinks = getBacklinks(sectionId, sections);
+
+  if (backlinks.length === 0) return null;
+
+  return (
+    <div className="mt-6 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+        <span>🔗</span>
+        <span>Referenciado por ({backlinks.length})</span>
+      </h3>
+      <ul className="space-y-1">
+        {backlinks.map((link) => (
+          <li key={link.id}>
+            <button
+              onClick={() => router.push(`/projects/${projectId}/sections/${link.id}`)}
+              className="text-blue-600 hover:text-blue-800 underline text-sm"
+            >
+              {link.title}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Nota: O autocomplete é renderizado no componente principal via <AutocompleteDropdown />
