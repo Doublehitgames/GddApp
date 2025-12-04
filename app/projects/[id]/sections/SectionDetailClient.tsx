@@ -2,7 +2,7 @@
 
 import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -158,11 +158,11 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       .filter((s: any) => s.parentId === sectionId)
       .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-    const oldIndex = directChildren.findIndex((c) => c.id === active.id);
-    const newIndex = directChildren.findIndex((c) => c.id === over.id);
+    const oldIndex = directChildren.findIndex((c: any) => c.id === active.id);
+    const newIndex = directChildren.findIndex((c: any) => c.id === over.id);
 
     const reordered = arrayMove(directChildren, oldIndex, newIndex);
-    const newOrder = reordered.map((c) => c.id);
+    const newOrder = reordered.map((c: any) => c.id);
     reorderSections(projectId, newOrder);
   }
 
@@ -213,7 +213,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   }
 
   // Função recursiva para renderizar a árvore de subseções (sempre expandida)
-  function renderSubsectionTree(parentId: string, level: number = 0): JSX.Element | null {
+  function renderSubsectionTree(parentId: string, level: number = 0): ReactNode {
     const subs = (project?.sections || [])
       .filter((s: any) => s.parentId === parentId)
       .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
@@ -228,7 +228,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     if (level === 0) {
       return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={filtered.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={filtered.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
             <ul className="list-circle ml-6 mt-2">
               {filtered.map((sub: any) => (
                 <SortableSubsectionItem 
@@ -445,7 +445,7 @@ function SectionDetailContent({
         >
           {project?.title || "Projeto"}
         </button>
-        {breadcrumbs.map((crumb, idx) => (
+        {breadcrumbs.map((crumb: any, idx: number) => (
           <span key={crumb.id} className="flex items-center gap-1">
             <span>/</span>
             {idx === breadcrumbs.length - 1 ? (
