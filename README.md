@@ -22,6 +22,7 @@
 
 - ✅ **Organização Hierárquica**: Estruture seu GDD com seções e subseções ilimitadas
 - ✅ **Editor Rico**: WYSIWYG e Markdown com suporte a imagens, tabelas, código e muito mais
+- ✅ **🤖 IA Integrada**: Gere GDDs completos automaticamente e chat assistente inteligente
 - ✅ **Busca Inteligente**: Encontre rapidamente qualquer informação no seu documento
 - ✅ **Drag & Drop**: Reordene seções com facilidade
 - ✅ **Persistência Local**: Seus dados ficam seguros no navegador
@@ -30,6 +31,17 @@
 ---
 
 ## ✨ Funcionalidades
+
+### 🤖 Assistente de IA (NOVO!)
+
+- **Geração Automática de GDD**: Descreva seu jogo e a IA cria toda a estrutura
+- **Chat Inteligente**: Assistente lateral em cada projeto
+- **Sugestões Contextuais**: IA entende seu GDD e sugere melhorias
+- **Análise de Consistência**: Detecta inconsistências e lacunas no documento
+- **Múltiplos Providers**: Suporte a Groq (grátis), OpenAI e Claude
+- **Geração de Conteúdo**: Preenche seções vazias automaticamente
+
+[📖 **Veja como configurar a IA →**](./docs/AI_SETUP.md)
 
 ### 📁 Gerenciamento de Projetos
 
@@ -258,9 +270,19 @@ npm run lint         # Executa ESLint
 
 ### 1. Criar um Projeto
 
+**Opção A: Criação Manual**
 1. Na página inicial, clique em **"Criar novo projeto"**
 2. Preencha o **título** e **descrição** (suporta Markdown)
 3. Clique em **"Criar Projeto"**
+
+**Opção B: Criação com IA 🤖 (Recomendado para iniciantes)**
+1. Na página inicial, clique em **"🤖 Criar com IA"**
+2. Descreva seu jogo (tipo, mecânicas, tema)
+3. Clique em **"✨ Gerar GDD com IA"**
+4. Revise a estrutura gerada e clique em **"🚀 Criar Projeto"**
+5. Pronto! Estrutura completa criada em segundos
+
+> ⚙️ [**Configure a IA antes de usar →**](./docs/AI_SETUP.md)
 
 ### 2. Adicionar Seções
 
@@ -283,7 +305,18 @@ npm run lint         # Executa ESLint
 4. Adicione imagens clicando no botão 📷 na toolbar
 5. Clique em **"Salvar"** quando terminar
 
-### 5. Reordenar Seções
+### 5. Usar o Assistente de IA 🤖
+
+1. Dentro de um projeto, clique no botão flutuante **🤖**
+2. O chat lateral será aberto
+3. Converse naturalmente:
+   - "Analise meu GDD"
+   - "Sugira seções faltantes"
+   - "O que adicionar na seção de Combate?"
+   - "Crie uma nova seção sobre Sistema de Progressão"
+4. A IA entende todo o contexto do seu projeto!
+
+### 6. Reordenar Seções
 
 1. Use as alças **⋮⋮** ao lado de cada seção
 2. Arraste e solte na posição desejada
@@ -317,10 +350,18 @@ npm run lint         # Executa ESLint
 
 ## 🔮 Roadmap
 
+### ✅ Recém Implementado
+
+- [x] **🤖 Assistente de IA** - Geração automática de GDD e chat inteligente
+- [x] **Suporte a múltiplos providers** - Groq (grátis), OpenAI, Claude
+- [x] **Chat contextual** - Assistente entende todo o projeto
+
 ### Próximas Funcionalidades Planejadas
 
 - [ ] **Exportação para PDF** - Gerar documentos completos em PDF
 - [ ] **Exportação para Markdown** - Baixar GDD em formato .md
+- [ ] **🤖 IA: Análise de inconsistências** - Detectar contradições automaticamente
+- [ ] **🤖 IA: Sugestões proativas** - IA sugere mudanças baseado em alterações
 - [ ] **Backend com Banco de Dados** - PostgreSQL/MySQL
 - [ ] **Autenticação** - Login e controle de acesso
 - [ ] **Versionamento** - Histórico de alterações

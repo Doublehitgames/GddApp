@@ -19,11 +19,19 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-start bg-gray-900 text-white p-10">
       <h1 className="text-4xl font-bold mb-6">GDD App</h1>
 
-      <Link href="/projects">
-        <button className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 mb-10">
-          Criar novo projeto
-        </button>
-      </Link>
+      <div className="flex flex-col gap-4 mb-10">
+        <Link href="/ai-create-simple">
+          <button className="w-full px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all font-bold text-lg flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105">
+            <span className="text-2xl">🤖</span>
+            <span>Criar GDD com IA</span>
+          </button>
+        </Link>
+        <Link href="/projects">
+          <button className="w-full px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-800 transition-colors">
+            Criar manualmente
+          </button>
+        </Link>
+      </div>
 
       <div className="w-full max-w-2xl flex flex-col gap-4">
         {projects.map((p) => {

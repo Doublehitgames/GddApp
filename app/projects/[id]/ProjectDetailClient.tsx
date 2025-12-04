@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
+import AIChat from "@/components/AIChat";
 import {
   DndContext,
   closestCenter,
@@ -45,6 +46,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -88,16 +90,28 @@ export default function ProjectDetailClient({ projectId }: Props) {
         setNameError("");
     }
 
+    const projectContext = project ? {
+        projectId: project.id,
+        projectTitle: project.title || project.name,
+        sections: (project.sections || []).map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            content: s.content,
+        })),
+    } : undefined;
+
     return (
-        <div className="p-6">
-            
-            <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
-                Voltar para Home
-            </button>
-            
-            <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-3xl font-bold">{project.name}</h1>
-                <button
+        <div className="flex h-screen">
+            {/* Main Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+                
+                <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
+                    Voltar para Home
+                </button>
+                
+                <div className="flex items-center gap-2 mb-2">
+                    <h1 className="text-3xl font-bold">{project.name}</h1>
+                    <button
                     className="bg-yellow-500 text-black px-2 py-1 rounded text-sm"
                     onClick={() => router.push(`/projects/${projectId}/edit`)}
                 >Editar</button>
@@ -176,6 +190,32 @@ export default function ProjectDetailClient({ projectId }: Props) {
                 )}
             </div>
         </div>
+
+        {/* AI Chat Sidebar */}
+        {isChatOpen && (
+            <div className="w-96 border-l border-gray-200 bg-white">
+                <AIChat 
+                    projectContext={projectContext}
+                    onClose={() => setIsChatOpen(false)}
+                    isOpen={isChatOpen}
+                />
+            </div>
+        )}
+
+        {/* Floating AI Button */}
+        {!isChatOpen && (
+            <button
+                onClick={() => setIsChatOpen(true)}
+                className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 group"
+                aria-label="Abrir assistente AI"
+            >
+                <div className="flex items-center gap-2">
+                    <span className="text-2xl">🤖</span>
+                    <span className="hidden group-hover:inline-block font-medium">Assistente AI</span>
+                </div>
+            </button>
+        )}
+    </div>
     );
 }
 
