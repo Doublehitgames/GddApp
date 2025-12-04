@@ -4,8 +4,8 @@ import { useProjectStore } from "@/store/projectStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
-import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
+import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 

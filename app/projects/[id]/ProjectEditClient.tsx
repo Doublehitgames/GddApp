@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
-import { convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
-import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
+import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 

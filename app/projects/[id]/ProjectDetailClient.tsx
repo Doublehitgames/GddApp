@@ -7,7 +7,7 @@ import { useInitProjects } from "@/hooks/useInitProjects";
 import { useProjectStore } from "@/store/projectStore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MarkdownWithReferences } from "@/app/components/MarkdownWithReferences";
+import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import {
   DndContext,
   closestCenter,

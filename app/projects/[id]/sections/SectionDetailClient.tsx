@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MarkdownWithReferences } from "@/app/components/MarkdownWithReferences";
-import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/app/utils/sectionReferences";
-import { useMarkdownAutocomplete } from "@/app/hooks/useMarkdownAutocomplete";
+import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
+import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
+import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import {
   DndContext,
   closestCenter,
