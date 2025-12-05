@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
+import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
 import {
   DndContext,
   closestCenter,
@@ -54,6 +55,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [editedTitle, setEditedTitle] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [editorHeight, setEditorHeight] = useState("320px");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -109,9 +112,20 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         el: containerEl,
         initialEditType: editorMode,
         previewStyle: "vertical",
-        height: "320px",
+        height: editorHeight,
         initialValue: contentForEditor,
         usageStatistics: false,
+        customHTMLRenderer: {
+          htmlInline: {
+            span(node: any) {
+              return [
+                { type: 'openTag', tagName: 'span', attributes: node.attrs },
+                { type: 'html', content: node.literal || '' },
+                { type: 'closeTag', tagName: 'span' }
+              ];
+            }
+          }
+        },
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
@@ -147,6 +161,9 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         },
       });
       (editorRef as any).current = instance;
+      
+      // Adiciona botão de cor
+      addColorButtonToToolbar(instance);
     }
     mountEditor();
     return () => {
@@ -156,7 +173,24 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       }
       (editorRef as any).current = null;
     };
-  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId]);
+  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId, editorHeight]);
+
+  useEffect(() => {
+    if ((editorRef as any).current) {
+      (editorRef as any).current.setHeight(editorHeight);
+    }
+  }, [editorHeight]);
+
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -356,6 +390,10 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setSearchTerm={setSearchTerm}
     expandedSections={expandedSections}
     setExpandedSections={setExpandedSections}
+    editorHeight={editorHeight}
+    setEditorHeight={setEditorHeight}
+    isFullscreen={isFullscreen}
+    setIsFullscreen={setIsFullscreen}
       />
       <AutocompleteDropdown />
     </>
@@ -446,13 +484,32 @@ function SectionDetailContent({
   inlineEdit, setInlineEdit, containerEl, setContainerEl, editorRef, editorMode, setEditorMode,
   removeSection, countDescendants, renderSubsectionTree,
   newSubTitle, setNewSubTitle, nameError, setNameError, addSubsection, hasDuplicateName,
-  router, searchTerm, setSearchTerm, expandedSections, setExpandedSections
+  router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
+  editorHeight, setEditorHeight, isFullscreen, setIsFullscreen
 }: any) {
 
   return (
-    <div className="p-6 max-w-lg mx-auto">
+    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-6" : "p-6 max-w-lg mx-auto"}>
+      {/* Fullscreen header */}
+      {inlineEdit && isFullscreen && (
+        <div className="mb-4 flex items-center justify-between border-b pb-4">
+          <h2 className="text-xl font-bold">Editando: {section.title}</h2>
+          <button
+            onClick={() => {
+              setIsFullscreen(false);
+              setEditorHeight('320px');
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+            title="Sair do fullscreen"
+          >
+            ⤓ Sair do Fullscreen
+          </button>
+        </div>
+      )}
+      
       {/* Breadcrumbs */}
-      <div className="mb-4 text-sm text-gray-500 flex items-center gap-1 flex-wrap">
+      {!(inlineEdit && isFullscreen) && (
+        <div className="mb-4 text-sm text-gray-500 flex items-center gap-1 flex-wrap">
         <button
           className="hover:text-blue-400 underline"
           onClick={() => router.push(`/projects/${projectId}`)}
@@ -474,9 +531,11 @@ function SectionDetailContent({
             )}
           </span>
         ))}
-      </div>
+        </div>
+      )}
 
-      <div className="flex items-center gap-2 mb-2 group">
+      {!(inlineEdit && isFullscreen) && (
+        <div className="flex items-center gap-2 mb-2 group">
         {isEditingTitle ? (
           <div className="flex items-center gap-2 flex-1">
             <input
@@ -553,8 +612,9 @@ function SectionDetailContent({
             }}
           >Excluir</button>
         )}
-      </div>
-      {!inlineEdit && (
+        </div>
+      )}
+      {!inlineEdit && !(inlineEdit && isFullscreen) && (
         <div className="mb-4">
           {section.content ? (
             <MarkdownWithReferences 
@@ -569,6 +629,45 @@ function SectionDetailContent({
       )}
       {inlineEdit && (
         <div className="mb-3">
+          {!isFullscreen && (
+            <div className="flex items-center gap-2 mb-2 justify-end">
+              <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1">
+                <button
+                  onClick={() => setEditorHeight((prev: string) => {
+                    const current = parseInt(prev);
+                    return `${Math.max(200, current - 100)}px`;
+                  })}
+                  className="text-gray-600 hover:text-gray-900 font-bold"
+                  title="Diminuir altura"
+                >
+                  −
+                </button>
+                <span className="text-sm text-gray-600 min-w-[60px] text-center">
+                  {editorHeight}
+                </span>
+                <button
+                  onClick={() => setEditorHeight((prev: string) => {
+                    const current = parseInt(prev);
+                    return `${current + 100}px`;
+                  })}
+                  className="text-gray-600 hover:text-gray-900 font-bold"
+                  title="Aumentar altura"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setIsFullscreen(true);
+                  setEditorHeight('calc(100vh - 200px)');
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                title="Fullscreen"
+              >
+                ⤢ Fullscreen
+              </button>
+            </div>
+          )}
           <div ref={setContainerEl as any} />
           <div className="mt-2 flex gap-2">
             <button
@@ -600,13 +699,17 @@ function SectionDetailContent({
       )}
 
       {/* Backlinks Section */}
-      <BacklinksSection 
-        projectId={projectId}
-        sectionId={sectionId}
-        sections={project?.sections || []}
-        router={router}
-      />
+      {!(inlineEdit && isFullscreen) && (
+        <BacklinksSection 
+          projectId={projectId}
+          sectionId={sectionId}
+          sections={project?.sections || []}
+          router={router}
+        />
+      )}
 
+      {!(inlineEdit && isFullscreen) && (
+        <>
       <h2 className="mt-4 font-semibold">Subseções</h2>
       
       {/* Campo de busca */}
@@ -672,6 +775,8 @@ function SectionDetailContent({
           <span className="text-red-500 text-sm mt-1 block">{nameError}</span>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

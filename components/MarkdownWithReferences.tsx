@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { useRouter } from "next/navigation";
 
 interface MarkdownWithReferencesProps {
@@ -68,8 +69,19 @@ export function MarkdownWithReferences({
   // If no references, just render normal markdown
   if (refs.length === 0) {
     return (
-      <div className="prose prose-invert max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <div className="prose max-w-none">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw as any]}
+          components={{
+            span: ({ node, ...props }: any) => {
+              // Preserve style attribute for colored text
+              return <span {...props} />;
+            }
+          }}
+        >
+          {content}
+        </ReactMarkdown>
       </div>
     );
   }
@@ -109,16 +121,21 @@ export function MarkdownWithReferences({
 
   // Render with proper inline handling
   return (
-    <div className="prose prose-invert max-w-none markdown-with-refs">
+    <div className="prose max-w-none markdown-with-refs">
       {segments.map((seg, idx) => {
         if (seg.type === 'text') {
           return (
             <ReactMarkdown 
               key={idx} 
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw as any]}
               components={{
                 // Force inline rendering for text segments
                 p: ({ children }) => <span className="inline-block">{children}</span>,
+                span: ({ node, ...props }: any) => {
+                  // Preserve style attribute for colored text
+                  return <span {...props} />;
+                }
               }}
             >
               {seg.content}

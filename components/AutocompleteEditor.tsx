@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
 
 interface Section {
   id: string;
@@ -33,6 +34,9 @@ export default function AutocompleteEditor({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState(height);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let instance: any;
@@ -50,9 +54,20 @@ export default function AutocompleteEditor({
         el: containerRef.current,
         initialEditType: editorMode,
         previewStyle: "vertical",
-        height,
+        height: editorHeight,
         initialValue,
         usageStatistics: false,
+        customHTMLRenderer: {
+          htmlInline: {
+            span(node: any) {
+              return [
+                { type: 'openTag', tagName: 'span', attributes: node.attrs },
+                { type: 'html', content: node.literal || '' },
+                { type: 'closeTag', tagName: 'span' }
+              ];
+            }
+          }
+        },
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
@@ -63,6 +78,9 @@ export default function AutocompleteEditor({
       });
 
       editorRef.current = instance;
+
+      // Adiciona botão de cor
+      addColorButtonToToolbar(instance);
 
       // Detecta quando usuário digita
       const editorEl = containerRef.current.querySelector(".toastui-editor-defaultUI");
@@ -85,7 +103,26 @@ export default function AutocompleteEditor({
         editorRef.current.destroy();
       }
     };
-  }, [initialValue, editorMode, height]);
+  }, [initialValue, editorMode, editorHeight]);
+
+  // Update editor height when changed
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.setHeight(editorHeight);
+    }
+  }, [editorHeight]);
+
+  // Handle fullscreen toggle
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
 
   const handleKeyDown = (e: Event) => {
     const keyEvent = e as KeyboardEvent;
@@ -245,7 +282,54 @@ export default function AutocompleteEditor({
   }, []);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div 
+      ref={wrapperRef}
+      className={isFullscreen ? "fixed inset-0 z-50 bg-white" : "relative"}
+    >
+      {/* Editor Controls */}
+      <div className="flex items-center gap-2 mb-2 justify-end">
+        {!isFullscreen && (
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1">
+            <button
+              onClick={() => setEditorHeight(prev => {
+                const current = parseInt(prev);
+                return `${Math.max(200, current - 100)}px`;
+              })}
+              className="text-gray-600 hover:text-gray-900 font-bold"
+              title="Diminuir altura"
+            >
+              −
+            </button>
+            <span className="text-sm text-gray-600 min-w-[60px] text-center">
+              {editorHeight}
+            </span>
+            <button
+              onClick={() => setEditorHeight(prev => {
+                const current = parseInt(prev);
+                return `${current + 100}px`;
+              })}
+              className="text-gray-600 hover:text-gray-900 font-bold"
+              title="Aumentar altura"
+            >
+              +
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => {
+            setIsFullscreen(!isFullscreen);
+            if (!isFullscreen) {
+              setEditorHeight('calc(100vh - 100px)');
+            } else {
+              setEditorHeight(height);
+            }
+          }}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+          title={isFullscreen ? "Sair do fullscreen" : "Fullscreen"}
+        >
+          {isFullscreen ? "⤓ Sair" : "⤢ Fullscreen"}
+        </button>
+      </div>
       <div ref={containerRef} />
       {showAutocomplete && filteredSections.length > 0 && (
         <div

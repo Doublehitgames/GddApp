@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
+import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -25,6 +26,8 @@ export default function ProjectEditClient({ projectId }: Props) {
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState("400px");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const project = getProject(projectId);
   const sections = project?.sections || [];
@@ -58,9 +61,20 @@ export default function ProjectEditClient({ projectId }: Props) {
         el: containerEl,
         initialEditType: editorMode,
         previewStyle: "vertical",
-        height: "400px",
+        height: editorHeight,
         initialValue: description || "",
         usageStatistics: false,
+        customHTMLRenderer: {
+          htmlInline: {
+            span(node: any) {
+              return [
+                { type: 'openTag', tagName: 'span', attributes: node.attrs },
+                { type: 'html', content: node.literal || '' },
+                { type: 'closeTag', tagName: 'span' }
+              ];
+            }
+          }
+        },
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
@@ -96,6 +110,9 @@ export default function ProjectEditClient({ projectId }: Props) {
         },
       });
       editorRef.current = instance;
+      
+      // Adiciona botão de cor
+      addColorButtonToToolbar(instance);
     }
     mountEditor();
     return () => {
@@ -105,7 +122,24 @@ export default function ProjectEditClient({ projectId }: Props) {
       }
       editorRef.current = null;
     };
-  }, [containerEl, loaded, editorMode, projectId, description]);
+  }, [containerEl, loaded, editorMode, projectId, description, editorHeight]);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.setHeight(editorHeight);
+    }
+  }, [editorHeight]);
+
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
 
   function handleSave() {
     if (!notFound && projectId) {
@@ -122,7 +156,7 @@ export default function ProjectEditClient({ projectId }: Props) {
   if (notFound) return <div className="p-6">Projeto não encontrado. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push("/")}>Voltar para Home</button></div>;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className={isFullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-6" : "p-6 max-w-4xl mx-auto"}>
       <h1 className="text-2xl font-bold mb-4">Editar Projeto</h1>
       <div className="flex flex-col gap-4">
         <div>
@@ -136,7 +170,52 @@ export default function ProjectEditClient({ projectId }: Props) {
         </div>
         
         <div>
-          <label className="block text-sm font-semibold mb-1">Descrição do Projeto</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold">Descrição do Projeto</label>
+            <div className="flex items-center gap-2">
+              {!isFullscreen && (
+                <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1">
+                  <button
+                    onClick={() => setEditorHeight(prev => {
+                      const current = parseInt(prev);
+                      return `${Math.max(200, current - 100)}px`;
+                    })}
+                    className="text-gray-600 hover:text-gray-900 font-bold"
+                    title="Diminuir altura"
+                  >
+                    −
+                  </button>
+                  <span className="text-sm text-gray-600 min-w-[60px] text-center">
+                    {editorHeight}
+                  </span>
+                  <button
+                    onClick={() => setEditorHeight(prev => {
+                      const current = parseInt(prev);
+                      return `${current + 100}px`;
+                    })}
+                    className="text-gray-600 hover:text-gray-900 font-bold"
+                    title="Aumentar altura"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setIsFullscreen(!isFullscreen);
+                  if (!isFullscreen) {
+                    setEditorHeight('calc(100vh - 200px)');
+                  } else {
+                    setEditorHeight('400px');
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                title={isFullscreen ? "Sair do fullscreen" : "Fullscreen"}
+              >
+                {isFullscreen ? "⤓ Sair" : "⤢ Fullscreen"}
+              </button>
+            </div>
+          </div>
           <div ref={(el) => {
             setContainerEl(el);
             if (el && containerRef) {

@@ -135,10 +135,12 @@ export default function GDDViewClient({ projectId }: Props) {
                 Game Design Document
               </p>
               {project.description && (
-                <div className="max-w-2xl mx-auto">
-                  <p className="text-gray-800 leading-relaxed text-lg">
-                    {project.description}
-                  </p>
+                <div className="max-w-2xl mx-auto prose prose-lg">
+                  <MarkdownWithReferences 
+                    content={project.description}
+                    projectId={projectId}
+                    sections={project.sections || []}
+                  />
                 </div>
               )}
               <div className="mt-8 space-y-1 text-sm text-gray-600">
