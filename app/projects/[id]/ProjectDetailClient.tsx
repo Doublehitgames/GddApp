@@ -105,9 +105,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto p-6">
                 
-                <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
-                    Voltar para Home
-                </button>
+                <div className="flex items-center justify-between mb-4">
+                    <button className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
+                        ← Voltar para Home
+                    </button>
+                    
+                    <button 
+                        className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+                        onClick={() => router.push(`/projects/${projectId}/view`)}
+                    >
+                        📄 Ver como Documento
+                    </button>
+                </div>
                 
                 <div className="flex items-center gap-2 mb-2">
                     <h1 className="text-3xl font-bold">{project.name}</h1>

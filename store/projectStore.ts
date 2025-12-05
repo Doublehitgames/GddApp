@@ -19,6 +19,8 @@ export type Project = {
   title: string;
   description?: string;
   sections?: Section[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 interface ProjectStore {
@@ -74,6 +76,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     addProject: (name: string, description: string) => {
       const id = crypto.randomUUID();
+      const now = new Date().toISOString();
       wrappedSet((prev) => [
         ...prev,
         {
@@ -81,6 +84,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           title: name,
           description,
           sections: [],
+          createdAt: now,
+          updatedAt: now,
         },
       ]);
       return id;
@@ -98,6 +103,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
             return {
               ...p,
+              updatedAt: new Date().toISOString(),
               sections: [
                 ...(p.sections || []),
                 {
@@ -124,7 +130,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
             return {
               ...p,
+              updatedAt: new Date().toISOString(),
               sections: [
+                ...(p.sections || []),
                 ...(p.sections || []),
                 {
                   id: crypto.randomUUID(),
@@ -150,7 +158,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       wrappedSet((prev) =>
         prev.map((p) =>
           p.id === id
-            ? { ...p, title: name, description }
+            ? { ...p, title: name, description, updatedAt: new Date().toISOString() }
             : p
         )
       );
@@ -162,6 +170,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           p.id === projectId
             ? {
                 ...p,
+                updatedAt: new Date().toISOString(),
                 sections: (p.sections || []).map((s) =>
                   s.id === sectionId ? { ...s, title, content } : s
                 ),
@@ -177,6 +186,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           p.id === projectId
             ? {
                 ...p,
+                updatedAt: new Date().toISOString(),
                 sections: (p.sections || []).filter((s) => s.id !== sectionId),
               }
             : p
@@ -202,6 +212,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             
             return {
               ...p,
+              updatedAt: new Date().toISOString(),
               sections: sections.map((s) => {
                 if (s.id === sectionId) return { ...s, order: prevSection.order };
                 if (s.id === prevSection.id) return { ...s, order: tempOrder };
@@ -232,6 +243,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             
             return {
               ...p,
+              updatedAt: new Date().toISOString(),
               sections: sections.map((s) => {
                 if (s.id === sectionId) return { ...s, order: nextSection.order };
                 if (s.id === nextSection.id) return { ...s, order: tempOrder };
@@ -251,6 +263,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             const sections = p.sections || [];
             return {
               ...p,
+              updatedAt: new Date().toISOString(),
               sections: sections.map((s) => {
                 const newIndex = sectionIds.indexOf(s.id);
                 if (newIndex !== -1) {
@@ -295,7 +308,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         if (!raw) return;
         const parsed = JSON.parse(raw) as Project[];
         if (Array.isArray(parsed)) {
-          set({ projects: parsed });
+          // Migration: Add createdAt/updatedAt to old projects
+          const migrated = parsed.map(p => {
+            const now = new Date().toISOString();
+            return {
+              ...p,
+              createdAt: p.createdAt || now,
+              updatedAt: p.updatedAt || now,
+            };
+          });
+          set({ projects: migrated });
+          // Persist migrated data
+          persist(migrated);
         }
       } catch (e) {
         console.warn("Failed to load projects from localStorage", e);

@@ -422,7 +422,7 @@ ${mechanicsText}
       }
     });
 
-    router.push(`/projects/${projectId}`);
+    router.push(`/projects/${projectId}/view?new=true`);
   };
 
   return (
@@ -735,8 +735,11 @@ ${mechanicsText}
                 onClick={handleCreateProject}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105"
               >
-                ✅ Criar Projeto
+                📄 Ver GDD Completo
               </button>
+              <p className="text-center text-gray-400 text-sm -mt-2">
+                Veja seu documento formatado antes de editar
+              </p>
               
               <div className="flex gap-4">
                 <button
