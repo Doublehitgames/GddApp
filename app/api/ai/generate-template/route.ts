@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const aiClient = createAIClient();
+    const aiClient = createAIClient(body.model ? { model: body.model } : undefined);
     
     const response = await aiClient.chat([
       { role: 'system', content: SYSTEM_PROMPT },

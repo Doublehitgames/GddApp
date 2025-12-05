@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const aiClient = createAIClient();
+    const aiClient = createAIClient(body.model ? { model: body.model } : undefined);
     
     // Get the last user message
     const lastUserMessage = body.messages.findLast(m => m.role === 'user');

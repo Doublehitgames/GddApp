@@ -1,17 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
-
-interface Message {
-  id: string;
-  role: "assistant" | "user";
-  content: string;
-  timestamp: Date;
-  quickReplies?: string[];
-}
 
 export default function AICreateSimple() {
   const router = useRouter();
@@ -19,126 +11,380 @@ export default function AICreateSimple() {
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "👋 E aí! Conta pra mim, que tipo de jogo você quer fazer?\n\nPode descrever do seu jeito mesmo! Vou te ajudar a refinar a ideia e depois a gente cria o GDD completo. 😊\n\nExemplos:\n• \"Quero fazer um roguelike 2D estilo medieval\"\n• \"Tô pensando num puzzle mobile com física\"\n• \"Uma fazendinha tipo Stardew Valley\"\n\nBora conversar sobre sua ideia? 🎮",
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
+  // Form fields
+  const [gameName, setGameName] = useState("");
+  const [genre, setGenre] = useState("");
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const [visualStyle, setVisualStyle] = useState("");
+  const [description, setDescription] = useState("");
+  const [mechanics, setMechanics] = useState("");
+  
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isGeneratingMechanics, setIsGeneratingMechanics] = useState(false);
   const [template, setTemplate] = useState<GDDTemplate | null>(null);
-  const [gameInfo, setGameInfo] = useState<{
-    genre?: string;
-    platform?: string;
-    style?: string;
-    target?: string;
-    mechanics?: string[];
-  }>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedModel, setSelectedModel] = useState<string>("llama-3.3-70b-versatile");
+  const [error, setError] = useState<string>("");
+  const [adjustments, setAdjustments] = useState<string>("");
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const genres = [
+    "Roguelike/Roguelite",
+    "Platformer",
+    "RPG",
+    "Puzzle",
+    "Farming/Simulação",
+    "Ação",
+    "Aventura",
+    "Estratégia",
+    "Terror/Horror",
+    "Visual Novel",
+    "Metroidvania",
+    "Outro"
+  ];
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  const visualStyles = [
+    "Pixel Art",
+    "2D Cartoon",
+    "2D Realista",
+    "3D Low Poly",
+    "3D Realista",
+    "Minimalista",
+    "Voxel",
+    "Hand-drawn",
+    "Outro"
+  ];
 
-  const handleSend = async () => {
-    if (!input.trim() || isGenerating) return;
+  const platformOptions = ["PC", "Mobile", "Web", "Console"];
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
+  // Character limits
+  const MAX_DESCRIPTION = 1000;
+  const MAX_MECHANICS = 500;
 
-    setMessages((prev) => [...prev, userMessage]);
-    const currentInput = input.trim();
-    setInput("");
-    setIsGenerating(true);
+  const fillExample = () => {
+    setGameName("Cavernas de Valhalla");
+    setGenre("Roguelike/Roguelite");
+    setPlatforms(["PC", "Mobile"]);
+    setVisualStyle("Pixel Art");
+    setDescription("Um roguelike medieval em pixel art onde você explora dungeons procedurais repletas de perigos e tesouros. O jogador controla um guerreiro viking em busca de artefatos lendários nas profundezas, enfrentando morte permanente mas mantendo conhecimento entre as runs.");
+    setMechanics("• Combate estratégico por turnos\n• Dungeons procedurais infinitas\n• Sistema de loot com raridades\n• Morte permanente (permadeath)\n• Progressão meta através de upgrades\n• Boss fights épicos");
+  };
 
-    // Check if user is explicitly asking to generate GDD
-    const lowerInput = currentInput.toLowerCase();
-    const isGenerationRequest = !template && (
-      lowerInput.includes("pode gerar") ||
-      lowerInput.includes("gera o gdd") ||
-      lowerInput.includes("cria o gdd") ||
-      lowerInput.includes("gerar agora") ||
-      lowerInput.includes("criar agora") ||
-      lowerInput.includes("bora criar") ||
-      lowerInput.includes("vamos criar") ||
-      (lowerInput === "sim" && messages.length > 2) || // Only if already chatting
-      (lowerInput === "bora" && messages.length > 2)
+  const togglePlatform = (platform: string) => {
+    setPlatforms(prev => 
+      prev.includes(platform) 
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
     );
+  };
 
-    if (!isGenerationRequest) {
-      // Just chat - don't generate
-      await sendChatMessage(currentInput);
+  const handleEnhanceDescription = async () => {
+    if (!description.trim()) {
+      setError("Escreva pelo menos uma frase básica antes de melhorar!");
       return;
     }
 
-    // Generate GDD
-    const thinkingMessage: Message = {
-      id: "thinking",
-      role: "assistant",
-      content: "🤖 Bora lá! Deixa eu criar esse GDD pra você...",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, thinkingMessage]);
+    setIsEnhancing(true);
+    setError("");
+
+    try {
+      // Build context from filled fields
+      const context = [];
+      if (gameName) context.push(`Nome do jogo: ${gameName}`);
+      if (genre) context.push(`Gênero: ${genre}`);
+      if (platforms.length > 0) context.push(`Plataformas: ${platforms.join(", ")}`);
+      if (visualStyle) context.push(`Estilo visual: ${visualStyle}`);
+
+      const prompt = `${context.join("\n")}
+
+Descrição atual do usuário:
+${description}
+
+Por favor, reescreva e expanda essa descrição de jogo para ficar mais profissional e detalhada, mantendo a essência da ideia original. A descrição deve:
+- Ter 3-5 frases bem estruturadas
+- Incluir o conceito principal do gameplay
+- Mencionar o que torna o jogo interessante
+- Usar uma linguagem clara e envolvente
+- Ser adequada para um Game Design Document
+
+Retorne APENAS a descrição melhorada, sem aspas ou formatação markdown.`;
+
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: prompt }
+          ],
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao melhorar descrição");
+      }
+
+      const data = await response.json();
+      const enhancedDescription = data.message.trim();
+      
+      setDescription(enhancedDescription);
+      
+    } catch (error: any) {
+      console.error("Enhance error:", error);
+      
+      // Try fallback to 8B if rate limit
+      const errorMsg = error.message || "";
+      if ((errorMsg.includes("rate_limit") || errorMsg.includes("429")) && selectedModel === "llama-3.3-70b-versatile") {
+        setSelectedModel("llama-3.1-8b-instant");
+        setError("⚡ Tentando com modelo econômico...");
+        
+        // Retry once with 8B
+        try {
+          const context = [];
+          if (gameName) context.push(`Nome do jogo: ${gameName}`);
+          if (genre) context.push(`Gênero: ${genre}`);
+          if (platforms.length > 0) context.push(`Plataformas: ${platforms.join(", ")}`);
+          if (visualStyle) context.push(`Estilo visual: ${visualStyle}`);
+
+          const prompt = `${context.join("\n")}
+
+Descrição atual: ${description}
+
+Reescreva essa descrição de jogo de forma profissional e detalhada (3-5 frases). Retorne APENAS a descrição melhorada.`;
+
+          const retryResponse = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: prompt }],
+              model: "llama-3.1-8b-instant",
+            }),
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            setDescription(retryData.message.trim());
+            setError("");
+          } else {
+            setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+          }
+        } catch {
+          setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+        }
+      } else {
+        setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+      }
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleGenerateMechanics = async () => {
+    if (!description.trim()) {
+      setError("Preencha a descrição do jogo primeiro!");
+      return;
+    }
+
+    setIsGeneratingMechanics(true);
+    setError("");
+
+    try {
+      // Build context from filled fields
+      const context = [];
+      if (gameName) context.push(`Nome do jogo: ${gameName}`);
+      if (genre) context.push(`Gênero: ${genre}`);
+      if (platforms.length > 0) context.push(`Plataformas: ${platforms.join(", ")}`);
+      if (visualStyle) context.push(`Estilo visual: ${visualStyle}`);
+      context.push(`\nDescrição do jogo:\n${description}`);
+
+      const prompt = `${context.join("\n")}
+
+Com base nessas informações, liste as principais mecânicas de gameplay que esse jogo deveria ter.
+
+Retorne uma lista de 5-8 mecânicas em bullet points (usando "•"), sendo específico e relevante ao gênero.
+Cada mecânica deve ser uma frase curta e clara.
+
+Exemplo de formato:
+• Sistema de combate por turnos
+• Progressão de personagem com skill tree
+• Exploração de mundo aberto
+
+Retorne APENAS a lista de mecânicas, sem introdução ou explicações adicionais.`;
+
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            { role: "user", content: prompt }
+          ],
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao gerar mecânicas");
+      }
+
+      const data = await response.json();
+      const generatedMechanics = data.message.trim();
+      
+      setMechanics(generatedMechanics);
+      
+    } catch (error: any) {
+      console.error("Generate mechanics error:", error);
+      
+      // Try fallback to 8B if rate limit
+      const errorMsg = error.message || "";
+      if ((errorMsg.includes("rate_limit") || errorMsg.includes("429")) && selectedModel === "llama-3.3-70b-versatile") {
+        setSelectedModel("llama-3.1-8b-instant");
+        setError("⚡ Tentando com modelo econômico...");
+        
+        // Retry once with 8B
+        try {
+          const context = [];
+          if (genre) context.push(`Gênero: ${genre}`);
+          context.push(`Descrição: ${description}`);
+
+          const prompt = `${context.join("\n")}
+
+Liste 5-8 mecânicas de gameplay para este jogo em bullet points (•). Seja específico e relevante ao gênero.`;
+
+          const retryResponse = await fetch("/api/ai/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: [{ role: "user", content: prompt }],
+              model: "llama-3.1-8b-instant",
+            }),
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            setMechanics(retryData.message.trim());
+            setError("");
+          } else {
+            setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+          }
+        } catch {
+          setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+        }
+      } else {
+        setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+      }
+    } finally {
+      setIsGeneratingMechanics(false);
+    }
+  };
+
+  const handleGenerate = async (withAdjustments: boolean = false) => {
+    // Validation
+    if (!gameName.trim()) {
+      setError("Por favor, dê um nome para o seu jogo!");
+      return;
+    }
+    if (!genre) {
+      setError("Escolha um gênero para o jogo!");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Adicione uma breve descrição do jogo!");
+      return;
+    }
+
+    setError("");
+    setIsGenerating(true);
+
+    // Build description for AI
+    const platformText = platforms.length > 0 ? `Plataformas: ${platforms.join(", ")}` : "";
+    const styleText = visualStyle ? `Estilo visual: ${visualStyle}` : "";
+    const mechanicsText = mechanics.trim() ? `Mecânicas principais: ${mechanics}` : "";
+    
+    let fullDescription = `
+${description}
+
+${platformText}
+${styleText}
+${mechanicsText}
+    `.trim();
+
+    // Add adjustments if regenerating
+    if (withAdjustments && adjustments.trim()) {
+      fullDescription += `\n\n**AJUSTES SOLICITADOS:**\n${adjustments.trim()}`;
+    }
 
     try {
       const response = await fetch("/api/ai/generate-template", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gameType: "Jogo descrito pelo usuário",
-          description: currentInput,
+          gameType: genre,
+          description: fullDescription,
+          model: selectedModel,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao gerar template");
+        const errorData = await response.json().catch(() => ({ details: 'Unknown error' }));
+        throw new Error(errorData.details || errorData.error || 'Erro ao gerar template');
       }
 
       const data = await response.json();
+      
+      // Override project title with user's game name
+      data.template.projectTitle = gameName;
+      
       setTemplate(data.template);
 
-      const successMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: `✨ Pronto! Criei um GDD completo para **${data.template.projectTitle}**!\n\n📚 **${data.template.sections.length} seções criadas:**\n${data.template.sections.map((s: any) => `• ${s.title}`).join("\n")}\n\nE aí, o que achou? Se quiser mudar algo é só me falar! Quando estiver satisfeito, clica no botão verde aí embaixo pra criar o projeto! 👇`,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => prev.filter((m) => m.id !== "thinking").concat([successMessage]));
     } catch (error: any) {
-      let errorContent = "❌ Eita, deu ruim aqui! 😅 Tenta descrever de novo?";
-      
-      // Try to get error details from API response
-      const errorDetails = error?.response?.data?.details || error?.message || "";
-      
-      // Check for rate limit error
-      if (errorDetails.includes("rate_limit") || errorDetails.includes("429") || errorDetails.includes("Rate limit")) {
-        errorContent = "⏰ **Limite de uso diário atingido!**\n\nO Groq oferece 100.000 tokens grátis por dia e você já usou quase tudo hoje! 🎉\n\n**Opções:**\n• ⏳ Aguarde alguns minutos (~6min) e tente novamente\n• 📅 Volte amanhã com o limite resetado\n• 💎 Faça upgrade no Groq para mais tokens\n\n*Relaxa, você não fez nada errado! Limite diário é normal em APIs grátis.* 😊";
-      } else if (errorDetails.includes("API key") || errorDetails.includes("401") || errorDetails.includes("Unauthorized")) {
-        errorContent = "🔑 **Problema com a chave da API!**\n\nParece que a chave do Groq está inválida ou expirou.\n\nVerifique o arquivo `.env.local` e sua chave em: https://console.groq.com/keys";
-      } else if (errorDetails.includes("network") || errorDetails.includes("fetch") || errorDetails.includes("ECONNREFUSED")) {
-        errorContent = "🌐 **Problema de conexão!**\n\nNão consegui conectar com o servidor da IA. Verifica tua internet? 📡";
+      let errorDetails = "";
+      if (error instanceof Error) {
+        errorDetails = error.message;
       }
       
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: errorContent,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => prev.filter((m) => m.id !== "thinking").concat([errorMessage]));
+      console.error('❌ Generate error:', error);
+      
+      // Check for rate limit error
+      const isRateLimit = errorDetails.includes("rate_limit") || errorDetails.includes("429") || errorDetails.includes("Rate limit");
+      
+      if (isRateLimit && selectedModel === "llama-3.3-70b-versatile") {
+        // FALLBACK: Try with 8B model
+        console.log("🔄 Rate limit detected! Switching to 8B model and retrying...");
+        
+        setSelectedModel("llama-3.1-8b-instant");
+        setError("⚡ Modelo potente em limite. Tentando com modelo econômico...");
+        
+        try {
+          const retryResponse = await fetch("/api/ai/generate-template", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              gameType: genre,
+              description: fullDescription,
+              model: "llama-3.1-8b-instant",
+            }),
+          });
+
+          if (retryResponse.ok) {
+            const retryData = await retryResponse.json();
+            retryData.template.projectTitle = gameName;
+            setTemplate(retryData.template);
+            setError("");
+            setIsGenerating(false);
+            return;
+          }
+        } catch (retryError) {
+          console.error("Retry with 8B failed:", retryError);
+        }
+      }
+      
+      // Show error message
+      if (isRateLimit) {
+        setError("⏰ Ambos os modelos atingiram o limite. Tente novamente em alguns minutos ou amanhã.");
+      } else if (errorDetails.includes("API key") || errorDetails.includes("401")) {
+        setError("🔑 Problema com a chave da API. Verifique a configuração.");
+      } else {
+        setError("❌ Erro ao gerar GDD. Tente novamente!");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -179,437 +425,360 @@ export default function AICreateSimple() {
     router.push(`/projects/${projectId}`);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleQuickReply = (reply: string) => {
-    if (isGenerating) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: reply,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsGenerating(true);
-
-    sendChatMessage(reply);
-  };
-
-  const exportChatHistory = () => {
-    const history = messages
-      .filter(m => m.id !== "welcome")
-      .map(m => `[${m.role.toUpperCase()}] ${m.content}`)
-      .join("\n\n---\n\n");
-    
-    const blob = new Blob([history], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `chat-gdd-${new Date().toISOString().slice(0, 10)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const sendChatMessage = async (messageText: string) => {
-    const thinkingMessage: Message = {
-      id: "thinking",
-      role: "assistant",
-      content: "💭 Pensando...",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, thinkingMessage]);
-
-    try {
-      const contextPrompt = Object.keys(gameInfo).length > 0 
-        ? `\n\nINFORMAÇÕES DO JOGO ATÉ AGORA:\n${JSON.stringify(gameInfo, null, 2)}\n\nUse essas informações para dar sugestões proativas e relevantes!`
-        : "";
-
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messages
-            .filter((m) => m.id !== "welcome" && m.id !== "thinking")
-            .map((m) => ({ role: m.role, content: m.content }))
-            .concat([{ role: "user", content: messageText + contextPrompt }]),
-        }),
-      });
-
-      if (!response.ok) throw new Error("Erro no chat");
-
-      const data = await response.json();
-
-      // Extract game info from user input AND AI response
-      const lowerInput = messageText.toLowerCase();
-      const lowerResponse = data.message.toLowerCase();
-      const combinedText = lowerInput + " " + lowerResponse;
-      const updatedInfo = { ...gameInfo };
-      
-      // Genre detection (mais abrangente)
-      if (!updatedInfo.genre) {
-        if (combinedText.includes("roguelike")) updatedInfo.genre = "Roguelike";
-        else if (combinedText.includes("plataforma") || combinedText.includes("platformer")) updatedInfo.genre = "Platformer";
-        else if (combinedText.includes("puzzle")) updatedInfo.genre = "Puzzle";
-        else if (combinedText.includes("rpg")) updatedInfo.genre = "RPG";
-        else if (combinedText.includes("fazenda") || combinedText.includes("farming") || combinedText.includes("colheita feliz") || combinedText.includes("stardew")) updatedInfo.genre = "Farming/Simulação";
-        else if (combinedText.includes("ação")) updatedInfo.genre = "Ação";
-        else if (combinedText.includes("aventura")) updatedInfo.genre = "Aventura";
-        else if (combinedText.includes("estratégia")) updatedInfo.genre = "Estratégia";
-      }
-      
-      // Platform
-      if (!updatedInfo.platform) {
-        if (combinedText.includes("mobile") || combinedText.includes("celular")) updatedInfo.platform = "Mobile";
-        else if (combinedText.includes("pc") || combinedText.includes("computador")) updatedInfo.platform = "PC";
-        else if (combinedText.includes("console")) updatedInfo.platform = "Console";
-        else if (combinedText.includes("web") || combinedText.includes("browser")) updatedInfo.platform = "Web";
-      }
-      
-      // Visual Style
-      if (!updatedInfo.style) {
-        if (combinedText.includes("pixel art") || combinedText.includes("pixelado") || combinedText.includes("8-bit")) updatedInfo.style = "Pixel Art";
-        else if (combinedText.includes("3d")) updatedInfo.style = "3D";
-        else if (combinedText.includes("cartoon") || combinedText.includes("colorido")) updatedInfo.style = "Cartoon";
-        else if (combinedText.includes("2d simples") || combinedText.includes("minimalista")) updatedInfo.style = "2D Simples";
-      }
-      
-      // Target audience
-      if (!updatedInfo.target) {
-        if (combinedText.includes("casual")) updatedInfo.target = "Casual";
-        else if (combinedText.includes("hardcore") || combinedText.includes("difícil")) updatedInfo.target = "Hardcore";
-        else if (combinedText.includes("infantil") || combinedText.includes("criança")) updatedInfo.target = "Infantil";
-        else if (combinedText.includes("família")) updatedInfo.target = "Família";
-      }
-
-      setGameInfo(updatedInfo);
-
-      const quickReplies = extractQuickReplies(data.message);
-
-      const chatMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date(),
-        quickReplies: quickReplies.length > 0 ? quickReplies : undefined,
-      };
-
-      setMessages((prev) => prev.filter((m) => m.id !== "thinking").concat([chatMessage]));
-    } catch (error: any) {
-      let errorContent = "Desculpa, travei aqui! 😅 Pode repetir?";
-      
-      // Try to get error details from API response
-      const errorDetails = error?.response?.data?.details || error?.message || "";
-      
-      // Check for rate limit error
-      if (errorDetails.includes("rate_limit") || errorDetails.includes("429") || errorDetails.includes("Rate limit")) {
-        errorContent = "⏰ **Limite de uso diário atingido!**\n\nO Groq oferece 100.000 tokens grátis por dia e você já usou quase tudo hoje! 🎉\n\n**Opções:**\n• ⏳ Aguarde alguns minutos (~6min) e tente novamente\n• 📅 Volte amanhã com o limite resetado\n• 💎 Faça upgrade no Groq para mais tokens\n\n*Relaxa, você não fez nada errado! Limite diário é normal em APIs grátis.* 😊";
-      } else if (errorDetails.includes("API key") || errorDetails.includes("401") || errorDetails.includes("Unauthorized")) {
-        errorContent = "🔑 **Problema com a chave da API!**\n\nParece que a chave do Groq está inválida ou expirou.\n\nVerifique o arquivo `.env.local` e sua chave em: https://console.groq.com/keys";
-      } else if (errorDetails.includes("network") || errorDetails.includes("fetch") || errorDetails.includes("ECONNREFUSED")) {
-        errorContent = "🌐 **Problema de conexão!**\n\nNão consegui conectar com o servidor da IA. Verifica tua internet? 📡";
-      }
-      
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: errorContent,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => prev.filter((m) => m.id !== "thinking").concat([errorMessage]));
-    }
-    setIsGenerating(false);
-  };
-
-  const extractQuickReplies = (message: string): string[] => {
-    const lower = message.toLowerCase();
-    
-    // PRIORIDADE 1: Pode gerar GDD (sempre prioritário!)
-    if (lower.includes("gerar") && (lower.includes("gdd") || lower.includes("documento"))) {
-      return ["🚀 PODE GERAR!", "⏸️ Mais detalhes"];
-    }
-    
-    // PRIORIDADE 2: Extrai opções entre aspas ("X" ou "Y" ou "Z")
-    const quotedOptions = message.match(/"([^"]+)"/g);
-    if (quotedOptions && quotedOptions.length >= 2) {
-      const cleanOptions = quotedOptions
-        .map(q => q.replace(/"/g, ''))
-        .slice(0, 4); // Max 4 opções
-      
-      if (cleanOptions.length >= 2) {
-        return cleanOptions;
-      }
-    }
-    
-    // PRIORIDADE 3: Detecção de lista "X, Y ou Z"
-    // Ex: "combate, exploração ou sobrevivência"
-    const listPattern = /(\w+(?:\s+\w+){0,2}),\s+(\w+(?:\s+\w+){0,2})\s+ou\s+(\w+(?:\s+\w+){0,2})/i;
-    const listMatch = message.match(listPattern);
-    
-    if (listMatch && listMatch.length >= 4) {
-      const options = [listMatch[1], listMatch[2], listMatch[3]]
-        .map(opt => opt.trim().charAt(0).toUpperCase() + opt.trim().slice(1))
-        .filter(opt => opt.length > 2 && opt.length < 30);
-      
-      if (options.length >= 3) {
-        return [...options, "🔥 Mix de tudo"];
-      }
-    }
-    
-    // PRIORIDADE 4: Detecção GENÉRICA com ", ou"
-    if (lower.includes(" ou ")) {
-      // Padrão: "X, ou Y"
-      const pattern1 = /([^.,!?\n]{10,80}),\s+ou\s+([^.,!?\n]{10,80})/i;
-      const match1 = message.match(pattern1);
-      
-      if (match1) {
-        const opt1 = match1[1].trim().replace(/^(manter|fazer|ter|usar|incluir|adicionar)\s+/i, '');
-        const opt2 = match1[2].trim().replace(/^(manter|fazer|ter|usar|vai|para)\s+/i, '');
-        
-        if (opt1.length > 5 && opt2.length > 5 && opt1.length < 70 && opt2.length < 70) {
-          return [
-            opt1.charAt(0).toUpperCase() + opt1.slice(1),
-            opt2.charAt(0).toUpperCase() + opt2.slice(1),
-            "🔥 Mix dos dois"
-          ];
-        }
-      }
-    }
-    
-    // PRIORIDADE 3: Perguntas sobre ADICIONAR/INCLUIR features (sem "ou")
-    if ((lower.includes("adicionar") || lower.includes("incluir") || lower.includes("opinião sobre")) && 
-        !lower.includes(", ou")) {
-      
-      // Personagens/NPCs
-      if (lower.includes("personagens") || lower.includes("npcs")) {
-        return ["👥 Sim, com personagens!", "🌾 Não, só farming", "🤔 Talvez depois"];
-      }
-      
-      // Variedade de plantas/culturas
-      if (lower.includes("plantas") || lower.includes("culturas")) {
-        return ["🌱 Muitas variedades!", "🌾 Poucas (simples)", "📊 Quantidade média"];
-      }
-      
-      // Genérico para adicionar features
-      return ["✅ Sim, adiciona!", "❌ Não precisa", "🤔 Talvez"];
-    }
-    
-    // PRIORIDADE 4: Padrões específicos do jogo
-    
-    // Farming - plantio + animais
-    if ((lower.includes("plantio") || lower.includes("culturas")) && 
-        (lower.includes("bichinhos") || lower.includes("animais"))) {
-      return ["🌱 Só plantio", "🐄 Plantio + animais", "🏡 Completo"];
-    }
-    
-    // Casual vs Estratégia
-    if ((lower.includes("casual") && lower.includes("estratégia")) || 
-        (lower.includes("click") && lower.includes("gerenciar"))) {
-      return ["🎮 Casual", "🧠 Estratégia", "🔥 Mix"];
-    }
-    
-    // Estilo visual (APENAS se mencionar explicitamente visual/arte)
-    if ((lower.includes("estilo visual") || lower.includes("arte") || lower.includes("gráfico")) && 
-        (lower.includes("pixel") || lower.includes("cartoon") || lower.includes("3d"))) {
-      return ["🎨 Pixel Art", "🌈 Cartoon", "📷 Realista"];
-    }
-    
-    // Plataforma
-    if (lower.includes("plataforma") || (lower.includes("mobile") && lower.includes("pc"))) {
-      return ["📱 Mobile", "💻 PC", "🌐 Multi"];
-    }
-    
-    // Progressão
-    if (lower.includes("progressão") || lower.includes("níveis") || lower.includes("desbloquear")) {
-      return ["📈 Com progressão", "🎯 Sandbox", "🔓 Misto"];
-    }
-    
-    // Multiplayer
-    if (lower.includes("multiplayer") || lower.includes("cooperativo") || lower.includes("online")) {
-      return ["🤝 Multiplayer", "🧍 Solo", "👥 Opcional"];
-    }
-    
-    return [];
-  };
-
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4 shadow-lg">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🤖</span>
-            <div>
-              <h1 className="text-xl font-bold text-white">Criar GDD com IA</h1>
-              <p className="text-sm text-gray-400">Só descreva sua ideia, eu faço o resto!</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {messages.length > 2 && (
-              <button
-                onClick={exportChatHistory}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
-                title="Exportar histórico do chat"
-              >
-                💾 Exportar Chat
-              </button>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            🎮 Criar Novo GDD
+          </h1>
+          <p className="text-gray-300">
+            Preencha as informações e gere seu Game Design Document completo!
+          </p>
+          {!template && (
             <button
-              onClick={() => router.push("/")}
-              className="text-gray-400 hover:text-white transition-colors text-xl"
+              onClick={fillExample}
+              className="mt-4 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-all inline-flex items-center gap-2"
             >
-              ✕
+              💡 Preencher Exemplo
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Preview Box */}
-          {Object.keys(gameInfo).length > 0 && !template && (
-            <div className="bg-blue-900/30 border-2 border-blue-500/50 rounded-xl p-4 backdrop-blur-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">📋</span>
-                <h3 className="font-bold text-blue-300">Resumo até agora:</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {gameInfo.genre && (
-                  <div className="bg-gray-800/50 rounded-lg px-3 py-2">
-                    <span className="text-gray-400">Gênero:</span>
-                    <span className="ml-2 text-white font-semibold">{gameInfo.genre}</span>
-                  </div>
-                )}
-                {gameInfo.platform && (
-                  <div className="bg-gray-800/50 rounded-lg px-3 py-2">
-                    <span className="text-gray-400">Plataforma:</span>
-                    <span className="ml-2 text-white font-semibold">{gameInfo.platform}</span>
-                  </div>
-                )}
-                {gameInfo.style && (
-                  <div className="bg-gray-800/50 rounded-lg px-3 py-2">
-                    <span className="text-gray-400">Estilo:</span>
-                    <span className="ml-2 text-white font-semibold">{gameInfo.style}</span>
-                  </div>
-                )}
-                {gameInfo.target && (
-                  <div className="bg-gray-800/50 rounded-lg px-3 py-2">
-                    <span className="text-gray-400">Público:</span>
-                    <span className="ml-2 text-white font-semibold">{gameInfo.target}</span>
-                  </div>
-                )}
-              </div>
-            </div>
           )}
+        </div>
 
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                  message.role === "user"
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                    : "bg-gray-800 text-gray-100 shadow-xl border border-gray-700"
-                }`}
+        {!template ? (
+          /* Form */
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
+            
+            {/* Game Name */}
+            <div className="mb-6">
+              <label className="block text-white font-semibold mb-2">
+                Nome do Jogo *
+              </label>
+              <input
+                type="text"
+                value={gameName}
+                onChange={(e) => setGameName(e.target.value)}
+                placeholder="Ex: Cavernas de Valhalla"
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Genre */}
+            <div className="mb-6">
+              <label className="block text-white font-semibold mb-2">
+                Gênero *
+              </label>
+              <select
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
               >
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {message.content.split("\n").map((line, i) => {
-                    const boldRegex = /\*\*(.*?)\*\*/g;
-                    const parts = line.split(boldRegex);
-                    return (
-                      <p key={i} className="mb-2 last:mb-0">
-                        {parts.map((part, j) =>
-                          j % 2 === 1 ? (
-                            <strong key={j} className={message.role === "user" ? "text-white" : "text-blue-400"}>
-                              {part}
-                            </strong>
-                          ) : (
-                            part
-                          )
-                        )}
-                      </p>
-                    );
-                  })}
-                </div>
-                <p
-                  className={`text-xs mt-2 ${
-                    message.role === "user" ? "text-blue-200" : "text-gray-500"
-                  }`}
-                >
-                  {message.timestamp.toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                <option value="">Selecione um gênero</option>
+                {genres.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
 
-                {/* Quick Reply Buttons */}
-                {message.role === "assistant" && message.quickReplies && message.id === messages[messages.length - 1]?.id && !isGenerating && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {message.quickReplies.map((reply: string, idx: number) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQuickReply(reply)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-sm font-medium transition-all transform hover:scale-105 shadow-md hover:shadow-lg"
-                      >
-                        {reply}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            {/* Platforms */}
+            <div className="mb-6">
+              <label className="block text-white font-semibold mb-2">
+                Plataformas
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {platformOptions.map(platform => (
+                  <button
+                    key={platform}
+                    onClick={() => togglePlatform(platform)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      platforms.includes(platform)
+                        ? "bg-purple-600 text-white"
+                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                    }`}
+                  >
+                    {platform}
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
 
-          {template && (
-            <div className="flex justify-center">
+            {/* Visual Style */}
+            <div className="mb-6">
+              <label className="block text-white font-semibold mb-2">
+                Estilo Visual
+              </label>
+              <select
+                value={visualStyle}
+                onChange={(e) => setVisualStyle(e.target.value)}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+              >
+                <option value="">Selecione um estilo</option>
+                {visualStyles.map(style => (
+                  <option key={style} value={style}>{style}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Description */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-white font-semibold">
+                  Descrição do Jogo *
+                </label>
+                <span className={`text-sm ${
+                  description.length > MAX_DESCRIPTION 
+                    ? 'text-red-400 font-bold' 
+                    : description.length > MAX_DESCRIPTION * 0.8 
+                    ? 'text-yellow-400' 
+                    : 'text-gray-400'
+                }`}>
+                  {description.length}/{MAX_DESCRIPTION}
+                </span>
+              </div>
+              <textarea
+                value={description}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_DESCRIPTION) {
+                    setDescription(e.target.value);
+                  }
+                }}
+                placeholder="Ex: jogo de fazenda pixel art onde você planta e cuida de animais"
+                rows={4}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none resize-none"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-gray-400 text-sm">
+                  Pode ser simples! Use o botão ao lado para melhorar →
+                </p>
+                <button
+                  onClick={handleEnhanceDescription}
+                  disabled={isEnhancing || !description.trim()}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isEnhancing ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Melhorando...
+                    </>
+                  ) : (
+                    <>
+                      ✨ Melhorar com IA
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Mechanics */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-white font-semibold">
+                  Mecânicas Principais <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <span className={`text-sm ${
+                  mechanics.length > MAX_MECHANICS 
+                    ? 'text-red-400 font-bold' 
+                    : mechanics.length > MAX_MECHANICS * 0.8 
+                    ? 'text-yellow-400' 
+                    : 'text-gray-400'
+                }`}>
+                  {mechanics.length}/{MAX_MECHANICS}
+                </span>
+              </div>
+              <textarea
+                value={mechanics}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_MECHANICS) {
+                    setMechanics(e.target.value);
+                  }
+                }}
+                placeholder="Ex: • Combate por turnos&#10;• Sistema de loot procedural&#10;• Upgrades permanentes"
+                rows={5}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none resize-none"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-gray-400 text-sm">
+                  Deixe a IA sugerir mecânicas baseadas na descrição →
+                </p>
+                <button
+                  onClick={handleGenerateMechanics}
+                  disabled={isGeneratingMechanics || !description.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isGeneratingMechanics ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      📝 Criar da descrição
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Model Selection */}
+            <div className="mb-6">
+              <label className="block text-white font-semibold mb-2">
+                Modelo de IA
+              </label>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+              >
+                <option value="llama-3.3-70b-versatile">⚡ 70B - Potente (melhor qualidade)</option>
+                <option value="llama-3.1-8b-instant">💨 8B - Econômico (mais rápido)</option>
+              </select>
+              <p className="text-gray-400 text-sm mt-1">
+                O modelo potente gera GDDs mais detalhados, mas tem limite de uso diário
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
+                <p className="text-red-300">{error}</p>
+              </div>
+            )}
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Gerando GDD...
+                </span>
+              ) : (
+                "🚀 Gerar GDD Completo"
+              )}
+            </button>
+
+            <p className="text-gray-400 text-sm text-center mt-4">
+              * Campos obrigatórios
+            </p>
+          </div>
+        ) : (
+          /* Preview */
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-green-500/30">
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-4">✨</div>
+              <h2 className="text-3xl font-bold text-white mb-2">
+                GDD Criado com Sucesso!
+              </h2>
+              <p className="text-gray-300">
+                {template.projectTitle}
+              </p>
+            </div>
+
+            <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
+              <h3 className="text-xl font-bold text-white mb-3">📋 Seções Criadas:</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {template.sections.map((section, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-gray-300">
+                    <span className="text-green-400">✓</span>
+                    <span>{section.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
+              <p className="text-blue-200 text-sm">
+                💡 <strong>Dica:</strong> Depois de criar o projeto, você pode usar o chat IA dentro do projeto para refinar cada seção!
+              </p>
+            </div>
+
+            {/* Adjustments Field */}
+            <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
+              <label className="block text-white font-semibold mb-2">
+                ✏️ Quer ajustar algo? (opcional)
+              </label>
+              <textarea
+                value={adjustments}
+                onChange={(e) => setAdjustments(e.target.value)}
+                placeholder="Ex: Adicionar seção sobre economia do jogo&#10;Incluir mais detalhes sobre multiplayer&#10;Faltou falar sobre tutorial"
+                rows={3}
+                className="w-full bg-gray-600/50 text-white rounded-lg px-4 py-3 border border-gray-500 focus:border-purple-500 focus:outline-none resize-none"
+              />
+              <p className="text-gray-400 text-sm mt-2">
+                Descreva o que gostaria de adicionar, remover ou modificar no GDD
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
+                <p className="text-red-300">{error}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4">
               <button
                 onClick={handleCreateProject}
-                className="px-8 py-4 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-xl font-bold text-lg hover:from-green-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105"
               >
-                🚀 Criar Projeto Agora!
+                ✅ Criar Projeto
               </button>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={() => handleGenerate(true)}
+                  disabled={isGenerating || !adjustments.trim()}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Regenerando...
+                    </span>
+                  ) : (
+                    "🔄 Regenerar com Ajustes"
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setTemplate(null);
+                    setError("");
+                    setAdjustments("");
+                  }}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg transition-all"
+                >
+                  ↩️ Voltar ao Formulário
+                </button>
+              </div>
             </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input Area */}
-      <div className="bg-gray-800 border-t border-gray-700 p-4 shadow-lg">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-3 items-end">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Descreva seu jogo aqui... (ex: 'Quero fazer um RPG 2D com combate por turnos')"
-              className="flex-1 resize-none rounded-xl border-2 border-gray-700 bg-gray-900 text-white placeholder-gray-500 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[60px] max-h-[200px]"
-              rows={2}
-              disabled={isGenerating}
-            />
-            <button
-              onClick={handleSend}
-              disabled={isGenerating || !input.trim()}
-              className="px-6 py-3 h-[60px] bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-md hover:shadow-lg"
-            >
-              {isGenerating ? "🤖..." : "Enviar ✨"}
-            </button>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            💡 Dica: Quanto mais detalhes, melhor o resultado! Enter para enviar, Shift+Enter para nova linha.
-          </p>
+        )}
+
+        {/* Back button */}
+        <div className="text-center mt-6">
+          <button
+            onClick={() => router.push("/")}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            ← Voltar para Home
+          </button>
         </div>
       </div>
     </div>

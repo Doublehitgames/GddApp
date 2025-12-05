@@ -17,6 +17,7 @@ export interface GDDTemplateRequest {
   gameType: string;
   description: string;
   additionalInfo?: string;
+  model?: string;
 }
 
 export interface GDDTemplate {
@@ -43,4 +44,5 @@ export interface ChatRequest {
       content?: string;
     }>;
   };
+  model?: string;
 }
