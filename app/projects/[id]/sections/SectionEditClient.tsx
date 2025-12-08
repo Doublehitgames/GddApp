@@ -26,6 +26,8 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improveError, setImproveError] = useState<string>("");
   const router = useRouter();
 
   const project = getProject(projectId);
@@ -49,6 +51,63 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
     setLoaded(true);
   }, [projectId, sectionId, getProject]);
 
+  async function handleImproveWithAI() {
+    setIsImproving(true);
+    setImproveError("");
+
+    try {
+      const section = sections.find((s: any) => s.id === sectionId);
+      if (!section) {
+        setImproveError("Seção não encontrada");
+        return;
+      }
+
+      // Coleta contexto para IA
+      const subsections = sections.filter((s: any) => s.parentId === sectionId);
+      const parentSection = section.parentId ? sections.find((s: any) => s.id === section.parentId) : null;
+      const otherSections = sections
+        .filter((s: any) => !s.parentId && s.id !== sectionId)
+        .map((s: any) => ({ title: s.title }));
+
+      const response = await fetch('/api/ai/improve-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentContent: content,
+          sectionTitle: title,
+          sectionContext: {
+            parentTitle: parentSection?.title,
+            subsections: subsections.map((s: any) => ({ title: s.title })),
+            otherSections
+          },
+          projectTitle: project?.title || 'GDD',
+          model: 'llama-3.1-8b-instant' // Usa modelo rápido para economizar
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setImproveError(data.error || 'Erro ao melhorar conteúdo');
+        return;
+      }
+
+      // Atualiza conteúdo com versão melhorada
+      setContent(data.improvedContent);
+
+      // Avisa se alguns elementos não foram preservados
+      if (data.validation && !data.validation.allPreserved) {
+        setImproveError(`⚠️ Atenção: ${data.validation.warning}. Revise o conteúdo antes de salvar.`);
+      }
+
+    } catch (error) {
+      console.error('Error improving content:', error);
+      setImproveError('Erro ao conectar com API. Tente novamente.');
+    } finally {
+      setIsImproving(false);
+    }
+  }
+
   function handleSave() {
     if (!notFound && projectId && sectionId && !nameError) {
       // Convert name-based references to ID-based references before saving
@@ -67,6 +126,8 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
 
   if (!loaded) return <div className="p-6">Carregando...</div>;
   if (notFound) return <div className="p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
+
+  console.log('SectionEditClient renderizado - título:', title);
 
   return (
     <div className="p-6 max-w-lg mx-auto">
@@ -100,14 +161,35 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
             }}
           />
         </div>
-        <div className="flex gap-2">
+        
+        {/* Botão Melhorar com IA */}
+        <div className="border-t border-gray-700 pt-4">
           <button
-            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            onClick={handleImproveWithAI}
+            disabled={isImproving || !title.trim()}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="text-lg">{isImproving ? "⏳" : "✨"}</span>
+            <span>{isImproving ? "Melhorando..." : "Melhorar com IA"}</span>
+          </button>
+          <p className="text-sm text-gray-400 mt-2">
+            💡 A IA vai melhorar o conteúdo preservando <strong>imagens, links e referências</strong> existentes.
+          </p>
+          {improveError && (
+            <div className="mt-2 p-3 bg-amber-900/50 border border-amber-600 rounded text-amber-200 text-sm">
+              {improveError}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 border-t border-gray-700 pt-4">
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50 hover:bg-green-700 transition-colors"
             onClick={handleSave}
             disabled={!title.trim() || !!nameError}
           >Salvar</button>
           <button
-            className="bg-gray-500 text-white px-4 py-2 rounded"
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
             onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}`)}
           >Cancelar</button>
         </div>

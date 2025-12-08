@@ -57,6 +57,11 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [editorHeight, setEditorHeight] = useState("320px");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improveError, setImproveError] = useState<string>("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewContent, setPreviewContent] = useState("");
+  const [modificationRequest, setModificationRequest] = useState("");
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -70,6 +75,113 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  async function handleImproveWithAI(additionalRequest?: string) {
+    if (!section || !project) return;
+    
+    setIsImproving(true);
+    setImproveError("");
+
+    try {
+      // Coleta contexto - extrai apenas dados serializáveis
+      const subsections = sections
+        .filter((s: any) => s.parentId === sectionId)
+        .map((s: any) => ({ 
+          title: String(s.title || ''), 
+          content: String(s.content || '') 
+        }));
+      
+      const parentSection = section.parentId ? sections.find((s: any) => s.id === section.parentId) : null;
+      
+      // IDs das próprias subseções (não incluir na lista de outras seções)
+      const ownSubsectionIds = subsections.map((s: any) => s.id);
+      
+      // Inclui TODAS as seções do GDD, exceto a atual e suas próprias subseções
+      const otherSections = sections
+        .filter((s: any) => s.id !== sectionId && !ownSubsectionIds.includes(s.id))
+        .map((s: any) => ({ 
+          title: String(s.title || ''),
+          isEmpty: !s.content || s.content.trim().length === 0,
+          isSubsection: !!s.parentId
+        }));
+
+      // Conteúdo base: usa o preview atual se existir, senão o conteúdo da seção
+      const baseContent = String(showPreview ? previewContent : (section.content || ''));
+
+      // Cria payload com apenas dados primitivos
+      const payload = {
+        currentContent: baseContent,
+        sectionTitle: String(section.title || ''),
+        sectionContext: {
+          parentTitle: parentSection?.title ? String(parentSection.title) : undefined,
+          subsections: subsections,
+          otherSections: otherSections
+        },
+        projectTitle: String(project.title || 'GDD'),
+        model: 'llama-3.1-8b-instant',
+        additionalRequest: additionalRequest ? String(additionalRequest) : undefined
+      };
+
+      const response = await fetch('/api/ai/improve-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setImproveError(data.error || 'Erro ao melhorar conteúdo');
+        setIsImproving(false);
+        return;
+      }
+
+      // Mostra preview em vez de aplicar diretamente
+      setPreviewContent(data.improvedContent);
+      setShowPreview(true);
+      setModificationRequest(""); // Limpa campo de modificação
+
+      // Avisa se elementos não foram preservados
+      if (data.validation && !data.validation.allPreserved) {
+        setImproveError(`⚠️ ${data.validation.warning}. O conteúdo foi atualizado, mas revise se está tudo correto.`);
+      }
+
+    } catch (error) {
+      console.error('Error improving content:', error);
+      setImproveError('Erro ao conectar com API. Tente novamente.');
+    } finally {
+      setIsImproving(false);
+    }
+  }
+
+  function handleConfirmImprovement() {
+    if (!section) return;
+    
+    // Aplica o conteúdo melhorado
+    editSection(projectId, sectionId, section.title, previewContent);
+    setSection({ ...section, content: previewContent });
+    
+    // Fecha o preview
+    setShowPreview(false);
+    setPreviewContent("");
+    setImproveError("");
+  }
+
+  function handleCancelImprovement() {
+    setShowPreview(false);
+    setPreviewContent("");
+    setModificationRequest("");
+    setImproveError("");
+  }
+
+  async function handleRequestModification() {
+    if (!modificationRequest.trim()) {
+      setImproveError("Digite o que você quer modificar.");
+      return;
+    }
+    
+    await handleImproveWithAI(modificationRequest.trim());
+  }
 
   useEffect(() => {
     const proj = getProject(projectId);
@@ -394,6 +506,16 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setEditorHeight={setEditorHeight}
     isFullscreen={isFullscreen}
     setIsFullscreen={setIsFullscreen}
+    isImproving={isImproving}
+    improveError={improveError}
+    handleImproveWithAI={handleImproveWithAI}
+    showPreview={showPreview}
+    previewContent={previewContent}
+    modificationRequest={modificationRequest}
+    setModificationRequest={setModificationRequest}
+    handleConfirmImprovement={handleConfirmImprovement}
+    handleCancelImprovement={handleCancelImprovement}
+    handleRequestModification={handleRequestModification}
       />
       <AutocompleteDropdown />
     </>
@@ -485,7 +607,10 @@ function SectionDetailContent({
   removeSection, countDescendants, renderSubsectionTree,
   newSubTitle, setNewSubTitle, nameError, setNameError, addSubsection, hasDuplicateName,
   router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
-  editorHeight, setEditorHeight, isFullscreen, setIsFullscreen
+  editorHeight, setEditorHeight, isFullscreen, setIsFullscreen,
+  isImproving, improveError, handleImproveWithAI,
+  showPreview, previewContent, modificationRequest, setModificationRequest,
+  handleConfirmImprovement, handleCancelImprovement, handleRequestModification
 }: any) {
 
   return (
@@ -592,14 +717,25 @@ function SectionDetailContent({
           </>
         )}
         {!inlineEdit && !isEditingTitle && (
-          <button
-            className="bg-blue-600 text-white px-2 py-1 rounded text-sm"
-            onClick={() => setInlineEdit(true)}
-          >Editar no preview</button>
+          <>
+            <button
+              className="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+              onClick={() => setInlineEdit(true)}
+            >Editar no preview</button>
+            <button
+              onClick={handleImproveWithAI}
+              disabled={isImproving}
+              className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 rounded text-sm hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Melhorar conteúdo com IA preservando imagens e links"
+            >
+              <span>{isImproving ? "⏳" : "✨"}</span>
+              <span>{isImproving ? "Melhorando..." : "Melhorar com IA"}</span>
+            </button>
+          </>
         )}
         {!isEditingTitle && (
           <button
-            className="bg-red-600 text-white px-2 py-1 rounded text-sm"
+            className="bg-red-600 text-white px-2 py-1 rounded text-sm hover:bg-red-700 transition-colors"
             onClick={() => {
               const count = countDescendants(projectId, sectionId);
               const msg = count > 0 
@@ -612,6 +748,13 @@ function SectionDetailContent({
             }}
           >Excluir</button>
         )}
+        </div>
+      )}
+      
+      {/* Mensagem de erro/aviso da IA */}
+      {improveError && (
+        <div className="mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-amber-200 text-sm">
+          {improveError}
         </div>
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
@@ -776,6 +919,94 @@ function SectionDetailContent({
         )}
       </div>
       </>
+      )}
+
+      {/* Modal de Preview da IA */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <span>✨</span>
+                Preview do Conteúdo Melhorado
+              </h2>
+              <p className="text-purple-100 text-sm mt-1">
+                Revise o conteúdo e confirme ou solicite modificações
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {improveError && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+                  {improveError}
+                </div>
+              )}
+
+              <div className="prose prose-sm prose-slate max-w-none bg-gray-50 rounded-lg p-6 border border-gray-200 text-gray-900">
+                <MarkdownWithReferences 
+                  content={previewContent} 
+                  projectId={projectId} 
+                  sections={project?.sections || []} 
+                />
+              </div>
+            </div>
+
+            {/* Footer com ações */}
+            <div className="border-t border-gray-200 p-6 bg-gray-50">
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  📝 Solicitar modificações (opcional):
+                </label>
+                <textarea
+                  value={modificationRequest}
+                  onChange={(e) => setModificationRequest(e.target.value)}
+                  placeholder="Ex: Adicione mais exemplos práticos, reduza o texto, foque mais em mecânicas..."
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelImprovement}
+                  disabled={isImproving}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  ✕ Cancelar
+                </button>
+                
+                <button
+                  onClick={handleRequestModification}
+                  disabled={isImproving || !modificationRequest.trim()}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isImproving ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      <span>Modificando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔄</span>
+                      <span>Modificar</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={handleConfirmImprovement}
+                  disabled={isImproving}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <span>✓</span>
+                  <span>Confirmar e Aplicar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

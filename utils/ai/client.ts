@@ -7,6 +7,12 @@ interface AIClientConfig {
   model?: string;
 }
 
+// Modelos disponíveis para fallback no Groq
+export const GROQ_MODELS = {
+  PREMIUM: 'llama-3.3-70b-versatile',    // ~14K tokens/min, melhor qualidade
+  FAST: 'llama-3.1-8b-instant',          // ~30K tokens/min, mais barato
+} as const;
+
 export class AIClient {
   private provider: AIProvider;
   private apiKey: string;
@@ -43,7 +49,7 @@ export class AIClient {
   private getDefaultModel(): string {
     switch (this.provider) {
       case 'groq':
-        return 'llama-3.3-70b-versatile'; // Modelo maior e melhor
+        return 'llama-3.3-70b-versatile'; // Modelo padrão (mais robusto)
       case 'openai':
         return 'gpt-4o-mini';
       case 'claude':
@@ -69,15 +75,26 @@ export class AIClient {
   async chat(messages: AIMessage[], options?: {
     temperature?: number;
     maxTokens?: number;
+    tools?: Array<{
+      type: 'function';
+      function: {
+        name: string;
+        description: string;
+        parameters: any;
+      };
+    }>;
+    tool_choice?: 'auto' | 'none';
   }): Promise<AIResponse> {
     const temperature = options?.temperature ?? 0.7;
     const maxTokens = options?.maxTokens ?? 4000;
+    const tools = options?.tools;
+    const tool_choice = options?.tool_choice ?? 'auto';
 
     try {
       if (this.provider === 'claude') {
-        return await this.chatClaude(messages, temperature, maxTokens);
+        return await this.chatClaude(messages, temperature, maxTokens, tools, tool_choice);
       } else {
-        return await this.chatOpenAICompatible(messages, temperature, maxTokens);
+        return await this.chatOpenAICompatible(messages, temperature, maxTokens, tools, tool_choice);
       }
     } catch (error) {
       console.error(`Error with ${this.provider}:`, error);
@@ -88,20 +105,29 @@ export class AIClient {
   private async chatOpenAICompatible(
     messages: AIMessage[], 
     temperature: number, 
-    maxTokens: number
+    maxTokens: number,
+    tools?: Array<any>,
+    tool_choice?: string
   ): Promise<AIResponse> {
+    const body: any = {
+      model: this.model,
+      messages: messages,
+      temperature: temperature,
+      max_tokens: maxTokens,
+    };
+
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+      body.tool_choice = tool_choice || 'auto';
+    }
+
     const response = await fetch(this.getApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: messages,
-        temperature: temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -110,19 +136,23 @@ export class AIClient {
     }
 
     const data = await response.json();
+    const message = data.choices[0]?.message;
     
     return {
-      content: data.choices[0]?.message?.content || '',
+      content: message?.content || '',
       provider: this.provider,
       model: this.model,
       tokensUsed: data.usage?.total_tokens,
+      tool_calls: message?.tool_calls,
     };
   }
 
   private async chatClaude(
     messages: AIMessage[], 
     temperature: number, 
-    maxTokens: number
+    maxTokens: number,
+    tools?: Array<any>,
+    tool_choice?: string
   ): Promise<AIResponse> {
     // Claude tem formato diferente
     const systemMessage = messages.find(m => m.role === 'system')?.content || '';
@@ -133,6 +163,19 @@ export class AIClient {
         content: m.content,
       }));
 
+    const body: any = {
+      model: this.model,
+      messages: conversationMessages,
+      system: systemMessage,
+      temperature: temperature,
+      max_tokens: maxTokens,
+    };
+
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+      body.tool_choice = { type: tool_choice || 'auto' };
+    }
+
     const response = await fetch(this.getApiUrl(), {
       method: 'POST',
       headers: {
@@ -140,13 +183,7 @@ export class AIClient {
         'x-api-key': this.apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: conversationMessages,
-        system: systemMessage,
-        temperature: temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -161,6 +198,7 @@ export class AIClient {
       provider: this.provider,
       model: this.model,
       tokensUsed: data.usage?.input_tokens + data.usage?.output_tokens,
+      tool_calls: data.content?.filter((c: any) => c.type === 'tool_use'),
     };
   }
 }

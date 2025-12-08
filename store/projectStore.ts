@@ -27,8 +27,8 @@ interface ProjectStore {
   projects: Project[];
   addProject: (name: string, description: string) => string;
   getProject: (id: UUID) => Project | undefined;
-  addSection: (projectId: UUID, title: string) => void;
-  addSubsection: (projectId: UUID, parentId: UUID, title: string) => void;
+  addSection: (projectId: UUID, title: string, content?: string) => UUID;
+  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => UUID;
   removeProject: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
   editSection: (projectId: UUID, sectionId: UUID, title: string, content: string) => void;
@@ -95,7 +95,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       return get().projects.find((p) => p.id === id);
     },
 
-    addSection: (projectId: UUID, title: string) => {
+    addSection: (projectId: UUID, title: string, content?: string) => {
+      const newId = crypto.randomUUID();
       wrappedSet((prev) =>
         prev.map((p) => {
           if (p.id === projectId) {
@@ -107,9 +108,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               sections: [
                 ...(p.sections || []),
                 {
-                  id: crypto.randomUUID(),
+                  id: newId,
                   title,
-                  content: "",
+                  content: content || "",
                   created_at: new Date().toISOString(),
                   parentId: undefined,
                   order: maxOrder + 1,
@@ -120,9 +121,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           return p;
         })
       );
+      return newId;
     },
 
-    addSubsection: (projectId: UUID, parentId: UUID, title: string) => {
+    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => {
+      const newId = crypto.randomUUID();
       wrappedSet((prev) =>
         prev.map((p) => {
           if (p.id === projectId) {
@@ -133,11 +136,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               updatedAt: new Date().toISOString(),
               sections: [
                 ...(p.sections || []),
-                ...(p.sections || []),
                 {
-                  id: crypto.randomUUID(),
+                  id: newId,
                   title,
-                  content: "",
+                  content: content || "",
                   created_at: new Date().toISOString(),
                   parentId,
                   order: maxOrder + 1,
@@ -148,6 +150,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           return p;
         })
       );
+      return newId;
     },
 
     removeProject: (id: UUID) => {

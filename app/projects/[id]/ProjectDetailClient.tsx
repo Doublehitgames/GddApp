@@ -8,7 +8,6 @@ import { useProjectStore } from "@/store/projectStore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
-import AIChat from "@/components/AIChat";
 import {
   DndContext,
   closestCenter,
@@ -46,7 +45,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-    const [isChatOpen, setIsChatOpen] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -199,31 +197,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                 )}
             </div>
         </div>
-
-        {/* AI Chat Sidebar */}
-        {isChatOpen && (
-            <div className="w-96 border-l border-gray-200 bg-white">
-                <AIChat 
-                    projectContext={projectContext}
-                    onClose={() => setIsChatOpen(false)}
-                    isOpen={isChatOpen}
-                />
-            </div>
-        )}
-
-        {/* Floating AI Button */}
-        {!isChatOpen && (
-            <button
-                onClick={() => setIsChatOpen(true)}
-                className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 z-50 group"
-                aria-label="Abrir assistente AI"
-            >
-                <div className="flex items-center gap-2">
-                    <span className="text-2xl">🤖</span>
-                    <span className="hidden group-hover:inline-block font-medium">Assistente AI</span>
-                </div>
-            </button>
-        )}
     </div>
     );
 }
