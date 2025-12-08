@@ -39,6 +39,8 @@ interface ProjectStore {
   countDescendants: (projectId: UUID, sectionId: UUID) => number;
   hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
   loadFromStorage: () => void;
+  importProject: (project: Project) => void;
+  importAllProjects: (projects: Project[]) => void;
 }
 
 const STORAGE_KEY = "gdd_projects_v1";
@@ -327,6 +329,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       } catch (e) {
         console.warn("Failed to load projects from localStorage", e);
       }
+    },
+
+    importProject: (project: Project) => {
+      wrappedSet((prev) => {
+        // Remove existing project with same ID if exists
+        const filtered = prev.filter(p => p.id !== project.id);
+        return [...filtered, project];
+      });
+    },
+
+    importAllProjects: (projects: Project[]) => {
+      wrappedSet(() => projects);
     },
   };
 });
