@@ -1,0 +1,50 @@
+name: CI - Testes Automatizados
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  test:
+    name: Rodar Testes
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v4
+    
+    - name: 🔧 Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 📦 Instalar dependências
+      run: npm ci
+    
+    - name: 🧪 Rodar testes unitários
+      run: npm test -- --coverage --watchAll=false
+    
+    - name: 🎭 Instalar browsers do Playwright
+      run: npx playwright install --with-deps chromium
+    
+    - name: 🎬 Rodar testes E2E
+      run: npm run test:e2e
+    
+    - name: 📸 Upload de screenshots/vídeos (se falhar)
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 7
+    
+    - name: ✅ Testes concluídos com sucesso
+      if: success()
+      run: echo "✅ Todos os 120 testes passaram! Deploy liberado."

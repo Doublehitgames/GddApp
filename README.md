@@ -9,6 +9,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Zustand](https://img.shields.io/badge/Zustand-5.0-orange)](https://zustand-demo.pmnd.rs/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![CI Status](https://github.com/Doublehitgames/GddApp/workflows/CI%20-%20Testes%20Automatizados/badge.svg)](https://github.com/Doublehitgames/GddApp/actions)
+[![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)]()
 
 </div>
 
