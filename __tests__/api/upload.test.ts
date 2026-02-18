@@ -159,8 +159,10 @@ describe('Upload API Validations', () => {
 
   describe('Error scenarios', () => {
     it('should identify missing file', () => {
-      const hasError = !undefined || !null
+      const file = undefined
+      const hasError = !file
       expect(hasError).toBe(true)
+      expect(file).toBeUndefined()
     })
 
     it('should identify invalid file type', () => {
