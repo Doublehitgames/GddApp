@@ -1,9 +1,9 @@
-# 🚀 Início Rápido - GDD Manager com IA
+# 🚀 Início Rápido - GDD Manager
 
 ## 📋 Pré-requisitos
 
-- Node.js 18+ instalado
-- Uma conta em um provider de IA (recomendado: Groq - grátis)
+- **Node.js 20+** instalado
+- Uma conta em um provider de IA (opcional, mas recomendado: **Groq - grátis**)
 
 ---
 
@@ -13,14 +13,16 @@
 
 ```bash
 # Clone o repositório
-git clone <repo-url>
+git clone https://github.com/Doublehitgames/GddApp.git
 cd gdd_project
 
 # Instale as dependências
 npm install
 ```
 
-### 2️⃣ Configure a IA (IMPORTANTE!)
+### 2️⃣ Configure a IA (OPCIONAL - pode pular se não quiser usar IA)
+
+> 💡 **Dica:** Você pode usar o GDD Manager sem IA! A configuração abaixo é opcional.
 
 #### Opção A: Groq (Grátis - Recomendado)
 
@@ -102,11 +104,18 @@ npm run dev           # Inicia em http://localhost:3000
 npm run build         # Build otimizado
 npm run start         # Servidor de produção
 
-# Qualidade
-npm run lint          # Verifica código
+
+# Testes (opcional, para desenvolvedores)
+npm test              # 110 testes unitários
+npm run test:e2e      # Testes end-to-end
 ```
 
----
+[📖 **Guia Completo de Testes →**](. - Visão geral do projeto
+- [🤖 Configuração da IA](./AI_SETUP.md) - Setup detalhado dos providers
+- [🔗 Referências Cruzadas](./REFERENCIAS_CRUZADAS.md) - Sistema de links entre seções
+- [🖼️ Upload de Imagens](./IMAGES.md) - Como usar imagens no editor
+- [🧪 Guia de Testes](./GUIA_TESTES.md) - Testes automatizados
+- [📊 Resumo Técnico](./TESTES_COMPLETOS.md) - Informações técnicas dos testes
 
 ## 📚 Documentação Completa
 
@@ -139,20 +148,23 @@ npm run lint          # Verifica código
 **Solução:**
 1. Abra o console do navegador (F12)
 2. Procure por erros
-3. Verifique conexão com internet
-4. Confirme que `.env.local` está configurado
+3. Verifique comanualmente ou com IA (se configurou)
+- ✅ Conversar com o assistente para expandir ideias (se configurou IA)
+- ✅ Organizar documentos hierarquicamente com seções e subseções
+- ✅ Usar referências cruzadas inteligentes `$[Nome da Seção]`
+- ✅ Upload de imagens (JPG, PNG, GIF, WebP até 5MB)
+- ✅ Busca avançada em todo o documento
+- ✅ Drag & Drop para reordenar seções
+- ✅ Persistência local automática (LocalStorage)
 
----
-
-## 🎉 Está Pronto!
-
-Agora você pode:
+**Dica:** Explore os recursos navegando pela interface
 
 - ✅ Criar GDDs completos em segundos com IA
 - ✅ Conversar com o assistente para expandir ideias
 - ✅ Organizar documentos hierarquicamente
-- ✅ Usar referências cruzadas inteligentes
-- ✅ Upload de imagens
+- Consulte o [guia de configuração da IA](./AI_SETUP.md)
+- Veja o [sistema de referências](./REFERENCIAS_CRUZADAS.md)
+- Abra uma [Issue no GitHub](https://github.com/Doublehitgames/GddApp/issues
 - ✅ Busca avançada
 
 **Dica:** Explore os documentos de teste em `COMO_TESTAR.md` para ver todos os recursos!

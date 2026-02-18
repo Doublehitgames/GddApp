@@ -23,10 +23,12 @@
 - ✅ **Organização Hierárquica**: Estruture seu GDD com seções e subseções ilimitadas
 - ✅ **Editor Rico**: WYSIWYG e Markdown com suporte a imagens, tabelas, código e muito mais
 - ✅ **🤖 IA Integrada**: Gere GDDs completos automaticamente e chat assistente inteligente
+- ✅ **Referências Cruzadas**: Links inteligentes entre seções `$[Nome da Seção]`
 - ✅ **Busca Inteligente**: Encontre rapidamente qualquer informação no seu documento
 - ✅ **Drag & Drop**: Reordene seções com facilidade
 - ✅ **Persistência Local**: Seus dados ficam seguros no navegador
 - ✅ **Interface Moderna**: Design responsivo e intuitivo
+- ✅ **110 Testes Automatizados**: Base sólida de qualidade e confiabilidade
 
 ---
 
@@ -43,7 +45,17 @@
 
 [📖 **Veja como configurar a IA →**](./docs/AI_SETUP.md)
 
-### 📁 Gerenciamento de Projetos
+### � Referências Cruzadas
+
+- **Links entre seções**: Use `$[Nome da Seção]` para criar links automáticos
+- **Links por ID**: Use `$[#sectionId]` para links estáveis (sobrevivem renomeação)
+- **Validação automática**: Detecta referências quebradas (seções deletadas)
+- **Backlinks**: Veja quais seções referenciam a seção atual
+- **Visual diferenciado**: Links válidos em azul, inválidos em vermelho com linha ondulada
+
+[📖 **Saiba mais sobre Referências →**](./docs/REFERENCIAS_CRUZADAS.md)
+
+### �📁 Gerenciamento de Projetos
 
 - **Criar múltiplos projetos GDD** com título e descrição
 - **Visualização em lista** com estatísticas de seções
@@ -248,11 +260,27 @@ gdd_project/
 - **[ESLint](https://eslint.org/)** - Linter
 - **[PostCSS](https://postcss.org/)** - Processador CSS
 
+### Testes
+
+- **[Jest](https://jestjs.io/)** - Framework de testes
+- **[@testing-library/react](https://testing-library.com/)** - Testes de componentes
+- **[@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom/)** - Matchers customizados
+- **[Playwright](https://playwright.dev/)** - Testes end-to-end
+
 ---
 
 ## 📦 Scripts Disponíveis
 
-```bash
+
+# Testes
+npm test             # Executa testes unitários (110 testes)
+npm run test:watch   # Testes em modo watch
+npm run test:coverage # Testes com cobertura de código
+npm run test:e2e     # Testes end-to-end com Playwright
+npm run test:e2e:ui  # E2E com interface visual
+```
+
+[📖 **Guia Completo de Testes →**](./docs/GUIA_TESTES.md)bash
 # Desenvolvimento
 npm run dev          # Inicia servidor de desenvolvimento
 
@@ -348,22 +376,31 @@ npm run lint         # Executa ESLint
 
 ---
 
+- [x] **🧪 110 Testes Automatizados** - Cobertura completa com Jest + Playwright
+- [x] **🔗 Referências Cruzadas** - Sistema de links entre seções
+
+### Em Desenvolvimento
+
+- [ ] **Visualização de Documento Completo** - Ver GDD inteiro em uma página
+- [ ] **Exportação para PDF** - Gerar documentos completos em PDF
+- [ ] **Exportação para DOCX** - Formato Microsoft Word
 ## 🔮 Roadmap
 
-### ✅ Recém Implementado
-
-- [x] **🤖 Assistente de IA** - Geração automática de GDD e chat inteligente
-- [x] **Suporte a múltiplos providers** - Groq (grátis), OpenAI, Claude
-- [x] **Chat contextual** - Assistente entende todo o projeto
-
-### Próximas Funcionalidades Planejadas
-
-- [ ] **Exportação para PDF** - Gerar documentos completos em PDF
-- [ ] **Exportação para Markdown** - Baixar GDD em formato .md
+### ✅ Recém ImplementadoMarkdown** - Baixar GDD em formato .md
 - [ ] **🤖 IA: Análise de inconsistências** - Detectar contradições automaticamente
 - [ ] **🤖 IA: Sugestões proativas** - IA sugere mudanças baseado em alterações
-- [ ] **Backend com Banco de Dados** - PostgreSQL/MySQL
+- [ ] **Backend com Banco de Dados** - PostgreSQL/Supabase
 - [ ] **Autenticação** - Login e controle de acesso
+- [ ] **Sincronização na Nuvem** - Acesse seus projetos de qualquer lugar
+- [ ] **Versionamento** - Histórico de alterações
+- [ ] **Colaboração em Tempo Real** - Múltiplos usuários simultâneos
+- [ ] **Comentários** - Sistema de anotações em seções
+- [ ] **Templates de GDD** - Templates prontos (RPG, FPS, Mobile, etc.)
+- [ ] **Dark/Light Mode** - Toggle de tema
+- [ ] **Atalhos de Teclado** - Navegação rápida
+- [ ] **Anexos diversos** - Upload de PDFs, vídeos, áudios
+- [ ] **Galeria de Assets** - Gerenciamento de recursos do projeto
+- [ ] **Gráficos e Diagramas** - Integração com ferramentas de diagramaçã
 - [ ] **Versionamento** - Histórico de alterações
 - [ ] **Colaboração em Tempo Real** - Múltiplos usuários simultâneos
 - [ ] **Comentários** - Sistema de anotações em seções
@@ -396,8 +433,13 @@ Este projeto está sob licença MIT. Veja o arquivo `LICENSE` para mais detalhes
 ## 👥 Autores
 
 **Doublehit Games**
-- GitHub: [@Doublehitgames](https://github.com/Doublehitgames)
-
+- GitHub: [@DoDocumentação](./docs/)
+  - [Guia de Início Rápido](./docs/QUICKSTART.md)
+  - [Configuração da IA](./docs/AI_SETUP.md)
+  - [Guia de Testes](./docs/GUIA_TESTES.md)
+  - [Sistema de Imagens](./docs/IMAGES.md)
+  - [Referências Cruzadas](./docs/REFERENCIAS_CRUZADAS.md)
+- Veja a [documentação do Next.js](https://nextjs.org/docs
 ---
 
 ## 📞 Suporte
