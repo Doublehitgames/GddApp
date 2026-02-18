@@ -244,7 +244,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
       const commandsMatch = message.match(/\[EXECUTAR\]([\s\S]*?)(?=\n\n|$)/);
       
       if (commandsMatch && projectContext) {
-        const commands = commandsMatch[1].trim().split('\n').filter(cmd => cmd.trim());
+        const commands = commandsMatch[1].trim().split('\n').filter((cmd: string) => cmd.trim());
         const results: string[] = [];
         let successCount = 0;
         const createdSections: Map<string, string> = new Map(); // title -> id
@@ -255,7 +255,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
           try {
             // CRIAR: título | conteúdo
             if (trimmed.startsWith('CRIAR:')) {
-              const parts = trimmed.substring(6).split('|').map(p => p.trim());
+              const parts = trimmed.substring(6).split('|').map((p: string) => p.trim());
               if (parts.length >= 2) {
                 const [title, content] = parts;
                 const newId = addSection(projectContext.projectId, title, content);
@@ -266,7 +266,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
             }
             // SUBSECAO: título | pai | conteúdo
             else if (trimmed.startsWith('SUBSECAO:')) {
-              const parts = trimmed.substring(9).split('|').map(p => p.trim());
+              const parts = trimmed.substring(9).split('|').map((p: string) => p.trim());
               if (parts.length >= 3) {
                 const [title, parentTitle, content] = parts;
                 const parentId = createdSections.get(parentTitle) || 
@@ -283,7 +283,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
             }
             // EDITAR: id | novo conteúdo
             else if (trimmed.startsWith('EDITAR:')) {
-              const parts = trimmed.substring(7).split('|').map(p => p.trim());
+              const parts = trimmed.substring(7).split('|').map((p: string) => p.trim());
               if (parts.length >= 2) {
                 const [sectionId, newContent] = parts;
                 const section = projectContext.sections.find(s => s.id === sectionId);

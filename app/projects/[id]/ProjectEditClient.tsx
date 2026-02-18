@@ -25,7 +25,7 @@ export default function ProjectEditClient({ projectId }: Props) {
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [editorHeight, setEditorHeight] = useState("400px");
   const [isFullscreen, setIsFullscreen] = useState(false);
 

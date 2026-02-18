@@ -12,7 +12,7 @@ interface Section {
 interface UseAutocompleteOptions {
   sections: Section[];
   textareaSelector?: string;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function useMarkdownAutocomplete({ sections, textareaSelector = "textarea", containerRef }: UseAutocompleteOptions) {
