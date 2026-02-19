@@ -62,6 +62,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [showPreview, setShowPreview] = useState(false);
   const [previewContent, setPreviewContent] = useState("");
   const [modificationRequest, setModificationRequest] = useState("");
+  const [sectionColor, setSectionColor] = useState("#3b82f6");
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -205,6 +206,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       }
     }
     setBreadcrumbs(trail);
+    setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
   }, [projectId, sectionId, getProject, projects]);
 
@@ -516,6 +518,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     handleConfirmImprovement={handleConfirmImprovement}
     handleCancelImprovement={handleCancelImprovement}
     handleRequestModification={handleRequestModification}
+    sectionColor={sectionColor}
+    setSectionColor={setSectionColor}
       />
       <AutocompleteDropdown />
     </>
@@ -610,7 +614,8 @@ function SectionDetailContent({
   editorHeight, setEditorHeight, isFullscreen, setIsFullscreen,
   isImproving, improveError, handleImproveWithAI,
   showPreview, previewContent, modificationRequest, setModificationRequest,
-  handleConfirmImprovement, handleCancelImprovement, handleRequestModification
+  handleConfirmImprovement, handleCancelImprovement, handleRequestModification,
+  sectionColor, setSectionColor
 }: any) {
 
   return (
@@ -706,6 +711,31 @@ function SectionDetailContent({
           </div>
         ) : (
           <>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={sectionColor}
+                onChange={(e) => {
+                  const newColor = e.target.value;
+                  setSectionColor(newColor);
+                  editSection(projectId, sectionId, section.title, section.content, newColor);
+                }}
+                className="h-8 w-8 border rounded cursor-pointer"
+                title="Cor no mapa mental"
+              />
+              {section?.color && (
+                <button
+                  onClick={() => {
+                    setSectionColor("#3b82f6");
+                    editSection(projectId, sectionId, section.title, section.content, undefined);
+                  }}
+                  className="h-8 px-2 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                  title="Resetar para cor padrão do nível"
+                >
+                  🔄
+                </button>
+              )}
+            </div>
             <h1 className="text-2xl font-bold">{section.title}</h1>
             <button
               onClick={() => setIsEditingTitle(true)}
@@ -719,23 +749,25 @@ function SectionDetailContent({
         {!inlineEdit && !isEditingTitle && (
           <>
             <button
-              className="bg-blue-600 text-white px-2 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
-              onClick={() => setInlineEdit(true)}
-            >Editar no preview</button>
-            <button
               onClick={handleImproveWithAI}
               disabled={isImproving}
-              className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 rounded text-sm hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Melhorar conteúdo com IA preservando imagens e links"
             >
-              <span>{isImproving ? "⏳" : "✨"}</span>
-              <span>{isImproving ? "Melhorando..." : "Melhorar com IA"}</span>
+              {isImproving ? "⏳" : "✨"}
+            </button>
+            <button
+              onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
+              className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              title="Ver no mapa mental"
+            >
+              🌐
             </button>
           </>
         )}
         {!isEditingTitle && (
           <button
-            className="bg-red-600 text-white px-2 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+            className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
             onClick={() => {
               const count = countDescendants(projectId, sectionId);
               const msg = count > 0 
@@ -746,7 +778,10 @@ function SectionDetailContent({
                 router.push(`/projects/${projectId}`);
               }
             }}
-          >Excluir</button>
+            title="Excluir seção"
+          >
+            🗑️
+          </button>
         )}
         </div>
       )}
@@ -758,7 +793,10 @@ function SectionDetailContent({
         </div>
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
-        <div className="mb-4">
+        <div 
+          className="mb-4"
+          onDoubleClick={() => setInlineEdit(true)}
+        >
           {section.content ? (
             <MarkdownWithReferences 
               content={section.content} 

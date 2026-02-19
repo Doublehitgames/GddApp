@@ -110,10 +110,24 @@ export default function ProjectDetailClient({ projectId }: Props) {
                     
                     <div className="flex gap-3">
                         <button 
+                            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+                            onClick={() => router.push(`/projects/${projectId}/mindmap`)}
+                        >
+                            🧠 Mapa Mental
+                        </button>
+                        
+                        <button 
                             className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
                             onClick={() => router.push(`/projects/${projectId}/view`)}
                         >
                             📄 Ver como Documento
+                        </button>
+                        
+                        <button 
+                            className="px-6 py-2 bg-gradient-to-r from-gray-600 to-slate-600 text-white rounded-lg hover:from-gray-700 hover:to-slate-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+                            onClick={() => router.push(`/projects/${projectId}/settings`)}
+                        >
+                            ⚙️ Configurações
                         </button>
                         
                         <button 

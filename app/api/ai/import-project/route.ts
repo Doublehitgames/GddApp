@@ -36,8 +36,16 @@ async function extractText(file: File): Promise<string> {
   // Word/DOCX (formato que Google Docs exporta)
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
       file.name.endsWith('.docx')) {
-    const result = await mammoth.extractRawText({ buffer: bytes });
-    return result.value;
+    try {
+      const result = await mammoth.extractRawText({ buffer: bytes });
+      if (!result.value || result.value.trim().length === 0) {
+        throw new Error('O arquivo .docx está vazio ou não contém texto extraível');
+      }
+      return result.value;
+    } catch (error) {
+      console.error('Erro ao processar DOCX:', error);
+      throw new Error(`Erro ao processar arquivo .docx: ${error instanceof Error ? error.message : 'erro desconhecido'}. Tente salvar o documento novamente ou exportar como .txt`);
+    }
   }
 
   // Texto plano (TXT, Markdown)
@@ -240,6 +248,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem explicações adicionais. COPIE todo o co
 
   } catch (error) {
     console.error('Error importing project:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     // Detectar erro de rate limit da Groq
     const errorMessage = error instanceof Error ? error.message : 'Erro ao importar projeto';
@@ -258,8 +267,18 @@ IMPORTANTE: Retorne APENAS o JSON, sem explicações adicionais. COPIE todo o co
       }, { status: 400 });
     }
     
+    // Erro de parsing de JSON
+    if (errorMessage.includes('JSON') || errorMessage.includes('parse')) {
+      return NextResponse.json({ 
+        error: '❌ Erro ao processar resposta da IA. O documento pode ser muito complexo. Tente um arquivo menor ou mais simples.',
+        type: 'json_parse_error',
+        details: errorMessage
+      }, { status: 500 });
+    }
+    
     return NextResponse.json({ 
-      error: errorMessage
+      error: errorMessage,
+      details: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }

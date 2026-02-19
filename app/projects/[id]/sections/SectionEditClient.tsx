@@ -22,6 +22,8 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [color, setColor] = useState("#3b82f6"); // Cor padrão azul
+  const [hasCustomColor, setHasCustomColor] = useState(false); // Flag para saber se tem cor customizada
   const [parentId, setParentId] = useState<string | undefined>(undefined);
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -44,6 +46,8 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
       const editableContent = convertReferencesToNames(sec.content || "", sections);
       setContent(editableContent);
       setParentId(sec.parentId);
+      setColor(sec.color || "#3b82f6"); // Carregar cor salva ou usar padrão
+      setHasCustomColor(!!sec.color); // Se tem cor salva, marcar como customizada
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -119,7 +123,8 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
       console.log('Converted content:', convertedContent);
       console.log('Available sections:', sections.map((s: any) => ({ id: s.id, title: s.title })));
       
-      editSection(projectId, sectionId, title, convertedContent);
+      // Passar cor apenas se for customizada, senão passar undefined para usar padrão do nível
+      editSection(projectId, sectionId, title, convertedContent, hasCustomColor ? color : undefined);
       router.push(`/projects/${projectId}/sections/${sectionId}`);
     }
   }
@@ -160,6 +165,50 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
               disallowedElements: ["img"],
             }}
           />
+        </div>
+        
+        {/* Cor da Seção */}
+        <div className="border border-gray-700 rounded-lg p-4 bg-gray-800/50">
+          <label className="block text-sm font-semibold mb-2 text-gray-300">
+            🎨 Cor da Seção {hasCustomColor && <span className="text-amber-400">(customizada)</span>}
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => {
+                setColor(e.target.value);
+                setHasCustomColor(true);
+              }}
+              className="w-16 h-10 rounded cursor-pointer"
+            />
+            <input
+              type="text"
+              value={color}
+              onChange={(e) => {
+                setColor(e.target.value);
+                setHasCustomColor(true);
+              }}
+              className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 font-mono text-sm"
+              placeholder="#3b82f6"
+            />
+            <button
+              onClick={() => {
+                setColor("#3b82f6");
+                setHasCustomColor(false);
+              }}
+              className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm transition-colors whitespace-nowrap"
+              title="Resetar para cor padrão do nível"
+            >
+              🔄 Resetar
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {hasCustomColor 
+              ? "✨ Cor personalizada ativa. Use 'Resetar' para voltar à cor padrão do nível de hierarquia."
+              : "Usando cor padrão do nível. Clique no seletor ou digite um código para personalizar."
+            }
+          </p>
         </div>
         
         {/* Botão Melhorar com IA */}

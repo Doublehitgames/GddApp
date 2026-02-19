@@ -3,6 +3,148 @@ import { create } from "zustand";
 
 export type UUID = string;
 
+// Tipo para configuração de um nível no mapa mental
+export type LevelConfig = {
+  level: number; // 0, 1, 2, 3...
+  name: string; // "Seções", "Subseções", "Sub-subseções", etc
+  node: {
+    color?: string;
+    textColor?: string;
+    padding?: number;
+    borderColor?: string;
+    borderWidth?: number;
+    shadowColor?: string;
+    selected?: {
+      borderColor?: string;
+      borderWidth?: number;
+      glowColor?: string;
+      scale?: number;
+    };
+    zoomOnClick?: number;
+  };
+  edge: {
+    strokeWidth?: number;
+    color?: string;
+    dashed?: boolean;
+    dashPattern?: string;
+    animated?: boolean;
+    highlighted?: {
+      strokeWidth?: number;
+      color?: string;
+      animated?: boolean;
+    };
+  };
+};
+
+// Tipo para configurações personalizadas do mapa mental por projeto
+export type MindMapSettings = {
+  // Tamanhos dinâmicos
+  nodeSize?: {
+    baseSize?: number;
+    reductionFactor?: number;
+    minSize?: number;
+  };
+  // Fontes
+  fonts?: {
+    section?: {
+      sizePercent?: number;
+      minSize?: number;
+      maxSize?: number;
+    };
+    project?: {
+      sizePercent?: number;
+      minSize?: number;
+      maxSize?: number;
+    };
+    lineHeight?: number;
+    wordBreak?: boolean;
+  };
+  // Zoom
+  zoom?: {
+    minZoom?: number;
+    maxZoom?: number;
+    fitViewMaxZoom?: number;
+    labelVisibility?: {
+      section?: number;
+      project?: number;
+    };
+    targetApparentSize?: number;
+    zoomMargin?: number;
+  };
+  // Física
+  physics?: {
+    link?: {
+      strength?: number;
+      distance?: {
+        level0?: number;
+        base?: number;
+        multiplier?: number;
+      };
+    };
+    collision?: {
+      enabled?: boolean;
+      radiusMargin?: {
+        project?: number;
+        section?: number;
+      };
+      strength?: number;
+      iterations?: number;
+    };
+    simulation?: {
+      iterations?: number;
+    };
+  };
+  // Projeto Central
+  project?: {
+    node?: {
+      size?: number;
+      colors?: {
+        gradient?: { from?: string; to?: string; };
+        text?: string;
+        shadow?: string;
+        glow?: string;
+      };
+      icon?: string;
+      padding?: number;
+      selected?: {
+        borderColor?: string;
+        borderWidth?: number;
+        glowColor?: string;
+        scale?: number;
+      };
+      zoomOnClick?: number;
+    };
+    edge?: {
+      strokeWidth?: number;
+      color?: string;
+      dashed?: boolean;
+      dashPattern?: string;
+      animated?: boolean;
+      highlighted?: {
+        strokeWidth?: number;
+        color?: string;
+        animated?: boolean;
+      };
+    };
+  };
+  // Níveis dinâmicos (array de configurações)
+  levels?: LevelConfig[];
+  // Layout
+  layout?: {
+    mainOrbitRadius?: number;
+    subOrbitRadius?: number;
+    orbitRadiusMultiplier?: number;
+    startAngle?: number;
+  };
+  // Background
+  background?: {
+    color?: string;
+    dotsColor?: string;
+    dotsSize?: number;
+    dotsGap?: number;
+  };
+};
+
 //Definição da Seção. A seção pode ter um parentId opcional para suportar subseções.
 export type Section = {
   id: UUID;
@@ -11,6 +153,7 @@ export type Section = {
   created_at: string;
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
   order: number; // Ordem de exibição dentro do mesmo nível (mesmo parentId)
+  color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
 };
 
 //Definição do Projeto. Um projeto pode ter várias seções.
@@ -21,6 +164,7 @@ export type Project = {
   sections?: Section[];
   createdAt: string;
   updatedAt: string;
+  mindMapSettings?: MindMapSettings; // Configurações personalizadas do mapa mental
 };
 
 interface ProjectStore {
@@ -31,7 +175,7 @@ interface ProjectStore {
   addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => UUID;
   removeProject: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
-  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string) => void;
+  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, color?: string) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -41,6 +185,7 @@ interface ProjectStore {
   loadFromStorage: () => void;
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
+  updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
 }
 
 const STORAGE_KEY = "gdd_projects_v1";
@@ -169,16 +314,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string) => {
+    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, color?: string) => {
       wrappedSet((prev) =>
         prev.map((p) =>
           p.id === projectId
             ? {
                 ...p,
                 updatedAt: new Date().toISOString(),
-                sections: (p.sections || []).map((s) =>
-                  s.id === sectionId ? { ...s, title, content } : s
-                ),
+                sections: (p.sections || []).map((s) => {
+                  if (s.id === sectionId) {
+                    const updated: any = { ...s, title, content };
+                    // Só adicionar cor se foi fornecida, senão remover propriedade
+                    if (color !== undefined) {
+                      updated.color = color;
+                    } else {
+                      delete updated.color;
+                    }
+                    return updated;
+                  }
+                  return s;
+                }),
               }
             : p
         )
@@ -341,6 +496,21 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     importAllProjects: (projects: Project[]) => {
       wrappedSet(() => projects);
+    },
+
+    updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => {
+      wrappedSet((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              mindMapSettings: settings,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return p;
+        })
+      );
     },
   };
 });
