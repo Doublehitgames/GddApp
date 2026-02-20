@@ -206,9 +206,6 @@ export default function ImportProjectPage() {
         {!hasValidConfig && (
           <AIConfigWarning className="mb-8" />
         )}
-            Faça upload de um documento e deixe a IA estruturar automaticamente seu GDD
-          </p>
-        </div>
 
         {!previewData ? (
           /* Upload Section */
