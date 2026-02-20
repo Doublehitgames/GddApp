@@ -777,39 +777,49 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && nodes.length > 0 && !selectedNodeId) {
       const params = new URLSearchParams(window.location.search);
       const focusId = params.get('focus');
-      if (focusId && nodes.length > 0) {
+      if (focusId) {
         // Encontrar o node
         const nodeToFocus = nodes.find(n => n.id === focusId);
         if (nodeToFocus) {
-          // Selecionar o node
+          // Encontrar a seção
           const section = project?.sections?.find((s: Section) => s.id === focusId);
           if (section) {
             setSelectedNode(section);
+            setSelectedNodeId(focusId); // IMPORTANTE: isso aciona os destaques
           }
           
-          // Atualizar nodes para mostrar seleção visual
-          setNodes(nodes.map(node => ({
-            ...node,
-            data: {
-              ...node.data,
-              isSelected: node.id === focusId
-            }
-          })));
+          // Calcular zoom correto baseado na config
+          const targetSize = config.zoom?.onClickTargetSize || 200;
+          let nodeSize = 100;
+          
+          if (nodeToFocus.id === 'project-center') {
+            nodeSize = config.project.node.size;
+          } else if (nodeToFocus.data.calculatedSize) {
+            nodeSize = nodeToFocus.data.calculatedSize;
+          } else if (nodeToFocus.data.level !== undefined) {
+            nodeSize = getNodeSize(nodeToFocus.data.level, config);
+          }
+          
+          const zoomLevel = targetSize / nodeSize;
+          
+          // Calcular posição central do node (position é o canto superior esquerdo)
+          const centerX = nodeToFocus.position.x + (nodeSize / 2);
+          const centerY = nodeToFocus.position.y + (nodeSize / 2);
           
           // Centralizar câmera no node com zoom
           setTimeout(() => {
-            setCenter(nodeToFocus.position.x, nodeToFocus.position.y, {
-              zoom: 1.5,
+            setCenter(centerX, centerY, {
+              zoom: zoomLevel,
               duration: 800,
             });
-          }, 100);
+          }, 300);
         }
       }
     }
-  }, [nodes.length, setCenter, project]);
+  }, [nodes.length, setCenter, project, selectedNodeId, config]);
 
   useEffect(() => {
     if (!project) return;
@@ -1090,6 +1100,16 @@ function FlowContent({ projectId }: MindMapClientProps) {
       });
     });
   }, [selectedNodeId, setEdges, config, currentZoom, nodes]);
+
+  // Efeito para marcar node selecionado visualmente (glow)
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: { ...n.data, isSelected: n.id === selectedNodeId },
+      }))
+    );
+  }, [selectedNodeId, setNodes]);
 
   // Efeito para destacar nós no caminho (sem glow - destaque sutil) e referências
   useEffect(() => {
@@ -1431,14 +1451,6 @@ function FlowContent({ projectId }: MindMapClientProps) {
     const nodePosition = node.position;
     setCenter(nodePosition.x, nodePosition.y, { zoom: zoomLevel, duration: 800 });
 
-    // Atualizar estado visual dos nodes (marcar como selecionado)
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: { ...n.data, isSelected: n.id === node.id },
-      }))
-    );
-
     // Definir nó selecionado para destacar edges
     setSelectedNodeId(node.id);
 
@@ -1464,7 +1476,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
     const section = project ? findSectionById(project.sections || [], node.id) : null;
     setSelectedNode(section);
-  }, [project, setCenter, setNodes, config]);
+  }, [project, setCenter, config]);
 
   if (!project) {
     return (
@@ -1568,6 +1580,12 @@ function FlowContent({ projectId }: MindMapClientProps) {
                 onClick={() => {
                   setSelectedNode(null);
                   setSelectedNodeId(null);
+                  // Limpar parâmetro focus da URL
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('focus');
+                    window.history.replaceState({}, '', url.toString());
+                  }
                 }}
                 className="text-gray-400 hover:text-white text-2xl leading-none"
               >
@@ -1587,20 +1605,12 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
             <div className="mt-6 flex gap-2">
               {selectedNode.id !== 'project' && (
-                <>
-                  <button
-                    onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Ver Detalhes
-                  </button>
-                  <button
-                    onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}/edit`)}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    Editar
-                  </button>
-                </>
+                <button
+                  onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Ver Detalhes
+                </button>
               )}
               {selectedNode.id === 'project' && (
                 <button
