@@ -21,9 +21,11 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, MindMapSettings } from "@/store/projectStore";
-import { extractSectionReferences, findSection, getBacklinks } from "@/utils/sectionReferences";
+import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import * as d3 from "d3-force";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MindMapClientProps {
   projectId: string;
@@ -744,6 +746,74 @@ const nodeTypes = Object.freeze({
   sectionNode: SectionNode,
   projectNode: ProjectNode,
 });
+
+// Componente para renderizar markdown com referências clicáveis no mapa mental
+function MarkdownWithMapReferences({ 
+  content, 
+  sections, 
+  onSectionClick 
+}: { 
+  content: string; 
+  sections: Section[];
+  onSectionClick: (sectionId: string) => void;
+}) {
+  // Processar conteúdo substituindo referências por links clicáveis
+  const processedContent = content.replace(/\$\[([^\]]+)\]/g, (match, ref) => {
+    const rawContent = ref.trim();
+    const isId = rawContent.startsWith('#');
+    
+    // Criar objeto SectionReference conforme esperado pela função findSection
+    const sectionRef: SectionReference = {
+      raw: match,
+      refType: isId ? 'id' : 'name',
+      refValue: isId ? rawContent.substring(1) : rawContent,
+      startIndex: 0,
+      endIndex: 0
+    };
+    
+    const section = findSection(sections, sectionRef);
+    if (section) {
+      return `[${section.title}](#ref-${section.id})`;
+    }
+    return match;
+  });
+
+  return (
+    <div className="prose prose-invert prose-sm max-w-none">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ node, href, children, ...props }) => {
+            // Se é uma referência de seção
+            if (href && href.startsWith('#ref-')) {
+              const sectionId = href.replace('#ref-', '');
+              return (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSectionClick(sectionId);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  {...props}
+                >
+                  {children}
+                </button>
+              );
+            }
+            // Link normal
+            return (
+              <a href={href} {...props} className="text-blue-400 hover:text-blue-300">
+                {children}
+              </a>
+            );
+          },
+        }}
+      >
+        {processedContent}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 // Componente interno que tem acesso ao contexto do ReactFlow
 function FlowContent({ projectId }: MindMapClientProps) {
@@ -1478,6 +1548,41 @@ function FlowContent({ projectId }: MindMapClientProps) {
     setSelectedNode(section);
   }, [project, setCenter, config]);
 
+  // Handler para quando clicar em referências no painel lateral
+  const handleReferenceClick = useCallback((sectionId: string) => {
+    // Encontrar o nó correspondente
+    const node = nodes.find(n => n.id === sectionId);
+    if (!node) return;
+
+    // Calcular zoom
+    const targetSize = config.zoom?.onClickTargetSize || 200;
+    let nodeSize = 100;
+    
+    if (node.data.calculatedSize) {
+      nodeSize = node.data.calculatedSize;
+    } else if (node.data.level !== undefined) {
+      nodeSize = getNodeSize(node.data.level, config);
+    }
+    
+    const zoomLevel = targetSize / nodeSize;
+    
+    // Calcular posição central do node
+    const centerX = node.position.x + (nodeSize / 2);
+    const centerY = node.position.y + (nodeSize / 2);
+    
+    // Centralizar câmera
+    setCenter(centerX, centerY, { zoom: zoomLevel, duration: 800 });
+    
+    // Selecionar o nó
+    setSelectedNodeId(sectionId);
+    
+    // Encontrar seção
+    const section = project?.sections?.find((s: Section) => s.id === sectionId);
+    if (section) {
+      setSelectedNode(section);
+    }
+  }, [nodes, config, setCenter, project]);
+
   if (!project) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
@@ -1595,13 +1700,41 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
             <div className="prose prose-invert max-w-none">
               {selectedNode.content ? (
-                <div className="text-gray-300 whitespace-pre-wrap">
-                  {selectedNode.content}
-                </div>
+                <MarkdownWithMapReferences
+                  content={selectedNode.content}
+                  sections={project.sections || []}
+                  onSectionClick={handleReferenceClick}
+                />
               ) : (
                 <p className="text-gray-500 italic">Sem conteúdo</p>
               )}
             </div>
+
+            {/* Seção de Referenciado por */}
+            {selectedNode.id !== 'project' && (() => {
+              const backlinks = getBacklinks(selectedNode.id, project.sections || []);
+              if (backlinks.length > 0) {
+                return (
+                  <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-3">Referenciado por:</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {backlinks.map((backlink) => {
+                        return (
+                          <button
+                            key={backlink.id}
+                            onClick={() => handleReferenceClick(backlink.id)}
+                            className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 hover:text-blue-200 rounded-full text-sm font-medium transition-all duration-200 border border-blue-500/30 hover:border-blue-400/50 hover:scale-105"
+                          >
+                            {backlink.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className="mt-6 flex gap-2">
               {selectedNode.id !== 'project' && (
