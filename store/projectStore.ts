@@ -191,7 +191,7 @@ interface ProjectStore {
   addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => UUID;
   removeProject: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
-  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, color?: string) => void;
+  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -330,7 +330,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, color?: string) => {
+    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string) => {
       wrappedSet((prev) =>
         prev.map((p) =>
           p.id === projectId
@@ -340,6 +340,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
                 sections: (p.sections || []).map((s) => {
                   if (s.id === sectionId) {
                     const updated: any = { ...s, title, content };
+                    // Atualizar parentId se foi fornecido (undefined = não muda, null = remove pai)
+                    if (parentId !== undefined) {
+                      if (parentId === null) {
+                        delete updated.parentId; // Remove o pai (torna raiz)
+                      } else {
+                        updated.parentId = parentId; // Define novo pai
+                      }
+                    }
                     // Só adicionar cor se foi fornecida, senão remover propriedade
                     if (color !== undefined) {
                       updated.color = color;

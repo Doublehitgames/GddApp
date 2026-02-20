@@ -65,6 +65,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const [previewContent, setPreviewContent] = useState("");
   const [modificationRequest, setModificationRequest] = useState("");
   const [sectionColor, setSectionColor] = useState("#3b82f6");
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedNewParent, setSelectedNewParent] = useState<string | null>(null);
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -187,6 +189,49 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     }
     
     await handleImproveWithAI(modificationRequest.trim());
+  }
+
+  // Função auxiliar para pegar todos os descendentes de uma seção
+  function getAllDescendants(sectionId: string, allSections: any[]): string[] {
+    const descendants: string[] = [];
+    const children = allSections.filter(s => s.parentId === sectionId);
+    
+    for (const child of children) {
+      descendants.push(child.id);
+      descendants.push(...getAllDescendants(child.id, allSections));
+    }
+    
+    return descendants;
+  }
+
+  // Função para mover a seção
+  function handleMoveSection() {
+    if (!section || !project) return;
+    
+    // Se selecionou "Raiz", selectedNewParent será null
+    const newParentId = selectedNewParent === 'root' ? null : selectedNewParent;
+    
+    // Validações
+    if (newParentId === sectionId) {
+      alert("A seção não pode ser pai de si mesma.");
+      return;
+    }
+    
+    if (newParentId) {
+      // Verificar se o novo pai é um descendente da seção atual
+      const descendants = getAllDescendants(sectionId, sections);
+      if (descendants.includes(newParentId)) {
+        alert("Não é possível mover uma seção para dentro de seus próprios descendentes.");
+        return;
+      }
+    }
+    
+    // Atualizar o parentId (não mexe em title, content e color)
+    editSection(projectId, sectionId, section.title, section.content, newParentId, section.color);
+    
+    // Fechar modal e resetar
+    setShowMoveModal(false);
+    setSelectedNewParent(null);
   }
 
   useEffect(() => {
@@ -526,6 +571,12 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     sectionColor={sectionColor}
     setSectionColor={setSectionColor}
     hasValidConfig={hasValidConfig}
+    showMoveModal={showMoveModal}
+    setShowMoveModal={setShowMoveModal}
+    selectedNewParent={selectedNewParent}
+    setSelectedNewParent={setSelectedNewParent}
+    handleMoveSection={handleMoveSection}
+    sections={project?.sections || []}
       />
       <AutocompleteDropdown />
     </>
@@ -621,7 +672,11 @@ function SectionDetailContent({
   isImproving, improveError, handleImproveWithAI,
   showPreview, previewContent, modificationRequest, setModificationRequest,
   handleConfirmImprovement, handleCancelImprovement, handleRequestModification,
-  sectionColor, setSectionColor, hasValidConfig
+  sectionColor, setSectionColor, hasValidConfig,
+  showMoveModal, setShowMoveModal,
+  selectedNewParent, setSelectedNewParent,
+  handleMoveSection,
+  sections,
 }: any) {
 
   return (
@@ -768,6 +823,13 @@ function SectionDetailContent({
               title="Ver no mapa mental"
             >
               🌐
+            </button>
+            <button
+              onClick={() => setShowMoveModal(true)}
+              className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+              title="Mover seção para outro local"
+            >
+              ↗️
             </button>
           </>
         )}
@@ -1052,6 +1114,192 @@ function SectionDetailContent({
           </div>
         </div>
       )}
+
+      {/* Modal: Mover Seção */}
+      {showMoveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  ↗️ Mover Seção
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowMoveModal(false);
+                    setSelectedNewParent(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mt-2">
+                Mover "<strong>{section?.title}</strong>" para outro local
+              </p>
+            </div>
+
+            {/* Body - Árvore de seções */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="space-y-1">
+                {/* Opção: Raiz (sem pai) */}
+                <label
+                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                    selectedNewParent === 'root'
+                      ? 'bg-blue-100 border-2 border-blue-500'
+                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="newParent"
+                    value="root"
+                    checked={selectedNewParent === 'root'}
+                    onChange={() => setSelectedNewParent('root')}
+                    className="w-4 h-4"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">📁 Raiz do Projeto</div>
+                    <div className="text-xs text-gray-500">Tornar seção principal (sem pai)</div>
+                  </div>
+                </label>
+
+                {/* Renderizar árvore de seções */}
+                {sections
+                  .filter((s: any) => !s.parentId && s.id !== sectionId) // Seções raiz, exceto a atual
+                  .map((s: any) => (
+                    <SectionTreeItem
+                      key={s.id}
+                      section={s}
+                      allSections={sections}
+                      currentSectionId={sectionId}
+                      selectedParent={selectedNewParent}
+                      onSelect={setSelectedNewParent}
+                      level={0}
+                    />
+                  ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowMoveModal(false);
+                  setSelectedNewParent(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMoveSection}
+                disabled={!selectedNewParent}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Mover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para renderizar item da árvore de seções no modal
+function SectionTreeItem({ 
+  section, 
+  allSections, 
+  currentSectionId, 
+  selectedParent, 
+  onSelect, 
+  level 
+}: { 
+  section: any; 
+  allSections: any[]; 
+  currentSectionId: string; 
+  selectedParent: string | null; 
+  onSelect: (id: string) => void; 
+  level: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
+  // Pegar filhos
+  const children = allSections.filter(s => s.parentId === section.id);
+  
+  // Verificar se esta seção é descendente da seção atual (não pode ser selecionada)
+  function isDescendantOf(childId: string, ancestorId: string, sections: any[]): boolean {
+    const child = sections.find(s => s.id === childId);
+    if (!child || !child.parentId) return false;
+    if (child.parentId === ancestorId) return true;
+    return isDescendantOf(child.parentId, ancestorId, sections);
+  }
+  
+  const isDisabled = section.id === currentSectionId || isDescendantOf(section.id, currentSectionId, allSections);
+  const hasChildren = children.length > 0;
+  const indent = level * 24; // 24px por nível
+  
+  return (
+    <div>
+      <label
+        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+          isDisabled
+            ? 'opacity-40 cursor-not-allowed'
+            : selectedParent === section.id
+              ? 'bg-blue-100 border-2 border-blue-500 cursor-pointer'
+              : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent cursor-pointer'
+        }`}
+        style={{ marginLeft: `${indent}px` }}
+      >
+        {hasChildren && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }}
+            className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+          >
+            {isExpanded ? '−' : '+'}
+          </button>
+        )}
+        {!hasChildren && <span className="w-4"></span>}
+        
+        <input
+          type="radio"
+          name="newParent"
+          value={section.id}
+          checked={selectedParent === section.id}
+          onChange={() => !isDisabled && onSelect(section.id)}
+          disabled={isDisabled}
+          className="w-4 h-4"
+        />
+        <div className="flex-1">
+          <div className={`text-sm ${isDisabled ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>
+            {section.title}
+            {isDisabled && section.id === currentSectionId && (
+              <span className="ml-2 text-xs text-amber-600">(seção atual)</span>
+            )}
+            {isDisabled && section.id !== currentSectionId && (
+              <span className="ml-2 text-xs text-amber-600">(descendente)</span>
+            )}
+          </div>
+        </div>
+      </label>
+      
+      {/* Renderizar filhos se expandido */}
+      {hasChildren && isExpanded && children.map(child => (
+        <SectionTreeItem
+          key={child.id}
+          section={child}
+          allSections={allSections}
+          currentSectionId={currentSectionId}
+          selectedParent={selectedParent}
+          onSelect={onSelect}
+          level={level + 1}
+        />
+      ))}
     </div>
   );
 }
