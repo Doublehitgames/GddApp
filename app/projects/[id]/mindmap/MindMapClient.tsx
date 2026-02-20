@@ -605,8 +605,8 @@ function SectionNode({ data }: { data: any }) {
           // Usar box-shadow para borda (fica por fora e não afeta layout)
           boxShadow: glowColor 
             ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 ${glowSize1}px ${glowColor}, 0 0 ${glowSize2}px ${glowColor}, 0 0 ${glowSize3}px ${glowColor}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}`
-            : isReference && refConfig.nodeHighlight?.enabled
-              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * (refConfig.nodeHighlight.borderWidth || 3)}px ${refConfig.nodeHighlight.borderColor || '#3b82f6'}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque azul para referências
+            : isReference && (refConfig as any).nodeHighlight?.enabled
+              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque azul para referências
               : isInPath
                 ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque sutil: borda amarela semi-transparente
                 : finalBorderWidth > 0
@@ -712,8 +712,8 @@ function ProjectNode({ data }: { data: any }) {
             ? finalBorderWidth > 0
               ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
               : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`
-            : isReference && refConfig.nodeHighlight?.enabled
-              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * (refConfig.nodeHighlight.borderWidth || 3)}px ${refConfig.nodeHighlight.borderColor || '#3b82f6'}` // Destaque azul para referências
+            : isReference && (refConfig as any).nodeHighlight?.enabled
+              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}` // Destaque azul para referências
               : isInPath
                 ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)` // Destaque sutil para nós no caminho
                 : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`,
@@ -794,7 +794,6 @@ function MarkdownWithMapReferences({
                     onSectionClick(sectionId);
                   }}
                   className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
-                  {...props}
                 >
                   {children}
                 </button>
@@ -1250,7 +1249,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
           
           // Encontrar IDs das seções referenciadas
           refs.forEach(ref => {
-            const foundSection = findSection(project.sections, ref);
+            const foundSection = findSection(project.sections || [], ref);
             if (foundSection) {
               referencedNodeIds.add(foundSection.id);
             }
@@ -1258,7 +1257,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
         }
         
         // 2. Encontrar quem faz referência a ele (backlinks)
-        const backlinks = getBacklinks(selectedNodeId, project.sections);
+        const backlinks = getBacklinks(selectedNodeId, project.sections || []);
         backlinks.forEach(link => {
           backlinksNodeIds.add(link.id);
         });

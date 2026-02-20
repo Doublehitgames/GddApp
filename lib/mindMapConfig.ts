@@ -296,22 +296,6 @@ export const MINDMAP_CONFIG = {
   },
 
   // ========================================
-  // REFERÊNCIAS CRUZADAS (DESABILITADAS)
-  // ========================================
-  
-  references: {
-    enabled: false,          // Por padrão não mostrar
-    edge: {
-      strokeWidth: 0.1,
-      color: '#8b5cf6',      // Roxo
-      dashed: true,
-      dashPattern: '5,5',
-      animated: true,
-      label: '🔗',
-    },
-  },
-
-  // ========================================
   // LAYOUT E POSICIONAMENTO ORBITAL
   // ========================================
   

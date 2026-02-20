@@ -184,18 +184,18 @@ export default function SettingsClient({ projectId }: Props) {
       }
       
       // Garantir que a estrutura existe
-      if (!newSettings[targetKey]) {
-        newSettings[targetKey] = { node: {}, edge: {} };
+      if (!(newSettings as any)[targetKey]) {
+        (newSettings as any)[targetKey] = { node: {}, edge: {} };
       }
-      if (!newSettings[targetKey].node) newSettings[targetKey].node = {};
-      if (!newSettings[targetKey].edge) newSettings[targetKey].edge = {};
+      if (!(newSettings as any)[targetKey].node) (newSettings as any)[targetKey].node = {};
+      if (!(newSettings as any)[targetKey].edge) (newSettings as any)[targetKey].edge = {};
       
       // Copiar valores do level para o formato flat
       if (lvl.node) {
-        Object.assign(newSettings[targetKey].node, lvl.node);
+        Object.assign((newSettings as any)[targetKey].node, lvl.node);
       }
       if (lvl.edge) {
-        Object.assign(newSettings[targetKey].edge, lvl.edge);
+        Object.assign((newSettings as any)[targetKey].edge, lvl.edge);
       }
     });
     
@@ -240,7 +240,7 @@ export default function SettingsClient({ projectId }: Props) {
   // Helper para atualizar highlight em project E sections ao mesmo tempo
   const setHighlightValue = (property: string, value: any) => {
     setSettings((prev) => {
-      const newSettings = { ...prev };
+      const newSettings = { ...prev } as any;
       
       // Garantir que as estruturas existem
       if (!newSettings.project) newSettings.project = {};
