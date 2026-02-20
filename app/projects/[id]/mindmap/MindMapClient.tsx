@@ -843,6 +843,38 @@ function FlowContent({ projectId }: MindMapClientProps) {
   const [dragStartMouse] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [dragActivated] = useState<Map<string, boolean>>(new Map());
   const DRAG_THRESHOLD = 5; // pixels mínimos de movimento para considerar drag
+  
+  // Estados de busca
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<Set<string>>(new Set());
+
+  // Função para realizar busca
+  const performSearch = useCallback((term: string) => {
+    if (!term.trim() || !project) {
+      setSearchResults(new Set());
+      return;
+    }
+    
+    const lowerTerm = term.toLowerCase();
+    const results = new Set<string>();
+    
+    // Buscar em todas as seções
+    (project.sections || []).forEach(section => {
+      const titleMatch = section.title.toLowerCase().includes(lowerTerm);
+      const contentMatch = section.content?.toLowerCase().includes(lowerTerm);
+      
+      if (titleMatch || contentMatch) {
+        results.add(section.id);
+      }
+    });
+    
+    setSearchResults(results);
+  }, [project]);
+
+  // Effect para realizar busca quando searchTerm muda
+  useEffect(() => {
+    performSearch(searchTerm);
+  }, [searchTerm, performSearch]);
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
@@ -1380,30 +1412,43 @@ function FlowContent({ projectId }: MindMapClientProps) {
     setNodes((nds) => {
       // Combinar todos os nós relacionados por referência (para frente E para trás)
       const allReferencedNodes = new Set([...referencedNodeIds, ...backlinksNodeIds]);
+      const hasActiveSearch = searchTerm.trim().length > 0;
       
       // Verificar se precisa atualizar (evitar loop infinito)
       const needsUpdate = nds.some(node => {
         const shouldBeInPath = nodesInPath.has(node.id) && node.id !== selectedNodeId;
-        const shouldBeFaded = !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id);
+        const isSearchResult = searchResults.has(node.id);
+        const shouldBeFaded = hasActiveSearch
+          ? !isSearchResult && node.id !== 'project-center'
+          : !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id);
         const shouldBeReference = allReferencedNodes.has(node.id);
         return node.data.isInPath !== shouldBeInPath || 
                node.data.isFaded !== shouldBeFaded ||
-               node.data.isReference !== shouldBeReference;
+               node.data.isReference !== shouldBeReference ||
+               node.data.isSearchResult !== isSearchResult;
       });
       
       if (!needsUpdate) return nds; // Nada mudou, não atualizar
       
-      return nds.map((node) => ({
-        ...node,
-        data: { 
-          ...node.data, 
-          isInPath: nodesInPath.has(node.id) && node.id !== selectedNodeId,
-          isFaded: !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id), // Esmaecer nós que NÃO estão no caminho NEM são referências
-          isReference: allReferencedNodes.has(node.id), // Marcar nós referenciados (ambas direções)
-        },
-      }));
+      return nds.map((node) => {
+        const isSearchResult = searchResults.has(node.id);
+        return {
+          ...node,
+          data: { 
+            ...node.data, 
+            isInPath: nodesInPath.has(node.id) && node.id !== selectedNodeId,
+            // Se há busca ativa: fade nós que não são resultados
+            // Se não há busca: usar lógica original (fade nós fora do caminho e não referenciados)
+            isFaded: hasActiveSearch
+              ? !isSearchResult && node.id !== 'project-center'
+              : !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id),
+            isReference: allReferencedNodes.has(node.id),
+            isSearchResult, // Nova flag para possíveis estilos específicos futuramente
+          },
+        };
+      });
     });
-  }, [selectedNodeId, config, project]);
+  }, [selectedNodeId, config, project, searchResults, searchTerm]);
 
 
   // Handler para salvar posição original ao iniciar drag
@@ -1622,6 +1667,33 @@ function FlowContent({ projectId }: MindMapClientProps) {
             <h1 className="text-xl font-bold text-white">🧠 Mapa Mental</h1>
             <span className="text-gray-400">|</span>
             <span className="text-gray-300">{project.title}</span>
+            
+            {/* Busca */}
+            <div className="flex items-center gap-2 ml-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar seções..."
+                  className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-8 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-64"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {searchResults.size > 0 && (
+                <span className="text-sm text-gray-400 bg-gray-700 px-3 py-1.5 rounded-lg">
+                  {searchResults.size} resultado{searchResults.size !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-2 text-sm text-gray-400">
