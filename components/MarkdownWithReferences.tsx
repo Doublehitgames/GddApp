@@ -66,110 +66,106 @@ export function MarkdownWithReferences({
   const router = useRouter();
   const refs = extractRefs(content);
 
-  // If no references, just render normal markdown
-  if (refs.length === 0) {
-    return (
-      <div className="prose max-w-none">
-        <ReactMarkdown 
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeRaw as any]}
-          components={{
-            span: ({ node, ...props }: any) => {
-              // Preserve style attribute for colored text
-              return <span {...props} />;
-            }
-          }}
-        >
-          {content}
-        </ReactMarkdown>
-      </div>
-    );
-  }
+  const buildMarkdownWithReferenceLinks = () => {
+    if (refs.length === 0) return content;
 
-  // Build segments
-  const segments: Array<{ type: 'text' | 'link'; content: string; sectionId?: string | null; sectionName?: string }> = [];
-  let lastIndex = 0;
+    let result = "";
+    let lastIndex = 0;
 
-  refs.forEach((ref) => {
-    // Add text before this reference
-    if (ref.startIndex > lastIndex) {
-      segments.push({
-        type: 'text',
-        content: content.substring(lastIndex, ref.startIndex),
-      });
+    refs.forEach((ref) => {
+      if (ref.startIndex > lastIndex) {
+        result += content.substring(lastIndex, ref.startIndex);
+      }
+
+      const target = findSec(sections, ref);
+      if (target) {
+        const href = `/projects/${projectId}/sections/${target.id}`;
+        result += `[${target.title}](${href})`;
+      } else {
+        const missingRef = encodeURIComponent(ref.refValue);
+        result += `[${ref.refValue}](/__gdd_missing__/${missingRef})`;
+      }
+
+      lastIndex = ref.endIndex;
+    });
+
+    if (lastIndex < content.length) {
+      result += content.substring(lastIndex);
     }
 
-    // Add the reference
-    const target = findSec(sections, ref);
-    segments.push({
-      type: 'link',
-      content: target?.title || ref.refValue,
-      sectionId: target?.id || null,
-      sectionName: target?.title,
-    });
+    return result;
+  };
 
-    lastIndex = ref.endIndex;
-  });
+  const renderedContent = buildMarkdownWithReferenceLinks();
 
-  // Add remaining text
-  if (lastIndex < content.length) {
-    segments.push({
-      type: 'text',
-      content: content.substring(lastIndex),
-    });
-  }
-
-  // Render with proper inline handling
   return (
     <div className="prose max-w-none markdown-with-refs">
-      {segments.map((seg, idx) => {
-        if (seg.type === 'text') {
-          return (
-            <ReactMarkdown 
-              key={idx} 
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw as any]}
-              components={{
-                // Force inline rendering for text segments
-                p: ({ children }) => <span className="inline-block">{children}</span>,
-                span: ({ node, ...props }: any) => {
-                  // Preserve style attribute for colored text
-                  return <span {...props} />;
-                }
-              }}
-            >
-              {seg.content}
-            </ReactMarkdown>
-          );
-        } else {
-          // Render link inline
-          if (seg.sectionId) {
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw as any]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-6 mb-3 text-white">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mt-5 mb-3 text-white">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-xl md:text-2xl font-semibold mt-4 mb-2 text-white">{children}</h3>
+          ),
+          h4: ({ children }) => (
+            <h4 className="text-lg font-semibold mt-4 mb-2 text-white">{children}</h4>
+          ),
+          p: ({ children }) => <p className="text-gray-200 leading-7 my-2">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-6 my-3 text-gray-200">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-6 my-3 text-gray-200">{children}</ol>,
+          li: ({ children }) => <li className="my-1">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+          em: ({ children }) => <em className="italic text-gray-100">{children}</em>,
+          span: ({ node, ...props }: any) => {
+            return <span {...props} />;
+          },
+          a: ({ href, children }) => {
+            if (!href) return <a>{children}</a>;
+
+            if (href.startsWith("/__gdd_missing__/")) {
+              const missingName = decodeURIComponent(href.replace("/__gdd_missing__/", ""));
+              return (
+                <span
+                  className="text-red-500 underline decoration-wavy cursor-help"
+                  title={`Seção não encontrada: "${missingName}"`}
+                >
+                  {children}
+                </span>
+              );
+            }
+
+            if (href.startsWith("/projects/")) {
+              return (
+                <a
+                  href={href}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    router.push(href);
+                  }}
+                  className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium"
+                  title="Ir para seção"
+                >
+                  {children}
+                </a>
+              );
+            }
+
             return (
-              <button
-                key={idx}
-                onClick={(e) => {
-                  e.preventDefault();
-                  router.push(`/projects/${projectId}/sections/${seg.sectionId}`);
-                }}
-                className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium inline mx-0.5"
-                title={`Ir para: ${seg.sectionName || seg.content}`}
-              >
-                {seg.content}
-              </button>
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
             );
-          } else {
-            return (
-              <span
-                key={idx}
-                className="text-red-500 underline decoration-wavy cursor-help inline mx-0.5"
-                title={`Seção não encontrada: "${seg.content}"`}
-              >
-                {seg.content}
-              </span>
-            );
-          }
-        }
-      })}
+          },
+        }}
+      >
+        {renderedContent}
+      </ReactMarkdown>
     </div>
   );
 }
