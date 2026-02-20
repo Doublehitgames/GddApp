@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore, LevelConfig } from "@/store/projectStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
@@ -16,6 +16,46 @@ export default function SettingsClient({ projectId }: Props) {
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set()); // Todos colapsados por padrão
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Função para exportar configurações
+  const handleExport = () => {
+    const dataStr = JSON.stringify(settings, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mindmap-config-${project?.title || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Função para importar configurações
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedSettings = JSON.parse(e.target?.result as string);
+        setSettings(importedSettings);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } catch (error) {
+        alert('Erro ao importar configurações. Verifique se o arquivo é válido.');
+        console.error('Import error:', error);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Limpar o input para permitir reimportar o mesmo arquivo
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   // Sincronizar com mudanças do projeto (quando recarrega a página)
   useEffect(() => {
@@ -244,9 +284,21 @@ export default function SettingsClient({ projectId }: Props) {
           <p className="text-gray-400">{project.title}</p>
         </div>
         {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ Configurações salvas com sucesso!</div>}
+        
+        {/* Input file oculto para importar */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImport}
+          className="hidden"
+        />
+        
         <div className="flex gap-3 mb-8">
           <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 Salvar</button>
           <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 Resetar</button>
+          <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold">📥 Exportar</button>
+          <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 Importar</button>
         </div>
         <div className="space-y-8">
           <div className="bg-gray-800 rounded-lg p-6">
