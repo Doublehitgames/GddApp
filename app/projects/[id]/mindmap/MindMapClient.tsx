@@ -1214,17 +1214,36 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
   // Efeito para destacar nós no caminho (sem glow - destaque sutil) e referências
   useEffect(() => {
+    const hasActiveSearch = searchTerm.trim().length > 0;
+    
     if (!selectedNodeId) {
-      // Sem seleção: remover destaque de todos os nós e edges de referência
-      setNodes((nds) => {
-        const hasInPath = nds.some(n => n.data.isInPath || n.data.isFaded || n.data.isReference);
-        if (!hasInPath) return nds; // Evitar update desnecessário
-        
-        return nds.map((node) => ({
-          ...node,
-          data: { ...node.data, isInPath: false, isFaded: false, isReference: false },
-        }));
-      });
+      // Sem seleção: verificar se há busca ativa
+      if (hasActiveSearch) {
+        // Aplicar fade baseado em busca
+        setNodes((nds) =>
+          nds.map((node) => ({
+            ...node,
+            data: { 
+              ...node.data, 
+              isInPath: false, 
+              isFaded: !searchResults.has(node.id) && node.id !== 'project-center',
+              isReference: false,
+              isSearchResult: searchResults.has(node.id),
+            },
+          }))
+        );
+      } else {
+        // Sem busca: remover destaque de todos os nós
+        setNodes((nds) => {
+          const hasInPath = nds.some(n => n.data.isInPath || n.data.isFaded || n.data.isReference);
+          if (!hasInPath) return nds; // Evitar update desnecessário
+          
+          return nds.map((node) => ({
+            ...node,
+            data: { ...node.data, isInPath: false, isFaded: false, isReference: false, isSearchResult: false },
+          }));
+        });
+      }
       
       // Remover edges de referência (só se houver alguma)
       setEdges((eds) => {
