@@ -1030,7 +1030,7 @@ function SectionDetailContent({
       {/* Modal de Preview da IA */}
       {showPreview && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col text-white">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4">
               <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -1045,12 +1045,12 @@ function SectionDetailContent({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               {improveError && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-lg text-amber-800 text-sm">
+                <div className="mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-amber-200 text-sm">
                   {improveError}
                 </div>
               )}
 
-              <div className="prose prose-sm prose-slate max-w-none bg-gray-50 rounded-lg p-6 border border-gray-200 text-gray-900">
+              <div className="prose prose-sm prose-invert max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
                 <MarkdownWithReferences 
                   content={previewContent} 
                   projectId={projectId} 
@@ -1060,16 +1060,16 @@ function SectionDetailContent({
             </div>
 
             {/* Footer com ações */}
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
+            <div className="border-t border-gray-700 p-6 bg-gray-900/90">
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-200 mb-2">
                   📝 Solicitar modificações (opcional):
                 </label>
                 <textarea
                   value={modificationRequest}
                   onChange={(e) => setModificationRequest(e.target.value)}
                   placeholder="Ex: Adicione mais exemplos práticos, reduza o texto, foque mais em mecânicas..."
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
+                  className="w-full bg-gray-800 border border-gray-600 text-white placeholder:text-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
                   rows={2}
                 />
               </div>
@@ -1078,7 +1078,7 @@ function SectionDetailContent({
                 <button
                   onClick={handleCancelImprovement}
                   disabled={isImproving}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  className="px-6 py-3 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
                   ✕ Cancelar
                 </button>
@@ -1118,11 +1118,11 @@ function SectionDetailContent({
       {/* Modal: Mover Seção */}
       {showMoveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+          <div className="bg-gray-900 border border-gray-700 text-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-white">
                   ↗️ Mover Seção
                 </h2>
                 <button
@@ -1130,12 +1130,12 @@ function SectionDetailContent({
                     setShowMoveModal(false);
                     setSelectedNewParent(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
                 >
                   ✕
                 </button>
               </div>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-gray-300 mt-2">
                 Mover "<strong>{section?.title}</strong>" para outro local
               </p>
             </div>
@@ -1147,8 +1147,8 @@ function SectionDetailContent({
                 <label
                   className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                     selectedNewParent === 'root'
-                      ? 'bg-blue-100 border-2 border-blue-500'
-                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                      ? 'bg-blue-900/40 border-2 border-blue-500'
+                      : 'bg-gray-800 hover:bg-gray-700 border-2 border-transparent'
                   }`}
                 >
                   <input
@@ -1160,8 +1160,8 @@ function SectionDetailContent({
                     className="w-4 h-4"
                   />
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-900">📁 Raiz do Projeto</div>
-                    <div className="text-xs text-gray-500">Tornar seção principal (sem pai)</div>
+                    <div className="font-semibold text-gray-100">📁 Raiz do Projeto</div>
+                    <div className="text-xs text-gray-400">Tornar seção principal (sem pai)</div>
                   </div>
                 </label>
 
@@ -1183,13 +1183,13 @@ function SectionDetailContent({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3">
+            <div className="px-6 py-4 border-t border-gray-700 flex gap-3">
               <button
                 onClick={() => {
                   setShowMoveModal(false);
                   setSelectedNewParent(null);
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors"
               >
                 Cancelar
               </button>
@@ -1248,8 +1248,8 @@ function SectionTreeItem({
           isDisabled
             ? 'opacity-40 cursor-not-allowed'
             : selectedParent === section.id
-              ? 'bg-blue-100 border-2 border-blue-500 cursor-pointer'
-              : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent cursor-pointer'
+              ? 'bg-blue-900/40 border-2 border-blue-500 cursor-pointer'
+              : 'bg-gray-800 hover:bg-gray-700 border-2 border-transparent cursor-pointer'
         }`}
         style={{ marginLeft: `${indent}px` }}
       >
@@ -1259,7 +1259,7 @@ function SectionTreeItem({
               e.preventDefault();
               setIsExpanded(!isExpanded);
             }}
-            className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+            className="text-gray-300 hover:text-white font-bold w-4 text-sm"
           >
             {isExpanded ? '−' : '+'}
           </button>
@@ -1276,13 +1276,13 @@ function SectionTreeItem({
           className="w-4 h-4"
         />
         <div className="flex-1">
-          <div className={`text-sm ${isDisabled ? 'text-gray-400' : 'text-gray-900 font-medium'}`}>
+          <div className={`text-sm ${isDisabled ? 'text-gray-500' : 'text-gray-100 font-medium'}`}>
             {section.title}
             {isDisabled && section.id === currentSectionId && (
-              <span className="ml-2 text-xs text-amber-600">(seção atual)</span>
+              <span className="ml-2 text-xs text-amber-400">(seção atual)</span>
             )}
             {isDisabled && section.id !== currentSectionId && (
-              <span className="ml-2 text-xs text-amber-600">(descendente)</span>
+              <span className="ml-2 text-xs text-amber-400">(descendente)</span>
             )}
           </div>
         </div>
