@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
 import { AIMessage } from '@/types/ai';
+import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 
 interface ImproveContentRequest {
   currentContent: string;
@@ -27,11 +28,20 @@ export async function POST(req: NextRequest) {
       additionalRequest
     } = await req.json() as ImproveContentRequest;
 
+    // Obter configuração de IA do usuário via headers
+    const aiConfig = getAIConfigFromRequest(req);
+    if (aiConfig instanceof NextResponse) {
+      return aiConfig; // Retornar erro se não houver configuração
+    }
+
     // Extrai imagens, links e elementos especiais do conteúdo atual
     const preservedElements = extractPreservedElements(currentContent);
 
     // Cria client com modelo específico (padrão: 8B para economizar tokens)
-    const client = createAIClient(model ? { model } : { model: 'llama-3.1-8b-instant' });
+    const client = createAIClient({
+      ...aiConfig,
+      model: model || aiConfig.model || 'llama-3.1-8b-instant',
+    });
 
     // Monta contexto rico para a IA
     const contextInfo = buildContextInfo(sectionTitle, sectionContext, projectTitle, preservedElements);

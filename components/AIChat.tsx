@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { AIMessage } from "@/types/ai";
 import { useProjectStore } from "@/store/projectStore";
+import { useAIConfig } from "@/hooks/useAIConfig";
+import AIConfigWarning from "@/components/AIConfigWarning";
 
 interface AIChatProps {
   projectContext?: {
@@ -25,6 +27,7 @@ interface ChatMessage extends AIMessage {
 }
 
 export default function AIChat({ projectContext, onClose, isOpen = true }: AIChatProps) {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
   const editSection = useProjectStore((state) => state.editSection);
@@ -166,7 +169,10 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
       
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           messages: recentMessages,
           projectContext,
@@ -457,6 +463,34 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
   };
 
   if (!isOpen) return null;
+
+  // Verificar se tem configuração de IA válida
+  if (!hasValidConfig) {
+    return (
+      <div className="flex flex-col h-full bg-white border-l border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🤖</span>
+            <div>
+              <h3 className="font-semibold text-gray-900">Assistente AI</h3>
+              <p className="text-xs text-gray-500">Configuração necessária</p>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <AIConfigWarning />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white border-l border-gray-200">

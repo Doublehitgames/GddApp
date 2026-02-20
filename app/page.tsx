@@ -17,7 +17,14 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-start bg-gray-900 text-white p-10">
-      <h1 className="text-4xl font-bold mb-6">GDD App</h1>
+      <div className="w-full max-w-2xl flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold">GDD App</h1>
+        <Link href="/settings/ai">
+          <button className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-2 text-sm">
+            ⚙️ Configurações de IA
+          </button>
+        </Link>
+      </div>
 
       <div className="flex flex-col gap-4 mb-10">
         <Link href="/ai-create-simple">

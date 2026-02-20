@@ -9,6 +9,7 @@ import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { useAIConfig } from "@/hooks/useAIConfig";
 import {
   DndContext,
   closestCenter,
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export default function SectionDetailClient({ projectId, sectionId }: Props) {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const removeSection = useProjectStore((s) => s.removeSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
@@ -125,7 +127,10 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
       const response = await fetch('/api/ai/improve-content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAIHeaders(),
+        },
         body: JSON.stringify(payload)
       });
 
@@ -750,9 +755,9 @@ function SectionDetailContent({
           <>
             <button
               onClick={handleImproveWithAI}
-              disabled={isImproving}
+              disabled={isImproving || !hasValidConfig}
               className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Melhorar conteúdo com IA preservando imagens e links"
+              title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
             >
               {isImproving ? "⏳" : "✨"}
             </button>

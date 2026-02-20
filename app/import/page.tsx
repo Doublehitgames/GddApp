@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/store/projectStore';
+import { useAIConfig } from '@/hooks/useAIConfig';
+import AIConfigWarning from '@/components/AIConfigWarning';
 
 interface ImportedSection {
   title: string;
@@ -17,6 +19,7 @@ interface ImportedProject {
 }
 
 export default function ImportProjectPage() {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
@@ -83,6 +86,7 @@ export default function ImportProjectPage() {
 
       const response = await fetch('/api/ai/import-project', {
         method: 'POST',
+        headers: getAIHeaders(),
         body: formData,
       });
 
@@ -194,6 +198,14 @@ export default function ImportProjectPage() {
             ✨ Importar Projeto com IA
           </h1>
           <p className="text-gray-600">
+            Envie seu documento e deixe a IA estruturar automaticamente em um GDD completo
+          </p>
+        </div>
+
+        {/* Verificar configuração de IA */}
+        {!hasValidConfig && (
+          <AIConfigWarning className="mb-8" />
+        )}
             Faça upload de um documento e deixe a IA estruturar automaticamente seu GDD
           </p>
         </div>

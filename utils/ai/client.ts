@@ -19,31 +19,13 @@ export class AIClient {
   private model: string;
 
   constructor(config?: AIClientConfig) {
-    // Priority: config > env variables > default (groq)
-    // Use NEXT_PUBLIC_ for client-side, without prefix for server-side
-    this.provider = config?.provider || 
-                    (process.env.AI_PROVIDER || process.env.NEXT_PUBLIC_AI_PROVIDER) as AIProvider || 
-                    'groq';
-    
-    this.apiKey = config?.apiKey || this.getApiKeyFromEnv();
-    this.model = config?.model || this.getDefaultModel();
-
-    if (!this.apiKey) {
-      throw new Error(`API key not found for provider: ${this.provider}`);
+    if (!config?.apiKey) {
+      throw new Error('API key is required. Please configure your AI settings.');
     }
-  }
 
-  private getApiKeyFromEnv(): string {
-    switch (this.provider) {
-      case 'groq':
-        return process.env.GROQ_API_KEY || '';
-      case 'openai':
-        return process.env.OPENAI_API_KEY || '';
-      case 'claude':
-        return process.env.ANTHROPIC_API_KEY || '';
-      default:
-        return '';
-    }
+    this.provider = config.provider || 'groq';
+    this.apiKey = config.apiKey;
+    this.model = config.model || this.getDefaultModel();
   }
 
   private getDefaultModel(): string {

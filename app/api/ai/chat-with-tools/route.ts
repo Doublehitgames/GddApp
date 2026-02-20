@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
 import { AI_TOOLS, TOOLS_SYSTEM_PROMPT } from '@/utils/ai/tools';
 import { AIMessage } from '@/types/ai';
+import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 
 interface ProjectContext {
   projectId: string;
@@ -23,8 +24,17 @@ export async function POST(req: NextRequest) {
       model?: string;
     };
 
+    // Obter configuração de IA do usuário via headers
+    const aiConfig = getAIConfigFromRequest(req);
+    if (aiConfig instanceof NextResponse) {
+      return aiConfig; // Retornar erro se não houver configuração
+    }
+
     // Cria client com modelo específico se fornecido
-    const client = createAIClient(model ? { model } : undefined);
+    const client = createAIClient({
+      ...aiConfig,
+      model: model || aiConfig.model,
+    });
     
     // Adiciona contexto do projeto na mensagem do sistema
     const contextInfo = projectContext ? `

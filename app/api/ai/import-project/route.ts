@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mammoth from 'mammoth';
 import { createAIClient } from '@/utils/ai/client';
+import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 
 // Interface para a estrutura de seção retornada pela IA
 interface ImportedSection {
@@ -204,8 +205,17 @@ IMPORTANTE: Retorne APENAS o JSON, sem explicações adicionais. COPIE todo o co
       }
     }
 
+    // Obter configuração de IA do usuário via headers
+    const aiConfig = getAIConfigFromRequest(req);
+    if (aiConfig instanceof NextResponse) {
+      return aiConfig; // Retornar erro se não houver configuração
+    }
+
     // Chamar API da IA usando nosso AIClient
-    const aiClient = createAIClient({ model: 'llama-3.3-70b-versatile' });
+    const aiClient = createAIClient({ 
+      ...aiConfig,
+      model: 'llama-3.3-70b-versatile' 
+    });
     const aiResponse = await aiClient.chat([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }

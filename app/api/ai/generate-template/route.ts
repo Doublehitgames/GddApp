@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
 import { generateTemplatePrompt, SYSTEM_PROMPT } from '@/utils/ai/prompts';
 import { GDDTemplateRequest, GDDTemplate } from '@/types/ai';
+import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const aiClient = createAIClient(body.model ? { model: body.model } : undefined);
+    // Obter configuração de IA do usuário via headers
+    const aiConfig = getAIConfigFromRequest(request);
+    if (aiConfig instanceof NextResponse) {
+      return aiConfig; // Retornar erro se não houver configuração
+    }
+
+    const aiClient = createAIClient({
+      ...aiConfig,
+      model: body.model || aiConfig.model,
+    });
     
     const response = await aiClient.chat([
       { role: 'system', content: SYSTEM_PROMPT },

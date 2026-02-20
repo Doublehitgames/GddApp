@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
+import { useAIConfig } from "@/hooks/useAIConfig";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function SectionEditClient({ projectId, sectionId }: Props) {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const editSection = useProjectStore((s) => s.editSection);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
@@ -75,7 +77,10 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
 
       const response = await fetch('/api/ai/improve-content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           currentContent: content,
           sectionTitle: title,
@@ -215,15 +220,22 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
         <div className="border-t border-gray-700 pt-4">
           <button
             onClick={handleImproveWithAI}
-            disabled={isImproving || !title.trim()}
+            disabled={isImproving || !title.trim() || !hasValidConfig}
             className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-lg">{isImproving ? "⏳" : "✨"}</span>
             <span>{isImproving ? "Melhorando..." : "Melhorar com IA"}</span>
           </button>
-          <p className="text-sm text-gray-400 mt-2">
-            💡 A IA vai melhorar o conteúdo preservando <strong>imagens, links e referências</strong> existentes.
-          </p>
+          {!hasValidConfig && (
+            <p className="text-sm text-yellow-400 mt-2">
+              ⚠️ Configure sua API key em <a href="/settings/ai" className="underline">Configurações de IA</a> para usar este recurso
+            </p>
+          )}
+          {hasValidConfig && (
+            <p className="text-sm text-gray-400 mt-2">
+              💡 A IA vai melhorar o conteúdo preservando <strong>imagens, links e referências</strong> existentes.
+            </p>
+          )}
           {improveError && (
             <div className="mt-2 p-3 bg-amber-900/50 border border-amber-600 rounded text-amber-200 text-sm">
               {improveError}
