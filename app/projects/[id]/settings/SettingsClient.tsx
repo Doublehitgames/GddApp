@@ -28,9 +28,54 @@ export default function SettingsClient({ projectId }: Props) {
   useEffect(() => {
     if (project && (!project.mindMapSettings?.levels || project.mindMapSettings.levels.length === 0)) {
       const defaultLevels: LevelConfig[] = [
-        { level: 0, name: "Seções (Nível 0)", node: { color: MINDMAP_CONFIG.sections.node.color, textColor: MINDMAP_CONFIG.sections.node.textColor }, edge: { strokeWidth: MINDMAP_CONFIG.sections.edge.strokeWidth, color: MINDMAP_CONFIG.sections.edge.color, animated: MINDMAP_CONFIG.sections.edge.animated, dashed: MINDMAP_CONFIG.sections.edge.dashed, dashPattern: MINDMAP_CONFIG.sections.edge.dashPattern } },
-        { level: 1, name: "Subseções (Nível 1)", node: { color: MINDMAP_CONFIG.subsections.node.color, textColor: MINDMAP_CONFIG.subsections.node.textColor }, edge: { strokeWidth: MINDMAP_CONFIG.subsections.edge.strokeWidth, color: MINDMAP_CONFIG.subsections.edge.color, animated: MINDMAP_CONFIG.subsections.edge.animated, dashed: MINDMAP_CONFIG.subsections.edge.dashed, dashPattern: MINDMAP_CONFIG.subsections.edge.dashPattern } },
-        { level: 2, name: "Sub-subseções (Nível 2+)", node: { color: MINDMAP_CONFIG.deepSubsections.node.color, textColor: MINDMAP_CONFIG.deepSubsections.node.textColor }, edge: { strokeWidth: MINDMAP_CONFIG.deepSubsections.edge.strokeWidth, color: MINDMAP_CONFIG.deepSubsections.edge.color, animated: MINDMAP_CONFIG.deepSubsections.edge.animated, dashed: MINDMAP_CONFIG.deepSubsections.edge.dashed, dashPattern: MINDMAP_CONFIG.deepSubsections.edge.dashPattern } }
+        { 
+          level: 0, 
+          name: "Seções (Nível 0)", 
+          node: { 
+            color: MINDMAP_CONFIG.sections.node.color, 
+            textColor: MINDMAP_CONFIG.sections.node.textColor,
+            hasChildrenBorder: MINDMAP_CONFIG.sections.node.hasChildrenBorder
+          }, 
+          edge: { 
+            strokeWidth: MINDMAP_CONFIG.sections.edge.strokeWidth, 
+            color: MINDMAP_CONFIG.sections.edge.color, 
+            animated: MINDMAP_CONFIG.sections.edge.animated, 
+            dashed: MINDMAP_CONFIG.sections.edge.dashed, 
+            dashPattern: MINDMAP_CONFIG.sections.edge.dashPattern 
+          } 
+        },
+        { 
+          level: 1, 
+          name: "Subseções (Nível 1)", 
+          node: { 
+            color: MINDMAP_CONFIG.subsections.node.color, 
+            textColor: MINDMAP_CONFIG.subsections.node.textColor,
+            hasChildrenBorder: MINDMAP_CONFIG.subsections.node.hasChildrenBorder
+          }, 
+          edge: { 
+            strokeWidth: MINDMAP_CONFIG.subsections.edge.strokeWidth, 
+            color: MINDMAP_CONFIG.subsections.edge.color, 
+            animated: MINDMAP_CONFIG.subsections.edge.animated, 
+            dashed: MINDMAP_CONFIG.subsections.edge.dashed, 
+            dashPattern: MINDMAP_CONFIG.subsections.edge.dashPattern 
+          } 
+        },
+        { 
+          level: 2, 
+          name: "Sub-subseções (Nível 2+)", 
+          node: { 
+            color: MINDMAP_CONFIG.deepSubsections.node.color, 
+            textColor: MINDMAP_CONFIG.deepSubsections.node.textColor,
+            hasChildrenBorder: MINDMAP_CONFIG.deepSubsections.node.hasChildrenBorder
+          }, 
+          edge: { 
+            strokeWidth: MINDMAP_CONFIG.deepSubsections.edge.strokeWidth, 
+            color: MINDMAP_CONFIG.deepSubsections.edge.color, 
+            animated: MINDMAP_CONFIG.deepSubsections.edge.animated, 
+            dashed: MINDMAP_CONFIG.deepSubsections.edge.dashed, 
+            dashPattern: MINDMAP_CONFIG.deepSubsections.edge.dashPattern 
+          } 
+        }
       ];
       setSettings((prev) => ({ ...prev, levels: defaultLevels }));
     }
@@ -39,7 +84,28 @@ export default function SettingsClient({ projectId }: Props) {
   const handleAddLevel = () => {
     const currentLevels = settings.levels || [];
     const nextLevel = currentLevels.length;
-    const newLevel: LevelConfig = { level: nextLevel, name: `Nível ${nextLevel}`, node: { color: "#a855f7", textColor: "#ffffff" }, edge: { strokeWidth: 0.5, color: "#94a3b8", animated: false, dashed: false, dashPattern: "" } };
+    const newLevel: LevelConfig = { 
+      level: nextLevel, 
+      name: `Nível ${nextLevel}`, 
+      node: { 
+        color: "#a855f7", 
+        textColor: "#ffffff",
+        hasChildrenBorder: {
+          enabled: false,
+          width: 2,
+          color: "#fbbf24",
+          dashed: false,
+          dashPattern: "5 5"
+        }
+      }, 
+      edge: { 
+        strokeWidth: 0.5, 
+        color: "#94a3b8", 
+        animated: false, 
+        dashed: false, 
+        dashPattern: "" 
+      } 
+    };
     setSettings({ ...settings, levels: [...currentLevels, newLevel] });
   };
 
@@ -62,7 +128,38 @@ export default function SettingsClient({ projectId }: Props) {
       obj[keys[keys.length - 1]] = value;
       return clone;
     });
-    setSettings({ ...settings, levels: updated });
+    
+    // Atualizar settings.levels
+    const newSettings = { ...settings, levels: updated };
+    
+    // TAMBÉM atualizar formato flat (sections, subsections, deepSubsections) para compatibilidade
+    updated.forEach((lvl) => {
+      let targetKey: string;
+      if (lvl.level === 0) {
+        targetKey = 'sections';
+      } else if (lvl.level === 1) {
+        targetKey = 'subsections';
+      } else {
+        targetKey = 'deepSubsections';
+      }
+      
+      // Garantir que a estrutura existe
+      if (!newSettings[targetKey]) {
+        newSettings[targetKey] = { node: {}, edge: {} };
+      }
+      if (!newSettings[targetKey].node) newSettings[targetKey].node = {};
+      if (!newSettings[targetKey].edge) newSettings[targetKey].edge = {};
+      
+      // Copiar valores do level para o formato flat
+      if (lvl.node) {
+        Object.assign(newSettings[targetKey].node, lvl.node);
+      }
+      if (lvl.edge) {
+        Object.assign(newSettings[targetKey].edge, lvl.edge);
+      }
+    });
+    
+    setSettings(newSettings);
   };
 
   const toggleLevelExpanded = (level: number) => {
@@ -98,6 +195,38 @@ export default function SettingsClient({ projectId }: Props) {
     for (let i = 0; i < keys.length - 1; i++) { obj[keys[i]] = obj[keys[i]] || {}; obj = obj[keys[i]]; }
     obj[keys[keys.length - 1]] = value;
     setSettings(newSettings);
+  };
+
+  // Helper para atualizar highlight em project E sections ao mesmo tempo
+  const setHighlightValue = (property: string, value: any) => {
+    setSettings((prev) => {
+      const newSettings = { ...prev };
+      
+      // Garantir que as estruturas existem
+      if (!newSettings.project) newSettings.project = {};
+      if (!newSettings.project.edge) newSettings.project.edge = {};
+      if (!newSettings.project.edge.highlighted) newSettings.project.edge.highlighted = {};
+      
+      if (!newSettings.sections) newSettings.sections = {};
+      if (!newSettings.sections.edge) newSettings.sections.edge = {};
+      if (!newSettings.sections.edge.highlighted) newSettings.sections.edge.highlighted = {};
+      
+      if (!newSettings.subsections) newSettings.subsections = {};
+      if (!newSettings.subsections.edge) newSettings.subsections.edge = {};
+      if (!newSettings.subsections.edge.highlighted) newSettings.subsections.edge.highlighted = {};
+      
+      if (!newSettings.deepSubsections) newSettings.deepSubsections = {};
+      if (!newSettings.deepSubsections.edge) newSettings.deepSubsections.edge = {};
+      if (!newSettings.deepSubsections.edge.highlighted) newSettings.deepSubsections.edge.highlighted = {};
+      
+      // Atualizar todas as configurações
+      newSettings.project.edge.highlighted[property] = value;
+      newSettings.sections.edge.highlighted[property] = value;
+      newSettings.subsections.edge.highlighted[property] = value;
+      newSettings.deepSubsections.edge.highlighted[property] = value;
+      
+      return newSettings;
+    });
   };
 
   const handleSave = () => { updateProjectSettings(projectId, settings); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); };
@@ -267,6 +396,66 @@ export default function SettingsClient({ projectId }: Props) {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Borda para Nós com Filhos */}
+                  <div className="mt-4 pt-4 border-t border-gray-600">
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="font-semibold text-gray-300">🔲 Borda para Nós com Filhos</h3>
+                      <label className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          checked={lvl.node.hasChildrenBorder?.enabled || false} 
+                          onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", e.target.checked)} 
+                          className="w-5 h-5" 
+                        />
+                        <span className="text-sm text-gray-400">Ativar</span>
+                      </label>
+                    </div>
+                    
+                    {(lvl.node.hasChildrenBorder?.enabled) && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="color" 
+                              value={lvl.node.hasChildrenBorder?.color || "#fbbf24"} 
+                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.color", e.target.value)} 
+                              className="w-12 h-10 rounded" 
+                            />
+                            <input 
+                              type="text" 
+                              value={lvl.node.hasChildrenBorder?.color || "#fbbf24"} 
+                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.color", e.target.value)} 
+                              className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" 
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-1">Largura Base</label>
+                          <input 
+                            type="number" 
+                            step="0.5" 
+                            value={lvl.node.hasChildrenBorder?.width || 2} 
+                            onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.width", Number(e.target.value))} 
+                            className="w-full bg-gray-600 rounded px-2 py-1" 
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Proporcional ao tamanho</p>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="flex items-center gap-2">
+                            <input 
+                              type="checkbox" 
+                              checked={lvl.node.hasChildrenBorder?.dashed || false} 
+                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", e.target.checked)} 
+                              className="w-5 h-5" 
+                            />
+                            <span className="text-sm text-gray-400">Tracejada</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                       </div>
                     )}
                   </div>
@@ -276,19 +465,48 @@ export default function SettingsClient({ projectId }: Props) {
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">✨ Highlight (Seleção)</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div><label className="block text-sm text-gray-400 mb-2">Cor</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setValue("sections.edge.highlighted.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setValue("sections.edge.highlighted.color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Espessura</label><input type="number" step="0.1" value={getValue("sections.edge.highlighted.strokeWidth")} onChange={(e) => setValue("sections.edge.highlighted.strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Animado</label><input type="checkbox" checked={getValue("sections.edge.highlighted.animated")} onChange={(e) => setValue("sections.edge.highlighted.animated", e.target.checked)} className="w-6 h-6 mt-2" /></div>
+            <div className="grid grid-cols-4 gap-4 mb-3">
+              <div><label className="block text-sm text-gray-400 mb-2">Cor</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Espessura Base</label>
+                <input type="number" step="0.1" value={getValue("sections.edge.highlighted.strokeWidth")} onChange={(e) => setHighlightValue("strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Ajustado pelo zoom</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Padrão de Tracejado Base</label>
+                <input type="number" step="0.5" value={getValue("sections.edge.highlighted.dashPattern")} onChange={(e) => setHighlightValue("dashPattern", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Ex: 5 = traços de 5px</p>
+              </div>
+              <div><label className="block text-sm text-gray-400 mb-2">Animado</label><input type="checkbox" checked={getValue("sections.edge.highlighted.animated")} onChange={(e) => setHighlightValue("animated", e.target.checked)} className="w-6 h-6 mt-2" /></div>
             </div>
+            <p className="text-xs text-gray-500">A espessura e tracejado das linhas destacadas são proporcionais ao zoom para manter visual constante.</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">🔍 Zoom</h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div><label className="block text-sm text-gray-400 mb-2">Mínimo</label><input type="number" step="0.1" value={getValue("zoom.minZoom")} onChange={(e) => setValue("zoom.minZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Inicial</label><input type="number" step="0.1" value={getValue("zoom.fitViewMaxZoom")} onChange={(e) => setValue("zoom.fitViewMaxZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Alvo (px)</label><input type="number" value={getValue("zoom.targetApparentSize")} onChange={(e) => setValue("zoom.targetApparentSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+            <div className="grid grid-cols-3 gap-4 mb-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Zoom Mínimo</label>
+                <input type="number" step="0.01" min="0.01" max="1" value={getValue("zoom.minZoom")} onChange={(e) => setValue("zoom.minZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Ex: 0.01 = 1%</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">FitView Max Zoom</label>
+                <input type="number" step="0.5" min="0.5" max="10" value={getValue("zoom.fitViewMaxZoom")} onChange={(e) => setValue("zoom.fitViewMaxZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Limite ao carregar</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">FitView Margem</label>
+                <input type="number" step="0.05" min="0" max="0.5" value={getValue("zoom.fitViewPadding") || 0.2} onChange={(e) => setValue("zoom.fitViewPadding", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Ex: 0.2 = 20%</p>
+              </div>
             </div>
+            <p className="text-xs text-gray-500 mb-4">
+              <strong>Zoom Mínimo:</strong> Menor zoom possível (quanto menor, mais você pode afastar).
+              <br />
+              <strong>FitView Max Zoom:</strong> Limite de zoom ao carregar - valores altos (5+) permitem zoom out total para ver tudo.
+              <br />
+              <strong>FitView Margem:</strong> Espaçamento ao redor do mapa ao carregar.
+            </p>
             <div className="border-t border-gray-700 pt-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-300">🎯 Zoom ao Clicar</h3>
               <div className="grid grid-cols-1 gap-4">
@@ -296,6 +514,243 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
               <p className="text-xs text-gray-500 mt-2">Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas</p>
             </div>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">🎬 Animação das Conexões</h2>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Velocidade (segundos)</label>
+                <input type="number" step="0.5" min="0.5" max="10" value={getValue("animation.speed") || 2} onChange={(e) => setValue("animation.speed", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Menor = mais rápido</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Distância do Movimento (px)</label>
+                <input type="number" step="10" min="50" max="500" value={getValue("animation.distance") || 500} onChange={(e) => setValue("animation.distance", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+                <p className="text-xs text-gray-500 mt-1">Quanto os traços se movem</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Controla o movimento dos traços animados em todas as conexões. Teste valores diferentes para encontrar a melhor visibilidade!</p>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">🌫️ Efeito de Esmaecer</h2>
+            <p className="text-sm text-gray-400 mb-4">Quando um nó é selecionado, os nós que NÃO estão no caminho ficam esmaecidos para destacar a hierarquia.</p>
+            <div className="mb-3">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={getValue("fadeEffect.enabled") ?? true} 
+                  onChange={(e) => setValue("fadeEffect.enabled", e.target.checked)} 
+                  className="mr-2" 
+                />
+                <span className="text-sm">Ativar efeito de esmaecer</span>
+              </label>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Opacidade</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0" 
+                  max="1" 
+                  value={getValue("fadeEffect.opacity") ?? 0.3} 
+                  onChange={(e) => setValue("fadeEffect.opacity", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2" 
+                  disabled={!getValue("fadeEffect.enabled")}
+                />
+                <p className="text-xs text-gray-500 mt-1">0 = invisível, 1 = normal</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Grayscale (%)</label>
+                <input 
+                  type="number" 
+                  step="5" 
+                  min="0" 
+                  max="100" 
+                  value={getValue("fadeEffect.grayscale") ?? 50} 
+                  onChange={(e) => setValue("fadeEffect.grayscale", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2"
+                  disabled={!getValue("fadeEffect.enabled")}
+                />
+                <p className="text-xs text-gray-500 mt-1">0 = colorido, 100 = cinza</p>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Blur (px)</label>
+                <input 
+                  type="number" 
+                  step="0.5" 
+                  min="0" 
+                  max="10" 
+                  value={getValue("fadeEffect.blur") ?? 1} 
+                  onChange={(e) => setValue("fadeEffect.blur", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2"
+                  disabled={!getValue("fadeEffect.enabled")}
+                />
+                <p className="text-xs text-gray-500 mt-1">0 = nítido, 10 = muito borrado</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Combine opacidade, grayscale e blur para encontrar o efeito ideal. Recomendado: opacity 0.3, grayscale 50, blur 1</p>
+          </div>
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-4">🔗 Referências Cruzadas</h2>
+            <p className="text-sm text-gray-400 mb-4">Ao selecionar um nó, mostra conexões azuis para seções referenciadas no conteúdo usando a sintaxe $[Nome da Seção]</p>
+            <div className="mb-3">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={getValue("references.enabled") ?? true} 
+                  onChange={(e) => setValue("references.enabled", e.target.checked)} 
+                  className="mr-2" 
+                />
+                <span className="text-sm">Mostrar referências cruzadas</span>
+              </label>
+            </div>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">Estilo da Conexão</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Cor da Linha</label>
+                <input 
+                  type="color" 
+                  value={getValue("references.edgeColor") || '#3b82f6'} 
+                  onChange={(e) => setValue("references.edgeColor", e.target.value)} 
+                  className="w-full h-10 bg-gray-700 rounded cursor-pointer"
+                  disabled={!getValue("references.enabled")}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Espessura (px)</label>
+                <input 
+                  type="number" 
+                  step="0.5" 
+                  min="0.5" 
+                  max="10" 
+                  value={getValue("references.edgeWidth") ?? 2} 
+                  onChange={(e) => setValue("references.edgeWidth", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2"
+                  disabled={!getValue("references.enabled")}
+                />
+              </div>
+              <div>
+                <label className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={getValue("references.edgeAnimated") || false} 
+                    onChange={(e) => setValue("references.edgeAnimated", e.target.checked)} 
+                    className="mr-2"
+                    disabled={!getValue("references.enabled")}
+                  />
+                  <span className="text-sm">Animar linha (movimento)</span>
+                </label>
+              </div>
+              <div>
+                <label className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={getValue("references.edgeDashed") !== false} 
+                    onChange={(e) => setValue("references.edgeDashed", e.target.checked)} 
+                    className="mr-2"
+                    disabled={!getValue("references.enabled")}
+                  />
+                  <span className="text-sm">Linha tracejada</span>
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Padrão do tracejado</label>
+                <input 
+                  type="number" 
+                  step="1" 
+                  min="1" 
+                  max="20" 
+                  value={getValue("references.edgeDashPattern") ?? 5} 
+                  onChange={(e) => setValue("references.edgeDashPattern", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2"
+                  disabled={!getValue("references.enabled") || (getValue("references.edgeDashed") === false && !getValue("references.edgeAnimated"))}
+                />
+                <p className="text-xs text-gray-500 mt-1">Usado para traço e animação</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">💡 A animação usa as mesmas configurações globais (velocidade/distância) de outras conexões animadas</p>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">Ícone na Conexão</h3>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={getValue("references.showIcon") ?? true} 
+                    onChange={(e) => setValue("references.showIcon", e.target.checked)} 
+                    className="mr-2"
+                    disabled={!getValue("references.enabled")}
+                  />
+                  <span className="text-sm">Mostrar ícone na linha</span>
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Ícone/Emoji</label>
+                <input 
+                  type="text" 
+                  maxLength={2}
+                  value={getValue("references.icon") || '🔗'} 
+                  onChange={(e) => setValue("references.icon", e.target.value)} 
+                  className="w-full bg-gray-700 rounded px-3 py-2 text-center text-xl"
+                  disabled={!getValue("references.enabled") || !getValue("references.showIcon")}
+                  placeholder="🔗"
+                />
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">Tamanho do Ícone</label>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="range" 
+                  min="16" 
+                  max="512" 
+                  value={getValue("references.iconSize") ?? 32} 
+                  onChange={(e) => setValue("references.iconSize", Number(e.target.value))} 
+                  className="flex-1"
+                  disabled={!getValue("references.enabled") || !getValue("references.showIcon")}
+                />
+                <span className="text-white w-16 text-center">{getValue("references.iconSize") ?? 32}px</span>
+              </div>
+            </div>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">Destaque dos Nós Referenciados</h3>
+            <div className="mb-3">
+              <label className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={getValue("references.nodeHighlight.enabled") ?? true} 
+                  onChange={(e) => setValue("references.nodeHighlight.enabled", e.target.checked)} 
+                  className="mr-2"
+                  disabled={!getValue("references.enabled")}
+                />
+                <span className="text-sm">Destacar nós referenciados</span>
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Cor da Borda</label>
+                <input 
+                  type="color" 
+                  value={getValue("references.nodeHighlight.borderColor") || '#3b82f6'} 
+                  onChange={(e) => setValue("references.nodeHighlight.borderColor", e.target.value)} 
+                  className="w-full h-10 bg-gray-700 rounded cursor-pointer"
+                  disabled={!getValue("references.enabled") || !getValue("references.nodeHighlight.enabled")}
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Espessura da Borda</label>
+                <input 
+                  type="number" 
+                  step="0.5" 
+                  min="1" 
+                  max="10" 
+                  value={getValue("references.nodeHighlight.borderWidth") ?? 3} 
+                  onChange={(e) => setValue("references.nodeHighlight.borderWidth", Number(e.target.value))} 
+                  className="w-full bg-gray-700 rounded px-3 py-2"
+                  disabled={!getValue("references.enabled") || !getValue("references.nodeHighlight.enabled")}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">As referências são detectadas automaticamente quando você usa $[Nome da Seção] ou $[#id] no conteúdo. Azul é recomendado por lembrar hyperlinks!</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">⚙️ Física da Simulação</h2>

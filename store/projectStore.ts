@@ -14,6 +14,13 @@ export type LevelConfig = {
     borderColor?: string;
     borderWidth?: number;
     shadowColor?: string;
+    hasChildrenBorder?: {
+      enabled?: boolean;
+      width?: number;
+      color?: string;
+      dashed?: boolean;
+      dashPattern?: string;
+    };
     selected?: {
       borderColor?: string;
       borderWidth?: number;
@@ -32,6 +39,7 @@ export type LevelConfig = {
       strokeWidth?: number;
       color?: string;
       animated?: boolean;
+      dashPattern?: number;
     };
   };
 };
@@ -64,12 +72,19 @@ export type MindMapSettings = {
     minZoom?: number;
     maxZoom?: number;
     fitViewMaxZoom?: number;
+    fitViewPadding?: number;
     labelVisibility?: {
       section?: number;
       project?: number;
     };
     targetApparentSize?: number;
     zoomMargin?: number;
+    onClickTargetSize?: number;
+  };
+  // Animação
+  animation?: {
+    speed?: number;
+    distance?: number;
   };
   // Física
   physics?: {
@@ -124,6 +139,7 @@ export type MindMapSettings = {
         strokeWidth?: number;
         color?: string;
         animated?: boolean;
+        dashPattern?: number;
       };
     };
   };

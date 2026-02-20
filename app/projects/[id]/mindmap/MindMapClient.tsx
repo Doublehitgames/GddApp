@@ -21,7 +21,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, MindMapSettings } from "@/store/projectStore";
-import { extractSectionReferences, findSection } from "@/utils/sectionReferences";
+import { extractSectionReferences, findSection, getBacklinks } from "@/utils/sectionReferences";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import * as d3 from "d3-force";
 
@@ -413,6 +413,13 @@ function processSections(
     // A config da edge vem do nível do PAI (origem da linha), não do filho
     if (parentId) {
       const edgeConfig = getLevelEdgeConfig(level - 1); // level-1 = nível do pai
+      
+      // Para edges animadas, precisa ter strokeDasharray para a animação ser visível
+      const needsDashPattern = edgeConfig.animated || edgeConfig.dashed;
+      const dashValue = edgeConfig.animated 
+        ? (edgeConfig.dashPattern || 5) * 15  // Animado: valor fixo maior
+        : edgeConfig.dashPattern;              // Estático: valor configurado
+      
       edges.push({
         id: `${parentId}-${section.id}`,
         source: parentId,
@@ -422,13 +429,13 @@ function processSections(
         style: { 
           stroke: edgeConfig.color, 
           strokeWidth: edgeConfig.strokeWidth,
-          ...(edgeConfig.dashed && { strokeDasharray: edgeConfig.dashPattern }),
+          ...(needsDashPattern && { strokeDasharray: dashValue }),
         },
         data: {
           originalStyle: {
             stroke: edgeConfig.color,
             strokeWidth: edgeConfig.strokeWidth,
-            strokeDasharray: edgeConfig.dashed ? edgeConfig.dashPattern : undefined,
+            strokeDasharray: needsDashPattern ? dashValue : undefined,
             animated: edgeConfig.animated,
           },
         },
@@ -517,14 +524,52 @@ function SectionNode({ data }: { data: any }) {
   // Usar cor customizada se disponível, senão usar cor padrão do nível
   const bgColor = data.customColor || nodeConfig.color;
   const isSelected = data.isSelected;
+  const isInPath = data.isInPath; // Nó está no caminho mas não é o selecionado
+  const isFaded = data.isFaded; // Nó não está no caminho e deve ser esmaecido
+  const isReference = data.isReference; // Nó é referenciado pelo nó selecionado
+  
+  // Obter configurações do fade effect e references
+  const fadeConfig = CONFIG.fadeEffect || { enabled: false, opacity: 0.3, grayscale: 50, blur: 1 };
+  const refConfig = CONFIG.references || { enabled: true, nodeHighlight: { enabled: true, borderColor: '#3b82f6', borderWidth: 3 } };
 
   // Aplicar estilos de seleção
   const selectedStyles = isSelected ? nodeConfig.selected : null;
   const finalSize = isSelected && selectedStyles ? size * selectedStyles.scale : size;
-  const finalBorderColor = isSelected && selectedStyles ? selectedStyles.borderColor : nodeConfig.borderColor;
-  const finalBorderWidth = isSelected && selectedStyles ? selectedStyles.borderWidth : (data.hasSubsections ? nodeConfig.borderWidth : 0);
+  
+  // Lógica de borda
+  const hasChildrenBorderConfig = nodeConfig.hasChildrenBorder || { enabled: false };
+  let finalBorderColor: string;
+  let finalBorderWidthConfig: number;
+  let borderDashed = false;
+  let borderDashPattern = '';
+  
+  if (isSelected && selectedStyles) {
+    // Selecionado: usar estilos de seleção
+    finalBorderColor = selectedStyles.borderColor;
+    finalBorderWidthConfig = selectedStyles.borderWidth;
+  } else if (data.hasSubsections && hasChildrenBorderConfig.enabled) {
+    // Tem filhos e borda habilitada: usar configuração hasChildrenBorder
+    finalBorderColor = hasChildrenBorderConfig.color || nodeConfig.borderColor;
+    finalBorderWidthConfig = hasChildrenBorderConfig.width || nodeConfig.borderWidth;
+    borderDashed = hasChildrenBorderConfig.dashed || false;
+    borderDashPattern = hasChildrenBorderConfig.dashPattern || '5 5';
+  } else {
+    // Sem borda
+    finalBorderColor = nodeConfig.borderColor;
+    finalBorderWidthConfig = 0;
+  }
+  
+  // Calcular borda proporcional ao tamanho do nó (baseado em 100px)
+  // Ex: nó 100px com border 4 = 4px; nó 50px com border 4 = 2px
+  const finalBorderWidth = (finalSize / 100) * finalBorderWidthConfig;
+  
   // Glow usa a mesma cor da bolinha quando selecionada
   const glowColor = isSelected ? bgColor : null;
+  
+  // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 20px, 40px, 60px de glow)
+  const glowSize1 = (finalSize / 100) * 20;
+  const glowSize2 = (finalSize / 100) * 40;
+  const glowSize3 = (finalSize / 100) * 60;
   
   // Calcular tamanho aparente na tela (size * zoom)
   const apparentSize = finalSize * zoom;
@@ -532,11 +577,15 @@ function SectionNode({ data }: { data: any }) {
   const showLabel = apparentSize > CONFIG.zoom.labelVisibility.section;
 
   return (
-    <>
+    <div style={{ width: size, height: size, position: 'relative' }}>
       <Handle type="target" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <div
         style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           width: finalSize,
           height: finalSize,
           borderRadius: '50%',
@@ -551,22 +600,32 @@ function SectionNode({ data }: { data: any }) {
           textAlign: 'center',
           padding: `${nodeConfig.padding * 100}%`,
           cursor: 'pointer',
+          // Usar box-shadow para borda (fica por fora e não afeta layout)
           boxShadow: glowColor 
-            ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}, 0 0 20px ${glowColor}, 0 0 40px ${glowColor}, 0 0 60px ${glowColor}`
-            : finalBorderWidth > 0
-              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-              : `0 4px 6px ${nodeConfig.shadowColor}`,
-          transition: 'all 0.3s ease',
+            ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 ${glowSize1}px ${glowColor}, 0 0 ${glowSize2}px ${glowColor}, 0 0 ${glowSize3}px ${glowColor}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}`
+            : isReference && refConfig.nodeHighlight?.enabled
+              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * (refConfig.nodeHighlight.borderWidth || 3)}px ${refConfig.nodeHighlight.borderColor || '#3b82f6'}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque azul para referências
+              : isInPath
+                ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque sutil: borda amarela semi-transparente
+                : finalBorderWidth > 0
+                  ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
+                  : `0 4px 6px ${nodeConfig.shadowColor}`,
+          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
           wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
           overflowWrap: 'break-word',
           hyphens: 'auto',
           lineHeight: CONFIG.fonts.lineHeight,
+          // Aplicar fade effect se o nó não está no caminho
+          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          filter: (isFaded && fadeConfig.enabled) 
+            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
+            : 'none',
         }}
-        className="hover:scale-110"
+        className={data.isDragging ? '' : 'hover:scale-110'}
       >
         {showLabel && data.label}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -579,13 +638,26 @@ function ProjectNode({ data }: { data: any }) {
   
   const config = CONFIG.project.node;
   const isSelected = data.isSelected;
+  const isInPath = data.isInPath; // Nó está no caminho mas não é o selecionado
+  const isFaded = data.isFaded; // Nó não está no caminho e deve ser esmaecido
+  const isReference = data.isReference; // Nó é referenciado pelo nó selecionado
+  
+  // Obter configurações do fade effect e references
+  const fadeConfig = CONFIG.fadeEffect || { enabled: false, opacity: 0.3, grayscale: 50, blur: 1 };
+  const refConfig = CONFIG.references || { enabled: true, nodeHighlight: { enabled: true, borderColor: '#3b82f6', borderWidth: 3 } };
   
   // Aplicar estilos de seleção
   const selectedStyles = isSelected ? config.selected : null;
   const finalSize = isSelected && selectedStyles ? config.size * selectedStyles.scale : config.size;
-  const finalBorderWidth = isSelected && selectedStyles ? selectedStyles.borderWidth : 0;
+  const finalBorderWidthConfig = isSelected && selectedStyles ? selectedStyles.borderWidth : 0;
   const finalBorderColor = isSelected && selectedStyles ? selectedStyles.borderColor : 'transparent';
   const glowColor = isSelected && selectedStyles ? selectedStyles.glowColor : config.colors.glow;
+  
+  // Calcular borda proporcional ao tamanho do nó (baseado em 100px)
+  const finalBorderWidth = (finalSize / 100) * finalBorderWidthConfig;
+  
+  // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 60px de glow)
+  const glowSize = (finalSize / 100) * 60;
   
   // Calcular font-size automaticamente usando configurações customizadas ou padrões
   const hasCustomFontSize = typeof (CONFIG as any).nodeSize?.baseFontSize === 'number';
@@ -606,14 +678,20 @@ function ProjectNode({ data }: { data: any }) {
   const apparentSize = finalSize * zoom;
   const showLabel = apparentSize > CONFIG.zoom.labelVisibility.project;
   
+  const baseSize = config.size;
+  
   return (
-    <>
+    <div style={{ width: baseSize, height: baseSize, position: 'relative' }}>
       <Handle type="source" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <Handle type="source" position={Position.Left} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
       <div
         style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
           width: finalSize,
           height: finalSize,
           borderRadius: '50%',
@@ -628,16 +706,27 @@ function ProjectNode({ data }: { data: any }) {
           textAlign: 'center',
           padding: `${config.padding * 100}%`,
           cursor: 'pointer',
-          boxShadow: finalBorderWidth > 0
-            ? `0 8px 16px ${config.colors.shadow}, 0 0 60px ${glowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-            : `0 8px 16px ${config.colors.shadow}, 0 0 60px ${glowColor}`,
-          transition: 'all 0.3s ease',
+          boxShadow: isSelected
+            ? finalBorderWidth > 0
+              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
+              : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`
+            : isReference && refConfig.nodeHighlight?.enabled
+              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * (refConfig.nodeHighlight.borderWidth || 3)}px ${refConfig.nodeHighlight.borderColor || '#3b82f6'}` // Destaque azul para referências
+              : isInPath
+                ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)` // Destaque sutil para nós no caminho
+                : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`,
+          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
           wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
           overflowWrap: 'break-word',
           hyphens: 'auto',
           lineHeight: CONFIG.fonts.lineHeight,
+          // Aplicar fade effect se o nó não está no caminho
+          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          filter: (isFaded && fadeConfig.enabled) 
+            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
+            : 'none',
         }}
-        className="hover:scale-110"
+        className={data.isDragging ? '' : 'hover:scale-110'}
       >
         {showLabel && (
           <div>
@@ -647,7 +736,7 @@ function ProjectNode({ data }: { data: any }) {
         )}
         {!showLabel && <div>{config.icon}</div>}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -674,6 +763,17 @@ function FlowContent({ projectId }: MindMapClientProps) {
   const [selectedNode, setSelectedNode] = useState<Section | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [maxZoom, setMaxZoom] = useState<number>(8);
+  
+  // Obter zoom atual para cálculos proporcionais
+  const currentZoom = useStore((state) => state.transform[2]);
+  
+  // Estado para guardar posições originais durante o drag
+  const [originalPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  
+  // Estado para threshold de drag (evitar ativar drag em clicks)
+  const [dragStartMouse] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [dragActivated] = useState<Map<string, boolean>>(new Map());
+  const DRAG_THRESHOLD = 5; // pixels mínimos de movimento para considerar drag
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
@@ -753,6 +853,13 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
     // Adicionar edges do projeto para cada seção principal (sem parentId)
     const projectEdgeConfig = config.project.edge;
+    
+    // Para edges animadas, precisa ter strokeDasharray para a animação ser visível
+    const needsDashPattern = projectEdgeConfig.animated || projectEdgeConfig.dashed;
+    const dashValue = projectEdgeConfig.animated 
+      ? (projectEdgeConfig.dashPattern || 5) * 15  // Animado: valor fixo maior
+      : projectEdgeConfig.dashPattern;              // Estático: valor configurado
+    
     const projectEdges: Edge[] = (project.sections || [])
       .filter(s => !s.parentId)
       .map(section => ({
@@ -764,13 +871,13 @@ function FlowContent({ projectId }: MindMapClientProps) {
         style: { 
           stroke: projectEdgeConfig.color, 
           strokeWidth: projectEdgeConfig.strokeWidth,
-          ...(projectEdgeConfig.dashed && { strokeDasharray: projectEdgeConfig.dashPattern }),
+          ...(needsDashPattern && { strokeDasharray: dashValue }),
         },
         data: {
           originalStyle: {
             stroke: projectEdgeConfig.color,
             strokeWidth: projectEdgeConfig.strokeWidth,
-            strokeDasharray: projectEdgeConfig.dashed ? projectEdgeConfig.dashPattern : undefined,
+            strokeDasharray: needsDashPattern ? dashValue : undefined,
             animated: projectEdgeConfig.animated,
           },
         },
@@ -786,64 +893,521 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
   // Efeito para atualizar destaque das edges quando houver seleção
   useEffect(() => {
-    if (!selectedNodeId) {
-      // Sem seleção: resetar todas as edges para estilos originais
-      setEdges((eds) =>
-        eds.map((edge) => {
-          const original = edge.data?.originalStyle;
+    const fadeConfig = config.fadeEffect || { enabled: false, opacity: 0.3, grayscale: 50, blur: 1 };
+    
+    setEdges((eds) => {
+      if (!selectedNodeId) {
+        // Sem seleção: resetar todas as edges baseado na configuração ATUAL (não originalStyle salvo)
+        return eds.map((edge) => {
+          // Ignorar edges de referência - elas são gerenciadas pelo outro useEffect
+          if (edge.id.startsWith('ref-')) {
+            return edge;
+          }
+          
+          // Determinar qual config usar baseado no source
+          const isProjectEdge = edge.source === 'project-center';
+          
+          let edgeConfig;
+          if (isProjectEdge) {
+            edgeConfig = config.project.edge;
+          } else {
+            // Descobrir nível do nó source para usar a config correta
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const sourceLevel = sourceNode?.data?.level ?? 0;
+            
+            // Usar config do nível apropriado
+            if (sourceLevel === 0) {
+              edgeConfig = config.sections.edge;
+            } else if (sourceLevel === 1) {
+              edgeConfig = config.subsections.edge;
+            } else {
+              edgeConfig = config.deepSubsections.edge;
+            }
+          }
+          
+          // Para edges animadas, precisa ter strokeDasharray para a animação ser visível
+          const needsDashPattern = edgeConfig.animated || edgeConfig.dashed;
+          const dashValue = edgeConfig.animated 
+            ? (edgeConfig.dashPattern || 5) * 15  // Animado: valor fixo maior
+            : edgeConfig.dashPattern;              // Estático: valor configurado
+          
           return {
             ...edge,
-            animated: original?.animated || false,
+            animated: edgeConfig.animated || false,
             style: {
-              stroke: original?.stroke || '#94a3b8',
-              strokeWidth: original?.strokeWidth || 0.5,
-              strokeDasharray: original?.strokeDasharray,
+              stroke: edgeConfig.color || '#94a3b8',
+              strokeWidth: edgeConfig.strokeWidth || 0.5,
+              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              opacity: 1, // Resetar opacity quando não há seleção
             },
           };
-        })
-      );
-      return;
-    }
+        });
+      }
 
-    // Com seleção: resetar todas primeiro, depois destacar edges conectadas
-    setEdges((eds) =>
-      eds.map((edge) => {
+      // Com seleção: encontrar TODAS as edges no caminho até o SOL
+      // 1. Construir mapa de parent para cada nó (ignorar edges de referência)
+      const parentMap = new Map<string, string>();
+      eds.forEach(edge => {
+        if (!edge.id.startsWith('ref-')) { // Ignorar edges de referência
+          // target é o filho, source é o pai
+          parentMap.set(edge.target, edge.source);
+        }
+      });
+
+      // 2. Encontrar caminho do nó selecionado até o SOL
+      const pathToRoot = new Set<string>(); // IDs das edges no caminho
+      let currentNode = selectedNodeId;
+      
+      while (currentNode) {
+        const parent = parentMap.get(currentNode);
+        if (parent) {
+          // Encontrar edge entre currentNode e parent (ignorar refs)
+          const edgeId = eds.find(e => 
+            !e.id.startsWith('ref-') &&
+            e.source === parent && e.target === currentNode
+          )?.id;
+          if (edgeId) {
+            pathToRoot.add(edgeId);
+          }
+          currentNode = parent;
+        } else {
+          break; // Chegou no SOL ou nó sem pai
+        }
+      }
+
+      // 3. Encontrar filhos diretos do nó selecionado
+      const directChildren = new Set<string>(); // IDs das edges para filhos diretos
+      eds.forEach(edge => {
+        if (edge.source === selectedNodeId && !edge.id.startsWith('ref-')) {
+          directChildren.add(edge.id);
+        }
+      });
+
+      // 4. Aplicar highlight nas edges do caminho E nos filhos diretos
+      return eds.map((edge) => {
+        // Ignorar edges de referência - elas mantêm seu estilo azul/tracejado
+        if (edge.id.startsWith('ref-')) {
+          return edge;
+        }
+        
         const original = edge.data?.originalStyle;
-        const isConnected =
-          edge.source === selectedNodeId || edge.target === selectedNodeId;
+        const isInPath = pathToRoot.has(edge.id);
+        const isDirectChild = directChildren.has(edge.id);
 
-        if (isConnected) {
-          // Edge conectada: usar configurações de highlight
-          // Determinar qual config usar (projeto ou seção baseado no source)
+        if (isInPath || isDirectChild) {
+          // Edge no caminho: usar configurações de highlight
+          // Determinar qual config usar baseado no source
           const isProjectEdge = edge.source === 'project-center';
-          const highlightConfig = isProjectEdge 
-            ? config.project.edge.highlighted
-            : config.sections.edge.highlighted;
+          
+          let highlightConfig;
+          if (isProjectEdge) {
+            highlightConfig = config.project.edge.highlighted;
+          } else {
+            // Descobrir nível do nó source para usar a config correta
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const sourceLevel = sourceNode?.data?.level ?? 0;
+            
+            // Usar config do nível apropriado
+            if (sourceLevel === 0) {
+              highlightConfig = config.sections.edge.highlighted;
+            } else if (sourceLevel === 1) {
+              highlightConfig = config.subsections.edge.highlighted;
+            } else {
+              highlightConfig = config.deepSubsections.edge.highlighted;
+            }
+          }
+          
+          // Calcular strokeWidth proporcional ao zoom (mantém espessura visual constante)
+          const baseStrokeWidth = highlightConfig.strokeWidth || 1;
+          const proportionalStrokeWidth = baseStrokeWidth / Math.max(currentZoom, 0.1);
+          
+          // Para animação: usar valor fixo maior para que a animação seja visível
+          // Para estático: usar valor proporcional ao zoom
+          const baseDashSize = highlightConfig.dashPattern || 5;
+          let dashValue;
+          if (highlightConfig.animated) {
+            // Animado: valor fixo MUITO grande para animação ser visível em qualquer zoom
+            // Com bolinhas de 1000px e zoom baixo, precisa ser bem grande
+            dashValue = baseDashSize * 15; // Ex: 5 * 15 = 75px
+          } else {
+            // Estático: proporcional ao zoom com limites
+            const rawDash = baseDashSize / Math.max(currentZoom, 0.01);
+            dashValue = Math.min(Math.max(rawDash, 5), 50);
+          }
           
           return {
             ...edge,
             animated: highlightConfig.animated,
             style: {
-              strokeWidth: highlightConfig.strokeWidth,
+              strokeWidth: proportionalStrokeWidth,
               stroke: highlightConfig.color,
-              strokeDasharray: '5,5', // Sempre tracejado quando destacado
+              strokeDasharray: `${dashValue},${dashValue}`,
+              opacity: 1, // Edges destacadas ficam sempre visíveis
             },
           };
         }
 
-        // Edge não conectada: usar estilo original
+        // Edge não conectada: usar estilo baseado na configuração ATUAL (não originalStyle salvo)
+        const isProjectEdge = edge.source === 'project-center';
+        
+        let edgeConfig;
+        if (isProjectEdge) {
+          edgeConfig = config.project.edge;
+        } else {
+          // Descobrir nível do nó source para usar a config correta
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const sourceLevel = sourceNode?.data?.level ?? 0;
+          
+          // Usar config do nível apropriado
+          if (sourceLevel === 0) {
+            edgeConfig = config.sections.edge;
+          } else if (sourceLevel === 1) {
+            edgeConfig = config.subsections.edge;
+          } else {
+            edgeConfig = config.deepSubsections.edge;
+          }
+        }
+        
+        // Para edges animadas, precisa ter strokeDasharray para a animação ser visível
+        const needsDashPattern = edgeConfig.animated || edgeConfig.dashed;
+        const dashValue = edgeConfig.animated 
+          ? (edgeConfig.dashPattern || 5) * 15  // Animado: valor fixo maior
+          : edgeConfig.dashPattern;              // Estático: valor configurado
+        
+        // Aplicar fade effect nas edges que não estão no caminho
+        const edgeOpacity = (fadeConfig.enabled) ? fadeConfig.opacity : 1;
+        
         return {
           ...edge,
-          animated: original?.animated || false,
+          animated: edgeConfig.animated || false,
           style: {
-            stroke: original?.stroke || '#94a3b8',
-            strokeWidth: original?.strokeWidth || 0.5,
-            strokeDasharray: original?.strokeDasharray,
+            stroke: edgeConfig.color || '#94a3b8',
+            strokeWidth: edgeConfig.strokeWidth || 0.5,
+            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            opacity: edgeOpacity, // Aplicar opacity reduzida nas edges não destacadas
           },
         };
-      })
+      });
+    });
+  }, [selectedNodeId, setEdges, config, currentZoom, nodes]);
+
+  // Efeito para destacar nós no caminho (sem glow - destaque sutil) e referências
+  useEffect(() => {
+    if (!selectedNodeId) {
+      // Sem seleção: remover destaque de todos os nós e edges de referência
+      setNodes((nds) => {
+        const hasInPath = nds.some(n => n.data.isInPath || n.data.isFaded || n.data.isReference);
+        if (!hasInPath) return nds; // Evitar update desnecessário
+        
+        return nds.map((node) => ({
+          ...node,
+          data: { ...node.data, isInPath: false, isFaded: false, isReference: false },
+        }));
+      });
+      
+      // Remover edges de referência (só se houver alguma)
+      setEdges((eds) => {
+        const hasRefs = eds.some(e => e.id.startsWith('ref-'));
+        if (!hasRefs) return eds; // Evitar update desnecessário
+        return eds.filter(e => !e.id.startsWith('ref-'));
+      });
+      return;
+    }
+
+    // Com seleção: encontrar todos os nós no caminho até o SOL
+    // Construir mapa de parent para cada nó (usando edges - ignorar refs)
+    const parentMap = new Map<string, string>();
+    edges.forEach(edge => {
+      if (!edge.id.startsWith('ref-')) { // Ignorar edges de referência
+        parentMap.set(edge.target, edge.source);
+      }
+    });
+
+    // Rastrear caminho do nó selecionado até o SOL
+    const nodesInPath = new Set<string>();
+    let currentNode = selectedNodeId;
+    
+    while (currentNode) {
+      nodesInPath.add(currentNode);
+      const parent = parentMap.get(currentNode);
+      if (parent) {
+        currentNode = parent;
+      } else {
+        break; // Chegou no SOL
+      }
+    }
+
+    // Adicionar filhos diretos também
+    edges.forEach(edge => {
+      if (edge.source === selectedNodeId && !edge.id.startsWith('ref-')) {
+        nodesInPath.add(edge.target);
+      }
+    });
+
+    // Extrair referências do nó selecionado (para onde ele aponta)
+    const referencedNodeIds = new Set<string>();
+    const backlinksNodeIds = new Set<string>(); // Quem aponta para ele
+    const refConfig = config.references || { enabled: true };
+    
+    if (refConfig.enabled && project?.sections) {
+      // Encontrar a seção selecionada
+      const selectedSection = project.sections.find((s: Section) => s.id === selectedNodeId);
+      
+      if (selectedSection) {
+        // 1. Extrair referências que ele faz (saindo dele)
+        if (selectedSection.content) {
+          const refs = extractSectionReferences(selectedSection.content);
+          
+          // Encontrar IDs das seções referenciadas
+          refs.forEach(ref => {
+            const foundSection = findSection(project.sections, ref);
+            if (foundSection) {
+              referencedNodeIds.add(foundSection.id);
+            }
+          });
+        }
+        
+        // 2. Encontrar quem faz referência a ele (backlinks)
+        const backlinks = getBacklinks(selectedNodeId, project.sections);
+        backlinks.forEach(link => {
+          backlinksNodeIds.add(link.id);
+        });
+      }
+    }
+
+    // Atualizar edges de referência (só se necessário)
+    const totalRefsCount = referencedNodeIds.size + backlinksNodeIds.size;
+    if (totalRefsCount > 0) {
+      const forwardEdgeIds = Array.from(referencedNodeIds).map(targetId => `ref-${selectedNodeId}-${targetId}`);
+      const backwardEdgeIds = Array.from(backlinksNodeIds).map(sourceId => `ref-${sourceId}-${selectedNodeId}`);
+      const allNewRefIds = [...forwardEdgeIds, ...backwardEdgeIds];
+      
+      setEdges((eds) => {
+        // Verificar se as edges de referência mudaram
+        const currentRefEdges = eds.filter(e => e.id.startsWith('ref-'));
+        const currentRefIds = new Set(currentRefEdges.map(e => e.id));
+        const newRefIds = new Set(allNewRefIds);
+        
+        // Se as refs não mudaram, não atualizar
+        if (currentRefIds.size === newRefIds.size && 
+            Array.from(newRefIds).every(id => currentRefIds.has(id))) {
+          return eds;
+        }
+        
+        // Criar edges de referência (saindo do nó selecionado)
+        const forwardReferenceEdges: Edge[] = Array.from(referencedNodeIds).map(targetId => {
+          // Calcular dashPattern consistente com outras edges
+          const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
+          const dashValue = refConfig.edgeAnimated 
+            ? (refConfig.edgeDashPattern || 5) * 15  // Animado: valor fixo maior para visibilidade
+            : refConfig.edgeDashPattern || 5;         // Estático: valor configurado
+          
+          const showIcon = refConfig.showIcon ?? true;
+          const icon = refConfig.icon || '🔗';
+          
+          return {
+            id: `ref-${selectedNodeId}-${targetId}`,
+            source: selectedNodeId,
+            target: targetId,
+            type: 'default',
+            animated: refConfig.edgeAnimated || false,
+            label: showIcon ? icon : undefined,
+            labelStyle: {
+              fontSize: refConfig.iconSize || 32,
+              fill: refConfig.edgeColor || '#3b82f6',
+              fontWeight: 'bold',
+            },
+            labelBgStyle: {
+              fill: 'transparent',
+            },
+            labelShowBg: false,
+            style: {
+              stroke: refConfig.edgeColor || '#3b82f6',
+              strokeWidth: refConfig.edgeWidth || 2,
+              strokeDasharray: needsDashPattern ? dashValue : undefined,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: refConfig.edgeColor || '#3b82f6',
+              width: 20,
+              height: 20,
+            },
+          };
+        });
+
+        // Criar edges de referência (chegando ao nó selecionado - backlinks)
+        const backwardReferenceEdges: Edge[] = Array.from(backlinksNodeIds).map(sourceId => {
+          const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
+          const dashValue = refConfig.edgeAnimated 
+            ? (refConfig.edgeDashPattern || 5) * 15
+            : refConfig.edgeDashPattern || 5;
+          
+          const showIcon = refConfig.showIcon ?? true;
+          const icon = refConfig.icon || '🔗';
+          
+          return {
+            id: `ref-${sourceId}-${selectedNodeId}`,
+            source: sourceId,
+            target: selectedNodeId,
+            type: 'default',
+            animated: refConfig.edgeAnimated || false,
+            label: showIcon ? icon : undefined,
+            labelStyle: {
+              fontSize: refConfig.iconSize || 32,
+              fill: refConfig.edgeColor || '#3b82f6',
+              fontWeight: 'bold',
+            },
+            labelBgStyle: {
+              fill: 'transparent',
+            },
+            labelShowBg: false,
+            style: {
+              stroke: refConfig.edgeColor || '#3b82f6',
+              strokeWidth: refConfig.edgeWidth || 2,
+              strokeDasharray: needsDashPattern ? dashValue : undefined,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: refConfig.edgeColor || '#3b82f6',
+              width: 20,
+              height: 20,
+            },
+          };
+        });
+
+        const withoutOldRefs = eds.filter(e => !e.id.startsWith('ref-'));
+        return [...withoutOldRefs, ...forwardReferenceEdges, ...backwardReferenceEdges];
+      });
+    } else {
+      // Remover edges de referência se não há mais referências (só se houver alguma)
+      setEdges((eds) => {
+        const hasRefs = eds.some(e => e.id.startsWith('ref-'));
+        if (!hasRefs) return eds;
+        return eds.filter(e => !e.id.startsWith('ref-'));
+      });
+    }
+
+    // Atualizar nodes para marcar quais estão no caminho, quais devem ficar esmaecidos, e quais são referências
+    setNodes((nds) => {
+      // Combinar todos os nós relacionados por referência (para frente E para trás)
+      const allReferencedNodes = new Set([...referencedNodeIds, ...backlinksNodeIds]);
+      
+      // Verificar se precisa atualizar (evitar loop infinito)
+      const needsUpdate = nds.some(node => {
+        const shouldBeInPath = nodesInPath.has(node.id) && node.id !== selectedNodeId;
+        const shouldBeFaded = !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id);
+        const shouldBeReference = allReferencedNodes.has(node.id);
+        return node.data.isInPath !== shouldBeInPath || 
+               node.data.isFaded !== shouldBeFaded ||
+               node.data.isReference !== shouldBeReference;
+      });
+      
+      if (!needsUpdate) return nds; // Nada mudou, não atualizar
+      
+      return nds.map((node) => ({
+        ...node,
+        data: { 
+          ...node.data, 
+          isInPath: nodesInPath.has(node.id) && node.id !== selectedNodeId,
+          isFaded: !nodesInPath.has(node.id) && !allReferencedNodes.has(node.id), // Esmaecer nós que NÃO estão no caminho NEM são referências
+          isReference: allReferencedNodes.has(node.id), // Marcar nós referenciados (ambas direções)
+        },
+      }));
+    });
+  }, [selectedNodeId, config, project]);
+
+
+  // Handler para salvar posição original ao iniciar drag
+  const onNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
+    if (node.position) {
+      originalPositions.set(node.id, { ...node.position });
+    }
+    // Salvar posição inicial do mouse
+    dragStartMouse.set(node.id, { x: event.clientX, y: event.clientY });
+    dragActivated.set(node.id, false);
+    // NÃO marcar isDragging ainda - só quando passar do threshold
+  }, [originalPositions, dragStartMouse, dragActivated]);
+
+  // Handler para verificar threshold durante o drag
+  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
+    const startMouse = dragStartMouse.get(node.id);
+    if (!startMouse) return;
+    
+    // Calcular distância do mouse desde o início
+    const distance = Math.sqrt(
+      Math.pow(event.clientX - startMouse.x, 2) + 
+      Math.pow(event.clientY - startMouse.y, 2)
     );
-  }, [selectedNodeId, setEdges]);
+    
+    // Se passou do threshold e ainda não ativou o drag, ativar agora
+    if (distance > DRAG_THRESHOLD && !dragActivated.get(node.id)) {
+      dragActivated.set(node.id, true);
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                isDragging: true,
+              },
+            };
+          }
+          return n;
+        })
+      );
+    }
+  }, [dragStartMouse, dragActivated, setNodes, DRAG_THRESHOLD]);
+
+  // Handler para resetar posição ao soltar o nó
+  const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
+    const wasActivated = dragActivated.get(node.id);
+    const originalPos = originalPositions.get(node.id);
+    
+    // Só resetar posição se o drag foi realmente ativado (passou do threshold)
+    if (wasActivated && originalPos) {
+      // Resetar para posição original com transição suave
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              position: originalPos,
+              data: {
+                ...n.data,
+                isDragging: false,
+                isReturning: true,
+              },
+            };
+          }
+          return n;
+        })
+      );
+      
+      // Limpar flag de retorno após animação
+      setTimeout(() => {
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (n.id === node.id) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  isReturning: false,
+                },
+              };
+            }
+            return n;
+          })
+        );
+      }, 300);
+    }
+    
+    // Limpar estados
+    originalPositions.delete(node.id);
+    dragStartMouse.delete(node.id);
+    dragActivated.delete(node.id);
+  }, [originalPositions, dragStartMouse, dragActivated, setNodes]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     // Calcular zoom para que o nó apareça com o tamanho alvo na tela
@@ -912,6 +1476,23 @@ function FlowContent({ projectId }: MindMapClientProps) {
 
   return (
     <ConfigContext.Provider value={config}>
+      <style>
+        {`
+          @keyframes dashdraw {
+            from {
+              stroke-dashoffset: 0;
+            }
+            to {
+              stroke-dashoffset: ${config.animation?.distance || 500};
+            }
+          }
+          
+          /* Aplicar animação para TODAS as edges animadas (não só highlight) */
+          .react-flow__edge.animated path {
+            animation: dashdraw ${config.animation?.speed || 2}s linear infinite !important;
+          }
+        `}
+      </style>
       <div className="h-screen w-screen bg-gray-900">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
@@ -951,12 +1532,15 @@ function FlowContent({ projectId }: MindMapClientProps) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
+            onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypes}
-            nodesDraggable={false}
+            nodesDraggable={true}
             nodesConnectable={false}
             elementsSelectable={true}
             fitView
-            fitViewOptions={{ padding: 0.2, maxZoom: config.zoom.fitViewMaxZoom }}
+            fitViewOptions={{ padding: config.zoom.fitViewPadding || 0.2, maxZoom: config.zoom.fitViewMaxZoom }}
             maxZoom={maxZoom}
             minZoom={config.zoom.minZoom}
             attributionPosition="bottom-left"

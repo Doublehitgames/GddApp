@@ -10,17 +10,17 @@ export const MINDMAP_CONFIG = {
   
   // Tamanhos dinâmicos dos nós (baseado no nível de profundidade)
   nodeSize: {
-    baseSize: 100,           // Tamanho inicial do nível 0 (px)
-    reductionFactor: 0.7,    // Reduz 30% a cada nível (0.7 = 70% do anterior)
-    minSize: 25,             // Tamanho mínimo permitido (px)
+    baseSize: 1000,          // Tamanho inicial do nível 0 (px)
+    reductionFactor: 0.8,    // Reduz 20% a cada nível (0.8 = 80% do anterior)
+    minSize: 35,             // Tamanho mínimo permitido (px)
     fontFamily: 'system-ui', // Família da fonte padrão
     fontWeight: '300',       // Peso da fonte padrão (300 = light)
   },
 
   // Espaçamento entre nós
   spacing: {
-    projectMargin: 80,       // Margem entre o sol e as seções de nível 0 (px)
-    levelMargin: 60,         // Margem entre nós pai e filho (px)
+    projectMargin: 800,      // Margem entre o sol e as seções de nível 0 (px)
+    levelMargin: 600,        // Margem entre nós pai e filho (px)
   },
 
   // Fontes - Sistema automático de ajuste
@@ -44,9 +44,10 @@ export const MINDMAP_CONFIG = {
 
   // Zoom e visibilidade
   zoom: {
-    minZoom: 0.1,            // Zoom mínimo (10%)
+    minZoom: 0.01,           // Zoom mínimo (1% - permite ver mapas muito grandes)
     maxZoom: 20,             // Zoom máximo padrão (será calculado dinamicamente)
-    fitViewMaxZoom: 1,       // Zoom máximo ao carregar (fitView)
+    fitViewMaxZoom: 5,       // Zoom máximo ao carregar (fitView) - 5 = sem restrição prática
+    fitViewPadding: 0.2,     // Margem ao redor (20%)
     // Thresholds para mostrar labels (tamanho aparente mínimo em px)
     labelVisibility: {
       section: 40,           // Mostrar label de seções se > 40px na tela
@@ -59,6 +60,38 @@ export const MINDMAP_CONFIG = {
     onClickTargetSize: 200,  // Tamanho que a bolinha terá na tela ao clicar (px)
   },
 
+  // Animação de edges destacadas
+  animation: {
+    speed: 2,                // Duração da animação em segundos (menor = mais rápido)
+    distance: 500,           // Distância percorrida pelo traço (px)
+  },
+
+  // Efeito de esmaecer nós não destacados quando há seleção
+  fadeEffect: {
+    enabled: true,           // Ativar/desativar o efeito
+    opacity: 0.3,            // Opacidade dos nós esmaecidos (0-1)
+    grayscale: 50,           // Porcentagem de grayscale (0-100)
+    blur: 1,                 // Blur em pixels (0 = sem blur)
+  },
+
+  // Destaque de referências cruzadas
+  references: {
+    enabled: true,           // Mostrar referências ao selecionar nó
+    edgeColor: '#3b82f6',    // Cor das conexões de referência (azul)
+    edgeWidth: 2,            // Espessura das linhas de referência
+    edgeDashed: true,        // Linha tracejada
+    edgeDashPattern: 5,      // Padrão do tracejado
+    edgeAnimated: false,     // Animar a linha de referência (usa config.animation)
+    showIcon: true,          // Mostrar ícone de link na conexão
+    icon: '🔗',              // Ícone a ser exibido
+    iconSize: 32,            // Tamanho do ícone (em pixels)
+    nodeHighlight: {
+      enabled: true,         // Destacar nós referenciados
+      borderColor: '#3b82f6', // Cor da borda (azul)
+      borderWidth: 3,        // Espessura da borda
+    },
+  },
+
   // ========================================
   // CONFIGURAÇÕES DE FÍSICA (D3-FORCE)
   // ========================================
@@ -68,17 +101,17 @@ export const MINDMAP_CONFIG = {
     link: {
       strength: 0.1,         // Força muito fraca - só sugere proximidade
       distance: {
-        level0: 280,         // Distância do projeto ao nível 0
-        base: 100,           // Distância base entre pai-filho
-        multiplier: 1.1,     // Divisor por nível (100 / 1.1^level)
+        level0: 2800,        // Distância do projeto ao nível 0
+        base: 1000,          // Distância base entre pai-filho
+        multiplier: 1.1,     // Divisor por nível (1000 / 1.1^level)
       },
     },
     // Colisão (evita sobreposição de nós)
     collision: {
       enabled: true,
       radiusMargin: {
-        project: 50,         // Margem extra ao redor do projeto (px)
-        section: 20,         // Margem extra ao redor de seções (px)
+        project: 500,        // Margem extra ao redor do projeto (px)
+        section: 200,        // Margem extra ao redor de seções (px)
       },
       strength: 1.0,         // Força da colisão (1.0 = máxima)
       iterations: 10,        // Iterações por tick
@@ -97,7 +130,7 @@ export const MINDMAP_CONFIG = {
   
   project: {
     node: {
-      size: 100,             // Tamanho fixo do projeto (px)
+      size: 1000,            // Tamanho fixo do projeto (px)
       colors: {
         gradient: {
           from: '#fbbf24',   // Dourado
@@ -130,6 +163,7 @@ export const MINDMAP_CONFIG = {
         strokeWidth: 1,
         color: '#fbbf24',
         animated: true,
+        dashPattern: 5,      // Tamanho base do traço/espaço (proporcional ao zoom)
       },
     },
   },
@@ -147,6 +181,14 @@ export const MINDMAP_CONFIG = {
       borderColor: '#fbbf24', // Borda dourada quando tem subsecções
       borderWidth: 2,
       shadowColor: 'rgba(0,0,0,0.3)',
+      // Borda para nós com filhos
+      hasChildrenBorder: {
+        enabled: false,       // Desabilitado por padrão
+        width: 2,             // Largura da borda (px)
+        color: '#fbbf24',     // Cor da borda
+        dashed: false,        // Tracejado
+        dashPattern: '5 5',   // Padrão do tracejado (CSS)
+      },
       // Estado quando selecionado
       selected: {
         borderColor: '#fbbf24',
@@ -166,6 +208,7 @@ export const MINDMAP_CONFIG = {
         strokeWidth: 1,
         color: '#fbbf24',
         animated: true,
+        dashPattern: 5,      // Tamanho base do traço/espaço (proporcional ao zoom)
       },
     },
   },
@@ -179,6 +222,14 @@ export const MINDMAP_CONFIG = {
       borderColor: '#fbbf24',
       borderWidth: 2,
       shadowColor: 'rgba(0,0,0,0.3)',
+      // Borda para nós com filhos
+      hasChildrenBorder: {
+        enabled: false,       // Desabilitado por padrão
+        width: 2,             // Largura da borda (px)
+        color: '#fbbf24',     // Cor da borda
+        dashed: false,        // Tracejado
+        dashPattern: '5 5',   // Padrão do tracejado (CSS)
+      },
       selected: {
         borderColor: '#fbbf24',
         borderWidth: 4,
@@ -197,6 +248,7 @@ export const MINDMAP_CONFIG = {
         strokeWidth: 1,
         color: '#fbbf24',
         animated: true,
+        dashPattern: 5,      // Tamanho base do traço/espaço (proporcional ao zoom)
       },
     },
   },
@@ -210,6 +262,14 @@ export const MINDMAP_CONFIG = {
       borderColor: '#fbbf24',
       borderWidth: 2,
       shadowColor: 'rgba(0,0,0,0.3)',
+      // Borda para nós com filhos
+      hasChildrenBorder: {
+        enabled: false,       // Desabilitado por padrão
+        width: 2,             // Largura da borda (px)
+        color: '#fbbf24',     // Cor da borda
+        dashed: false,        // Tracejado
+        dashPattern: '5 5',   // Padrão do tracejado (CSS)
+      },
       selected: {
         borderColor: '#fbbf24',
         borderWidth: 4,
@@ -228,6 +288,7 @@ export const MINDMAP_CONFIG = {
         strokeWidth: 1,
         color: '#fbbf24',
         animated: true,
+        dashPattern: 5,      // Tamanho base do traço/espaço (proporcional ao zoom)
       },
     },
   },
@@ -253,8 +314,8 @@ export const MINDMAP_CONFIG = {
   // ========================================
   
   layout: {
-    mainOrbitRadius: 350,    // Distância das seções ao centro (px)
-    subOrbitRadius: 120,     // Distância base das subseções à seção pai (px)
+    mainOrbitRadius: 3500,   // Distância das seções ao centro (px)
+    subOrbitRadius: 1200,    // Distância base das subseções à seção pai (px)
     orbitRadiusMultiplier: 1.3, // Multiplicador por nível
     startAngle: -Math.PI / 2, // Ângulo inicial (-90° = topo)
   },
