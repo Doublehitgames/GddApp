@@ -525,6 +525,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     handleRequestModification={handleRequestModification}
     sectionColor={sectionColor}
     setSectionColor={setSectionColor}
+    hasValidConfig={hasValidConfig}
       />
       <AutocompleteDropdown />
     </>
@@ -620,7 +621,7 @@ function SectionDetailContent({
   isImproving, improveError, handleImproveWithAI,
   showPreview, previewContent, modificationRequest, setModificationRequest,
   handleConfirmImprovement, handleCancelImprovement, handleRequestModification,
-  sectionColor, setSectionColor
+  sectionColor, setSectionColor, hasValidConfig
 }: any) {
 
   return (
