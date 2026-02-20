@@ -4,8 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
+import { useAIConfig } from "@/hooks/useAIConfig";
+import AIConfigWarning from "@/components/AIConfigWarning";
 
 export default function AICreateProject() {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
@@ -30,7 +33,10 @@ export default function AICreateProject() {
     try {
       const response = await fetch("/api/ai/generate-template", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           gameType: gameType.trim(),
           description: description.trim(),
@@ -108,6 +114,13 @@ export default function AICreateProject() {
           </p>
         </div>
 
+        {/* Verificar configuração de IA */}
+        {!hasValidConfig && step === "input" && (
+          <div className="mb-8">
+            <AIConfigWarning />
+          </div>
+        )}
+
         {/* Input Step */}
         {step === "input" && (
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -166,7 +179,7 @@ export default function AICreateProject() {
                 </button>
                 <button
                   onClick={handleGenerate}
-                  disabled={!gameType.trim() || !description.trim()}
+                  disabled={!gameType.trim() || !description.trim() || !hasValidConfig}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   ✨ Gerar GDD com IA

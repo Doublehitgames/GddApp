@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
+import { useAIConfig } from "@/hooks/useAIConfig";
+import AIConfigWarning from "@/components/AIConfigWarning";
 
 export default function AICreateSimple() {
+  const { hasValidConfig, getAIHeaders } = useAIConfig();
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
@@ -110,7 +113,10 @@ Retorne APENAS a descrição melhorada, sem aspas ou formatação markdown.`;
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           messages: [
             { role: "user", content: prompt }
@@ -153,7 +159,10 @@ Reescreva essa descrição de jogo de forma profissional e detalhada (3-5 frases
 
           const retryResponse = await fetch("/api/ai/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              ...getAIHeaders(),
+            },
             body: JSON.stringify({
               messages: [{ role: "user", content: prompt }],
               model: "llama-3.1-8b-instant",
@@ -212,7 +221,10 @@ Retorne APENAS a lista de mecânicas, sem introdução ou explicações adiciona
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           messages: [
             { role: "user", content: prompt }
@@ -251,7 +263,10 @@ Liste 5-8 mecânicas de gameplay para este jogo em bullet points (•). Seja esp
 
           const retryResponse = await fetch("/api/ai/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              ...getAIHeaders(),
+            },
             body: JSON.stringify({
               messages: [{ role: "user", content: prompt }],
               model: "llama-3.1-8b-instant",
@@ -315,7 +330,10 @@ ${mechanicsText}
     try {
       const response = await fetch("/api/ai/generate-template", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAIHeaders(),
+        },
         body: JSON.stringify({
           gameType: genre,
           description: fullDescription,
@@ -356,7 +374,10 @@ ${mechanicsText}
         try {
           const retryResponse = await fetch("/api/ai/generate-template", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              ...getAIHeaders(),
+            },
             body: JSON.stringify({
               gameType: genre,
               description: fullDescription,
@@ -446,6 +467,13 @@ ${mechanicsText}
             </button>
           )}
         </div>
+
+        {/* Verificar configuração de IA */}
+        {!hasValidConfig && !template && (
+          <div className="mb-8">
+            <AIConfigWarning />
+          </div>
+        )}
 
         {!template ? (
           /* Form */
@@ -554,7 +582,7 @@ ${mechanicsText}
                 </p>
                 <button
                   onClick={handleEnhanceDescription}
-                  disabled={isEnhancing || !description.trim()}
+                  disabled={isEnhancing || !description.trim() || !hasValidConfig}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isEnhancing ? (
@@ -607,7 +635,7 @@ ${mechanicsText}
                 </p>
                 <button
                   onClick={handleGenerateMechanics}
-                  disabled={isGeneratingMechanics || !description.trim()}
+                  disabled={isGeneratingMechanics || !description.trim() || !hasValidConfig}
                   className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isGeneratingMechanics ? (
@@ -655,7 +683,7 @@ ${mechanicsText}
             {/* Generate Button */}
             <button
               onClick={() => handleGenerate()}
-              disabled={isGenerating}
+              disabled={isGenerating || !hasValidConfig}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
@@ -744,7 +772,7 @@ ${mechanicsText}
               <div className="flex gap-4">
                 <button
                   onClick={() => handleGenerate(true)}
-                  disabled={isGenerating || !adjustments.trim()}
+                  disabled={isGenerating || !adjustments.trim() || !hasValidConfig}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isGenerating ? (
