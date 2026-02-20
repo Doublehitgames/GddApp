@@ -539,7 +539,7 @@ function SectionNode({ data }: { data: any }) {
   const finalSize = isSelected && selectedStyles ? size * selectedStyles.scale : size;
   
   // Lógica de borda
-  const hasChildrenBorderConfig = nodeConfig.hasChildrenBorder || { enabled: false };
+  const hasChildrenBorderConfig = (nodeConfig as any).hasChildrenBorder || { enabled: false };
   let finalBorderColor: string;
   let finalBorderWidthConfig: number;
   let borderDashed = false;
