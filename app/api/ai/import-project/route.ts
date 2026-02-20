@@ -206,7 +206,7 @@ IMPORTANTE: Retorne APENAS o JSON, sem explicações adicionais. COPIE todo o co
     }
 
     // Obter configuração de IA do usuário via headers
-    const aiConfig = getAIConfigFromRequest(req);
+    const aiConfig = getAIConfigFromRequest(request);
     if (aiConfig instanceof NextResponse) {
       return aiConfig; // Retornar erro se não houver configuração
     }
