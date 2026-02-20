@@ -476,7 +476,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
           return (
             <li key={sub.id} className="mb-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-gray-900/60 border border-gray-700 p-2.5 rounded-lg">
                 {hasChildren && (
                   <button
                     onClick={() => {
@@ -488,24 +488,24 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
                       }
                       setExpandedSections(newExpanded);
                     }}
-                    className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+                    className="text-gray-300 hover:text-white font-bold w-4 text-sm"
                   >
                     {isExpanded ? '−' : '+'}
                   </button>
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <button
-                  className="text-blue-300 underline hover:text-blue-500"
+                  className="text-blue-300 underline hover:text-blue-200"
                   onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
                 >
                   {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
                 </button>
                 {matchesDirectly && searchTerm.trim() && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+                  <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
                 )}
               </div>
               {contentSnippet && (
-                <div className="ml-8 text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded">
+                <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
                   {highlightText(contentSnippet, searchTerm)}
                 </div>
               )}
@@ -517,8 +517,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     );
   }
 
-  if (!loaded) return <div className="p-6">Carregando...</div>;
-  if (!section) return <div className="p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
+  if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">Carregando...</div>;
+  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
 
   return (
     <>
@@ -614,7 +614,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
 
   return (
     <li ref={setNodeRef} style={style} className="mb-2">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 bg-gray-900/60 border border-gray-700 p-2.5 rounded-lg">
         <span
           className="text-gray-400 cursor-grab active:cursor-grabbing text-sm"
           {...attributes}
@@ -634,24 +634,24 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
               }
               setExpandedSections(newExpanded);
             }}
-            className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+            className="text-gray-300 hover:text-white font-bold w-4 text-sm"
           >
             {isExpanded ? '−' : '+'}
           </button>
         )}
         {!hasChildren && <span className="w-4"></span>}
         <button
-          className="text-blue-300 underline hover:text-blue-500"
+          className="text-blue-300 underline hover:text-blue-200"
           onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
         >
           {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
         </button>
         {matchesDirectly && searchTerm.trim() && (
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+          <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
         )}
       </div>
       {contentSnippet && (
-        <div className="ml-8 text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded">
+        <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
           {highlightText(contentSnippet, searchTerm)}
         </div>
       )}
@@ -680,10 +680,10 @@ function SectionDetailContent({
 }: any) {
 
   return (
-    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-6" : "p-6 max-w-lg mx-auto"}>
+    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
       {/* Fullscreen header */}
       {inlineEdit && isFullscreen && (
-        <div className="mb-4 flex items-center justify-between border-b pb-4">
+        <div className="mb-4 flex items-center justify-between border-b border-gray-700 pb-4">
           <h2 className="text-xl font-bold">Editando: {section.title}</h2>
           <button
             onClick={() => {
@@ -700,9 +700,9 @@ function SectionDetailContent({
       
       {/* Breadcrumbs */}
       {!(inlineEdit && isFullscreen) && (
-        <div className="mb-4 text-sm text-gray-500 flex items-center gap-1 flex-wrap">
+        <div className="max-w-6xl mx-auto mb-4 text-sm text-gray-400 flex items-center gap-1 flex-wrap">
         <button
-          className="hover:text-blue-400 underline"
+          className="hover:text-blue-300 underline"
           onClick={() => router.push(`/projects/${projectId}`)}
         >
           {project?.title || "Projeto"}
@@ -711,10 +711,10 @@ function SectionDetailContent({
           <span key={crumb.id} className="flex items-center gap-1">
             <span>/</span>
             {idx === breadcrumbs.length - 1 ? (
-              <span className="text-gray-700 font-semibold">{crumb.title}</span>
+              <span className="text-gray-200 font-semibold">{crumb.title}</span>
             ) : (
               <button
-                className="hover:text-blue-400 underline"
+                className="hover:text-blue-300 underline"
                 onClick={() => router.push(`/projects/${projectId}/sections/${crumb.id}`)}
               >
                 {crumb.title}
@@ -726,7 +726,7 @@ function SectionDetailContent({
       )}
 
       {!(inlineEdit && isFullscreen) && (
-        <div className="flex items-center gap-2 mb-2 group">
+        <div className="max-w-6xl mx-auto flex items-center gap-2 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
         {isEditingTitle ? (
           <div className="flex items-center gap-2 flex-1">
             <input
@@ -745,7 +745,7 @@ function SectionDetailContent({
                 }
               }}
               autoFocus
-              className="flex-1 text-2xl font-bold border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 text-2xl font-bold bg-gray-900 border border-blue-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={() => {
@@ -756,7 +756,7 @@ function SectionDetailContent({
                   setIsEditingTitle(false);
                 }
               }}
-              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+              className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors"
             >
               ✓ Salvar
             </button>
@@ -765,7 +765,7 @@ function SectionDetailContent({
                 setEditedTitle(section.title);
                 setIsEditingTitle(false);
               }}
-              className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
+              className="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-500 transition-colors"
             >
               ✕ Cancelar
             </button>
@@ -781,7 +781,7 @@ function SectionDetailContent({
                   setSectionColor(newColor);
                   editSection(projectId, sectionId, section.title, section.content, newColor);
                 }}
-                className="h-8 w-8 border rounded cursor-pointer"
+                className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900"
                 title="Cor no mapa mental"
               />
               {section?.color && (
@@ -790,17 +790,17 @@ function SectionDetailContent({
                     setSectionColor("#3b82f6");
                     editSection(projectId, sectionId, section.title, section.content, undefined);
                   }}
-                  className="h-8 px-2 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                  className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
                   title="Resetar para cor padrão do nível"
                 >
                   🔄
                 </button>
               )}
             </div>
-            <h1 className="text-2xl font-bold">{section.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{section.title}</h1>
             <button
               onClick={() => setIsEditingTitle(true)}
-              className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-blue-600 transition-opacity text-xl"
+              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300 transition-opacity text-xl"
               title="Editar nome da seção"
             >
               ✏️
@@ -862,7 +862,7 @@ function SectionDetailContent({
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
         <div 
-          className="mb-4"
+          className="max-w-6xl mx-auto mb-4 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5"
           onDoubleClick={() => setInlineEdit(true)}
         >
           {section.content ? (
@@ -877,21 +877,21 @@ function SectionDetailContent({
         </div>
       )}
       {inlineEdit && (
-        <div className="mb-3">
+        <div className="max-w-6xl mx-auto mb-3 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
           {!isFullscreen && (
             <div className="flex items-center gap-2 mb-2 justify-end">
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1">
+              <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1 border border-gray-700">
                 <button
                   onClick={() => setEditorHeight((prev: string) => {
                     const current = parseInt(prev);
                     return `${Math.max(200, current - 100)}px`;
                   })}
-                  className="text-gray-600 hover:text-gray-900 font-bold"
+                  className="text-gray-300 hover:text-white font-bold"
                   title="Diminuir altura"
                 >
                   −
                 </button>
-                <span className="text-sm text-gray-600 min-w-[60px] text-center">
+                <span className="text-sm text-gray-300 min-w-[60px] text-center">
                   {editorHeight}
                 </span>
                 <button
@@ -899,7 +899,7 @@ function SectionDetailContent({
                     const current = parseInt(prev);
                     return `${current + 100}px`;
                   })}
-                  className="text-gray-600 hover:text-gray-900 font-bold"
+                  className="text-gray-300 hover:text-white font-bold"
                   title="Aumentar altura"
                 >
                   +
@@ -920,7 +920,7 @@ function SectionDetailContent({
           <div ref={setContainerEl as any} />
           <div className="mt-2 flex gap-2">
             <button
-              className="bg-green-600 text-white px-3 py-1 rounded"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => {
                 const md = (editorRef as any).current?.getMarkdown?.() || "";
                 const sections = project?.sections || [];
@@ -930,11 +930,11 @@ function SectionDetailContent({
               }}
             >Salvar</button>
             <button
-              className="bg-gray-600 text-white px-3 py-1 rounded"
+              className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => setInlineEdit(false)}
             >Cancelar</button>
             <button
-              className="bg-gray-700 text-white px-2 py-1 rounded text-sm"
+              className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-sm transition-colors"
               onClick={() => {
                 const next = editorMode === "wysiwyg" ? "markdown" : "wysiwyg";
                 setEditorMode(next);
@@ -958,8 +958,8 @@ function SectionDetailContent({
       )}
 
       {!(inlineEdit && isFullscreen) && (
-        <>
-      <h2 className="mt-4 font-semibold">Subseções</h2>
+        <div className="max-w-6xl mx-auto mt-6 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
+      <h2 className="font-semibold text-lg">Subseções</h2>
       
       {/* Campo de busca */}
       <div className="mb-3">
@@ -984,12 +984,12 @@ function SectionDetailContent({
               setExpandedSections(allIds);
             }
           }}
-          className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {renderSubsectionTree(sectionId) || (
-        <p className="text-gray-500 text-sm">Nenhuma subseção ainda.</p>
+        <p className="text-gray-400 text-sm">Nenhuma subseção ainda.</p>
       )}
 
       <div className="mt-2">
@@ -1006,10 +1006,10 @@ function SectionDetailContent({
               }
             }}
             placeholder="Adicionar subseção"
-            className={`border px-2 py-1 ${nameError ? "border-red-500" : ""}`}
+            className={`bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
           />
           <button
-            className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             disabled={!newSubTitle.trim() || !!nameError}
             onClick={() => {
               const t = newSubTitle.trim();
@@ -1021,10 +1021,10 @@ function SectionDetailContent({
           >Adicionar</button>
         </div>
         {nameError && (
-          <span className="text-red-500 text-sm mt-1 block">{nameError}</span>
+          <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
         )}
       </div>
-      </>
+      </div>
       )}
 
       {/* Modal de Preview da IA */}
@@ -1311,8 +1311,8 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
   if (backlinks.length === 0) return null;
 
   return (
-    <div className="mt-6 mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-      <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+    <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
+      <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
         <span>🔗</span>
         <span>Referenciado por:</span>
       </h3>
@@ -1321,11 +1321,11 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
           <span key={link.id} className="inline-flex items-center">
             <button
               onClick={() => router.push(`/projects/${projectId}/sections/${link.id}`)}
-              className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
+              className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
             >
               {link.title}
             </button>
-            {index < backlinks.length - 1 && <span className="text-blue-400 ml-1">,</span>}
+            {index < backlinks.length - 1 && <span className="text-blue-500 ml-1">,</span>}
           </span>
         ))}
       </div>

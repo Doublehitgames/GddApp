@@ -64,18 +64,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
     }, [mounted, projectId, projects]);
 
 
-    if (!mounted) return <div>Carregando...</div>;
+    if (!mounted) return <div className="min-h-screen bg-gray-900 text-white p-6">Carregando...</div>;
 
 
     if (!project) {
         return (
-            <div>
-                <div className="p-6">
-                    <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
+            <div className="min-h-screen bg-gray-900 text-white p-6">
+                <div className="max-w-5xl mx-auto">
+                    <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push("/")}>
                         Voltar para Home
                     </button>
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 text-red-300">Projeto não encontrado. "{projectId}"</div>
                 </div>
-                <div>Projeto não encontrado. "{projectId}"</div>
             </div>
         );
     }
@@ -99,128 +99,136 @@ export default function ProjectDetailClient({ projectId }: Props) {
     } : undefined;
 
     return (
-        <div className="flex h-screen">
-            {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-                
-                <div className="flex items-center justify-between mb-4">
-                    <button className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800" onClick={() => router.push("/")}>
+        <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
+            <div className="mx-auto w-full max-w-6xl space-y-6">
+                <header className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
+                    <button className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors w-fit" onClick={() => router.push("/")}>
                         ← Voltar para Home
                     </button>
-                    
-                    <div className="flex gap-3">
-                        <button 
-                            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+
+                    <div className="flex flex-wrap gap-3 md:justify-end">
+                        <button
+                            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/mindmap`)}
                         >
                             🧠 Mapa Mental
                         </button>
-                        
-                        <button 
-                            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+
+                        <button
+                            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/view`)}
                         >
                             📄 Ver como Documento
                         </button>
-                        
-                        <button 
-                            className="px-6 py-2 bg-gradient-to-r from-gray-600 to-slate-600 text-white rounded-lg hover:from-gray-700 hover:to-slate-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+
+                        <button
+                            className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/settings`)}
                         >
                             ⚙️ Configurações
                         </button>
-                        
-                        <button 
-                            className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+
+                        <button
+                            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/backup`)}
                         >
                             💾 Backup
                         </button>
                     </div>
-                </div>
-                
-                <div className="flex items-center gap-2 mb-2">
-                    <h1 className="text-3xl font-bold">{project.name}</h1>
-                    <button
-                    className="bg-yellow-500 text-black px-2 py-1 rounded text-sm"
-                    onClick={() => router.push(`/projects/${projectId}/edit`)}
-                >Editar</button>
-            </div>
-            <div className="mb-4">
-                {project.description ? (
-                    <MarkdownWithReferences 
-                        content={project.description} 
-                        projectId={projectId} 
-                        sections={project.sections || []} 
-                    />
-                ) : (
-                    <p className="text-gray-400 italic">Sem descrição.</p>
-                )}
-            </div>
+                </header>
 
-            <div className="mt-6 mb-4">
-                <input
-                    type="text"
-                    placeholder="🔍 Buscar seções por título ou conteúdo..."
-                    value={searchTerm}
-                    onChange={(e) => {
-                        const term = e.target.value;
-                        setSearchTerm(term);
-                        // Se houver busca, expandir automaticamente todas as seções
-                        if (term.trim()) {
-                            const allIds = new Set<string>();
-                            function collectIds(sectionsList: any[]) {
-                                sectionsList.forEach((s: any) => {
-                                    allIds.add(s.id);
-                                    const children = (project.sections || []).filter((child: any) => child.parentId === s.id);
-                                    if (children.length > 0) {
-                                        collectIds(children);
+                <section className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{project.title || project.name}</h1>
+                        <button
+                            className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
+                            onClick={() => router.push(`/projects/${projectId}/edit`)}
+                        >
+                            Editar
+                        </button>
+                    </div>
+
+                    <div className="text-gray-200">
+                        {project.description ? (
+                            <MarkdownWithReferences
+                                content={project.description}
+                                projectId={projectId}
+                                sections={project.sections || []}
+                            />
+                        ) : (
+                            <p className="text-gray-400 italic">Sem descrição.</p>
+                        )}
+                    </div>
+                </section>
+
+                <section className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10">
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold tracking-tight">Seções do Projeto</h2>
+                        <p className="text-sm text-gray-400 mt-1">Busque, navegue e reordene as seções principais com arrastar e soltar.</p>
+                    </div>
+
+                    <div className="mb-4">
+                        <input
+                            type="text"
+                            placeholder="🔍 Buscar seções por título ou conteúdo..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                const term = e.target.value;
+                                setSearchTerm(term);
+                                if (term.trim()) {
+                                    const allIds = new Set<string>();
+                                    function collectIds(sectionsList: any[]) {
+                                        sectionsList.forEach((s: any) => {
+                                            allIds.add(s.id);
+                                            const children = (project.sections || []).filter((child: any) => child.parentId === s.id);
+                                            if (children.length > 0) {
+                                                collectIds(children);
+                                            }
+                                        });
                                     }
-                                });
-                            }
-                            collectIds(project.sections || []);
-                            setExpandedSections(allIds);
-                        }
-                    }}
-                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-            </div>
+                                    collectIds(project.sections || []);
+                                    setExpandedSections(allIds);
+                                }
+                            }}
+                            className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
 
-            <h2 className="mt-4 font-semibold">Seções</h2>
-            <SectionTree 
-                sections={project.sections || []} 
-                projectId={projectId} 
-                reorderSections={reorderSections} 
-                sensors={sensors} 
-                searchTerm={searchTerm}
-                expandedSections={expandedSections}
-                setExpandedSections={setExpandedSections}
-            />
-
-            <div className="mt-4">
-                <div className="flex gap-2">
-                    <input
-                        value={sectionTitle}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            setSectionTitle(val);
-                            if (val.trim() && hasDuplicateName(projectId, val.trim(), undefined)) {
-                                setNameError("Já existe uma seção raiz com este nome.");
-                            } else {
-                                setNameError("");
-                            }
-                        }}
-                        placeholder="Nova seção"
-                        className={`border px-2 py-1 ${nameError ? "border-red-500" : ""}`}
+                    <SectionTree
+                        sections={project.sections || []}
+                        projectId={projectId}
+                        reorderSections={reorderSections}
+                        sensors={sensors}
+                        searchTerm={searchTerm}
+                        expandedSections={expandedSections}
+                        setExpandedSections={setExpandedSections}
                     />
-                    <button onClick={handleAddSection} className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50" disabled={!sectionTitle.trim() || !!nameError}>Adicionar</button>
-                </div>
-                {nameError && (
-                    <span className="text-red-500 text-sm mt-1 block">{nameError}</span>
-                )}
+
+                    <div className="mt-5 pt-4 border-t border-gray-700">
+                        <div className="flex gap-2 flex-wrap">
+                            <input
+                                value={sectionTitle}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSectionTitle(val);
+                                    if (val.trim() && hasDuplicateName(projectId, val.trim(), undefined)) {
+                                        setNameError("Já existe uma seção raiz com este nome.");
+                                    } else {
+                                        setNameError("");
+                                    }
+                                }}
+                                placeholder="Nova seção"
+                                className={`bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
+                            />
+                            <button onClick={handleAddSection} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" disabled={!sectionTitle.trim() || !!nameError}>Adicionar</button>
+                        </div>
+                        {nameError && (
+                            <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
+                        )}
+                    </div>
+                </section>
             </div>
-        </div>
-    </div>
+        </main>
     );
 }
 
@@ -275,13 +283,13 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     return (
         <>
             {searchTerm.trim() && totalMatches > 0 && (
-                <p className="text-sm text-gray-600 mb-2 ml-6">
+                <p className="text-sm text-gray-400 mb-2 ml-1">
                     {totalMatches} {totalMatches === 1 ? 'resultado encontrado' : 'resultados encontrados'}
                 </p>
             )}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
-                    <ul className="ml-6 space-y-1">
+                    <ul className="space-y-2">
                         {roots.map((sec) => (
                             <SortableRootItem 
                                 key={sec.id} 
@@ -360,7 +368,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
 
     return (
         <li ref={setNodeRef} style={style} className="mb-2">
-            <div className="flex items-center gap-2 bg-gray-100 p-2 rounded hover:bg-gray-200">
+            <div className="flex items-center gap-2 bg-gray-900/60 border border-gray-700 p-2.5 rounded-lg hover:border-gray-500 transition-colors">
                 <span
                     className="text-gray-400 cursor-grab active:cursor-grabbing"
                     {...attributes}
@@ -380,21 +388,21 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                             }
                             setExpandedSections(newExpanded);
                         }}
-                        className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+                        className="text-gray-300 hover:text-white font-bold w-4 text-sm"
                     >
                         {isExpanded ? '−' : '+'}
                     </button>
                 )}
                 {!hasChildren && <span className="w-4"></span>}
-                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-400 underline hover:text-blue-600">
+                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-300 underline hover:text-blue-200">
                     {highlightText(section.title, searchTerm)}
                 </Link>
                 {directMatch && searchTerm.trim() && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+                    <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
                 )}
             </div>
             {contentSnippet && (
-                <div className="ml-8 text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded">
+                <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
                     {highlightText(contentSnippet, searchTerm)}
                 </div>
             )}
@@ -488,21 +496,21 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSe
                                         }
                                         setExpandedSections(newExpanded);
                                     }}
-                                    className="text-gray-600 hover:text-gray-800 font-bold w-4 text-sm"
+                                    className="text-gray-300 hover:text-white font-bold w-4 text-sm"
                                 >
                                     {isExpanded ? '−' : '+'}
                                 </button>
                             )}
                             {!hasChildren && <span className="w-4"></span>}
-                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-500">
+                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-200">
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
                             {directMatch && searchTerm && searchTerm.trim() && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">✓ Match</span>
+                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
                             )}
                         </div>
                         {contentSnippet && (
-                            <div className="text-xs text-gray-600 italic mt-1 bg-yellow-50 p-2 rounded ml-4">
+                            <div className="text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded ml-4">
                                 {highlightText(contentSnippet, searchTerm || '')}
                             </div>
                         )}
