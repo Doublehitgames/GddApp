@@ -33,6 +33,11 @@ interface Props {
   sectionId: string;
 }
 
+type SubsectionSuggestion = {
+  title: string;
+  description?: string;
+};
+
 export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
@@ -583,6 +588,102 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   );
 }
 
+function extractSubsectionSuggestions(content: string): SubsectionSuggestion[] {
+  if (!content) return [];
+
+  const lines = content.split(/\r?\n/);
+  const startIndex = lines.findIndex((line) => /sugest[aã]o/i.test(line) && /subse[cç][oõ]es/i.test(line));
+
+  if (startIndex === -1) return [];
+
+  const suggestions: SubsectionSuggestion[] = [];
+
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const rawLine = lines[index].trim();
+    if (!rawLine) {
+      if (suggestions.length > 0) break;
+      continue;
+    }
+
+    const line = rawLine.replace(/^>\s*/, "").trim();
+    if (!line.startsWith("- ")) {
+      if (suggestions.length > 0) break;
+      continue;
+    }
+
+    const bulletText = line.replace(/^-\s*/, "").trim();
+    if (!bulletText) continue;
+
+    const normalizedText = bulletText.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
+    const separatorIndex = normalizedText.indexOf(":");
+
+    const rawTitle = separatorIndex >= 0 ? normalizedText.slice(0, separatorIndex) : normalizedText;
+    const rawDescription = separatorIndex >= 0 ? normalizedText.slice(separatorIndex + 1) : "";
+
+    const title = rawTitle.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
+    const description = rawDescription.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
+
+    if (!title) continue;
+    if (suggestions.some((suggestion) => suggestion.title.toLowerCase() === title.toLowerCase())) continue;
+
+    suggestions.push({
+      title,
+      description: description || undefined,
+    });
+  }
+
+  return suggestions;
+}
+
+function SubsectionSuggestionPanel({
+  suggestions,
+  projectId,
+  sectionId,
+  hasDuplicateName,
+  addSubsection,
+}: {
+  suggestions: SubsectionSuggestion[];
+  projectId: string;
+  sectionId: string;
+  hasDuplicateName: (projectId: string, title: string, parentId?: string, excludeId?: string) => boolean;
+  addSubsection: (projectId: string, parentId: string, title: string, content?: string) => string;
+}) {
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="max-w-6xl mx-auto mb-4 bg-indigo-900/20 border border-indigo-700/50 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-indigo-200 mb-3">💡 Sugestões da IA para criar subseções</h3>
+      <div className="space-y-2">
+        {suggestions.map((suggestion) => {
+          const alreadyExists = hasDuplicateName(projectId, suggestion.title, sectionId);
+
+          return (
+            <div key={suggestion.title} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-sm text-white font-medium truncate">{suggestion.title}</p>
+                {suggestion.description && (
+                  <p className="text-xs text-gray-400 truncate">{suggestion.description}</p>
+                )}
+              </div>
+
+              <button
+                className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={alreadyExists}
+                onClick={() => {
+                  if (alreadyExists) return;
+                  addSubsection(projectId, sectionId, suggestion.title, suggestion.description || "");
+                }}
+              >
+                {alreadyExists ? "Já criada" : "Criar subseção"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Componente sortable para subseções
 function SortableSubsectionItem({ sub, projectId, project, router, renderSubsectionTree, searchTerm, highlightText, expandedSections, setExpandedSections, getContentSnippet }: any) {
   const {
@@ -678,6 +779,8 @@ function SectionDetailContent({
   handleMoveSection,
   sections,
 }: any) {
+  const sectionSuggestions = extractSubsectionSuggestions(section?.content || "");
+  const previewSuggestions = extractSubsectionSuggestions(previewContent || "");
 
   return (
     <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
@@ -876,6 +979,17 @@ function SectionDetailContent({
           )}
         </div>
       )}
+
+      {!inlineEdit && !(inlineEdit && isFullscreen) && (
+        <SubsectionSuggestionPanel
+          suggestions={sectionSuggestions}
+          projectId={projectId}
+          sectionId={sectionId}
+          hasDuplicateName={hasDuplicateName}
+          addSubsection={addSubsection}
+        />
+      )}
+
       {inlineEdit && (
         <div className="max-w-6xl mx-auto mb-3 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
           {!isFullscreen && (
@@ -1055,6 +1169,16 @@ function SectionDetailContent({
                   content={previewContent} 
                   projectId={projectId} 
                   sections={project?.sections || []} 
+                />
+              </div>
+
+              <div className="mt-4">
+                <SubsectionSuggestionPanel
+                  suggestions={previewSuggestions}
+                  projectId={projectId}
+                  sectionId={sectionId}
+                  hasDuplicateName={hasDuplicateName}
+                  addSubsection={addSubsection}
                 />
               </div>
             </div>
