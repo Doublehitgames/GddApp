@@ -209,6 +209,22 @@ Após seguir o guia:
 - [ ] Variáveis de ambiente configuradas (se usar IA)
 - [ ] Testado criar projeto no site online
 
+### ✅ Checklist de Produção (Supabase + CI)
+
+Antes de liberar para usuários, confirme também:
+
+- [ ] Variáveis de ambiente no projeto Vercel:
+      - [ ] `NEXT_PUBLIC_SUPABASE_URL`
+      - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- [ ] Schema SQL aplicado no Supabase (`profiles`, `projects`, `sections`, `project_members`)
+- [ ] Fix de RLS aplicado (`fix_rls_recursion.sql`)
+- [ ] Coluna de IA aplicada em `profiles` (`add_ai_config.sql`)
+- [ ] Google OAuth configurado no Supabase (se habilitado no app)
+- [ ] Workflow de CI verde em push/PR (`tsc`, `jest`, `playwright`)
+- [ ] E2E crítico passou (`npm run test:e2e:critical`)
+- [ ] Smoke E2E passou (`npm run test:e2e:smoke`)
+- [ ] Fluxo manual validado: criar projeto → seção/subseção → sem refresh → dados no cloud
+
 ---
 
 ## 🎉 Próximos Passos

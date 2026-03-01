@@ -129,7 +129,7 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
       console.log('Available sections:', sections.map((s: any) => ({ id: s.id, title: s.title })));
       
       // Passar cor apenas se for customizada, senão passar undefined para usar padrão do nível
-      editSection(projectId, sectionId, title, convertedContent, hasCustomColor ? color : undefined);
+      editSection(projectId, sectionId, title, convertedContent, parentId ?? undefined, hasCustomColor ? color : undefined);
       router.push(`/projects/${projectId}/sections/${sectionId}`);
     }
   }

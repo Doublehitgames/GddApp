@@ -31,7 +31,7 @@ export default function AISettingsPage() {
     setMessage(null);
 
     try {
-      saveConfig({
+      await saveConfig({
         provider,
         apiKey: apiKey.trim(),
       });
@@ -43,9 +43,9 @@ export default function AISettingsPage() {
     }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (confirm('Tem certeza que deseja remover suas configurações de IA?')) {
-      clearConfig();
+      await clearConfig();
       setApiKey('');
       setMessage({ type: 'success', text: 'Configurações removidas' });
     }

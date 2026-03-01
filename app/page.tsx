@@ -2,13 +2,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
+import UserMenu from "@/components/UserMenu";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
-  const loadFromStorage = useProjectStore((s) => s.loadFromStorage);
   const removeProject = useProjectStore((s) => s.removeProject);
+  const { user } = useAuthStore();
 
   const downloadProjectBackup = (project: (typeof projects)[number]) => {
     const backupData = {
@@ -29,11 +30,6 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  useEffect(() => {
-    // Hydrate store from localStorage on client
-    loadFromStorage();
-  }, [loadFromStorage]);
-
   return (
     <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
       <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -44,10 +40,15 @@ export default function Home() {
             <p className="mt-2 text-gray-300 max-w-2xl">Organize seus projetos de forma rápida com IA e edição manual.</p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
             <Link href="/settings/ai">
               <button className="px-4 py-2.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium">
                 ⚙️ Configurações de IA
+              </button>
+            </Link>
+            <Link href="/settings/persistence">
+              <button className="px-4 py-2.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium">
+                💾 Persistência
               </button>
             </Link>
             <a
@@ -58,25 +59,28 @@ export default function Home() {
             >
               💬 Discord
             </a>
+            <UserMenu />
           </div>
         </header>
 
-        <div className="p-4 md:p-5 rounded-xl border border-yellow-600/70 bg-yellow-950/30 text-yellow-100 shadow-lg shadow-black/10">
-          <p className="text-sm leading-relaxed">
-            Esta versão está persistindo os dados no navegador (armazenamento local). Ela é uma versão de teste para coletar feedbacks e melhorar o sistema.
-          </p>
-          <p className="text-sm leading-relaxed mt-2">
-            Para suporte, dúvidas e sugestões, entre no nosso Discord:{" "}
-            <a
-              href="https://discord.gg/cqPsj7DhEr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-yellow-200"
-            >
-              discord.gg/cqPsj7DhEr
-            </a>
-          </p>
-        </div>
+        {!user && (
+          <div className="p-4 md:p-5 rounded-xl border border-yellow-600/70 bg-yellow-950/30 text-yellow-100 shadow-lg shadow-black/10">
+            <p className="text-sm leading-relaxed">
+              Esta versão está persistindo os dados no navegador (armazenamento local). Ela é uma versão de teste para coletar feedbacks e melhorar o sistema.
+            </p>
+            <p className="text-sm leading-relaxed mt-2">
+              Para suporte, dúvidas e sugestões, entre no nosso Discord:{" "}
+              <a
+                href="https://discord.gg/cqPsj7DhEr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-yellow-200"
+              >
+                discord.gg/cqPsj7DhEr
+              </a>
+            </p>
+          </div>
+        )}
 
         <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-6 shadow-xl shadow-black/10">

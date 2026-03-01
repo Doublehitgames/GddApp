@@ -5,6 +5,13 @@
 
 import { useProjectStore, Project, Section } from '@/store/projectStore'
 
+jest.mock('@/lib/supabase/projectSync', () => ({
+  fetchProjectsFromSupabase: jest.fn(async () => []),
+  upsertProjectToSupabase: jest.fn(async () => ({ error: null })),
+  deleteProjectFromSupabase: jest.fn(async () => ({ error: null })),
+  migrateLocalProjectsToSupabase: jest.fn(async () => ({ migrated: 0, errors: 0 })),
+}))
+
 // Mock do crypto.randomUUID
 const mockUUIDs = [
   'project-uuid-1',

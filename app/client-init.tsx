@@ -1,8 +1,8 @@
 "use client";
 
-import { useInitProjects } from "@/hooks/useInitProjects";
+import { useAuthInit } from "@/hooks/useAuthInit";
 
 export default function ClientInit() {
-  useInitProjects();
+  useAuthInit();
   return null;
 }

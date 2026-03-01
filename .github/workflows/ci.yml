@@ -27,6 +27,9 @@ jobs:
     
     - name: 📦 Instalar dependências
       run: npm ci
+
+    - name: 🔍 Verificar TypeScript
+      run: npx tsc --noEmit
     
     - name: 🧪 Rodar testes unitários
       run: npm test -- --coverage --watchAll=false

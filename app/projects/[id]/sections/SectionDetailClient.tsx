@@ -882,7 +882,7 @@ function SectionDetailContent({
                 onChange={(e) => {
                   const newColor = e.target.value;
                   setSectionColor(newColor);
-                  editSection(projectId, sectionId, section.title, section.content, newColor);
+                  editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
                 }}
                 className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900"
                 title="Cor no mapa mental"
@@ -891,7 +891,7 @@ function SectionDetailContent({
                 <button
                   onClick={() => {
                     setSectionColor("#3b82f6");
-                    editSection(projectId, sectionId, section.title, section.content, undefined);
+                    editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
                   }}
                   className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
                   title="Resetar para cor padrão do nível"
