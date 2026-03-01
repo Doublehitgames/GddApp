@@ -234,6 +234,16 @@ Antes de liberar para usuários, confirme também:
 
 ---
 
+## ⚠️ Risco Conhecido (Acompanhar)
+
+- Dependência `@toast-ui/editor` (versão atual oficial) ainda referencia `dompurify@^2.x`.
+- Isso mantém um alerta `moderate` no `npm audit --omit=dev`.
+- Decisão atual: **não forçar override** de `dompurify` para evitar regressão no editor em produção.
+- Mitigação já aplicada: `next` e `jspdf` atualizados; risco crítico removido.
+- Ação futura: planejar migração/atualização do editor em uma sprint dedicada e revalidar `npm audit`.
+
+---
+
 ## 🎉 Próximos Passos
 
 Agora que está online:
