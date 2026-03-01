@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
+import { getPublicSiteUrl } from "@/lib/supabase/env";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface Profile {
@@ -93,10 +94,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signInWithGoogle: async () => {
     const supabase = createClient();
+    const siteUrl = getPublicSiteUrl();
+    const shouldUseConfiguredSiteUrl = Boolean(siteUrl && !siteUrl.includes("localhost"));
+    const baseUrl = shouldUseConfiguredSiteUrl ? siteUrl! : window.location.origin;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${baseUrl}/auth/callback`,
       },
     });
     if (error) return { error: error.message };
