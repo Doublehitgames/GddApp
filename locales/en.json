@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "languageName": "English",
+    "locale": "en"
+  },
+  "common": {
+    "appName": "GDD Manager",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "search": "Search",
+    "back": "Back"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to your account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "withGoogle": "Continue with Google"
+    }
+  },
+  "projects": {
+    "newProject": "New project",
+    "emptyState": "No projects found",
+    "create": "Create project"
+  },
+  "settings": {
+    "language": "Language",
+    "ai": "AI settings",
+    "persistence": "Persistence"
+  }
+}
