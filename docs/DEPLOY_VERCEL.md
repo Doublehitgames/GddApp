@@ -214,8 +214,15 @@ Após seguir o guia:
 Antes de liberar para usuários, confirme também:
 
 - [ ] Variáveis de ambiente no projeto Vercel:
+      - [ ] `NEXT_PUBLIC_SITE_URL` = `https://gdd-app.vercel.app`
       - [ ] `NEXT_PUBLIC_SUPABASE_URL`
       - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+      - [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- [ ] Supabase Auth → URL Configuration:
+      - [ ] **Site URL** = `https://gdd-app.vercel.app`
+      - [ ] Redirect URL: `https://gdd-app.vercel.app/auth/callback`
+      - [ ] Redirect URL: `http://localhost:3000/auth/callback`
+      - [ ] Redirect URL: `https://*.vercel.app/auth/callback`
 - [ ] Schema SQL aplicado no Supabase (`profiles`, `projects`, `sections`, `project_members`)
 - [ ] Fix de RLS aplicado (`fix_rls_recursion.sql`)
 - [ ] Coluna de IA aplicada em `profiles` (`add_ai_config.sql`)

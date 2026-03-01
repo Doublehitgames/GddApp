@@ -76,8 +76,18 @@ npm run test:e2e:critical
 
 No Vercel, configure em **Settings → Environment Variables**:
 
+- `NEXT_PUBLIC_SITE_URL` = `https://gdd-app.vercel.app`
 - `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (compatibilidade)
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+No Supabase, configure em **Auth → URL Configuration**:
+
+- **Site URL**: `https://gdd-app.vercel.app`
+- **Redirect URLs**:
+	- `https://gdd-app.vercel.app/auth/callback`
+	- `http://localhost:3000/auth/callback`
+	- `https://*.vercel.app/auth/callback`
 
 Depois faça redeploy do último commit.
 
