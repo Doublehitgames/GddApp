@@ -10,7 +10,7 @@
 [![Zustand](https://img.shields.io/badge/Zustand-5.0-orange)](https://zustand-demo.pmnd.rs/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 [![CI Status](https://github.com/Doublehitgames/GddApp/workflows/CI%20-%20Testes%20Automatizados/badge.svg)](https://github.com/Doublehitgames/GddApp/actions)
-[![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-122%20automated-brightgreen)]()
 
 </div>
 
@@ -30,7 +30,7 @@
 - ✅ **Drag & Drop**: Reordene seções com facilidade
 - ✅ **Persistência Local**: Seus dados ficam seguros no navegador
 - ✅ **Interface Moderna**: Design responsivo e intuitivo
-- ✅ **110 Testes Automatizados**: Base sólida de qualidade e confiabilidade
+- ✅ **122 Testes Automatizados**: Base sólida de qualidade e confiabilidade
 
 ---
 
@@ -55,7 +55,7 @@
 - **Backlinks**: Veja quais seções referenciam a seção atual
 - **Visual diferenciado**: Links válidos em azul, inválidos em vermelho com linha ondulada
 
-[📖 **Saiba mais sobre Referências →**](./docs/REFERENCIAS_CRUZADAS.md)
+[📖 **Saiba mais sobre Referências →**](./GUIA_REFERENCIAS.md)
 
 ### �📁 Gerenciamento de Projetos
 
@@ -275,7 +275,7 @@ gdd_project/
 
 
 # Testes
-npm test             # Executa testes unitários (110 testes)
+npm test             # Executa testes unitários (118 testes)
 npm run test:watch   # Testes em modo watch
 npm run test:coverage # Testes com cobertura de código
 npm run test:e2e     # Testes end-to-end com Playwright
@@ -378,7 +378,7 @@ npm run lint         # Executa ESLint
 
 ---
 
-- [x] **🧪 110 Testes Automatizados** - Cobertura completa com Jest + Playwright
+- [x] **🧪 122 Testes Automatizados** - Cobertura completa com Jest + Playwright
 - [x] **🔗 Referências Cruzadas** - Sistema de links entre seções
 
 ### Em Desenvolvimento
@@ -440,7 +440,7 @@ Este projeto está sob licença MIT. Veja o arquivo `LICENSE` para mais detalhes
   - [Configuração da IA](./docs/AI_SETUP.md)
   - [Guia de Testes](./docs/GUIA_TESTES.md)
   - [Sistema de Imagens](./docs/IMAGES.md)
-  - [Referências Cruzadas](./docs/REFERENCIAS_CRUZADAS.md)
+   - [Referências Cruzadas](./GUIA_REFERENCIAS.md)
 - Veja a [documentação do Next.js](https://nextjs.org/docs
 ---
 

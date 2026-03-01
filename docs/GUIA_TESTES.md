@@ -36,7 +36,7 @@ Testes automatizados são scripts que validam se o código funciona corretamente
 ### Comandos Básicos
 
 ```bash
-# Todos os testes unitários (110 testes em ~1s)
+# Todos os testes unitários
 npm test
 
 # Modo watch - re-executa automaticamente ao salvar arquivos
@@ -51,6 +51,12 @@ npm test -- SectionLink
 
 # Testes E2E (end-to-end)
 npm run test:e2e
+
+# E2E Smoke (rápidos)
+npm run test:e2e:smoke
+
+# E2E Critical (fluxos críticos de sync)
+npm run test:e2e:critical
 
 # E2E com interface visual
 npm run test:e2e:ui
@@ -68,8 +74,8 @@ PASS  __tests__/store/projectStore.test.ts
       ✓ should add a new project (3 ms)
       ✓ should add multiple projects (1 ms)
 
-Test Suites: 5 passed, 5 total
-Tests:       110 passed, 110 total
+Test Suites: 7 passed, 7 total
+Tests:       118 passed, 118 total
 Time:        1.14 s
 ```
 
@@ -105,7 +111,7 @@ npm test -- setup
 
 ---
 
-### 2. ProjectStore (34 testes)
+### 2. ProjectStore (34+ testes)
 
 **Arquivo:** `__tests__/store/projectStore.test.ts`
 
@@ -279,6 +285,32 @@ npm test -- projectStore
 ---
 
 ### 3. Referências Cruzadas (38 testes)
+### 6. Sincronização Supabase (novos)
+
+**Arquivos:**
+- `__tests__/lib/projectSync.test.ts`
+- `__tests__/store/projectStore.sync.test.ts`
+
+**O que validam:**
+- Sessão/auth fallback (`getSession`/`getUser`)
+- Upsert sem refresh no fluxo de criação/edição
+- Merge local + cloud com precedência por `updatedAt`
+- Retry em cenário não autenticado
+- Compatibilidade de assinatura de `editSection`
+
+---
+
+## Testes E2E (Playwright)
+
+**Arquivos:**
+- `e2e/smoke-ui.spec.ts` (`@smoke`)
+- `e2e/sync-critical.spec.ts` (`@critical`)
+
+**Cobertura principal:**
+- Smoke de navegação e telas essenciais
+- Fluxo crítico de sync: criar projeto → seção/subseção → confirmar requests de sync sem refresh
+
+---
 
 **Arquivo:** `__tests__/utils/sectionReferences.test.ts`
 
