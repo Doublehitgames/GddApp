@@ -359,6 +359,24 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
               <p className="text-xs text-gray-500">{tr("Tamanho Base = fonte quando a bolinha tem 100px. Escala proporcionalmente com o tamanho do nó. Ex: Base=14 + Nó=1000px = Fonte de 140px.", "Base Size = font when the node has 100px. It scales proportionally with node size. Ex: Base=14 + Node=1000px = 140px font.")}</p>
             </div>
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🧾 {tr("Painel Lateral", "Sidebar Panel")}</h3>
+              <div className="grid grid-cols-1 gap-4 mb-2">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">{tr("Escala do Conteúdo", "Content Scale")}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.5"
+                    max="1.2"
+                    value={getValue("sidebar.contentScale") ?? 0.85}
+                    onChange={(e) => setValue("sidebar.contentScale", Number(e.target.value))}
+                    className="w-full bg-gray-700 rounded px-3 py-2"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">{tr("1.00 = 100% (normal). Exemplo: 0.85 reduz o texto para 85%. Botões não são afetados.", "1.00 = 100% (normal). Example: 0.85 reduces text to 85%. Buttons are not affected.")}</p>
+            </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">🎯 {tr("Projeto Central", "Central Project")}</h2>

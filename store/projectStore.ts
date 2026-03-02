@@ -164,6 +164,10 @@ export type MindMapSettings = {
     dotsSize?: number;
     dotsGap?: number;
   };
+  // Painel lateral
+  sidebar?: {
+    contentScale?: number;
+  };
 };
 
 //Definição da Seção. A seção pode ter um parentId opcional para suportar subseções.

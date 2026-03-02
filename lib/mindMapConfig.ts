@@ -62,6 +62,11 @@ export const MINDMAP_CONFIG = {
     onClickTargetSize: 80,   // Tamanho que a bolinha terá na tela ao clicar (px)
   },
 
+  // Painel lateral (conteúdo da bolinha)
+  sidebar: {
+    contentScale: 0.85,      // Escala do texto no painel lateral (1 = 100%)
+  },
+
   // Animação de edges destacadas
   animation: {
     speed: 2,                // Duração da animação em segundos (menor = mais rápido)

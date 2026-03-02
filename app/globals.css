@@ -107,3 +107,38 @@ body {
 .toastui-editor-defaultUI .CodeMirror-cursor {
   border-left-color: #111827;
 }
+
+/* Tabelas no modo visualização de markdown */
+.markdown-with-refs table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.markdown-with-refs th,
+.markdown-with-refs td {
+  border: 1px solid #4b5563;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-with-refs th {
+  background-color: #1f2937;
+  color: #f9fafb;
+  font-weight: 600;
+}
+
+.markdown-with-refs td {
+  color: #e5e7eb;
+}
+
+.markdown-with-refs td p,
+.markdown-with-refs th p,
+.markdown-with-refs td ul,
+.markdown-with-refs td ol {
+  margin: 0;
+}

@@ -9,6 +9,7 @@ interface MarkdownWithReferencesProps {
   content: string;
   projectId: string;
   sections: any[];
+  referenceLinkMode?: "manager" | "document";
 }
 
 interface SectionRef {
@@ -62,6 +63,7 @@ export function MarkdownWithReferences({
   content,
   projectId,
   sections,
+  referenceLinkMode = "manager",
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
   const refs = extractRefs(content);
@@ -79,7 +81,10 @@ export function MarkdownWithReferences({
 
       const target = findSec(sections, ref);
       if (target) {
-        const href = `/projects/${projectId}/sections/${target.id}`;
+        const href =
+          referenceLinkMode === "document"
+            ? `#section-${target.id}`
+            : `/projects/${projectId}/sections/${target.id}`;
         result += `[${target.title}](${href})`;
       } else {
         const missingRef = encodeURIComponent(ref.refValue);
@@ -99,7 +104,7 @@ export function MarkdownWithReferences({
   const renderedContent = buildMarkdownWithReferenceLinks();
 
   return (
-    <div className="prose max-w-none markdown-with-refs">
+    <div className="prose max-w-none markdown-with-refs overflow-x-auto">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw as any]}
@@ -150,6 +155,32 @@ export function MarkdownWithReferences({
                   }}
                   className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium"
                   title="Ir para seção"
+                >
+                  {children}
+                </a>
+              );
+            }
+
+            if (href.startsWith("#section-")) {
+              return (
+                <a
+                  href={href}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    const targetId = href.slice(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (!targetElement) return;
+
+                    targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+                    window.history.replaceState(null, "", href);
+
+                    targetElement.classList.add("gdd-anchor-highlight");
+                    window.setTimeout(() => {
+                      targetElement.classList.remove("gdd-anchor-highlight");
+                    }, 1800);
+                  }}
+                  className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  title="Ir para seção no documento"
                 >
                   {children}
                 </a>

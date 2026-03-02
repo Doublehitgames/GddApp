@@ -10,7 +10,6 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   Panel,
-  MiniMap,
   BackgroundVariant,
   MarkerType,
   Handle,
@@ -27,6 +26,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 interface MindMapClientProps {
   projectId: string;
@@ -758,8 +758,53 @@ function MarkdownWithMapReferences({
   sections: Section[];
   onSectionClick: (sectionId: string) => void;
 }) {
+  const normalizeContentForMapMarkdown = (input: string): string => {
+    const normalized = input.replace(/\r\n/g, "\n");
+
+    const meaningfulLines = normalized.split("\n").filter((line) => line.trim().length > 0);
+    const tabLines = meaningfulLines.filter((line) => line.includes("\t"));
+
+    const shouldConvertTsvToTable =
+      meaningfulLines.length >= 2 &&
+      tabLines.length === meaningfulLines.length &&
+      !normalized.includes("|");
+
+    if (!shouldConvertTsvToTable) {
+      return normalized;
+    }
+
+    const rows = meaningfulLines.map((line) =>
+      line
+        .split("\t")
+        .map((cell) => cell.trim())
+        .filter((cell, index, array) => !(index === array.length - 1 && cell === ""))
+    );
+
+    const columnCount = Math.max(...rows.map((row) => row.length));
+    if (columnCount < 2) {
+      return normalized;
+    }
+
+    const padRow = (row: string[]) => {
+      const padded = [...row];
+      while (padded.length < columnCount) padded.push("");
+      return padded;
+    };
+
+    const header = padRow(rows[0]);
+    const body = rows.slice(1).map(padRow);
+
+    const headerLine = `| ${header.join(" | ")} |`;
+    const separatorLine = `| ${new Array(columnCount).fill("---").join(" | ")} |`;
+    const bodyLines = body.map((row) => `| ${row.join(" | ")} |`);
+
+    return [headerLine, separatorLine, ...bodyLines].join("\n");
+  };
+
+  const normalizedContent = normalizeContentForMapMarkdown(content);
+
   // Processar conteúdo substituindo referências por links clicáveis
-  const processedContent = content.replace(/\$\[([^\]]+)\]/g, (match, ref) => {
+  const processedContent = normalizedContent.replace(/\$\[([^\]]+)\]/g, (match, ref) => {
     const rawContent = ref.trim();
     const isId = rawContent.startsWith('#');
     
@@ -780,9 +825,18 @@ function MarkdownWithMapReferences({
   });
 
   return (
-    <div className="prose prose-invert prose-sm max-w-none">
+    <div className="prose prose-invert prose-sm max-w-none markdown-with-refs overflow-x-auto">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw as any]}
+        allowedElements={[
+          "p", "br", "strong", "em", "u", "del", "code", "pre", "blockquote",
+          "ul", "ol", "li",
+          "h1", "h2", "h3", "h4", "h5", "h6",
+          "a", "span",
+          "table", "thead", "tbody", "tr", "th", "td",
+        ]}
+        unwrapDisallowed
         components={{
           a: ({ node, href, children, ...props }) => {
             // Se é uma referência de seção
@@ -859,6 +913,10 @@ function FlowContent({ projectId }: MindMapClientProps) {
   // Estados de busca
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Set<string>>(new Set());
+  const panelContentScaleRaw = Number((config as any)?.sidebar?.contentScale ?? 0.85);
+  const panelContentScale = Number.isFinite(panelContentScaleRaw)
+    ? Math.min(1.2, Math.max(0.5, panelContentScaleRaw))
+    : 0.85;
 
   // Função para realizar busca
   const performSearch = useCallback((term: string) => {
@@ -1762,18 +1820,11 @@ function FlowContent({ projectId }: MindMapClientProps) {
             fitViewOptions={{ padding: config.zoom.fitViewPadding || 0.2, maxZoom: config.zoom.fitViewMaxZoom }}
             maxZoom={maxZoom}
             minZoom={config.zoom.minZoom}
-            attributionPosition="bottom-left"
+            proOptions={{ hideAttribution: true }}
             className="bg-gray-900"
           >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
           <Controls className="bg-gray-800 border-gray-700" />
-          <MiniMap
-            className="bg-gray-800 border border-gray-700"
-            nodeColor={(node) => {
-              const level = node.data.level || 0;
-              return level === 0 ? '#3b82f6' : level === 1 ? '#8b5cf6' : '#a855f7';
-            }}
-          />
         </ReactFlow>
       </div>
 
@@ -1800,7 +1851,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
               </button>
             </div>
 
-            <div className="prose prose-invert max-w-none">
+            <div className="prose prose-invert max-w-none" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
                 <MarkdownWithMapReferences
                   content={selectedNode.content}
@@ -1818,7 +1869,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
               if (backlinks.length > 0) {
                 return (
                   <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3">{tr("Referenciado por:", "Referenced by:", "Referenciado por:")}</h3>
+                    <h3 className="text-sm font-semibold text-gray-300 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{tr("Referenciado por:", "Referenced by:", "Referenciado por:")}</h3>
                     <div className="flex flex-wrap gap-2">
                       {backlinks.map((backlink) => {
                         return (
