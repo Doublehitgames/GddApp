@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 // Rotas que NÃO precisam de autenticação
-const PUBLIC_ROUTES = ["/login", "/auth/callback"];
+const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/"];
 
 export async function proxy(request: NextRequest) {
   const bypassByCookie = request.cookies.get("e2e-bypass-auth")?.value === "1";
