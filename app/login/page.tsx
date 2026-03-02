@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
+import { getLocaleLabel, useI18n } from "@/lib/i18n/provider";
 
 type Mode = "login" | "signup";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuthStore();
+  const { t, locale, setLocale, supportedLocales } = useI18n();
 
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -36,7 +38,7 @@ export default function LoginPage() {
       if (error) {
         setError(error);
       } else {
-        setInfo("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
+        setInfo(t("auth.login.signupSuccess"));
       }
     }
 
@@ -55,8 +57,23 @@ export default function LoginPage() {
         {/* Logo / Título */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">🎮 GDD Manager</h1>
+          <div className="flex justify-center gap-2 mb-3">
+            {supportedLocales.map((option) => (
+              <button
+                key={option}
+                onClick={() => setLocale(option)}
+                className={`px-3 py-1 rounded-lg text-xs border transition-colors ${
+                  locale === option
+                    ? "bg-indigo-600 border-indigo-500 text-white"
+                    : "bg-gray-900 border-gray-700 text-gray-300 hover:text-white"
+                }`}
+              >
+                {getLocaleLabel(option)}
+              </button>
+            ))}
+          </div>
           <p className="text-gray-400 text-sm">
-            {mode === "login" ? "Entre na sua conta" : "Crie sua conta grätis"}
+            {mode === "login" ? t("auth.login.subtitleLogin") : t("auth.login.subtitleSignup")}
           </p>
         </div>
 
@@ -72,7 +89,7 @@ export default function LoginPage() {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Entrar
+              {t("auth.login.tabLogin")}
             </button>
             <button
               onClick={() => { setMode("signup"); setError(null); setInfo(null); }}
@@ -82,7 +99,7 @@ export default function LoginPage() {
                   : "text-gray-400 hover:text-white"
               }`}
             >
-              Criar conta
+              {t("auth.login.tabSignup")}
             </button>
           </div>
 
@@ -90,12 +107,12 @@ export default function LoginPage() {
             {/* Nome (só no signup) */}
             {mode === "signup" && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Nome</label>
+                <label className="block text-sm text-gray-400 mb-1">{t("auth.login.name")}</label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Seu nome"
+                  placeholder={t("auth.login.namePlaceholder")}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
@@ -103,12 +120,12 @@ export default function LoginPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Email</label>
+              <label className="block text-sm text-gray-400 mb-1">{t("auth.login.email")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder={t("auth.login.emailPlaceholder")}
                 required
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
               />
@@ -116,12 +133,12 @@ export default function LoginPage() {
 
             {/* Senha */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Senha</label>
+              <label className="block text-sm text-gray-400 mb-1">{t("auth.login.password")}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t("auth.login.passwordPlaceholder")}
                 required
                 minLength={6}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
@@ -149,17 +166,17 @@ export default function LoginPage() {
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
             >
               {loading
-                ? "Aguarde..."
+                ? t("auth.login.loading")
                 : mode === "login"
-                ? "Entrar"
-                : "Criar conta"}
+                ? t("auth.login.submit")
+                : t("auth.login.submitSignup")}
             </button>
           </form>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-gray-700" />
-            <span className="text-gray-500 text-xs">ou</span>
+            <span className="text-gray-500 text-xs">{t("auth.login.or")}</span>
             <div className="flex-1 h-px bg-gray-700" />
           </div>
 
@@ -174,12 +191,12 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Continuar com Google
+            {t("auth.login.withGoogle")}
           </button>
         </div>
 
         <p className="text-center text-gray-600 text-xs mt-6">
-          Seus dados ficam seguros · GDD Manager
+          {t("auth.login.footer")} · {t("common.appName")}
         </p>
       </div>
     </div>

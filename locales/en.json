@@ -14,10 +14,23 @@
   "auth": {
     "login": {
       "title": "Sign in to your account",
+      "subtitleLogin": "Sign in to your account",
+      "subtitleSignup": "Create your free account",
+      "tabLogin": "Sign in",
+      "tabSignup": "Create account",
+      "name": "Name",
+      "namePlaceholder": "Your name",
       "email": "Email",
+      "emailPlaceholder": "you@email.com",
       "password": "Password",
+      "passwordPlaceholder": "••••••••",
       "submit": "Sign in",
-      "withGoogle": "Continue with Google"
+      "submitSignup": "Create account",
+      "loading": "Please wait...",
+      "withGoogle": "Continue with Google",
+      "or": "or",
+      "signupSuccess": "Account created! Check your email to confirm your registration.",
+      "footer": "Your data is secure"
     }
   },
   "projects": {
@@ -25,9 +38,262 @@
     "emptyState": "No projects found",
     "create": "Create project"
   },
+  "home": {
+    "workspaceTag": "Game Design Workspace",
+    "subtitle": "Organize your projects quickly with AI and manual editing.",
+    "actions": {
+      "aiSettings": "AI settings",
+      "persistence": "Persistence"
+    },
+    "notice": {
+      "localStorageLine": "This version is persisting data in your browser (local storage). It is a test version to collect feedback and improve the system.",
+      "discordLine": "For support, questions, and suggestions, join our Discord:"
+    },
+    "projects": {
+      "title": "Your Projects",
+      "count": "project(s)",
+      "remove": "Remove",
+      "empty": "No projects created yet.",
+      "confirmRemove": "Are you sure you want to remove project \"{title}\"?",
+      "confirmBackup": "Do you want to create a local backup of \"{title}\" before deleting?",
+      "confirmDeleteWithoutBackup": "Backup could not be generated. Do you want to delete anyway?"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "createAi": "Create GDD with AI",
+      "importAi": "Import Document with AI",
+      "backup": "Backup & Restore",
+      "createManual": "Create manually"
+    }
+  },
+  "projectsPage": {
+    "title": "Create Project",
+    "errors": {
+      "required": "Project name is required.",
+      "minLength": "Project name must have at least 3 characters."
+    },
+    "form": {
+      "namePlaceholder": "Project name",
+      "descriptionPlaceholder": "Description",
+      "save": "Save Project"
+    }
+  },
+  "projectDetail": {
+    "backHome": "Back to Home",
+    "notFound": "Project not found.",
+    "edit": "Edit",
+    "noDescription": "No description.",
+    "sectionsTitle": "Project Sections",
+    "sectionsSubtitle": "Search, browse, and reorder top-level sections with drag and drop.",
+    "searchPlaceholder": "🔍 Search sections by title or content...",
+    "rootSectionDuplicate": "A root section with this name already exists.",
+    "newSectionPlaceholder": "New section",
+    "add": "Add",
+    "resultsFoundOne": "result found",
+    "resultsFoundMany": "results found",
+    "match": "Match",
+    "reorder": "Reorder",
+    "actions": {
+      "mindMap": "Mind Map",
+      "viewDocument": "View as Document",
+      "settings": "Settings",
+      "backup": "Backup"
+    }
+  },
+  "projectEdit": {
+    "title": "Edit Project",
+    "projectNameLabel": "Project Name",
+    "projectNamePlaceholder": "Project name",
+    "projectDescriptionLabel": "Project Description",
+    "decreaseHeight": "Decrease height",
+    "increaseHeight": "Increase height",
+    "modeLabel": "Mode",
+    "exit": "Exit"
+  },
+  "sectionEdit": {
+    "title": "Edit Section",
+    "sectionTitlePlaceholder": "Section title",
+    "sectionColorLabel": "Section Color",
+    "customized": "custom",
+    "resetColorTitle": "Reset to the default level color",
+    "reset": "Reset",
+    "customColorActive": "✨ Custom color enabled. Use 'Reset' to return to the default hierarchy level color.",
+    "defaultColorHint": "Using the default level color. Click the picker or type a code to customize.",
+    "aiConfigWarningPrefix": "Set your API key in",
+    "aiConfigWarningSuffix": "to use this feature",
+    "aiHelpPrefix": "AI will improve content while preserving existing",
+    "aiHelpHighlight": "images, links, and references",
+    "aiHelpSuffix": "."
+  },
+  "projectExport": {
+    "backToProject": "Back to Project",
+    "title": "Export GDD",
+    "subtitlePrefix": "Choose the format to export:",
+    "selectFormat": "Select Format",
+    "includeEmptySections": "Include empty sections",
+    "infoTitle": "Information",
+    "exporting": "Exporting...",
+    "exportAs": "Export as",
+    "formats": {
+      "markdown": {
+        "label": "Markdown",
+        "description": "Plain text, editable, portable (.md)"
+      },
+      "pdf": {
+        "label": "PDF",
+        "description": "Formatted document, ready to share (.pdf)"
+      },
+      "word": {
+        "label": "Word",
+        "description": "Editable in Microsoft Word (.docx)"
+      }
+    },
+    "info": {
+      "markdown": "Best for editing and versioning (Git)",
+      "pdf": "Best for presentation and sharing",
+      "word": "Best for collaborative editing"
+    },
+    "errors": {
+      "exportFailed": "Error exporting document. Please try again."
+    }
+  },
+  "sectionDetail": {
+    "notFound": "Section not found.",
+    "errors": {
+      "improveFailed": "Failed to improve content",
+      "apiConnection": "Failed to connect to API. Please try again.",
+      "enterModification": "Type what you want to modify.",
+      "uploadFailedPrefix": "Upload error",
+      "uploadImage": "Image upload failed",
+      "unknown": "Unknown error"
+    },
+    "actions": {
+      "exitFullscreen": "Exit Fullscreen",
+      "fullscreen": "Fullscreen",
+      "deleteSection": "Delete section"
+    },
+    "confirmDelete": "Are you sure you want to delete this section?",
+    "confirmDeleteWithChildren": "Are you sure you want to delete this section and its {count} subsection(s)?",
+    "subsections": {
+      "title": "Subsections",
+      "searchPlaceholder": "🔍 Search subsections...",
+      "empty": "No subsections yet.",
+      "duplicate": "A subsection with this name already exists.",
+      "addPlaceholder": "Add subsection"
+    },
+    "suggestions": {
+      "title": "AI suggestions to create subsections",
+      "alreadyCreated": "Already created",
+      "createSubsection": "Create subsection"
+    },
+    "ai": {
+      "modifying": "Modifying...",
+      "modify": "Modify",
+      "confirmApply": "Confirm and Apply"
+    },
+    "move": {
+      "cannotBeOwnParent": "A section cannot be its own parent.",
+      "cannotMoveToDescendant": "You cannot move a section into one of its descendants.",
+      "makeRoot": "Make it a top-level section (no parent)",
+      "move": "Move"
+    },
+    "backlinks": "Referenced by:"
+  },
   "settings": {
     "language": "Language",
     "ai": "AI settings",
-    "persistence": "Persistence"
+    "persistence": "Persistence",
+    "aiPage": {
+      "title": "AI Settings",
+      "subtitle": "Configure your own API key to use AI features",
+      "errors": {
+        "invalidKey": "Please enter a valid API key",
+        "saveFailed": "Failed to save settings"
+      },
+      "messages": {
+        "saved": "Settings saved successfully!",
+        "removed": "Settings removed"
+      },
+      "confirm": {
+        "clear": "Are you sure you want to remove your AI settings?"
+      },
+      "status": {
+        "activeTitle": "✓ Active configuration",
+        "missingTitle": "⚠ No configuration found",
+        "activeDescription": "You are using your own API key. All AI features are available.",
+        "missingDescription": "Configure an API key to use the app's AI features."
+      },
+      "form": {
+        "providerLabel": "Provider",
+        "providerHint": "Groq offers a generous free tier and is the most recommended",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "Enter your API key here"
+      },
+      "providers": {
+        "groq": "Groq (Recommended - Free)",
+        "openai": "OpenAI (GPT-4)",
+        "claude": "Anthropic (Claude)"
+      },
+      "howTo": {
+        "title": "How to get your API key:",
+        "groq": {
+          "step1": "Go to:",
+          "step2": "Create a free account",
+          "step3": "Open \"API Keys\" and create a new key",
+          "step4": "Free tier: 14,400 requests/day"
+        },
+        "openai": {
+          "step1": "Go to:",
+          "step2": "Create an account (credit card required)",
+          "step3": "Create a new API key"
+        },
+        "claude": {
+          "step1": "Go to:",
+          "step2": "Create an account",
+          "step3": "Open \"API Keys\" and create a new key"
+        }
+      },
+      "actions": {
+        "saving": "Saving...",
+        "save": "Save Settings",
+        "remove": "Remove"
+      },
+      "security": {
+        "title": "Security and Privacy",
+        "item1": "Your API key is stored only in your browser (localStorage)",
+        "item2": "The key is never sent to our servers or shared",
+        "item3": "Only you can access your key",
+        "item4": "If you clear your browser cache, you will need to configure it again"
+      }
+    },
+    "persistencePage": {
+      "title": "Persistence and Sync",
+      "subtitle": "Adjust autosave and cloud sync triggers.",
+      "statusLabel": "Status",
+      "pendingLabel": "Pending",
+      "lastSyncLabel": "Last sync",
+      "lastErrorLabel": "Last error",
+      "status": {
+        "syncing": "Syncing",
+        "synced": "Synced",
+        "error": "Error",
+        "idle": "Waiting"
+      },
+      "form": {
+        "debounceLabel": "Edit debounce (ms)",
+        "debounceHint": "Minimum time after editing before trying to sync automatically.",
+        "autosaveLabel": "Autosave interval (ms)",
+        "autosaveHint": "Recommended: 30000ms (30s).",
+        "syncOnBlur": "Sync when window loses focus",
+        "syncOnHidden": "Sync when switching tabs (document hidden)",
+        "syncOnPageHide": "Sync on pagehide event",
+        "syncOnBeforeUnload": "Sync before leaving the page"
+      },
+      "actions": {
+        "saved": "Saved",
+        "save": "Save settings",
+        "syncNow": "Sync now"
+      }
+    }
   }
 }

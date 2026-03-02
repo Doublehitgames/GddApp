@@ -1,0 +1,299 @@
+{
+  "meta": {
+    "languageName": "Español",
+    "locale": "es"
+  },
+  "common": {
+    "appName": "GDD Manager",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando...",
+    "search": "Buscar",
+    "back": "Volver"
+  },
+  "auth": {
+    "login": {
+      "title": "Inicia sesión en tu cuenta",
+      "subtitleLogin": "Inicia sesión en tu cuenta",
+      "subtitleSignup": "Crea tu cuenta gratis",
+      "tabLogin": "Iniciar sesión",
+      "tabSignup": "Crear cuenta",
+      "name": "Nombre",
+      "namePlaceholder": "Tu nombre",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@email.com",
+      "password": "Contraseña",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Iniciar sesión",
+      "submitSignup": "Crear cuenta",
+      "loading": "Espera...",
+      "withGoogle": "Continuar con Google",
+      "or": "o",
+      "signupSuccess": "¡Cuenta creada! Revisa tu correo para confirmar el registro.",
+      "footer": "Tus datos están seguros"
+    }
+  },
+  "projects": {
+    "newProject": "Nuevo proyecto",
+    "emptyState": "No se encontraron proyectos",
+    "create": "Crear proyecto"
+  },
+  "home": {
+    "workspaceTag": "Espacio de Diseño de Juegos",
+    "subtitle": "Organiza tus proyectos rápidamente con IA y edición manual.",
+    "actions": {
+      "aiSettings": "Configuración de IA",
+      "persistence": "Persistencia"
+    },
+    "notice": {
+      "localStorageLine": "Esta versión guarda los datos en tu navegador (almacenamiento local). Es una versión de prueba para recopilar feedback y mejorar el sistema.",
+      "discordLine": "Para soporte, dudas y sugerencias, únete a nuestro Discord:"
+    },
+    "projects": {
+      "title": "Tus proyectos",
+      "count": "proyecto(s)",
+      "remove": "Eliminar",
+      "empty": "Aún no hay proyectos creados.",
+      "confirmRemove": "¿Seguro que quieres eliminar el proyecto \"{title}\"?",
+      "confirmBackup": "¿Quieres crear un backup local de \"{title}\" antes de eliminarlo?",
+      "confirmDeleteWithoutBackup": "No se pudo generar el backup. ¿Quieres eliminar de todos modos?"
+    },
+    "quickActions": {
+      "title": "Acciones rápidas",
+      "createAi": "Crear GDD con IA",
+      "importAi": "Importar documento con IA",
+      "backup": "Backup y restauración",
+      "createManual": "Crear manualmente"
+    }
+  },
+  "projectsPage": {
+    "title": "Crear proyecto",
+    "errors": {
+      "required": "El nombre del proyecto es obligatorio.",
+      "minLength": "El nombre del proyecto debe tener al menos 3 caracteres."
+    },
+    "form": {
+      "namePlaceholder": "Nombre del proyecto",
+      "descriptionPlaceholder": "Descripción",
+      "save": "Guardar proyecto"
+    }
+  },
+  "projectDetail": {
+    "backHome": "Volver al inicio",
+    "notFound": "Proyecto no encontrado.",
+    "edit": "Editar",
+    "noDescription": "Sin descripción.",
+    "sectionsTitle": "Secciones del proyecto",
+    "sectionsSubtitle": "Busca, navega y reordena las secciones principales con arrastrar y soltar.",
+    "searchPlaceholder": "🔍 Buscar secciones por título o contenido...",
+    "rootSectionDuplicate": "Ya existe una sección raíz con este nombre.",
+    "newSectionPlaceholder": "Nueva sección",
+    "add": "Agregar",
+    "resultsFoundOne": "resultado encontrado",
+    "resultsFoundMany": "resultados encontrados",
+    "match": "Coincidencia",
+    "reorder": "Reordenar",
+    "actions": {
+      "mindMap": "Mapa mental",
+      "viewDocument": "Ver como documento",
+      "settings": "Configuración",
+      "backup": "Backup"
+    }
+  },
+  "projectEdit": {
+    "title": "Editar proyecto",
+    "projectNameLabel": "Nombre del proyecto",
+    "projectNamePlaceholder": "Nombre del proyecto",
+    "projectDescriptionLabel": "Descripción del proyecto",
+    "decreaseHeight": "Reducir altura",
+    "increaseHeight": "Aumentar altura",
+    "modeLabel": "Modo",
+    "exit": "Salir"
+  },
+  "sectionEdit": {
+    "title": "Editar sección",
+    "sectionTitlePlaceholder": "Título de la sección",
+    "sectionColorLabel": "Color de la sección",
+    "customized": "personalizada",
+    "resetColorTitle": "Restablecer al color predeterminado del nivel",
+    "reset": "Restablecer",
+    "customColorActive": "✨ Color personalizado activo. Usa 'Restablecer' para volver al color predeterminado del nivel de jerarquía.",
+    "defaultColorHint": "Usando el color predeterminado del nivel. Haz clic en el selector o escribe un código para personalizar.",
+    "aiConfigWarningPrefix": "Configura tu API key en",
+    "aiConfigWarningSuffix": "para usar esta función",
+    "aiHelpPrefix": "La IA mejorará el contenido preservando",
+    "aiHelpHighlight": "imágenes, enlaces y referencias",
+    "aiHelpSuffix": "existentes."
+  },
+  "projectExport": {
+    "backToProject": "Volver al proyecto",
+    "title": "Exportar GDD",
+    "subtitlePrefix": "Elige el formato para exportar:",
+    "selectFormat": "Selecciona el formato",
+    "includeEmptySections": "Incluir secciones vacías",
+    "infoTitle": "Información",
+    "exporting": "Exportando...",
+    "exportAs": "Exportar como",
+    "formats": {
+      "markdown": {
+        "label": "Markdown",
+        "description": "Texto simple, editable, portable (.md)"
+      },
+      "pdf": {
+        "label": "PDF",
+        "description": "Documento con formato, listo para compartir (.pdf)"
+      },
+      "word": {
+        "label": "Word",
+        "description": "Editable en Microsoft Word (.docx)"
+      }
+    },
+    "info": {
+      "markdown": "Mejor para edición y versionado (Git)",
+      "pdf": "Mejor para presentación y compartir",
+      "word": "Mejor para edición colaborativa"
+    },
+    "errors": {
+      "exportFailed": "Error al exportar el documento. Inténtalo de nuevo."
+    }
+  },
+  "sectionDetail": {
+    "notFound": "Sección no encontrada.",
+    "errors": {
+      "improveFailed": "No se pudo mejorar el contenido",
+      "apiConnection": "No se pudo conectar con la API. Inténtalo de nuevo.",
+      "enterModification": "Escribe lo que quieres modificar.",
+      "uploadFailedPrefix": "Error de carga",
+      "uploadImage": "Error al subir imagen",
+      "unknown": "Error desconocido"
+    },
+    "actions": {
+      "exitFullscreen": "Salir de pantalla completa",
+      "fullscreen": "Pantalla completa",
+      "deleteSection": "Eliminar sección"
+    },
+    "confirmDelete": "¿Seguro que quieres eliminar esta sección?",
+    "confirmDeleteWithChildren": "¿Seguro que quieres eliminar esta sección y sus {count} subsección(es)?",
+    "subsections": {
+      "title": "Subsecciones",
+      "searchPlaceholder": "🔍 Buscar subsecciones...",
+      "empty": "Aún no hay subsecciones.",
+      "duplicate": "Ya existe una subsección con este nombre.",
+      "addPlaceholder": "Agregar subsección"
+    },
+    "suggestions": {
+      "title": "Sugerencias de IA para crear subsecciones",
+      "alreadyCreated": "Ya creada",
+      "createSubsection": "Crear subsección"
+    },
+    "ai": {
+      "modifying": "Modificando...",
+      "modify": "Modificar",
+      "confirmApply": "Confirmar y aplicar"
+    },
+    "move": {
+      "cannotBeOwnParent": "Una sección no puede ser su propio padre.",
+      "cannotMoveToDescendant": "No puedes mover una sección dentro de uno de sus descendientes.",
+      "makeRoot": "Convertir en sección principal (sin padre)",
+      "move": "Mover"
+    },
+    "backlinks": "Referenciado por:"
+  },
+  "settings": {
+    "language": "Idioma",
+    "ai": "Configuración de IA",
+    "persistence": "Persistencia",
+    "aiPage": {
+      "title": "Configuración de IA",
+      "subtitle": "Configura tu propia API key para usar funciones de IA",
+      "errors": {
+        "invalidKey": "Por favor, ingresa una API key válida",
+        "saveFailed": "No se pudo guardar la configuración"
+      },
+      "messages": {
+        "saved": "¡Configuración guardada con éxito!",
+        "removed": "Configuración eliminada"
+      },
+      "confirm": {
+        "clear": "¿Seguro que quieres eliminar tu configuración de IA?"
+      },
+      "status": {
+        "activeTitle": "✓ Configuración activa",
+        "missingTitle": "⚠ No se encontró configuración",
+        "activeDescription": "Estás usando tu propia API key. Todas las funciones de IA están disponibles.",
+        "missingDescription": "Configura una API key para usar las funciones de IA de la app."
+      },
+      "form": {
+        "providerLabel": "Proveedor",
+        "providerHint": "Groq ofrece un nivel gratuito generoso y es el más recomendado",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "Ingresa tu API key aquí"
+      },
+      "providers": {
+        "groq": "Groq (Recomendado - Gratis)",
+        "openai": "OpenAI (GPT-4)",
+        "claude": "Anthropic (Claude)"
+      },
+      "howTo": {
+        "title": "Cómo obtener tu API key:",
+        "groq": {
+          "step1": "Ve a:",
+          "step2": "Crea una cuenta gratuita",
+          "step3": "Abre \"API Keys\" y crea una nueva key",
+          "step4": "Nivel gratuito: 14,400 solicitudes/día"
+        },
+        "openai": {
+          "step1": "Ve a:",
+          "step2": "Crea una cuenta (requiere tarjeta de crédito)",
+          "step3": "Crea una nueva API key"
+        },
+        "claude": {
+          "step1": "Ve a:",
+          "step2": "Crea una cuenta",
+          "step3": "Abre \"API Keys\" y crea una nueva key"
+        }
+      },
+      "actions": {
+        "saving": "Guardando...",
+        "save": "Guardar configuración",
+        "remove": "Eliminar"
+      },
+      "security": {
+        "title": "Seguridad y privacidad",
+        "item1": "Tu API key se almacena solo en tu navegador (localStorage)",
+        "item2": "La key nunca se envía a nuestros servidores ni se comparte",
+        "item3": "Solo tú puedes acceder a tu key",
+        "item4": "Si limpias la caché del navegador, tendrás que configurarla de nuevo"
+      }
+    },
+    "persistencePage": {
+      "title": "Persistencia y sincronización",
+      "subtitle": "Ajusta el autosave y los disparadores de sincronización en la nube.",
+      "statusLabel": "Estado",
+      "pendingLabel": "Pendientes",
+      "lastSyncLabel": "Última sincronización",
+      "lastErrorLabel": "Último error",
+      "status": {
+        "syncing": "Sincronizando",
+        "synced": "Sincronizado",
+        "error": "Error",
+        "idle": "En espera"
+      },
+      "form": {
+        "debounceLabel": "Debounce de edición (ms)",
+        "debounceHint": "Tiempo mínimo después de editar para intentar sincronizar automáticamente.",
+        "autosaveLabel": "Intervalo de autosave (ms)",
+        "autosaveHint": "Recomendado: 30000ms (30s).",
+        "syncOnBlur": "Sincronizar cuando la ventana pierde foco",
+        "syncOnHidden": "Sincronizar al cambiar de pestaña (document hidden)",
+        "syncOnPageHide": "Sincronizar en el evento pagehide",
+        "syncOnBeforeUnload": "Sincronizar antes de salir de la página"
+      },
+      "actions": {
+        "saved": "Guardado",
+        "save": "Guardar configuración",
+        "syncNow": "Sincronizar ahora"
+      }
+    }
+  }
+}

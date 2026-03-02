@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
+import { useI18n } from "@/lib/i18n/provider";
 
 const BADGE_UI_KEY = "gdd_sync_badge_ui_v1";
 
@@ -14,57 +15,58 @@ type BadgeUIState = {
   y: number;
 };
 
+function getInitialBadgeUIState(): BadgeUIState {
+  if (typeof window === "undefined") {
+    return { compact: true, x: 0, y: 0 };
+  }
+
+  const defaultX = Math.max(16, window.innerWidth - 300);
+  const defaultY = Math.max(16, window.innerHeight - 120);
+
+  try {
+    const raw = localStorage.getItem(BADGE_UI_KEY);
+    if (!raw) {
+      return { compact: true, x: defaultX, y: defaultY };
+    }
+
+    const parsed = JSON.parse(raw) as Partial<BadgeUIState>;
+    return {
+      compact: parsed.compact ?? true,
+      x: typeof parsed.x === "number" ? parsed.x : defaultX,
+      y: typeof parsed.y === "number" ? parsed.y : defaultY,
+    };
+  } catch {
+    return { compact: true, x: defaultX, y: defaultY };
+  }
+}
+
 export default function SyncStatusBadge() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { locale } = useI18n();
   const syncStatus = useProjectStore((s) => s.syncStatus);
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const flushPendingSyncs = useProjectStore((s) => s.flushPendingSyncs);
 
-  const [compact, setCompact] = useState(true);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [positionReady, setPositionReady] = useState(false);
+  const [compact, setCompact] = useState(() => getInitialBadgeUIState().compact);
+  const [position, setPosition] = useState(() => {
+    const initialState = getInitialBadgeUIState();
+    return { x: initialState.x, y: initialState.y };
+  });
 
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const draggingRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const defaultX = Math.max(16, window.innerWidth - 300);
-    const defaultY = Math.max(16, window.innerHeight - 120);
-
-    try {
-      const raw = localStorage.getItem(BADGE_UI_KEY);
-      if (!raw) {
-        setPosition({ x: defaultX, y: defaultY });
-        setPositionReady(true);
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as Partial<BadgeUIState>;
-      setCompact(parsed.compact ?? true);
-      setPosition({
-        x: typeof parsed.x === "number" ? parsed.x : defaultX,
-        y: typeof parsed.y === "number" ? parsed.y : defaultY,
-      });
-      setPositionReady(true);
-    } catch {
-      setPosition({ x: defaultX, y: defaultY });
-      setPositionReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!positionReady) return;
     try {
       localStorage.setItem(
         BADGE_UI_KEY,
         JSON.stringify({ compact, x: position.x, y: position.y } satisfies BadgeUIState)
       );
     } catch {}
-  }, [compact, position, positionReady]);
+  }, [compact, position]);
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
@@ -96,16 +98,26 @@ export default function SyncStatusBadge() {
 
   if (!user) return null;
   if (pathname?.includes("/mindmap")) return null;
-  if (!positionReady) return null;
+
+  const tr = (pt: string, en: string, es: string) => {
+    switch (locale) {
+      case "es":
+        return es;
+      case "en":
+        return en;
+      default:
+        return pt;
+    }
+  };
 
   const statusText =
     syncStatus === "syncing"
-      ? "Sincronizando"
+      ? tr("Sincronizando", "Syncing", "Sincronizando")
       : syncStatus === "synced"
-        ? "Sincronizado"
+        ? tr("Sincronizado", "Synced", "Sincronizado")
         : syncStatus === "error"
-          ? "Erro"
-          : "Aguardando";
+          ? tr("Erro", "Error", "Error")
+          : tr("Aguardando", "Waiting", "Esperando");
 
   const statusClass =
     syncStatus === "syncing"
@@ -122,7 +134,7 @@ export default function SyncStatusBadge() {
           <div className="flex items-center justify-between gap-2">
             <button
               onMouseDown={startDrag}
-              title="Arraste para reposicionar"
+              title={tr("Arraste para reposicionar", "Drag to reposition", "Arrastra para reposicionar")}
               className="text-[10px] px-1.5 py-1 rounded bg-black/20 hover:bg-black/30 transition-colors cursor-grab active:cursor-grabbing"
             >
               ⠿
@@ -133,20 +145,22 @@ export default function SyncStatusBadge() {
             <button
               onClick={() => setCompact((prev) => !prev)}
               className="text-[10px] px-1.5 py-1 rounded bg-black/20 hover:bg-black/30 transition-colors"
-              title={compact ? "Expandir" : "Compactar"}
+              title={compact ? tr("Expandir", "Expand", "Expandir") : tr("Compactar", "Compact", "Compactar")}
             >
               {compact ? "▢" : "—"}
             </button>
           </div>
 
           {compact ? (
-            <div className="mt-1 text-[11px] opacity-90">Pendentes: {pendingSyncCount}</div>
+            <div className="mt-1 text-[11px] opacity-90">{tr("Pendentes", "Pending", "Pendientes")}: {pendingSyncCount}</div>
           ) : (
             <>
               <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-[11px] opacity-90">Pendentes: {pendingSyncCount}</span>
+                <span className="text-[11px] opacity-90">{tr("Pendentes", "Pending", "Pendientes")}: {pendingSyncCount}</span>
                 <span className="text-[11px] opacity-80 truncate">
-                  {lastSyncedAt ? `Último: ${new Date(lastSyncedAt).toLocaleTimeString()}` : "Ainda sem sync"}
+                  {lastSyncedAt
+                    ? `${tr("Último", "Last", "Última")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`
+                    : tr("Ainda sem sync", "No sync yet", "Sin sincronización aún")}
                 </span>
               </div>
 
@@ -157,10 +171,10 @@ export default function SyncStatusBadge() {
                   }}
                   className="text-[11px] px-2 py-1 rounded-md bg-blue-700 hover:bg-blue-600 text-white transition-colors"
                 >
-                  Sincronizar
+                  {tr("Sincronizar", "Sync", "Sincronizar")}
                 </button>
                 <Link href="/settings/persistence" className="text-[11px] underline hover:opacity-90">
-                  Ajustes
+                  {tr("Ajustes", "Settings", "Ajustes")}
                 </Link>
               </div>
             </>

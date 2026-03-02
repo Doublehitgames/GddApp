@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useProjectStore } from '@/store/projectStore';
 import { useAIConfig } from '@/hooks/useAIConfig';
 import AIConfigWarning from '@/components/AIConfigWarning';
+import { useI18n } from '@/lib/i18n/provider';
 
 interface ImportedSection {
   title: string;
@@ -20,6 +21,17 @@ interface ImportedProject {
 
 export default function ImportProjectPage() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
+  const { locale } = useI18n();
+  const tr = (pt: string, en: string, es: string) => {
+    switch (locale) {
+      case 'es':
+        return es;
+      case 'en':
+        return en;
+      default:
+        return pt;
+    }
+  };
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
@@ -32,6 +44,12 @@ export default function ImportProjectPage() {
   const [modificationRequest, setModificationRequest] = useState('');
   const [isModifying, setIsModifying] = useState(false);
   const [creativityLevel, setCreativityLevel] = useState<'faithful' | 'balanced' | 'creative'>('balanced');
+
+  const isRateLimitMessage = (message: string) =>
+    message.includes('⏱️') ||
+    message.includes('Aguarde') ||
+    message.includes('Wait') ||
+    message.includes('Espera');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -48,7 +66,7 @@ export default function ImportProjectPage() {
       const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
       
       if (!allowedTypes.includes(selectedFile.type) && !allowedExtensions.includes(fileExtension)) {
-        setError('Formato não suportado. Use .docx (Word/Google Docs), .pdf, .txt ou .md');
+        setError(tr('Formato não suportado. Use .docx (Word/Google Docs), .pdf, .txt ou .md', 'Unsupported format. Use .docx (Word/Google Docs), .pdf, .txt, or .md', 'Formato no compatible. Usa .docx (Word/Google Docs), .pdf, .txt o .md'));
         setFile(null);
         return;
       }
@@ -56,7 +74,7 @@ export default function ImportProjectPage() {
       // Validar tamanho (máximo 50MB)
       const maxSize = 50 * 1024 * 1024;
       if (selectedFile.size > maxSize) {
-        setError('Arquivo muito grande. Tamanho máximo: 50MB');
+        setError(tr('Arquivo muito grande. Tamanho máximo: 50MB', 'File too large. Maximum size: 50MB', 'Archivo demasiado grande. Tamaño máximo: 50MB'));
         setFile(null);
         return;
       }
@@ -95,18 +113,18 @@ export default function ImportProjectPage() {
       if (!response.ok) {
         // Tratamento especial para rate limit
         if (response.status === 429 || data.type === 'rate_limit') {
-          setError('⏱️ Limite de tokens atingido! A Groq permite ~14K tokens/min. Aguarde 1 minuto e tente novamente.');
+          setError(tr('⏱️ Limite de tokens atingido! A Groq permite ~14K tokens/min. Aguarde 1 minuto e tente novamente.', '⏱️ Token limit reached! Groq allows ~14K tokens/min. Wait 1 minute and try again.', '⏱️ ¡Límite de tokens alcanzado! Groq permite ~14K tokens/min. Espera 1 minuto e inténtalo nuevamente.'));
         } else {
-          setError(data.error || 'Erro ao analisar documento');
+          setError(data.error || tr('Erro ao analisar documento', 'Failed to analyze document', 'Error al analizar el documento'));
         }
         return;
       }
 
       setPreviewData(data);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao processar documento';
+      const errorMsg = err instanceof Error ? err.message : tr('Erro ao processar documento', 'Failed to process document', 'Error al procesar el documento');
       if (errorMsg.includes('rate_limit') || errorMsg.includes('429')) {
-        setError('⏱️ Limite de tokens atingido! Aguarde 1 minuto e tente novamente.');
+        setError(tr('⏱️ Limite de tokens atingido! Aguarde 1 minuto e tente novamente.', '⏱️ Token limit reached! Wait 1 minute and try again.', '⏱️ ¡Límite de tokens alcanzado! Espera 1 minuto e inténtalo nuevamente.'));
       } else {
         setError(errorMsg);
       }
@@ -121,7 +139,7 @@ export default function ImportProjectPage() {
 
   const handleRequestModification = async () => {
     if (!modificationRequest.trim()) {
-      setError('Digite uma solicitação de modificação');
+      setError(tr('Digite uma solicitação de modificação', 'Type a modification request', 'Escribe una solicitud de modificación'));
       return;
     }
 
@@ -132,7 +150,7 @@ export default function ImportProjectPage() {
       await analyzeDocument(modificationRequest, true); // true = usar criatividade
       setModificationRequest('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao modificar');
+      setError(err instanceof Error ? err.message : tr('Erro ao modificar', 'Failed to modify', 'Error al modificar'));
     } finally {
       setIsModifying(false);
     }
@@ -170,7 +188,7 @@ export default function ImportProjectPage() {
       // Redirecionar para o projeto criado
       router.push(`/projects/${projectId}`);
     } catch (err) {
-      setError('Erro ao criar projeto: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
+      setError(tr('Erro ao criar projeto: ', 'Failed to create project: ', 'Error al crear el proyecto: ') + (err instanceof Error ? err.message : tr('Erro desconhecido', 'Unknown error', 'Error desconocido')));
     }
   };
 
@@ -192,13 +210,13 @@ export default function ImportProjectPage() {
             onClick={handleBack}
             className="text-purple-600 hover:text-purple-800 mb-4 flex items-center gap-2"
           >
-            ← Voltar
+            ← {tr('Voltar', 'Back', 'Volver')}
           </button>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            ✨ Importar Projeto com IA
+            ✨ {tr('Importar Projeto com IA', 'Import Project with AI', 'Importar proyecto con IA')}
           </h1>
           <p className="text-gray-600">
-            Envie seu documento e deixe a IA estruturar automaticamente em um GDD completo
+            {tr('Envie seu documento e deixe a IA estruturar automaticamente em um GDD completo', 'Upload your document and let AI automatically structure it into a complete GDD', 'Sube tu documento y deja que la IA lo estructure automáticamente en un GDD completo')}
           </p>
         </div>
 
@@ -214,7 +232,7 @@ export default function ImportProjectPage() {
               {/* File Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Selecione seu documento
+                  {tr('Selecione seu documento', 'Select your document', 'Selecciona tu documento')}
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
                   <input
@@ -234,7 +252,7 @@ export default function ImportProjectPage() {
                           <>
                             Clique para selecionar ou arraste um arquivo<br />
                             <span className="text-xs text-gray-500">
-                              Formatos: .docx (Google Docs/Word), .pdf, .txt, .md | Máx: 50MB
+                              {tr('Formatos: .docx (Google Docs/Word), .pdf, .txt, .md | Máx: 50MB', 'Formats: .docx (Google Docs/Word), .pdf, .txt, .md | Max: 50MB', 'Formatos: .docx (Google Docs/Word), .pdf, .txt, .md | Máx: 50MB')}
                             </span>
                           </>
                         )}
@@ -247,18 +265,17 @@ export default function ImportProjectPage() {
               {/* Instructions */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 <div>
-                  <h3 className="font-semibold text-blue-900 mb-2">💡 Dica: Exportando do Google Docs</h3>
+                  <h3 className="font-semibold text-blue-900 mb-2">{tr('💡 Dica: Exportando do Google Docs', '💡 Tip: Exporting from Google Docs', '💡 Consejo: Exportando desde Google Docs')}</h3>
                   <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                    <li>Abra seu documento no Google Docs</li>
-                    <li>Vá em Arquivo → Fazer download → Microsoft Word (.docx)</li>
-                    <li>Faça upload do arquivo .docx aqui</li>
+                    <li>{tr('Abra seu documento no Google Docs', 'Open your document in Google Docs', 'Abre tu documento en Google Docs')}</li>
+                    <li>{tr('Vá em Arquivo → Fazer download → Microsoft Word (.docx)', 'Go to File → Download → Microsoft Word (.docx)', 'Ve a Archivo → Descargar → Microsoft Word (.docx)')}</li>
+                    <li>{tr('Faça upload do arquivo .docx aqui', 'Upload the .docx file here', 'Sube aquí el archivo .docx')}</li>
                   </ol>
                 </div>
                 <div className="border-t border-blue-200 pt-3">
-                  <h3 className="font-semibold text-amber-900 mb-2">⏱️ Sobre Limites de Tokens</h3>
+                  <h3 className="font-semibold text-amber-900 mb-2">{tr('⏱️ Sobre Limites de Tokens', '⏱️ About Token Limits', '⏱️ Sobre límites de tokens')}</h3>
                   <p className="text-sm text-amber-800">
-                    A Groq (IA gratuita) permite ~14K tokens/minuto. Documentos grandes podem atingir esse limite. 
-                    Se isso acontecer, aguarde 1 minuto e tente novamente.
+                    {tr('A Groq (IA gratuita) permite ~14K tokens/minuto. Documentos grandes podem atingir esse limite. Se isso acontecer, aguarde 1 minuto e tente novamente.', 'Groq (free AI) allows ~14K tokens/minute. Large documents may hit this limit. If that happens, wait 1 minute and try again.', 'Groq (IA gratuita) permite ~14K tokens/minuto. Los documentos grandes pueden alcanzar este límite. Si eso ocurre, espera 1 minuto e inténtalo de nuevo.')}
                   </p>
                 </div>
               </div>
@@ -266,12 +283,12 @@ export default function ImportProjectPage() {
               {/* Error Display */}
               {error && (
                 <div className={`border rounded-lg p-4 ${
-                  error.includes('⏱️') || error.includes('Aguarde') 
+                  isRateLimitMessage(error)
                     ? 'bg-amber-50 border-amber-200' 
                     : 'bg-red-50 border-red-200'
                 }`}>
                   <p className={`text-sm ${
-                    error.includes('⏱️') || error.includes('Aguarde')
+                    isRateLimitMessage(error)
                       ? 'text-amber-800'
                       : 'text-red-800'
                   }`}>{error}</p>
@@ -285,9 +302,9 @@ export default function ImportProjectPage() {
                 className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isAnalyzing ? (
-                  <>⏳ Analisando documento...</>
+                  <>{tr('⏳ Analisando documento...', '⏳ Analyzing document...', '⏳ Analizando documento...')}</>
                 ) : (
-                  <>🚀 Analisar e Estruturar com IA</>
+                  <>{tr('🚀 Analisar e Estruturar com IA', '🚀 Analyze and Structure with AI', '🚀 Analizar y estructurar con IA')}</>
                 )}
               </button>
             </div>
@@ -303,7 +320,7 @@ export default function ImportProjectPage() {
 
             {/* Sections Preview */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">📑 Estrutura Proposta</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📑 {tr('Estrutura Proposta', 'Proposed Structure', 'Estructura propuesta')}</h3>
               <div className="space-y-4">
                 {previewData.sections.map((section, idx) => (
                   <div key={idx} className="border-l-4 border-purple-400 pl-4">
@@ -328,12 +345,12 @@ export default function ImportProjectPage() {
             <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Solicitar modificações (opcional)
+                  {tr('Solicitar modificações (opcional)', 'Request changes (optional)', 'Solicitar cambios (opcional)')}
                 </label>
                 <textarea
                   value={modificationRequest}
                   onChange={(e) => setModificationRequest(e.target.value)}
-                  placeholder="Ex: Adicionar seção de Multiplayer, reorganizar seções..."
+                  placeholder={tr('Ex: Adicionar seção de Multiplayer, reorganizar seções...', 'Ex: Add Multiplayer section, reorganize sections...', 'Ej: Agregar sección de Multijugador, reorganizar secciones...')}
                   className="w-full p-3 border border-gray-300 rounded-lg resize-none text-gray-900 placeholder-gray-400"
                   rows={3}
                 />
@@ -342,7 +359,7 @@ export default function ImportProjectPage() {
               {/* Creativity Level Selector */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Nível de Criatividade da IA nas Modificações
+                  {tr('Nível de Criatividade da IA nas Modificações', 'AI Creativity Level for Modifications', 'Nivel de creatividad de la IA en las modificaciones')}
                 </label>
                 <div className="grid grid-cols-3 gap-3">
                   <button
@@ -355,8 +372,8 @@ export default function ImportProjectPage() {
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">📋</div>
-                      <div className="font-semibold text-sm text-gray-900">Fiel</div>
-                      <div className="text-xs text-gray-600">Mantém conteúdo original</div>
+                      <div className="font-semibold text-sm text-gray-900">{tr('Fiel', 'Faithful', 'Fiel')}</div>
+                      <div className="text-xs text-gray-600">{tr('Mantém conteúdo original', 'Keeps original content', 'Mantiene el contenido original')}</div>
                     </div>
                   </button>
                   <button
@@ -369,8 +386,8 @@ export default function ImportProjectPage() {
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">⚖️</div>
-                      <div className="font-semibold text-sm text-gray-900">Balanceado</div>
-                      <div className="text-xs text-gray-600">Ajustes moderados</div>
+                      <div className="font-semibold text-sm text-gray-900">{tr('Balanceado', 'Balanced', 'Equilibrado')}</div>
+                      <div className="text-xs text-gray-600">{tr('Ajustes moderados', 'Moderate changes', 'Ajustes moderados')}</div>
                     </div>
                   </button>
                   <button
@@ -383,8 +400,8 @@ export default function ImportProjectPage() {
                   >
                     <div className="text-center">
                       <div className="text-2xl mb-1">✨</div>
-                      <div className="font-semibold text-sm text-gray-900">Criativo</div>
-                      <div className="text-xs text-gray-600">Liberdade para criar</div>
+                      <div className="font-semibold text-sm text-gray-900">{tr('Criativo', 'Creative', 'Creativo')}</div>
+                      <div className="text-xs text-gray-600">{tr('Liberdade para criar', 'Freedom to create', 'Libertad para crear')}</div>
                     </div>
                   </button>
                 </div>
@@ -404,20 +421,20 @@ export default function ImportProjectPage() {
                 onClick={handleCancel}
                 className="flex-1 py-3 px-4 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
               >
-                ✕ Cancelar
+                ✕ {tr('Cancelar', 'Cancel', 'Cancelar')}
               </button>
               <button
                 onClick={handleRequestModification}
                 disabled={isModifying || !modificationRequest.trim()}
                 className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isModifying ? '⏳ Modificando...' : '🔄 Modificar'}
+                {isModifying ? tr('⏳ Modificando...', '⏳ Modifying...', '⏳ Modificando...') : tr('🔄 Modificar', '🔄 Modify', '🔄 Modificar')}
               </button>
               <button
                 onClick={handleConfirmImport}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all"
               >
-                ✓ Confirmar e Criar Projeto
+                ✓ {tr('Confirmar e Criar Projeto', 'Confirm and Create Project', 'Confirmar y crear proyecto')}
               </button>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { AIMessage } from "@/types/ai";
 import { useProjectStore } from "@/store/projectStore";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface AIChatProps {
   projectContext?: {
@@ -28,6 +29,7 @@ interface ChatMessage extends AIMessage {
 
 export default function AIChat({ projectContext, onClose, isOpen = true }: AIChatProps) {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
+  const { locale } = useI18n();
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
   const editSection = useProjectStore((state) => state.editSection);
@@ -555,7 +557,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
                   message.role === "user" ? "text-blue-200" : "text-gray-400"
                 }`}
               >
-                {message.timestamp.toLocaleTimeString("pt-BR", {
+                {message.timestamp.toLocaleTimeString(locale, {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}

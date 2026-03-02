@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Message {
   id: string;
@@ -16,6 +17,7 @@ interface Message {
 
 export default function AICreateSimple() {
   const router = useRouter();
+  const { locale } = useI18n();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
@@ -656,7 +658,7 @@ export default function AICreateSimple() {
                       message.role === "user" ? "text-blue-200" : "text-gray-500"
                     }`}
                   >
-                    {message.timestamp.toLocaleTimeString("pt-BR", {
+                    {message.timestamp.toLocaleTimeString(locale, {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}

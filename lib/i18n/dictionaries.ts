@@ -1,5 +1,6 @@
 import ptBR from "@/locales/pt-BR.json";
 import en from "@/locales/en.json";
+import es from "@/locales/es.json";
 import { AppLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 type DictionaryValue = string | number | boolean | null | DictionaryTree;
@@ -8,6 +9,7 @@ type DictionaryTree = { [key: string]: DictionaryValue };
 const dictionaries: Record<AppLocale, DictionaryTree> = {
   "pt-BR": ptBR,
   en,
+  es,
 };
 
 export function getDictionary(locale: AppLocale): DictionaryTree {

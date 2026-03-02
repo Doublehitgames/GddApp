@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { useAIConfig } from "@/hooks/useAIConfig";
+import { useI18n } from "@/lib/i18n/provider";
 import "@uiw/react-md-editor/markdown-editor.css";
 import "@uiw/react-markdown-preview/markdown.css";
 
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function SectionEditClient({ projectId, sectionId }: Props) {
+  const { t } = useI18n();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const editSection = useProjectStore((s) => s.editSection);
@@ -134,14 +136,14 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
     }
   }
 
-  if (!loaded) return <div className="p-6">Carregando...</div>;
-  if (notFound) return <div className="p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
+  if (!loaded) return <div className="p-6">{t('common.loading')}</div>;
+  if (notFound) return <div className="p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push(`/projects/${projectId}`)}>{t('common.back')}</button></div>;
 
   console.log('SectionEditClient renderizado - título:', title);
 
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Editar Seção</h1>
+      <h1 className="text-2xl font-bold mb-4">{t('sectionEdit.title')}</h1>
       <div className="flex flex-col gap-4">
         <div>
           <input
@@ -150,13 +152,13 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
               const val = e.target.value;
               setTitle(val);
               if (val.trim() && hasDuplicateName(projectId, val.trim(), parentId, sectionId)) {
-                setNameError("Já existe uma seção com este nome no mesmo nível.");
+                setNameError(t('sectionDetail.subsections.duplicate'));
               } else {
                 setNameError("");
               }
             }}
             className={`border px-2 py-1 w-full ${nameError ? "border-red-500" : ""}`}
-            placeholder="Título da seção"
+            placeholder={t('sectionEdit.sectionTitlePlaceholder')}
           />
           {nameError && (
             <span className="text-red-500 text-sm mt-1 block">{nameError}</span>
@@ -175,7 +177,7 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
         {/* Cor da Seção */}
         <div className="border border-gray-700 rounded-lg p-4 bg-gray-800/50">
           <label className="block text-sm font-semibold mb-2 text-gray-300">
-            🎨 Cor da Seção {hasCustomColor && <span className="text-amber-400">(customizada)</span>}
+            🎨 {t('sectionEdit.sectionColorLabel')} {hasCustomColor && <span className="text-amber-400">({t('sectionEdit.customized')})</span>}
           </label>
           <div className="flex items-center gap-3">
             <input
@@ -203,15 +205,15 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
                 setHasCustomColor(false);
               }}
               className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm transition-colors whitespace-nowrap"
-              title="Resetar para cor padrão do nível"
+              title={t('sectionEdit.resetColorTitle')}
             >
-              🔄 Resetar
+              🔄 {t('sectionEdit.reset')}
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
             {hasCustomColor 
-              ? "✨ Cor personalizada ativa. Use 'Resetar' para voltar à cor padrão do nível de hierarquia."
-              : "Usando cor padrão do nível. Clique no seletor ou digite um código para personalizar."
+              ? t('sectionEdit.customColorActive')
+              : t('sectionEdit.defaultColorHint')
             }
           </p>
         </div>
@@ -224,16 +226,16 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
             className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-lg">{isImproving ? "⏳" : "✨"}</span>
-            <span>{isImproving ? "Melhorando..." : "Melhorar com IA"}</span>
+            <span>{isImproving ? t('sectionDetail.ai.modifying') : t('sectionDetail.ai.modify')}</span>
           </button>
           {!hasValidConfig && (
             <p className="text-sm text-yellow-400 mt-2">
-              ⚠️ Configure sua API key em <a href="/settings/ai" className="underline">Configurações de IA</a> para usar este recurso
+              ⚠️ {t('sectionEdit.aiConfigWarningPrefix')} <a href="/settings/ai" className="underline">{t('settings.ai')}</a> {t('sectionEdit.aiConfigWarningSuffix')}
             </p>
           )}
           {hasValidConfig && (
             <p className="text-sm text-gray-400 mt-2">
-              💡 A IA vai melhorar o conteúdo preservando <strong>imagens, links e referências</strong> existentes.
+              💡 {t('sectionEdit.aiHelpPrefix')} <strong>{t('sectionEdit.aiHelpHighlight')}</strong> {t('sectionEdit.aiHelpSuffix')}
             </p>
           )}
           {improveError && (
@@ -248,11 +250,11 @@ export default function SectionEditClient({ projectId, sectionId }: Props) {
             className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50 hover:bg-green-700 transition-colors"
             onClick={handleSave}
             disabled={!title.trim() || !!nameError}
-          >Salvar</button>
+          >{t('common.save')}</button>
           <button
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
             onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}`)}
-          >Cancelar</button>
+          >{t('common.cancel')}</button>
         </div>
       </div>
       <AutocompleteDropdown />

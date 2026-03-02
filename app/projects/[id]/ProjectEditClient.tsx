@@ -5,15 +5,17 @@ import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar } from "@/utils/toastui-color-plugin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
 }
 
 export default function ProjectEditClient({ projectId }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const getProject = useProjectStore((s) => s.getProject);
   const editProject = useProjectStore((s) => s.editProject);
@@ -79,40 +81,17 @@ export default function ProjectEditClient({ projectId }: Props) {
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
           ["ul", "ol", "task"],
-          ["table", "link", "image"],
+          ["table", "link"],
           ["code", "codeblock"],
         ],
-        hooks: {
-          addImageBlobHook: async (blob: Blob, callback: (url: string, altText: string) => void) => {
-            try {
-              const formData = new FormData();
-              formData.append('image', blob);
-              formData.append('projectId', projectId);
-
-              const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-              });
-
-              if (!response.ok) {
-                const error = await response.json();
-                alert(`Erro ao fazer upload: ${error.error || 'Erro desconhecido'}`);
-                return;
-              }
-
-              const data = await response.json();
-              callback(data.url, 'Uploaded image');
-            } catch (error) {
-              console.error('Upload error:', error);
-              alert('Erro ao fazer upload da imagem');
-            }
-          },
-        },
       });
       editorRef.current = instance;
       
       // Adiciona botão de cor
       addColorButtonToToolbar(instance);
+
+      // Adiciona botão de imagem por URL
+      addImageUrlButtonToToolbar(instance);
     }
     mountEditor();
     return () => {
@@ -152,26 +131,26 @@ export default function ProjectEditClient({ projectId }: Props) {
     }
   }
 
-  if (!loaded) return <div className="p-6">Carregando...</div>;
-  if (notFound) return <div className="p-6">Projeto não encontrado. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push("/")}>Voltar para Home</button></div>;
+  if (!loaded) return <div className="p-6">{t('common.loading')}</div>;
+  if (notFound) return <div className="p-6">{t('projectDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push("/")}>{t('projectDetail.backHome')}</button></div>;
 
   return (
     <div className={isFullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-6" : "p-6 max-w-4xl mx-auto"}>
-      <h1 className="text-2xl font-bold mb-4">Editar Projeto</h1>
+      <h1 className="text-2xl font-bold mb-4">{t('projectEdit.title')}</h1>
       <div className="flex flex-col gap-4">
         <div>
-          <label className="block text-sm font-semibold mb-1">Nome do Projeto</label>
+          <label className="block text-sm font-semibold mb-1">{t('projectEdit.projectNameLabel')}</label>
           <input
             value={name}
             onChange={e => setName(e.target.value)}
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Nome do projeto"
+            placeholder={t('projectEdit.projectNamePlaceholder')}
           />
         </div>
         
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-semibold">Descrição do Projeto</label>
+            <label className="block text-sm font-semibold">{t('projectEdit.projectDescriptionLabel')}</label>
             <div className="flex items-center gap-2">
               {!isFullscreen && (
                 <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1">
@@ -181,7 +160,7 @@ export default function ProjectEditClient({ projectId }: Props) {
                       return `${Math.max(200, current - 100)}px`;
                     })}
                     className="text-gray-600 hover:text-gray-900 font-bold"
-                    title="Diminuir altura"
+                    title={t('projectEdit.decreaseHeight')}
                   >
                     −
                   </button>
@@ -194,7 +173,7 @@ export default function ProjectEditClient({ projectId }: Props) {
                       return `${current + 100}px`;
                     })}
                     className="text-gray-600 hover:text-gray-900 font-bold"
-                    title="Aumentar altura"
+                    title={t('projectEdit.increaseHeight')}
                   >
                     +
                   </button>
@@ -210,9 +189,9 @@ export default function ProjectEditClient({ projectId }: Props) {
                   }
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-                title={isFullscreen ? "Sair do fullscreen" : "Fullscreen"}
+                title={isFullscreen ? t('sectionDetail.actions.exitFullscreen') : t('sectionDetail.actions.fullscreen')}
               >
-                {isFullscreen ? "⤓ Sair" : "⤢ Fullscreen"}
+                {isFullscreen ? `⤓ ${t('projectEdit.exit')}` : `⤢ ${t('sectionDetail.actions.fullscreen')}`}
               </button>
             </div>
           </div>
@@ -228,11 +207,11 @@ export default function ProjectEditClient({ projectId }: Props) {
           <button
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
             onClick={handleSave}
-          >Salvar</button>
+          >{t('common.save')}</button>
           <button
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
             onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push("/")}
-          >Cancelar</button>
+          >{t('common.cancel')}</button>
           <button
             className="bg-gray-700 text-white px-3 py-2 rounded text-sm hover:bg-gray-800 ml-auto"
             onClick={() => {
@@ -242,7 +221,7 @@ export default function ProjectEditClient({ projectId }: Props) {
                 editorRef.current.changeMode(next, true);
               }
             }}
-          >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
+          >{t('projectEdit.modeLabel')}: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
         </div>
       </div>
       <AutocompleteDropdown />

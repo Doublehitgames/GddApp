@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function ProjectsPage() {
   const router = useRouter();
   const addProject = useProjectStore((state) => state.addProject);
+  const { t } = useI18n();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -14,11 +16,11 @@ export default function ProjectsPage() {
 
   function save() {
     if (!name.trim()) {
-      setNameError("O nome do projeto é obrigatório.");
+      setNameError(t("projectsPage.errors.required"));
       return;
     }
     if (name.trim().length < 3) {
-      setNameError("O nome do projeto deve ter pelo menos 3 caracteres.");
+      setNameError(t("projectsPage.errors.minLength"));
       return;
     }
     setNameError("");
@@ -28,21 +30,27 @@ export default function ProjectsPage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white">
-      <h1 className="text-3xl font-bold mb-4">Criar Projeto</h1>
+      <button
+        onClick={() => router.push("/")}
+        className="mb-4 text-gray-400 hover:text-white transition-colors"
+      >
+        ← {t("common.back")}
+      </button>
+      <h1 className="text-3xl font-bold mb-4">{t("projectsPage.title")}</h1>
 
       <div className="flex flex-col gap-4 w-80">
         <div className="flex flex-col gap-1">
           <input
             type="text"
-            placeholder="Nome do projeto"
+            placeholder={t("projectsPage.form.namePlaceholder")}
             className={`p-3 rounded bg-gray-800 text-white border ${nameError ? "border-red-500" : "border-transparent"}`}
             value={name}
             onChange={(e) => {
               setName(e.target.value);
               if (!e.target.value.trim()) {
-                setNameError("O nome do projeto é obrigatório.");
+                setNameError(t("projectsPage.errors.required"));
               } else if (e.target.value.trim().length < 3) {
-                setNameError("O nome do projeto deve ter pelo menos 3 caracteres.");
+                setNameError(t("projectsPage.errors.minLength"));
               } else {
                 setNameError("");
               }
@@ -54,7 +62,7 @@ export default function ProjectsPage() {
         </div>
 
         <textarea
-          placeholder="Descrição"
+          placeholder={t("projectsPage.form.descriptionPlaceholder")}
           className="p-3 rounded bg-gray-800 text-white"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -65,7 +73,7 @@ export default function ProjectsPage() {
           className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
           disabled={!!nameError}
         >
-          Salvar Projeto
+          {t("projectsPage.form.save")}
         </button>
       </div>
     </main>

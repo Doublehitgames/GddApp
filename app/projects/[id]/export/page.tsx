@@ -6,10 +6,12 @@ import { useProjectStore, Project, Section } from '@/store/projectStore';
 import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
+import { useI18n } from '@/lib/i18n/provider';
 
 type ExportFormat = 'markdown' | 'pdf' | 'word';
 
 export default function ExportPage() {
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
@@ -31,7 +33,7 @@ export default function ExportPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Carregando projeto...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -269,11 +271,18 @@ export default function ExportPage() {
       }, 1000);
     } catch (error) {
       console.error('Erro ao exportar:', error);
-      alert('Erro ao exportar o documento. Tente novamente.');
+      alert(t('projectExport.errors.exportFailed'));
     } finally {
       setIsExporting(false);
     }
   };
+
+  const formatLabel =
+    selectedFormat === 'markdown'
+      ? t('projectExport.formats.markdown.label')
+      : selectedFormat === 'pdf'
+        ? t('projectExport.formats.pdf.label')
+        : t('projectExport.formats.word.label');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-12 px-4">
@@ -284,19 +293,19 @@ export default function ExportPage() {
             onClick={() => router.push(`/projects/${projectId}`)}
             className="text-purple-600 hover:text-purple-800 mb-4 flex items-center gap-2"
           >
-            ← Voltar ao Projeto
+            ← {t('projectExport.backToProject')}
           </button>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            📤 Exportar GDD
+            📤 {t('projectExport.title')}
           </h1>
           <p className="text-gray-600">
-            Escolha o formato para exportar: <strong>{project.title}</strong>
+            {t('projectExport.subtitlePrefix')} <strong>{project.title}</strong>
           </p>
         </div>
 
         {/* Format Selection */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Selecione o Formato</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('projectExport.selectFormat')}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {/* Markdown */}
@@ -310,9 +319,9 @@ export default function ExportPage() {
             >
               <div className="text-center">
                 <div className="text-4xl mb-2">📝</div>
-                <div className="font-semibold text-gray-900 mb-1">Markdown</div>
+                <div className="font-semibold text-gray-900 mb-1">{t('projectExport.formats.markdown.label')}</div>
                 <div className="text-xs text-gray-600">
-                  Texto simples, editável, portável (.md)
+                  {t('projectExport.formats.markdown.description')}
                 </div>
               </div>
             </button>
@@ -328,9 +337,9 @@ export default function ExportPage() {
             >
               <div className="text-center">
                 <div className="text-4xl mb-2">📄</div>
-                <div className="font-semibold text-gray-900 mb-1">PDF</div>
+                <div className="font-semibold text-gray-900 mb-1">{t('projectExport.formats.pdf.label')}</div>
                 <div className="text-xs text-gray-600">
-                  Documento formatado, pronto para compartilhar (.pdf)
+                  {t('projectExport.formats.pdf.description')}
                 </div>
               </div>
             </button>
@@ -346,9 +355,9 @@ export default function ExportPage() {
             >
               <div className="text-center">
                 <div className="text-4xl mb-2">📘</div>
-                <div className="font-semibold text-gray-900 mb-1">Word</div>
+                <div className="font-semibold text-gray-900 mb-1">{t('projectExport.formats.word.label')}</div>
                 <div className="text-xs text-gray-600">
-                  Editável no Microsoft Word (.docx)
+                  {t('projectExport.formats.word.description')}
                 </div>
               </div>
             </button>
@@ -363,18 +372,18 @@ export default function ExportPage() {
                 onChange={(e) => setIncludeEmptySections(e.target.checked)}
                 className="w-4 h-4"
               />
-              Incluir seções vazias
+              {t('projectExport.includeEmptySections')}
             </label>
           </div>
         </div>
 
         {/* Preview Info */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 mb-2">ℹ️ Informações</h3>
+          <h3 className="font-semibold text-blue-900 mb-2">ℹ️ {t('projectExport.infoTitle')}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• <strong>Markdown:</strong> Melhor para edição e versionamento (Git)</li>
-            <li>• <strong>PDF:</strong> Melhor para apresentação e compartilhamento</li>
-            <li>• <strong>Word:</strong> Melhor para edição colaborativa</li>
+            <li>• <strong>{t('projectExport.formats.markdown.label')}:</strong> {t('projectExport.info.markdown')}</li>
+            <li>• <strong>{t('projectExport.formats.pdf.label')}:</strong> {t('projectExport.info.pdf')}</li>
+            <li>• <strong>{t('projectExport.formats.word.label')}:</strong> {t('projectExport.info.word')}</li>
           </ul>
         </div>
 
@@ -385,9 +394,9 @@ export default function ExportPage() {
           className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
         >
           {isExporting ? (
-            <>⏳ Exportando...</>
+            <>⏳ {t('projectExport.exporting')}</>
           ) : (
-            <>📥 Exportar como {selectedFormat === 'markdown' ? 'Markdown' : selectedFormat === 'pdf' ? 'PDF' : 'Word'}</>
+            <>📥 {t('projectExport.exportAs')} {formatLabel}</>
           )}
         </button>
       </div>

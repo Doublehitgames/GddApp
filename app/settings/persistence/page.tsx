@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function PersistenceSettingsPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const persistenceConfig = useProjectStore((s) => s.persistenceConfig);
   const updatePersistenceConfig = useProjectStore((s) => s.updatePersistenceConfig);
   const flushPendingSyncs = useProjectStore((s) => s.flushPendingSyncs);
@@ -30,11 +32,11 @@ export default function PersistenceSettingsPage() {
               onClick={() => router.push("/")}
               className="text-blue-400 hover:text-blue-300 mb-2 flex items-center gap-2"
             >
-              ← Voltar
+              ← {t("common.back")}
             </button>
-            <h1 className="text-3xl font-bold">Persistência e Sync</h1>
+            <h1 className="text-3xl font-bold">{t("settings.persistencePage.title")}</h1>
             <p className="text-gray-400 mt-2">
-              Ajuste o autosave e os gatilhos de sincronização com a nuvem.
+              {t("settings.persistencePage.subtitle")}
             </p>
           </div>
         </div>
@@ -42,23 +44,23 @@ export default function PersistenceSettingsPage() {
         <div className="p-4 rounded-lg mb-6 bg-gray-800 border border-gray-700">
           <div className="flex flex-wrap gap-2 text-sm">
             <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
-              Status: {syncStatus === "syncing" ? "Sincronizando" : syncStatus === "synced" ? "Sincronizado" : syncStatus === "error" ? "Erro" : "Aguardando"}
+              {t("settings.persistencePage.statusLabel")}: {syncStatus === "syncing" ? t("settings.persistencePage.status.syncing") : syncStatus === "synced" ? t("settings.persistencePage.status.synced") : syncStatus === "error" ? t("settings.persistencePage.status.error") : t("settings.persistencePage.status.idle")}
             </span>
             <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
-              Pendentes: {pendingSyncCount}
+              {t("settings.persistencePage.pendingLabel")}: {pendingSyncCount}
             </span>
             {lastSyncedAt && (
               <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
-                Último sync: {new Date(lastSyncedAt).toLocaleString()}
+                {t("settings.persistencePage.lastSyncLabel")}: {new Date(lastSyncedAt).toLocaleString()}
               </span>
             )}
           </div>
-          {lastSyncError && <p className="text-red-300 text-sm mt-2">Último erro: {lastSyncError}</p>}
+          {lastSyncError && <p className="text-red-300 text-sm mt-2">{t("settings.persistencePage.lastErrorLabel")}: {lastSyncError}</p>}
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6 space-y-6 border border-gray-700">
           <div>
-            <label className="block text-sm font-semibold mb-2">Debounce de edição (ms)</label>
+            <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.debounceLabel")}</label>
             <input
               type="number"
               min={300}
@@ -67,11 +69,11 @@ export default function PersistenceSettingsPage() {
               onChange={(e) => updatePersistenceConfig({ debounceMs: Number(e.target.value) || 1500 })}
               className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1">Tempo mínimo após edição para tentar sincronizar automaticamente.</p>
+            <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.debounceHint")}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2">Intervalo do autosave (ms)</label>
+            <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.autosaveLabel")}</label>
             <input
               type="number"
               min={5000}
@@ -80,7 +82,7 @@ export default function PersistenceSettingsPage() {
               onChange={(e) => updatePersistenceConfig({ autosaveIntervalMs: Number(e.target.value) || 30000 })}
               className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
             />
-            <p className="text-xs text-gray-400 mt-1">Recomendado: 30000ms (30s).</p>
+            <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.autosaveHint")}</p>
           </div>
 
           <div className="grid gap-3">
@@ -90,7 +92,7 @@ export default function PersistenceSettingsPage() {
                 checked={persistenceConfig.syncOnBlur}
                 onChange={(e) => updatePersistenceConfig({ syncOnBlur: e.target.checked })}
               />
-              <span>Sincronizar ao perder foco da janela</span>
+              <span>{t("settings.persistencePage.form.syncOnBlur")}</span>
             </label>
 
             <label className="flex items-center gap-3">
@@ -99,7 +101,7 @@ export default function PersistenceSettingsPage() {
                 checked={persistenceConfig.syncOnVisibilityHidden}
                 onChange={(e) => updatePersistenceConfig({ syncOnVisibilityHidden: e.target.checked })}
               />
-              <span>Sincronizar ao trocar de aba (document hidden)</span>
+              <span>{t("settings.persistencePage.form.syncOnHidden")}</span>
             </label>
 
             <label className="flex items-center gap-3">
@@ -108,7 +110,7 @@ export default function PersistenceSettingsPage() {
                 checked={persistenceConfig.syncOnPageHide}
                 onChange={(e) => updatePersistenceConfig({ syncOnPageHide: e.target.checked })}
               />
-              <span>Sincronizar no evento pagehide</span>
+              <span>{t("settings.persistencePage.form.syncOnPageHide")}</span>
             </label>
 
             <label className="flex items-center gap-3">
@@ -117,7 +119,7 @@ export default function PersistenceSettingsPage() {
                 checked={persistenceConfig.syncOnBeforeUnload}
                 onChange={(e) => updatePersistenceConfig({ syncOnBeforeUnload: e.target.checked })}
               />
-              <span>Sincronizar antes de sair da página</span>
+              <span>{t("settings.persistencePage.form.syncOnBeforeUnload")}</span>
             </label>
           </div>
 
@@ -126,13 +128,13 @@ export default function PersistenceSettingsPage() {
               onClick={handleSave}
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors"
             >
-              {saving ? "Salvo" : "Salvar ajustes"}
+              {saving ? t("settings.persistencePage.actions.saved") : t("settings.persistencePage.actions.save")}
             </button>
             <button
               onClick={() => { void flushPendingSyncs(); }}
               className="px-5 py-2.5 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
             >
-              Sincronizar agora
+              {t("settings.persistencePage.actions.syncNow")}
             </button>
           </div>
         </div>

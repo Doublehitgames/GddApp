@@ -25,12 +25,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
     projectId: string;
 }
 
 export default function ProjectDetailClient({ projectId }: Props) {
+    const { t } = useI18n();
 
     const router = useRouter();
     const getProject = useProjectStore((s) => s.getProject);
@@ -64,7 +66,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     }, [mounted, projectId, projects]);
 
 
-    if (!mounted) return <div className="min-h-screen bg-gray-900 text-white p-6">Carregando...</div>;
+    if (!mounted) return <div className="min-h-screen bg-gray-900 text-white p-6">{t("common.loading")}</div>;
 
 
     if (!project) {
@@ -72,9 +74,9 @@ export default function ProjectDetailClient({ projectId }: Props) {
             <div className="min-h-screen bg-gray-900 text-white p-6">
                 <div className="max-w-5xl mx-auto">
                     <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push("/")}>
-                        Voltar para Home
+                        {t("projectDetail.backHome")}
                     </button>
-                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 text-red-300">Projeto não encontrado. "{projectId}"</div>
+                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 text-red-300">{t("projectDetail.notFound")} "{projectId}"</div>
                 </div>
             </div>
         );
@@ -103,7 +105,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             <div className="mx-auto w-full max-w-6xl space-y-6">
                 <header className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
                     <button className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors w-fit" onClick={() => router.push("/")}>
-                        ← Voltar para Home
+                        ← {t("projectDetail.backHome")}
                     </button>
 
                     <div className="flex flex-wrap gap-3 md:justify-end">
@@ -111,28 +113,28 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/mindmap`)}
                         >
-                            🧠 Mapa Mental
+                            🧠 {t("projectDetail.actions.mindMap")}
                         </button>
 
                         <button
                             className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/view`)}
                         >
-                            📄 Ver como Documento
+                            📄 {t("projectDetail.actions.viewDocument")}
                         </button>
 
                         <button
                             className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/settings`)}
                         >
-                            ⚙️ Configurações
+                            ⚙️ {t("projectDetail.actions.settings")}
                         </button>
 
                         <button
                             className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold"
                             onClick={() => router.push(`/projects/${projectId}/backup`)}
                         >
-                            💾 Backup
+                            💾 {t("projectDetail.actions.backup")}
                         </button>
                     </div>
                 </header>
@@ -144,7 +146,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
                             onClick={() => router.push(`/projects/${projectId}/edit`)}
                         >
-                            Editar
+                            {t("projectDetail.edit")}
                         </button>
                     </div>
 
@@ -156,21 +158,21 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 sections={project.sections || []}
                             />
                         ) : (
-                            <p className="text-gray-400 italic">Sem descrição.</p>
+                            <p className="text-gray-400 italic">{t("projectDetail.noDescription")}</p>
                         )}
                     </div>
                 </section>
 
                 <section className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10">
                     <div className="mb-4">
-                        <h2 className="text-xl font-semibold tracking-tight">Seções do Projeto</h2>
-                        <p className="text-sm text-gray-400 mt-1">Busque, navegue e reordene as seções principais com arrastar e soltar.</p>
+                        <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.sectionsTitle")}</h2>
+                        <p className="text-sm text-gray-400 mt-1">{t("projectDetail.sectionsSubtitle")}</p>
                     </div>
 
                     <div className="mb-4">
                         <input
                             type="text"
-                            placeholder="🔍 Buscar seções por título ou conteúdo..."
+                            placeholder={t("projectDetail.searchPlaceholder")}
                             value={searchTerm}
                             onChange={(e) => {
                                 const term = e.target.value;
@@ -202,6 +204,12 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         searchTerm={searchTerm}
                         expandedSections={expandedSections}
                         setExpandedSections={setExpandedSections}
+                        labels={{
+                            resultsFoundOne: t("projectDetail.resultsFoundOne"),
+                            resultsFoundMany: t("projectDetail.resultsFoundMany"),
+                            match: t("projectDetail.match"),
+                            reorder: t("projectDetail.reorder"),
+                        }}
                     />
 
                     <div className="mt-5 pt-4 border-t border-gray-700">
@@ -212,15 +220,15 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     const val = e.target.value;
                                     setSectionTitle(val);
                                     if (val.trim() && hasDuplicateName(projectId, val.trim(), undefined)) {
-                                        setNameError("Já existe uma seção raiz com este nome.");
+                                        setNameError(t("projectDetail.rootSectionDuplicate"));
                                     } else {
                                         setNameError("");
                                     }
                                 }}
-                                placeholder="Nova seção"
+                                placeholder={t("projectDetail.newSectionPlaceholder")}
                                 className={`bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
                             />
-                            <button onClick={handleAddSection} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" disabled={!sectionTitle.trim() || !!nameError}>Adicionar</button>
+                            <button onClick={handleAddSection} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" disabled={!sectionTitle.trim() || !!nameError}>{t("projectDetail.add")}</button>
                         </div>
                         {nameError && (
                             <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
@@ -233,7 +241,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 }
 
 // Componente auxiliar para renderizar árvore de seções (somente links)
-function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, expandedSections, setExpandedSections }: { 
+function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, expandedSections, setExpandedSections, labels }: { 
     sections: any[]; 
     projectId: string; 
     reorderSections: any; 
@@ -241,6 +249,12 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     searchTerm: string;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+    labels: {
+        resultsFoundOne: string;
+        resultsFoundMany: string;
+        match: string;
+        reorder: string;
+    };
 }) {
     // Filtrar seções que correspondem ao termo de busca
     const matchesSearch = (section: any): boolean => {
@@ -284,7 +298,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
         <>
             {searchTerm.trim() && totalMatches > 0 && (
                 <p className="text-sm text-gray-400 mb-2 ml-1">
-                    {totalMatches} {totalMatches === 1 ? 'resultado encontrado' : 'resultados encontrados'}
+                    {totalMatches} {totalMatches === 1 ? labels.resultsFoundOne : labels.resultsFoundMany}
                 </p>
             )}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -299,6 +313,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
                                 searchTerm={searchTerm}
                                 expandedSections={expandedSections}
                                 setExpandedSections={setExpandedSections}
+                                labels={labels}
                             />
                         ))}
                     </ul>
@@ -308,13 +323,17 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     );
 }
 
-function SortableRootItem({ section, sections, projectId, searchTerm, expandedSections, setExpandedSections }: { 
+function SortableRootItem({ section, sections, projectId, searchTerm, expandedSections, setExpandedSections, labels }: { 
     section: any; 
     sections: any[]; 
     projectId: string; 
     searchTerm: string;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+    labels: {
+        match: string;
+        reorder: string;
+    };
 }) {
     const highlightText = (text: string, term?: string) => {
         if (!term || !term.trim()) return text;
@@ -373,7 +392,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                     className="text-gray-400 cursor-grab active:cursor-grabbing"
                     {...attributes}
                     {...listeners}
-                    aria-label="Reordenar"
+                    aria-label={labels.reorder}
                 >
                     ⋮⋮
                 </span>
@@ -398,7 +417,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                     {highlightText(section.title, searchTerm)}
                 </Link>
                 {directMatch && searchTerm.trim() && (
-                    <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
+                    <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ {labels.match}</span>
                 )}
             </div>
             {contentSnippet && (
@@ -414,19 +433,23 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                     searchTerm={searchTerm}
                     expandedSections={expandedSections}
                     setExpandedSections={setExpandedSections}
+                    labels={labels}
                 />
             )}
         </li>
     );
 }
 
-function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSections, setExpandedSections }: { 
+function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSections, setExpandedSections, labels }: { 
     parentId: string; 
     sections: any[]; 
     projectId: string; 
     searchTerm?: string;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+    labels: {
+        match: string;
+    };
 }) {
     const matchesSearch = (section: any): boolean => {
         if (!searchTerm || !searchTerm.trim()) return true;
@@ -506,7 +529,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSe
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
                             {directMatch && searchTerm && searchTerm.trim() && (
-                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
+                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ {labels.match}</span>
                             )}
                         </div>
                         {contentSnippet && (
@@ -522,6 +545,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSe
                                 searchTerm={searchTerm}
                                 expandedSections={expandedSections}
                                 setExpandedSections={setExpandedSections}
+                                labels={labels}
                             />
                         )}
                     </li>

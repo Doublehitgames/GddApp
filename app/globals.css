@@ -76,3 +76,34 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
+
+/* Toast UI Editor: garante contraste correto no modo Markdown */
+.toastui-editor-defaultUI,
+.toastui-editor-defaultUI .toastui-editor-toolbar,
+.toastui-editor-defaultUI .toastui-editor-md-container,
+.toastui-editor-defaultUI .toastui-editor-md-preview,
+.toastui-editor-defaultUI .toastui-editor-ww-container,
+.toastui-editor-defaultUI .toastui-editor-md-tab-container {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.toastui-editor-defaultUI .CodeMirror,
+.toastui-editor-defaultUI .CodeMirror-scroll,
+.toastui-editor-defaultUI .CodeMirror-gutters {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.toastui-editor-defaultUI .CodeMirror pre,
+.toastui-editor-defaultUI .CodeMirror-line,
+.toastui-editor-defaultUI .toastui-editor-contents,
+.toastui-editor-defaultUI .toastui-editor-contents p,
+.toastui-editor-defaultUI .toastui-editor-contents li,
+.toastui-editor-defaultUI .toastui-editor-contents span {
+  color: #111827;
+}
+
+.toastui-editor-defaultUI .CodeMirror-cursor {
+  border-left-color: #111827;
+}

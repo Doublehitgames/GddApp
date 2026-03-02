@@ -14,10 +14,23 @@
   "auth": {
     "login": {
       "title": "Entre na sua conta",
+      "subtitleLogin": "Entre na sua conta",
+      "subtitleSignup": "Crie sua conta grátis",
+      "tabLogin": "Entrar",
+      "tabSignup": "Criar conta",
+      "name": "Nome",
+      "namePlaceholder": "Seu nome",
       "email": "Email",
+      "emailPlaceholder": "seu@email.com",
       "password": "Senha",
+      "passwordPlaceholder": "••••••••",
       "submit": "Entrar",
-      "withGoogle": "Continuar com Google"
+      "submitSignup": "Criar conta",
+      "loading": "Aguarde...",
+      "withGoogle": "Continuar com Google",
+      "or": "ou",
+      "signupSuccess": "Conta criada! Verifique seu e-mail para confirmar o cadastro.",
+      "footer": "Seus dados ficam seguros"
     }
   },
   "projects": {
@@ -25,9 +38,262 @@
     "emptyState": "Nenhum projeto encontrado",
     "create": "Criar projeto"
   },
+  "home": {
+    "workspaceTag": "Game Design Workspace",
+    "subtitle": "Organize seus projetos de forma rápida com IA e edição manual.",
+    "actions": {
+      "aiSettings": "Configurações de IA",
+      "persistence": "Persistência"
+    },
+    "notice": {
+      "localStorageLine": "Esta versão está persistindo os dados no navegador (armazenamento local). Ela é uma versão de teste para coletar feedbacks e melhorar o sistema.",
+      "discordLine": "Para suporte, dúvidas e sugestões, entre no nosso Discord:"
+    },
+    "projects": {
+      "title": "Seus Projetos",
+      "count": "projeto(s)",
+      "remove": "Remover",
+      "empty": "Nenhum projeto criado ainda.",
+      "confirmRemove": "Tem certeza que deseja remover o projeto \"{title}\"?",
+      "confirmBackup": "Deseja fazer um backup local de \"{title}\" antes de excluir?",
+      "confirmDeleteWithoutBackup": "Não foi possível gerar o backup. Deseja excluir mesmo assim?"
+    },
+    "quickActions": {
+      "title": "Ações Rápidas",
+      "createAi": "Criar GDD com IA",
+      "importAi": "Importar Documento com IA",
+      "backup": "Backup & Restaurar",
+      "createManual": "Criar manualmente"
+    }
+  },
+  "projectsPage": {
+    "title": "Criar Projeto",
+    "errors": {
+      "required": "O nome do projeto é obrigatório.",
+      "minLength": "O nome do projeto deve ter pelo menos 3 caracteres."
+    },
+    "form": {
+      "namePlaceholder": "Nome do projeto",
+      "descriptionPlaceholder": "Descrição",
+      "save": "Salvar Projeto"
+    }
+  },
+  "projectDetail": {
+    "backHome": "Voltar para Home",
+    "notFound": "Projeto não encontrado.",
+    "edit": "Editar",
+    "noDescription": "Sem descrição.",
+    "sectionsTitle": "Seções do Projeto",
+    "sectionsSubtitle": "Busque, navegue e reordene as seções principais com arrastar e soltar.",
+    "searchPlaceholder": "🔍 Buscar seções por título ou conteúdo...",
+    "rootSectionDuplicate": "Já existe uma seção raiz com este nome.",
+    "newSectionPlaceholder": "Nova seção",
+    "add": "Adicionar",
+    "resultsFoundOne": "resultado encontrado",
+    "resultsFoundMany": "resultados encontrados",
+    "match": "Match",
+    "reorder": "Reordenar",
+    "actions": {
+      "mindMap": "Mapa Mental",
+      "viewDocument": "Ver como Documento",
+      "settings": "Configurações",
+      "backup": "Backup"
+    }
+  },
+  "projectEdit": {
+    "title": "Editar Projeto",
+    "projectNameLabel": "Nome do Projeto",
+    "projectNamePlaceholder": "Nome do projeto",
+    "projectDescriptionLabel": "Descrição do Projeto",
+    "decreaseHeight": "Diminuir altura",
+    "increaseHeight": "Aumentar altura",
+    "modeLabel": "Modo",
+    "exit": "Sair"
+  },
+  "sectionEdit": {
+    "title": "Editar Seção",
+    "sectionTitlePlaceholder": "Título da seção",
+    "sectionColorLabel": "Cor da Seção",
+    "customized": "customizada",
+    "resetColorTitle": "Resetar para cor padrão do nível",
+    "reset": "Resetar",
+    "customColorActive": "✨ Cor personalizada ativa. Use 'Resetar' para voltar à cor padrão do nível de hierarquia.",
+    "defaultColorHint": "Usando cor padrão do nível. Clique no seletor ou digite um código para personalizar.",
+    "aiConfigWarningPrefix": "Configure sua API key em",
+    "aiConfigWarningSuffix": "para usar este recurso",
+    "aiHelpPrefix": "A IA vai melhorar o conteúdo preservando",
+    "aiHelpHighlight": "imagens, links e referências",
+    "aiHelpSuffix": "existentes."
+  },
+  "projectExport": {
+    "backToProject": "Voltar ao Projeto",
+    "title": "Exportar GDD",
+    "subtitlePrefix": "Escolha o formato para exportar:",
+    "selectFormat": "Selecione o Formato",
+    "includeEmptySections": "Incluir seções vazias",
+    "infoTitle": "Informações",
+    "exporting": "Exportando...",
+    "exportAs": "Exportar como",
+    "formats": {
+      "markdown": {
+        "label": "Markdown",
+        "description": "Texto simples, editável, portável (.md)"
+      },
+      "pdf": {
+        "label": "PDF",
+        "description": "Documento formatado, pronto para compartilhar (.pdf)"
+      },
+      "word": {
+        "label": "Word",
+        "description": "Editável no Microsoft Word (.docx)"
+      }
+    },
+    "info": {
+      "markdown": "Melhor para edição e versionamento (Git)",
+      "pdf": "Melhor para apresentação e compartilhamento",
+      "word": "Melhor para edição colaborativa"
+    },
+    "errors": {
+      "exportFailed": "Erro ao exportar o documento. Tente novamente."
+    }
+  },
+  "sectionDetail": {
+    "notFound": "Seção não encontrada.",
+    "errors": {
+      "improveFailed": "Erro ao melhorar conteúdo",
+      "apiConnection": "Erro ao conectar com API. Tente novamente.",
+      "enterModification": "Digite o que você quer modificar.",
+      "uploadFailedPrefix": "Erro ao fazer upload",
+      "uploadImage": "Erro ao fazer upload da imagem",
+      "unknown": "Erro desconhecido"
+    },
+    "actions": {
+      "exitFullscreen": "Sair do Fullscreen",
+      "fullscreen": "Fullscreen",
+      "deleteSection": "Excluir seção"
+    },
+    "confirmDelete": "Tem certeza que deseja excluir esta seção?",
+    "confirmDeleteWithChildren": "Tem certeza que deseja excluir esta seção e suas {count} subseção(s)?",
+    "subsections": {
+      "title": "Subseções",
+      "searchPlaceholder": "🔍 Buscar subseções...",
+      "empty": "Nenhuma subseção ainda.",
+      "duplicate": "Já existe uma subseção com este nome.",
+      "addPlaceholder": "Adicionar subseção"
+    },
+    "suggestions": {
+      "title": "Sugestões da IA para criar subseções",
+      "alreadyCreated": "Já criada",
+      "createSubsection": "Criar subseção"
+    },
+    "ai": {
+      "modifying": "Modificando...",
+      "modify": "Modificar",
+      "confirmApply": "Confirmar e Aplicar"
+    },
+    "move": {
+      "cannotBeOwnParent": "A seção não pode ser pai de si mesma.",
+      "cannotMoveToDescendant": "Não é possível mover uma seção para dentro de seus próprios descendentes.",
+      "makeRoot": "Tornar seção principal (sem pai)",
+      "move": "Mover"
+    },
+    "backlinks": "Referenciado por:"
+  },
   "settings": {
     "language": "Idioma",
     "ai": "Configurações de IA",
-    "persistence": "Persistência"
+    "persistence": "Persistência",
+    "aiPage": {
+      "title": "Configurações de IA",
+      "subtitle": "Configure sua própria API key para usar os recursos de IA",
+      "errors": {
+        "invalidKey": "Por favor, insira uma API key válida",
+        "saveFailed": "Erro ao salvar configurações"
+      },
+      "messages": {
+        "saved": "Configurações salvas com sucesso!",
+        "removed": "Configurações removidas"
+      },
+      "confirm": {
+        "clear": "Tem certeza que deseja remover suas configurações de IA?"
+      },
+      "status": {
+        "activeTitle": "✓ Configuração ativa",
+        "missingTitle": "⚠ Nenhuma configuração encontrada",
+        "activeDescription": "Você está usando sua própria API key. Todos os recursos de IA estão disponíveis.",
+        "missingDescription": "Configure uma API key para usar os recursos de IA do app."
+      },
+      "form": {
+        "providerLabel": "Provider",
+        "providerHint": "Groq oferece tier gratuito generoso e é o mais recomendado",
+        "apiKeyLabel": "API Key",
+        "apiKeyPlaceholder": "Insira sua API key aqui"
+      },
+      "providers": {
+        "groq": "Groq (Recomendado - Grátis)",
+        "openai": "OpenAI (GPT-4)",
+        "claude": "Anthropic (Claude)"
+      },
+      "howTo": {
+        "title": "Como obter sua API key:",
+        "groq": {
+          "step1": "Acesse:",
+          "step2": "Crie uma conta gratuita",
+          "step3": "Vá em \"API Keys\" e crie uma nova key",
+          "step4": "Tier gratuito: 14,400 requisições/dia"
+        },
+        "openai": {
+          "step1": "Acesse:",
+          "step2": "Crie uma conta (necessita cartão de crédito)",
+          "step3": "Crie uma nova API key"
+        },
+        "claude": {
+          "step1": "Acesse:",
+          "step2": "Crie uma conta",
+          "step3": "Vá em \"API Keys\" e crie uma nova key"
+        }
+      },
+      "actions": {
+        "saving": "Salvando...",
+        "save": "Salvar Configurações",
+        "remove": "Remover"
+      },
+      "security": {
+        "title": "Segurança e Privacidade",
+        "item1": "Sua API key é armazenada apenas no seu navegador (localStorage)",
+        "item2": "A key nunca é enviada para nossos servidores ou compartilhada",
+        "item3": "Apenas você tem acesso à sua key",
+        "item4": "Se limpar o cache do navegador, precisará configurar novamente"
+      }
+    },
+    "persistencePage": {
+      "title": "Persistência e Sync",
+      "subtitle": "Ajuste o autosave e os gatilhos de sincronização com a nuvem.",
+      "statusLabel": "Status",
+      "pendingLabel": "Pendentes",
+      "lastSyncLabel": "Último sync",
+      "lastErrorLabel": "Último erro",
+      "status": {
+        "syncing": "Sincronizando",
+        "synced": "Sincronizado",
+        "error": "Erro",
+        "idle": "Aguardando"
+      },
+      "form": {
+        "debounceLabel": "Debounce de edição (ms)",
+        "debounceHint": "Tempo mínimo após edição para tentar sincronizar automaticamente.",
+        "autosaveLabel": "Intervalo do autosave (ms)",
+        "autosaveHint": "Recomendado: 30000ms (30s).",
+        "syncOnBlur": "Sincronizar ao perder foco da janela",
+        "syncOnHidden": "Sincronizar ao trocar de aba (document hidden)",
+        "syncOnPageHide": "Sincronizar no evento pagehide",
+        "syncOnBeforeUnload": "Sincronizar antes de sair da página"
+      },
+      "actions": {
+        "saved": "Salvo",
+        "save": "Salvar ajustes",
+        "syncNow": "Sincronizar agora"
+      }
+    }
   }
 }

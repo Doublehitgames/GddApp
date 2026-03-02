@@ -15,7 +15,10 @@
     "test:e2e:critical": "playwright test --grep @critical",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "i18n:check": "node scripts/check-locales.mjs"
+    "i18n:check": "node scripts/check-locales.mjs",
+    "i18n:audit": "node scripts/audit-i18n-hardcodes.mjs",
+    "i18n:audit:update-baseline": "node scripts/audit-i18n-hardcodes.mjs --update-baseline",
+    "i18n:validate": "npm run -s i18n:check && npm run -s i18n:audit"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

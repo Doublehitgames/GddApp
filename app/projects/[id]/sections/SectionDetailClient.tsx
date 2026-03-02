@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar } from "@/utils/toastui-color-plugin";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
   DndContext,
@@ -27,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
@@ -39,6 +40,7 @@ type SubsectionSuggestion = {
 };
 
 export default function SectionDetailClient({ projectId, sectionId }: Props) {
+  const { t } = useI18n();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const removeSection = useProjectStore((s) => s.removeSection);
@@ -144,7 +146,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        setImproveError(data.error || 'Erro ao melhorar conteúdo');
+        setImproveError(data.error || t('sectionDetail.errors.improveFailed'));
         setIsImproving(false);
         return;
       }
@@ -161,7 +163,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
     } catch (error) {
       console.error('Error improving content:', error);
-      setImproveError('Erro ao conectar com API. Tente novamente.');
+      setImproveError(t('sectionDetail.errors.apiConnection'));
     } finally {
       setIsImproving(false);
     }
@@ -189,7 +191,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
   async function handleRequestModification() {
     if (!modificationRequest.trim()) {
-      setImproveError("Digite o que você quer modificar.");
+      setImproveError(t('sectionDetail.errors.enterModification'));
       return;
     }
     
@@ -218,7 +220,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     
     // Validações
     if (newParentId === sectionId) {
-      alert("A seção não pode ser pai de si mesma.");
+      alert(t('sectionDetail.move.cannotBeOwnParent'));
       return;
     }
     
@@ -226,7 +228,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       // Verificar se o novo pai é um descendente da seção atual
       const descendants = getAllDescendants(sectionId, sections);
       if (descendants.includes(newParentId)) {
-        alert("Não é possível mover uma seção para dentro de seus próprios descendentes.");
+        alert(t('sectionDetail.move.cannotMoveToDescendant'));
         return;
       }
     }
@@ -299,40 +301,17 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
           ["ul", "ol", "task"],
-          ["table", "link", "image"],
+          ["table", "link"],
           ["code", "codeblock"],
         ],
-        hooks: {
-          addImageBlobHook: async (blob: Blob, callback: (url: string, altText: string) => void) => {
-            try {
-              const formData = new FormData();
-              formData.append('image', blob);
-              formData.append('projectId', projectId);
-
-              const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-              });
-
-              if (!response.ok) {
-                const error = await response.json();
-                alert(`Erro ao fazer upload: ${error.error || 'Erro desconhecido'}`);
-                return;
-              }
-
-              const data = await response.json();
-              callback(data.url, 'Uploaded image');
-            } catch (error) {
-              console.error('Upload error:', error);
-              alert('Erro ao fazer upload da imagem');
-            }
-          },
-        },
       });
       (editorRef as any).current = instance;
       
       // Adiciona botão de cor
       addColorButtonToToolbar(instance);
+
+      // Adiciona botão de imagem por URL
+      addImageUrlButtonToToolbar(instance);
     }
     mountEditor();
     return () => {
@@ -522,8 +501,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     );
   }
 
-  if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">Carregando...</div>;
-  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">Seção não encontrada. <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>Voltar</button></div>;
+  if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
+  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>{t('common.back')}</button></div>;
 
   return (
     <>
@@ -648,11 +627,12 @@ function SubsectionSuggestionPanel({
   hasDuplicateName: (projectId: string, title: string, parentId?: string, excludeId?: string) => boolean;
   addSubsection: (projectId: string, parentId: string, title: string, content?: string) => string;
 }) {
+  const { t } = useI18n();
   if (suggestions.length === 0) return null;
 
   return (
     <div className="max-w-6xl mx-auto mb-4 bg-indigo-900/20 border border-indigo-700/50 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-indigo-200 mb-3">💡 Sugestões da IA para criar subseções</h3>
+      <h3 className="text-sm font-semibold text-indigo-200 mb-3">💡 {t('sectionDetail.suggestions.title')}</h3>
       <div className="space-y-2">
         {suggestions.map((suggestion) => {
           const alreadyExists = hasDuplicateName(projectId, suggestion.title, sectionId);
@@ -674,7 +654,7 @@ function SubsectionSuggestionPanel({
                   addSubsection(projectId, sectionId, suggestion.title, suggestion.description || "");
                 }}
               >
-                {alreadyExists ? "Já criada" : "Criar subseção"}
+                {alreadyExists ? t('sectionDetail.suggestions.alreadyCreated') : t('sectionDetail.suggestions.createSubsection')}
               </button>
             </div>
           );
@@ -779,6 +759,7 @@ function SectionDetailContent({
   handleMoveSection,
   sections,
 }: any) {
+  const { t } = useI18n();
   const sectionSuggestions = extractSubsectionSuggestions(section?.content || "");
   const previewSuggestions = extractSubsectionSuggestions(previewContent || "");
 
@@ -794,9 +775,9 @@ function SectionDetailContent({
               setEditorHeight('320px');
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
-            title="Sair do fullscreen"
+            title={t('sectionDetail.actions.exitFullscreen')}
           >
-            ⤓ Sair do Fullscreen
+            ⤓ {t('sectionDetail.actions.exitFullscreen')}
           </button>
         </div>
       )}
@@ -861,7 +842,7 @@ function SectionDetailContent({
               }}
               className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors"
             >
-              ✓ Salvar
+              ✓ {t('common.save')}
             </button>
             <button
               onClick={() => {
@@ -870,7 +851,7 @@ function SectionDetailContent({
               }}
               className="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-500 transition-colors"
             >
-              ✕ Cancelar
+              ✕ {t('common.cancel')}
             </button>
           </div>
         ) : (
@@ -942,14 +923,14 @@ function SectionDetailContent({
             onClick={() => {
               const count = countDescendants(projectId, sectionId);
               const msg = count > 0 
-                ? `Tem certeza que deseja excluir esta seção e suas ${count} subseção(s)?`
-                : "Tem certeza que deseja excluir esta seção?";
+                ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
+                : t('sectionDetail.confirmDelete');
               if (window.confirm(msg)) {
                 removeSection(projectId, sectionId);
                 router.push(`/projects/${projectId}`);
               }
             }}
-            title="Excluir seção"
+            title={t('sectionDetail.actions.deleteSection')}
           >
             🗑️
           </button>
@@ -975,7 +956,7 @@ function SectionDetailContent({
               sections={project?.sections || []} 
             />
           ) : (
-            <p className="text-gray-400">Sem descrição.</p>
+            <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
           )}
         </div>
       )}
@@ -1027,7 +1008,7 @@ function SectionDetailContent({
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
                 title="Fullscreen"
               >
-                ⤢ Fullscreen
+                ⤢ {t('sectionDetail.actions.fullscreen')}
               </button>
             </div>
           )}
@@ -1046,7 +1027,7 @@ function SectionDetailContent({
             <button
               className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => setInlineEdit(false)}
-            >Cancelar</button>
+            >{t('common.cancel')}</button>
             <button
               className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-sm transition-colors"
               onClick={() => {
@@ -1073,13 +1054,13 @@ function SectionDetailContent({
 
       {!(inlineEdit && isFullscreen) && (
         <div className="max-w-6xl mx-auto mt-6 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
-      <h2 className="font-semibold text-lg">Subseções</h2>
+      <h2 className="font-semibold text-lg">{t('sectionDetail.subsections.title')}</h2>
       
       {/* Campo de busca */}
       <div className="mb-3">
         <input
           type="text"
-          placeholder="🔍 Buscar subseções..."
+          placeholder={t('sectionDetail.subsections.searchPlaceholder')}
           value={searchTerm}
           onChange={(e) => {
             const term = e.target.value;
@@ -1103,7 +1084,7 @@ function SectionDetailContent({
       </div>
 
       {renderSubsectionTree(sectionId) || (
-        <p className="text-gray-400 text-sm">Nenhuma subseção ainda.</p>
+        <p className="text-gray-400 text-sm">{t('sectionDetail.subsections.empty')}</p>
       )}
 
       <div className="mt-2">
@@ -1114,12 +1095,12 @@ function SectionDetailContent({
               const val = e.target.value;
               setNewSubTitle(val);
               if (val.trim() && hasDuplicateName(projectId, val.trim(), sectionId)) {
-                setNameError("Já existe uma subseção com este nome.");
+                setNameError(t('sectionDetail.subsections.duplicate'));
               } else {
                 setNameError("");
               }
             }}
-            placeholder="Adicionar subseção"
+            placeholder={t('sectionDetail.subsections.addPlaceholder')}
             className={`bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
           />
           <button
@@ -1132,7 +1113,7 @@ function SectionDetailContent({
               setNewSubTitle("");
               setNameError("");
             }}
-          >Adicionar</button>
+          >{t('projectDetail.add')}</button>
         </div>
         {nameError && (
           <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
@@ -1204,7 +1185,7 @@ function SectionDetailContent({
                   disabled={isImproving}
                   className="px-6 py-3 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
                 >
-                  ✕ Cancelar
+                  ✕ {t('common.cancel')}
                 </button>
                 
                 <button
@@ -1215,12 +1196,12 @@ function SectionDetailContent({
                   {isImproving ? (
                     <>
                       <span className="animate-spin">⏳</span>
-                      <span>Modificando...</span>
+                      <span>{t('sectionDetail.ai.modifying')}</span>
                     </>
                   ) : (
                     <>
                       <span>🔄</span>
-                      <span>Modificar</span>
+                      <span>{t('sectionDetail.ai.modify')}</span>
                     </>
                   )}
                 </button>
@@ -1231,7 +1212,7 @@ function SectionDetailContent({
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <span>✓</span>
-                  <span>Confirmar e Aplicar</span>
+                  <span>{t('sectionDetail.ai.confirmApply')}</span>
                 </button>
               </div>
             </div>
@@ -1285,7 +1266,7 @@ function SectionDetailContent({
                   />
                   <div className="flex-1">
                     <div className="font-semibold text-gray-100">📁 Raiz do Projeto</div>
-                    <div className="text-xs text-gray-400">Tornar seção principal (sem pai)</div>
+                    <div className="text-xs text-gray-400">{t('sectionDetail.move.makeRoot')}</div>
                   </div>
                 </label>
 
@@ -1315,14 +1296,14 @@ function SectionDetailContent({
                 }}
                 className="flex-1 px-4 py-2 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleMoveSection}
                 disabled={!selectedNewParent}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Mover
+                {t('sectionDetail.move.move')}
               </button>
             </div>
           </div>
@@ -1430,6 +1411,7 @@ function SectionTreeItem({
 
 // Componente de Backlinks (seções que referenciam esta)
 function BacklinksSection({ projectId, sectionId, sections, router }: any) {
+  const { t } = useI18n();
   const backlinks = getBacklinks(sectionId, sections);
 
   if (backlinks.length === 0) return null;
@@ -1438,7 +1420,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
     <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
       <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
         <span>🔗</span>
-        <span>Referenciado por:</span>
+        <span>{t('sectionDetail.backlinks')}</span>
       </h3>
       <div className="flex flex-wrap gap-2">
         {backlinks.map((link, index) => (

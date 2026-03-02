@@ -23,6 +23,7 @@ import "reactflow/dist/style.css";
 import { useProjectStore, Section, MindMapSettings } from "@/store/projectStore";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
+import { useI18n } from "@/lib/i18n/provider";
 import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -817,6 +818,17 @@ function MarkdownWithMapReferences({
 // Componente interno que tem acesso ao contexto do ReactFlow
 function FlowContent({ projectId }: MindMapClientProps) {
   const router = useRouter();
+  const { locale } = useI18n();
+  const tr = (pt: string, en: string, es: string) => {
+    switch (locale) {
+      case "es":
+        return es;
+      case "en":
+        return en;
+      default:
+        return pt;
+    }
+  };
   const { getProject } = useProjectStore();
   const project = getProject(projectId);
   const { setCenter, fitView } = useReactFlow(); // Agora funciona porque está dentro do ReactFlow
@@ -1649,7 +1661,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
   if (!project) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
-        <p className="text-gray-400">Projeto não encontrado</p>
+        <p className="text-gray-400">{tr("Projeto não encontrado", "Project not found", "Proyecto no encontrado")}</p>
       </div>
     );
   }
@@ -1681,9 +1693,9 @@ function FlowContent({ projectId }: MindMapClientProps) {
               onClick={() => router.push(`/projects/${projectId}`)}
               className="text-gray-400 hover:text-white transition-colors"
             >
-              ← Voltar
+              ← {tr("Voltar", "Back", "Volver")}
             </button>
-            <h1 className="text-xl font-bold text-white">🧠 Mapa Mental</h1>
+            <h1 className="text-xl font-bold text-white">🧠 {tr("Mapa Mental", "Mind Map", "Mapa mental")}</h1>
             <span className="text-gray-400">|</span>
             <span className="text-gray-300">{project.title}</span>
             
@@ -1694,7 +1706,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar seções..."
+                  placeholder={tr("Buscar seções...", "Search sections...", "Buscar secciones...")}
                   className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-8 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-64"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -1709,7 +1721,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
               </div>
               {searchResults.size > 0 && (
                 <span className="text-sm text-gray-400 bg-gray-700 px-3 py-1.5 rounded-lg">
-                  {searchResults.size} resultado{searchResults.size !== 1 ? 's' : ''}
+                  {searchResults.size} {tr(`resultado${searchResults.size !== 1 ? "s" : ""}`, `result${searchResults.size !== 1 ? "s" : ""}`, `resultado${searchResults.size !== 1 ? "s" : ""}`)}
                 </span>
               )}
             </div>
@@ -1718,15 +1730,15 @@ function FlowContent({ projectId }: MindMapClientProps) {
           <div className="flex items-center gap-2 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-              <span>Seção</span>
+              <span>{tr("Seção", "Section", "Sección")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-              <span>Subseção</span>
+              <span>{tr("Subseção", "Subsection", "Subsección")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-purple-500" style={{ backgroundImage: 'repeating-linear-gradient(to right, #8b5cf6 0, #8b5cf6 5px, transparent 5px, transparent 10px)' }}></div>
-              <span>Referência</span>
+              <span>{tr("Referência", "Reference", "Referencia")}</span>
             </div>
           </div>
         </div>
@@ -1796,7 +1808,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
                   onSectionClick={handleReferenceClick}
                 />
               ) : (
-                <p className="text-gray-500 italic">Sem conteúdo</p>
+                <p className="text-gray-500 italic">{tr("Sem conteúdo", "No content", "Sin contenido")}</p>
               )}
             </div>
 
@@ -1806,7 +1818,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
               if (backlinks.length > 0) {
                 return (
                   <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3">Referenciado por:</h3>
+                    <h3 className="text-sm font-semibold text-gray-300 mb-3">{tr("Referenciado por:", "Referenced by:", "Referenciado por:")}</h3>
                     <div className="flex flex-wrap gap-2">
                       {backlinks.map((backlink) => {
                         return (
@@ -1832,7 +1844,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
                   onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
-                  Ver Detalhes
+                  {tr("Ver Detalhes", "View Details", "Ver detalles")}
                 </button>
               )}
               {selectedNode.id === 'project' && (
@@ -1840,7 +1852,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
                   onClick={() => router.push(`/projects/${projectId}/edit`)}
                   className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
                 >
-                  Editar Projeto
+                  {tr("Editar Projeto", "Edit Project", "Editar proyecto")}
                 </button>
               )}
             </div>

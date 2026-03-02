@@ -15,9 +15,23 @@ export const COLOR_PALETTE = [
   { name: 'Branco', value: '#ffffff' },
 ];
 
+type ToastEditorLike = {
+  getSelectedText?: () => string;
+  isMarkdownMode?: () => boolean;
+  getMarkdown?: () => string;
+  setMarkdown?: (value: string, cursorToEnd?: boolean) => void;
+  replaceSelection?: (value: string) => void;
+  el?: Element | null;
+  insertText?: (value: string) => void;
+  getCurrentModeEditor?: () => { replaceSelection?: (value: string) => void };
+  exec?: (command: string, payload?: unknown) => void;
+};
+
 // Function to apply color to selected text
-function applyColorToSelection(editor: any, color: string) {
+function applyColorToSelection(editor: ToastEditorLike, color: string) {
   try {
+    if (typeof editor.getSelectedText !== 'function') return;
+
     const selectedText = editor.getSelectedText();
     
     if (!selectedText) {
@@ -25,23 +39,24 @@ function applyColorToSelection(editor: any, color: string) {
       return;
     }
 
-    const editorType = editor.isMarkdownMode() ? 'markdown' : 'wysiwyg';
+    const editorType =
+      typeof editor.isMarkdownMode === 'function' && editor.isMarkdownMode() ? 'markdown' : 'wysiwyg';
     const coloredText = `<span style="color: ${color}">${selectedText}</span>`;
     
     if (editorType === 'wysiwyg') {
       // In WYSIWYG mode, we need to work with the markdown directly
       // Get current markdown content
-      const currentMarkdown = editor.getMarkdown();
+      const currentMarkdown = editor.getMarkdown?.() || '';
       
       // Find and replace the selected text in markdown
       // This preserves the HTML when switching modes
       const newMarkdown = currentMarkdown.replace(selectedText, coloredText);
       
       // Update the content
-      editor.setMarkdown(newMarkdown, false); // false = don't move cursor to end
+      editor.setMarkdown?.(newMarkdown, false); // false = don't move cursor to end
     } else {
       // In Markdown mode, just replace the selection
-      editor.replaceSelection(coloredText);
+      editor.replaceSelection?.(coloredText);
     }
   } catch (error) {
     console.error('Error applying color:', error);
@@ -49,7 +64,7 @@ function applyColorToSelection(editor: any, color: string) {
 }
 
 // Function to add color button to toolbar
-export function addColorButtonToToolbar(editor: any) {
+export function addColorButtonToToolbar(editor: ToastEditorLike) {
   // Wait for DOM to be ready
   setTimeout(() => {
     const toolbarElement = document.querySelector('.toastui-editor-toolbar');
@@ -198,4 +213,108 @@ export function addColorButtonToToolbar(editor: any) {
       firstGroup.appendChild(buttonWrapper);
     }
   }, 100);
+}
+
+// Function to add image-by-URL button to toolbar (without local upload)
+export function addImageUrlButtonToToolbar(editor: ToastEditorLike) {
+  setTimeout(() => {
+    const editorRoot =
+      editor?.el?.closest?.('.toastui-editor-defaultUI') ||
+      document.querySelector('.toastui-editor-defaultUI');
+
+    const toolbarElement = editorRoot?.querySelector('.toastui-editor-toolbar') as HTMLElement | null;
+    if (!toolbarElement) {
+      console.warn('Toolbar not found for image URL button');
+      return;
+    }
+
+    if (toolbarElement.querySelector('.image-url-wrapper')) {
+      return;
+    }
+
+    const buttonWrapper = document.createElement('div');
+    buttonWrapper.className = 'image-url-wrapper';
+    buttonWrapper.style.cssText = 'position: relative; display: inline-block;';
+
+    const imageUrlButton = document.createElement('button');
+    imageUrlButton.type = 'button';
+    imageUrlButton.className = 'toastui-editor-toolbar-icons image-url';
+    imageUrlButton.style.cssText = `
+      position: relative;
+      padding: 5px 8px;
+      margin: 0 2px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+    `;
+    imageUrlButton.textContent = '🖼️';
+    imageUrlButton.title = 'Inserir imagem por URL';
+
+    imageUrlButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const imageUrl = window.prompt('Cole a URL da imagem:');
+      if (!imageUrl) return;
+
+      const trimmedUrl = imageUrl.trim();
+      const isValidUrl = /^https?:\/\//i.test(trimmedUrl) || trimmedUrl.startsWith('/');
+      if (!isValidUrl) {
+        alert('URL inválida. Use um link http(s) ou caminho relativo.');
+        return;
+      }
+
+      const altText = window.prompt('Texto alternativo (opcional):', 'imagem') || 'imagem';
+      const markdownImage = `![${altText}](${trimmedUrl})`;
+      const htmlImage = `<img src="${trimmedUrl}" alt="${altText}" />`;
+
+      const isMarkdownMode =
+        typeof editor?.isMarkdownMode === 'function' ? editor.isMarkdownMode() : false;
+
+      // Em WYSIWYG, usa comando nativo para inserir imagem renderizada
+      if (!isMarkdownMode && typeof editor?.exec === 'function') {
+        try {
+          editor.exec('addImage', {
+            imageUrl: trimmedUrl,
+            altText,
+          });
+          return;
+        } catch (error) {
+          console.warn('Falha ao inserir imagem via comando nativo, usando fallback markdown.', error);
+        }
+
+        const currentModeEditor = editor?.getCurrentModeEditor?.();
+        if (typeof currentModeEditor?.replaceSelection === 'function') {
+          currentModeEditor.replaceSelection(htmlImage);
+          return;
+        }
+
+        const currentMarkdown = editor?.getMarkdown?.() || '';
+        editor?.setMarkdown?.(`${currentMarkdown}\n${markdownImage}`);
+        return;
+      }
+
+      if (typeof editor?.insertText === 'function') {
+        editor.insertText(markdownImage);
+        return;
+      }
+
+      const currentModeEditor = editor?.getCurrentModeEditor?.();
+      if (typeof currentModeEditor?.replaceSelection === 'function') {
+        currentModeEditor.replaceSelection(markdownImage);
+        return;
+      }
+
+      const currentMarkdown = editor?.getMarkdown?.() || '';
+      editor?.setMarkdown?.(`${currentMarkdown}\n${markdownImage}`);
+    });
+
+    buttonWrapper.appendChild(imageUrlButton);
+
+    const firstGroup = toolbarElement.querySelector('.toastui-editor-toolbar-group');
+    if (firstGroup) {
+      firstGroup.appendChild(buttonWrapper);
+    }
+  }, 120);
 }

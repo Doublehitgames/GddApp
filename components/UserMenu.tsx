@@ -1,15 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useAuthStore } from "@/store/authStore";
+import { getLocaleLabel, useI18n } from "@/lib/i18n/provider";
 
 export default function UserMenu() {
   const { user, profile, signOut } = useAuthStore();
+  const { locale, setLocale, supportedLocales } = useI18n();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
 
-  const name = profile?.display_name || user.email?.split("@")[0] || "Usuário";
+  const tr = (pt: string, en: string, es: string) => {
+    switch (locale) {
+      case "es":
+        return es;
+      case "en":
+        return en;
+      default:
+        return pt;
+    }
+  };
+  const name = profile?.display_name || user.email?.split("@")[0] || tr("Usuário", "User", "Usuario");
   const email = user.email || "";
   const initials = name.slice(0, 2).toUpperCase();
 
@@ -47,6 +60,42 @@ export default function UserMenu() {
             </div>
 
             <div className="p-1">
+              <div className="px-1 pb-1 mb-1 border-b border-gray-800">
+                <Link
+                  href="/settings/ai"
+                  onClick={() => setOpen(false)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>⚙️</span>
+                  <span>{tr("Configurações de IA", "AI settings", "Configuración de IA")}</span>
+                </Link>
+                <Link
+                  href="/settings/persistence"
+                  onClick={() => setOpen(false)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>💾</span>
+                  <span>{tr("Persistência", "Persistence", "Persistencia")}</span>
+                </Link>
+              </div>
+
+              <div className="px-3 py-2">
+                <label className="text-xs text-gray-400 block mb-1">
+                  {tr("Idioma", "Language", "Idioma")}
+                </label>
+                <select
+                  value={locale}
+                  onChange={(event) => setLocale(event.target.value as typeof locale)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-200"
+                >
+                  {supportedLocales.map((item) => (
+                    <option key={item} value={item}>
+                      {getLocaleLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
                 onClick={handleSignOut}
                 className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-2"
@@ -54,7 +103,7 @@ export default function UserMenu() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Sair
+                {tr("Sair", "Sign out", "Cerrar sesión")}
               </button>
             </div>
           </div>

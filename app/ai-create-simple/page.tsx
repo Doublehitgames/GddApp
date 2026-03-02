@@ -1,14 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
+import { useI18n } from "@/lib/i18n/provider";
 
 export default function AICreateSimple() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
+  const { locale } = useI18n();
+  const tr = (pt: string, en: string, es: string) => {
+    switch (locale) {
+      case "es":
+        return es;
+      case "en":
+        return en;
+      default:
+        return pt;
+    }
+  };
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
@@ -29,6 +41,9 @@ export default function AICreateSimple() {
   const [selectedModel, setSelectedModel] = useState<string>("llama-3.3-70b-versatile");
   const [error, setError] = useState<string>("");
   const [adjustments, setAdjustments] = useState<string>("");
+
+  const getErrorMessage = (errorValue: unknown) =>
+    errorValue instanceof Error ? errorValue.message : "";
 
   const genres = [
     "Roguelike/Roguelite",
@@ -82,7 +97,7 @@ export default function AICreateSimple() {
 
   const handleEnhanceDescription = async () => {
     if (!description.trim()) {
-      setError("Escreva pelo menos uma frase básica antes de melhorar!");
+      setError(tr("Escreva pelo menos uma frase básica antes de melhorar!", "Write at least one basic sentence before improving!", "¡Escribe al menos una frase básica antes de mejorar!"));
       return;
     }
 
@@ -126,7 +141,7 @@ Retorne APENAS a descrição melhorada, sem aspas ou formatação markdown.`;
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao melhorar descrição");
+        throw new Error(tr("Erro ao melhorar descrição", "Failed to improve description", "Error al mejorar la descripción"));
       }
 
       const data = await response.json();
@@ -134,14 +149,14 @@ Retorne APENAS a descrição melhorada, sem aspas ou formatação markdown.`;
       
       setDescription(enhancedDescription);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Enhance error:", error);
       
       // Try fallback to 8B if rate limit
-      const errorMsg = error.message || "";
+      const errorMsg = getErrorMessage(error);
       if ((errorMsg.includes("rate_limit") || errorMsg.includes("429")) && selectedModel === "llama-3.3-70b-versatile") {
         setSelectedModel("llama-3.1-8b-instant");
-        setError("⚡ Tentando com modelo econômico...");
+        setError(tr("⚡ Tentando com modelo econômico...", "⚡ Trying budget model...", "⚡ Probando con modelo económico..."));
         
         // Retry once with 8B
         try {
@@ -174,13 +189,13 @@ Reescreva essa descrição de jogo de forma profissional e detalhada (3-5 frases
             setDescription(retryData.message.trim());
             setError("");
           } else {
-            setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+            setError(tr("❌ Não foi possível melhorar a descrição. Tente novamente!", "❌ Could not improve the description. Try again!", "❌ No se pudo mejorar la descripción. ¡Inténtalo nuevamente!"));
           }
         } catch {
-          setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+          setError(tr("❌ Não foi possível melhorar a descrição. Tente novamente!", "❌ Could not improve the description. Try again!", "❌ No se pudo mejorar la descripción. ¡Inténtalo nuevamente!"));
         }
       } else {
-        setError("❌ Não foi possível melhorar a descrição. Tente novamente!");
+        setError(tr("❌ Não foi possível melhorar a descrição. Tente novamente!", "❌ Could not improve the description. Try again!", "❌ No se pudo mejorar la descripción. ¡Inténtalo nuevamente!"));
       }
     } finally {
       setIsEnhancing(false);
@@ -189,7 +204,7 @@ Reescreva essa descrição de jogo de forma profissional e detalhada (3-5 frases
 
   const handleGenerateMechanics = async () => {
     if (!description.trim()) {
-      setError("Preencha a descrição do jogo primeiro!");
+      setError(tr("Preencha a descrição do jogo primeiro!", "Fill in the game description first!", "¡Completa primero la descripción del juego!"));
       return;
     }
 
@@ -234,7 +249,7 @@ Retorne APENAS a lista de mecânicas, sem introdução ou explicações adiciona
       });
 
       if (!response.ok) {
-        throw new Error("Erro ao gerar mecânicas");
+        throw new Error(tr("Erro ao gerar mecânicas", "Failed to generate mechanics", "Error al generar mecánicas"));
       }
 
       const data = await response.json();
@@ -242,14 +257,14 @@ Retorne APENAS a lista de mecânicas, sem introdução ou explicações adiciona
       
       setMechanics(generatedMechanics);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generate mechanics error:", error);
       
       // Try fallback to 8B if rate limit
-      const errorMsg = error.message || "";
+      const errorMsg = getErrorMessage(error);
       if ((errorMsg.includes("rate_limit") || errorMsg.includes("429")) && selectedModel === "llama-3.3-70b-versatile") {
         setSelectedModel("llama-3.1-8b-instant");
-        setError("⚡ Tentando com modelo econômico...");
+        setError(tr("⚡ Tentando com modelo econômico...", "⚡ Trying budget model...", "⚡ Probando con modelo económico..."));
         
         // Retry once with 8B
         try {
@@ -278,13 +293,13 @@ Liste 5-8 mecânicas de gameplay para este jogo em bullet points (•). Seja esp
             setMechanics(retryData.message.trim());
             setError("");
           } else {
-            setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+            setError(tr("❌ Não foi possível gerar mecânicas. Tente novamente!", "❌ Could not generate mechanics. Try again!", "❌ No se pudieron generar las mecánicas. ¡Inténtalo nuevamente!"));
           }
         } catch {
-          setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+          setError(tr("❌ Não foi possível gerar mecânicas. Tente novamente!", "❌ Could not generate mechanics. Try again!", "❌ No se pudieron generar las mecánicas. ¡Inténtalo nuevamente!"));
         }
       } else {
-        setError("❌ Não foi possível gerar mecânicas. Tente novamente!");
+        setError(tr("❌ Não foi possível gerar mecânicas. Tente novamente!", "❌ Could not generate mechanics. Try again!", "❌ No se pudieron generar las mecánicas. ¡Inténtalo nuevamente!"));
       }
     } finally {
       setIsGeneratingMechanics(false);
@@ -294,15 +309,15 @@ Liste 5-8 mecânicas de gameplay para este jogo em bullet points (•). Seja esp
   const handleGenerate = async (withAdjustments: boolean = false) => {
     // Validation
     if (!gameName.trim()) {
-      setError("Por favor, dê um nome para o seu jogo!");
+      setError(tr("Por favor, dê um nome para o seu jogo!", "Please give your game a name!", "¡Por favor, ponle un nombre a tu juego!"));
       return;
     }
     if (!genre) {
-      setError("Escolha um gênero para o jogo!");
+      setError(tr("Escolha um gênero para o jogo!", "Choose a genre for the game!", "¡Elige un género para el juego!"));
       return;
     }
     if (!description.trim()) {
-      setError("Adicione uma breve descrição do jogo!");
+      setError(tr("Adicione uma breve descrição do jogo!", "Add a short game description!", "¡Agrega una breve descripción del juego!"));
       return;
     }
 
@@ -343,7 +358,7 @@ ${mechanicsText}
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ details: 'Unknown error' }));
-        throw new Error(errorData.details || errorData.error || 'Erro ao gerar template');
+        throw new Error(errorData.details || errorData.error || tr('Erro ao gerar template', 'Failed to generate template', 'Error al generar la plantilla'));
       }
 
       const data = await response.json();
@@ -353,7 +368,7 @@ ${mechanicsText}
       
       setTemplate(data.template);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       let errorDetails = "";
       if (error instanceof Error) {
         errorDetails = error.message;
@@ -369,7 +384,7 @@ ${mechanicsText}
         console.log("🔄 Rate limit detected! Switching to 8B model and retrying...");
         
         setSelectedModel("llama-3.1-8b-instant");
-        setError("⚡ Modelo potente em limite. Tentando com modelo econômico...");
+        setError(tr("⚡ Modelo potente em limite. Tentando com modelo econômico...", "⚡ Powerful model is rate-limited. Trying budget model...", "⚡ El modelo potente alcanzó el límite. Probando con modelo económico..."));
         
         try {
           const retryResponse = await fetch("/api/ai/generate-template", {
@@ -400,11 +415,11 @@ ${mechanicsText}
       
       // Show error message
       if (isRateLimit) {
-        setError("⏰ Ambos os modelos atingiram o limite. Tente novamente em alguns minutos ou amanhã.");
+        setError(tr("⏰ Ambos os modelos atingiram o limite. Tente novamente em alguns minutos ou amanhã.", "⏰ Both models hit the limit. Try again in a few minutes or tomorrow.", "⏰ Ambos modelos alcanzaron el límite. Inténtalo de nuevo en unos minutos o mañana."));
       } else if (errorDetails.includes("API key") || errorDetails.includes("401")) {
-        setError("🔑 Problema com a chave da API. Verifique a configuração.");
+        setError(tr("🔑 Problema com a chave da API. Verifique a configuração.", "🔑 API key issue. Check your configuration.", "🔑 Problema con la API key. Revisa la configuración."));
       } else {
-        setError("❌ Erro ao gerar GDD. Tente novamente!");
+        setError(tr("❌ Erro ao gerar GDD. Tente novamente!", "❌ Failed to generate GDD. Try again!", "❌ Error al generar el GDD. ¡Inténtalo nuevamente!"));
       }
     } finally {
       setIsGenerating(false);
@@ -453,17 +468,17 @@ ${mechanicsText}
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">
-            🎮 Criar Novo GDD
+            🎮 {tr("Criar Novo GDD", "Create New GDD", "Crear nuevo GDD")}
           </h1>
           <p className="text-gray-300">
-            Preencha as informações e gere seu Game Design Document completo!
+            {tr("Preencha as informações e gere seu Game Design Document completo!", "Fill in the information and generate your complete Game Design Document!", "¡Completa la información y genera tu Game Design Document completo!")}
           </p>
           {!template && (
             <button
               onClick={fillExample}
               className="mt-4 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-all inline-flex items-center gap-2"
             >
-              💡 Preencher Exemplo
+              💡 {tr("Preencher Exemplo", "Fill Example", "Completar ejemplo")}
             </button>
           )}
         </div>
@@ -482,7 +497,7 @@ ${mechanicsText}
             {/* Game Name */}
             <div className="mb-6">
               <label className="block text-white font-semibold mb-2">
-                Nome do Jogo *
+                {tr("Nome do Jogo", "Game Name", "Nombre del juego")} *
               </label>
               <input
                 type="text"
@@ -496,14 +511,14 @@ ${mechanicsText}
             {/* Genre */}
             <div className="mb-6">
               <label className="block text-white font-semibold mb-2">
-                Gênero *
+                {tr("Gênero", "Genre", "Género")} *
               </label>
               <select
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
               >
-                <option value="">Selecione um gênero</option>
+                <option value="">{tr("Selecione um gênero", "Select a genre", "Selecciona un género")}</option>
                 {genres.map(g => (
                   <option key={g} value={g}>{g}</option>
                 ))}
@@ -513,7 +528,7 @@ ${mechanicsText}
             {/* Platforms */}
             <div className="mb-6">
               <label className="block text-white font-semibold mb-2">
-                Plataformas
+                {tr("Plataformas", "Platforms", "Plataformas")}
               </label>
               <div className="flex flex-wrap gap-3">
                 {platformOptions.map(platform => (
@@ -535,14 +550,14 @@ ${mechanicsText}
             {/* Visual Style */}
             <div className="mb-6">
               <label className="block text-white font-semibold mb-2">
-                Estilo Visual
+                {tr("Estilo Visual", "Visual Style", "Estilo visual")}
               </label>
               <select
                 value={visualStyle}
                 onChange={(e) => setVisualStyle(e.target.value)}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
               >
-                <option value="">Selecione um estilo</option>
+                <option value="">{tr("Selecione um estilo", "Select a style", "Selecciona un estilo")}</option>
                 {visualStyles.map(style => (
                   <option key={style} value={style}>{style}</option>
                 ))}
@@ -553,7 +568,7 @@ ${mechanicsText}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-white font-semibold">
-                  Descrição do Jogo *
+                  {tr("Descrição do Jogo", "Game Description", "Descripción del juego")} *
                 </label>
                 <span className={`text-sm ${
                   description.length > MAX_DESCRIPTION 
@@ -572,13 +587,17 @@ ${mechanicsText}
                     setDescription(e.target.value);
                   }
                 }}
-                placeholder="Ex: jogo de fazenda pixel art onde você planta e cuida de animais"
+                placeholder={tr(
+                  "Ex: jogo de fazenda pixel art onde você planta e cuida de animais",
+                  "Ex: pixel art farming game where you plant crops and take care of animals",
+                  "Ej: juego de granja pixel art donde plantas cultivos y cuidas animales"
+                )}
                 rows={4}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none resize-none"
               />
               <div className="flex items-center justify-between mt-2">
                 <p className="text-gray-400 text-sm">
-                  Pode ser simples! Use o botão ao lado para melhorar →
+                  {tr("Pode ser simples! Use o botão ao lado para melhorar →", "It can be simple! Use the button to improve it →", "¡Puede ser simple! Usa el botón de al lado para mejorarla →")}
                 </p>
                 <button
                   onClick={handleEnhanceDescription}
@@ -591,11 +610,11 @@ ${mechanicsText}
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Melhorando...
+                      {tr("Melhorando...", "Improving...", "Mejorando...")}
                     </>
                   ) : (
                     <>
-                      ✨ Melhorar com IA
+                      ✨ {tr("Melhorar com IA", "Improve with AI", "Mejorar con IA")}
                     </>
                   )}
                 </button>
@@ -606,7 +625,7 @@ ${mechanicsText}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-white font-semibold">
-                  Mecânicas Principais <span className="text-gray-400 font-normal">(opcional)</span>
+                  {tr("Mecânicas Principais", "Core Mechanics", "Mecánicas principales")} <span className="text-gray-400 font-normal">({tr("opcional", "optional", "opcional")})</span>
                 </label>
                 <span className={`text-sm ${
                   mechanics.length > MAX_MECHANICS 
@@ -631,7 +650,7 @@ ${mechanicsText}
               />
               <div className="flex items-center justify-between mt-2">
                 <p className="text-gray-400 text-sm">
-                  Deixe a IA sugerir mecânicas baseadas na descrição →
+                  {tr("Deixe a IA sugerir mecânicas baseadas na descrição →", "Let AI suggest mechanics based on the description →", "Deja que la IA sugiera mecánicas basadas en la descripción →")}
                 </p>
                 <button
                   onClick={handleGenerateMechanics}
@@ -644,11 +663,11 @@ ${mechanicsText}
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Gerando...
+                      {tr("Gerando...", "Generating...", "Generando...")}
                     </>
                   ) : (
                     <>
-                      📝 Criar da descrição
+                      📝 {tr("Criar da descrição", "Create from description", "Crear desde la descripción")}
                     </>
                   )}
                 </button>
@@ -658,18 +677,18 @@ ${mechanicsText}
             {/* Model Selection */}
             <div className="mb-6">
               <label className="block text-white font-semibold mb-2">
-                Modelo de IA
+                {tr("Modelo de IA", "AI Model", "Modelo de IA")}
               </label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
               >
-                <option value="llama-3.3-70b-versatile">⚡ 70B - Potente (melhor qualidade)</option>
-                <option value="llama-3.1-8b-instant">💨 8B - Econômico (mais rápido)</option>
+                <option value="llama-3.3-70b-versatile">{tr("⚡ 70B - Potente (melhor qualidade)", "⚡ 70B - Powerful (best quality)", "⚡ 70B - Potente (mejor calidad)")}</option>
+                <option value="llama-3.1-8b-instant">{tr("💨 8B - Econômico (mais rápido)", "💨 8B - Budget (faster)", "💨 8B - Económico (más rápido)")}</option>
               </select>
               <p className="text-gray-400 text-sm mt-1">
-                O modelo potente gera GDDs mais detalhados, mas tem limite de uso diário
+                {tr("O modelo potente gera GDDs mais detalhados, mas tem limite de uso diário", "The powerful model generates more detailed GDDs, but has a daily usage limit", "El modelo potente genera GDDs más detallados, pero tiene límite de uso diario")}
               </p>
             </div>
 
@@ -692,15 +711,15 @@ ${mechanicsText}
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Gerando GDD...
+                  {tr("Gerando GDD...", "Generating GDD...", "Generando GDD...")}
                 </span>
               ) : (
-                "🚀 Gerar GDD Completo"
+                (tr("🚀 Gerar GDD Completo", "🚀 Generate Full GDD", "🚀 Generar GDD completo"))
               )}
             </button>
 
             <p className="text-gray-400 text-sm text-center mt-4">
-              * Campos obrigatórios
+              * {tr("Campos obrigatórios", "Required fields", "Campos obligatorios")}
             </p>
           </div>
         ) : (
@@ -709,7 +728,7 @@ ${mechanicsText}
             <div className="text-center mb-6">
               <div className="text-6xl mb-4">✨</div>
               <h2 className="text-3xl font-bold text-white mb-2">
-                GDD Criado com Sucesso!
+                {tr("GDD Criado com Sucesso!", "GDD Created Successfully!", "¡GDD creado con éxito!")}
               </h2>
               <p className="text-gray-300">
                 {template.projectTitle}
@@ -717,7 +736,7 @@ ${mechanicsText}
             </div>
 
             <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
-              <h3 className="text-xl font-bold text-white mb-3">📋 Seções Criadas:</h3>
+              <h3 className="text-xl font-bold text-white mb-3">📋 {tr("Seções Criadas:", "Created Sections:", "Secciones creadas:")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {template.sections.map((section, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-gray-300">
@@ -730,24 +749,35 @@ ${mechanicsText}
 
             <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
               <p className="text-blue-200 text-sm">
-                💡 <strong>Dica:</strong> Depois de criar o projeto, você pode usar o chat IA dentro do projeto para refinar cada seção!
+                <span>
+                  💡 <strong>{tr("Dica", "Tip", "Consejo")}:</strong>{" "}
+                  {tr(
+                    "Depois de criar o projeto, você pode usar o chat IA dentro do projeto para refinar cada seção!",
+                    "After creating the project, you can use the AI chat inside the project to refine each section!",
+                    "Después de crear el proyecto, puedes usar el chat de IA dentro del proyecto para refinar cada sección!"
+                  )}
+                </span>
               </p>
             </div>
 
             {/* Adjustments Field */}
             <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
               <label className="block text-white font-semibold mb-2">
-                ✏️ Quer ajustar algo? (opcional)
+                ✏️ {tr("Quer ajustar algo?", "Want to tweak something?", "¿Quieres ajustar algo?")} ({tr("opcional", "optional", "opcional")})
               </label>
               <textarea
                 value={adjustments}
                 onChange={(e) => setAdjustments(e.target.value)}
-                placeholder="Ex: Adicionar seção sobre economia do jogo&#10;Incluir mais detalhes sobre multiplayer&#10;Faltou falar sobre tutorial"
+                placeholder={tr(
+                  "Ex: Adicionar seção sobre economia do jogo&#10;Incluir mais detalhes sobre multiplayer&#10;Faltou falar sobre tutorial",
+                  "Ex: Add a section about game economy&#10;Include more details about multiplayer&#10;Add content about the tutorial",
+                  "Ej: Agregar sección sobre economía del juego&#10;Incluir más detalles sobre multijugador&#10;Falta hablar sobre el tutorial"
+                )}
                 rows={3}
                 className="w-full bg-gray-600/50 text-white rounded-lg px-4 py-3 border border-gray-500 focus:border-purple-500 focus:outline-none resize-none"
               />
               <p className="text-gray-400 text-sm mt-2">
-                Descreva o que gostaria de adicionar, remover ou modificar no GDD
+                {tr("Descreva o que gostaria de adicionar, remover ou modificar no GDD", "Describe what you want to add, remove, or modify in the GDD", "Describe lo que quieres añadir, eliminar o modificar en el GDD")}
               </p>
             </div>
 
@@ -763,10 +793,10 @@ ${mechanicsText}
                 onClick={handleCreateProject}
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105"
               >
-                📄 Ver GDD Completo
+                📄 {tr("Ver GDD Completo", "View Full GDD", "Ver GDD completo")}
               </button>
               <p className="text-center text-gray-400 text-sm -mt-2">
-                Veja seu documento formatado antes de editar
+                {tr("Veja seu documento formatado antes de editar", "See your formatted document before editing", "Mira tu documento formateado antes de editar")}
               </p>
               
               <div className="flex gap-4">
@@ -781,10 +811,10 @@ ${mechanicsText}
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Regenerando...
+                      {tr("Regenerando...", "Regenerating...", "Regenerando...")}
                     </span>
                   ) : (
-                    "🔄 Regenerar com Ajustes"
+                    (tr("🔄 Regenerar com Ajustes", "🔄 Regenerate with Adjustments", "🔄 Regenerar con ajustes"))
                   )}
                 </button>
                 <button
@@ -795,7 +825,7 @@ ${mechanicsText}
                   }}
                   className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg transition-all"
                 >
-                  ↩️ Voltar ao Formulário
+                  ↩️ {tr("Voltar ao Formulário", "Back to Form", "Volver al formulario")}
                 </button>
               </div>
             </div>
@@ -808,7 +838,7 @@ ${mechanicsText}
             onClick={() => router.push("/")}
             className="text-gray-400 hover:text-white transition-colors"
           >
-            ← Voltar para Home
+            ← {tr("Voltar para Home", "Back to Home", "Volver al inicio")}
           </button>
         </div>
       </div>

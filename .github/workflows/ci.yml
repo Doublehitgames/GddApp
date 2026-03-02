@@ -28,8 +28,8 @@ jobs:
     - name: 📦 Instalar dependências
       run: npm ci
 
-    - name: 🌐 Validar localizações
-      run: npm run i18n:check
+    - name: 🌐 Validar localizações (check + audit)
+      run: npm run -s i18n:validate
 
     - name: 🔍 Verificar TypeScript
       run: npx tsc --noEmit

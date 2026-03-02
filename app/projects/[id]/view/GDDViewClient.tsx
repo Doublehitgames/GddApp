@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
 }
 
 export default function GDDViewClient({ projectId }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const getProject = useProjectStore((s) => s.getProject);
@@ -43,7 +45,7 @@ export default function GDDViewClient({ projectId }: Props) {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-600">Carregando...</div>
+        <div className="text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }

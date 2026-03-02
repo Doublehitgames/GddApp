@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore, LevelConfig } from "@/store/projectStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
@@ -11,6 +12,9 @@ interface Props {
 
 export default function SettingsClient({ projectId }: Props) {
   const router = useRouter();
+  const { locale } = useI18n();
+  const isPt = locale === "pt-BR";
+  const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
   const { getProject, updateProjectSettings } = useProjectStore();
   const project = getProject(projectId);
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
@@ -45,7 +49,7 @@ export default function SettingsClient({ projectId }: Props) {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       } catch (error) {
-        alert('Erro ao importar configurações. Verifique se o arquivo é válido.');
+        alert(isPt ? 'Erro ao importar configurações. Verifique se o arquivo é válido.' : 'Failed to import settings. Check if the file is valid.');
         console.error('Import error:', error);
       }
     };
@@ -70,7 +74,7 @@ export default function SettingsClient({ projectId }: Props) {
       const defaultLevels: LevelConfig[] = [
         { 
           level: 0, 
-          name: "Seções (Nível 0)", 
+          name: tr("Seções (Nível 0)", "Sections (Level 0)"), 
           node: { 
             color: MINDMAP_CONFIG.sections.node.color, 
             textColor: MINDMAP_CONFIG.sections.node.textColor,
@@ -86,7 +90,7 @@ export default function SettingsClient({ projectId }: Props) {
         },
         { 
           level: 1, 
-          name: "Subseções (Nível 1)", 
+          name: tr("Subseções (Nível 1)", "Subsections (Level 1)"), 
           node: { 
             color: MINDMAP_CONFIG.subsections.node.color, 
             textColor: MINDMAP_CONFIG.subsections.node.textColor,
@@ -102,7 +106,7 @@ export default function SettingsClient({ projectId }: Props) {
         },
         { 
           level: 2, 
-          name: "Sub-subseções (Nível 2+)", 
+          name: tr("Sub-subseções (Nível 2+)", "Sub-subsections (Level 2+)"), 
           node: { 
             color: MINDMAP_CONFIG.deepSubsections.node.color, 
             textColor: MINDMAP_CONFIG.deepSubsections.node.textColor,
@@ -119,14 +123,14 @@ export default function SettingsClient({ projectId }: Props) {
       ];
       setSettings((prev) => ({ ...prev, levels: defaultLevels }));
     }
-  }, [project]);
+  }, [project, tr]);
 
   const handleAddLevel = () => {
     const currentLevels = settings.levels || [];
     const nextLevel = currentLevels.length;
     const newLevel: LevelConfig = { 
       level: nextLevel, 
-      name: `Nível ${nextLevel}`, 
+      name: `${tr("Nível", "Level")} ${nextLevel}`, 
       node: { 
         color: "#a855f7", 
         textColor: "#ffffff",
@@ -151,7 +155,7 @@ export default function SettingsClient({ projectId }: Props) {
 
   const handleRemoveLevel = (level: number) => {
     const currentLevels = settings.levels || [];
-    if (currentLevels.length <= 1) { alert("Você precisa ter pelo menos 1 nível!"); return; }
+    if (currentLevels.length <= 1) { alert(isPt ? "Você precisa ter pelo menos 1 nível!" : "You need at least 1 level!"); return; }
     const filtered = currentLevels.filter((l) => l.level !== level);
     const reindexed = filtered.map((l, index) => ({ ...l, level: index }));
     setSettings({ ...settings, levels: reindexed });
@@ -270,20 +274,20 @@ export default function SettingsClient({ projectId }: Props) {
   };
 
   const handleSave = () => { updateProjectSettings(projectId, settings); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); };
-  const handleReset = () => { if (confirm("Resetar todas as configurações?")) { updateProjectSettings(projectId, {}); setSettings({}); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); } };
+  const handleReset = () => { if (confirm(isPt ? "Resetar todas as configurações?" : "Reset all settings?")) { updateProjectSettings(projectId, {}); setSettings({}); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); } };
 
-  if (!project) return <div>Projeto não encontrado</div>;
+  if (!project) return <div>{isPt ? "Projeto não encontrado" : "Project not found"}</div>;
   const levels = settings.levels || [];
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-5xl mx-auto p-6">
         <div className="mb-8">
-          <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← Voltar</button>
-          <h1 className="text-3xl font-bold mb-2">⚙️ Configurações do Mapa Mental</h1>
+          <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← {isPt ? "Voltar" : "Back"}</button>
+          <h1 className="text-3xl font-bold mb-2">⚙️ {isPt ? "Configurações do Mapa Mental" : "Mind Map Settings"}</h1>
           <p className="text-gray-400">{project.title}</p>
         </div>
-        {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ Configurações salvas com sucesso!</div>}
+        {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ {isPt ? "Configurações salvas com sucesso!" : "Settings saved successfully!"}</div>}
         
         {/* Input file oculto para importar */}
         <input
@@ -295,38 +299,38 @@ export default function SettingsClient({ projectId }: Props) {
         />
         
         <div className="flex gap-3 mb-8">
-          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 Salvar</button>
-          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 Resetar</button>
-          <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold">📥 Exportar</button>
-          <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 Importar</button>
+          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
+          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
+          <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold">📥 {isPt ? "Exportar" : "Export"}</button>
+          <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {isPt ? "Importar" : "Import"}</button>
         </div>
         <div className="space-y-8">
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">📏 Tamanhos dos Nós</h2>
+            <h2 className="text-xl font-bold mb-4">📏 {tr("Tamanhos dos Nós", "Node Sizes")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div><label className="block text-sm text-gray-400 mb-2">Base (px)</label><input type="number" value={getValue("nodeSize.baseSize")} onChange={(e) => setValue("nodeSize.baseSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Redução</label><input type="number" step="0.1" value={getValue("nodeSize.reductionFactor")} onChange={(e) => setValue("nodeSize.reductionFactor", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Mínimo (px)</label><input type="number" value={getValue("nodeSize.minSize")} onChange={(e) => setValue("nodeSize.minSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Base (px)", "Base (px)")}</label><input type="number" value={getValue("nodeSize.baseSize")} onChange={(e) => setValue("nodeSize.baseSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Redução", "Reduction")}</label><input type="number" step="0.1" value={getValue("nodeSize.reductionFactor")} onChange={(e) => setValue("nodeSize.reductionFactor", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Mínimo (px)", "Minimum (px)")}</label><input type="number" value={getValue("nodeSize.minSize")} onChange={(e) => setValue("nodeSize.minSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">📐 Espaçamento</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">📐 {tr("Espaçamento", "Spacing")}</h3>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-sm text-gray-400 mb-2">Margem do Sol (px)</label><input type="number" value={getValue("spacing.projectMargin") || 80} onChange={(e) => setValue("spacing.projectMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-                <div><label className="block text-sm text-gray-400 mb-2">Margem entre Níveis (px)</label><input type="number" value={getValue("spacing.levelMargin") || 60} onChange={(e) => setValue("spacing.levelMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{tr("Margem do Sol (px)", "Sun Margin (px)")}</label><input type="number" value={getValue("spacing.projectMargin") || 80} onChange={(e) => setValue("spacing.projectMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{tr("Margem entre Níveis (px)", "Level Margin (px)")}</label><input type="number" value={getValue("spacing.levelMargin") || 60} onChange={(e) => setValue("spacing.levelMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
-              <p className="text-xs text-gray-500">Margem do Sol = espaço entre o projeto central e as seções. Margem entre Níveis = espaço entre nós pai e filho.</p>
+              <p className="text-xs text-gray-500">{tr("Margem do Sol = espaço entre o projeto central e as seções. Margem entre Níveis = espaço entre nós pai e filho.", "Sun Margin = spacing between the central project and sections. Level Margin = spacing between parent and child nodes.")}</p>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🔤 Fonte</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🔤 {tr("Fonte", "Font")}</h3>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-sm text-gray-400 mb-2">Tamanho Base (px)</label><input type="number" value={getValue("nodeSize.baseFontSize") || 14} onChange={(e) => setValue("nodeSize.baseFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-                <div><label className="block text-sm text-gray-400 mb-2">Tamanho Mínimo (px)</label><input type="number" value={getValue("nodeSize.minFontSize") || 8} onChange={(e) => setValue("nodeSize.minFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Base (px)", "Base Size (px)")}</label><input type="number" value={getValue("nodeSize.baseFontSize") || 14} onChange={(e) => setValue("nodeSize.baseFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Mínimo (px)", "Minimum Size (px)")}</label><input type="number" value={getValue("nodeSize.minFontSize") || 8} onChange={(e) => setValue("nodeSize.minFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Família da Fonte</label>
+                  <label className="block text-sm text-gray-400 mb-2">{tr("Família da Fonte", "Font Family")}</label>
                   <select value={getValue("nodeSize.fontFamily") || "system-ui"} onChange={(e) => setValue("nodeSize.fontFamily", e.target.value)} className="w-full bg-gray-700 rounded px-3 py-2">
-                    <option value="system-ui">System UI (Padrão)</option>
+                    <option value="system-ui">{tr("System UI (Padrão)", "System UI (Default)")}</option>
                     <option value="Arial, sans-serif">Arial</option>
                     <option value="'Courier New', monospace">Courier New (Mono)</option>
                     <option value="Georgia, serif">Georgia (Serif)</option>
@@ -339,7 +343,7 @@ export default function SettingsClient({ projectId }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Peso da Fonte</label>
+                  <label className="block text-sm text-gray-400 mb-2">{tr("Peso da Fonte", "Font Weight")}</label>
                   <select value={getValue("nodeSize.fontWeight") || "bold"} onChange={(e) => setValue("nodeSize.fontWeight", e.target.value)} className="w-full bg-gray-700 rounded px-3 py-2">
                     <option value="100">100 - Thin</option>
                     <option value="200">200 - Extra Light</option>
@@ -353,51 +357,51 @@ export default function SettingsClient({ projectId }: Props) {
                   </select>
                 </div>
               </div>
-              <p className="text-xs text-gray-500">Tamanho Base = fonte quando a bolinha tem 100px. Escala proporcionalmente com o tamanho do nó. Ex: Base=14 + Nó=1000px = Fonte de 140px.</p>
+              <p className="text-xs text-gray-500">{tr("Tamanho Base = fonte quando a bolinha tem 100px. Escala proporcionalmente com o tamanho do nó. Ex: Base=14 + Nó=1000px = Fonte de 140px.", "Base Size = font when the node has 100px. It scales proportionally with node size. Ex: Base=14 + Node=1000px = 140px font.")}</p>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🎯 Projeto Central</h2>
-            <h3 className="text-lg font-semibold mb-3 text-gray-300">Nó (Bolinha)</h3>
+            <h2 className="text-xl font-bold mb-4">🎯 {tr("Projeto Central", "Central Project")}</h2>
+            <h3 className="text-lg font-semibold mb-3 text-gray-300">{tr("Nó (Bolinha)", "Node (Circle)")}</h3>
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div><label className="block text-sm text-gray-400 mb-2">Tamanho (px)</label><input type="number" value={getValue("project.node.size")} onChange={(e) => setValue("project.node.size", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Gradiente (Início)</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
-              <div><label className="block text-sm text-gray-400 mb-2">Gradiente (Fim)</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho (px)", "Size (px)")}</label><input type="number" value={getValue("project.node.size")} onChange={(e) => setValue("project.node.size", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Gradiente (Início)", "Gradient (Start)")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Gradiente (Fim)", "Gradient (End)")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
             </div>
             
-            <h3 className="text-lg font-semibold mb-3 text-gray-300">Conexões (Linhas)</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-300">{tr("Conexões (Linhas)", "Connections (Lines)")}</h3>
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Cor da Linha</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Linha", "Line Color")}</label>
                 <div className="flex gap-2">
                   <input type="color" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="w-16 h-10 rounded" />
                   <input type="text" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Espessura (px)</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura (px)", "Thickness (px)")}</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("project.edge.strokeWidth")} onChange={(e) => setValue("project.edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Tracejada?</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Tracejada?", "Dashed?")}</label>
                 <select value={getValue("project.edge.dashed") ? "true" : "false"} onChange={(e) => setValue("project.edge.dashed", e.target.value === "true")} className="w-full bg-gray-700 rounded px-3 py-2">
-                  <option value="false">Não</option>
-                  <option value="true">Sim</option>
+                  <option value="false">{tr("Não", "No")}</option>
+                  <option value="true">{tr("Sim", "Yes")}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Animada?</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Animada?", "Animated?")}</label>
                 <select value={getValue("project.edge.animated") ? "true" : "false"} onChange={(e) => setValue("project.edge.animated", e.target.value === "true")} className="w-full bg-gray-700 rounded px-3 py-2">
-                  <option value="false">Não</option>
-                  <option value="true">Sim</option>
+                  <option value="false">{tr("Não", "No")}</option>
+                  <option value="true">{tr("Sim", "Yes")}</option>
                 </select>
               </div>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">🎨 Níveis de Hierarquia</h2>
-              <button onClick={handleAddLevel} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold">+ Adicionar Nível</button>
+              <h2 className="text-xl font-bold">🎨 {isPt ? "Níveis de Hierarquia" : "Hierarchy Levels"}</h2>
+              <button onClick={handleAddLevel} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold">+ {isPt ? "Adicionar Nível" : "Add Level"}</button>
             </div>
             <div className="space-y-4">
               {levels.map((lvl) => {
@@ -423,7 +427,7 @@ export default function SettingsClient({ projectId }: Props) {
                     {isExpanded && (
                       <div className="p-4 border-t border-gray-600">
                         <div className="mb-3">
-                          <label className="block text-sm text-gray-400 mb-2">Nome do Nível</label>
+                          <label className="block text-sm text-gray-400 mb-2">{tr("Nome do Nível", "Level Name")}</label>
                           <input 
                             type="text" 
                             value={lvl.name} 
@@ -434,17 +438,17 @@ export default function SettingsClient({ projectId }: Props) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-300">Nó</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">Cor</label><div className="flex gap-2"><input type="color" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">Texto</label><div className="flex gap-2"><input type="color" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <h3 className="font-semibold text-gray-300">{tr("Nó", "Node")}</h3>
+                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Texto", "Text")}</label><div className="flex gap-2"><input type="color" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
                     </div>
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-300">Conexão</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">Cor</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">Espessura</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
+                      <h3 className="font-semibold text-gray-300">{tr("Conexão", "Connection")}</h3>
+                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Espessura", "Thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
                       <div className="flex gap-4">
-                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.animated || false} onChange={(e) => handleLevelChange(lvl.level, "edge.animated", e.target.checked)} className="w-5 h-5" /><span className="text-sm">Animado</span></label>
-                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.dashed || false} onChange={(e) => handleLevelChange(lvl.level, "edge.dashed", e.target.checked)} className="w-5 h-5" /><span className="text-sm">Tracejado</span></label>
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.animated || false} onChange={(e) => handleLevelChange(lvl.level, "edge.animated", e.target.checked)} className="w-5 h-5" /><span className="text-sm">{tr("Animado", "Animated")}</span></label>
+                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.dashed || false} onChange={(e) => handleLevelChange(lvl.level, "edge.dashed", e.target.checked)} className="w-5 h-5" /><span className="text-sm">{tr("Tracejado", "Dashed")}</span></label>
                       </div>
                     </div>
                   </div>
@@ -452,7 +456,7 @@ export default function SettingsClient({ projectId }: Props) {
                   {/* Borda para Nós com Filhos */}
                   <div className="mt-4 pt-4 border-t border-gray-600">
                     <div className="flex items-center gap-2 mb-3">
-                      <h3 className="font-semibold text-gray-300">🔲 Borda para Nós com Filhos</h3>
+                      <h3 className="font-semibold text-gray-300">🔲 {tr("Borda para Nós com Filhos", "Border for Nodes with Children")}</h3>
                       <label className="flex items-center gap-2">
                         <input 
                           type="checkbox" 
@@ -460,14 +464,14 @@ export default function SettingsClient({ projectId }: Props) {
                           onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", e.target.checked)} 
                           className="w-5 h-5" 
                         />
-                        <span className="text-sm text-gray-400">Ativar</span>
+                        <span className="text-sm text-gray-400">{tr("Ativar", "Enable")}</span>
                       </label>
                     </div>
                     
                     {(lvl.node.hasChildrenBorder?.enabled) && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                          <label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label>
                           <div className="flex gap-2">
                             <input 
                               type="color" 
@@ -484,7 +488,7 @@ export default function SettingsClient({ projectId }: Props) {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">Largura Base</label>
+                          <label className="block text-sm text-gray-400 mb-1">{tr("Largura Base", "Base Width")}</label>
                           <input 
                             type="number" 
                             step="0.5" 
@@ -492,7 +496,7 @@ export default function SettingsClient({ projectId }: Props) {
                             onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.width", Number(e.target.value))} 
                             className="w-full bg-gray-600 rounded px-2 py-1" 
                           />
-                          <p className="text-xs text-gray-500 mt-1">Proporcional ao tamanho</p>
+                          <p className="text-xs text-gray-500 mt-1">{tr("Proporcional ao tamanho", "Proportional to size")}</p>
                         </div>
                         <div className="col-span-2">
                           <label className="flex items-center gap-2">
@@ -502,7 +506,7 @@ export default function SettingsClient({ projectId }: Props) {
                               onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", e.target.checked)} 
                               className="w-5 h-5" 
                             />
-                            <span className="text-sm text-gray-400">Tracejada</span>
+                            <span className="text-sm text-gray-400">{tr("Tracejada", "Dashed")}</span>
                           </label>
                         </div>
                       </div>
@@ -516,76 +520,76 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">✨ Highlight (Seleção)</h2>
+            <h2 className="text-xl font-bold mb-4">✨ {tr("Highlight (Seleção)", "Highlight (Selection)")}</h2>
             <div className="grid grid-cols-4 gap-4 mb-3">
-              <div><label className="block text-sm text-gray-400 mb-2">Cor</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Espessura Base</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura Base", "Base Thickness")}</label>
                 <input type="number" step="0.1" value={getValue("sections.edge.highlighted.strokeWidth")} onChange={(e) => setHighlightValue("strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Ajustado pelo zoom</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Ajustado pelo zoom", "Adjusted by zoom")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Padrão de Tracejado Base</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Padrão de Tracejado Base", "Base Dash Pattern")}</label>
                 <input type="number" step="0.5" value={getValue("sections.edge.highlighted.dashPattern")} onChange={(e) => setHighlightValue("dashPattern", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Ex: 5 = traços de 5px</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Ex: 5 = traços de 5px", "Ex: 5 = 5px dashes")}</p>
               </div>
-              <div><label className="block text-sm text-gray-400 mb-2">Animado</label><input type="checkbox" checked={getValue("sections.edge.highlighted.animated")} onChange={(e) => setHighlightValue("animated", e.target.checked)} className="w-6 h-6 mt-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Animado", "Animated")}</label><input type="checkbox" checked={getValue("sections.edge.highlighted.animated")} onChange={(e) => setHighlightValue("animated", e.target.checked)} className="w-6 h-6 mt-2" /></div>
             </div>
-            <p className="text-xs text-gray-500">A espessura e tracejado das linhas destacadas são proporcionais ao zoom para manter visual constante.</p>
+            <p className="text-xs text-gray-500">{tr("A espessura e tracejado das linhas destacadas são proporcionais ao zoom para manter visual constante.", "The thickness and dashing of highlighted lines are proportional to zoom to keep a consistent visual.")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🔍 Zoom</h2>
+            <h2 className="text-xl font-bold mb-4">🔍 {tr("Zoom", "Zoom")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Zoom Mínimo</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Zoom Mínimo", "Minimum Zoom")}</label>
                 <input type="number" step="0.01" min="0.01" max="1" value={getValue("zoom.minZoom")} onChange={(e) => setValue("zoom.minZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
                 <p className="text-xs text-gray-500 mt-1">Ex: 0.01 = 1%</p>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">FitView Max Zoom</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("zoom.fitViewMaxZoom")} onChange={(e) => setValue("zoom.fitViewMaxZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Limite ao carregar</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Limite ao carregar", "Limit on load")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">FitView Margem</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("FitView Margem", "FitView Padding")}</label>
                 <input type="number" step="0.05" min="0" max="0.5" value={getValue("zoom.fitViewPadding") || 0.2} onChange={(e) => setValue("zoom.fitViewPadding", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
                 <p className="text-xs text-gray-500 mt-1">Ex: 0.2 = 20%</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 mb-4">
-              <strong>Zoom Mínimo:</strong> Menor zoom possível (quanto menor, mais você pode afastar).
+              <strong>{tr("Zoom Mínimo", "Minimum Zoom")}:</strong> {tr("Menor zoom possível (quanto menor, mais você pode afastar).", "Lowest possible zoom (the lower, the farther you can zoom out).")}
               <br />
-              <strong>FitView Max Zoom:</strong> Limite de zoom ao carregar - valores altos (5+) permitem zoom out total para ver tudo.
+              <strong>FitView Max Zoom:</strong> {tr("Limite de zoom ao carregar - valores altos (5+) permitem zoom out total para ver tudo.", "Zoom limit on load - high values (5+) allow full zoom out to see everything.")}
               <br />
-              <strong>FitView Margem:</strong> Espaçamento ao redor do mapa ao carregar.
+              <strong>{tr("FitView Margem", "FitView Padding")}:</strong> {tr("Espaçamento ao redor do mapa ao carregar.", "Spacing around the map on load.")}
             </p>
             <div className="border-t border-gray-700 pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🎯 Zoom ao Clicar</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🎯 {tr("Zoom ao Clicar", "Zoom on Click")}</h3>
               <div className="grid grid-cols-1 gap-4">
-                <div><label className="block text-sm text-gray-400 mb-2">Tamanho Alvo na Tela (px)</label><input type="number" value={getValue("zoom.onClickTargetSize") || 200} onChange={(e) => setValue("zoom.onClickTargetSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Alvo na Tela (px)", "Target Size on Screen (px)")}</label><input type="number" value={getValue("zoom.onClickTargetSize") || 200} onChange={(e) => setValue("zoom.onClickTargetSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas</p>
+              <p className="text-xs text-gray-500 mt-2">{tr("Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas", "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked")}</p>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🎬 Animação das Conexões</h2>
+            <h2 className="text-xl font-bold mb-4">🎬 {tr("Animação das Conexões", "Connection Animation")}</h2>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Velocidade (segundos)</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Velocidade (segundos)", "Speed (seconds)")}</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("animation.speed") || 2} onChange={(e) => setValue("animation.speed", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Menor = mais rápido</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Menor = mais rápido", "Lower = faster")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Distância do Movimento (px)</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Distância do Movimento (px)", "Movement Distance (px)")}</label>
                 <input type="number" step="10" min="50" max="500" value={getValue("animation.distance") || 500} onChange={(e) => setValue("animation.distance", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Quanto os traços se movem</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Quanto os traços se movem", "How far dashes move")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">Controla o movimento dos traços animados em todas as conexões. Teste valores diferentes para encontrar a melhor visibilidade!</p>
+            <p className="text-xs text-gray-500">{tr("Controla o movimento dos traços animados em todas as conexões. Teste valores diferentes para encontrar a melhor visibilidade!", "Controls animated dash movement on all connections. Try different values to find the best visibility!")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🌫️ Efeito de Esmaecer</h2>
-            <p className="text-sm text-gray-400 mb-4">Quando um nó é selecionado, os nós que NÃO estão no caminho ficam esmaecidos para destacar a hierarquia.</p>
+            <h2 className="text-xl font-bold mb-4">🌫️ {tr("Efeito de Esmaecer", "Fade Effect")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{tr("Quando um nó é selecionado, os nós que NÃO estão no caminho ficam esmaecidos para destacar a hierarquia.", "When a node is selected, nodes NOT in the path are faded to highlight hierarchy.")}</p>
             <div className="mb-3">
               <label className="flex items-center">
                 <input 
@@ -594,12 +598,12 @@ export default function SettingsClient({ projectId }: Props) {
                   onChange={(e) => setValue("fadeEffect.enabled", e.target.checked)} 
                   className="mr-2" 
                 />
-                <span className="text-sm">Ativar efeito de esmaecer</span>
+                <span className="text-sm">{tr("Ativar efeito de esmaecer", "Enable fade effect")}</span>
               </label>
             </div>
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Opacidade</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Opacidade", "Opacity")}</label>
                 <input 
                   type="number" 
                   step="0.1" 
@@ -610,7 +614,7 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2" 
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">0 = invisível, 1 = normal</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("0 = invisível, 1 = normal", "0 = invisible, 1 = normal")}</p>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Grayscale (%)</label>
@@ -624,7 +628,7 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">0 = colorido, 100 = cinza</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("0 = colorido, 100 = cinza", "0 = colored, 100 = gray")}</p>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Blur (px)</label>
@@ -638,14 +642,14 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">0 = nítido, 10 = muito borrado</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("0 = nítido, 10 = muito borrado", "0 = sharp, 10 = very blurry")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">Combine opacidade, grayscale e blur para encontrar o efeito ideal. Recomendado: opacity 0.3, grayscale 50, blur 1</p>
+            <p className="text-xs text-gray-500">{tr("Combine opacidade, grayscale e blur para encontrar o efeito ideal. Recomendado: opacity 0.3, grayscale 50, blur 1", "Combine opacity, grayscale and blur to find the ideal effect. Recommended: opacity 0.3, grayscale 50, blur 1")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🔗 Referências Cruzadas</h2>
-            <p className="text-sm text-gray-400 mb-4">Ao selecionar um nó, mostra conexões azuis para seções referenciadas no conteúdo usando a sintaxe $[Nome da Seção]</p>
+            <h2 className="text-xl font-bold mb-4">🔗 {tr("Referências Cruzadas", "Cross References")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{tr("Ao selecionar um nó, mostra conexões azuis para seções referenciadas no conteúdo usando a sintaxe $[Nome da Seção]", "When selecting a node, it shows blue links to sections referenced in content using $[Section Name] syntax")}</p>
             <div className="mb-3">
               <label className="flex items-center">
                 <input 
@@ -654,13 +658,13 @@ export default function SettingsClient({ projectId }: Props) {
                   onChange={(e) => setValue("references.enabled", e.target.checked)} 
                   className="mr-2" 
                 />
-                <span className="text-sm">Mostrar referências cruzadas</span>
+                <span className="text-sm">{tr("Mostrar referências cruzadas", "Show cross references")}</span>
               </label>
             </div>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">Estilo da Conexão</h3>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Estilo da Conexão", "Connection Style")}</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Cor da Linha</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Linha", "Line Color")}</label>
                 <input 
                   type="color" 
                   value={getValue("references.edgeColor") || '#3b82f6'} 
@@ -670,7 +674,7 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Espessura (px)</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura (px)", "Thickness (px)")}</label>
                 <input 
                   type="number" 
                   step="0.5" 
@@ -691,7 +695,7 @@ export default function SettingsClient({ projectId }: Props) {
                     className="mr-2"
                     disabled={!getValue("references.enabled")}
                   />
-                  <span className="text-sm">Animar linha (movimento)</span>
+                  <span className="text-sm">{tr("Animar linha (movimento)", "Animate line (movement)")}</span>
                 </label>
               </div>
               <div>
@@ -703,11 +707,11 @@ export default function SettingsClient({ projectId }: Props) {
                     className="mr-2"
                     disabled={!getValue("references.enabled")}
                   />
-                  <span className="text-sm">Linha tracejada</span>
+                  <span className="text-sm">{tr("Linha tracejada", "Dashed line")}</span>
                 </label>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Padrão do tracejado</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Padrão do tracejado", "Dash Pattern")}</label>
                 <input 
                   type="number" 
                   step="1" 
@@ -718,11 +722,11 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("references.enabled") || (getValue("references.edgeDashed") === false && !getValue("references.edgeAnimated"))}
                 />
-                <p className="text-xs text-gray-500 mt-1">Usado para traço e animação</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Usado para traço e animação", "Used for dash and animation")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mb-4">💡 A animação usa as mesmas configurações globais (velocidade/distância) de outras conexões animadas</p>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">Ícone na Conexão</h3>
+            <p className="text-xs text-gray-500 mb-4">💡 {tr("A animação usa as mesmas configurações globais (velocidade/distância) de outras conexões animadas", "Animation uses the same global settings (speed/distance) as other animated connections")}</p>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Ícone na Conexão", "Connection Icon")}</h3>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
                 <label className="flex items-center">
@@ -733,11 +737,11 @@ export default function SettingsClient({ projectId }: Props) {
                     className="mr-2"
                     disabled={!getValue("references.enabled")}
                   />
-                  <span className="text-sm">Mostrar ícone na linha</span>
+                  <span className="text-sm">{tr("Mostrar ícone na linha", "Show icon on line")}</span>
                 </label>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Ícone/Emoji</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Ícone/Emoji", "Icon/Emoji")}</label>
                 <input 
                   type="text" 
                   maxLength={2}
@@ -750,7 +754,7 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">Tamanho do Ícone</label>
+              <label className="block text-sm text-gray-400 mb-2">{tr("Tamanho do Ícone", "Icon Size")}</label>
               <div className="flex items-center gap-4">
                 <input 
                   type="range" 
@@ -764,7 +768,7 @@ export default function SettingsClient({ projectId }: Props) {
                 <span className="text-white w-16 text-center">{getValue("references.iconSize") ?? 32}px</span>
               </div>
             </div>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">Destaque dos Nós Referenciados</h3>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Destaque dos Nós Referenciados", "Referenced Node Highlight")}</h3>
             <div className="mb-3">
               <label className="flex items-center">
                 <input 
@@ -774,12 +778,12 @@ export default function SettingsClient({ projectId }: Props) {
                   className="mr-2"
                   disabled={!getValue("references.enabled")}
                 />
-                <span className="text-sm">Destacar nós referenciados</span>
+                <span className="text-sm">{tr("Destacar nós referenciados", "Highlight referenced nodes")}</span>
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Cor da Borda</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Borda", "Border Color")}</label>
                 <input 
                   type="color" 
                   value={getValue("references.nodeHighlight.borderColor") || '#3b82f6'} 
@@ -789,7 +793,7 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Espessura da Borda</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura da Borda", "Border Thickness")}</label>
                 <input 
                   type="number" 
                   step="0.5" 
@@ -802,33 +806,33 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500">As referências são detectadas automaticamente quando você usa $[Nome da Seção] ou $[#id] no conteúdo. Azul é recomendado por lembrar hyperlinks!</p>
+            <p className="text-xs text-gray-500">{tr("As referências são detectadas automaticamente quando você usa $[Nome da Seção] ou $[#id] no conteúdo. Azul é recomendado por lembrar hyperlinks!", "References are detected automatically when you use $[Section Name] or $[#id] in content. Blue is recommended as it resembles hyperlinks!")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">⚙️ Física da Simulação</h2>
+            <h2 className="text-xl font-bold mb-4">⚙️ {tr("Física da Simulação", "Simulation Physics")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Link Strength</label>
                 <input type="number" step="0.01" min="0" max="1" value={getValue("physics.simulation.linkStrength") ?? 1} onChange={(e) => setValue("physics.simulation.linkStrength", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">0-1 (menor = mais livre)</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("0-1 (menor = mais livre)", "0-1 (lower = freer)")}</p>
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Collision Strength</label>
                 <input type="number" step="0.1" min="0" max="1" value={getValue("physics.simulation.collisionStrength") ?? 0.3} onChange={(e) => setValue("physics.simulation.collisionStrength", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">0-1 (recomendado: 0.1-0.3 para simetria)</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("0-1 (recomendado: 0.1-0.3 para simetria)", "0-1 (recommended: 0.1-0.3 for symmetry)")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Iterações</label>
+                <label className="block text-sm text-gray-400 mb-2">{tr("Iterações", "Iterations")}</label>
                 <input type="number" step="10" min="10" max="500" value={getValue("physics.simulation.iterations") ?? 130} onChange={(e) => setValue("physics.simulation.iterations", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Precisão da simulação</p>
+                <p className="text-xs text-gray-500 mt-1">{tr("Precisão da simulação", "Simulation precision")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">Ajuste a física para controlar como os nós se organizam. Link = atração aos pais, Collision = evita sobreposição, Iterações = qualidade do cálculo.</p>
+            <p className="text-xs text-gray-500">{tr("Ajuste a física para controlar como os nós se organizam. Link = atração aos pais, Collision = evita sobreposição, Iterações = qualidade do cálculo.", "Tune physics to control how nodes organize. Link = attraction to parents, Collision = avoid overlap, Iterations = calculation quality.")}</p>
           </div>
         </div>
         <div className="flex gap-3 mt-8">
-          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 Salvar</button>
-          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 Resetar</button>
+          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
+          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
         </div>
       </div>
     </div>
