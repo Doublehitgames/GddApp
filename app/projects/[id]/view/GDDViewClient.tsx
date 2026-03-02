@@ -8,9 +8,10 @@ import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
+  publicToken?: string;
 }
 
-export default function GDDViewClient({ projectId }: Props) {
+export default function GDDViewClient({ projectId, publicToken }: Props) {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,13 +23,15 @@ export default function GDDViewClient({ projectId }: Props) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const isPublicMode = Boolean(publicToken);
+  const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (mounted) {
+    if (mounted && !isPublicMode) {
       const p = getProject(projectId);
       setProject(p);
       
@@ -42,7 +45,45 @@ export default function GDDViewClient({ projectId }: Props) {
         return () => clearTimeout(timer);
       }
     }
-  }, [mounted, projectId, projects, getProject, searchParams]);
+  }, [mounted, projectId, projects, getProject, searchParams, isPublicMode]);
+
+  useEffect(() => {
+    if (!mounted || !isPublicMode || !publicToken) return;
+
+    let cancelled = false;
+    setIsPublicLoading(true);
+
+    const loadPublicProject = async () => {
+      try {
+        const response = await fetch(`/api/public/projects/${projectId}?token=${encodeURIComponent(publicToken)}`);
+        if (!response.ok) {
+          if (!cancelled) {
+            setProject(null);
+            setIsPublicLoading(false);
+          }
+          return;
+        }
+
+        const payload = await response.json();
+        if (!cancelled) {
+          setProject(payload?.project || null);
+          setShowWelcome(false);
+          setIsPublicLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setProject(null);
+          setIsPublicLoading(false);
+        }
+      }
+    };
+
+    void loadPublicProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, isPublicMode, publicToken, projectId]);
 
   const sortByManagerOrder = (sections: any[]) =>
     [...sections].sort((a, b) => {
@@ -134,15 +175,25 @@ export default function GDDViewClient({ projectId }: Props) {
   }
 
   if (!project) {
+    if (isPublicMode && isPublicLoading) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-gray-600">{t('common.loading')}</div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-white p-8">
-        <button
-          onClick={() => router.push("/")}
-          className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
-        >
-          ← Voltar para Home
-        </button>
-        <div className="text-gray-600">Projeto não encontrado.</div>
+        {!isPublicMode && (
+          <button
+            onClick={() => router.push("/")}
+            className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
+          >
+            ← Voltar para Home
+          </button>
+        )}
+        <div className="text-gray-600">{isPublicMode ? "Projeto público não encontrado ou link inválido." : "Projeto não encontrado."}</div>
       </div>
     );
   }
@@ -170,22 +221,32 @@ export default function GDDViewClient({ projectId }: Props) {
         <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push(`/projects/${projectId}`)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
-              >
-                ← Modo Gerenciamento
-              </button>
-              <button
-                onClick={() => router.push("/")}
-                className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                🏠 Home
-              </button>
+              {!isPublicMode ? (
+                <>
+                  <button
+                    onClick={() => router.push(`/projects/${projectId}`)}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
+                  >
+                    ← Modo Gerenciamento
+                  </button>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  >
+                    🏠 Home
+                  </button>
+                </>
+              ) : (
+                <span className="text-sm text-gray-600">🔓 Visualização pública</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => router.push(`/projects/${projectId}/mindmap`)}
+                onClick={() => router.push(
+                  isPublicMode
+                    ? `/s/${encodeURIComponent(publicToken || "")}?mode=mindmap`
+                    : `/projects/${projectId}/mindmap`
+                )}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
               >
                 🧠 Mapa Mental
@@ -364,12 +425,16 @@ export default function GDDViewClient({ projectId }: Props) {
                         </div>
                       ) : (
                         <div className="text-gray-500 italic mb-8 py-4 px-6 bg-gray-50 rounded-lg border border-gray-200">
-                          <button
-                            onClick={() => router.push(`/projects/${projectId}/sections/${section.id}`)}
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            Conteúdo não preenchido
-                          </button>
+                          {!isPublicMode ? (
+                            <button
+                              onClick={() => router.push(`/projects/${projectId}/sections/${section.id}`)}
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Conteúdo não preenchido
+                            </button>
+                          ) : (
+                            <span>Conteúdo não preenchido</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -399,12 +464,16 @@ export default function GDDViewClient({ projectId }: Props) {
                               </div>
                             ) : (
                               <div className="text-gray-500 italic py-3 px-5 bg-gray-50 rounded-lg text-sm border border-gray-200">
-                                <button
-                                  onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
-                                  className="text-blue-600 hover:text-blue-800 underline"
-                                >
-                                  Conteúdo não preenchido
-                                </button>
+                                {!isPublicMode ? (
+                                  <button
+                                    onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
+                                    className="text-blue-600 hover:text-blue-800 underline"
+                                  >
+                                    Conteúdo não preenchido
+                                  </button>
+                                ) : (
+                                  <span>Conteúdo não preenchido</span>
+                                )}
                               </div>
                             )}
                           </div>

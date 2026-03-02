@@ -27,3 +27,13 @@ export function getPublicSiteUrl(): string | null {
   if (!siteUrl) return null;
   return siteUrl.replace(/\/$/, "");
 }
+
+export function getSupabaseServiceRoleKey(): string {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY. Configure it in environment variables to enable public share routes."
+    );
+  }
+  return key;
+}

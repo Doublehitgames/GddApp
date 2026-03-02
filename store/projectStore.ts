@@ -168,6 +168,11 @@ export type MindMapSettings = {
   sidebar?: {
     contentScale?: number;
   };
+  // Compartilhamento público
+  sharing?: {
+    isPublic?: boolean;
+    shareToken?: string;
+  };
 };
 
 //Definição da Seção. A seção pode ter um parentId opcional para suportar subseções.

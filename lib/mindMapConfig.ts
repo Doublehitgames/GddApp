@@ -67,6 +67,12 @@ export const MINDMAP_CONFIG = {
     contentScale: 0.85,      // Escala do texto no painel lateral (1 = 100%)
   },
 
+  // Compartilhamento público
+  sharing: {
+    isPublic: false,
+    shareToken: "",
+  },
+
   // Animação de edges destacadas
   animation: {
     speed: 2,                // Duração da animação em segundos (menor = mais rápido)

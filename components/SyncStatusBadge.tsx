@@ -97,9 +97,10 @@ export default function SyncStatusBadge() {
   };
 
   const isProjectViewRoute = /^\/projects\/[^/]+\/view(?:\/|$)/.test(pathname || "");
+  const isPublicShareRoute = /^\/public\/[^/]+\/(view|mindmap)(?:\/|$)/.test(pathname || "");
 
   if (!user) return null;
-  if (pathname?.includes("/mindmap") || isProjectViewRoute) return null;
+  if (pathname?.includes("/mindmap") || isProjectViewRoute || isPublicShareRoute) return null;
 
   const tr = (pt: string, en: string, es: string) => {
     switch (locale) {

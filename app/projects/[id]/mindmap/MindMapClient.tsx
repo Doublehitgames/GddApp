@@ -19,7 +19,7 @@ import ReactFlow, {
   useStore,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { useProjectStore, Section, MindMapSettings } from "@/store/projectStore";
+import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
@@ -30,6 +30,7 @@ import rehypeRaw from "rehype-raw";
 
 interface MindMapClientProps {
   projectId: string;
+  publicToken?: string;
 }
 
 // Helper: Deep merge de objetos (custom settings sobre defaults)
@@ -870,7 +871,7 @@ function MarkdownWithMapReferences({
 }
 
 // Componente interno que tem acesso ao contexto do ReactFlow
-function FlowContent({ projectId }: MindMapClientProps) {
+function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
   const { locale } = useI18n();
   const tr = (pt: string, en: string, es: string) => {
@@ -884,8 +885,48 @@ function FlowContent({ projectId }: MindMapClientProps) {
     }
   };
   const { getProject } = useProjectStore();
-  const project = getProject(projectId);
+  const [publicProject, setPublicProject] = useState<Project | null>(null);
+  const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
+  const projectFromStore = getProject(projectId);
+  const project: Project | undefined = publicProject || projectFromStore;
+  const isPublicMode = Boolean(publicToken);
   const { setCenter, fitView } = useReactFlow(); // Agora funciona porque está dentro do ReactFlow
+
+  useEffect(() => {
+    if (!isPublicMode || !publicToken) return;
+
+    let cancelled = false;
+    setIsPublicLoading(true);
+
+    const loadPublicProject = async () => {
+      try {
+        const response = await fetch(`/api/public/projects/${projectId}?token=${encodeURIComponent(publicToken)}`);
+        if (!response.ok) {
+          if (!cancelled) {
+            setPublicProject(null);
+            setIsPublicLoading(false);
+          }
+          return;
+        }
+        const payload = await response.json();
+        if (!cancelled) {
+          setPublicProject(payload?.project || null);
+          setIsPublicLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setPublicProject(null);
+          setIsPublicLoading(false);
+        }
+      }
+    };
+
+    void loadPublicProject();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPublicMode, publicToken, projectId]);
   
   // Merge de configurações: custom settings do projeto sobre defaults
   const config = useMemo(() => 
@@ -929,7 +970,7 @@ function FlowContent({ projectId }: MindMapClientProps) {
     const results = new Set<string>();
     
     // Buscar em todas as seções
-    (project.sections || []).forEach(section => {
+    (project.sections || []).forEach((section: Section) => {
       const titleMatch = section.title.toLowerCase().includes(lowerTerm);
       const contentMatch = section.content?.toLowerCase().includes(lowerTerm);
       
@@ -1717,9 +1758,17 @@ function FlowContent({ projectId }: MindMapClientProps) {
   }, [nodes, config, setCenter, project]);
 
   if (!project) {
+    if (isPublicMode && isPublicLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-gray-900">
+          <p className="text-gray-400">{tr("Carregando...", "Loading...", "Cargando...")}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
-        <p className="text-gray-400">{tr("Projeto não encontrado", "Project not found", "Proyecto no encontrado")}</p>
+        <p className="text-gray-400">{isPublicMode ? tr("Projeto público não encontrado", "Public project not found", "Proyecto público no encontrado") : tr("Projeto não encontrado", "Project not found", "Proyecto no encontrado")}</p>
       </div>
     );
   }
@@ -1748,14 +1797,19 @@ function FlowContent({ projectId }: MindMapClientProps) {
         <div className="absolute top-0 left-0 right-0 z-10 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push(`/projects/${projectId}`)}
+              onClick={() => router.push(
+                isPublicMode
+                  ? `/s/${encodeURIComponent(publicToken || "")}?mode=view`
+                  : `/projects/${projectId}`
+              )}
               className="text-gray-400 hover:text-white transition-colors"
             >
-              ← {tr("Voltar", "Back", "Volver")}
+              ← {isPublicMode ? tr("Documento", "Document", "Documento") : tr("Voltar", "Back", "Volver")}
             </button>
             <h1 className="text-xl font-bold text-white">🧠 {tr("Mapa Mental", "Mind Map", "Mapa mental")}</h1>
             <span className="text-gray-400">|</span>
             <span className="text-gray-300">{project.title}</span>
+            {isPublicMode && <span className="text-green-300 text-sm">🔓 {tr("Público", "Public", "Público")}</span>}
             
             {/* Busca */}
             <div className="flex items-center gap-2 ml-6">
@@ -1889,24 +1943,26 @@ function FlowContent({ projectId }: MindMapClientProps) {
               return null;
             })()}
 
-            <div className="mt-6 flex gap-2">
-              {selectedNode.id !== 'project' && (
-                <button
-                  onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  {tr("Ver Detalhes", "View Details", "Ver detalles")}
-                </button>
-              )}
-              {selectedNode.id === 'project' && (
-                <button
-                  onClick={() => router.push(`/projects/${projectId}/edit`)}
-                  className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  {tr("Editar Projeto", "Edit Project", "Editar proyecto")}
-                </button>
-              )}
-            </div>
+            {!isPublicMode && (
+              <div className="mt-6 flex gap-2">
+                {selectedNode.id !== 'project' && (
+                  <button
+                    onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {tr("Ver Detalhes", "View Details", "Ver detalles")}
+                  </button>
+                )}
+                {selectedNode.id === 'project' && (
+                  <button
+                    onClick={() => router.push(`/projects/${projectId}/edit`)}
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {tr("Editar Projeto", "Edit Project", "Editar proyecto")}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1916,10 +1972,10 @@ function FlowContent({ projectId }: MindMapClientProps) {
 }
 
 // Componente wrapper que fornece o contexto do ReactFlow
-export default function MindMapClient({ projectId }: MindMapClientProps) {
+export default function MindMapClient({ projectId, publicToken }: MindMapClientProps) {
   return (
     <ReactFlowProvider>
-      <FlowContent projectId={projectId} />
+      <FlowContent projectId={projectId} publicToken={publicToken} />
     </ReactFlowProvider>
   );
 }

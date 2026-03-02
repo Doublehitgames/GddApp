@@ -20,7 +20,25 @@ export default function SettingsClient({ projectId }: Props) {
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set()); // Todos colapsados por padrão
+  const [shareBaseUrl, setShareBaseUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const generateShareToken = () => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+    }
+    return Math.random().toString(36).slice(2, 14);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1500);
+    } catch {
+      alert(isPt ? "Não foi possível copiar o link." : "Could not copy the link.");
+    }
+  };
 
   // Função para exportar configurações
   const handleExport = () => {
@@ -67,6 +85,12 @@ export default function SettingsClient({ projectId }: Props) {
       setSettings(project.mindMapSettings);
     }
   }, [project]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShareBaseUrl(window.location.origin);
+    }
+  }, []);
 
   // Inicializar levels default apenas se o projeto não tiver configurações salvas
   useEffect(() => {
@@ -278,6 +302,9 @@ export default function SettingsClient({ projectId }: Props) {
 
   if (!project) return <div>{isPt ? "Projeto não encontrado" : "Project not found"}</div>;
   const levels = settings.levels || [];
+  const shareToken = (getValue("sharing.shareToken") || "") as string;
+  const isPublicShareEnabled = Boolean(getValue("sharing.isPublic"));
+  const publicShareUrl = shareToken ? `${shareBaseUrl}/s/${encodeURIComponent(shareToken)}` : "";
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -376,6 +403,54 @@ export default function SettingsClient({ projectId }: Props) {
                 </div>
               </div>
               <p className="text-xs text-gray-500">{tr("1.00 = 100% (normal). Exemplo: 0.85 reduz o texto para 85%. Botões não são afetados.", "1.00 = 100% (normal). Example: 0.85 reduces text to 85%. Buttons are not affected.")}</p>
+            </div>
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🌐 {tr("Compartilhamento Público", "Public Sharing")}</h3>
+              <div className="flex items-center gap-3 mb-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isPublicShareEnabled}
+                    onChange={(e) => setValue("sharing.isPublic", e.target.checked)}
+                    className="w-5 h-5"
+                  />
+                  <span className="text-sm text-gray-300">{tr("Permitir visualização pública", "Allow public viewing")}</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mb-3">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareToken}
+                  placeholder={tr("Token de compartilhamento", "Share token")}
+                  className="w-full bg-gray-700 rounded px-3 py-2 font-mono text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setValue("sharing.shareToken", generateShareToken())}
+                  className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-semibold"
+                >
+                  {tr("Gerar Token", "Generate Token")}
+                </button>
+              </div>
+
+              {isPublicShareEnabled && shareToken && (
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
+                    <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+                  </div>
+                  <p className="text-xs text-gray-500">{tr("Este link único abre o Documento e permite alternar para o Mapa Mental.", "This single link opens the Document and allows switching to Mind Map.")}</p>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-2">
+                {tr(
+                  "Salve as configurações para publicar os links. Quem tiver o token poderá abrir documento e mapa mental.",
+                  "Save settings to publish the link. Anyone with the token can open document and mind map."
+                )}
+              </p>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
