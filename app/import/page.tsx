@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { useProjectStore } from '@/store/projectStore';
 import { useAIConfig } from '@/hooks/useAIConfig';
 import AIConfigWarning from '@/components/AIConfigWarning';
@@ -45,6 +48,21 @@ export default function ImportProjectPage() {
   const [isModifying, setIsModifying] = useState(false);
   const [creativityLevel, setCreativityLevel] = useState<'faithful' | 'balanced' | 'creative'>('balanced');
 
+  const isDeterministicImportFile = (selectedFile: File | null) => {
+    if (!selectedFile) return false;
+    const lowerName = selectedFile.name.toLowerCase();
+    return (
+      selectedFile.type === 'text/plain' ||
+      selectedFile.type === 'text/markdown' ||
+      selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      lowerName.endsWith('.txt') ||
+      lowerName.endsWith('.md') ||
+      lowerName.endsWith('.docx')
+    );
+  };
+
+  const deterministicImportMode = isDeterministicImportFile(file);
+
   const isRateLimitMessage = (message: string) =>
     message.includes('⏱️') ||
     message.includes('Aguarde') ||
@@ -85,7 +103,7 @@ export default function ImportProjectPage() {
     }
   };
 
-  const analyzeDocument = async (additionalRequest?: string, useCreativity?: boolean) => {
+  const analyzeDocument = async (additionalRequest?: string, useCreativity?: boolean, forceAI?: boolean) => {
     if (!file) return;
 
     setIsAnalyzing(true);
@@ -100,6 +118,9 @@ export default function ImportProjectPage() {
         if (useCreativity) {
           formData.append('creativityLevel', creativityLevel);
         }
+      }
+      if (forceAI) {
+        formData.append('forceAI', '1');
       }
 
       const response = await fetch('/api/ai/import-project', {
@@ -134,10 +155,31 @@ export default function ImportProjectPage() {
   };
 
   const handleAnalyze = () => {
+    if (!deterministicImportMode && !hasValidConfig) {
+      setError(tr('Configure sua IA para importar arquivos que precisam de análise com IA.', 'Configure your AI to import files that need AI analysis.', 'Configura tu IA para importar archivos que necesitan análisis con IA.'));
+      return;
+    }
+
     analyzeDocument();
   };
 
+  const handleAnalyzeWithAI = () => {
+    if (!file) return;
+
+    if (!hasValidConfig) {
+      setError(tr('Configure sua IA para usar a análise com IA.', 'Configure your AI to use AI analysis.', 'Configura tu IA para usar el análisis con IA.'));
+      return;
+    }
+
+    analyzeDocument(undefined, false, true);
+  };
+
   const handleRequestModification = async () => {
+    if (deterministicImportMode) {
+      setError(tr('Neste modo sem IA, não há modificações automáticas. Ajuste o Markdown e importe novamente.', 'In no-AI mode, automatic modifications are unavailable. Adjust the Markdown and import again.', 'En modo sin IA no hay modificaciones automáticas. Ajusta el Markdown e impórtalo nuevamente.'));
+      return;
+    }
+
     if (!modificationRequest.trim()) {
       setError(tr('Digite uma solicitação de modificação', 'Type a modification request', 'Escribe una solicitud de modificación'));
       return;
@@ -213,15 +255,17 @@ export default function ImportProjectPage() {
             ← {tr('Voltar', 'Back', 'Volver')}
           </button>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            ✨ {tr('Importar Projeto com IA', 'Import Project with AI', 'Importar proyecto con IA')}
+            ✨ {tr('Importar Projeto', 'Import Project', 'Importar proyecto')}
           </h1>
           <p className="text-gray-600">
-            {tr('Envie seu documento e deixe a IA estruturar automaticamente em um GDD completo', 'Upload your document and let AI automatically structure it into a complete GDD', 'Sube tu documento y deja que la IA lo estructure automáticamente en un GDD completo')}
+            {deterministicImportMode
+              ? tr('Arquivo Markdown/TXT/DOCX detectado: importação estruturada sem IA (mais rápida e sem custo de token).', 'Markdown/TXT/DOCX detected: structured import without AI (faster and no token cost).', 'Markdown/TXT/DOCX detectado: importación estructurada sin IA (más rápida y sin costo de tokens).')
+              : tr('Envie seu documento e deixe a IA estruturar automaticamente em um GDD completo', 'Upload your document and let AI automatically structure it into a complete GDD', 'Sube tu documento y deja que la IA lo estructure automáticamente en un GDD completo')}
           </p>
         </div>
 
         {/* Verificar configuração de IA */}
-        {!hasValidConfig && (
+        {!hasValidConfig && !deterministicImportMode && (
           <AIConfigWarning className="mb-8" />
         )}
 
@@ -272,12 +316,14 @@ export default function ImportProjectPage() {
                     <li>{tr('Faça upload do arquivo .docx aqui', 'Upload the .docx file here', 'Sube aquí el archivo .docx')}</li>
                   </ol>
                 </div>
-                <div className="border-t border-blue-200 pt-3">
-                  <h3 className="font-semibold text-amber-900 mb-2">{tr('⏱️ Sobre Limites de Tokens', '⏱️ About Token Limits', '⏱️ Sobre límites de tokens')}</h3>
-                  <p className="text-sm text-amber-800">
-                    {tr('A Groq (IA gratuita) permite ~14K tokens/minuto. Documentos grandes podem atingir esse limite. Se isso acontecer, aguarde 1 minuto e tente novamente.', 'Groq (free AI) allows ~14K tokens/minute. Large documents may hit this limit. If that happens, wait 1 minute and try again.', 'Groq (IA gratuita) permite ~14K tokens/minuto. Los documentos grandes pueden alcanzar este límite. Si eso ocurre, espera 1 minuto e inténtalo de nuevo.')}
-                  </p>
-                </div>
+                {!deterministicImportMode && (
+                  <div className="border-t border-blue-200 pt-3">
+                    <h3 className="font-semibold text-amber-900 mb-2">{tr('⏱️ Sobre Limites de Tokens', '⏱️ About Token Limits', '⏱️ Sobre límites de tokens')}</h3>
+                    <p className="text-sm text-amber-800">
+                      {tr('A Groq (IA gratuita) permite ~14K tokens/minuto. Documentos grandes podem atingir esse limite. Se isso acontecer, aguarde 1 minuto e tente novamente.', 'Groq (free AI) allows ~14K tokens/minute. Large documents may hit this limit. If that happens, wait 1 minute and try again.', 'Groq (IA gratuita) permite ~14K tokens/minuto. Los documentos grandes pueden alcanzar este límite. Si eso ocurre, espera 1 minuto e inténtalo de nuevo.')}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Error Display */}
@@ -295,18 +341,40 @@ export default function ImportProjectPage() {
                 </div>
               )}
 
-              {/* Action Button */}
-              <button
-                onClick={handleAnalyze}
-                disabled={!file || isAnalyzing}
-                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isAnalyzing ? (
-                  <>{tr('⏳ Analisando documento...', '⏳ Analyzing document...', '⏳ Analizando documento...')}</>
-                ) : (
-                  <>{tr('🚀 Analisar e Estruturar com IA', '🚀 Analyze and Structure with AI', '🚀 Analizar y estructurar con IA')}</>
-                )}
-              </button>
+              {deterministicImportMode ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={!file || isAnalyzing}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isAnalyzing
+                      ? tr('⏳ Importando...', '⏳ Importing...', '⏳ Importando...')
+                      : tr('📑 Importar e Estruturar (sem IA)', '📑 Import and Structure (no AI)', '📑 Importar y estructurar (sin IA)')}
+                  </button>
+                  <button
+                    onClick={handleAnalyzeWithAI}
+                    disabled={!file || isAnalyzing}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-fuchsia-600 to-pink-600 text-white rounded-lg font-medium hover:from-fuchsia-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isAnalyzing
+                      ? tr('⏳ Analisando com IA...', '⏳ Analyzing with AI...', '⏳ Analizando con IA...')
+                      : tr('🤖 Analisar e Estruturar com IA', '🤖 Analyze and Structure with AI', '🤖 Analizar y estructurar con IA')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleAnalyze}
+                  disabled={!file || isAnalyzing}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isAnalyzing ? (
+                    <>{tr('⏳ Analisando documento...', '⏳ Analyzing document...', '⏳ Analizando documento...')}</>
+                  ) : (
+                    <>{tr('🚀 Analisar e Estruturar com IA', '🚀 Analyze and Structure with AI', '🚀 Analizar y estructurar con IA')}</>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -315,7 +383,11 @@ export default function ImportProjectPage() {
             {/* Project Info */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">{previewData.title}</h2>
-              <p className="text-gray-600">{previewData.description}</p>
+              <div className="text-gray-600">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw as any]}>
+                  {previewData.description || ''}
+                </ReactMarkdown>
+              </div>
             </div>
 
             {/* Sections Preview */}
@@ -325,13 +397,21 @@ export default function ImportProjectPage() {
                 {previewData.sections.map((section, idx) => (
                   <div key={idx} className="border-l-4 border-purple-400 pl-4">
                     <h4 className="font-semibold text-gray-900">{section.title}</h4>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{section.content}</p>
+                    <div className="text-sm text-gray-600 mt-1 max-h-32 overflow-auto">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw as any]}>
+                        {section.content || ''}
+                      </ReactMarkdown>
+                    </div>
                     {section.subsections && section.subsections.length > 0 && (
                       <div className="mt-2 ml-4 space-y-2">
                         {section.subsections.map((sub, subIdx) => (
                           <div key={subIdx} className="border-l-2 border-blue-300 pl-3">
                             <h5 className="text-sm font-medium text-gray-700">{sub.title}</h5>
-                            <p className="text-xs text-gray-500 line-clamp-1">{sub.content}</p>
+                            <div className="text-xs text-gray-500 max-h-24 overflow-auto">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw as any]}>
+                                {sub.content || ''}
+                              </ReactMarkdown>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -341,72 +421,72 @@ export default function ImportProjectPage() {
               </div>
             </div>
 
-            {/* Modification Request */}
-            <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {tr('Solicitar modificações (opcional)', 'Request changes (optional)', 'Solicitar cambios (opcional)')}
-                </label>
-                <textarea
-                  value={modificationRequest}
-                  onChange={(e) => setModificationRequest(e.target.value)}
-                  placeholder={tr('Ex: Adicionar seção de Multiplayer, reorganizar seções...', 'Ex: Add Multiplayer section, reorganize sections...', 'Ej: Agregar sección de Multijugador, reorganizar secciones...')}
-                  className="w-full p-3 border border-gray-300 rounded-lg resize-none text-gray-900 placeholder-gray-400"
-                  rows={3}
-                />
-              </div>
+            {!deterministicImportMode && (
+              <div className="bg-white rounded-lg shadow-md p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {tr('Solicitar modificações (opcional)', 'Request changes (optional)', 'Solicitar cambios (opcional)')}
+                  </label>
+                  <textarea
+                    value={modificationRequest}
+                    onChange={(e) => setModificationRequest(e.target.value)}
+                    placeholder={tr('Ex: Adicionar seção de Multiplayer, reorganizar seções...', 'Ex: Add Multiplayer section, reorganize sections...', 'Ej: Agregar sección de Multijugador, reorganizar secciones...')}
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none text-gray-900 placeholder-gray-400"
+                    rows={3}
+                  />
+                </div>
 
-              {/* Creativity Level Selector */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  {tr('Nível de Criatividade da IA nas Modificações', 'AI Creativity Level for Modifications', 'Nivel de creatividad de la IA en las modificaciones')}
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setCreativityLevel('faithful')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      creativityLevel === 'faithful'
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-300 hover:border-blue-300'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">📋</div>
-                      <div className="font-semibold text-sm text-gray-900">{tr('Fiel', 'Faithful', 'Fiel')}</div>
-                      <div className="text-xs text-gray-600">{tr('Mantém conteúdo original', 'Keeps original content', 'Mantiene el contenido original')}</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setCreativityLevel('balanced')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      creativityLevel === 'balanced'
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-gray-300 hover:border-purple-300'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">⚖️</div>
-                      <div className="font-semibold text-sm text-gray-900">{tr('Balanceado', 'Balanced', 'Equilibrado')}</div>
-                      <div className="text-xs text-gray-600">{tr('Ajustes moderados', 'Moderate changes', 'Ajustes moderados')}</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setCreativityLevel('creative')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      creativityLevel === 'creative'
-                        ? 'border-pink-500 bg-pink-50'
-                        : 'border-gray-300 hover:border-pink-300'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">✨</div>
-                      <div className="font-semibold text-sm text-gray-900">{tr('Criativo', 'Creative', 'Creativo')}</div>
-                      <div className="text-xs text-gray-600">{tr('Liberdade para criar', 'Freedom to create', 'Libertad para crear')}</div>
-                    </div>
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    {tr('Nível de Criatividade da IA nas Modificações', 'AI Creativity Level for Modifications', 'Nivel de creatividad de la IA en las modificaciones')}
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => setCreativityLevel('faithful')}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        creativityLevel === 'faithful'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-300 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-1">📋</div>
+                        <div className="font-semibold text-sm text-gray-900">{tr('Fiel', 'Faithful', 'Fiel')}</div>
+                        <div className="text-xs text-gray-600">{tr('Mantém conteúdo original', 'Keeps original content', 'Mantiene el contenido original')}</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setCreativityLevel('balanced')}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        creativityLevel === 'balanced'
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-300 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-1">⚖️</div>
+                        <div className="font-semibold text-sm text-gray-900">{tr('Balanceado', 'Balanced', 'Equilibrado')}</div>
+                        <div className="text-xs text-gray-600">{tr('Ajustes moderados', 'Moderate changes', 'Ajustes moderados')}</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setCreativityLevel('creative')}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        creativityLevel === 'creative'
+                          ? 'border-pink-500 bg-pink-50'
+                          : 'border-gray-300 hover:border-pink-300'
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="text-2xl mb-1">✨</div>
+                        <div className="font-semibold text-sm text-gray-900">{tr('Criativo', 'Creative', 'Creativo')}</div>
+                        <div className="text-xs text-gray-600">{tr('Liberdade para criar', 'Freedom to create', 'Libertad para crear')}</div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Error Display */}
             {error && (
@@ -423,13 +503,15 @@ export default function ImportProjectPage() {
               >
                 ✕ {tr('Cancelar', 'Cancel', 'Cancelar')}
               </button>
-              <button
-                onClick={handleRequestModification}
-                disabled={isModifying || !modificationRequest.trim()}
-                className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isModifying ? tr('⏳ Modificando...', '⏳ Modifying...', '⏳ Modificando...') : tr('🔄 Modificar', '🔄 Modify', '🔄 Modificar')}
-              </button>
+              {!deterministicImportMode && (
+                <button
+                  onClick={handleRequestModification}
+                  disabled={isModifying || !modificationRequest.trim()}
+                  className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isModifying ? tr('⏳ Modificando...', '⏳ Modifying...', '⏳ Modificando...') : tr('🔄 Modificar', '🔄 Modify', '🔄 Modificar')}
+                </button>
+              )}
               <button
                 onClick={handleConfirmImport}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all"

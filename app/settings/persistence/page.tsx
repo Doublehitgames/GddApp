@@ -14,6 +14,7 @@ export default function PersistenceSettingsPage() {
   const syncStatus = useProjectStore((s) => s.syncStatus);
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
+  const lastSyncStatsHistory = useProjectStore((s) => s.lastSyncStatsHistory);
   const lastSyncError = useProjectStore((s) => s.lastSyncError);
 
   const [saving, setSaving] = useState(false);
@@ -136,6 +137,29 @@ export default function PersistenceSettingsPage() {
             >
               {t("settings.persistencePage.actions.syncNow")}
             </button>
+          </div>
+
+          <div className="pt-2 border-t border-gray-700/80">
+            <h2 className="text-sm font-semibold text-gray-200 mb-2">{t("settings.persistencePage.history.title")}</h2>
+            {lastSyncStatsHistory.length === 0 ? (
+              <p className="text-xs text-gray-400">{t("settings.persistencePage.history.empty")}</p>
+            ) : (
+              <div className="space-y-1.5 max-h-56 overflow-auto pr-1">
+                {lastSyncStatsHistory.map((entry) => (
+                  <div
+                    key={`${entry.projectId}-${entry.syncedAt}`}
+                    className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex items-center justify-between gap-2"
+                  >
+                    <span className="text-gray-300 truncate">
+                      {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
+                    </span>
+                    <span className="text-gray-400 shrink-0">
+                      {t("settings.persistencePage.history.delta")}: +{entry.sectionsUpserted} / -{entry.sectionsDeleted} / ={entry.sectionsUnchanged}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

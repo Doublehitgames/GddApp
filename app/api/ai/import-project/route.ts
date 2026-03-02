@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import mammoth from 'mammoth';
 import { createAIClient } from '@/utils/ai/client';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
+import { parseMarkdownToImportedProject } from '@/utils/markdownImportParser';
+import { parseDocxHtmlToImportedProject } from '@/utils/docxImportParser';
 
 // Interface para a estrutura de seção retornada pela IA
 interface ImportedSection {
@@ -16,10 +18,21 @@ interface ImportedProject {
   sections: ImportedSection[];
 }
 
+function isMarkdownLikeFile(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  return file.type === 'text/plain' || file.type === 'text/markdown' || lowerName.endsWith('.txt') || lowerName.endsWith('.md');
+}
+
+function isDocxFile(file: File): boolean {
+  const lowerName = file.name.toLowerCase();
+  return file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || lowerName.endsWith('.docx');
+}
+
 // Função para extrair texto de diferentes formatos
 async function extractText(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
   const bytes = Buffer.from(buffer);
+  const lowerName = file.name.toLowerCase();
 
   // PDF - usando import dinâmico para evitar problemas de ESM
   if (file.type === 'application/pdf') {
@@ -35,8 +48,7 @@ async function extractText(file: File): Promise<string> {
   }
 
   // Word/DOCX (formato que Google Docs exporta)
-  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
-      file.name.endsWith('.docx')) {
+  if (isDocxFile(file)) {
     try {
       const result = await mammoth.extractRawText({ buffer: bytes });
       if (!result.value || result.value.trim().length === 0) {
@@ -51,7 +63,7 @@ async function extractText(file: File): Promise<string> {
 
   // Texto plano (TXT, Markdown)
   if (file.type === 'text/plain' || file.type === 'text/markdown' || 
-      file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+      lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
     return bytes.toString('utf-8');
   }
 
@@ -64,9 +76,32 @@ export async function POST(request: NextRequest) {
     const file = formData.get('document') as File;
     const additionalRequest = formData.get('additionalRequest') as string | null;
     const creativityLevel = formData.get('creativityLevel') as string | null;
+    const forceAI = formData.get('forceAI') === '1';
 
     if (!file) {
       return NextResponse.json({ error: 'Nenhum arquivo fornecido' }, { status: 400 });
+    }
+
+    // Caminho determinístico sem IA para DOCX (preserva tabelas com mesclas via HTML)
+    if (isDocxFile(file) && !additionalRequest && !forceAI) {
+      try {
+        const buffer = await file.arrayBuffer();
+        const bytes = Buffer.from(buffer);
+        const htmlResult = await mammoth.convertToHtml({ buffer: bytes });
+        const parsed = parseDocxHtmlToImportedProject(htmlResult.value || '', file.name);
+
+        if (!parsed.sections || parsed.sections.length === 0) {
+          return NextResponse.json({
+            error: 'Não foi possível identificar seções no DOCX fornecido'
+          }, { status: 400 });
+        }
+
+        return NextResponse.json(parsed);
+      } catch (error) {
+        return NextResponse.json({
+          error: `Erro ao processar DOCX em modo sem IA: ${error instanceof Error ? error.message : 'erro desconhecido'}`
+        }, { status: 400 });
+      }
     }
 
     // Extrair texto do documento
@@ -83,6 +118,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Documento vazio ou não foi possível extrair texto' 
       }, { status: 400 });
+    }
+
+    // Caminho determinístico sem IA para Markdown/TXT (evita custo e limites de token)
+    if (isMarkdownLikeFile(file) && !additionalRequest && !forceAI) {
+      const parsed = parseMarkdownToImportedProject(documentText, file.name);
+
+      if (!parsed.sections || parsed.sections.length === 0) {
+        return NextResponse.json({
+          error: 'Não foi possível identificar seções no Markdown fornecido'
+        }, { status: 400 });
+      }
+
+      return NextResponse.json(parsed);
     }
 
     // Limitar tamanho do texto (para não exceder limite da API)
@@ -274,6 +322,14 @@ IMPORTANTE: Retorne APENAS o JSON, sem explicações adicionais. COPIE todo o co
       return NextResponse.json({ 
         error: '⚠️ Erro na API. Verifique sua chave ou tente novamente em alguns segundos.',
         type: 'api_error'
+      }, { status: 400 });
+    }
+
+    if (errorMessage.includes('FormData') || errorMessage.includes('multipart')) {
+      return NextResponse.json({
+        error: '❌ Falha ao ler o arquivo enviado (multipart/form-data). Tente novamente.',
+        type: 'formdata_parse_error',
+        details: errorMessage,
       }, { status: 400 });
     }
     

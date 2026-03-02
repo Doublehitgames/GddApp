@@ -5,6 +5,7 @@ import {
   upsertProjectToSupabase,
   deleteProjectFromSupabase,
 } from "@/lib/supabase/projectSync";
+import type { SyncStats } from "@/lib/supabase/projectSync";
 
 export type UUID = string;
 
@@ -208,11 +209,19 @@ export type PersistenceConfig = {
   syncOnPageHide: boolean;
 };
 
+export type LastSyncStats = SyncStats & {
+  projectId: string;
+  syncedAt: string;
+};
+
 interface ProjectStore {
   projects: Project[];
   syncStatus: SyncStatus;
+  cloudSyncPausedUntil: string | null;
   pendingSyncCount: number;
   lastSyncedAt: string | null;
+  lastSyncStats: LastSyncStats | null;
+  lastSyncStatsHistory: LastSyncStats[];
   lastSyncError: string | null;
   persistenceConfig: PersistenceConfig;
   // Auth sync
@@ -245,6 +254,14 @@ interface ProjectStore {
 
 const STORAGE_KEY = "gdd_projects_v1";
 const PERSISTENCE_CONFIG_KEY = "gdd_persistence_config_v1";
+const MAX_IMAGE_SRC_LENGTH = 2048;
+const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
+const SYNC_FAILURE_WINDOW_MS = 120000;
+const SYNC_CIRCUIT_BREAKER_THRESHOLD = 3;
+const SYNC_CIRCUIT_BREAKER_COOLDOWN_MS = 10 * 60 * 1000;
+const SYNC_BACKOFF_BASE_MS = 30000;
+const SYNC_BACKOFF_MAX_MS = 5 * 60 * 1000;
+const SYNC_STATS_HISTORY_LIMIT = 12;
 
 const DEFAULT_PERSISTENCE_CONFIG: PersistenceConfig = {
   debounceMs: 1500,
@@ -267,9 +284,51 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   // não acessamos localStorage na criação do módulo para evitar erros SSR;
   // usaremos loadFromStorage no client para carregar os dados.
 
+  const sanitizeRichText = (value?: string): string | undefined => {
+    if (!value) return value;
+
+    const withoutDataUris = value.replace(DATA_IMAGE_URI_RE, "[imagem-removida-data-uri]");
+    const withoutHeavyImgs = withoutDataUris.replace(/<img\b[^>]*>/gi, (imgTag) => {
+      const srcMatch = imgTag.match(/\bsrc\s*=\s*(?:(["'])(.*?)\1|([^\s>]+))/i);
+      const src = (srcMatch?.[2] || srcMatch?.[3] || "").trim();
+      if (!src) return "";
+      if (src.toLowerCase().startsWith("data:image/")) return "";
+      if (src.length > MAX_IMAGE_SRC_LENGTH) return "";
+      return imgTag;
+    });
+
+    return withoutHeavyImgs;
+  };
+
+  const sanitizeProjectForStorage = (project: Project): Project => {
+    return {
+      ...project,
+      description: sanitizeRichText(project.description),
+      sections: (project.sections || []).map((section) => ({
+        ...section,
+        content: sanitizeRichText(section.content),
+      })),
+    };
+  };
+
+  const sanitizeProjectsForStorage = (projects: Project[]): Project[] => {
+    return projects.map(sanitizeProjectForStorage);
+  };
+
+  const parseProjectsFromStorage = (raw: string): Project[] | null => {
+    try {
+      const preSanitizedRaw = raw.replace(DATA_IMAGE_URI_RE, "[imagem-removida-data-uri]");
+      const parsed = JSON.parse(preSanitizedRaw) as Project[];
+      if (!Array.isArray(parsed)) return null;
+      return sanitizeProjectsForStorage(parsed);
+    } catch {
+      return null;
+    }
+  };
+
   const persist = (projects: Project[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeProjectsForStorage(projects)));
     } catch (e) {
       logWarn("Could not persist projects to localStorage", e);
     }
@@ -317,6 +376,110 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   const syncRetryCount = new Map<string, number>();
   const dirtyProjectIds = new Set<string>();
   const MAX_SYNC_RETRIES = 10;
+  const inFlightSyncProjectIds = new Set<string>();
+  const syncedProjectHash = new Map<string, string>();
+  const syncFailureCountByProject = new Map<string, number>();
+  const syncBackoffUntilByProject = new Map<string, number>();
+  let consecutiveSyncFailures = 0;
+  let firstFailureAtMs = 0;
+
+  const sanitizeProjectForSync = (project: Project): Project => sanitizeProjectForStorage(project);
+
+  const buildProjectHash = (project: Project): string => {
+    const normalized = sanitizeProjectForSync(project);
+    const normalizedSections = [...(normalized.sections || [])]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((section) => ({
+        id: section.id,
+        title: section.title,
+        content: section.content || "",
+        parentId: section.parentId || null,
+        order: section.order,
+        color: section.color || null,
+      }));
+
+    const payload = {
+      id: normalized.id,
+      title: normalized.title,
+      description: normalized.description || "",
+      updatedAt: normalized.updatedAt,
+      mindMapSettings: normalized.mindMapSettings || null,
+      sections: normalizedSections,
+    };
+
+    return JSON.stringify(payload);
+  };
+
+  const getBackoffDelayMs = (failureCount: number): number => {
+    const raw = Math.min(SYNC_BACKOFF_BASE_MS * Math.pow(2, Math.max(0, failureCount - 1)), SYNC_BACKOFF_MAX_MS);
+    const jitter = Math.floor(raw * Math.random() * 0.2);
+    return raw + jitter;
+  };
+
+  const clearProjectBackoff = (projectId: string) => {
+    syncFailureCountByProject.delete(projectId);
+    syncBackoffUntilByProject.delete(projectId);
+  };
+
+  const isProjectBackoffActive = (projectId: string) => {
+    const backoffUntil = syncBackoffUntilByProject.get(projectId);
+    if (!backoffUntil) return false;
+    if (Date.now() >= backoffUntil) {
+      syncBackoffUntilByProject.delete(projectId);
+      return false;
+    }
+    return true;
+  };
+
+  const isCloudSyncPaused = () => {
+    const pausedUntil = get().cloudSyncPausedUntil;
+    if (!pausedUntil) return false;
+
+    const pausedUntilMs = new Date(pausedUntil).getTime();
+    if (!Number.isFinite(pausedUntilMs)) return false;
+
+    if (Date.now() >= pausedUntilMs) {
+      set({ cloudSyncPausedUntil: null, lastSyncError: null, syncStatus: "idle" });
+      consecutiveSyncFailures = 0;
+      firstFailureAtMs = 0;
+      return false;
+    }
+
+    return true;
+  };
+
+  const registerSyncFailure = (projectId: string, errorMessage: string) => {
+    const now = Date.now();
+    if (!firstFailureAtMs || now - firstFailureAtMs > SYNC_FAILURE_WINDOW_MS) {
+      firstFailureAtMs = now;
+      consecutiveSyncFailures = 1;
+    } else {
+      consecutiveSyncFailures += 1;
+    }
+
+    if (consecutiveSyncFailures >= SYNC_CIRCUIT_BREAKER_THRESHOLD) {
+      const pausedUntil = new Date(now + SYNC_CIRCUIT_BREAKER_COOLDOWN_MS).toISOString();
+      set({
+        cloudSyncPausedUntil: pausedUntil,
+        syncStatus: "idle",
+        lastSyncError: "Cloud sync pausado temporariamente devido a falhas repetidas.",
+      });
+      return;
+    }
+
+    const projectFailures = (syncFailureCountByProject.get(projectId) || 0) + 1;
+    syncFailureCountByProject.set(projectId, projectFailures);
+    const backoffDelay = getBackoffDelayMs(projectFailures);
+    syncBackoffUntilByProject.set(projectId, now + backoffDelay);
+    setTimeout(() => debouncedSync(projectId), backoffDelay);
+
+    set({ syncStatus: "error", lastSyncError: errorMessage });
+  };
+
+  const clearSyncFailureState = () => {
+    consecutiveSyncFailures = 0;
+    firstFailureAtMs = 0;
+  };
 
   const getProjectSnapshotForSync = (projectId: string): Project | null => {
     const fromState = get().projects.find((p) => p.id === projectId);
@@ -325,7 +488,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as Project[];
+      const parsed = parseProjectsFromStorage(raw);
+      if (!parsed) return null;
       return parsed.find((p) => p.id === projectId) || null;
     } catch {
       return null;
@@ -343,39 +507,82 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   };
 
   const syncNow = async (projectId: string) => {
+    if (isCloudSyncPaused()) return;
+    if (isProjectBackoffActive(projectId)) return;
+    if (inFlightSyncProjectIds.has(projectId)) return;
+
     const project = getProjectSnapshotForSync(projectId);
     if (!project) return;
 
-    set({ syncStatus: "syncing", lastSyncError: null });
-
-    const { error, skippedReason } = await upsertProjectToSupabase(project);
-    if (error) {
-      console.error("[projectStore] Falha no sync imediato:", error);
-      set({ syncStatus: "error", lastSyncError: error });
-      return;
-    }
-
-    if (!skippedReason) {
+    const projectHash = buildProjectHash(project);
+    const previousHash = syncedProjectHash.get(projectId);
+    if (previousHash && previousHash === projectHash) {
       clearProjectDirty(projectId);
-      syncRetryCount.delete(projectId);
-      set({ syncStatus: "synced", lastSyncedAt: new Date().toISOString(), lastSyncError: null });
       return;
     }
 
-    if (skippedReason === "unauthenticated") {
-      set({ syncStatus: "idle" });
-      const retries = syncRetryCount.get(projectId) || 0;
-      if (retries < MAX_SYNC_RETRIES) {
-        syncRetryCount.set(projectId, retries + 1);
-        setTimeout(() => debouncedSync(projectId), 2000);
-      } else {
-        logWarn("[projectStore] Sync abandonado após tentativas sem sessão:", projectId);
-        set({ syncStatus: "error", lastSyncError: "Sessão não autenticada para sincronização." });
+    inFlightSyncProjectIds.add(projectId);
+
+    try {
+      set({ syncStatus: "syncing", lastSyncError: null });
+
+      const { error, skippedReason, stats } = await upsertProjectToSupabase(sanitizeProjectForSync(project));
+      if (error) {
+        console.error("[projectStore] Falha no sync imediato:", error);
+        registerSyncFailure(projectId, error);
+        return;
       }
+
+      if (!skippedReason) {
+        clearProjectDirty(projectId);
+        syncRetryCount.delete(projectId);
+        clearSyncFailureState();
+        clearProjectBackoff(projectId);
+        syncedProjectHash.set(projectId, projectHash);
+        const syncedAt = new Date().toISOString();
+        if (stats) {
+          const currentHistory = get().lastSyncStatsHistory;
+          const nextEntry: LastSyncStats = {
+            projectId,
+            syncedAt,
+            ...stats,
+          };
+          set({
+            syncStatus: "synced",
+            lastSyncedAt: syncedAt,
+            lastSyncError: null,
+            lastSyncStats: nextEntry,
+            lastSyncStatsHistory: [nextEntry, ...currentHistory].slice(0, SYNC_STATS_HISTORY_LIMIT),
+          });
+        } else {
+          set({
+            syncStatus: "synced",
+            lastSyncedAt: syncedAt,
+            lastSyncError: null,
+          });
+        }
+        return;
+      }
+
+      if (skippedReason === "unauthenticated") {
+        set({ syncStatus: "idle" });
+        const retries = syncRetryCount.get(projectId) || 0;
+        if (retries < MAX_SYNC_RETRIES) {
+          syncRetryCount.set(projectId, retries + 1);
+          setTimeout(() => debouncedSync(projectId), 2000);
+        } else {
+          logWarn("[projectStore] Sync abandonado após tentativas sem sessão:", projectId);
+          set({ syncStatus: "error", lastSyncError: "Sessão não autenticada para sincronização." });
+        }
+      }
+    } finally {
+      inFlightSyncProjectIds.delete(projectId);
     }
   };
 
   const debouncedSync = (projectId: string) => {
+    if (isCloudSyncPaused()) return;
+
     const debounceMs = get().persistenceConfig.debounceMs;
     if (syncTimers.has(projectId)) clearTimeout(syncTimers.get(projectId)!);
     syncTimers.set(
@@ -404,8 +611,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   return {
     projects: [],
     syncStatus: "idle",
+    cloudSyncPausedUntil: null,
     pendingSyncCount: 0,
     lastSyncedAt: null,
+    lastSyncStats: null,
+    lastSyncStatsHistory: [],
     lastSyncError: null,
     persistenceConfig: loadPersistenceConfig(),
     userId: null,
@@ -497,6 +707,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     removeProject: (id: UUID) => {
       wrappedSet((prev) => prev.filter((p) => p.id !== id));
       clearProjectDirty(id);
+      syncedProjectHash.delete(id);
+      clearProjectBackoff(id);
       // Busca userId internamente no deleteProjectFromSupabase — sem race condition
       deleteProjectFromSupabase(id).then(({ error }) => {
         if (error) console.error("[projectStore] Falha ao deletar projeto no Supabase:", error);
@@ -663,7 +875,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
-        const parsed = JSON.parse(raw) as Project[];
+        const parsed = parseProjectsFromStorage(raw);
+        if (!parsed) return;
         if (Array.isArray(parsed)) {
           // Migration: Add createdAt/updatedAt to old projects
           const migrated = parsed.map(p => {
@@ -689,6 +902,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     flushPendingSyncs: async () => {
+      if (isCloudSyncPaused()) return;
+
       const pendingIds = Array.from(dirtyProjectIds);
       if (pendingIds.length === 0) return;
 
@@ -715,7 +930,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       if (localProjects.length === 0) {
         try {
           const raw = localStorage.getItem(STORAGE_KEY);
-          if (raw) localProjects = JSON.parse(raw) as Project[];
+          if (raw) {
+            const parsed = parseProjectsFromStorage(raw);
+            if (parsed) localProjects = parsed;
+          }
         } catch {}
       }
 

@@ -61,7 +61,7 @@
     "quickActions": {
       "title": "Ações Rápidas",
       "createAi": "Criar GDD com IA",
-      "importAi": "Importar Documento com IA",
+      "importAi": "Importar Documento (IA opcional)",
       "backup": "Backup & Restaurar",
       "createManual": "Criar manualmente"
     }
@@ -293,6 +293,11 @@
         "saved": "Salvo",
         "save": "Salvar ajustes",
         "syncNow": "Sincronizar agora"
+      },
+      "history": {
+        "title": "Histórico de ciclos de sync",
+        "empty": "Nenhum ciclo registrado ainda.",
+        "delta": "Δ seções"
       }
     }
   }

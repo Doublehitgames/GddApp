@@ -1,14 +1,47 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/env";
+import { supabaseSafeFetch } from "@/lib/supabase/safeFetch";
 
 // Rotas que NÃO precisam de autenticação
 const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/"];
+const AUTH_TIMEOUT_MS = 4000;
+
+async function getUserWithTimeout(
+  supabase: ReturnType<typeof createServerClient>
+): Promise<{ user: unknown; timedOut: boolean; hadError: boolean }> {
+  try {
+    const timeoutPromise = new Promise<{ user: unknown; timedOut: boolean; hadError: boolean }>((resolve) => {
+      setTimeout(() => resolve({ user: null, timedOut: true, hadError: false }), AUTH_TIMEOUT_MS);
+    });
+
+    const authPromise = supabase.auth
+      .getUser()
+      .then((result: any) => ({
+        user: result?.data?.user ?? null,
+        timedOut: false,
+        hadError: Boolean(result?.error),
+      }))
+      .catch(() => ({ user: null, timedOut: false, hadError: true }));
+
+    return await Promise.race([authPromise, timeoutPromise]);
+  } catch {
+    return { user: null, timedOut: false, hadError: true };
+  }
+}
 
 export async function proxy(request: NextRequest) {
   const bypassByCookie = request.cookies.get("e2e-bypass-auth")?.value === "1";
   if (process.env.E2E_BYPASS_AUTH === "1" || bypassByCookie) {
     return NextResponse.next({ request });
+  }
+
+  const pathname = request.nextUrl.pathname;
+
+  // APIs têm autenticação/tratamento próprio e podem receber multipart/form-data.
+  // Bypass imediato evita interferência do middleware no body stream.
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -17,6 +50,9 @@ export async function proxy(request: NextRequest) {
     getSupabaseUrl(),
     getSupabasePublishableKey(),
     {
+      global: {
+        fetch: supabaseSafeFetch,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -34,17 +70,24 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Atualiza sessão (obrigatório para o @supabase/ssr)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
   const isPublicRoute = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
-  const isApiRoute = pathname.startsWith("/api/");
 
-  // API routes NÃO redirecionam — têm tratamento próprio
-  if (isApiRoute) return supabaseResponse;
+  // Atualiza sessão (obrigatório para o @supabase/ssr)
+  const { user, timedOut, hadError } = await getUserWithTimeout(supabase);
+
+  if (timedOut) {
+    if (isPublicRoute) {
+      return supabaseResponse;
+    }
+    return NextResponse.next({ request });
+  }
+
+  if (hadError) {
+    if (isPublicRoute) {
+      return supabaseResponse;
+    }
+    return NextResponse.next({ request });
+  }
 
   // Se não está autenticado e não é rota pública → redireciona para login
   if (!user && !isPublicRoute) {
@@ -70,8 +113,8 @@ export const config = {
      * - _next/static (arquivos estáticos)
      * - _next/image (otimização de imagens)
      * - favicon.ico
-     * - api/upload (uploads de arquivo)
+     * - api/* (APIs têm autenticação/tratamento próprio)
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/upload|uploads).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|uploads).*)",
   ],
 };

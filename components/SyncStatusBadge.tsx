@@ -45,9 +45,14 @@ export default function SyncStatusBadge() {
   const { user } = useAuthStore();
   const { locale } = useI18n();
   const syncStatus = useProjectStore((s) => s.syncStatus);
+  const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
+  const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
   const flushPendingSyncs = useProjectStore((s) => s.flushPendingSyncs);
+  const cloudSyncPaused = Boolean(
+    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
+  );
 
   const [compact, setCompact] = useState(() => getInitialBadgeUIState().compact);
   const [position, setPosition] = useState(() => {
@@ -114,7 +119,9 @@ export default function SyncStatusBadge() {
   };
 
   const statusText =
-    syncStatus === "syncing"
+    cloudSyncPaused
+      ? tr("Cloud pausado", "Cloud paused", "Nube pausada")
+      : syncStatus === "syncing"
       ? tr("Sincronizando", "Syncing", "Sincronizando")
       : syncStatus === "synced"
         ? tr("Sincronizado", "Synced", "Sincronizado")
@@ -123,7 +130,9 @@ export default function SyncStatusBadge() {
           : tr("Aguardando", "Waiting", "Esperando");
 
   const statusClass =
-    syncStatus === "syncing"
+    cloudSyncPaused
+      ? "border-amber-700 bg-amber-950/70 text-amber-200"
+      : syncStatus === "syncing"
       ? "border-blue-700 bg-blue-950/70 text-blue-200"
       : syncStatus === "synced"
         ? "border-green-700 bg-green-950/70 text-green-200"
@@ -167,12 +176,25 @@ export default function SyncStatusBadge() {
                 </span>
               </div>
 
+              {lastSyncStats && (
+                <div className="mt-1 text-[10px] opacity-80">
+                  {tr("Δ seções", "Δ sections", "Δ secciones")}: +{lastSyncStats.sectionsUpserted} / -{lastSyncStats.sectionsDeleted} / =
+                  {lastSyncStats.sectionsUnchanged}
+                </div>
+              )}
+
               <div className="mt-2 flex items-center justify-between gap-2">
                 <button
                   onClick={() => {
                     void flushPendingSyncs();
                   }}
-                  className="text-[11px] px-2 py-1 rounded-md bg-blue-700 hover:bg-blue-600 text-white transition-colors"
+                  disabled={cloudSyncPaused}
+                  title={
+                    cloudSyncPaused && cloudSyncPausedUntil
+                      ? `${tr("Pausado até", "Paused until", "Pausado hasta")}: ${new Date(cloudSyncPausedUntil).toLocaleTimeString()}`
+                      : undefined
+                  }
+                  className="text-[11px] px-2 py-1 rounded-md bg-blue-700 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
                 >
                   {tr("Sincronizar", "Sync", "Sincronizar")}
                 </button>

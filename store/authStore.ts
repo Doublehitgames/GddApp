@@ -5,6 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { getPublicSiteUrl } from "@/lib/supabase/env";
 import type { User, Session } from "@supabase/supabase-js";
 
+const AUTH_INIT_TIMEOUT_MS = 4000;
+
+type TimeoutResult<T> =
+  | { timedOut: true; value: null }
+  | { timedOut: false; value: T };
+
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<TimeoutResult<T>> {
+  const timeoutPromise = new Promise<TimeoutResult<T>>((resolve) => {
+    setTimeout(() => resolve({ timedOut: true, value: null }), timeoutMs);
+  });
+
+  const wrapped = Promise.resolve(promise)
+    .then((value) => ({ timedOut: false as const, value }))
+    .catch(() => ({ timedOut: true as const, value: null }));
+
+  return Promise.race([wrapped, timeoutPromise]);
+}
+
 interface Profile {
   id: string;
   email: string | null;
@@ -35,24 +53,34 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   initialize: async () => {
     const supabase = createClient();
+    try {
+      const sessionResult = await withTimeout(supabase.auth.getSession(), AUTH_INIT_TIMEOUT_MS);
+      const session = !sessionResult.timedOut ? sessionResult.value.data.session : null;
+      let user = session?.user ?? null;
 
-    // Pegar sessão atual
-    const { data: { session } } = await supabase.auth.getSession();
-    let user = session?.user ?? null;
+      if (!user) {
+        const userResult = await withTimeout(supabase.auth.getUser(), AUTH_INIT_TIMEOUT_MS);
+        if (!userResult.timedOut) {
+          user = userResult.value.data.user ?? null;
+        }
+      }
 
-    if (!user) {
-      const { data } = await supabase.auth.getUser();
-      user = data.user ?? null;
-    }
+      if (user) {
+        const profileResult = await withTimeout(
+          supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single(),
+          AUTH_INIT_TIMEOUT_MS
+        );
 
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      set({ user, session: session ?? null, profile, loading: false });
-    } else {
+        const profile = !profileResult.timedOut ? profileResult.value.data : null;
+        set({ user, session: session ?? null, profile, loading: false });
+      } else {
+        set({ user: null, session: null, profile: null, loading: false });
+      }
+    } catch {
       set({ user: null, session: null, profile: null, loading: false });
     }
 
@@ -60,12 +88,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     supabase.auth.onAuthStateChange(async (event, session) => {
       const user = session?.user ?? null;
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        set({ user, session, profile });
+        try {
+          const profileResult = await withTimeout(
+            supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", user.id)
+              .single(),
+            AUTH_INIT_TIMEOUT_MS
+          );
+          const profile = !profileResult.timedOut ? profileResult.value.data : null;
+          set({ user, session, profile });
+        } catch {
+          set({ user, session, profile: null });
+        }
       } else {
         set({ user: null, session: null, profile: null });
       }

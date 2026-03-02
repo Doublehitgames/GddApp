@@ -54,7 +54,45 @@ describe('ProjectStore sync behavior', () => {
     jest.advanceTimersByTime(1600)
     await Promise.resolve()
 
-    expect(upsertProjectMock.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+    expect(upsertProjectMock.mock.calls[0][0].id).toBe(projectId)
+  })
+
+  it('does not re-sync unchanged payload after debounce window', async () => {
+    const store = useProjectStore.getState()
+    store.addProject('Projeto Hash', 'Desc')
+
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+
+    jest.advanceTimersByTime(5000)
+    await Promise.resolve()
+
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies backoff before retrying sync after cloud failure', async () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0)
+
+    upsertProjectMock
+      .mockResolvedValueOnce({ error: 'timeout' })
+      .mockResolvedValue({ error: null })
+
+    const store = useProjectStore.getState()
+    store.addProject('Projeto Backoff', 'Desc')
+
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+
+    await Promise.resolve()
+
+    jest.advanceTimersByTime(30000)
+    await Promise.resolve()
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+
+    jest.advanceTimersByTime(2000)
+    await Promise.resolve()
+    expect(upsertProjectMock).toHaveBeenCalledTimes(2)
+
+    randomSpy.mockRestore()
   })
 
   it('uses localStorage fallback snapshot if in-memory state is momentarily empty', async () => {
@@ -72,13 +110,13 @@ describe('ProjectStore sync behavior', () => {
   })
 
   it('retries sync automatically when first attempts are unauthenticated', async () => {
-    const store = useProjectStore.getState()
-    const projectId = store.addProject('Projeto Retry', 'Desc')
-
     upsertProjectMock
       .mockResolvedValueOnce({ error: null, skippedReason: 'unauthenticated' })
       .mockResolvedValueOnce({ error: null, skippedReason: 'unauthenticated' })
       .mockResolvedValue({ error: null })
+
+    const store = useProjectStore.getState()
+    const projectId = store.addProject('Projeto Retry', 'Desc')
 
     jest.advanceTimersByTime(1600)
     await Promise.resolve()

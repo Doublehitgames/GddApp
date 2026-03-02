@@ -14,23 +14,88 @@ const logInfo = (...args: unknown[]) => {
 const logWarn = (...args: unknown[]) => {
   if (!isProduction) console.warn(...args);
 };
+const SYNC_ROUTE_TIMEOUT_MS = 12000;
+const SUPABASE_QUERY_TIMEOUT_MS = 10000;
 
-async function upsertProjectViaServerRoute(project: Project): Promise<{ error: string | null }> {
+export type SyncStats = {
+  sectionsTotal: number;
+  sectionsUpserted: number;
+  sectionsDeleted: number;
+  sectionsUnchanged: number;
+};
+
+type TimeoutResult<T> =
+  | { timedOut: true; value: null }
+  | { timedOut: false; value: T };
+
+async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<TimeoutResult<T>> {
+  try {
+    const timeoutPromise = new Promise<TimeoutResult<T>>((resolve) => {
+      setTimeout(() => resolve({ timedOut: true, value: null }), timeoutMs);
+    });
+
+    const wrappedPromise = Promise.resolve(promise)
+      .then((value) => ({ timedOut: false as const, value }))
+      .catch(() => ({ timedOut: true as const, value: null }));
+
+    return await Promise.race([wrappedPromise, timeoutPromise]);
+  } catch {
+    return { timedOut: true, value: null };
+  }
+}
+
+function normalizeErrorMessage(error: unknown, fallback: string): string {
+  if (!error) return fallback;
+  if (typeof error === "string") return error;
+  if (error instanceof Error && error.message) return error.message;
+
+  if (typeof error === "object") {
+    const maybe = error as Record<string, unknown>;
+    if (typeof maybe.message === "string" && maybe.message.trim()) return maybe.message;
+    if (typeof maybe.error === "string" && maybe.error.trim()) return maybe.error;
+    if (typeof maybe.error_description === "string" && maybe.error_description.trim()) return maybe.error_description;
+
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {}
+  }
+
+  return fallback;
+}
+
+async function upsertProjectViaServerRoute(project: Project): Promise<{ error: string | null; stats?: SyncStats }> {
   try {
     const base = typeof window !== "undefined" ? window.location.origin : "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_ROUTE_TIMEOUT_MS);
     const response = await fetch(`${base}/api/projects/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ project }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      return { error: body?.error || `sync_route_failed_${response.status}` };
+      return {
+        error:
+          normalizeErrorMessage(body?.error, "") ||
+          normalizeErrorMessage(body?.message, "") ||
+          `sync_route_failed_${response.status}`,
+      };
     }
 
-    return { error: null };
+    const body = await response.json().catch(() => ({}));
+    return {
+      error: null,
+      stats: body?.stats,
+    };
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return { error: "sync_route_timeout" };
+    }
     return { error: error instanceof Error ? error.message : "sync_route_exception" };
   }
 }
@@ -38,11 +103,15 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{ error: s
 async function deleteProjectViaServerRoute(projectId: string): Promise<{ error: string | null }> {
   try {
     const base = typeof window !== "undefined" ? window.location.origin : "";
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SYNC_ROUTE_TIMEOUT_MS);
     const response = await fetch(`${base}/api/projects/sync`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -51,6 +120,9 @@ async function deleteProjectViaServerRoute(projectId: string): Promise<{ error: 
 
     return { error: null };
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return { error: "delete_route_timeout" };
+    }
     return { error: error instanceof Error ? error.message : "delete_route_exception" };
   }
 }
@@ -109,10 +181,18 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
 export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
   const supabase = createClient();
 
-  const { data: projects, error: pErr } = await supabase
+  const projectsQuery = supabase
     .from("projects")
     .select("*")
     .order("created_at", { ascending: true });
+
+  const projectsResult = await withTimeout(projectsQuery, SUPABASE_QUERY_TIMEOUT_MS);
+  if (projectsResult.timedOut || !projectsResult.value) {
+    logWarn("[supabaseSync] Timeout ao carregar projetos do Supabase");
+    return null;
+  }
+
+  const { data: projects, error: pErr } = projectsResult.value;
 
   if (pErr || !projects) {
     logWarn("[supabaseSync] Erro ao carregar projetos:", pErr?.message);
@@ -122,11 +202,19 @@ export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
   const projectIds = projects.map((p) => p.id);
   if (projectIds.length === 0) return [];
 
-  const { data: sections, error: sErr } = await supabase
+  const sectionsQuery = supabase
     .from("sections")
     .select("*")
     .in("project_id", projectIds)
     .order("order", { ascending: true });
+
+  const sectionsResult = await withTimeout(sectionsQuery, SUPABASE_QUERY_TIMEOUT_MS);
+  if (sectionsResult.timedOut || !sectionsResult.value) {
+    logWarn("[supabaseSync] Timeout ao carregar seções do Supabase");
+    return null;
+  }
+
+  const { data: sections, error: sErr } = sectionsResult.value;
 
   if (sErr) {
     logWarn("[supabaseSync] Erro ao carregar seções:", sErr?.message);
@@ -144,81 +232,17 @@ export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
 export async function upsertProjectToSupabase(
   project: Project,
   userIdHint?: string  // opcional — buscamos internamente se não fornecido
-): Promise<{ error: string | null; skippedReason?: "unauthenticated" }> {
+): Promise<{ error: string | null; skippedReason?: "unauthenticated"; stats?: SyncStats }> {
   // Caminho principal: sempre tenta rota server-side (sessão por cookie)
   // para evitar inconsistências de hidratação de auth no client.
   const routeResult = await upsertProjectViaServerRoute(project);
-  if (!routeResult.error) return { error: null };
+  if (!routeResult.error) return { error: null, stats: routeResult.stats };
 
-  // Fallback: escrita direta pelo client Supabase
-  const supabase = createClient();
-
-  const userId = userIdHint ?? await getAuthenticatedUserId();
-  if (!userId) {
-    logWarn("[supabaseSync] Upsert ignorado: usuário não autenticado");
+  if (routeResult.error === "unauthenticated" || routeResult.error.includes("failed_401")) {
     return { error: null, skippedReason: "unauthenticated" };
   }
 
-  logInfo(`[supabaseSync] Salvando projeto "${project.title}" (userId=${userId})`);
-
-  // Upsert do projeto
-  const { error: pErr } = await supabase.from("projects").upsert(
-    {
-      id: project.id,
-      owner_id: userId,
-      title: project.title,
-      description: project.description || "",
-      mindmap_settings: project.mindMapSettings || {},
-      created_at: project.createdAt,
-      updated_at: project.updatedAt,
-    },
-    { onConflict: "id" }
-  );
-
-  if (pErr) {
-    console.error("[supabaseSync] ERRO ao salvar projeto:", pErr.message, pErr);
-    return { error: pErr.message };
-  }
-
-  logInfo(`[supabaseSync] Projeto salvo. Salvando ${project.sections?.length || 0} seções...`);
-
-  // Upsert das seções
-  const sections = project.sections || [];
-  if (sections.length > 0) {
-    const { error: sErr } = await supabase.from("sections").upsert(
-      sections.map((s) => ({
-        id: s.id,
-        project_id: project.id,
-        parent_id: s.parentId || null,
-        title: s.title,
-        content: s.content || "",
-        order: s.order,
-        color: s.color || null,
-        created_at: s.created_at,
-      })),
-      { onConflict: "id" }
-    );
-
-    if (sErr) {
-      console.error("[supabaseSync] ERRO ao salvar seções:", sErr.message, sErr);
-      return { error: sErr.message };
-    }
-  }
-
-  // Deletar seções que não existem mais
-  const sectionIds = sections.map((s) => s.id);
-  if (sectionIds.length > 0) {
-    await supabase
-      .from("sections")
-      .delete()
-      .eq("project_id", project.id)
-      .not("id", "in", `(${sectionIds.join(",")})`);
-  } else {
-    // Se não tem seções, deleta todas as do projeto
-    await supabase.from("sections").delete().eq("project_id", project.id);
-  }
-
-  return { error: null };
+  return { error: routeResult.error };
 }
 
 /** Deleta um projeto (RLS garante que só o dono consegue) */
@@ -241,8 +265,9 @@ export async function deleteProjectFromSupabase(
   logInfo(`[supabaseSync] Deletando projeto ${projectId}...`);
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) {
-    console.error("[supabaseSync] ERRO ao deletar projeto:", error.message, error);
-    return { error: error.message };
+    const errorMessage = normalizeErrorMessage(error, "project_delete_failed");
+    console.error("[supabaseSync] ERRO ao deletar projeto:", errorMessage, error);
+    return { error: errorMessage };
   }
   logInfo(`[supabaseSync] Projeto ${projectId} deletado com sucesso.`);
   return { error: null };

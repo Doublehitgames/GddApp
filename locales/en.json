@@ -61,7 +61,7 @@
     "quickActions": {
       "title": "Quick Actions",
       "createAi": "Create GDD with AI",
-      "importAi": "Import Document with AI",
+      "importAi": "Import Document (AI optional)",
       "backup": "Backup & Restore",
       "createManual": "Create manually"
     }
@@ -293,6 +293,11 @@
         "saved": "Saved",
         "save": "Save settings",
         "syncNow": "Sync now"
+      },
+      "history": {
+        "title": "Sync cycle history",
+        "empty": "No cycles recorded yet.",
+        "delta": "Δ sections"
       }
     }
   }

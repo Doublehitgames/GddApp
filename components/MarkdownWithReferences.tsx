@@ -29,6 +29,26 @@ function normalizeReferenceText(value: string): string {
     .trim();
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function convertMarkdownLinksInsideHtmlBlocks(content: string): string {
+  if (!content || !content.includes("<")) return content;
+
+  return content.replace(/<(p|li|td|th|blockquote)\b[^>]*>[\s\S]*?<\/\1>/gi, (block) => {
+    return block.replace(
+      /(?<!!)\[([^\]]+)\]\((\/[^)\s]*|#[^)\s]*|https?:\/\/[^)\s]+)\)/g,
+      (_full, label: string, href: string) => `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`
+    );
+  });
+}
+
 function getSectionDepth(section: any, sectionById: Map<string, any>): number {
   let depth = 0;
   let current = section;
@@ -111,17 +131,18 @@ export function MarkdownWithReferences({
   documentAnchorOffset = 180,
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
-  const refs = extractRefs(content);
 
   const buildMarkdownWithReferenceLinks = () => {
-    if (refs.length === 0) return content;
+    const normalizedContent = convertMarkdownLinksInsideHtmlBlocks(content);
+    const refs = extractRefs(normalizedContent);
+    if (refs.length === 0) return normalizedContent;
 
     let result = "";
     let lastIndex = 0;
 
     refs.forEach((ref) => {
       if (ref.startIndex > lastIndex) {
-        result += content.substring(lastIndex, ref.startIndex);
+        result += normalizedContent.substring(lastIndex, ref.startIndex);
       }
 
       const target = findSec(sections, ref);
@@ -130,17 +151,17 @@ export function MarkdownWithReferences({
           referenceLinkMode === "document"
             ? `#section-${target.id}`
             : `/projects/${projectId}/sections/${target.id}`;
-        result += `[${target.title}](${href})`;
+        result += `<a href="${escapeHtml(href)}">${escapeHtml(target.title)}</a>`;
       } else {
         const missingRef = encodeURIComponent(ref.refValue);
-        result += `[${ref.refValue}](/__gdd_missing__/${missingRef})`;
+        result += `<a href="/__gdd_missing__/${missingRef}">${escapeHtml(ref.refValue)}</a>`;
       }
 
       lastIndex = ref.endIndex;
     });
 
-    if (lastIndex < content.length) {
-      result += content.substring(lastIndex);
+    if (lastIndex < normalizedContent.length) {
+      result += normalizedContent.substring(lastIndex);
     }
 
     return result;
@@ -171,7 +192,20 @@ export function MarkdownWithReferences({
           ol: ({ children }) => <ol className="list-decimal pl-6 my-3 text-gray-200">{children}</ol>,
           li: ({ children }) => <li className="my-1">{children}</li>,
           strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-          em: ({ children }) => <em className="italic text-gray-100">{children}</em>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          img: ({ src, alt }) => {
+            const safeSrc = typeof src === "string" ? src.trim() : "";
+            if (!safeSrc) return null;
+
+            return (
+              <img
+                src={safeSrc}
+                alt={alt || ""}
+                className="max-w-full h-auto rounded-md my-3"
+                loading="lazy"
+              />
+            );
+          },
           span: ({ node, ...props }: any) => {
             return <span {...props} />;
           },
