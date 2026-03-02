@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
@@ -23,6 +23,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const initialFocusHandledRef = useRef(false);
+  const [showMobileToc, setShowMobileToc] = useState(false);
+  const [showDesktopToc, setShowDesktopToc] = useState(true);
   const isPublicMode = Boolean(publicToken);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
 
@@ -95,20 +98,25 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
   const projectSections = project?.sections || [];
 
-  // Organize sections hierarchically
-  const rootSections = sortByManagerOrder(projectSections.filter((s: any) => !s.parentId));
-  
-  const getSectionWithSubsections = (section: any) => {
-    const subsections = sortByManagerOrder(projectSections.filter((s: any) => s.parentId === section.id));
-    return { ...section, subsections };
+  const buildSectionTree = (parentId?: string): any[] => {
+    const children = sortByManagerOrder(
+      projectSections.filter((section: any) =>
+        parentId ? section.parentId === parentId : !section.parentId
+      )
+    );
+
+    return children.map((section: any) => ({
+      ...section,
+      subsections: buildSectionTree(section.id),
+    }));
   };
 
-  const sectionsWithHierarchy = rootSections.map(getSectionWithSubsections);
+  const sectionsWithHierarchy = buildSectionTree();
 
-  const orderedSectionIds = sectionsWithHierarchy.flatMap((section: any) => [
-    section.id,
-    ...(section.subsections || []).map((sub: any) => sub.id),
-  ]);
+  const flattenSectionIds = (nodes: any[]): string[] =>
+    nodes.flatMap((node: any) => [node.id, ...flattenSectionIds(node.subsections || [])]);
+
+  const orderedSectionIds = flattenSectionIds(sectionsWithHierarchy);
 
   const normalizedSearch = documentSearch.trim().toLowerCase();
   const matchedSectionIds = normalizedSearch
@@ -141,11 +149,47 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     }, 1800);
   };
 
+  useEffect(() => {
+    if (!mounted || !project || initialFocusHandledRef.current) return;
+
+    const focusFromHash =
+      typeof window !== "undefined" && window.location.hash.startsWith("#section-")
+        ? window.location.hash.replace("#section-", "")
+        : "";
+    const focusFromQuery = searchParams?.get("focus") || "";
+
+    const focusId = (focusFromHash || focusFromQuery).trim();
+    if (!focusId) return;
+
+    initialFocusHandledRef.current = true;
+
+    const timer = window.setTimeout(() => {
+      focusSectionById(focusId);
+
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("focus")) {
+          url.searchParams.delete("focus");
+          window.history.replaceState({}, "", url.toString());
+        }
+      }
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [mounted, project?.id, searchParams]);
+
   const goToSearchMatch = (direction: 1 | -1) => {
     if (matchedSectionIds.length === 0) return;
     const nextIndex = (activeMatchIndex + direction + matchedSectionIds.length) % matchedSectionIds.length;
     setActiveMatchIndex(nextIndex);
     focusSectionById(matchedSectionIds[nextIndex]);
+  };
+
+  const getMindMapFocusUrl = (sectionId: string) => {
+    if (isPublicMode) {
+      return `/s/${encodeURIComponent(publicToken || "")}?mode=mindmap&focus=${encodeURIComponent(sectionId)}`;
+    }
+    return `/projects/${projectId}/mindmap?focus=${encodeURIComponent(sectionId)}`;
   };
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -164,6 +208,129 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         part
       )
     );
+  };
+
+  const renderTocNodes = (nodes: any[], depth = 0, onNavigate?: () => void) => {
+    if (!nodes || nodes.length === 0) return null;
+
+    return nodes.map((node: any) => {
+      const isMatched = matchedSectionIdSet.has(node.id);
+      const isActive = activeMatchId === node.id;
+      const linkClass = [
+        "group flex items-start gap-2 rounded-lg transition-all border",
+        depth === 0 ? "px-3 py-2.5 text-sm font-semibold" : "px-3 py-2 text-sm",
+        depth === 0
+          ? "text-slate-800 bg-white/80 border-slate-200 hover:bg-slate-50"
+          : "text-slate-600 bg-slate-50/70 border-slate-100 hover:bg-slate-100",
+        isMatched ? "ring-1 ring-amber-300" : "",
+        isActive ? "border-amber-400 bg-amber-50 text-amber-900" : "",
+      ].join(" ");
+
+      return (
+        <div key={node.id}>
+          <a
+            href={`#section-${node.id}`}
+            className={linkClass}
+            onClick={(event) => {
+              event.preventDefault();
+              focusSectionById(node.id);
+              if (typeof window !== "undefined") {
+                window.history.replaceState(null, "", `#section-${node.id}`);
+              }
+              onNavigate?.();
+            }}
+          >
+            <span
+              className={`mt-1 h-1.5 w-1.5 rounded-full ${
+                isActive ? "bg-amber-500" : "bg-slate-300 group-hover:bg-slate-400"
+              }`}
+            />
+            <span className="leading-5">{highlightSearchTerm(node.title)}</span>
+          </a>
+
+          {node.subsections?.length > 0 && (
+            <div className="ml-4 mt-1 space-y-1 border-l border-slate-200/80 pl-3">
+              {renderTocNodes(node.subsections, depth + 1, onNavigate)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const renderSectionNodes = (nodes: any[], depth = 0) => {
+    if (!nodes || nodes.length === 0) return null;
+
+    return nodes.map((node: any) => {
+      const headingClass = depth === 0
+        ? "text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-blue-500"
+        : "text-2xl font-semibold text-gray-800 mb-4 flex items-center gap-3";
+
+      return (
+        <div key={node.id} className={depth === 0 ? "section-content" : "ml-8"}>
+          <div
+            id={`section-${node.id}`}
+            data-section-anchor={node.id}
+            className={`scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(node.id) ? "gdd-search-match" : ""} ${activeMatchId === node.id ? "gdd-search-active" : ""}`}
+          >
+            {depth === 0 ? (
+              <h2 className={headingClass}>
+                <button
+                  onClick={() => router.push(getMindMapFocusUrl(node.id))}
+                  className="text-sm px-3 py-1 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  title="Ir para este item no mapa mental"
+                >
+                  🧠
+                </button>
+                {highlightSearchTerm(node.title)}
+              </h2>
+            ) : (
+              <h3 className={headingClass}>
+                <button
+                  onClick={() => router.push(getMindMapFocusUrl(node.id))}
+                  className="text-xs px-2.5 py-1 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  title="Ir para este item no mapa mental"
+                >
+                  🧠
+                </button>
+                {highlightSearchTerm(node.title)}
+              </h3>
+            )}
+
+            {node.content && node.content.trim() ? (
+              <div className={depth === 0 ? "prose prose-lg max-w-none mb-8" : "prose max-w-none"}>
+                <MarkdownWithReferences
+                  content={node.content}
+                  projectId={projectId}
+                  sections={project.sections || []}
+                  referenceLinkMode="document"
+                  documentAnchorOffset={180}
+                />
+              </div>
+            ) : (
+              <div className={depth === 0 ? "text-gray-500 italic mb-8 py-4 px-6 bg-gray-50 rounded-lg border border-gray-200" : "text-gray-500 italic py-3 px-5 bg-gray-50 rounded-lg text-sm border border-gray-200"}>
+                {!isPublicMode ? (
+                  <button
+                    onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
+                    className="text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Conteúdo não preenchido
+                  </button>
+                ) : (
+                  <span>Conteúdo não preenchido</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {node.subsections?.length > 0 && (
+            <div className="space-y-8 mt-8">
+              {renderSectionNodes(node.subsections, depth + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
   };
 
   if (!mounted) {
@@ -311,10 +478,61 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
       </div>
 
       {/* Document Content */}
-      <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Document Paper Style */}
-        <div className="bg-white shadow-2xl rounded-lg overflow-hidden">
-          <div className="p-12">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className={`lg:grid lg:gap-2 ${showDesktopToc ? "lg:grid-cols-[280px_24px_minmax(0,1fr)]" : "lg:grid-cols-[24px_minmax(0,1fr)]"}`}>
+          {sectionsWithHierarchy.length > 0 && showDesktopToc && (
+            <aside className="hidden lg:block gdd-sidebar-toc">
+              <div className="sticky top-28 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur-md shadow-lg p-4 max-h-[calc(100vh-9rem)] overflow-y-auto">
+                <div className="mb-3 pb-3 border-b border-slate-200">
+                  <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+                </div>
+                <div className="space-y-1.5">
+                  {renderTocNodes(sectionsWithHierarchy)}
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {sectionsWithHierarchy.length > 0 && (
+            <div className="hidden lg:flex gdd-toc-toggle -mx-2 z-10">
+              <div className="sticky top-1/2 -translate-y-1/2 self-start">
+                <button
+                  onClick={() => setShowDesktopToc((prev) => !prev)}
+                  className="w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-100"
+                  title={showDesktopToc ? "Ocultar sumário" : "Mostrar sumário"}
+                  aria-label={showDesktopToc ? "Ocultar sumário" : "Mostrar sumário"}
+                >
+                  {showDesktopToc ? "‹" : "›"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="min-w-0 lg:-ml-2">
+            {sectionsWithHierarchy.length > 0 && (
+              <div className="lg:hidden mb-4 gdd-mobile-toc">
+                <button
+                  onClick={() => setShowMobileToc((prev) => !prev)}
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 font-semibold text-left"
+                >
+                  {showMobileToc ? "✕ Ocultar Sumário" : "📑 Exibir Sumário"}
+                </button>
+                {showMobileToc && (
+                  <div className="mt-2 rounded-2xl border border-slate-200 bg-white/95 shadow-lg p-4 max-h-[50vh] overflow-y-auto">
+                    <div className="mb-3 pb-2 border-b border-slate-200">
+                      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+                    </div>
+                    <div className="space-y-1.5">
+                      {renderTocNodes(sectionsWithHierarchy, 0, () => setShowMobileToc(false))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Document Paper Style */}
+            <div className="bg-white shadow-2xl rounded-lg overflow-hidden">
+              <div className="p-12">
             {/* Cover Page */}
             <div className="text-center mb-16 pb-12 border-b-2 border-gray-200">
               <div className="mb-6">
@@ -335,6 +553,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     projectId={projectId}
                     sections={project.sections || []}
                     referenceLinkMode="document"
+                    documentAnchorOffset={180}
                   />
                 </div>
               )}
@@ -360,38 +579,6 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               </div>
             </div>
 
-            {/* Table of Contents */}
-            {sectionsWithHierarchy.length > 0 && (
-              <div className="mb-16 pb-12 border-b border-gray-200">
-                <h2 className="text-3xl font-bold text-gray-900 mb-6">📑 Índice</h2>
-                <div className="space-y-2">
-                  {sectionsWithHierarchy.map((section: any, idx: number) => (
-                    <div key={section.id}>
-                      <a
-                        href={`#section-${section.id}`}
-                        className="block text-blue-600 hover:text-blue-800 hover:underline py-1"
-                      >
-                        <span className="font-semibold">{idx + 1}.</span> {highlightSearchTerm(section.title)}
-                      </a>
-                      {section.subsections && section.subsections.length > 0 && (
-                        <div className="ml-6 space-y-1">
-                          {section.subsections.map((sub: any, subIdx: number) => (
-                            <a
-                              key={sub.id}
-                              href={`#section-${sub.id}`}
-                              className="block text-blue-500 hover:text-blue-700 hover:underline py-1 text-sm"
-                            >
-                              <span className="font-semibold">{idx + 1}.{subIdx + 1}</span> {highlightSearchTerm(sub.title)}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Sections Content */}
             <div className="space-y-12">
               {sectionsWithHierarchy.length === 0 ? (
@@ -402,86 +589,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   </p>
                 </div>
               ) : (
-                sectionsWithHierarchy.map((section: any, idx: number) => (
-                  <div key={section.id} className="section-content">
-                    {/* Main Section */}
-                    <div
-                      id={`section-${section.id}`}
-                      className={`scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(section.id) ? "gdd-search-match" : ""} ${activeMatchId === section.id ? "gdd-search-active" : ""}`}
-                    >
-                      <h2 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-blue-500">
-                        <span className="text-blue-600">{idx + 1}.</span>
-                        {highlightSearchTerm(section.title)}
-                      </h2>
-                      
-                      {section.content && section.content.trim() ? (
-                        <div className="prose prose-lg max-w-none mb-8">
-                          <MarkdownWithReferences 
-                            content={section.content}
-                            projectId={projectId}
-                            sections={project.sections || []}
-                            referenceLinkMode="document"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-gray-500 italic mb-8 py-4 px-6 bg-gray-50 rounded-lg border border-gray-200">
-                          {!isPublicMode ? (
-                            <button
-                              onClick={() => router.push(`/projects/${projectId}/sections/${section.id}`)}
-                              className="text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Conteúdo não preenchido
-                            </button>
-                          ) : (
-                            <span>Conteúdo não preenchido</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Subsections */}
-                    {section.subsections && section.subsections.length > 0 && (
-                      <div className="ml-8 space-y-8 mt-8">
-                        {section.subsections.map((sub: any, subIdx: number) => (
-                          <div
-                            key={sub.id}
-                            id={`section-${sub.id}`}
-                            className={`scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(sub.id) ? "gdd-search-match" : ""} ${activeMatchId === sub.id ? "gdd-search-active" : ""}`}
-                          >
-                            <h3 className="text-2xl font-semibold text-gray-800 mb-4 flex items-center gap-3">
-                              <span className="text-blue-500">{idx + 1}.{subIdx + 1}</span>
-                              {highlightSearchTerm(sub.title)}
-                            </h3>
-                            
-                            {sub.content && sub.content.trim() ? (
-                              <div className="prose max-w-none">
-                                <MarkdownWithReferences 
-                                  content={sub.content}
-                                  projectId={projectId}
-                                  sections={project.sections || []}
-                                  referenceLinkMode="document"
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-gray-500 italic py-3 px-5 bg-gray-50 rounded-lg text-sm border border-gray-200">
-                                {!isPublicMode ? (
-                                  <button
-                                    onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
-                                    className="text-blue-600 hover:text-blue-800 underline"
-                                  >
-                                    Conteúdo não preenchido
-                                  </button>
-                                ) : (
-                                  <span>Conteúdo não preenchido</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))
+                renderSectionNodes(sectionsWithHierarchy)
               )}
             </div>
 
@@ -490,6 +598,8 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               <p>Game Design Document - {project.title || project.name}</p>
               <p className="mt-1">Gerado pelo GDD Manager</p>
             </div>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -571,6 +681,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         }
 
         @media print {
+          .gdd-sidebar-toc,
+          .gdd-mobile-toc,
+          .gdd-toc-toggle {
+            display: none !important;
+          }
           .gdd-doc-searchbar {
             display: none !important;
           }

@@ -1757,6 +1757,16 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     }
   }, [nodes, config, setCenter, project]);
 
+  const getDocumentTargetUrl = (sectionId?: string) => {
+    if (isPublicMode) {
+      const base = `/s/${encodeURIComponent(publicToken || "")}?mode=view`;
+      return sectionId ? `${base}&focus=${encodeURIComponent(sectionId)}#section-${sectionId}` : base;
+    }
+
+    const base = `/projects/${projectId}/view`;
+    return sectionId ? `${base}?focus=${encodeURIComponent(sectionId)}#section-${sectionId}` : base;
+  };
+
   if (!project) {
     if (isPublicMode && isPublicLoading) {
       return (
@@ -1942,6 +1952,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               }
               return null;
             })()}
+
+            <div className="mt-6">
+              <button
+                onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                {tr("Ir para Documento", "Go to Document", "Ir al documento")}
+              </button>
+            </div>
 
             {!isPublicMode && (
               <div className="mt-6 flex gap-2">

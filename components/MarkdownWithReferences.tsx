@@ -10,6 +10,7 @@ interface MarkdownWithReferencesProps {
   projectId: string;
   sections: any[];
   referenceLinkMode?: "manager" | "document";
+  documentAnchorOffset?: number;
 }
 
 interface SectionRef {
@@ -18,6 +19,29 @@ interface SectionRef {
   refValue: string;
   startIndex: number;
   endIndex: number;
+}
+
+function normalizeReferenceText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getSectionDepth(section: any, sectionById: Map<string, any>): number {
+  let depth = 0;
+  let current = section;
+
+  while (current?.parentId) {
+    const parent = sectionById.get(current.parentId);
+    if (!parent) break;
+    depth += 1;
+    current = parent;
+    if (depth > 100) break;
+  }
+
+  return depth;
 }
 
 // Extract references from content
@@ -48,11 +72,31 @@ function findSec(sections: any[], ref: SectionRef): { id: string; title: string 
     const found = sections.find((s: any) => s.id === ref.refValue);
     return found ? { id: found.id, title: found.title } : null;
   } else {
-    const normalizedName = ref.refValue.toLowerCase().trim();
-    const found = sections.find(
-      (s: any) => s.title.toLowerCase().trim() === normalizedName
+    const normalizedName = normalizeReferenceText(ref.refValue);
+    const candidates = sections.filter(
+      (s: any) => normalizeReferenceText(s.title || "") === normalizedName
     );
-    return found ? { id: found.id, title: found.title } : null;
+
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) {
+      const found = candidates[0];
+      return { id: found.id, title: found.title };
+    }
+
+    const sectionById = new Map(sections.map((section: any) => [section.id, section]));
+    const sortedByPriority = [...candidates].sort((a: any, b: any) => {
+      const depthDiff = getSectionDepth(b, sectionById) - getSectionDepth(a, sectionById);
+      if (depthDiff !== 0) return depthDiff;
+
+      const orderA = typeof a?.order === "number" ? a.order : Number.MAX_SAFE_INTEGER;
+      const orderB = typeof b?.order === "number" ? b.order : Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+
+      return (a?.created_at || "").localeCompare(b?.created_at || "");
+    });
+
+    const best = sortedByPriority[0];
+    return best ? { id: best.id, title: best.title } : null;
   }
 }
 
@@ -64,6 +108,7 @@ export function MarkdownWithReferences({
   projectId,
   sections,
   referenceLinkMode = "manager",
+  documentAnchorOffset = 180,
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
   const refs = extractRefs(content);
@@ -168,10 +213,14 @@ export function MarkdownWithReferences({
                   onClick={(event) => {
                     event.preventDefault();
                     const targetId = href.slice(1);
-                    const targetElement = document.getElementById(targetId);
+                    const rawSectionId = targetId.replace(/^section-/, "");
+                    const targetElement =
+                      document.getElementById(targetId) ||
+                      (document.querySelector(`[data-section-anchor="${rawSectionId}"]`) as HTMLElement | null);
                     if (!targetElement) return;
 
-                    targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+                    const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - documentAnchorOffset;
+                    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
                     window.history.replaceState(null, "", href);
 
                     targetElement.classList.add("gdd-anchor-highlight");
