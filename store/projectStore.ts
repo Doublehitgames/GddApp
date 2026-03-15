@@ -265,6 +265,8 @@ interface ProjectStore {
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
+  /** Atualiza só mindMapSettings no store e persiste (sem marcar dirty nem disparar sync). Usado com pushProjectMindMapSettings. */
+  updateProjectMindMapSettingsOnly: (projectId: UUID, settings: MindMapSettings) => void;
 }
 
 const STORAGE_KEY = "gdd_projects_v1";
@@ -1216,6 +1218,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               : p
           ),
         projectId
+      );
+    },
+
+    updateProjectMindMapSettingsOnly: (projectId: UUID, settings: MindMapSettings) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? { ...p, mindMapSettings: settings, updatedAt: new Date().toISOString() }
+            : p
+        )
       );
     },
   };

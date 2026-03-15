@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useProjectStore, LevelConfig } from "@/store/projectStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
+import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
 
 interface Props {
   projectId: string;
@@ -15,7 +16,7 @@ export default function SettingsClient({ projectId }: Props) {
   const { locale } = useI18n();
   const isPt = locale === "pt-BR";
   const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
-  const { getProject, updateProjectSettings } = useProjectStore();
+  const { getProject, updateProjectSettings, updateProjectMindMapSettingsOnly } = useProjectStore();
   const project = getProject(projectId);
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
@@ -297,8 +298,22 @@ export default function SettingsClient({ projectId }: Props) {
     });
   };
 
-  const handleSave = () => { updateProjectSettings(projectId, settings); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); };
-  const handleReset = () => { if (confirm(isPt ? "Resetar todas as configurações?" : "Reset all settings?")) { updateProjectSettings(projectId, {}); setSettings({}); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 3000); } };
+  const handleSave = () => {
+    updateProjectMindMapSettingsOnly(projectId, settings);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+    // Envia só mindmap_settings para o Supabase (sem custo, sem usar sync de seções)
+    void pushProjectMindMapSettings(projectId, settings);
+  };
+  const handleReset = () => {
+    if (confirm(isPt ? "Resetar todas as configurações?" : "Reset all settings?")) {
+      updateProjectMindMapSettingsOnly(projectId, {});
+      setSettings({});
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      void pushProjectMindMapSettings(projectId, {});
+    }
+  };
 
   if (!project) return <div>{isPt ? "Projeto não encontrado" : "Project not found"}</div>;
   const levels = settings.levels || [];
