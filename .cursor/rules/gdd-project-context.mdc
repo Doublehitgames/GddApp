@@ -1,16 +1,16 @@
 ---
-description: Contexto do GDD Manager — sync, quota, badge, histórico e armadilhas
+description: Contexto do GDD Manager — sync, quota, barra/rodapé, histórico e armadilhas
 alwaysApply: true
 ---
 
 # GDD Manager – contexto para o agente
 
 - **Projeto**: app para criar/gerar GDDs (Game Design Documents). Next.js 16, TypeScript, Zustand, Supabase, i18n (pt-BR, en, es). Offline-first com sync opcional para a nuvem.
-- **Estado atual**: Sync com Supabase; quota por hora (30 créditos, diff por request); limites estruturais (2 projetos, 120 seções/projeto, 200 totais); badge com créditos usados, último sync e estimativa "~X créditos para sincronizar tudo" (clicável → preview do que vai no próximo sync); histórico de syncs na página de persistência com botão "Limpar histórico"; `dirtyProjectIds` e estado de sync persistidos para sobreviver ao refresh.
+- **Estado atual**: Sync com Supabase; quota por hora (30 créditos, diff por request); limites estruturais (2 projetos, 120 seções/projeto, 200 totais); barra na home e rodapé no projeto com créditos, último sync e estimativa "~X créditos para sincronizar tudo" (clicável → preview do que vai no próximo sync); histórico de syncs na página de persistência com botão "Limpar histórico"; `dirtyProjectIds` e estado de sync persistidos para sobreviver ao refresh.
 - **Regras Free**: 30 créditos/hora; cobrança pelo **diff** (não por "ações"); seção criada e deletada sem nunca dar sync = 0 créditos. Ver `docs/CREDITOS_SYNC.md`.
 
-**Sempre que for trabalhar em sync, quota, badge ou persistência**: ler `AGENTS.md` na raiz (incl. seção "Armadilhas comuns"). Código: `app/api/projects/sync/route.ts`, `lib/supabase/projectSync.ts`, `store/projectStore.ts`, `components/SyncStatusBadge.tsx`, `app/settings/persistence/page.tsx`. Testes: `__tests__/store/projectStore*.test.ts`, `__tests__/lib/projectSync.test.ts`, E2E `e2e/sync-critical.spec.ts`.
+**Sempre que for trabalhar em sync, quota ou persistência**: ler `AGENTS.md` na raiz (incl. seção "Armadilhas comuns"). Código: `app/api/projects/sync/route.ts`, `lib/supabase/projectSync.ts`, `store/projectStore.ts`, `components/HomeSyncBar.tsx, components/ProjectSyncFooter.tsx`, `app/settings/persistence/page.tsx`. Testes: `__tests__/store/projectStore*.test.ts`, `__tests__/lib/projectSync.test.ts`, E2E `e2e/sync-critical.spec.ts`.
 
-**Armadilhas**: (1) Créditos = diff da request; `removedSectionIds` só inclui seções que já estão no DB. (2) Coluna em sections é `sort_order`, não `order`. (3) Ao mudar conteúdo pendente (ex.: deletar seção), zerar estimativa na hora no badge. (4) i18n: alterar nos 3 locales (pt-BR, en, es). (5) E2E: cookie `gdd_locale=pt-BR`, `waitForURL` após navegação.
+**Armadilhas**: (1) Créditos = diff da request; `removedSectionIds` só inclui seções que já estão no DB. (2) Coluna em sections é `sort_order`, não `order`. (3) Ao mudar conteúdo pendente (ex.: deletar seção), zerar estimativa na hora na barra/rodapé. (4) i18n: alterar nos 3 locales (pt-BR, en, es). (5) E2E: cookie `gdd_locale=pt-BR`, `waitForURL` após navegação.
 
 **Idioma**: responder em português brasileiro quando o usuário escrever em pt-BR.

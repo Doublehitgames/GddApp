@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuthInit } from "@/hooks/useAuthInit";
-import SyncStatusBadge from "@/components/SyncStatusBadge";
+import ProjectSyncFooter from "@/components/ProjectSyncFooter";
 
 export default function ClientInit() {
   useAuthInit();
-  return <SyncStatusBadge />;
+  return <ProjectSyncFooter />;
 }

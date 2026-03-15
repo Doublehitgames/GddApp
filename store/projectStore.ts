@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import {
   fetchProjectsFromSupabase,
+  fetchQuotaStatus,
   upsertProjectToSupabase,
   deleteProjectFromSupabase,
 } from "@/lib/supabase/projectSync";
@@ -262,6 +263,8 @@ interface ProjectStore {
   getPendingProjectIds: () => string[];
   /** Limpa o histórico de syncs (lastSyncStatsHistory) e persiste. */
   clearSyncHistory: () => void;
+  /** Atualiza lastQuotaStatus com a cota atual do servidor (badge ao abrir/voltar ao app). */
+  refreshQuotaStatus: () => Promise<void>;
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
@@ -1043,8 +1046,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         }
         if (savedSync && (savedSync.lastQuotaStatus ?? savedSync.lastSyncedAt ?? savedSync.lastSyncStats)) {
           const prevStatus = get().syncStatus;
+          const quota = savedSync.lastQuotaStatus;
+          const quotaStillValid = quota && new Date(quota.windowEndsAt).getTime() > Date.now();
           set({
-            lastQuotaStatus: savedSync.lastQuotaStatus ?? null,
+            lastQuotaStatus: quotaStillValid ? quota : null,
             lastSyncedAt: savedSync.lastSyncedAt ?? null,
             lastSyncStats: savedSync.lastSyncStats ?? null,
             lastSyncStatsHistory: savedSync.lastSyncStatsHistory ?? [],
@@ -1074,6 +1079,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     clearSyncHistory: () => {
       set({ lastSyncStatsHistory: [] });
       persistSyncState();
+    },
+
+    refreshQuotaStatus: async () => {
+      const q = await fetchQuotaStatus();
+      if (q) {
+        set({ lastQuotaStatus: q });
+        persistSyncState();
+      }
     },
 
     flushPendingSyncs: async () => {

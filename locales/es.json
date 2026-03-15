@@ -327,14 +327,7 @@
         "clearButton": "Limpiar historial"
       },
       "syncBadge": {
-        "statusWaiting": "Esperando",
-        "statusSyncing": "Sincronizando",
-        "statusSynced": "Sincronizado",
-        "statusError": "Error",
         "pausedQuota": "Límite de créditos",
-        "pausedFailures": "Fallas temporales",
-        "pausedRateLimit": "Demasiadas solicitudes",
-        "pausedGeneric": "Nube pausada",
         "pausedUntil": "Pausado hasta",
         "resetsAt": "Reinicia a las",
         "creditsUsed": "Créditos usados",
@@ -342,6 +335,7 @@
         "lastSyncDeleted": "Eliminadas",
         "lastSyncUnchanged": "Sin cambios",
         "creditsToSyncAll": "~{{count}} créditos para sincronizar todo",
+        "creditsToSyncThis": "~{{count}} créditos para sincronizar este proyecto",
         "previewClickHint": "Haz clic para ver qué se sincronizará",
         "previewTitle": "Incluido en el próximo sync",
         "previewNew": "Nuevas",

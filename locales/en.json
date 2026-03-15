@@ -327,14 +327,7 @@
         "clearButton": "Clear history"
       },
       "syncBadge": {
-        "statusWaiting": "Waiting",
-        "statusSyncing": "Syncing",
-        "statusSynced": "Synced",
-        "statusError": "Error",
         "pausedQuota": "Credit limit",
-        "pausedFailures": "Temporary failures",
-        "pausedRateLimit": "Too many requests",
-        "pausedGeneric": "Cloud paused",
         "pausedUntil": "Paused until",
         "resetsAt": "Resets at",
         "creditsUsed": "Credits used",
@@ -342,6 +335,7 @@
         "lastSyncDeleted": "Deleted",
         "lastSyncUnchanged": "Unchanged",
         "creditsToSyncAll": "~{{count}} credits to sync all",
+        "creditsToSyncThis": "~{{count}} credits to sync this project",
         "previewClickHint": "Click to see what will be synced",
         "previewTitle": "Included in next sync",
         "previewNew": "New",

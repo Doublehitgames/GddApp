@@ -14,7 +14,7 @@ import { migrateLocalProjectsToSupabase } from "@/lib/supabase/projectSync";
  */
 export function useAuthInit() {
   const { initialize, user } = useAuthStore();
-  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig } = useProjectStore();
+  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig, refreshQuotaStatus } = useProjectStore();
   const migratedRef = useRef(false);
 
   // Inicializa auth uma vez
@@ -27,6 +27,9 @@ export function useAuthInit() {
     if (user) {
       setUserId(user.id);
       loadFromStorage();
+
+      // Atualiza cota no badge (tempo de reset e créditos restantes) ao abrir/voltar ao app
+      void refreshQuotaStatus();
 
       // Garante que o usuário tenha linha em profiles (evita quebra se profile foi apagado e auth mantido)
       const supabase = createClient();
@@ -68,6 +71,7 @@ export function useAuthInit() {
 
     const onVisibilityChange = () => {
       persistToStorage();
+      if (document.visibilityState === "visible") void refreshQuotaStatus();
     };
 
     const onPageHide = () => {
@@ -88,5 +92,5 @@ export function useAuthInit() {
       window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [user?.id, flushPendingSyncs, persistenceConfig.syncAutomatic, persistenceConfig.autosaveIntervalMs]);
+  }, [user?.id, flushPendingSyncs, persistenceConfig.syncAutomatic, persistenceConfig.autosaveIntervalMs, refreshQuotaStatus]);
 }

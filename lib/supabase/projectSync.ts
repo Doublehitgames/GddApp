@@ -135,6 +135,27 @@ export async function estimateCreditsForProjects(projects: Project[]): Promise<n
   return result ? result.estimatedCredits : null;
 }
 
+/** Busca a cota atual da janela (GET /api/projects/sync/quota). Usado para atualizar o badge ao abrir o app. */
+export async function fetchQuotaStatus(): Promise<CloudSyncQuotaStatus | null> {
+  try {
+    const base = getSyncRouteBase();
+    const res = await fetch(`${base}/api/projects/sync/quota`, { credentials: "include" });
+    if (!res.ok) return null;
+    const data = (await res.json().catch(() => null)) as Record<string, unknown>;
+    if (!data || typeof data.limitPerHour !== "number") return null;
+    return {
+      limitPerHour: data.limitPerHour as number,
+      usedInWindow: Number(data.usedInWindow ?? 0),
+      remainingInWindow: Number(data.remainingInWindow ?? 0),
+      windowStartedAt: String(data.windowStartedAt ?? ""),
+      windowEndsAt: String(data.windowEndsAt ?? ""),
+      consumedThisSync: Number(data.consumedThisSync ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Envia apenas mindmap_settings para o Supabase (sem seções, sem consumir créditos). Usado ao salvar Configurações do Mapa Mental. */
 export async function pushProjectMindMapSettings(
   projectId: string,

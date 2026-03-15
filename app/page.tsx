@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useProjectStore } from "@/store/projectStore";
 import UserMenu from "@/components/UserMenu";
+import HomeSyncBar from "@/components/HomeSyncBar";
 import { useI18n } from "@/lib/i18n/provider";
 import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
 
@@ -37,7 +38,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
+    <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10 pb-14">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <header className="grid gap-5 md:grid-cols-[1fr_auto] md:items-center">
           <div>
@@ -197,6 +198,7 @@ export default function Home() {
           </aside>
         </section>
       </div>
+      <HomeSyncBar />
     </main>
   );
 }
