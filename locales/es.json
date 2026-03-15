@@ -52,6 +52,9 @@
     "projects": {
       "title": "Tus proyectos",
       "count": "proyecto(s)",
+      "usageProjects": "proyectos",
+      "usageSections": "secciones",
+      "limitWarning": "Límite cercano: quedan {{projectsLeft}} proyecto(s) y {{sectionsLeft}} sección(es) en el plan Free.",
       "remove": "Eliminar",
       "empty": "Aún no hay proyectos creados.",
       "confirmRemove": "¿Seguro que quieres eliminar el proyecto \"{title}\"?",
@@ -65,6 +68,27 @@
       "backup": "Backup y restauración",
       "createManual": "Crear manualmente"
     }
+  },
+  "profile": {
+    "title": "Perfil y plan",
+    "subtitle": "Tu plan actual y límites de uso.",
+    "account": "Tu cuenta",
+    "plan": "Plan actual",
+    "planFree": "Free",
+    "limitsTitle": "Límites del plan Free",
+    "projectsLimit": "Proyectos",
+    "sectionsPerProjectLimit": "Secciones por proyecto",
+    "sectionsTotalLimit": "Secciones en la cuenta",
+    "usageTitle": "Tu uso actual",
+    "projectsUsage": "Proyectos",
+    "sectionsUsage": "Secciones en la cuenta",
+    "creditsPerHour": "Créditos de sync por hora",
+    "maxInOneProject": "Máx. en un proyecto"
+  },
+  "limits": {
+    "projects": "Límite del plan Free: puedes tener como máximo 2 proyectos.",
+    "sectionsPerProject": "Límite del plan Free: máximo 120 secciones por proyecto.",
+    "sectionsTotal": "Límite del plan Free: máximo 200 secciones en tu cuenta."
   },
   "projectsPage": {
     "title": "Crear proyecto",
@@ -270,9 +294,12 @@
       "title": "Persistencia y sincronización",
       "subtitle": "Ajusta el autosave y los disparadores de sincronización en la nube.",
       "statusLabel": "Estado",
-      "pendingLabel": "Pendientes",
+      "pendingLabel": "Proyectos con cambios no enviados",
       "lastSyncLabel": "Última sincronización",
       "lastErrorLabel": "Último error",
+      "lastFailureReasonLabel": "Última falla (técnica)",
+      "errorHintNetwork": "Para ver el error completo: F12 → pestaña Red → clic en la petición 'sync' fallida (500) → pestaña Respuesta.",
+      "errorSupabaseNonJson": "Supabase devolvió una respuesta que no es JSON (p. ej. HTML). Causas habituales: proyecto pausado en el dashboard; en producción, URL/claves incorrectas en las variables de entorno del proyecto en Vercel (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY). Revisa Supabase y, si usas Vercel, las variables del proyecto.",
       "status": {
         "syncing": "Sincronizando",
         "synced": "Sincronizado",
@@ -281,13 +308,11 @@
       },
       "form": {
         "debounceLabel": "Debounce de edición (ms)",
-        "debounceHint": "Tiempo mínimo después de editar para intentar sincronizar automáticamente.",
-        "autosaveLabel": "Intervalo de autosave (ms)",
-        "autosaveHint": "Recomendado: 30000ms (30s).",
-        "syncOnBlur": "Sincronizar cuando la ventana pierde foco",
-        "syncOnHidden": "Sincronizar al cambiar de pestaña (document hidden)",
-        "syncOnPageHide": "Sincronizar en el evento pagehide",
-        "syncOnBeforeUnload": "Sincronizar antes de salir de la página"
+        "debounceHint": "Cuando el sync automático está activo, tiempo tras editar antes de programar envío.",
+        "autosaveLabel": "Intervalo de sync automático (ms)",
+        "autosaveHint": "Cuando el sync automático está activo, envía cambios cada X ms. Recomendado: 30000 (30s).",
+        "syncAutomatic": "Sync automático",
+        "syncAutomaticHint": "Desactivado (por defecto): solo sincroniza al hacer clic en \"Sincronizar ahora\". Activado: envía cambios periódicamente con el intervalo inferior."
       },
       "actions": {
         "saved": "Guardado",
@@ -297,7 +322,38 @@
       "history": {
         "title": "Historial de ciclos de sincronización",
         "empty": "Aún no hay ciclos registrados.",
-        "delta": "Δ secciones"
+        "delta": "Δ secciones",
+        "credits": "Créditos",
+        "clearButton": "Limpiar historial"
+      },
+      "syncBadge": {
+        "statusWaiting": "Esperando",
+        "statusSyncing": "Sincronizando",
+        "statusSynced": "Sincronizado",
+        "statusError": "Error",
+        "pausedQuota": "Límite de créditos",
+        "pausedFailures": "Fallas temporales",
+        "pausedRateLimit": "Demasiadas solicitudes",
+        "pausedGeneric": "Nube pausada",
+        "pausedUntil": "Pausado hasta",
+        "resetsAt": "Reinicia a las",
+        "creditsUsed": "Créditos usados",
+        "lastSyncCreated": "Creadas/actualizadas",
+        "lastSyncDeleted": "Eliminadas",
+        "lastSyncUnchanged": "Sin cambios",
+        "creditsToSyncAll": "~{{count}} créditos para sincronizar todo",
+        "previewClickHint": "Haz clic para ver qué se sincronizará",
+        "previewTitle": "Incluido en el próximo sync",
+        "previewNew": "Nuevas",
+        "previewUpdated": "Actualizadas",
+        "previewDeleted": "Eliminadas"
+      },
+      "credits": {
+        "title": "Créditos de sync en la nube",
+        "used": "Usados",
+        "remaining": "Restantes",
+        "resetAt": "Reinicio de la ventana",
+        "howItWorks": "Cada sección creada o actualizada (título, contenido, etc.) = 1 crédito. Reordenar varias secciones = 1 crédito en total. Cada sección eliminada = 1 crédito."
       }
     }
   }

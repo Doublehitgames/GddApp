@@ -79,14 +79,20 @@ export async function proxy(request: NextRequest) {
     if (isPublicRoute) {
       return supabaseResponse;
     }
-    return NextResponse.next({ request });
+    // Timeout na verificação de auth: trata como não autenticado e redireciona para login
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 
   if (hadError) {
     if (isPublicRoute) {
       return supabaseResponse;
     }
-    return NextResponse.next({ request });
+    // Erro na verificação de auth: trata como não autenticado e redireciona para login
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 
   // Se não está autenticado e não é rota pública → redireciona para login

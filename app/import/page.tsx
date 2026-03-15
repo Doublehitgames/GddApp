@@ -24,7 +24,7 @@ interface ImportedProject {
 
 export default function ImportProjectPage() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const tr = (pt: string, en: string, es: string) => {
     switch (locale) {
       case 'es':
@@ -230,7 +230,15 @@ export default function ImportProjectPage() {
       // Redirecionar para o projeto criado
       router.push(`/projects/${projectId}`);
     } catch (err) {
-      setError(tr('Erro ao criar projeto: ', 'Failed to create project: ', 'Error al crear el proyecto: ') + (err instanceof Error ? err.message : tr('Erro desconhecido', 'Unknown error', 'Error desconocido')));
+      if (err instanceof Error && err.message.startsWith('structural_limit')) {
+        const msg = err.message === 'structural_limit_projects' ? t('limits.projects')
+          : err.message === 'structural_limit_sections_per_project' ? t('limits.sectionsPerProject')
+          : err.message === 'structural_limit_sections_total' ? t('limits.sectionsTotal')
+          : t('limits.sectionsTotal');
+        setError(msg);
+      } else {
+        setError(tr('Erro ao criar projeto: ', 'Failed to create project: ', 'Error al crear el proyecto: ') + (err instanceof Error ? err.message : tr('Erro desconhecido', 'Unknown error', 'Error desconocido')));
+      }
     }
   };
 

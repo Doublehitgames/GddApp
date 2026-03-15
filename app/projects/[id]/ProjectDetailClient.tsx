@@ -85,9 +85,17 @@ export default function ProjectDetailClient({ projectId }: Props) {
     function handleAddSection() {
         if (!sectionTitle.trim() || nameError) return;
 
-        addSection(projectId, sectionTitle.trim());
-        setSectionTitle("");
-        setNameError("");
+        try {
+            addSection(projectId, sectionTitle.trim());
+            setSectionTitle("");
+            setNameError("");
+        } catch (e) {
+            if (e instanceof Error && (e.message === "structural_limit_sections_per_project" || e.message === "structural_limit_sections_total")) {
+                setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+            } else {
+                throw e;
+            }
+        }
     }
 
     const projectContext = project ? {

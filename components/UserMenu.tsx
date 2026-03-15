@@ -10,8 +10,6 @@ export default function UserMenu() {
   const { locale, setLocale, supportedLocales } = useI18n();
   const [open, setOpen] = useState(false);
 
-  if (!user) return null;
-
   const tr = (pt: string, en: string, es: string) => {
     switch (locale) {
       case "es":
@@ -22,6 +20,21 @@ export default function UserMenu() {
         return pt;
     }
   };
+
+  if (!user) {
+    return (
+      <Link
+        href="/login"
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-500 transition-colors font-medium text-sm text-white"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+        </svg>
+        {tr("Entrar", "Log in", "Iniciar sesión")}
+      </Link>
+    );
+  }
+
   const name = profile?.display_name || user.email?.split("@")[0] || tr("Usuário", "User", "Usuario");
   const email = user.email || "";
   const initials = name.slice(0, 2).toUpperCase();
@@ -61,6 +74,14 @@ export default function UserMenu() {
 
             <div className="p-1">
               <div className="px-1 pb-1 mb-1 border-b border-gray-800">
+                <Link
+                  href="/profile"
+                  onClick={() => setOpen(false)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>👤</span>
+                  <span>{tr("Perfil e plano", "Profile and plan", "Perfil y plan")}</span>
+                </Link>
                 <Link
                   href="/settings/ai"
                   onClick={() => setOpen(false)}

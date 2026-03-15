@@ -70,7 +70,7 @@ create table public.sections (
   parent_id uuid references public.sections(id) on delete cascade,
   title text not null,
   content text default '',
-  "order" integer default 0 not null,
+  sort_order integer default 0 not null,
   color text,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null

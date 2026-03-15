@@ -5,11 +5,17 @@ import Link from "next/link";
 import { useProjectStore } from "@/store/projectStore";
 import UserMenu from "@/components/UserMenu";
 import { useI18n } from "@/lib/i18n/provider";
+import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
   const removeProject = useProjectStore((s) => s.removeProject);
   const { t } = useI18n();
+
+  const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
+  const projectsLeft = FREE_MAX_PROJECTS - projects.length;
+  const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - totalSections;
+  const showLimitWarning = projectsLeft <= 1 || sectionsLeft <= 10;
 
   const downloadProjectBackup = (project: (typeof projects)[number]) => {
     const backupData = {
@@ -61,8 +67,24 @@ export default function Home() {
           <div className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-6 shadow-xl shadow-black/10">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-semibold tracking-tight">{t("home.projects.title")}</h2>
-              <span className="text-sm text-gray-400">{projects.length} {t("home.projects.count")}</span>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-gray-400">
+                  <span className="font-semibold text-white">{projects.length}/{FREE_MAX_PROJECTS}</span> {t("home.projects.usageProjects")}
+                </span>
+                <span className="text-gray-500">·</span>
+                <span className="text-gray-400">
+                  <span className="font-semibold text-white">{totalSections}/{FREE_MAX_SECTIONS_TOTAL}</span> {t("home.projects.usageSections")}
+                </span>
+              </div>
             </div>
+
+            {showLimitWarning && (
+              <div className="mb-4 p-3 rounded-lg bg-amber-900/30 border border-amber-600/60 text-amber-200 text-sm">
+                {t("home.projects.limitWarning")
+                  .replace("{{projectsLeft}}", String(Math.max(0, projectsLeft)))
+                  .replace("{{sectionsLeft}}", String(Math.max(0, sectionsLeft)))}
+              </div>
+            )}
 
             <div className="flex flex-col gap-3.5">
               {projects.map((p) => {

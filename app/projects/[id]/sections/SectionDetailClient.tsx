@@ -620,12 +620,14 @@ function SubsectionSuggestionPanel({
   sectionId,
   hasDuplicateName,
   addSubsection,
+  onLimitError,
 }: {
   suggestions: SubsectionSuggestion[];
   projectId: string;
   sectionId: string;
   hasDuplicateName: (projectId: string, title: string, parentId?: string, excludeId?: string) => boolean;
   addSubsection: (projectId: string, parentId: string, title: string, content?: string) => string;
+  onLimitError?: (message: string) => void;
 }) {
   const { t } = useI18n();
   if (suggestions.length === 0) return null;
@@ -651,7 +653,15 @@ function SubsectionSuggestionPanel({
                 disabled={alreadyExists}
                 onClick={() => {
                   if (alreadyExists) return;
-                  addSubsection(projectId, sectionId, suggestion.title, suggestion.description || "");
+                  try {
+                    addSubsection(projectId, sectionId, suggestion.title, suggestion.description || "");
+                  } catch (e) {
+                    if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
+                      onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+                    } else {
+                      throw e;
+                    }
+                  }
                 }}
               >
                 {alreadyExists ? t('sectionDetail.suggestions.alreadyCreated') : t('sectionDetail.suggestions.createSubsection')}
@@ -968,6 +978,7 @@ function SectionDetailContent({
           sectionId={sectionId}
           hasDuplicateName={hasDuplicateName}
           addSubsection={addSubsection}
+          onLimitError={(msg) => setNameError(msg)}
         />
       )}
 
@@ -1107,11 +1118,19 @@ function SectionDetailContent({
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             disabled={!newSubTitle.trim() || !!nameError}
             onClick={() => {
-              const t = newSubTitle.trim();
-              if (!t || nameError) return;
-              addSubsection(projectId, sectionId, t);
-              setNewSubTitle("");
-              setNameError("");
+              const trimmed = newSubTitle.trim();
+              if (!trimmed || nameError) return;
+              try {
+                addSubsection(projectId, sectionId, trimmed);
+                setNewSubTitle("");
+                setNameError("");
+              } catch (e) {
+                if (e instanceof Error && e.message.startsWith("structural_limit")) {
+                  setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+                } else {
+                  throw e;
+                }
+              }
             }}
           >{t('projectDetail.add')}</button>
         </div>
@@ -1160,6 +1179,7 @@ function SectionDetailContent({
                   sectionId={sectionId}
                   hasDuplicateName={hasDuplicateName}
                   addSubsection={addSubsection}
+                  onLimitError={(msg) => setNameError(msg)}
                 />
               </div>
             </div>

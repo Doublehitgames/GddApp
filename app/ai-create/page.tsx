@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 export default function AICreateProject() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const tr = (pt: string, en: string, es: string) => {
     switch (locale) {
       case "es":
@@ -74,42 +74,50 @@ export default function AICreateProject() {
   const handleCreateProject = () => {
     if (!template) return;
 
-    // Create project
-    const projectId = addProject(template.projectTitle, template.projectDescription);
+    try {
+      const projectId = addProject(template.projectTitle, template.projectDescription);
 
-    // Create sections and subsections
-    template.sections.forEach((section, index) => {
-      addSection(projectId, section.title);
-      
-      // Get the section we just created
-      const store = useProjectStore.getState();
-      const project = store.getProject(projectId);
-      const createdSection = project?.sections?.find(s => s.title === section.title);
-      
-      if (createdSection) {
-        // Update content via editSection
-        store.editSection(projectId, createdSection.id, section.title, section.content);
-        
-        // Add subsections if any
-        if (section.subsections && section.subsections.length > 0) {
-          section.subsections.forEach(subsection => {
-            addSubsection(projectId, createdSection.id, subsection.title);
-            
-            // Get the subsection we just created and update its content
-            const updatedProject = store.getProject(projectId);
-            const createdSubsection = updatedProject?.sections?.find(
-              s => s.parentId === createdSection.id && s.title === subsection.title
-            );
-            
-            if (createdSubsection) {
-              store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content);
-            }
-          });
+      template.sections.forEach((section) => {
+        addSection(projectId, section.title);
+
+        const store = useProjectStore.getState();
+        const project = store.getProject(projectId);
+        const createdSection = project?.sections?.find((s) => s.title === section.title);
+
+        if (createdSection) {
+          store.editSection(projectId, createdSection.id, section.title, section.content);
+
+          if (section.subsections && section.subsections.length > 0) {
+            section.subsections.forEach((subsection) => {
+              addSubsection(projectId, createdSection.id, subsection.title);
+
+              const updatedProject = store.getProject(projectId);
+              const createdSubsection = updatedProject?.sections?.find(
+                (s) => s.parentId === createdSection.id && s.title === subsection.title
+              );
+
+              if (createdSubsection) {
+                store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content);
+              }
+            });
+          }
         }
-      }
-    });
+      });
 
-    router.push(`/projects/${projectId}/view?new=true`);
+      router.push(`/projects/${projectId}/view?new=true`);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("structural_limit")) {
+        const msg =
+          e.message === "structural_limit_projects"
+            ? t("limits.projects")
+            : e.message === "structural_limit_sections_per_project"
+              ? t("limits.sectionsPerProject")
+              : t("limits.sectionsTotal");
+        setError(msg);
+      } else {
+        throw e;
+      }
+    }
   };
 
   return (

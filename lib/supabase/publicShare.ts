@@ -15,7 +15,7 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       content: row.content || "",
       created_at: row.created_at,
       parentId: row.parent_id || undefined,
-      order: row.order ?? 0,
+      order: (row.sort_order ?? row.order) ?? 0,
       color: row.color || undefined,
     })),
   };
@@ -40,9 +40,9 @@ export async function getPublicProjectByIdAndToken(id: string, token: string): P
 
   const { data: sectionRows, error: sectionErr } = await supabase
     .from("sections")
-    .select("id,title,content,created_at,parent_id,order,color")
+    .select("id,title,content,created_at,parent_id,sort_order,color")
     .eq("project_id", id)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (sectionErr) return null;
 
@@ -67,9 +67,9 @@ export async function getPublicProjectByToken(token: string): Promise<Project | 
 
   const { data: sectionRows, error: sectionErr } = await supabase
     .from("sections")
-    .select("id,title,content,created_at,parent_id,order,color")
+    .select("id,title,content,created_at,parent_id,sort_order,color")
     .eq("project_id", projectRow.id)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   if (sectionErr) return null;
 

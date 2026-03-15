@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
+import { createClient } from "@/lib/supabase/client";
+import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
 import { migrateLocalProjectsToSupabase } from "@/lib/supabase/projectSync";
 
 /**
@@ -12,7 +14,7 @@ import { migrateLocalProjectsToSupabase } from "@/lib/supabase/projectSync";
  */
 export function useAuthInit() {
   const { initialize, user } = useAuthStore();
-  const { loadFromSupabase, loadFromStorage, setUserId, projects, flushPendingSyncs, persistenceConfig } = useProjectStore();
+  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig } = useProjectStore();
   const migratedRef = useRef(false);
 
   // Inicializa auth uma vez
@@ -25,6 +27,10 @@ export function useAuthInit() {
     if (user) {
       setUserId(user.id);
       loadFromStorage();
+
+      // Garante que o usuário tenha linha em profiles (evita quebra se profile foi apagado e auth mantido)
+      const supabase = createClient();
+      void ensureUserProfile(supabase, user);
 
       // Carrega projetos da nuvem
       loadFromSupabase().then(async (result) => {
@@ -53,76 +59,34 @@ export function useAuthInit() {
   useEffect(() => {
     if (!user) return;
 
-    const intervalId = window.setInterval(() => {
-      void flushPendingSyncs();
-    }, persistenceConfig.autosaveIntervalMs);
-
-    const runSync = () => {
-      void flushPendingSyncs();
-    };
-
-    let idleCallbackId: number | null = null;
-    let idleTimeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      idleCallbackId = (window as any).requestIdleCallback(() => runSync(), { timeout: 2000 });
-    } else {
-      idleTimeoutId = globalThis.setTimeout(() => runSync(), 1500);
-    }
+    // Sync automático: só o temporizador (intervalo em configurações). Desativado = apenas manual (botão Sincronizar).
+    const intervalId = persistenceConfig.syncAutomatic
+      ? window.setInterval(() => {
+          void flushPendingSyncs();
+        }, persistenceConfig.autosaveIntervalMs)
+      : undefined;
 
     const onVisibilityChange = () => {
-      if (persistenceConfig.syncOnVisibilityHidden && document.visibilityState === "hidden") {
-        void flushPendingSyncs();
-      }
-    };
-
-    const onOnline = () => {
-      runSync();
-    };
-
-    const onFocus = () => {
-      runSync();
+      persistToStorage();
     };
 
     const onPageHide = () => {
-      if (persistenceConfig.syncOnPageHide) {
-        void flushPendingSyncs();
-      }
+      persistToStorage();
     };
 
     const onBeforeUnload = () => {
-      if (persistenceConfig.syncOnBeforeUnload) {
-        void flushPendingSyncs();
-      }
-    };
-
-    const onBlur = () => {
-      if (persistenceConfig.syncOnBlur) {
-        void flushPendingSyncs();
-      }
+      persistToStorage();
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pagehide", onPageHide);
     window.addEventListener("beforeunload", onBeforeUnload);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("focus", onFocus);
 
     return () => {
-      window.clearInterval(intervalId);
-      if (idleCallbackId !== null && typeof window !== "undefined" && "cancelIdleCallback" in window) {
-        (window as any).cancelIdleCallback(idleCallbackId);
-      }
-      if (idleTimeoutId !== null) {
-        globalThis.clearTimeout(idleTimeoutId);
-      }
+      if (intervalId !== undefined) window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("beforeunload", onBeforeUnload);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("focus", onFocus);
     };
-  }, [user?.id, flushPendingSyncs, persistenceConfig]);
+  }, [user?.id, flushPendingSyncs, persistenceConfig.syncAutomatic, persistenceConfig.autosaveIntervalMs]);
 }

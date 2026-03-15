@@ -52,7 +52,10 @@
     "projects": {
       "title": "Your Projects",
       "count": "project(s)",
-      "remove": "Remove",
+"usageProjects": "projects",
+        "usageSections": "sections",
+        "limitWarning": "Limit approaching: {{projectsLeft}} project(s) and {{sectionsLeft}} section(s) left on the Free plan.",
+        "remove": "Remove",
       "empty": "No projects created yet.",
       "confirmRemove": "Are you sure you want to remove project \"{title}\"?",
       "confirmBackup": "Do you want to create a local backup of \"{title}\" before deleting?",
@@ -65,6 +68,27 @@
       "backup": "Backup & Restore",
       "createManual": "Create manually"
     }
+  },
+  "profile": {
+    "title": "Profile and plan",
+    "subtitle": "Your current plan and usage limits.",
+    "account": "Your account",
+    "plan": "Current plan",
+    "planFree": "Free",
+    "limitsTitle": "Free plan limits",
+    "projectsLimit": "Projects",
+    "sectionsPerProjectLimit": "Sections per project",
+    "sectionsTotalLimit": "Sections in account",
+    "usageTitle": "Your current usage",
+    "projectsUsage": "Projects",
+    "sectionsUsage": "Sections in account",
+    "creditsPerHour": "Sync credits per hour",
+    "maxInOneProject": "Max in one project"
+  },
+  "limits": {
+    "projects": "Free plan limit: you can have at most 2 projects.",
+    "sectionsPerProject": "Free plan limit: maximum 120 sections per project.",
+    "sectionsTotal": "Free plan limit: maximum 200 sections in your account."
   },
   "projectsPage": {
     "title": "Create Project",
@@ -270,9 +294,12 @@
       "title": "Persistence and Sync",
       "subtitle": "Adjust autosave and cloud sync triggers.",
       "statusLabel": "Status",
-      "pendingLabel": "Pending",
+      "pendingLabel": "Projects with unsent changes",
       "lastSyncLabel": "Last sync",
       "lastErrorLabel": "Last error",
+      "lastFailureReasonLabel": "Last failure (technical)",
+      "errorHintNetwork": "To see the full error: F12 → Network tab → click the failed 'sync' request (500) → Response tab.",
+      "errorSupabaseNonJson": "Supabase returned a non-JSON response (e.g. HTML page). Common causes: project paused in Supabase dashboard; in production, wrong URL/keys in Vercel environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY). Check Supabase and, if using Vercel, the project env vars.",
       "status": {
         "syncing": "Syncing",
         "synced": "Synced",
@@ -281,13 +308,11 @@
       },
       "form": {
         "debounceLabel": "Edit debounce (ms)",
-        "debounceHint": "Minimum time after editing before trying to sync automatically.",
-        "autosaveLabel": "Autosave interval (ms)",
-        "autosaveHint": "Recommended: 30000ms (30s).",
-        "syncOnBlur": "Sync when window loses focus",
-        "syncOnHidden": "Sync when switching tabs (document hidden)",
-        "syncOnPageHide": "Sync on pagehide event",
-        "syncOnBeforeUnload": "Sync before leaving the page"
+        "debounceHint": "When automatic sync is on, delay after edit before scheduling upload.",
+        "autosaveLabel": "Automatic sync interval (ms)",
+        "autosaveHint": "When automatic sync is on, sends changes every X ms. Recommended: 30000 (30s).",
+        "syncAutomatic": "Automatic sync",
+        "syncAutomaticHint": "Off (default): sync only when you click \"Sync now\". On: sends changes periodically using the interval below."
       },
       "actions": {
         "saved": "Saved",
@@ -297,7 +322,38 @@
       "history": {
         "title": "Sync cycle history",
         "empty": "No cycles recorded yet.",
-        "delta": "Δ sections"
+        "delta": "Δ sections",
+        "credits": "Credits",
+        "clearButton": "Clear history"
+      },
+      "syncBadge": {
+        "statusWaiting": "Waiting",
+        "statusSyncing": "Syncing",
+        "statusSynced": "Synced",
+        "statusError": "Error",
+        "pausedQuota": "Credit limit",
+        "pausedFailures": "Temporary failures",
+        "pausedRateLimit": "Too many requests",
+        "pausedGeneric": "Cloud paused",
+        "pausedUntil": "Paused until",
+        "resetsAt": "Resets at",
+        "creditsUsed": "Credits used",
+        "lastSyncCreated": "Created/updated",
+        "lastSyncDeleted": "Deleted",
+        "lastSyncUnchanged": "Unchanged",
+        "creditsToSyncAll": "~{{count}} credits to sync all",
+        "previewClickHint": "Click to see what will be synced",
+        "previewTitle": "Included in next sync",
+        "previewNew": "New",
+        "previewUpdated": "Updated",
+        "previewDeleted": "Deleted"
+      },
+      "credits": {
+        "title": "Cloud sync credits",
+        "howItWorks": "Each section created or updated (title, content, etc.) = 1 credit. Reordering multiple sections = 1 credit total. Each section deleted = 1 credit.",
+        "used": "Used",
+        "remaining": "Remaining",
+        "resetAt": "Window resets at"
       }
     }
   }

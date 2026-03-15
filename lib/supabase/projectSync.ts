@@ -14,7 +14,7 @@ const logInfo = (...args: unknown[]) => {
 const logWarn = (...args: unknown[]) => {
   if (!isProduction) console.warn(...args);
 };
-const SYNC_ROUTE_TIMEOUT_MS = 12000;
+const SYNC_ROUTE_TIMEOUT_MS = 20000;
 const SUPABASE_QUERY_TIMEOUT_MS = 10000;
 
 export type SyncStats = {
@@ -22,6 +22,15 @@ export type SyncStats = {
   sectionsUpserted: number;
   sectionsDeleted: number;
   sectionsUnchanged: number;
+};
+
+export type CloudSyncQuotaStatus = {
+  limitPerHour: number;
+  usedInWindow: number;
+  remainingInWindow: number;
+  windowStartedAt: string;
+  windowEndsAt: string;
+  consumedThisSync: number;
 };
 
 type TimeoutResult<T> =
@@ -64,9 +73,77 @@ function normalizeErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-async function upsertProjectViaServerRoute(project: Project): Promise<{ error: string | null; stats?: SyncStats }> {
+const getSyncRouteBase = () => (typeof window !== "undefined" ? window.location.origin : "");
+
+export type SyncPreviewSection = { id: string; title: string };
+export type SyncPreviewItem = {
+  projectId: string;
+  projectTitle: string;
+  sectionsNew: SyncPreviewSection[];
+  sectionsUpdated: SyncPreviewSection[];
+  sectionsDeleted: SyncPreviewSection[];
+};
+
+/** Chama POST /api/projects/sync?dryRun=1 para cada projeto; retorna créditos totais e lista amigável do que será sincronizado. */
+export async function getSyncPreview(projects: Project[]): Promise<{ estimatedCredits: number; items: SyncPreviewItem[] } | null> {
+  if (projects.length === 0) return { estimatedCredits: 0, items: [] };
+  const base = getSyncRouteBase();
+  let total = 0;
+  const items: SyncPreviewItem[] = [];
+  for (const project of projects) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), SYNC_ROUTE_TIMEOUT_MS);
+      const response = await fetch(`${base}/api/projects/sync?dryRun=1`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!response.ok) return null;
+      const data = (await response.json().catch(() => ({}))) as {
+        estimatedCredits?: number;
+        details?: {
+          projectId?: string;
+          projectTitle?: string;
+          sectionsNew?: SyncPreviewSection[];
+          sectionsUpdated?: SyncPreviewSection[];
+          sectionsDeleted?: SyncPreviewSection[];
+        };
+      };
+      total += Number(data?.estimatedCredits ?? 0);
+      if (data?.details) {
+        items.push({
+          projectId: data.details.projectId ?? project.id,
+          projectTitle: data.details.projectTitle ?? project.title ?? project.id,
+          sectionsNew: Array.isArray(data.details.sectionsNew) ? data.details.sectionsNew : [],
+          sectionsUpdated: Array.isArray(data.details.sectionsUpdated) ? data.details.sectionsUpdated : [],
+          sectionsDeleted: Array.isArray(data.details.sectionsDeleted) ? data.details.sectionsDeleted : [],
+        });
+      }
+    } catch {
+      return null;
+    }
+  }
+  return { estimatedCredits: total, items };
+}
+
+/** Chama POST /api/projects/sync?dryRun=1 para cada projeto e soma os créditos estimados (não grava nada). */
+export async function estimateCreditsForProjects(projects: Project[]): Promise<number | null> {
+  const result = await getSyncPreview(projects);
+  return result ? result.estimatedCredits : null;
+}
+
+async function upsertProjectViaServerRoute(project: Project): Promise<{
+  error: string | null;
+  errorCode?: string;
+  structuralLimitReason?: string;
+  stats?: SyncStats;
+  quota?: CloudSyncQuotaStatus | null;
+}> {
   try {
-    const base = typeof window !== "undefined" ? window.location.origin : "";
+    const base = getSyncRouteBase();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), SYNC_ROUTE_TIMEOUT_MS);
     const response = await fetch(`${base}/api/projects/sync`, {
@@ -79,11 +156,18 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{ error: s
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
+      const rawError = body?.error ?? body?.message;
+      const errorMessage =
+        normalizeErrorMessage(rawError, "") ||
+        (typeof rawError === "object" && rawError !== null && "message" in rawError
+          ? normalizeErrorMessage((rawError as { message?: unknown }).message, "")
+          : "") ||
+        `sync_route_failed_${response.status}`;
       return {
-        error:
-          normalizeErrorMessage(body?.error, "") ||
-          normalizeErrorMessage(body?.message, "") ||
-          `sync_route_failed_${response.status}`,
+        error: errorMessage,
+        errorCode: typeof body?.code === "string" ? body.code : undefined,
+        structuralLimitReason: typeof body?.reason === "string" ? body.reason : undefined,
+        quota: body?.quota,
       };
     }
 
@@ -91,6 +175,7 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{ error: s
     return {
       error: null,
       stats: body?.stats,
+      quota: body?.quota,
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -102,10 +187,9 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{ error: s
 
 async function deleteProjectViaServerRoute(projectId: string): Promise<{ error: string | null }> {
   try {
-    const base = typeof window !== "undefined" ? window.location.origin : "";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), SYNC_ROUTE_TIMEOUT_MS);
-    const response = await fetch(`${base}/api/projects/sync`, {
+    const response = await fetch(`${getSyncRouteBase()}/api/projects/sync`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId }),
@@ -170,7 +254,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     content: (row.content as string) || "",
     created_at: row.created_at as string,
     parentId: (row.parent_id as string) || undefined,
-    order: (row.order as number) ?? 0,
+    order: ((row.sort_order ?? (row as { order?: number }).order) as number) ?? 0,
     color: (row.color as string) || undefined,
   };
 }
@@ -206,7 +290,7 @@ export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
     .from("sections")
     .select("*")
     .in("project_id", projectIds)
-    .order("order", { ascending: true });
+    .order("sort_order", { ascending: true });
 
   const sectionsResult = await withTimeout(sectionsQuery, SUPABASE_QUERY_TIMEOUT_MS);
   if (sectionsResult.timedOut || !sectionsResult.value) {
@@ -232,17 +316,29 @@ export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
 export async function upsertProjectToSupabase(
   project: Project,
   userIdHint?: string  // opcional — buscamos internamente se não fornecido
-): Promise<{ error: string | null; skippedReason?: "unauthenticated"; stats?: SyncStats }> {
+): Promise<{
+  error: string | null;
+  errorCode?: string;
+  structuralLimitReason?: string;
+  skippedReason?: "unauthenticated";
+  stats?: SyncStats;
+  quota?: CloudSyncQuotaStatus | null;
+}> {
   // Caminho principal: sempre tenta rota server-side (sessão por cookie)
   // para evitar inconsistências de hidratação de auth no client.
   const routeResult = await upsertProjectViaServerRoute(project);
-  if (!routeResult.error) return { error: null, stats: routeResult.stats };
+  if (!routeResult.error) return { error: null, stats: routeResult.stats, quota: routeResult.quota };
 
   if (routeResult.error === "unauthenticated" || routeResult.error.includes("failed_401")) {
     return { error: null, skippedReason: "unauthenticated" };
   }
 
-  return { error: routeResult.error };
+  return {
+    error: routeResult.error,
+    errorCode: routeResult.errorCode,
+    structuralLimitReason: routeResult.structuralLimitReason,
+    quota: routeResult.quota,
+  };
 }
 
 /** Deleta um projeto (RLS garante que só o dono consegue) */

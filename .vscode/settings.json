@@ -1,0 +1,11 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "ForEach-Object": true,
+        "Group-Object": true,
+        "npm run -s i18n:validate": true,
+        "npm run -s i18n:check": true,
+        "npm run -s i18n:audit": true,
+        "npm run -s build": true,
+        ".vscode/settings.json": true
+    }
+}

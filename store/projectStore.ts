@@ -5,7 +5,12 @@ import {
   upsertProjectToSupabase,
   deleteProjectFromSupabase,
 } from "@/lib/supabase/projectSync";
-import type { SyncStats } from "@/lib/supabase/projectSync";
+import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync";
+import {
+  FREE_MAX_PROJECTS,
+  FREE_MAX_SECTIONS_PER_PROJECT,
+  FREE_MAX_SECTIONS_TOTAL,
+} from "@/lib/structuralLimits";
 
 export type UUID = string;
 
@@ -203,26 +208,30 @@ export type SyncStatus = "idle" | "syncing" | "synced" | "error";
 export type PersistenceConfig = {
   debounceMs: number;
   autosaveIntervalMs: number;
-  syncOnBlur: boolean;
-  syncOnVisibilityHidden: boolean;
-  syncOnBeforeUnload: boolean;
-  syncOnPageHide: boolean;
+  /** Quando true, envia alterações para a nuvem no intervalo (autosaveIntervalMs). Quando false, só sincroniza ao clicar em Sincronizar. */
+  syncAutomatic: boolean;
 };
 
 export type LastSyncStats = SyncStats & {
   projectId: string;
   syncedAt: string;
+  creditsConsumed?: number;
 };
 
 interface ProjectStore {
   projects: Project[];
   syncStatus: SyncStatus;
   cloudSyncPausedUntil: string | null;
+  /** Motivo da pausa: 'quota' = limite de créditos/hora; 'failures' = circuit breaker; 'rate_limit' = muitas req/min */
+  cloudSyncPauseReason: "quota" | "failures" | "rate_limit" | null;
   pendingSyncCount: number;
   lastSyncedAt: string | null;
   lastSyncStats: LastSyncStats | null;
   lastSyncStatsHistory: LastSyncStats[];
+  lastQuotaStatus: CloudSyncQuotaStatus | null;
   lastSyncError: string | null;
+  /** Último motivo técnico de falha (ex.: sync_route_timeout); útil para debug quando pausa por falhas */
+  lastSyncFailureReason: string | null;
   persistenceConfig: PersistenceConfig;
   // Auth sync
   userId: string | null;
@@ -245,8 +254,14 @@ interface ProjectStore {
   // Storage
   loadFromStorage: () => void;
   loadFromSupabase: () => Promise<"loaded" | "empty" | "error">;
+  /** Grava o estado atual no localStorage (útil em beforeunload/visibilitychange para não perder dados). */
+  persistToStorage: () => void;
   syncProjectToSupabase: (projectId: UUID) => Promise<void>;
   flushPendingSyncs: () => Promise<void>;
+  /** IDs dos projetos com alterações ainda não enviadas (para estimativa de créditos). */
+  getPendingProjectIds: () => string[];
+  /** Limpa o histórico de syncs (lastSyncStatsHistory) e persiste. */
+  clearSyncHistory: () => void;
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
@@ -254,11 +269,12 @@ interface ProjectStore {
 
 const STORAGE_KEY = "gdd_projects_v1";
 const PERSISTENCE_CONFIG_KEY = "gdd_persistence_config_v1";
+const SYNC_STATE_KEY = "gdd_sync_state_v1";
 const MAX_IMAGE_SRC_LENGTH = 2048;
 const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
 const SYNC_FAILURE_WINDOW_MS = 120000;
-const SYNC_CIRCUIT_BREAKER_THRESHOLD = 3;
-const SYNC_CIRCUIT_BREAKER_COOLDOWN_MS = 10 * 60 * 1000;
+const SYNC_CIRCUIT_BREAKER_THRESHOLD = 5;
+const SYNC_CIRCUIT_BREAKER_COOLDOWN_MS = 5 * 60 * 1000;
 const SYNC_BACKOFF_BASE_MS = 30000;
 const SYNC_BACKOFF_MAX_MS = 5 * 60 * 1000;
 const SYNC_STATS_HISTORY_LIMIT = 12;
@@ -266,10 +282,7 @@ const SYNC_STATS_HISTORY_LIMIT = 12;
 const DEFAULT_PERSISTENCE_CONFIG: PersistenceConfig = {
   debounceMs: 1500,
   autosaveIntervalMs: 30000,
-  syncOnBlur: true,
-  syncOnVisibilityHidden: true,
-  syncOnBeforeUnload: true,
-  syncOnPageHide: true,
+  syncAutomatic: false,
 };
 
 export const useProjectStore = create<ProjectStore>((set, get) => {
@@ -338,8 +351,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       const raw = localStorage.getItem(PERSISTENCE_CONFIG_KEY);
       if (!raw) return DEFAULT_PERSISTENCE_CONFIG;
-      const parsed = JSON.parse(raw) as Partial<PersistenceConfig>;
-      return { ...DEFAULT_PERSISTENCE_CONFIG, ...parsed };
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      return {
+        debounceMs: Number(parsed.debounceMs) || DEFAULT_PERSISTENCE_CONFIG.debounceMs,
+        autosaveIntervalMs: Number(parsed.autosaveIntervalMs) || DEFAULT_PERSISTENCE_CONFIG.autosaveIntervalMs,
+        syncAutomatic: Boolean(parsed.syncAutomatic),
+      };
     } catch {
       return DEFAULT_PERSISTENCE_CONFIG;
     }
@@ -349,6 +366,48 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       localStorage.setItem(PERSISTENCE_CONFIG_KEY, JSON.stringify(config));
     } catch {}
+  };
+
+  type PersistedSyncState = {
+    lastQuotaStatus: CloudSyncQuotaStatus | null;
+    lastSyncedAt: string | null;
+    lastSyncStats: LastSyncStats | null;
+    lastSyncStatsHistory: LastSyncStats[];
+    dirtyProjectIds: string[];
+  };
+
+  const persistSyncState = () => {
+    try {
+      if (typeof window === "undefined") return;
+      const state = get();
+      const payload: PersistedSyncState = {
+        lastQuotaStatus: state.lastQuotaStatus,
+        lastSyncedAt: state.lastSyncedAt,
+        lastSyncStats: state.lastSyncStats,
+        lastSyncStatsHistory: state.lastSyncStatsHistory || [],
+        dirtyProjectIds: Array.from(dirtyProjectIds),
+      };
+      localStorage.setItem(SYNC_STATE_KEY, JSON.stringify(payload));
+    } catch {}
+  };
+
+  const loadSyncState = (): Partial<PersistedSyncState> | null => {
+    try {
+      if (typeof window === "undefined") return null;
+      const raw = localStorage.getItem(SYNC_STATE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as PersistedSyncState;
+      if (!parsed || typeof parsed !== "object") return null;
+      return {
+        lastQuotaStatus: parsed.lastQuotaStatus ?? null,
+        lastSyncedAt: parsed.lastSyncedAt ?? null,
+        lastSyncStats: parsed.lastSyncStats ?? null,
+        lastSyncStatsHistory: Array.isArray(parsed.lastSyncStatsHistory) ? parsed.lastSyncStatsHistory.slice(0, SYNC_STATS_HISTORY_LIMIT) : [],
+        dirtyProjectIds: Array.isArray(parsed.dirtyProjectIds) ? parsed.dirtyProjectIds : undefined,
+      };
+    } catch {
+      return null;
+    }
   };
 
   const updatePendingSyncCount = () => {
@@ -439,7 +498,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     if (!Number.isFinite(pausedUntilMs)) return false;
 
     if (Date.now() >= pausedUntilMs) {
-      set({ cloudSyncPausedUntil: null, lastSyncError: null, syncStatus: "idle" });
+      set({ cloudSyncPausedUntil: null, cloudSyncPauseReason: null, lastSyncError: null, lastSyncFailureReason: null, syncStatus: "idle" });
       consecutiveSyncFailures = 0;
       firstFailureAtMs = 0;
       return false;
@@ -461,8 +520,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const pausedUntil = new Date(now + SYNC_CIRCUIT_BREAKER_COOLDOWN_MS).toISOString();
       set({
         cloudSyncPausedUntil: pausedUntil,
+        cloudSyncPauseReason: "failures",
         syncStatus: "idle",
         lastSyncError: "Cloud sync pausado temporariamente devido a falhas repetidas.",
+        lastSyncFailureReason: errorMessage,
       });
       return;
     }
@@ -473,7 +534,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     syncBackoffUntilByProject.set(projectId, now + backoffDelay);
     setTimeout(() => debouncedSync(projectId), backoffDelay);
 
-    set({ syncStatus: "error", lastSyncError: errorMessage });
+    set({ syncStatus: "error", lastSyncError: errorMessage, lastSyncFailureReason: errorMessage });
   };
 
   const clearSyncFailureState = () => {
@@ -499,11 +560,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   const markProjectDirty = (projectId: string) => {
     dirtyProjectIds.add(projectId);
     updatePendingSyncCount();
+    persistSyncState();
   };
 
   const clearProjectDirty = (projectId: string) => {
     dirtyProjectIds.delete(projectId);
     updatePendingSyncCount();
+    persistSyncState();
   };
 
   const syncNow = async (projectId: string) => {
@@ -526,10 +589,52 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       set({ syncStatus: "syncing", lastSyncError: null });
 
-      const { error, skippedReason, stats } = await upsertProjectToSupabase(sanitizeProjectForSync(project));
+      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota } =
+        await upsertProjectToSupabase(sanitizeProjectForSync(project));
+      if (quota) {
+        set({ lastQuotaStatus: quota });
+        persistSyncState();
+      }
       if (error) {
-        console.error("[projectStore] Falha no sync imediato:", error);
-        registerSyncFailure(projectId, error);
+        if (errorCode === "quota_exceeded") {
+          const until = quota?.windowEndsAt || null;
+          const nextError =
+            quota && Number.isFinite(quota.remainingInWindow)
+              ? `Limite de créditos de sync por hora atingido (${quota.usedInWindow}/${quota.limitPerHour}).`
+              : "Limite de créditos de sync por hora atingido.";
+          set({
+            syncStatus: "error",
+            lastSyncError: nextError,
+            cloudSyncPausedUntil: until,
+            cloudSyncPauseReason: until ? "quota" : null,
+          });
+          return;
+        }
+        if (errorCode === "rate_limit") {
+          const until = new Date(Date.now() + 60 * 1000).toISOString();
+          set({
+            syncStatus: "error",
+            lastSyncError: "Muitas requisições de sync por minuto. Tente em breve.",
+            cloudSyncPausedUntil: until,
+            cloudSyncPauseReason: "rate_limit",
+          });
+          return;
+        }
+        if (errorCode === "structural_limit_exceeded") {
+          const msg =
+            structuralLimitReason === "projects_limit"
+              ? "Limite do plano Free: máximo de 2 projetos."
+              : structuralLimitReason === "sections_per_project_limit"
+                ? `Limite do plano Free: máximo de ${FREE_MAX_SECTIONS_PER_PROJECT} seções por projeto.`
+                : structuralLimitReason === "sections_total_limit"
+                  ? `Limite do plano Free: máximo de ${FREE_MAX_SECTIONS_TOTAL} seções na conta.`
+                  : "Limite estrutural do plano Free atingido.";
+          set({ syncStatus: "error", lastSyncError: msg });
+          return;
+        }
+        const reasonWithCode = errorCode ? `${error} (passo: ${errorCode})` : error;
+        console.error("[projectStore] Falha no sync imediato:", reasonWithCode);
+        registerSyncFailure(projectId, reasonWithCode);
         return;
       }
 
@@ -546,21 +651,29 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             projectId,
             syncedAt,
             ...stats,
+            creditsConsumed: quota?.consumedThisSync,
           };
           set({
             syncStatus: "synced",
             lastSyncedAt: syncedAt,
             lastSyncError: null,
+            lastSyncFailureReason: null,
             lastSyncStats: nextEntry,
             lastSyncStatsHistory: [nextEntry, ...currentHistory].slice(0, SYNC_STATS_HISTORY_LIMIT),
+            cloudSyncPausedUntil: null,
+            cloudSyncPauseReason: null,
           });
         } else {
           set({
             syncStatus: "synced",
             lastSyncedAt: syncedAt,
             lastSyncError: null,
+            lastSyncFailureReason: null,
+            cloudSyncPausedUntil: null,
+            cloudSyncPauseReason: null,
           });
         }
+        persistSyncState();
         return;
       }
 
@@ -582,6 +695,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
   const debouncedSync = (projectId: string) => {
     if (isCloudSyncPaused()) return;
+    if (!get().persistenceConfig.syncAutomatic) return;
 
     const debounceMs = get().persistenceConfig.debounceMs;
     if (syncTimers.has(projectId)) clearTimeout(syncTimers.get(projectId)!);
@@ -612,10 +726,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     projects: [],
     syncStatus: "idle",
     cloudSyncPausedUntil: null,
+    cloudSyncPauseReason: null,
+    lastSyncFailureReason: null,
     pendingSyncCount: 0,
     lastSyncedAt: null,
     lastSyncStats: null,
     lastSyncStatsHistory: [],
+    lastQuotaStatus: null,
     lastSyncError: null,
     persistenceConfig: loadPersistenceConfig(),
     userId: null,
@@ -629,16 +746,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     setUserId: (id: string | null) => {
       set({ userId: id });
-      if (id) {
-        const projects = get().projects;
-        projects.forEach((p) => {
-          markProjectDirty(p.id);
-          debouncedSync(p.id);
-        });
-      }
+      // Não agendar sync aqui: ao fazer login isso disparava sync de todos os projetos e consumia créditos.
+      // Projetos só locais (localOnly) são enviados em loadFromSupabase; edições disparam sync via wrappedSetWithSync.
     },
 
     addProject: (name: string, description: string) => {
+      const projects = get().projects;
+      if (projects.length >= FREE_MAX_PROJECTS) {
+        throw new Error("structural_limit_projects");
+      }
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       wrappedSetWithSync(
@@ -657,6 +773,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     addSection: (projectId: UUID, title: string, content?: string) => {
+      const projects = get().projects;
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return "" as UUID;
+      const sectionsInProject = (project.sections || []).length;
+      if (sectionsInProject >= FREE_MAX_SECTIONS_PER_PROJECT) {
+        throw new Error("structural_limit_sections_per_project");
+      }
+      const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
+      if (totalSections >= FREE_MAX_SECTIONS_TOTAL) {
+        throw new Error("structural_limit_sections_total");
+      }
       const newId = crypto.randomUUID();
       wrappedSetWithSync(
         (prev) =>
@@ -681,6 +808,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => {
+      const projects = get().projects;
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return "" as UUID;
+      const sectionsInProject = (project.sections || []).length;
+      if (sectionsInProject >= FREE_MAX_SECTIONS_PER_PROJECT) {
+        throw new Error("structural_limit_sections_per_project");
+      }
+      const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
+      if (totalSections >= FREE_MAX_SECTIONS_TOTAL) {
+        throw new Error("structural_limit_sections_total");
+      }
       const newId = crypto.randomUUID();
       wrappedSetWithSync(
         (prev) =>
@@ -891,14 +1029,49 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           // Persist migrated data
           persist(migrated);
         }
+        // Restaurar estado de exibição do sync (créditos, último sync, histórico) e projetos pendentes após refresh/login
+        const savedSync = loadSyncState();
+        if (savedSync?.dirtyProjectIds && Array.isArray(savedSync.dirtyProjectIds)) {
+          const validIds = new Set(get().projects.map((p) => p.id));
+          dirtyProjectIds.clear();
+          savedSync.dirtyProjectIds.forEach((id: string) => {
+            if (validIds.has(id)) dirtyProjectIds.add(id);
+          });
+          updatePendingSyncCount();
+        }
+        if (savedSync && (savedSync.lastQuotaStatus ?? savedSync.lastSyncedAt ?? savedSync.lastSyncStats)) {
+          const prevStatus = get().syncStatus;
+          set({
+            lastQuotaStatus: savedSync.lastQuotaStatus ?? null,
+            lastSyncedAt: savedSync.lastSyncedAt ?? null,
+            lastSyncStats: savedSync.lastSyncStats ?? null,
+            lastSyncStatsHistory: savedSync.lastSyncStatsHistory ?? [],
+            syncStatus: savedSync.lastSyncedAt ? "synced" : prevStatus,
+          });
+        }
       } catch (e) {
         logWarn("Failed to load projects from localStorage", e);
+      }
+    },
+
+    persistToStorage: () => {
+      try {
+        persist(get().projects);
+      } catch (e) {
+        logWarn("persistToStorage failed", e);
       }
     },
 
     syncProjectToSupabase: async (projectId: UUID) => {
       markProjectDirty(projectId);
       await syncNow(projectId);
+    },
+
+    getPendingProjectIds: () => Array.from(dirtyProjectIds),
+
+    clearSyncHistory: () => {
+      set({ lastSyncStatsHistory: [] });
+      persistSyncState();
     },
 
     flushPendingSyncs: async () => {
@@ -940,8 +1113,20 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       // Se nuvem está vazia, sinaliza para o hook de init disparar migração
       if (remote.length === 0) return "empty";
 
+      // Re-lê o estado local antes do merge (pode ter mudado durante o fetch)
+      localProjects = get().projects;
+      if (localProjects.length === 0) {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = parseProjectsFromStorage(raw);
+            if (parsed) localProjects = parsed;
+          }
+        } catch {}
+      }
+
       // ── Merge inteligente ─────────────────────────────────────────────────
-      // Regra: prefere o mais recente (updatedAt) quando existe nos dois lados.
+      // Regra: prefere local se mais recente ou se tiver mais seções (evita perda quando sync falhou).
       // Projetos que só existem localmente (ainda não sincronizados) são MANTIDOS
       // e automaticamente enviados ao cloud.
       const remoteById = new Map(remote.map((p) => [p.id, p] as const));
@@ -957,24 +1142,47 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         ...remote.map((remoteProject) => {
           const local = localProjects.find((p) => p.id === remoteProject.id);
           if (!local) return remoteProject;
-          // Usa o mais recente entre local e cloud
-          return new Date(local.updatedAt) > new Date(remoteProject.updatedAt)
-            ? local
-            : remoteProject;
+          const localUpdated = new Date(local.updatedAt).getTime();
+          const remoteUpdated = new Date(remoteProject.updatedAt).getTime();
+          const localSections = (local.sections || []).length;
+          const remoteSections = (remoteProject.sections || []).length;
+          // Prefere local se for mais recente OU se tiver mais seções (evita perder dados quando sync de seções falhou)
+          const preferLocal =
+            localUpdated > remoteUpdated || (localUpdated >= remoteUpdated && localSections >= remoteSections);
+          return preferLocal ? local : remoteProject;
         }),
         ...localOnly, // Projetos que só existem localmente
       ];
 
-      set({ projects: merged });
+      const totalSections = (arr: Project[]) =>
+        arr.reduce((sum, p) => sum + (p.sections || []).length, 0);
+      const mergedCount = totalSections(merged);
+
+      // Nunca sobrescrever localStorage com menos dados: se o que está no disco tiver mais seções, manter local
+      let toApply = merged;
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const current = parseProjectsFromStorage(raw);
+          if (current && totalSections(current) > mergedCount) {
+            toApply = current;
+            logInfo("[projectStore] Mantendo dados locais (mais seções que o merge com a nuvem).");
+          }
+        }
       } catch {}
 
-      // Sobe ao cloud os projetos que só existiam localmente
-      const toUpload = [...localOnly, ...localNewerSameId];
-      if (toUpload.length > 0) {
-        logInfo(`[projectStore] Subindo ${toUpload.length} projeto(s) local/newer para o cloud...`);
-        toUpload.forEach((p) => {
+      set({ projects: toApply });
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeProjectsForStorage(toApply)));
+      } catch {}
+
+      // Sobe ao cloud apenas projetos que ainda não existem no servidor (localOnly).
+      // Não disparamos sync para "localNewerSameId" aqui: após um load, comparação de datas
+      // (ex.: formato do Supabase vs localStorage) pode dar falso positivo e consumir créditos no login.
+      // Edições do usuário continuam disparando sync normalmente via wrappedSetWithSync.
+      if (localOnly.length > 0) {
+        logInfo(`[projectStore] Subindo ${localOnly.length} projeto(s) novos (só locais) para o cloud...`);
+        localOnly.forEach((p) => {
           markProjectDirty(p.id);
           debouncedSync(p.id);
         });

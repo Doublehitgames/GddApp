@@ -15,9 +15,23 @@ export default function PersistenceSettingsPage() {
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStatsHistory = useProjectStore((s) => s.lastSyncStatsHistory);
+  const clearSyncHistory = useProjectStore((s) => s.clearSyncHistory);
+  const lastQuotaStatus = useProjectStore((s) => s.lastQuotaStatus);
   const lastSyncError = useProjectStore((s) => s.lastSyncError);
+  const lastSyncFailureReason = useProjectStore((s) => s.lastSyncFailureReason);
+  const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
+  const cloudSyncPaused = Boolean(
+    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
+  );
+  const noCreditsLeft = Boolean(lastQuotaStatus && lastQuotaStatus.remainingInWindow === 0);
+  const syncDisabled = cloudSyncPaused || noCreditsLeft;
 
   const [saving, setSaving] = useState(false);
+
+  const quotaPercent =
+    lastQuotaStatus && lastQuotaStatus.limitPerHour > 0
+      ? Math.min(100, Math.round((lastQuotaStatus.usedInWindow / lastQuotaStatus.limitPerHour) * 100))
+      : 0;
 
   const handleSave = () => {
     setSaving(true);
@@ -56,73 +70,93 @@ export default function PersistenceSettingsPage() {
               </span>
             )}
           </div>
-          {lastSyncError && <p className="text-red-300 text-sm mt-2">{t("settings.persistencePage.lastErrorLabel")}: {lastSyncError}</p>}
+          {lastSyncError && (
+            <>
+              <p className="text-red-300 text-sm mt-2">{t("settings.persistencePage.lastErrorLabel")}: {lastSyncError}</p>
+              {lastSyncError.includes("supabase_non_json_response") && (
+                <p className="text-amber-200/90 text-xs mt-2">{t("settings.persistencePage.errorSupabaseNonJson")}</p>
+              )}
+              <p className="text-gray-500 text-xs mt-1">{t("settings.persistencePage.errorHintNetwork")}</p>
+            </>
+          )}
+          {lastSyncFailureReason && lastSyncFailureReason !== lastSyncError && (
+            <p className="text-amber-300/90 text-xs mt-1">
+              {t("settings.persistencePage.lastFailureReasonLabel")}: {lastSyncFailureReason}
+            </p>
+          )}
         </div>
 
+        {lastQuotaStatus && (
+          <div className="p-4 rounded-lg mb-6 bg-gray-800 border border-gray-700">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-gray-200">{t("settings.persistencePage.credits.title")}</h2>
+              <span className="text-sm font-semibold text-white">
+                {lastQuotaStatus.remainingInWindow}/{lastQuotaStatus.limitPerHour}
+              </span>
+            </div>
+            <div className="mt-2 h-2 rounded bg-gray-700 overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  quotaPercent >= 75 ? "bg-red-500" : quotaPercent >= 50 ? "bg-amber-500" : "bg-blue-500"
+                }`}
+                style={{ width: `${quotaPercent}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-300 mt-2">
+              {t("settings.persistencePage.credits.used")}: {lastQuotaStatus.usedInWindow} · {t("settings.persistencePage.credits.remaining")}: {lastQuotaStatus.remainingInWindow}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {t("settings.persistencePage.credits.resetAt")}: {new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString()}
+            </p>
+            <p className="text-xs text-gray-400 mt-2 border-t border-gray-700 pt-2">
+              {t("settings.persistencePage.credits.howItWorks")}
+            </p>
+          </div>
+        )}
+
         <div className="bg-gray-800 rounded-lg p-6 space-y-6 border border-gray-700">
-          <div>
-            <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.debounceLabel")}</label>
-            <input
-              type="number"
-              min={300}
-              step={100}
-              value={persistenceConfig.debounceMs}
-              onChange={(e) => updatePersistenceConfig({ debounceMs: Number(e.target.value) || 1500 })}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.debounceHint")}</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.autosaveLabel")}</label>
-            <input
-              type="number"
-              min={5000}
-              step={1000}
-              value={persistenceConfig.autosaveIntervalMs}
-              onChange={(e) => updatePersistenceConfig({ autosaveIntervalMs: Number(e.target.value) || 30000 })}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.autosaveHint")}</p>
-          </div>
-
-          <div className="grid gap-3">
-            <label className="flex items-center gap-3">
+          <div className="flex items-start gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={persistenceConfig.syncOnBlur}
-                onChange={(e) => updatePersistenceConfig({ syncOnBlur: e.target.checked })}
+                checked={persistenceConfig.syncAutomatic}
+                onChange={(e) => updatePersistenceConfig({ syncAutomatic: e.target.checked })}
+                className="rounded border-gray-500"
               />
-              <span>{t("settings.persistencePage.form.syncOnBlur")}</span>
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={persistenceConfig.syncOnVisibilityHidden}
-                onChange={(e) => updatePersistenceConfig({ syncOnVisibilityHidden: e.target.checked })}
-              />
-              <span>{t("settings.persistencePage.form.syncOnHidden")}</span>
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={persistenceConfig.syncOnPageHide}
-                onChange={(e) => updatePersistenceConfig({ syncOnPageHide: e.target.checked })}
-              />
-              <span>{t("settings.persistencePage.form.syncOnPageHide")}</span>
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={persistenceConfig.syncOnBeforeUnload}
-                onChange={(e) => updatePersistenceConfig({ syncOnBeforeUnload: e.target.checked })}
-              />
-              <span>{t("settings.persistencePage.form.syncOnBeforeUnload")}</span>
+              <span className="font-medium">{t("settings.persistencePage.form.syncAutomatic")}</span>
             </label>
           </div>
+          <p className="text-xs text-gray-400 -mt-2">{t("settings.persistencePage.form.syncAutomaticHint")}</p>
+
+          {persistenceConfig.syncAutomatic && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.autosaveLabel")}</label>
+                <input
+                  type="number"
+                  min={5000}
+                  step={1000}
+                  value={persistenceConfig.autosaveIntervalMs}
+                  onChange={(e) => updatePersistenceConfig({ autosaveIntervalMs: Number(e.target.value) || 30000 })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.autosaveHint")}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">{t("settings.persistencePage.form.debounceLabel")}</label>
+                <input
+                  type="number"
+                  min={300}
+                  step={100}
+                  value={persistenceConfig.debounceMs}
+                  onChange={(e) => updatePersistenceConfig({ debounceMs: Number(e.target.value) || 1500 })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.debounceHint")}</p>
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -133,14 +167,37 @@ export default function PersistenceSettingsPage() {
             </button>
             <button
               onClick={() => { void flushPendingSyncs(); }}
-              className="px-5 py-2.5 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
+              disabled={syncDisabled}
+              title={
+                syncDisabled && cloudSyncPausedUntil
+                  ? `${t("settings.persistencePage.syncBadge.pausedUntil")}: ${new Date(cloudSyncPausedUntil).toLocaleTimeString()}`
+                  : noCreditsLeft
+                    ? t("settings.persistencePage.syncBadge.pausedQuota")
+                    : undefined
+              }
+              className={`px-5 py-2.5 rounded-lg font-semibold transition-colors ${
+                syncDisabled
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-90"
+                  : "bg-green-600 hover:bg-green-700 text-white"
+              }`}
             >
               {t("settings.persistencePage.actions.syncNow")}
             </button>
           </div>
 
           <div className="pt-2 border-t border-gray-700/80">
-            <h2 className="text-sm font-semibold text-gray-200 mb-2">{t("settings.persistencePage.history.title")}</h2>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h2 className="text-sm font-semibold text-gray-200">{t("settings.persistencePage.history.title")}</h2>
+              {lastSyncStatsHistory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => clearSyncHistory()}
+                  className="text-xs text-gray-400 hover:text-gray-200 underline"
+                >
+                  {t("settings.persistencePage.history.clearButton")}
+                </button>
+              )}
+            </div>
             {lastSyncStatsHistory.length === 0 ? (
               <p className="text-xs text-gray-400">{t("settings.persistencePage.history.empty")}</p>
             ) : (
@@ -154,7 +211,10 @@ export default function PersistenceSettingsPage() {
                       {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
                     </span>
                     <span className="text-gray-400 shrink-0">
-                      {t("settings.persistencePage.history.delta")}: +{entry.sectionsUpserted} / -{entry.sectionsDeleted} / ={entry.sectionsUnchanged}
+                      {t("settings.persistencePage.syncBadge.lastSyncCreated")}: {entry.sectionsUpserted} · {t("settings.persistencePage.syncBadge.lastSyncDeleted")}: {entry.sectionsDeleted} · {t("settings.persistencePage.syncBadge.lastSyncUnchanged")}: {entry.sectionsUnchanged}
+                    </span>
+                    <span className="text-gray-500 shrink-0">
+                      {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
                     </span>
                   </div>
                 ))}

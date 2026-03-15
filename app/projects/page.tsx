@@ -24,8 +24,16 @@ export default function ProjectsPage() {
       return;
     }
     setNameError("");
-    const id = addProject(name, description);
-    router.push(`/projects/${id}`); // ir para detalhes do projeto
+    try {
+      const id = addProject(name, description);
+      router.push(`/projects/${id}`);
+    } catch (e) {
+      if (e instanceof Error && e.message === "structural_limit_projects") {
+        setNameError(t("limits.projects"));
+      } else {
+        throw e;
+      }
+    }
   }
 
   return (

@@ -12,6 +12,7 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
         secure: false,
         sameSite: 'Lax',
       },
+      { name: 'gdd_locale', value: 'pt-BR', domain: 'localhost', path: '/', httpOnly: false, secure: false, sameSite: 'Lax' },
     ]);
 
     await page.route('**/api/projects/sync', async (route) => {
@@ -49,8 +50,10 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
 
     await page.getByPlaceholder('Nome do projeto').fill('Projeto Sync E2E');
     await page.getByPlaceholder('Descrição').fill('Teste de sincronização sem refresh');
+    await page.getByPlaceholder('Nome do projeto').blur();
     await page.getByRole('button', { name: 'Salvar Projeto' }).click();
 
+    await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
     await expect(page).toHaveURL(/\/projects\/.+/);
 
     const projectIdFromUrl = page.url().split('/projects/')[1];
@@ -69,12 +72,18 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
     const hasProjectPayload = syncPayloads.some((payload) => payload?.project?.id === projectIdFromUrl);
     expect(hasProjectPayload).toBeTruthy();
 
-    const hasSectionAndSubsection = syncPayloads.some((payload) => {
-      const sections = payload?.project?.sections || [];
-      const titles = sections.map((s: any) => s.title);
-      return titles.includes('Seção E2E') && titles.includes('Sub E2E');
-    });
-    expect(hasSectionAndSubsection).toBeTruthy();
+    // Aguarda até algum payload ter projeto com as duas seções (sync é debounced)
+    await expect
+      .poll(
+        () =>
+          syncPayloads.some((payload) => {
+            const sections = payload?.project?.sections || [];
+            const titles = sections.map((s: any) => s.title);
+            return titles.includes('Seção E2E') && titles.includes('Sub E2E');
+          }),
+        { timeout: 15000 }
+      )
+      .toBe(true);
   });
 
   test('deve manter dados locais após reload', async ({ page }) => {
@@ -82,8 +91,10 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
 
     await page.getByPlaceholder('Nome do projeto').fill('Projeto Reload E2E');
     await page.getByPlaceholder('Descrição').fill('Persistência após reload');
+    await page.getByPlaceholder('Nome do projeto').blur();
     await page.getByRole('button', { name: 'Salvar Projeto' }).click();
 
+    await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
     await expect(page).toHaveURL(/\/projects\/.+/);
     await page.reload();
 
