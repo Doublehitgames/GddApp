@@ -135,11 +135,12 @@ export async function estimateCreditsForProjects(projects: Project[]): Promise<n
   return result ? result.estimatedCredits : null;
 }
 
-/** Busca a cota atual da janela (GET /api/projects/sync/quota). Usado para atualizar o badge ao abrir o app. */
-export async function fetchQuotaStatus(): Promise<CloudSyncQuotaStatus | null> {
+/** Busca a cota do projeto (GET /api/projects/sync/quota?projectId=). Cota é por projeto; dono e membros compartilham. */
+export async function fetchQuotaStatus(projectId: string): Promise<CloudSyncQuotaStatus | null> {
   try {
     const base = getSyncRouteBase();
-    const res = await fetch(`${base}/api/projects/sync/quota`, { credentials: "include" });
+    const url = `${base}/api/projects/sync/quota?projectId=${encodeURIComponent(projectId)}`;
+    const res = await fetch(url, { credentials: "include" });
     if (!res.ok) return null;
     const data = (await res.json().catch(() => null)) as Record<string, unknown>;
     if (!data || typeof data.limitPerHour !== "number") return null;
@@ -184,6 +185,8 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
   structuralLimitReason?: string;
   stats?: SyncStats;
   quota?: CloudSyncQuotaStatus | null;
+  partial?: boolean;
+  remainingCreditsNeeded?: number;
 }> {
   try {
     const base = getSyncRouteBase();
@@ -219,6 +222,8 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
       error: null,
       stats: body?.stats,
       quota: body?.quota,
+      partial: Boolean(body?.partial),
+      remainingCreditsNeeded: typeof body?.remainingCreditsNeeded === "number" ? body.remainingCreditsNeeded : undefined,
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -284,6 +289,7 @@ function dbProjectToStore(
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
+    ownerId: (row.owner_id as string) || undefined,
     sections: sections
       .filter((s) => s.project_id === row.id)
       .map(dbSectionToStore),
@@ -366,11 +372,20 @@ export async function upsertProjectToSupabase(
   skippedReason?: "unauthenticated";
   stats?: SyncStats;
   quota?: CloudSyncQuotaStatus | null;
+  partial?: boolean;
+  remainingCreditsNeeded?: number;
 }> {
   // Caminho principal: sempre tenta rota server-side (sessão por cookie)
-  // para evitar inconsistências de hidratação de auth no client.
   const routeResult = await upsertProjectViaServerRoute(project);
-  if (!routeResult.error) return { error: null, stats: routeResult.stats, quota: routeResult.quota };
+  if (!routeResult.error) {
+    return {
+      error: null,
+      stats: routeResult.stats,
+      quota: routeResult.quota,
+      partial: routeResult.partial,
+      remainingCreditsNeeded: routeResult.remainingCreditsNeeded,
+    };
+  }
 
   if (routeResult.error === "unauthenticated" || routeResult.error.includes("failed_401")) {
     return { error: null, skippedReason: "unauthenticated" };

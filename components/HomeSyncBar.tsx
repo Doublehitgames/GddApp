@@ -107,27 +107,33 @@ export default function HomeSyncBar() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="text-gray-400">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
-            <span className="font-medium text-gray-200">
-              {lastQuotaStatus ? `${lastQuotaStatus.usedInWindow}/${lastQuotaStatus.limitPerHour}` : "—"}
-            </span>
+            {lastQuotaStatus ? (
+              <>
+                <span className="font-medium text-gray-200">
+                  {lastQuotaStatus.usedInWindow}/{lastQuotaStatus.limitPerHour}
+                </span>
+                <div className="w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
+                  <div
+                    className={`h-full transition-colors ${
+                      quotaPercent !== null && quotaPercent >= 75
+                        ? "bg-red-500"
+                        : quotaPercent !== null && quotaPercent >= 50
+                          ? "bg-amber-500"
+                          : "bg-blue-500"
+                    }`}
+                    style={{ width: `${quotaPercent || 0}%` }}
+                  />
+                </div>
+                <span className="text-gray-500">
+                  {t("settings.persistencePage.syncBadge.resetsAt")} {new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString()}
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-500" title={t("home.syncBar.creditsPerProjectHint")}>
+                {t("home.syncBar.creditsPerProjectHint")}
+              </span>
+            )}
           </div>
-          {lastQuotaStatus && (
-            <div className="w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
-              <div
-                className={`h-full transition-colors ${
-                  quotaPercent !== null && quotaPercent >= 75
-                    ? "bg-red-500"
-                    : quotaPercent !== null && quotaPercent >= 50
-                      ? "bg-amber-500"
-                      : "bg-blue-500"
-                }`}
-                style={{ width: `${quotaPercent || 0}%` }}
-              />
-            </div>
-          )}
-          <span className="text-gray-500">
-            {t("settings.persistencePage.syncBadge.resetsAt")} {lastQuotaStatus ? new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString() : "—"}
-          </span>
           <span className="text-gray-500">
             {lastSyncedAt
               ? `${tr("Último sync", "Last sync", "Último sync")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`

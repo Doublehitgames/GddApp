@@ -15,11 +15,26 @@ No **Supabase** você só **copia** a URL e as chaves do projeto (Project Settin
 
 Segue a [documentação oficial de API keys do Supabase](https://supabase.com/docs/guides/api/api-keys):
 
+### Obrigatórias para auth + sync
+
 - **`NEXT_PUBLIC_SUPABASE_URL`** – URL do projeto (ex.: `https://xxxxx.supabase.co`). No Supabase: Project Settings → API → Project URL.
-- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`** – Chave pública (`sb_publishable_...`). Seguro expor no client (web, mobile). No Supabase: **API Keys** → Publishable key. Fallback legado: `NEXT_PUBLIC_SUPABASE_ANON_KEY` (JWT anon).
-- **`CLOUD_SYNC_CREDITS_PER_HOUR`** (opcional) – Créditos de sync por hora; default: 30.
-- **`SUPABASE_SECRET_KEY`** ou **`SUPABASE_SERVICE_ROLE_KEY`** (opcional) – Só em backend (ex.: share público, admin). Preferir a **secret key** (`sb_secret_...`) no Supabase → API Keys; alternativa legada: JWT `service_role`. **Nunca** expor no client ou em repositório público. No código, a chave é lida apenas em `lib/supabase/env.server.ts` (importado só por `admin.ts` e rotas server-side), para não entrar no bundle do client.
-- **`NEXT_PUBLIC_GOOGLE_CLIENT_ID`** (opcional) – **Valor:** o ID do cliente OAuth 2.0 (Aplicativo da Web) do Google Cloud, copiado em Credenciais (o texto que termina em `.apps.googleusercontent.com`). Usado pelo botão **Inserir imagem do Google Drive** no editor de seções. Sem essa variável, o botão aparece mas ao clicar mostra aviso. **Configuração completa passo a passo:** `docs/GOOGLE_DRIVE_IMAGES.md` (Google Cloud, origens autorizadas, Vercel e redeploy).
+- **`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`** – Chave pública (`sb_publishable_...`). No Supabase: **API Keys** → Publishable key. Fallback legado: `NEXT_PUBLIC_SUPABASE_ANON_KEY` (JWT anon).
+
+### Obrigatória no Vercel para colaboração (convite de membros)
+
+Se você usa **convite de membros por e-mail** (Compartilhar projeto → Adicionar como editor), a API precisa de uma chave de backend para buscar usuários em `profiles` e inserir em `project_members`. **No Vercel você precisa configurar uma das duas:**
+
+- **`SUPABASE_SECRET_KEY`** (recomendado) – Secret key (`sb_secret_...`). No Supabase: **API Keys** → Secret key.
+- **`SUPABASE_SERVICE_ROLE_KEY`** (alternativa) – JWT `service_role` (legado). No Supabase: **API Keys** → service_role.
+
+**Sem essa variável no Vercel**, o convite por e-mail retorna erro 500 em produção. Em local, use a mesma variável no `.env.local`.
+
+**Nunca** expor essa chave no client ou em repositório; ela é usada só no servidor (`lib/supabase/admin.ts`).
+
+### Opcionais
+
+- **`CLOUD_SYNC_CREDITS_PER_HOUR`** – Créditos de sync por hora; default: 30.
+- **`NEXT_PUBLIC_GOOGLE_CLIENT_ID`** – ID do cliente OAuth 2.0 do Google (termina em `.apps.googleusercontent.com`). Usado pelo botão **Inserir imagem do Google Drive**. Configuração completa: `docs/GOOGLE_DRIVE_IMAGES.md`.
 
 ## Depois de alterar no Vercel
 

@@ -7,9 +7,10 @@ import {
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
 
-/** Plano Free: 30 créditos/hora. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
+/** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
 const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
-const CLOUD_SYNC_USAGE_TABLE = "cloud_sync_usage_hourly";
+/** Cota por projeto: dono e membros compartilham o mesmo pool. */
+const CLOUD_SYNC_USAGE_BY_PROJECT_TABLE = "cloud_sync_usage_hourly_by_project";
 
 /** Limite de requisições POST por usuário por minuto (proteção disk I/O / IOPS no Supabase). */
 const SYNC_REQUESTS_PER_MINUTE = 30;
@@ -81,7 +82,7 @@ function isMissingUsageTable(error: unknown) {
 
   return (
     code === "42P01" ||
-    message.includes(CLOUD_SYNC_USAGE_TABLE) ||
+    message.includes(CLOUD_SYNC_USAGE_BY_PROJECT_TABLE) ||
     message.toLowerCase().includes("does not exist") ||
     combined.includes("supabase_non_json_response") ||
     combined.includes("supabase_unavailable")
@@ -147,23 +148,66 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Projeto existente no cloud? (para saber dono e se usuário pode editar)
+    const { data: existingProject, error: existingProjectErr } = await supabase
+      .from("projects")
+      .select("id, owner_id")
+      .eq("id", project.id)
+      .maybeSingle();
+
+    if (existingProjectErr) {
+      const msg = getSupabaseErrorMessage(existingProjectErr, "project_lookup_failed");
+      return NextResponse.json({ error: msg, code: "project_lookup" }, { status: 500 });
+    }
+
+    const isNewProject = !existingProject;
+    const projectOwnerId = existingProject?.owner_id ?? user.id;
+
+    // Acesso: dono ou membro editor. Projeto novo só pode ser criado pelo dono (owner_id = user.id).
+    if (existingProject) {
+      const isOwner = existingProject.owner_id === user.id;
+      let isEditor = false;
+      if (!isOwner) {
+        const { data: memberRow } = await supabase
+          .from("project_members")
+          .select("role")
+          .eq("project_id", project.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        isEditor = (memberRow as { role?: string } | null)?.role === "editor";
+      }
+      if (!isOwner && !isEditor) {
+        return NextResponse.json(
+          { error: "forbidden", code: "forbidden", message: "Sem permissão para sincronizar este projeto." },
+          { status: 403 }
+        );
+      }
+    } else {
+      // Projeto novo: só o criador pode enviar (será o dono)
+      if (user.id !== projectOwnerId) {
+        return NextResponse.json(
+          { error: "forbidden", code: "forbidden", message: "Apenas o dono pode criar o projeto." },
+          { status: 403 }
+        );
+      }
+    }
+
     const incomingSections = project.sections || [];
 
-    // Limites estruturais (plano Free)
-    const { data: userProjects, error: userProjectsErr } = await supabase
+    // Limites estruturais: aplicados ao DONO do projeto (membros sujeitos aos limites do dono)
+    const { data: ownerProjects, error: ownerProjectsErr } = await supabase
       .from("projects")
       .select("id")
-      .eq("owner_id", user.id);
+      .eq("owner_id", projectOwnerId);
 
-    if (userProjectsErr) {
-      const msg = getSupabaseErrorMessage(userProjectsErr, "projects_query_failed");
+    if (ownerProjectsErr) {
+      const msg = getSupabaseErrorMessage(ownerProjectsErr, "projects_query_failed");
       return NextResponse.json({ error: msg, code: "projects_query" }, { status: 500 });
     }
 
-    const userProjectIds = new Set((userProjects || []).map((r: { id: string }) => r.id));
-    const isNewProject = !userProjectIds.has(project.id);
+    const ownerProjectIds = new Set((ownerProjects || []).map((r: { id: string }) => r.id));
 
-    if (isNewProject && (userProjectIds.size >= FREE_MAX_PROJECTS)) {
+    if (isNewProject && ownerProjectIds.size >= FREE_MAX_PROJECTS) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
@@ -201,7 +245,7 @@ export async function POST(request: NextRequest) {
     const { count: totalSectionsCount, error: totalSectionsErr } = await supabase
       .from("sections")
       .select("id", { count: "exact", head: true })
-      .in("project_id", Array.from(userProjectIds));
+      .in("project_id", Array.from(ownerProjectIds));
 
     if (totalSectionsErr) {
       const msg = getSupabaseErrorMessage(totalSectionsErr, "total_sections_count_failed");
@@ -249,15 +293,13 @@ export async function POST(request: NextRequest) {
     const sectionsDeleted = removedSectionIds.length;
     const sectionsUnchanged = Math.max(0, sectionsTotal - sectionsUpserted);
 
-    // Créditos: cobramos pelo DIFF desta requisição (estado enviado vs. cloud), não por "ações" do usuário.
-    // 1 por seção nova ou com alteração de conteúdo; 1 no total por reordenação (só order mudou); 1 por exclusão no cloud.
-    // Ex.: criar + editar + mover + apagar (sem nunca ter dado sync) → envio = 0 seções → 0 créditos.
-    let contentChangeCount = 0;
-    let orderOnlyCount = 0;
+    // Créditos: 1 por seção nova/conteúdo, 1 no total por reordenação, 1 por delete. Listas para sync parcial.
+    const contentUpsertList: any[] = [];
+    const orderOnlyList: any[] = [];
     for (const section of sectionsToUpsert) {
       const existing = existingById.get(section.id);
       if (!existing) {
-        contentChangeCount += 1;
+        contentUpsertList.push(section);
         continue;
       }
       const onlyOrderChanged =
@@ -266,12 +308,21 @@ export async function POST(request: NextRequest) {
         (existing.content || "") === (section.content || "") &&
         (existing.color || null) === (section.color || null);
       if (onlyOrderChanged) {
-        orderOnlyCount += 1;
+        orderOnlyList.push(section);
       } else {
-        contentChangeCount += 1;
+        contentUpsertList.push(section);
       }
     }
+    const orderOnlyCount = orderOnlyList.length;
+    const contentChangeCount = contentUpsertList.length;
     const consumedThisSync = contentChangeCount + (orderOnlyCount > 0 ? 1 : 0) + sectionsDeleted;
+
+    // Ordenar conteúdo por profundidade (pais antes de filhos) para sync parcial
+    const byId = new Map(contentUpsertList.map((s: any) => [s.id, s]));
+    const getDepth = (s: any): number => (s.parentId && byId.get(s.parentId) ? 1 + getDepth(byId.get(s.parentId)!) : 0);
+    const contentUpsertSorted = [...contentUpsertList].sort(
+      (a: any, b: any) => getDepth(a) - getDepth(b) || Number(a.order) - Number(b.order)
+    );
 
     if (dryRun) {
       const existingArr = existingSections || [];
@@ -301,13 +352,14 @@ export async function POST(request: NextRequest) {
     const { windowStartIso, windowEndIso } = getWindowTimestamps(now);
     const hourlyLimit = getHourlyCreditLimit();
 
+    // Cota por projeto: dono e membros compartilham o mesmo pool
     let usageBefore = 0;
     let quotaEnabled = false;
 
     const { data: usageRow, error: usageReadErr } = await supabase
-      .from(CLOUD_SYNC_USAGE_TABLE)
+      .from(CLOUD_SYNC_USAGE_BY_PROJECT_TABLE)
       .select("used_credits")
-      .eq("user_id", user.id)
+      .eq("project_id", project.id)
       .eq("window_start", windowStartIso)
       .maybeSingle();
 
@@ -321,8 +373,10 @@ export async function POST(request: NextRequest) {
       usageBefore = Number(usageRow?.used_credits || 0);
     }
 
-    if (quotaEnabled && usageBefore + consumedThisSync > hourlyLimit) {
-      const remaining = Math.max(0, hourlyLimit - usageBefore);
+    const availableCredits = Math.max(0, hourlyLimit - usageBefore);
+    const wouldExceedQuota = quotaEnabled && usageBefore + consumedThisSync > hourlyLimit;
+
+    if (wouldExceedQuota && availableCredits <= 0) {
       return NextResponse.json(
         {
           error: "cloud_sync_quota_exceeded",
@@ -330,7 +384,7 @@ export async function POST(request: NextRequest) {
           quota: {
             limitPerHour: hourlyLimit,
             usedInWindow: usageBefore,
-            remainingInWindow: remaining,
+            remainingInWindow: 0,
             windowStartedAt: windowStartIso,
             windowEndsAt: windowEndIso,
             consumedThisSync: 0,
@@ -340,57 +394,108 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error: pErr } = await supabase.from("projects").upsert(
-      {
-        id: project.id,
-        owner_id: user.id,
-        title: project.title,
-        description: project.description || "",
-        mindmap_settings: project.mindMapSettings || {},
-        created_at: project.createdAt,
-        updated_at: project.updatedAt,
-      },
-      { onConflict: "id" }
-    );
+    // Sync parcial: usar só os créditos disponíveis (upserts por profundidade, depois order-only, depois deletes)
+    let sectionsToApply: any[] = [];
+    let deletesToApply: string[] = [];
+    let actualCredits = 0;
+    let partial = false;
 
-    if (pErr) {
-      const msg = getSupabaseErrorMessage(pErr, "projects_upsert_failed");
-      const pErrObj = pErr as unknown as Record<string, unknown>;
-      const body: Record<string, unknown> = {
-        error: msg,
-        code: "projects_upsert",
-        details: typeof pErrObj.details === "string" ? pErrObj.details : undefined,
-        hint: typeof pErrObj.hint === "string" ? pErrObj.hint : undefined,
-      };
-      if (typeof pErrObj.bodyPreview === "string" && pErrObj.bodyPreview) {
-        body.bodyPreview = pErrObj.bodyPreview;
+    if (wouldExceedQuota && availableCredits > 0) {
+      partial = true;
+      let remaining = availableCredits;
+      const nContent = Math.min(remaining, contentUpsertSorted.length);
+      sectionsToApply = contentUpsertSorted.slice(0, nContent);
+      remaining -= nContent;
+      actualCredits += nContent;
+      if (remaining >= 1 && orderOnlyList.length > 0) {
+        sectionsToApply = [...sectionsToApply, ...orderOnlyList];
+        actualCredits += 1;
+        remaining -= 1;
       }
-      if (msg.includes("supabase_non_json_response") || msg.includes("supabase_unavailable")) {
-        body.hint = (body.hint as string) || "Verifique se o projeto Supabase está ativo (não pausado) e se NEXT_PUBLIC_SUPABASE_URL está correto.";
-      }
-      if (process.env.NODE_ENV !== "production") {
-        try {
-          body.debug = JSON.stringify(pErr, null, 2);
-        } catch {}
-      }
-      return NextResponse.json(body, { status: 500 });
+      const nDelete = Math.min(remaining, removedSectionIds.length);
+      deletesToApply = removedSectionIds.slice(0, nDelete);
+      actualCredits += nDelete;
+    } else {
+      sectionsToApply = [...contentUpsertSorted, ...orderOnlyList];
+      deletesToApply = [...removedSectionIds];
+      actualCredits = consumedThisSync;
     }
 
-    if (sectionsToUpsert.length > 0) {
-      // Ordenar: pais antes de filhos (parent_id referencia sections.id); evita violação de FK no upsert.
-      const byId = new Map(sectionsToUpsert.map((s: { id: string }) => [s.id, s]));
-      const getDepth = (s: { parentId?: string | null }): number => {
-        if (!s.parentId) return 0;
-        const parent = byId.get(s.parentId);
-        if (!parent) return 0;
-        return 1 + getDepth(parent);
+    // Dono: upsert completo. Membro: só atualiza campos editáveis (não altera owner_id nem sharing público)
+    const isOwner = projectOwnerId === user.id;
+    if (existingProject && !isOwner) {
+      const { data: currentRow } = await supabase
+        .from("projects")
+        .select("mindmap_settings")
+        .eq("id", project.id)
+        .maybeSingle();
+      const existingSharing =
+        currentRow && typeof currentRow === "object" && (currentRow as { mindmap_settings?: { sharing?: unknown } }).mindmap_settings?.sharing;
+      const mergedMindmapSettings = {
+        ...(project.mindMapSettings || {}),
+        sharing: existingSharing ?? (project.mindMapSettings?.sharing ?? {}),
       };
-      const sorted = [...sectionsToUpsert].sort(
-        (a: any, b: any) => getDepth(a) - getDepth(b) || (Number(a.order) - Number(b.order))
+      const { error: pErr } = await supabase
+        .from("projects")
+        .update({
+          title: project.title,
+          description: project.description || "",
+          mindmap_settings: mergedMindmapSettings,
+          updated_at: project.updatedAt,
+        })
+        .eq("id", project.id);
+      if (pErr) {
+        const msg = getSupabaseErrorMessage(pErr, "projects_update_failed");
+        return NextResponse.json({ error: msg, code: "projects_update" }, { status: 500 });
+      }
+    } else {
+      const { error: pErr } = await supabase.from("projects").upsert(
+        {
+          id: project.id,
+          owner_id: projectOwnerId,
+          title: project.title,
+          description: project.description || "",
+          mindmap_settings: project.mindMapSettings || {},
+          created_at: project.createdAt,
+          updated_at: project.updatedAt,
+        },
+        { onConflict: "id" }
+      );
+
+      if (pErr) {
+        const msg = getSupabaseErrorMessage(pErr, "projects_upsert_failed");
+        const pErrObj = pErr as unknown as Record<string, unknown>;
+        const body: Record<string, unknown> = {
+          error: msg,
+          code: "projects_upsert",
+          details: typeof pErrObj.details === "string" ? pErrObj.details : undefined,
+          hint: typeof pErrObj.hint === "string" ? pErrObj.hint : undefined,
+        };
+        if (typeof pErrObj.bodyPreview === "string" && pErrObj.bodyPreview) {
+          body.bodyPreview = pErrObj.bodyPreview;
+        }
+        if (msg.includes("supabase_non_json_response") || msg.includes("supabase_unavailable")) {
+          body.hint = (body.hint as string) || "Verifique se o projeto Supabase está ativo (não pausado) e se NEXT_PUBLIC_SUPABASE_URL está correto.";
+        }
+        if (process.env.NODE_ENV !== "production") {
+          try {
+            body.debug = JSON.stringify(pErr, null, 2);
+          } catch {}
+        }
+        return NextResponse.json(body, { status: 500 });
+      }
+    }
+
+    if (sectionsToApply.length > 0) {
+      const byIdApply = new Map(sectionsToApply.map((s: any) => [s.id, s]));
+      const getDepthApply = (s: any): number =>
+        s.parentId && byIdApply.get(s.parentId) ? 1 + getDepthApply(byIdApply.get(s.parentId)!) : 0;
+      const sortedApply = [...sectionsToApply].sort(
+        (a: any, b: any) => getDepthApply(a) - getDepthApply(b) || Number(a.order) - Number(b.order)
       );
 
       const nowIso = new Date().toISOString();
-      const rows = sorted.map((s: any) => ({
+      const rows = sortedApply.map((s: any) => ({
         id: String(s.id),
         project_id: String(project.id),
         parent_id: s.parentId != null ? String(s.parentId) : null,
@@ -424,12 +529,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (removedSectionIds.length > 0) {
+    if (deletesToApply.length > 0) {
       const { error: deleteErr } = await supabase
         .from("sections")
         .delete()
         .eq("project_id", project.id)
-        .in("id", removedSectionIds);
+        .in("id", deletesToApply);
 
       if (deleteErr) {
         const msg = getSupabaseErrorMessage(deleteErr, "sections_delete_failed");
@@ -439,14 +544,14 @@ export async function POST(request: NextRequest) {
 
     let quota: CloudSyncQuotaStatus | null = null;
     if (quotaEnabled) {
-      const usageAfter = usageBefore + consumedThisSync;
-      const { error: usageWriteErr } = await supabase.from(CLOUD_SYNC_USAGE_TABLE).upsert(
+      const usageAfter = usageBefore + actualCredits;
+      const { error: usageWriteErr } = await supabase.from(CLOUD_SYNC_USAGE_BY_PROJECT_TABLE).upsert(
         {
-          user_id: user.id,
+          project_id: project.id,
           window_start: windowStartIso,
           used_credits: usageAfter,
         },
-        { onConflict: "user_id,window_start" }
+        { onConflict: "project_id,window_start" }
       );
 
       if (!usageWriteErr) {
@@ -456,18 +561,20 @@ export async function POST(request: NextRequest) {
           remainingInWindow: Math.max(0, hourlyLimit - usageAfter),
           windowStartedAt: windowStartIso,
           windowEndsAt: windowEndIso,
-          consumedThisSync,
+          consumedThisSync: actualCredits,
         };
       }
     }
 
     return NextResponse.json({
       ok: true,
+      partial: partial || undefined,
+      remainingCreditsNeeded: partial ? Math.max(0, consumedThisSync - actualCredits) : undefined,
       stats: {
-        sectionsTotal,
-        sectionsUpserted,
-        sectionsDeleted,
-        sectionsUnchanged,
+        sectionsTotal: incomingSections.length,
+        sectionsUpserted: sectionsToApply.length,
+        sectionsDeleted: deletesToApply.length,
+        sectionsUnchanged: Math.max(0, incomingSections.length - sectionsToApply.length),
       },
       quota,
     });

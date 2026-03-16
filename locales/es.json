@@ -51,12 +51,15 @@
     },
     "projects": {
       "title": "Tus proyectos",
+      "myProjectsTitle": "Mis proyectos",
+      "sharedTitle": "Compartidos conmigo",
       "count": "proyecto(s)",
       "usageProjects": "proyectos",
       "usageSections": "secciones",
       "limitWarning": "Límite cercano: quedan {{projectsLeft}} proyecto(s) y {{sectionsLeft}} sección(es) en el plan Free.",
       "remove": "Eliminar",
       "empty": "Aún no hay proyectos creados.",
+      "emptyShared": "Ningún proyecto compartido contigo.",
       "confirmRemove": "¿Seguro que quieres eliminar el proyecto \"{title}\"?",
       "confirmBackup": "¿Quieres crear un backup local de \"{title}\" antes de eliminarlo?",
       "confirmDeleteWithoutBackup": "No se pudo generar el backup. ¿Quieres eliminar de todos modos?"
@@ -67,6 +70,9 @@
       "importAi": "Importar documento (IA opcional)",
       "backup": "Backup y restauración",
       "createManual": "Crear manualmente"
+    },
+    "syncBar": {
+      "creditsPerProjectHint": "Créditos por proyecto al abrir un proyecto"
     }
   },
   "profile": {
@@ -254,6 +260,26 @@
     "language": "Idioma",
     "ai": "Configuración de IA",
     "persistence": "Persistencia",
+    "mindmapShareMembers": {
+      "title": "Compartir proyecto (miembros)",
+      "description": "Invita por correo para editar este proyecto. Comparten la misma cuota de sync del proyecto.",
+      "invitePlaceholder": "Correo del invitado",
+      "addButton": "Añadir como editor",
+      "sending": "Enviando…",
+      "loadingMembers": "Cargando miembros…",
+      "noMembers": "Ningún otro miembro aún.",
+      "inviteErrorRequired": "Indica el correo.",
+      "inviteErrorGeneric": "Error al invitar.",
+      "inviteErrorNetwork": "Error de red.",
+      "removeButton": "Quitar",
+      "removing": "Quitando…",
+      "removeConfirm": "¿Quitar a este miembro? Perderá acceso al proyecto.",
+      "removeErrorGeneric": "No se pudo quitar al miembro.",
+      "publicSharingOwnerOnly": "Solo el dueño del proyecto puede crear o cambiar el enlace de compartir público.",
+      "publicLinkLabel": "Enlace de visualización pública (configurado por el dueño):",
+      "publicLinkMemberHint": "Puedes copiar y compartir este enlace. Solo el dueño puede generar o cambiar el token.",
+      "membersListOnly": "Miembros del proyecto (solo visualización)."
+    },
     "aiPage": {
       "title": "Configuración de IA",
       "subtitle": "Configura tu propia API key para usar funciones de IA",

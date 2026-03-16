@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore, LevelConfig } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
@@ -11,9 +12,12 @@ interface Props {
   projectId: string;
 }
 
+type MemberRow = { userId: string; email: string | null; displayName: string | null; role: string; createdAt: string };
+
 export default function SettingsClient({ projectId }: Props) {
   const router = useRouter();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
+  const { user } = useAuthStore();
   const isPt = locale === "pt-BR";
   const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
   const { getProject, updateProjectSettings, updateProjectMindMapSettingsOnly } = useProjectStore();
@@ -23,6 +27,86 @@ export default function SettingsClient({ projectId }: Props) {
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set()); // Todos colapsados por padrão
   const [shareBaseUrl, setShareBaseUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isOwner = Boolean(user?.id && (project?.ownerId === user.id || (project && !project.ownerId && user.id)));
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  const fetchMembers = useCallback(async () => {
+    if (!projectId) return;
+    setMembersLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, { credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.members)) setMembers(data.members);
+      else setMembers([]);
+    } catch {
+      setMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (projectId) void fetchMembers();
+  }, [projectId, fetchMembers]);
+
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      setInviteError(t("settings.mindmapShareMembers.inviteErrorRequired"));
+      return;
+    }
+    setInviteError(null);
+    setInviteLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setInviteEmail("");
+        await fetchMembers();
+      } else {
+        const msg = (data.debug as string) || (data.message as string) || (data.error as string) || t("settings.mindmapShareMembers.inviteErrorGeneric");
+        setInviteError(msg);
+      }
+    } catch {
+      setInviteError(t("settings.mindmapShareMembers.inviteErrorNetwork"));
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!confirm(t("settings.mindmapShareMembers.removeConfirm"))) return;
+    setRemoveError(null);
+    setRemovingUserId(userId);
+    try {
+      const res = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/members?userId=${encodeURIComponent(userId)}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await fetchMembers();
+      } else {
+        setRemoveError((data.message as string) || (data.error as string) || t("settings.mindmapShareMembers.removeErrorGeneric"));
+      }
+    } catch {
+      setRemoveError(t("settings.mindmapShareMembers.inviteErrorNetwork"));
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
 
   const generateShareToken = () => {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -421,51 +505,126 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
               <h3 className="text-lg font-semibold mb-3 text-gray-300">🌐 {tr("Compartilhamento Público", "Public Sharing")}</h3>
-              <div className="flex items-center gap-3 mb-3">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={isPublicShareEnabled}
-                    onChange={(e) => setValue("sharing.isPublic", e.target.checked)}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm text-gray-300">{tr("Permitir visualização pública", "Allow public viewing")}</span>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mb-3">
-                <input
-                  type="text"
-                  readOnly
-                  value={shareToken}
-                  placeholder={tr("Token de compartilhamento", "Share token")}
-                  className="w-full bg-gray-700 rounded px-3 py-2 font-mono text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setValue("sharing.shareToken", generateShareToken())}
-                  className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-semibold"
-                >
-                  {tr("Gerar Token", "Generate Token")}
-                </button>
-              </div>
-
-              {isPublicShareEnabled && shareToken && (
-                <div className="space-y-2">
-                  <div className="flex gap-2 items-center">
-                    <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
-                    <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+              {isOwner ? (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isPublicShareEnabled}
+                        onChange={(e) => setValue("sharing.isPublic", e.target.checked)}
+                        className="w-5 h-5"
+                      />
+                      <span className="text-sm text-gray-300">{tr("Permitir visualização pública", "Allow public viewing")}</span>
+                    </label>
                   </div>
-                  <p className="text-xs text-gray-500">{tr("Este link único abre o Documento e permite alternar para o Mapa Mental.", "This single link opens the Document and allows switching to Mind Map.")}</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mb-3">
+                    <input
+                      type="text"
+                      readOnly
+                      value={shareToken}
+                      placeholder={tr("Token de compartilhamento", "Share token")}
+                      className="w-full bg-gray-700 rounded px-3 py-2 font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setValue("sharing.shareToken", generateShareToken())}
+                      className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-semibold"
+                    >
+                      {tr("Gerar Token", "Generate Token")}
+                    </button>
+                  </div>
+
+                  {isPublicShareEnabled && shareToken && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+                      </div>
+                      <p className="text-xs text-gray-500">{tr("Este link único abre o Documento e permite alternar para o Mapa Mental.", "This single link opens the Document and allows switching to Mind Map.")}</p>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    {tr(
+                      "Salve as configurações para publicar os links. Quem tiver o token poderá abrir documento e mapa mental.",
+                      "Save settings to publish the link. Anyone with the token can open document and mind map."
+                    )}
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-400">{t("settings.mindmapShareMembers.publicSharingOwnerOnly")}</p>
+                  {shareToken && isPublicShareEnabled && (
+                    <>
+                      <p className="text-sm text-gray-300 mt-2">{t("settings.mindmapShareMembers.publicLinkLabel")}</p>
+                      <div className="flex gap-2 items-center">
+                        <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+                      </div>
+                      <p className="text-xs text-gray-500">{t("settings.mindmapShareMembers.publicLinkMemberHint")}</p>
+                    </>
+                  )}
                 </div>
               )}
+            </div>
 
-              <p className="text-xs text-gray-500 mt-2">
-                {tr(
-                  "Salve as configurações para publicar os links. Quem tiver o token poderá abrir documento e mapa mental.",
-                  "Save settings to publish the link. Anyone with the token can open document and mind map."
-                )}
-              </p>
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">👥 {t("settings.mindmapShareMembers.title")}</h3>
+              {isOwner && (
+                <>
+                  <p className="text-sm text-gray-400 mb-3">
+                    {t("settings.mindmapShareMembers.description")}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => { setInviteEmail(e.target.value); setInviteError(null); }}
+                      placeholder={t("settings.mindmapShareMembers.invitePlaceholder")}
+                      className="flex-1 min-w-[200px] bg-gray-700 rounded px-3 py-2 text-sm"
+                      disabled={inviteLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleInvite()}
+                      disabled={inviteLoading}
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 px-4 py-2 rounded font-semibold text-sm"
+                    >
+                      {inviteLoading ? t("settings.mindmapShareMembers.sending") : t("settings.mindmapShareMembers.addButton")}
+                    </button>
+                  </div>
+                  {inviteError && <p className="text-sm text-red-400 mb-2">{inviteError}</p>}
+                  {removeError && <p className="text-sm text-red-400 mb-2">{removeError}</p>}
+                </>
+              )}
+              {!isOwner && <p className="text-sm text-gray-400 mb-3">{t("settings.mindmapShareMembers.membersListOnly")}</p>}
+              {membersLoading ? (
+                <p className="text-sm text-gray-500">{t("settings.mindmapShareMembers.loadingMembers")}</p>
+              ) : members.length > 0 ? (
+                <ul className="space-y-2 text-sm">
+                  {members.map((m) => (
+                    <li key={m.userId} className="flex items-center gap-2 text-gray-300 flex-wrap">
+                      <span className="font-medium">{m.displayName || m.email || m.userId}</span>
+                      {m.email && m.displayName && <span className="text-gray-500">({m.email})</span>}
+                      <span className="px-2 py-0.5 rounded bg-gray-600 text-xs">{m.role}</span>
+                      {isOwner && m.role !== "owner" && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveMember(m.userId)}
+                          disabled={removingUserId === m.userId}
+                          className="ml-auto text-red-400 hover:text-red-300 text-xs font-medium disabled:opacity-50"
+                        >
+                          {removingUserId === m.userId ? t("settings.mindmapShareMembers.removing") : t("settings.mindmapShareMembers.removeButton")}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500">{t("settings.mindmapShareMembers.noMembers")}</p>
+              )}
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">

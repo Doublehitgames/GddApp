@@ -202,6 +202,8 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
   mindMapSettings?: MindMapSettings; // Configurações personalizadas do mapa mental
+  /** Dono do projeto (id do usuário). Preenchido ao carregar do Supabase; em projetos só locais pode ser userId ao criar. */
+  ownerId?: string | null;
 };
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -263,8 +265,8 @@ interface ProjectStore {
   getPendingProjectIds: () => string[];
   /** Limpa o histórico de syncs (lastSyncStatsHistory) e persiste. */
   clearSyncHistory: () => void;
-  /** Atualiza lastQuotaStatus com a cota atual do servidor (badge ao abrir/voltar ao app). */
-  refreshQuotaStatus: () => Promise<void>;
+  /** Atualiza lastQuotaStatus com a cota do projeto (cota é por projeto). Sem projectId limpa a cota (ex.: na home). */
+  refreshQuotaStatus: (projectId?: string) => Promise<void>;
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
@@ -594,7 +596,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       set({ syncStatus: "syncing", lastSyncError: null });
 
-      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota } =
+      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota, partial, remainingCreditsNeeded } =
         await upsertProjectToSupabase(sanitizeProjectForSync(project));
       if (quota) {
         set({ lastQuotaStatus: quota });
@@ -610,9 +612,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           set({
             syncStatus: "error",
             lastSyncError: nextError,
+            lastSyncFailureReason: "quota_exceeded",
             cloudSyncPausedUntil: until,
             cloudSyncPauseReason: until ? "quota" : null,
+            ...(quota ? { lastQuotaStatus: quota } : {}),
           });
+          persistSyncState();
           return;
         }
         if (errorCode === "rate_limit") {
@@ -644,12 +649,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       }
 
       if (!skippedReason) {
-        clearProjectDirty(projectId);
-        syncRetryCount.delete(projectId);
-        clearSyncFailureState();
-        clearProjectBackoff(projectId);
-        syncedProjectHash.set(projectId, projectHash);
+        if (!partial) {
+          clearProjectDirty(projectId);
+          syncRetryCount.delete(projectId);
+          clearSyncFailureState();
+          clearProjectBackoff(projectId);
+          syncedProjectHash.set(projectId, projectHash);
+        }
         const syncedAt = new Date().toISOString();
+        const partialMessage =
+          partial && typeof remainingCreditsNeeded === "number"
+            ? ` Sincronização parcial: faltam ${remainingCreditsNeeded} crédito(s). Sincronize novamente após o reset da janela.`
+            : "";
         if (stats) {
           const currentHistory = get().lastSyncStatsHistory;
           const nextEntry: LastSyncStats = {
@@ -661,7 +672,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           set({
             syncStatus: "synced",
             lastSyncedAt: syncedAt,
-            lastSyncError: null,
+            lastSyncError: partial ? partialMessage.trim() : null,
             lastSyncFailureReason: null,
             lastSyncStats: nextEntry,
             lastSyncStatsHistory: [nextEntry, ...currentHistory].slice(0, SYNC_STATS_HISTORY_LIMIT),
@@ -672,7 +683,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           set({
             syncStatus: "synced",
             lastSyncedAt: syncedAt,
-            lastSyncError: null,
+            lastSyncError: partial ? partialMessage.trim() : null,
             lastSyncFailureReason: null,
             cloudSyncPausedUntil: null,
             cloudSyncPauseReason: null,
@@ -756,8 +767,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     addProject: (name: string, description: string) => {
-      const projects = get().projects;
-      if (projects.length >= FREE_MAX_PROJECTS) {
+      const { projects, userId } = get();
+      const myCount = projects.filter((p) => p.ownerId === userId || (p.ownerId == null && userId)).length;
+      if (myCount >= FREE_MAX_PROJECTS) {
         throw new Error("structural_limit_projects");
       }
       const id = crypto.randomUUID();
@@ -765,7 +777,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       wrappedSetWithSync(
         (prev) => [
           ...prev,
-          { id, title: name, description, sections: [], createdAt: now, updatedAt: now },
+          { id, title: name, description, sections: [], createdAt: now, updatedAt: now, ownerId: userId ?? undefined },
         ],
         id
       );
@@ -1081,8 +1093,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       persistSyncState();
     },
 
-    refreshQuotaStatus: async () => {
-      const q = await fetchQuotaStatus();
+    refreshQuotaStatus: async (projectId?: string) => {
+      if (!projectId) {
+        set({ lastQuotaStatus: null });
+        persistSyncState();
+        return;
+      }
+      const q = await fetchQuotaStatus(projectId);
       if (q) {
         set({ lastQuotaStatus: q });
         persistSyncState();
@@ -1173,18 +1190,35 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         arr.reduce((sum, p) => sum + (p.sections || []).length, 0);
       const mergedCount = totalSections(merged);
 
-      // Nunca sobrescrever localStorage com menos dados: se o que está no disco tiver mais seções, manter local
+      // Nunca perder projeto nem seções: preferir sempre a versão com mais seções por projeto.
+      // Re-lê estado atual (memória + localStorage) e garante que nenhum projeto seja removido ou encolhido.
       let toApply = merged;
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const current = parseProjectsFromStorage(raw);
-          if (current && totalSections(current) > mergedCount) {
-            toApply = current;
-            logInfo("[projectStore] Mantendo dados locais (mais seções que o merge com a nuvem).");
+        const current = raw ? parseProjectsFromStorage(raw) : null;
+        const inMemory = get().projects;
+        const localById = new Map<string, Project>();
+        for (const p of [...(current || []), ...inMemory]) {
+          const existing = localById.get(p.id);
+          const n = (p.sections || []).length;
+          const existingN = existing ? (existing.sections || []).length : 0;
+          if (!existing || n > existingN) localById.set(p.id, p);
+        }
+        const applyById = new Map(toApply.map((p) => [p.id, p]));
+        for (const [id, localProject] of localById) {
+          const applied = applyById.get(id);
+          const localSections = (localProject.sections || []).length;
+          const appliedSections = applied ? (applied.sections || []).length : 0;
+          if (!applied || localSections > appliedSections) {
+            applyById.set(id, localProject);
+            if (!applied) logInfo("[projectStore] Mantendo projeto só local no merge:", id);
+            else if (localSections > appliedSections) logInfo("[projectStore] Preferindo versão local com mais seções:", id);
           }
         }
-      } catch {}
+        toApply = Array.from(applyById.values());
+      } catch (e) {
+        logWarn("[projectStore] Erro ao fazer merge defensivo; mantendo merged.", e);
+      }
 
       set({ projects: toApply });
       try {

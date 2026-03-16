@@ -51,12 +51,15 @@
     },
     "projects": {
       "title": "Your Projects",
+      "myProjectsTitle": "My projects",
+      "sharedTitle": "Shared with me",
       "count": "project(s)",
-"usageProjects": "projects",
-        "usageSections": "sections",
-        "limitWarning": "Limit approaching: {{projectsLeft}} project(s) and {{sectionsLeft}} section(s) left on the Free plan.",
-        "remove": "Remove",
+      "usageProjects": "projects",
+      "usageSections": "sections",
+      "limitWarning": "Limit approaching: {{projectsLeft}} project(s) and {{sectionsLeft}} section(s) left on the Free plan.",
+      "remove": "Remove",
       "empty": "No projects created yet.",
+      "emptyShared": "No projects shared with you.",
       "confirmRemove": "Are you sure you want to remove project \"{title}\"?",
       "confirmBackup": "Do you want to create a local backup of \"{title}\" before deleting?",
       "confirmDeleteWithoutBackup": "Backup could not be generated. Do you want to delete anyway?"
@@ -67,6 +70,9 @@
       "importAi": "Import Document (AI optional)",
       "backup": "Backup & Restore",
       "createManual": "Create manually"
+    },
+    "syncBar": {
+      "creditsPerProjectHint": "Credits per project when you open a project"
     }
   },
   "profile": {
@@ -254,6 +260,26 @@
     "language": "Language",
     "ai": "AI settings",
     "persistence": "Persistence",
+    "mindmapShareMembers": {
+      "title": "Share project (members)",
+      "description": "Invite people by email to edit this project. They share the same project sync quota.",
+      "invitePlaceholder": "Invitee email",
+      "addButton": "Add as editor",
+      "sending": "Sending…",
+      "loadingMembers": "Loading members…",
+      "noMembers": "No other members yet.",
+      "inviteErrorRequired": "Enter the email.",
+      "inviteErrorGeneric": "Failed to invite.",
+      "inviteErrorNetwork": "Network error.",
+      "removeButton": "Remove",
+      "removing": "Removing…",
+      "removeConfirm": "Remove this member? They will lose access to the project.",
+      "removeErrorGeneric": "Could not remove member.",
+      "publicSharingOwnerOnly": "Only the project owner can create or change the public share link.",
+      "publicLinkLabel": "Public view link (set by owner):",
+      "publicLinkMemberHint": "You can copy and share this link. Only the owner can generate or change the token.",
+      "membersListOnly": "Project members (view only)."
+    },
     "aiPage": {
       "title": "AI Settings",
       "subtitle": "Configure your own API key to use AI features",

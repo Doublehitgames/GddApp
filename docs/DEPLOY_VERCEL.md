@@ -216,8 +216,8 @@ Antes de liberar para usuários, confirme também:
 - [ ] Variáveis de ambiente no projeto Vercel:
       - [ ] `NEXT_PUBLIC_SITE_URL` = `https://gdd-app.vercel.app`
       - [ ] `NEXT_PUBLIC_SUPABASE_URL`
-      - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-      - [ ] `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+      - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` ou `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+      - [ ] **`SUPABASE_SECRET_KEY`** ou **`SUPABASE_SERVICE_ROLE_KEY`** (obrigatório para convite de membros por e-mail; ver `docs/ENV_VERCEL.md`)
 - [ ] Supabase Auth → URL Configuration:
       - [ ] **Site URL** = `https://gdd-app.vercel.app`
       - [ ] Redirect URL: `https://gdd-app.vercel.app/auth/callback`

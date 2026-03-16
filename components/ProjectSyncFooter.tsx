@@ -20,10 +20,13 @@ export default function ProjectSyncFooter() {
 
   const lastQuotaStatus = useProjectStore((s) => s.lastQuotaStatus);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
+  const lastSyncError = useProjectStore((s) => s.lastSyncError);
+  const syncStatus = useProjectStore((s) => s.syncStatus);
   const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
   const getProject = useProjectStore((s) => s.getProject);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
+  const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
   const projects = useProjectStore((s) => s.projects);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
@@ -42,7 +45,8 @@ export default function ProjectSyncFooter() {
     cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
   );
   const noCreditsLeft = Boolean(lastQuotaStatus && lastQuotaStatus.remainingInWindow === 0);
-  const syncDisabled = cloudSyncPaused || noCreditsLeft;
+  const isSyncing = syncStatus === "syncing";
+  const syncDisabled = isSyncing || cloudSyncPaused || noCreditsLeft;
 
   const refreshEstimatedCredits = useCallback(() => {
     if (!projectId || !project) {
@@ -59,6 +63,20 @@ export default function ProjectSyncFooter() {
       }
     });
   }, [projectId, project]);
+
+  // Cota é por projeto: buscar ao montar e ao voltar à aba
+  useEffect(() => {
+    if (!projectId) return;
+    void refreshQuotaStatus(projectId);
+  }, [projectId, refreshQuotaStatus]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible" && projectId) void refreshQuotaStatus(projectId);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [projectId, refreshQuotaStatus]);
 
   useEffect(() => {
     if (!isDirty || !project) {
@@ -136,6 +154,11 @@ export default function ProjectSyncFooter() {
               ? `${tr("Último sync", "Last sync", "Último sync")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`
               : tr("Ainda sem sync", "No sync yet", "Sin sincronización aún")}
           </span>
+          {lastSyncError && (
+            <span className="text-amber-400 font-medium" title={lastSyncError}>
+              {lastSyncError}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -184,11 +207,13 @@ export default function ProjectSyncFooter() {
             onClick={() => projectId && void syncProjectToSupabase(projectId)}
             disabled={syncDisabled}
             title={
-              syncDisabled && cloudSyncPausedUntil
-                ? `${t("settings.persistencePage.syncBadge.pausedUntil")}: ${new Date(cloudSyncPausedUntil).toLocaleTimeString()}`
-                : noCreditsLeft
-                  ? t("settings.persistencePage.syncBadge.pausedQuota")
-                  : undefined
+              isSyncing
+                ? tr("Sincronizando…", "Syncing…", "Sincronizando…")
+                : syncDisabled && cloudSyncPausedUntil
+                  ? `${t("settings.persistencePage.syncBadge.pausedUntil")}: ${new Date(cloudSyncPausedUntil).toLocaleTimeString()}`
+                  : noCreditsLeft
+                    ? t("settings.persistencePage.syncBadge.pausedQuota")
+                    : undefined
             }
             className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
               syncDisabled
@@ -196,7 +221,9 @@ export default function ProjectSyncFooter() {
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
           >
-            {tr("Sincronizar este projeto", "Sync this project", "Sincronizar este proyecto")}
+            {isSyncing
+              ? tr("Sincronizando…", "Syncing…", "Sincronizando…")
+              : tr("Sincronizar este projeto", "Sync this project", "Sincronizar este proyecto")}
           </button>
           <Link href="/settings/persistence" className="text-gray-400 hover:text-gray-200 underline">
             {tr("Ajustes", "Settings", "Ajustes")}

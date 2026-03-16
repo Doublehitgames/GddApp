@@ -1,24 +1,41 @@
 // src/app/page.tsx
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import UserMenu from "@/components/UserMenu";
 import HomeSyncBar from "@/components/HomeSyncBar";
 import { useI18n } from "@/lib/i18n/provider";
 import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
+import type { Project } from "@/store/projectStore";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
   const removeProject = useProjectStore((s) => s.removeProject);
+  const { user } = useAuthStore();
   const { t } = useI18n();
 
-  const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-  const projectsLeft = FREE_MAX_PROJECTS - projects.length;
-  const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - totalSections;
+  const userId = user?.id ?? null;
+
+  const { myProjects, sharedProjects } = useMemo(() => {
+    const mine: Project[] = [];
+    const shared: Project[] = [];
+    for (const p of projects) {
+      const isMine = userId != null && (p.ownerId === userId || p.ownerId == null);
+      if (isMine) mine.push(p);
+      else shared.push(p);
+    }
+    return { myProjects: mine, sharedProjects: shared };
+  }, [projects, userId]);
+
+  const mySections = myProjects.reduce((sum, p) => sum + (p.sections || []).length, 0);
+  const projectsLeft = FREE_MAX_PROJECTS - myProjects.length;
+  const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - mySections;
   const showLimitWarning = projectsLeft <= 1 || sectionsLeft <= 10;
 
-  const downloadProjectBackup = (project: (typeof projects)[number]) => {
+  const downloadProjectBackup = (project: Project) => {
     const backupData = {
       project,
       exportDate: new Date().toISOString(),
@@ -70,11 +87,11 @@ export default function Home() {
               <h2 className="text-xl font-semibold tracking-tight">{t("home.projects.title")}</h2>
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span className="text-gray-400">
-                  <span className="font-semibold text-white">{projects.length}/{FREE_MAX_PROJECTS}</span> {t("home.projects.usageProjects")}
+                  <span className="font-semibold text-white">{myProjects.length}/{FREE_MAX_PROJECTS}</span> {t("home.projects.usageProjects")}
                 </span>
                 <span className="text-gray-500">·</span>
                 <span className="text-gray-400">
-                  <span className="font-semibold text-white">{totalSections}/{FREE_MAX_SECTIONS_TOTAL}</span> {t("home.projects.usageSections")}
+                  <span className="font-semibold text-white">{mySections}/{FREE_MAX_SECTIONS_TOTAL}</span> {t("home.projects.usageSections")}
                 </span>
               </div>
             </div>
@@ -87,79 +104,88 @@ export default function Home() {
               </div>
             )}
 
-            <div className="flex flex-col gap-3.5">
-              {projects.map((p) => {
-                const sections = p.sections || [];
-                const totalSections = sections.length;
-                const rootSections = sections.filter((s) => !s.parentId).length;
-                const subsections = totalSections - rootSections;
-
-                return (
-                  <div
-                    key={p.id}
-                    className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all flex items-center justify-between gap-3"
-                  >
-                    <Link href={`/projects/${p.id}`} className="flex-1 min-w-0" prefetch={false}>
-                      <div className="flex flex-col gap-2.5">
-                        <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
-                        <div className="flex flex-wrap gap-2 text-xs font-medium">
-                          <span className="bg-blue-600/90 px-2.5 py-1 rounded-md" title="Seções raiz">
-                            📑 {rootSections}
-                          </span>
-                          {subsections > 0 && (
-                            <span className="bg-purple-600/90 px-2.5 py-1 rounded-md" title="Subseções">
-                              📄 {subsections}
-                            </span>
-                          )}
-                          <span className="bg-gray-600/90 px-2.5 py-1 rounded-md" title="Total">
-                            ∑ {totalSections}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-
-                    <button
-                      className="px-3 py-1.5 bg-red-700/80 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                      onClick={() => {
-                        const shouldRemove = window.confirm(
-                          t("home.projects.confirmRemove", `Are you sure you want to remove project "${p.title}"?`).replace("{title}", p.title)
-                        );
-
-                        if (!shouldRemove) {
-                          return;
-                        }
-
-                        const shouldBackup = window.confirm(
-                          t("home.projects.confirmBackup", `Do you want to create a local backup of "${p.title}" before deleting?`).replace("{title}", p.title)
-                        );
-
-                        if (shouldBackup) {
-                          try {
-                            downloadProjectBackup(p);
-                          } catch (error) {
-                            console.error("Erro ao gerar backup antes da exclusão:", error);
-                            const continueWithoutBackup = window.confirm(
-                              t("home.projects.confirmDeleteWithoutBackup")
-                            );
-                            if (!continueWithoutBackup) {
-                              return;
+            <div className="flex flex-col gap-6">
+              {/* Meus projetos */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-300 mb-3">{t("home.projects.myProjectsTitle")}</h3>
+                <div className="flex flex-col gap-3.5">
+                  {myProjects.map((p) => {
+                    const sections = p.sections || [];
+                    const totalSec = sections.length;
+                    const rootSections = sections.filter((s) => !s.parentId).length;
+                    const subsections = totalSec - rootSections;
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all flex items-center justify-between gap-3"
+                      >
+                        <Link href={`/projects/${p.id}`} className="flex-1 min-w-0" prefetch={false}>
+                          <div className="flex flex-col gap-2.5">
+                            <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
+                            <div className="flex flex-wrap gap-2 text-xs font-medium">
+                              <span className="bg-blue-600/90 px-2.5 py-1 rounded-md" title="Seções raiz">📑 {rootSections}</span>
+                              {subsections > 0 && <span className="bg-purple-600/90 px-2.5 py-1 rounded-md" title="Subseções">📄 {subsections}</span>}
+                              <span className="bg-gray-600/90 px-2.5 py-1 rounded-md" title="Total">∑ {totalSec}</span>
+                            </div>
+                          </div>
+                        </Link>
+                        <button
+                          className="px-3 py-1.5 bg-red-700/80 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                          onClick={() => {
+                            if (!window.confirm(t("home.projects.confirmRemove", `Remover "${p.title}"?`).replace("{title}", p.title))) return;
+                            const shouldBackup = window.confirm(t("home.projects.confirmBackup", `Backup local de "${p.title}" antes de excluir?`).replace("{title}", p.title));
+                            if (shouldBackup) {
+                              try { downloadProjectBackup(p); } catch (e) {
+                                console.error(e);
+                                if (!window.confirm(t("home.projects.confirmDeleteWithoutBackup"))) return;
+                              }
                             }
-                          }
-                        }
+                            removeProject(p.id);
+                          }}
+                        >
+                          {t("home.projects.remove")}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {myProjects.length === 0 && (
+                    <p className="text-gray-400 bg-gray-800/80 border border-dashed border-gray-600 rounded-xl p-6 text-center text-sm">
+                      {t("home.projects.empty")}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-                        removeProject(p.id);
-                      }}
-                    >
-                      {t("home.projects.remove")}
-                    </button>
+              {/* Projetos compartilhados comigo */}
+              {sharedProjects.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-300 mb-3">{t("home.projects.sharedTitle")}</h3>
+                  <div className="flex flex-col gap-3.5">
+                    {sharedProjects.map((p) => {
+                      const sections = p.sections || [];
+                      const totalSec = sections.length;
+                      const rootSections = sections.filter((s) => !s.parentId).length;
+                      const subsections = totalSec - rootSections;
+                      return (
+                        <div
+                          key={p.id}
+                          className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all"
+                        >
+                          <Link href={`/projects/${p.id}`} className="block" prefetch={false}>
+                            <div className="flex flex-col gap-2.5">
+                              <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
+                              <div className="flex flex-wrap gap-2 text-xs font-medium">
+                                <span className="bg-blue-600/90 px-2.5 py-1 rounded-md">📑 {rootSections}</span>
+                                {subsections > 0 && <span className="bg-purple-600/90 px-2.5 py-1 rounded-md">📄 {subsections}</span>}
+                                <span className="bg-gray-600/90 px-2.5 py-1 rounded-md">∑ {totalSec}</span>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-
-              {projects.length === 0 && (
-                <p className="text-gray-400 bg-gray-800/80 border border-dashed border-gray-600 rounded-xl p-6 text-center text-sm">
-                  {t("home.projects.empty")}
-                </p>
+                </div>
               )}
             </div>
           </div>
