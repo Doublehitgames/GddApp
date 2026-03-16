@@ -179,6 +179,8 @@ export async function pushProjectMindMapSettings(
   }
 }
 
+export type SyncedBy = { userId: string; displayName: string | null };
+
 async function upsertProjectViaServerRoute(project: Project): Promise<{
   error: string | null;
   errorCode?: string;
@@ -187,6 +189,7 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
   quota?: CloudSyncQuotaStatus | null;
   partial?: boolean;
   remainingCreditsNeeded?: number;
+  syncedBy?: SyncedBy;
 }> {
   try {
     const base = getSyncRouteBase();
@@ -218,12 +221,21 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
     }
 
     const body = await response.json().catch(() => ({}));
+    const syncedBy =
+      body?.syncedBy && typeof body.syncedBy.userId === "string"
+        ? {
+            userId: body.syncedBy.userId as string,
+            displayName:
+              typeof body.syncedBy.displayName === "string" ? body.syncedBy.displayName : null,
+          }
+        : undefined;
     return {
       error: null,
       stats: body?.stats,
       quota: body?.quota,
       partial: Boolean(body?.partial),
       remainingCreditsNeeded: typeof body?.remainingCreditsNeeded === "number" ? body.remainingCreditsNeeded : undefined,
+      syncedBy,
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -315,6 +327,24 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
 
 // ── Leitura ───────────────────────────────────────────────────────────────────
 
+/** Retorna os IDs, entre os passados, que estão em deleted_projects (projeto excluído pelo dono). */
+export async function fetchDeletedProjectIds(projectIds: string[]): Promise<string[]> {
+  if (projectIds.length === 0) return [];
+  try {
+    const base = getSyncRouteBase();
+    const idsParam = projectIds.map((id) => encodeURIComponent(id)).join(",");
+    const response = await fetch(`${base}/api/projects/deleted-ids?ids=${idsParam}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!response.ok) return [];
+    const data = (await response.json().catch(() => ({}))) as { deletedIds?: string[] };
+    return Array.isArray(data?.deletedIds) ? data.deletedIds : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Carrega todos os projetos do usuário autenticado do Supabase */
 export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
   const supabase = createClient();
@@ -379,6 +409,7 @@ export async function upsertProjectToSupabase(
   quota?: CloudSyncQuotaStatus | null;
   partial?: boolean;
   remainingCreditsNeeded?: number;
+  syncedBy?: SyncedBy;
 }> {
   // Caminho principal: sempre tenta rota server-side (sessão por cookie)
   const routeResult = await upsertProjectViaServerRoute(project);
@@ -389,6 +420,7 @@ export async function upsertProjectToSupabase(
       quota: routeResult.quota,
       partial: routeResult.partial,
       remainingCreditsNeeded: routeResult.remainingCreditsNeeded,
+      syncedBy: routeResult.syncedBy,
     };
   }
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInitProjects } from "@/hooks/useInitProjects";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
@@ -33,6 +34,8 @@ interface Props {
 
 export default function ProjectDetailClient({ projectId }: Props) {
     const { t } = useI18n();
+    const { user, profile } = useAuthStore();
+    const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
 
     const router = useRouter();
     const getProject = useProjectStore((s) => s.getProject);
@@ -86,7 +89,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
         if (!sectionTitle.trim() || nameError) return;
 
         try {
-            addSection(projectId, sectionTitle.trim());
+            addSection(projectId, sectionTitle.trim(), undefined, sectionAuditBy);
             setSectionTitle("");
             setNameError("");
         } catch (e) {
@@ -108,43 +111,55 @@ export default function ProjectDetailClient({ projectId }: Props) {
         })),
     } : undefined;
 
-    return (
+    const navLinkClass = "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900";
+
+        return (
         <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
             <div className="mx-auto w-full max-w-6xl space-y-6">
-                <header className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
-                    <button className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors w-fit" onClick={() => router.push("/")}>
-                        ← {t("projectDetail.backHome")}
-                    </button>
-
-                    <div className="flex flex-wrap gap-3 md:justify-end">
-                        <button
-                            className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all font-semibold"
-                            onClick={() => router.push(`/projects/${projectId}/mindmap`)}
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-gray-800/50 border border-gray-700/60 px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <Link
+                            href="/"
+                            className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-700/80 hover:text-white shrink-0"
+                            aria-label={t("projectDetail.backHome")}
                         >
-                            🧠 {t("projectDetail.actions.mindMap")}
-                        </button>
-
-                        <button
-                            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-semibold"
-                            onClick={() => router.push(`/projects/${projectId}/view`)}
-                        >
-                            📄 {t("projectDetail.actions.viewDocument")}
-                        </button>
-
-                        <button
-                            className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
-                            onClick={() => router.push(`/projects/${projectId}/settings`)}
-                        >
-                            ⚙️ {t("projectDetail.actions.settings")}
-                        </button>
-
-                        <button
-                            className="px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all font-semibold"
-                            onClick={() => router.push(`/projects/${projectId}/backup`)}
-                        >
-                            💾 {t("projectDetail.actions.backup")}
-                        </button>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            <span className="hidden sm:inline">{t("projectDetail.backHome")}</span>
+                        </Link>
+                        <span className="text-gray-500 hidden sm:inline">/</span>
+                        <span className="truncate text-gray-300 font-semibold" title={project.title || project.name}>
+                            {project.title || project.name}
+                        </span>
                     </div>
+                    <nav className="flex flex-wrap items-center gap-1" aria-label={t("projectDetail.actionsNavLabel", "Ações do projeto")}>
+                        <Link href={`/projects/${projectId}/mindmap`} className={navLinkClass} prefetch={false}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            {t("projectDetail.actions.mindMap")}
+                        </Link>
+                        <Link href={`/projects/${projectId}/view`} className={navLinkClass} prefetch={false}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            {t("projectDetail.actions.viewDocument")}
+                        </Link>
+                        <Link href={`/projects/${projectId}/settings`} className={navLinkClass} prefetch={false}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {t("projectDetail.actions.settings")}
+                        </Link>
+                        <Link href={`/projects/${projectId}/backup`} className={navLinkClass} prefetch={false}>
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            {t("projectDetail.actions.backup")}
+                        </Link>
+                    </nav>
                 </header>
 
                 <section className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10">

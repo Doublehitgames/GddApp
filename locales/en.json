@@ -58,6 +58,7 @@
       "usageSections": "sections",
       "limitWarning": "Limit approaching: {{projectsLeft}} project(s) and {{sectionsLeft}} section(s) left on the Free plan.",
       "remove": "Remove",
+      "settings": "Settings",
       "empty": "No projects created yet.",
       "emptyShared": "No projects shared with you.",
       "confirmRemove": "Are you sure you want to remove project \"{title}\"?",
@@ -123,6 +124,7 @@
     "resultsFoundMany": "results found",
     "match": "Match",
     "reorder": "Reorder",
+    "actionsNavLabel": "Project actions",
     "actions": {
       "mindMap": "Mind Map",
       "viewDocument": "View as Document",
@@ -260,12 +262,32 @@
       "createdAt": "Created on {{date}}",
       "updatedAt": "Modified on {{date}}"
     },
+    "history": {
+      "title": "Version history",
+      "versionOne": "version",
+      "versionMany": "versions",
+      "loading": "Loading history…",
+      "empty": "No previous versions recorded.",
+      "by": "by {{name}}",
+      "untitled": "Untitled",
+      "restore": "Restore",
+      "restoring": "Restoring…"
+    },
     "backlinks": "Referenced by:"
   },
   "settings": {
+    "pageTitle": "Project Settings",
     "language": "Language",
     "ai": "AI settings",
     "persistence": "Persistence",
+    "deleteProject": {
+      "title": "Delete project",
+      "description": "This action cannot be undone. To confirm, type the project name below.",
+      "placeholder": "Type the project name",
+      "cancel": "Cancel",
+      "delete": "Delete project",
+      "backupCheckbox": "Download JSON backup before deleting"
+    },
     "mindmapShareMembers": {
       "title": "Share project (members)",
       "description": "Invite people by email to edit this project. They share the same project sync quota.",
@@ -383,7 +405,9 @@
         "empty": "No cycles recorded yet.",
         "delta": "Δ sections",
         "credits": "Credits",
-        "clearButton": "Clear history"
+        "clearButton": "Clear history",
+        "syncedBy": "by {{name}}",
+        "unknownUser": "?"
       },
       "syncBadge": {
         "pausedQuota": "Credit limit",

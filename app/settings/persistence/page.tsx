@@ -202,22 +202,30 @@ export default function PersistenceSettingsPage() {
               <p className="text-xs text-gray-400">{t("settings.persistencePage.history.empty")}</p>
             ) : (
               <div className="space-y-1.5 max-h-56 overflow-auto pr-1">
-                {lastSyncStatsHistory.map((entry) => (
-                  <div
-                    key={`${entry.projectId}-${entry.syncedAt}`}
-                    className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex items-center justify-between gap-2"
-                  >
-                    <span className="text-gray-300 truncate">
-                      {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
-                    </span>
-                    <span className="text-gray-400 shrink-0">
-                      {t("settings.persistencePage.syncBadge.lastSyncCreated")}: {entry.sectionsUpserted} · {t("settings.persistencePage.syncBadge.lastSyncDeleted")}: {entry.sectionsDeleted} · {t("settings.persistencePage.syncBadge.lastSyncUnchanged")}: {entry.sectionsUnchanged}
-                    </span>
-                    <span className="text-gray-500 shrink-0">
-                      {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
-                    </span>
-                  </div>
-                ))}
+                {lastSyncStatsHistory.map((entry) => {
+                  const who = entry.syncedByDisplayName ?? entry.syncedByUserId ?? t("settings.persistencePage.history.unknownUser");
+                  return (
+                    <div
+                      key={`${entry.projectId}-${entry.syncedAt}`}
+                      className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex flex-wrap items-center justify-between gap-2"
+                    >
+                      <span className="text-gray-300 truncate">
+                        {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
+                        {(entry.syncedByUserId ?? entry.syncedByDisplayName) && (
+                          <span className="text-gray-500 ml-1">
+                            {t("settings.persistencePage.history.syncedBy").replace("{{name}}", who)}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-gray-400 shrink-0">
+                        {t("settings.persistencePage.syncBadge.lastSyncCreated")}: {entry.sectionsUpserted} · {t("settings.persistencePage.syncBadge.lastSyncDeleted")}: {entry.sectionsDeleted} · {t("settings.persistencePage.syncBadge.lastSyncUnchanged")}: {entry.sectionsUnchanged}
+                      </span>
+                      <span className="text-gray-500 shrink-0">
+                        {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

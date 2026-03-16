@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import {
   fetchProjectsFromSupabase,
+  fetchDeletedProjectIds,
   fetchQuotaStatus,
   upsertProjectToSupabase,
   deleteProjectFromSupabase,
@@ -229,6 +230,9 @@ export type LastSyncStats = SyncStats & {
   projectId: string;
   syncedAt: string;
   creditsConsumed?: number;
+  /** Quem executou o sync (visível para qualquer membro no histórico) */
+  syncedByUserId?: string;
+  syncedByDisplayName?: string | null;
 };
 
 interface ProjectStore {
@@ -256,6 +260,8 @@ interface ProjectStore {
   addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
   addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
   removeProject: (id: UUID) => void;
+  /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
+  removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
   editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
@@ -606,13 +612,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       set({ syncStatus: "syncing", lastSyncError: null });
 
-      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota, partial, remainingCreditsNeeded } =
+      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota, partial, remainingCreditsNeeded, syncedBy } =
         await upsertProjectToSupabase(sanitizeProjectForSync(project));
       if (quota) {
         set({ lastQuotaStatus: quota });
         persistSyncState();
       }
       if (error) {
+        if (errorCode === "project_deleted") {
+          get().removeProjectLocally(projectId);
+          set({ syncStatus: "idle", lastSyncError: null });
+          return;
+        }
         if (errorCode === "quota_exceeded") {
           const until = quota?.windowEndsAt || null;
           const nextError =
@@ -678,6 +689,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             syncedAt,
             ...stats,
             creditsConsumed: quota?.consumedThisSync,
+            ...(syncedBy ? { syncedByUserId: syncedBy.userId, syncedByDisplayName: syncedBy.displayName } : {}),
           };
           set({
             syncStatus: "synced",
@@ -882,11 +894,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       clearProjectDirty(id);
       syncedProjectHash.delete(id);
       clearProjectBackoff(id);
-      // Busca userId internamente no deleteProjectFromSupabase — sem race condition
       deleteProjectFromSupabase(id).then(({ error }) => {
-        if (error) console.error("[projectStore] Falha ao deletar projeto no Supabase:", error);
-        else logInfo("[projectStore] Projeto deletado no Supabase:", id);
+        if (error) {
+          console.error("[projectStore] Falha ao deletar projeto no Supabase:", error);
+          get().loadFromSupabase();
+        } else {
+          logInfo("[projectStore] Projeto deletado no Supabase:", id);
+        }
       });
+    },
+
+    removeProjectLocally: (id: UUID) => {
+      wrappedSet((prev) => prev.filter((p) => p.id !== id));
+      clearProjectDirty(id);
+      syncedProjectHash.delete(id);
+      clearProjectBackoff(id);
+      try {
+        const next = get().projects;
+        persist(next);
+      } catch {}
+      persistSyncState();
     },
 
     editProject: (id: UUID, name: string, description: string) => {
@@ -1154,7 +1181,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       if (remote === null) return "error";
 
       // Garante que temos os dados locais para fazer merge
-      // (o store pode estar vazio se loadFromStorage ainda não foi chamado)
       let localProjects = get().projects;
       if (localProjects.length === 0) {
         try {
@@ -1164,6 +1190,23 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
             if (parsed) localProjects = parsed;
           }
         } catch {}
+      }
+
+      // Projetos deletados pelo dono: remover da lista local para membros não re-criarem como owner
+      const localIds = localProjects.map((p) => p.id);
+      if (localIds.length > 0) {
+        const deletedIds = await fetchDeletedProjectIds(localIds);
+        deletedIds.forEach((id) => get().removeProjectLocally(id));
+        localProjects = get().projects;
+        if (localProjects.length === 0) {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const parsed = parseProjectsFromStorage(raw);
+              if (parsed) localProjects = parsed;
+            }
+          } catch {}
+        }
       }
 
       // Se nuvem está vazia, sinaliza para o hook de init disparar migração

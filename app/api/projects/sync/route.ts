@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
 import {
   FREE_MAX_PROJECTS,
@@ -138,6 +139,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Nome do usuário que está sincronizando (para histórico visível a todos os membros)
+    let syncedByDisplayName: string | null = null;
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileRow && typeof (profileRow as { display_name?: string }).display_name === "string") {
+      syncedByDisplayName = (profileRow as { display_name: string }).display_name;
+    }
+    if (syncedByDisplayName === null && user.email) syncedByDisplayName = user.email;
+
     if (!dryRun) {
       const { allowed } = checkSyncRateLimit(user.id);
       if (!allowed) {
@@ -158,6 +171,26 @@ export async function POST(request: NextRequest) {
     if (existingProjectErr) {
       const msg = getSupabaseErrorMessage(existingProjectErr, "project_lookup_failed");
       return NextResponse.json({ error: msg, code: "project_lookup" }, { status: 500 });
+    }
+
+    // Se o projeto não existe, pode ter sido deletado pelo dono. Impedir que membro re-crie e vire owner.
+    if (!existingProject) {
+      try {
+        const adminClient = createAdminClient();
+        const { data: tombstone } = await adminClient
+          .from("deleted_projects")
+          .select("project_id")
+          .eq("project_id", project.id)
+          .maybeSingle();
+        if (tombstone != null) {
+          return NextResponse.json(
+            { error: "project_deleted", code: "project_deleted", message: "Este projeto foi excluído pelo dono. Removendo da sua lista local." },
+            { status: 410 }
+          );
+        }
+      } catch {
+        // Tabela deleted_projects pode não existir ainda; seguir fluxo normal
+      }
     }
 
     const isNewProject = !existingProject;
@@ -531,6 +564,26 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json(body, { status: 500 });
       }
+
+      // Histórico de versões: gravar snapshot para seções com alteração de título/conteúdo
+      const contentAppliedIds = new Set(contentUpsertList.map((s: { id: string }) => s.id));
+      const versionRows = rows
+        .filter((r: { id: string }) => contentAppliedIds.has(r.id))
+        .map((r: Record<string, unknown>) => ({
+          section_id: r.id,
+          project_id: r.project_id,
+          title: r.title ?? "",
+          content: r.content ?? "",
+          sort_order: r.sort_order ?? 0,
+          color: r.color ?? null,
+          created_at: r.updated_at ?? nowIso,
+          updated_by: r.updated_by ?? null,
+          updated_by_name: r.updated_by_name ?? null,
+        }));
+      if (versionRows.length > 0) {
+        const { error: verErr } = await supabase.from("section_versions").insert(versionRows);
+        if (verErr) console.error("[api/projects/sync] section_versions insert failed:", verErr);
+      }
     }
 
     if (deletesToApply.length > 0) {
@@ -581,6 +634,7 @@ export async function POST(request: NextRequest) {
         sectionsUnchanged: Math.max(0, incomingSections.length - sectionsToApply.length),
       },
       quota,
+      syncedBy: { userId: user.id, displayName: syncedByDisplayName },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -610,9 +664,55 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
     }
 
-    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    // Só o dono pode deletar. Verificar com o client do usuário (respeita RLS).
+    const { data: project, error: fetchErr } = await supabase
+      .from("projects")
+      .select("id, owner_id")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return NextResponse.json({ error: getSupabaseErrorMessage(fetchErr, "project_fetch_failed") }, { status: 500 });
+    }
+    if (!project) {
+      return NextResponse.json({ error: "project_not_found" }, { status: 404 });
+    }
+    if ((project as { owner_id: string }).owner_id !== user.id) {
+      return NextResponse.json(
+        { error: "forbidden", message: "Apenas o dono do projeto pode excluí-lo." },
+        { status: 403 }
+      );
+    }
+
+    // Tombstone: registrar como deletado antes de apagar, para membros com cópia offline
+    // receberem 410 ao tentar sincronizar e removerem o projeto localmente (evita re-criar como owner).
+    let admin;
+    try {
+      admin = createAdminClient();
+    } catch {
+      return NextResponse.json(
+        { error: "server_error", message: "Serviço indisponível para exclusão." },
+        { status: 500 }
+      );
+    }
+    await admin.from("deleted_projects").upsert({ project_id: projectId }, { onConflict: "project_id" });
+
+    // Deletar com cliente admin; cascade remove sections e project_members.
+    const { data: deleted, error } = await admin
+      .from("projects")
+      .delete()
+      .eq("id", projectId)
+      .select("id")
+      .single();
+
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: getSupabaseErrorMessage(error, "project_delete_failed") }, { status: 500 });
+    }
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "project_delete_failed", message: "O projeto não pôde ser removido (nenhuma linha afetada)." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });

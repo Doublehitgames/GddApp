@@ -13,7 +13,6 @@ import type { Project } from "@/store/projectStore";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
-  const removeProject = useProjectStore((s) => s.removeProject);
   const { user } = useAuthStore();
   const { t } = useI18n();
 
@@ -34,25 +33,6 @@ export default function Home() {
   const projectsLeft = FREE_MAX_PROJECTS - myProjects.length;
   const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - mySections;
   const showLimitWarning = projectsLeft <= 1 || sectionsLeft <= 10;
-
-  const downloadProjectBackup = (project: Project) => {
-    const backupData = {
-      project,
-      exportDate: new Date().toISOString(),
-      version: "1.0",
-    };
-
-    const jsonString = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${project.title.replace(/[^a-z0-9]/gi, "_")}_backup_${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10 pb-14">
@@ -129,22 +109,17 @@ export default function Home() {
                             </div>
                           </div>
                         </Link>
-                        <button
-                          className="px-3 py-1.5 bg-red-700/80 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                          onClick={() => {
-                            if (!window.confirm(t("home.projects.confirmRemove", `Remover "${p.title}"?`).replace("{title}", p.title))) return;
-                            const shouldBackup = window.confirm(t("home.projects.confirmBackup", `Backup local de "${p.title}" antes de excluir?`).replace("{title}", p.title));
-                            if (shouldBackup) {
-                              try { downloadProjectBackup(p); } catch (e) {
-                                console.error(e);
-                                if (!window.confirm(t("home.projects.confirmDeleteWithoutBackup"))) return;
-                              }
-                            }
-                            removeProject(p.id);
-                          }}
+                        <Link
+                          href={`/projects/${p.id}/settings`}
+                          className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors shrink-0 inline-flex items-center justify-center"
+                          title={t("home.projects.settings")}
+                          aria-label={t("home.projects.settings")}
                         >
-                          {t("home.projects.remove")}
-                        </button>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </Link>
                       </div>
                     );
                   })}

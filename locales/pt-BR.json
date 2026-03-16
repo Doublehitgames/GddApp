@@ -58,6 +58,7 @@
       "usageSections": "seções",
       "limitWarning": "Limite próximo: restam {{projectsLeft}} projeto(s) e {{sectionsLeft}} seção(ões) no plano Free.",
       "remove": "Remover",
+      "settings": "Configurações",
       "empty": "Nenhum projeto criado ainda.",
       "emptyShared": "Nenhum projeto compartilhado com você.",
       "confirmRemove": "Tem certeza que deseja remover o projeto \"{title}\"?",
@@ -123,6 +124,7 @@
     "resultsFoundMany": "resultados encontrados",
     "match": "Match",
     "reorder": "Reordenar",
+    "actionsNavLabel": "Ações do projeto",
     "actions": {
       "mindMap": "Mapa Mental",
       "viewDocument": "Ver como Documento",
@@ -260,12 +262,32 @@
       "createdAt": "Criado em {{date}}",
       "updatedAt": "Modificado em {{date}}"
     },
+    "history": {
+      "title": "Histórico de alterações",
+      "versionOne": "versão",
+      "versionMany": "versões",
+      "loading": "Carregando histórico…",
+      "empty": "Nenhuma versão anterior registrada.",
+      "by": "por {{name}}",
+      "untitled": "Sem título",
+      "restore": "Restaurar",
+      "restoring": "Restaurando…"
+    },
     "backlinks": "Referenciado por:"
   },
   "settings": {
+    "pageTitle": "Configurações do Projeto",
     "language": "Idioma",
     "ai": "Configurações de IA",
     "persistence": "Persistência",
+    "deleteProject": {
+      "title": "Excluir projeto",
+      "description": "Esta ação não pode ser desfeita. Para confirmar, digite o nome do projeto abaixo.",
+      "placeholder": "Digite o nome do projeto",
+      "cancel": "Cancelar",
+      "delete": "Excluir projeto",
+      "backupCheckbox": "Fazer backup em JSON antes de excluir"
+    },
     "mindmapShareMembers": {
       "title": "Compartilhar projeto (membros)",
       "description": "Convide pessoas por e-mail para editar este projeto. Elas compartilham a mesma cota de sync do projeto.",
@@ -383,7 +405,9 @@
         "empty": "Nenhum ciclo registrado ainda.",
         "delta": "Δ seções",
         "credits": "Créditos",
-        "clearButton": "Limpar histórico"
+        "clearButton": "Limpar histórico",
+        "syncedBy": "por {{name}}",
+        "unknownUser": "?"
       },
       "syncBadge": {
         "pausedQuota": "Limite de créditos",

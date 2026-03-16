@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useProjectStore, LevelConfig } from "@/store/projectStore";
+import { useProjectStore, LevelConfig, type Project } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
@@ -20,7 +20,7 @@ export default function SettingsClient({ projectId }: Props) {
   const { user } = useAuthStore();
   const isPt = locale === "pt-BR";
   const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
-  const { getProject, updateProjectSettings, updateProjectMindMapSettingsOnly } = useProjectStore();
+  const { getProject, updateProjectSettings, updateProjectMindMapSettingsOnly, removeProject } = useProjectStore();
   const project = getProject(projectId);
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
@@ -36,6 +36,9 @@ export default function SettingsClient({ projectId }: Props) {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
+  const [deleteBackupChecked, setDeleteBackupChecked] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     if (!projectId) return;
@@ -85,6 +88,19 @@ export default function SettingsClient({ projectId }: Props) {
       setInviteLoading(false);
     }
   };
+
+  const downloadProjectBackup = useCallback((proj: Project) => {
+    const backupData = { project: proj, exportDate: new Date().toISOString(), version: "1.0" };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${proj.title.replace(/[^a-z0-9]/gi, "_")}_backup_${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, []);
 
   const handleRemoveMember = async (userId: string) => {
     if (!confirm(t("settings.mindmapShareMembers.removeConfirm"))) return;
@@ -399,6 +415,20 @@ export default function SettingsClient({ projectId }: Props) {
     }
   };
 
+  const handleDeleteProject = () => {
+    if (!project || deleteConfirmValue.trim() !== project.title.trim()) return;
+    if (deleteBackupChecked) {
+      try { downloadProjectBackup(project); } catch (e) { console.error(e); }
+    }
+    removeProject(projectId);
+    setDeleteModalOpen(false);
+    setDeleteConfirmValue("");
+    setDeleteBackupChecked(false);
+    router.push("/");
+  };
+
+  const deleteConfirmMatch = Boolean(project && deleteConfirmValue.trim() === project.title.trim());
+
   if (!project) return <div>{isPt ? "Projeto não encontrado" : "Project not found"}</div>;
   const levels = settings.levels || [];
   const shareToken = (getValue("sharing.shareToken") || "") as string;
@@ -410,7 +440,7 @@ export default function SettingsClient({ projectId }: Props) {
       <div className="max-w-5xl mx-auto p-6">
         <div className="mb-8">
           <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← {isPt ? "Voltar" : "Back"}</button>
-          <h1 className="text-3xl font-bold mb-2">⚙️ {isPt ? "Configurações do Mapa Mental" : "Mind Map Settings"}</h1>
+          <h1 className="text-3xl font-bold mb-2">⚙️ {t("settings.pageTitle")}</h1>
           <p className="text-gray-400">{project.title}</p>
         </div>
         {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ {isPt ? "Configurações salvas com sucesso!" : "Settings saved successfully!"}</div>}
@@ -1096,11 +1126,69 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
             <p className="text-xs text-gray-500">{tr("Ajuste a física para controlar como os nós se organizam. Link = atração aos pais, Collision = evita sobreposição, Iterações = qualidade do cálculo.", "Tune physics to control how nodes organize. Link = attraction to parents, Collision = avoid overlap, Iterations = calculation quality.")}</p>
           </div>
+
+          {isOwner && (
+            <div className="bg-gray-800 rounded-lg p-6 border border-red-900/50">
+              <h2 className="text-xl font-bold mb-2 text-red-400">🗑️ {t("settings.deleteProject.title")}</h2>
+              <p className="text-sm text-gray-400 mb-4">{t("settings.deleteProject.description")}</p>
+              <button
+                type="button"
+                onClick={() => { setDeleteModalOpen(true); setDeleteConfirmValue(""); }}
+                className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg font-semibold"
+              >
+                {t("settings.deleteProject.delete")}
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex gap-3 mt-8">
           <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
           <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
         </div>
+
+        {deleteModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => setDeleteModalOpen(false)}>
+            <div className="bg-gray-800 rounded-xl border border-gray-600 shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-red-400 mb-2">{t("settings.deleteProject.title")}</h3>
+              <p className="text-sm text-gray-300 mb-4">{t("settings.deleteProject.description")}</p>
+              <p className="text-sm font-medium text-white mb-2">{project.title}</p>
+              <input
+                type="text"
+                value={deleteConfirmValue}
+                onChange={(e) => setDeleteConfirmValue(e.target.value)}
+                placeholder={t("settings.deleteProject.placeholder")}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 mb-4 text-white placeholder-gray-400"
+                autoFocus
+              />
+              <label className="flex items-center gap-2 mb-6 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={deleteBackupChecked}
+                  onChange={(e) => setDeleteBackupChecked(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                {t("settings.deleteProject.backupCheckbox")}
+              </label>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteModalOpen(false); setDeleteConfirmValue(""); }}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium"
+                >
+                  {t("settings.deleteProject.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteProject}
+                  disabled={!deleteConfirmMatch}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold"
+                >
+                  {t("settings.deleteProject.delete")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

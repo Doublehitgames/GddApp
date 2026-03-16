@@ -58,6 +58,7 @@
       "usageSections": "secciones",
       "limitWarning": "Límite cercano: quedan {{projectsLeft}} proyecto(s) y {{sectionsLeft}} sección(es) en el plan Free.",
       "remove": "Eliminar",
+      "settings": "Configuración",
       "empty": "Aún no hay proyectos creados.",
       "emptyShared": "Ningún proyecto compartido contigo.",
       "confirmRemove": "¿Seguro que quieres eliminar el proyecto \"{title}\"?",
@@ -123,6 +124,7 @@
     "resultsFoundMany": "resultados encontrados",
     "match": "Coincidencia",
     "reorder": "Reordenar",
+    "actionsNavLabel": "Acciones del proyecto",
     "actions": {
       "mindMap": "Mapa mental",
       "viewDocument": "Ver como documento",
@@ -260,12 +262,32 @@
       "createdAt": "Creado el {{date}}",
       "updatedAt": "Modificado el {{date}}"
     },
+    "history": {
+      "title": "Historial de cambios",
+      "versionOne": "versión",
+      "versionMany": "versiones",
+      "loading": "Cargando historial…",
+      "empty": "No hay versiones anteriores registradas.",
+      "by": "por {{name}}",
+      "untitled": "Sin título",
+      "restore": "Restaurar",
+      "restoring": "Restaurando…"
+    },
     "backlinks": "Referenciado por:"
   },
   "settings": {
+    "pageTitle": "Configuración del proyecto",
     "language": "Idioma",
     "ai": "Configuración de IA",
     "persistence": "Persistencia",
+    "deleteProject": {
+      "title": "Eliminar proyecto",
+      "description": "Esta acción no se puede deshacer. Para confirmar, escribe el nombre del proyecto abajo.",
+      "placeholder": "Escribe el nombre del proyecto",
+      "cancel": "Cancelar",
+      "delete": "Eliminar proyecto",
+      "backupCheckbox": "Descargar backup JSON antes de eliminar"
+    },
     "mindmapShareMembers": {
       "title": "Compartir proyecto (miembros)",
       "description": "Invita por correo para editar este proyecto. Comparten la misma cuota de sync del proyecto.",
@@ -383,7 +405,9 @@
         "empty": "Aún no hay ciclos registrados.",
         "delta": "Δ secciones",
         "credits": "Créditos",
-        "clearButton": "Limpiar historial"
+        "clearButton": "Limpiar historial",
+        "syncedBy": "por {{name}}",
+        "unknownUser": "?"
       },
       "syncBadge": {
         "pausedQuota": "Límite de créditos",

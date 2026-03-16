@@ -51,6 +51,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
   const projects = useProjectStore((s) => s.projects);
+  const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
+  const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
 
   const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
   const [section, setSection] = useState<any>(null);
@@ -77,6 +79,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [sectionColor, setSectionColor] = useState("#3b82f6");
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [selectedNewParent, setSelectedNewParent] = useState<string | null>(null);
+  const [sectionVersions, setSectionVersions] = useState<Array<{ id: string; title: string; content: string; color?: string | null; created_at: string; updated_by_name?: string | null }>>([]);
+  const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
+  const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -289,6 +294,34 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
   }, [projectId, sectionId, getProject, projects]);
+
+  // Buscar histórico de versões da seção (após carregar)
+  useEffect(() => {
+    if (!loaded || !projectId || !sectionId) return;
+    let cancelled = false;
+    setSectionVersionsLoading(true);
+    fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { versions: [] }))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.versions)) setSectionVersions(data.versions);
+      })
+      .catch(() => { if (!cancelled) setSectionVersions([]); })
+      .finally(() => { if (!cancelled) setSectionVersionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [loaded, projectId, sectionId]);
+
+  // Atualizar histórico quando um sync deste projeto termina (novo ponto de versão pode ter sido criado)
+  useEffect(() => {
+    if (!loaded || !projectId || !sectionId || !lastSyncedAt || !lastSyncStats || lastSyncStats.projectId !== projectId) return;
+    let cancelled = false;
+    fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { versions: [] }))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.versions)) setSectionVersions(data.versions);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [loaded, projectId, sectionId, lastSyncedAt, lastSyncStats]);
 
   // Inicializa/destroi o editor WYSIWYG inline quando modo de edição é ativado
   useEffect(() => {
@@ -629,6 +662,11 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     handleMoveSection={handleMoveSection}
     sections={project?.sections || []}
     setSection={setSection}
+    sectionVersions={sectionVersions}
+    sectionVersionsLoading={sectionVersionsLoading}
+    restoreVersionId={restoreVersionId}
+    setSectionVersions={setSectionVersions}
+    setRestoreVersionId={setRestoreVersionId}
       />
       <AutocompleteDropdown />
     </>
@@ -1039,8 +1077,15 @@ function SectionDetailContent({
   handleMoveSection,
   sections,
   setSection,
+  sectionVersions,
+  sectionVersionsLoading,
+  restoreVersionId,
+  setSectionVersions,
+  setRestoreVersionId,
 }: any) {
   const { t } = useI18n();
+  const { user, profile } = useAuthStore();
+  const [historyExpanded, setHistoryExpanded] = useState(false);
   const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
     ? getUnresolvedRefsFromContent(previewContent, sections || [], project?.title || "")
     : { unresolvedNames: [] as string[], hasProjectTitleRef: false };
@@ -1278,6 +1323,95 @@ function SectionDetailContent({
           )}
         </div>
       )}
+
+      {/* Histórico de versões (colapsável) */}
+      <div className="max-w-6xl mx-auto mb-4 bg-gray-800/70 border border-gray-700/80 rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setHistoryExpanded((e) => !e)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-700/50 transition-colors"
+          aria-expanded={historyExpanded}
+        >
+          <span className="text-sm font-semibold text-gray-200">
+            {t("sectionDetail.history.title")}
+            {!sectionVersionsLoading && sectionVersions.length > 0 && (
+              <span className="text-gray-500 font-normal ml-1">
+                ({sectionVersions.length} {sectionVersions.length === 1 ? t("sectionDetail.history.versionOne") : t("sectionDetail.history.versionMany")})
+              </span>
+            )}
+          </span>
+          <span className="text-gray-400 shrink-0 transition-transform duration-200" style={{ transform: historyExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+            ▼
+          </span>
+        </button>
+        {historyExpanded && (
+          <div className="px-4 pb-4 pt-0 border-t border-gray-700/80">
+        {sectionVersionsLoading ? (
+          <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.loading")}</p>
+        ) : sectionVersions.length === 0 ? (
+          <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.empty")}</p>
+        ) : (
+          <ul className="space-y-2 max-h-64 overflow-auto pt-2">
+            {sectionVersions.map((v: { id: string; title: string; content: string; color?: string | null; created_at: string; updated_by_name?: string | null }) => {
+              const contentPreview = (v.content || "").replace(/\s+/g, " ").trim().slice(0, 80);
+              return (
+              <li
+                key={v.id}
+                className="flex flex-wrap items-start justify-between gap-2 text-xs bg-gray-900/60 border border-gray-700 rounded-lg px-2 py-1.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-gray-300 truncate">
+                    {new Date(v.created_at).toLocaleString()}
+                    {(v.updated_by_name != null && v.updated_by_name !== "") && (
+                      <span className="text-gray-500 ml-1">
+                        {t("sectionDetail.history.by").replace("{{name}}", v.updated_by_name)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-gray-400 font-medium truncate mt-0.5" title={v.title}>
+                    {(v.title && v.title.trim()) || t("sectionDetail.history.untitled")}
+                  </div>
+                  {contentPreview ? (
+                    <div className="text-gray-500 truncate mt-0.5" title={v.content}>
+                      {contentPreview}{v.content.length > 80 ? "…" : ""}
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={restoreVersionId !== null}
+                  onClick={async () => {
+                    if (!v.id) return;
+                    setRestoreVersionId(v.id);
+                    try {
+                      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/restore`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ versionId: v.id }),
+                        credentials: "include",
+                      });
+                      if (res.ok) {
+                        editSection(projectId, sectionId, v.title, v.content, undefined, v.color ?? undefined);
+                        setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
+                        const data = await fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
+                        if (Array.isArray(data?.versions)) setSectionVersions(data.versions);
+                      }
+                    } finally {
+                      setRestoreVersionId(null);
+                    }
+                  }}
+                  className="text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                >
+                  {restoreVersionId === v.id ? t("sectionDetail.history.restoring") : t("sectionDetail.history.restore")}
+                </button>
+              </li>
+            );
+            })}
+          </ul>
+        )}
+          </div>
+        )}
+      </div>
 
       {showPageRefsPanel && (
         <UnresolvedRefsPanel
