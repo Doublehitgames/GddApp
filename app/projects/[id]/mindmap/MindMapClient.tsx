@@ -21,6 +21,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
+import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import * as d3 from "d3-force";
@@ -744,11 +745,6 @@ function ProjectNode({ data }: { data: any }) {
   );
 }
 
-const nodeTypes = Object.freeze({
-  sectionNode: SectionNode,
-  projectNode: ProjectNode,
-});
-
 // Componente para renderizar markdown com referências clicáveis no mapa mental
 function MarkdownWithMapReferences({ 
   content, 
@@ -834,11 +830,24 @@ function MarkdownWithMapReferences({
           "p", "br", "strong", "em", "u", "del", "code", "pre", "blockquote",
           "ul", "ol", "li",
           "h1", "h2", "h3", "h4", "h5", "h6",
-          "a", "span",
+          "a", "span", "img",
           "table", "thead", "tbody", "tr", "th", "td",
         ]}
         unwrapDisallowed
         components={{
+          img: ({ src, alt }) => {
+            const safeSrc = typeof src === "string" ? src.trim() : "";
+            if (!safeSrc) return null;
+            const displaySrc = getDriveImageDisplayUrl(safeSrc);
+            return (
+              <img
+                src={displaySrc}
+                alt={alt || ""}
+                className="max-w-full h-auto rounded-md my-3"
+                loading="lazy"
+              />
+            );
+          },
           a: ({ node, href, children, ...props }) => {
             // Se é uma referência de seção
             if (href && href.startsWith('#ref-')) {
@@ -874,6 +883,12 @@ function MarkdownWithMapReferences({
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
   const { locale } = useI18n();
+  // Tipos estáveis por instância (evita warning React Flow #002: "new nodeTypes/edgeTypes object")
+  const nodeTypesStable = useMemo(
+    () => ({ sectionNode: SectionNode, projectNode: ProjectNode }),
+    []
+  );
+  const edgeTypesStable = useMemo(() => ({}), []);
   const tr = (pt: string, en: string, es: string) => {
     switch (locale) {
       case "es":
@@ -1876,7 +1891,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             onNodeDragStart={onNodeDragStart}
             onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
-            nodeTypes={nodeTypes}
+            nodeTypes={nodeTypesStable}
+            edgeTypes={edgeTypesStable}
             nodesDraggable={true}
             nodesConnectable={false}
             elementsSelectable={true}

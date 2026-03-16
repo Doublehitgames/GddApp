@@ -147,7 +147,12 @@
     "aiConfigWarningSuffix": "to use this feature",
     "aiHelpPrefix": "AI will improve content while preserving existing",
     "aiHelpHighlight": "images, links, and references",
-    "aiHelpSuffix": "."
+    "aiHelpSuffix": ".",
+    "insertFromDrive": "Insert from Google Drive",
+    "insertFromDriveTooltip": "Insert image from Google Drive",
+    "insertFromDriveHint": "Use the Drive image button in the toolbar. The image must be shared as \"Anyone with the link\" to appear in the document.",
+    "driveNotConfigured": "Google Drive not configured. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to your environment variables (see documentation). On Vercel, after adding the variable, trigger a new deploy (Redeploy) for it to take effect.",
+    "drivePasteHint": "Image link copied. Paste in the editor with Ctrl+V (or Cmd+V on Mac)."
   },
   "projectExport": {
     "backToProject": "Back to Project",
@@ -194,7 +199,10 @@
     "actions": {
       "exitFullscreen": "Exit Fullscreen",
       "fullscreen": "Fullscreen",
-      "deleteSection": "Delete section"
+      "deleteSection": "Delete section",
+      "goToDocument": "Go to document",
+      "goToSectionPage": "Go to section page",
+      "goToMindMap": "Go to mind map"
     },
     "confirmDelete": "Are you sure you want to delete this section?",
     "confirmDeleteWithChildren": "Are you sure you want to delete this section and its {count} subsection(s)?",
@@ -213,7 +221,18 @@
     "ai": {
       "modifying": "Modifying...",
       "modify": "Modify",
-      "confirmApply": "Confirm and Apply"
+      "confirmApply": "Confirm and Apply",
+      "unresolvedRefsTitle": "References that don't exist as sections yet",
+      "createSection": "Create section",
+      "createHere": "Create as subsection here",
+      "createAtRoot": "Create at root level",
+      "chooseParent": "Choose parent section…",
+      "useAI": "Use AI (create in right place)",
+      "useAILoading": "AI analyzing…",
+      "chooseParentModalTitle": "Where to create \"{name}\"?",
+      "createSectionHint": "Choose where to create each section: here as a subsection, at project root, or under another section.",
+      "projectNotSection": "project is not a section",
+      "removeProjectRef": "Remove reference"
     },
     "move": {
       "cannotBeOwnParent": "A section cannot be its own parent.",

@@ -25,13 +25,25 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const initialFocusHandledRef = useRef(false);
   const [showMobileToc, setShowMobileToc] = useState(false);
-  const [showDesktopToc, setShowDesktopToc] = useState(true);
+  const [showDesktopToc, setShowDesktopToc] = useState(false);
+  const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
   const isPublicMode = Boolean(publicToken);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
+  const sectionMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (openSectionMenuId === null) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sectionMenuRef.current?.contains(e.target as Node)) return;
+      setOpenSectionMenuId(null);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [openSectionMenuId]);
 
   useEffect(() => {
     if (mounted && !isPublicMode) {
@@ -249,7 +261,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           </a>
 
           {node.subsections?.length > 0 && (
-            <div className="ml-4 mt-1 space-y-1 border-l border-slate-200/80 pl-3">
+            <div className="ml-2 mt-1 space-y-1 border-l border-slate-200/80 pl-2">
               {renderTocNodes(node.subsections, depth + 1, onNavigate)}
             </div>
           )}
@@ -258,47 +270,101 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     });
   };
 
+  const getHeadingTag = (depth: number): "h2" | "h3" | "h4" | "h5" | "h6" => {
+    if (depth <= 1) return depth === 0 ? "h2" : "h3";
+    if (depth === 2) return "h4";
+    if (depth === 3) return "h5";
+    return "h6";
+  };
+
+  const getHeadingClass = (depth: number) => {
+    const base = "flex items-center gap-2 flex-wrap";
+    switch (depth) {
+      case 0:
+        return `${base} text-3xl font-bold text-gray-900 mb-6 pb-3 border-b-2 border-blue-500`;
+      case 1:
+        return `${base} text-2xl font-semibold text-gray-800 mb-4`;
+      case 2:
+        return `${base} text-xl font-semibold text-gray-800 mb-3`;
+      case 3:
+        return `${base} text-lg font-medium text-gray-700 mb-3`;
+      case 4:
+        return `${base} text-base font-medium text-gray-700 mb-2`;
+      default:
+        return `${base} text-sm font-medium text-gray-600 mb-2`;
+    }
+  };
+
+  const getSectionIndentClass = (depth: number) => {
+    if (depth === 0) return "";
+    if (depth === 1) return "ml-4";   // 1rem
+    if (depth === 2) return "ml-8";   // 2rem
+    return "ml-10";                   // 2.5rem (cap)
+  };
+
   const renderSectionNodes = (nodes: any[], depth = 0) => {
     if (!nodes || nodes.length === 0) return null;
 
-    return nodes.map((node: any) => {
-      const headingClass = depth === 0
-        ? "text-3xl font-bold text-gray-900 mb-6 flex items-center gap-3 pb-3 border-b-2 border-blue-500"
-        : "text-2xl font-semibold text-gray-800 mb-4 flex items-center gap-3";
+    const HeadingTag = getHeadingTag(depth);
+    const headingClass = getHeadingClass(depth);
+    const indentClass = getSectionIndentClass(depth);
 
+    return nodes.map((node: any) => {
       return (
-        <div key={node.id} className={depth === 0 ? "section-content" : "ml-8"}>
+        <div key={node.id} className={`section-content ${indentClass}`}>
           <div
             id={`section-${node.id}`}
             data-section-anchor={node.id}
             className={`scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(node.id) ? "gdd-search-match" : ""} ${activeMatchId === node.id ? "gdd-search-active" : ""}`}
           >
-            {depth === 0 ? (
-              <h2 className={headingClass}>
+            <HeadingTag className={headingClass}>
+              <div
+                ref={openSectionMenuId === node.id ? sectionMenuRef : undefined}
+                className="relative inline-flex"
+              >
                 <button
-                  onClick={() => router.push(getMindMapFocusUrl(node.id))}
-                  className="text-sm px-3 py-1 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-                  title="Ir para este item no mapa mental"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenSectionMenuId((prev) => (prev === node.id ? null : node.id));
+                  }}
+                  className="text-left rounded-md hover:bg-gray-100 px-1 -mx-1 transition-colors inline-flex items-baseline gap-1.5"
+                  title="Opções"
                 >
-                  🧠
+                  {highlightSearchTerm(node.title)}
+                  <span className="text-gray-400 text-sm" aria-hidden>▾</span>
                 </button>
-                {highlightSearchTerm(node.title)}
-              </h2>
-            ) : (
-              <h3 className={headingClass}>
-                <button
-                  onClick={() => router.push(getMindMapFocusUrl(node.id))}
-                  className="text-xs px-2.5 py-1 rounded-md border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100"
-                  title="Ir para este item no mapa mental"
-                >
-                  🧠
-                </button>
-                {highlightSearchTerm(node.title)}
-              </h3>
-            )}
+                {openSectionMenuId === node.id && (
+                  <div className="absolute left-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenSectionMenuId(null);
+                        router.push(getMindMapFocusUrl(node.id));
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      🧠 {t("sectionDetail.actions.goToMindMap")}
+                    </button>
+                    {!isPublicMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenSectionMenuId(null);
+                          router.push(`/projects/${projectId}/sections/${node.id}`);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        📄 {t("sectionDetail.actions.goToSectionPage")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </HeadingTag>
 
             {node.content && node.content.trim() ? (
-              <div className={depth === 0 ? "prose prose-lg max-w-none mb-8" : "prose max-w-none"}>
+              <div className={depth === 0 ? "prose prose-lg max-w-none mb-8" : depth === 1 ? "prose max-w-none mb-6" : "prose prose-sm max-w-none mb-4"}>
                 <MarkdownWithReferences
                   content={node.content}
                   projectId={projectId}
@@ -308,7 +374,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 />
               </div>
             ) : (
-              <div className={depth === 0 ? "text-gray-500 italic mb-8 py-4 px-6 bg-gray-50 rounded-lg border border-gray-200" : "text-gray-500 italic py-3 px-5 bg-gray-50 rounded-lg text-sm border border-gray-200"}>
+              <div className={depth <= 1 ? "text-gray-500 italic py-4 px-6 bg-gray-50 rounded-lg border border-gray-200 mb-6" : "text-gray-500 italic py-3 px-4 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-4"}>
                 {!isPublicMode ? (
                   <button
                     onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
@@ -704,7 +770,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           .section-content {
             page-break-inside: avoid;
           }
-          h2, h3 {
+          h2, h3, h4, h5, h6 {
             page-break-after: avoid;
           }
         }

@@ -57,6 +57,7 @@ Documentação geral: `docs/QUICKSTART.md`, `docs/TESTES_COMPLETOS.md`, `docs/GU
 | Limpar histórico de syncs | `clearSyncHistory()` no store; botão na página de persistência |
 | Doc. regra de créditos | `docs/CREDITOS_SYNC.md` |
 | i18n | `lib/i18n/`, `locales/*.json` |
+| Editor de descrição das seções | **Único:** Toast UI em `SectionDetailClient` (tela da seção). Rota `/sections/[sectionId]/edit` redireciona para a seção com `?edit=1` (abre direto no modo edição). Imagem por URL e Google Drive: `utils/toastui-color-plugin.ts`. |
 
 ---
 

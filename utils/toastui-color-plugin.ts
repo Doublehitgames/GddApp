@@ -1,5 +1,11 @@
 // Custom color plugin for Toast UI Editor
-// Adds text color formatting capability
+// Adds text color formatting capability and image buttons (URL, Google Drive)
+
+import {
+  openGoogleDriveImagePicker,
+  driveFileIdToImageUrl,
+  getGoogleClientId,
+} from "@/lib/googleDrivePicker";
 
 // Predefined color palette
 export const COLOR_PALETTE = [
@@ -317,4 +323,108 @@ export function addImageUrlButtonToToolbar(editor: ToastEditorLike) {
       firstGroup.appendChild(buttonWrapper);
     }
   }, 120);
+}
+
+export type DriveImageButtonOptions = {
+  notConfiguredMessage: string;
+  getMarkdownToInsert: (fileId: string, fileName: string) => string;
+  /** Mensagem quando a inserção automática falhar e o link foi copiado (cole com Ctrl+V). */
+  pasteHintMessage?: string;
+  /** Retorna o editor atual (ex.: ref.current). Use após operações async (Picker) para evitar referência destruída. */
+  getCurrentEditor?: () => ToastEditorLike | null;
+};
+
+/** Adiciona botão "Inserir do Google Drive" na toolbar do Toast UI Editor. */
+export function addDriveImageButtonToToolbar(
+  editor: ToastEditorLike,
+  options: DriveImageButtonOptions
+) {
+  const { notConfiguredMessage, getMarkdownToInsert, pasteHintMessage, getCurrentEditor } = options;
+
+  setTimeout(() => {
+    const editorRoot =
+      editor?.el?.closest?.(".toastui-editor-defaultUI") ||
+      document.querySelector(".toastui-editor-defaultUI");
+
+    const toolbarElement = editorRoot?.querySelector(
+      ".toastui-editor-toolbar"
+    ) as HTMLElement | null;
+    if (!toolbarElement) return;
+
+    if (toolbarElement.querySelector(".drive-image-wrapper")) return;
+
+    const buttonWrapper = document.createElement("div");
+    buttonWrapper.className = "drive-image-wrapper";
+    buttonWrapper.style.cssText = "position: relative; display: inline-block;";
+
+    const driveButton = document.createElement("button");
+    driveButton.type = "button";
+    driveButton.className = "toastui-editor-toolbar-icons drive-image";
+    driveButton.style.cssText = `
+      position: relative;
+      padding: 5px 8px;
+      margin: 0 2px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+    `;
+    driveButton.innerHTML = "☁️";
+    driveButton.title = "Inserir imagem do Google Drive";
+
+    driveButton.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const clientId = await getGoogleClientId();
+      if (!clientId) {
+        window.alert(notConfiguredMessage);
+        return;
+      }
+
+      const file = await openGoogleDriveImagePicker(clientId);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Drive image] file from Picker", file);
+      }
+      if (!file) return;
+
+      const markdownImage = getMarkdownToInsert(file.id, file.name);
+      const win = typeof window !== "undefined" && window.top ? window.top : window;
+      const doc = win.document;
+
+      // 1) Copiar para a área de transferência (janela principal)
+      try {
+        if (win.navigator?.clipboard?.writeText) {
+          await win.navigator.clipboard.writeText(markdownImage);
+        }
+      } catch {
+        // ignora
+      }
+
+      // 2) Disparar evento no document da janela principal (Picker pode rodar em iframe)
+      const fire = () => {
+        doc.dispatchEvent(new CustomEvent("gdd-insert-drive-image", { detail: { markdownImage } }));
+      };
+      if (typeof win.requestAnimationFrame === "function") {
+        win.requestAnimationFrame(() => win.requestAnimationFrame(fire));
+      } else {
+        win.setTimeout(fire, 0);
+      }
+
+      // 3) Fallback: avisar para colar se a inserção automática não ocorrer
+      const hint = pasteHintMessage || "Link da imagem copiado. Cole no editor com Ctrl+V (ou Cmd+V no Mac).";
+      win.setTimeout(() => {
+        const inserted = (doc as unknown as { __gddDriveImageInserted?: boolean }).__gddDriveImageInserted;
+        if (!inserted) win.alert(hint);
+        delete (doc as unknown as { __gddDriveImageInserted?: boolean }).__gddDriveImageInserted;
+      }, 400);
+    });
+
+    buttonWrapper.appendChild(driveButton);
+
+    const firstGroup = toolbarElement.querySelector(".toastui-editor-toolbar-group");
+    if (firstGroup) {
+      firstGroup.appendChild(buttonWrapper);
+    }
+  }, 140);
 }

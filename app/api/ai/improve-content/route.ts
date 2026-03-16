@@ -9,6 +9,10 @@ interface ImproveContentRequest {
   sectionTitle: string;
   sectionContext: {
     parentTitle?: string;
+    /** Caminho completo da seção (ex.: ["Áudio", "Música", "Composição", "Mitologia Nórdica"]) */
+    breadcrumb?: string[];
+    /** Conteúdo/resumo da seção pai para a IA entender o tema do ramo */
+    parentContent?: string;
     subsections?: Array<{ title: string; content?: string }>;
     otherSections?: Array<{ title: string; isEmpty?: boolean; isSubsection?: boolean }>;
   };
@@ -50,27 +54,29 @@ export async function POST(req: NextRequest) {
 
 **TAREFA:** Melhorar o conteúdo de uma seção de GDD, mantendo elementos existentes.
 
+**🔴 MENTALIDADE GDD – ESTRUTURA E USABILIDADE:** Ao escrever ou melhorar o conteúdo, avalie sempre como um GDD de verdade: será que o que estou citando faria sentido ter uma página própria? O usuário precisa encontrar e gerenciar esse tópico no documento? Se um conceito, sistema, item, inimigo, local ou mecânica for relevante o suficiente para alguém querer abrir, editar ou navegar até uma seção dedicada, use $[Nome] — assim a estrutura do documento fica clara e o conteúdo fica fácil de localizar e gerenciar. Pense na usabilidade: referências bem usadas tornam o GDD navegável e organizado.
+
 **REGRAS CRÍTICAS:**
 1. **PRESERVAR IMAGENS:** Se houver imagens ![alt](url), mantenha-as EXATAMENTE como estão
 2. **PRESERVAR LINKS:** Mantenha todos os links [texto](url) existentes
 3. **PRESERVAR REFERÊNCIAS:** Mantenha referências $[Seção] existentes
 4. **PRESERVAR UPLOADS:** Links começando com /uploads/ devem ser mantidos intactos
-5. **REFERÊNCIAS INTELIGENTES:** Quando mencionar um conceito, procure seções relacionadas na lista "TODAS AS SEÇÕES DO GDD" abaixo.
+5. **🔴 REFERÊNCIAS OBRIGATÓRIAS:** Use $[Nome] para (1) seções que já existem na lista e (2) para QUALQUER conceito que mereça página própria no GDD — pensando na estrutura do documento e na usabilidade (encontrar e gerenciar conteúdo). O app mostra "referências inexistentes" e o usuário pode criar a seção com um clique.
    
-   **Como fazer correspondências inteligentes:**
-   - Quer falar de "exploração" → Procure seções como: $[Exploração], $[Sistema de Exploração], $[Mecânicas de Exploração]
-   - Quer falar de "combate" → Procure: $[Combate], $[Combate Estratégico], $[Sistema de Combate]
-   - Quer falar de "música" ou "som" → Procure: $[Áudio/Música], $[Trilha Sonora], $[Áudio]
-   - Quer falar de "arte" ou "visual" → Procure: $[Arte e Estética], $[Direção de Arte], $[Visual]
+   **Critério:** Antes de citar algo, pergunte: "Faz sentido esse tópico ter uma seção própria para o usuário encontrar e gerenciar?" Se sim → $[Nome].
    
-   **Regra de ouro:**
-   - Se encontrar seção que ABORDA o tema → Use a referência com o nome EXATO da lista
-   - Se NÃO encontrar → Escreva normalmente SEM referência
+   **Regra 1 – Temas/sistemas:** Combate, dungeons, exploração, loot, áudio, etc. → sempre $[Nome da Seção] (da lista ou novo).
    
-   ⚠️ Use o nome EXATO que está na lista, não invente variações!
-   ⚠️ Se o tópico não está na lista mas é importante, adicione nas "Sugestões"
+   **Regra 2 – Itens, armas, poções, habilidades, inimigos, locais:** Ao citar ou listar algo com nome próprio, use $[Nome]. Isso mantém o GDD estruturado e cada tópico gerenciável em sua própria página.
    
-   Exemplo: "O jogo possui $[Combate Estratégico] dinâmico" (usando nome exato da lista)
+   **Exemplos obrigatórios:**
+   - "durante a exploração dos dungeons procedurais" → "durante a exploração dos $[Dungeons Procedurais]"
+   - "útil em combate" → "útil no $[Combate Estratégico]"
+   - Lista de itens: ❌ "Espada de Fogo: uma espada..." → ✅ "$[Espada de Fogo]: uma espada..."
+   - ❌ "Armadura de Escudo" e "Potions de Saúde" em texto → ✅ "$[Armadura de Escudo]" e "$[Poção de Saúde]" (ou $[Potions de Saúde])
+   - Qualquer item, arma, poção, habilidade, inimigo ou local com nome próprio → $[Nome]
+   
+   ⚠️ Única exceção: O NOME DO PROJETO não é seção — NUNCA use $[Nome do Projeto]. Para falar do "jogo" ou "projeto" em geral, use texto normal.
 6. **NÃO MENCIONAR PRÓPRIAS SUBSEÇÕES:** 🔴 REGRA MAIS CRÍTICA! 
    
    Se a seção tem subseções (veja seção "SUBSEÇÕES DESTA SEÇÃO" no contexto), você está ABSOLUTAMENTE PROIBIDO de mencionar esses tópicos!
@@ -86,48 +92,49 @@ export async function POST(req: NextRequest) {
    "Jogo roguelike que oferece experiência única através do $[Combate Estratégico] e $[Dungeons Procedurais]."
    
    Viu a diferença? Não falou de gênero/inspiração (subseção própria), nem de plataformas (subseção própria). Falou de outras seções usando $[referências]!
-7. **SUGERIR NOVAS SUBSEÇÕES:** Se você mencionou tópicos importantes no texto que NÃO estão na lista de seções disponíveis e merecem ser detalhados, sugira criar subseções para eles. Use este formato EXATO (com > antes de CADA linha incluindo a lista):
-   > 💡 **Sugestão:** Considere criar subseções para:
-   > - Tópico 1: Breve descrição
-   > - Tópico 2: Breve descrição
-   
-   ⚠️ A lista DEVE estar dentro do blockquote (com > antes de cada linha)!
-   ⚠️ NÃO sugira criar seções que JÁ EXISTEM na lista de "SEÇÕES DISPONÍVEIS"!
-8. **MELHORAR ESTRUTURA:** Organize melhor com títulos, listas, e formatação Markdown
-9. **EXPANDIR CONTEÚDO:** Adicione detalhes relevantes baseado no contexto
-10. **SER CONCISO:** Não seja prolixo, mantenha foco no essencial
+7. **MELHORAR ESTRUTURA:** Organize melhor com títulos, listas, e formatação Markdown
+8. **EXPANDIR CONTEÚDO:** Adicione detalhes relevantes baseado no contexto
+9. **SER CONCISO:** Não seja prolixo, mantenha foco no essencial
+10. **🔴 HIERARQUIA E ESCOPO:** O conteúdo deve ser escrito **no escopo do ramo** em que a seção está.
+   - Use o "CAMINHO DA SEÇÃO" (breadcrumb) no contexto: ele mostra onde a seção está no documento (ex.: Áudio > Música > Composição > Mitologia Nórdica).
+   - A seção atual é uma **subseção** do último nível anterior. O conteúdo deve tratar do **tema do título da seção aplicado ao contexto do pai**, não um texto genérico sobre o tema.
+   - Exemplo: se o caminho é "Áudio > Música > Composição > Mitologia Nórdica", escreva sobre **como a mitologia nórdica é usada na composição musical do jogo** (inspiração, instrumentos, atmosfera), NÃO um texto geral sobre mitologia nórdica.
+   - Outro exemplo: se o caminho é "Gameplay > Combate > Armas > Espadas", escreva sobre **espadas no combate do jogo**, não uma enciclopédia sobre espadas em geral.
 
 **FORMATO DE SAÍDA:**
 - Use Markdown completo (##, ###, listas, **negrito**, etc)
 - Adicione exemplos práticos quando relevante
 - Use emojis para organização visual (📋, ⚔️, 🎮, etc)
 - Mantenha tom profissional mas acessível
+- **OBRIGATÓRIO:** (1) Sistemas/temas (combate, loot, áudio…) → $[Nome]. (2) Itens, armas, poções, habilidades, inimigos e locais com nome próprio → $[Nome]. Não deixe listas de itens ou conceitos nomeados em texto solto.
 
 🔴 PROIBIDO:
 - NÃO adicione títulos como "Melhoria da Seção", "MODIFICAÇÃO", "Edição" etc
 - NÃO copie a lista de seções disponíveis para o conteúdo
-- NÃO mencione nomes de seções em texto simples
+- NÃO cite "Espada de Fogo", "Armadura de X", "Poção de Y" etc. em texto simples — use $[Espada de Fogo], $[Armadura de X], $[Poção de Y]
 
-✅ OBRIGATÓRIO - FORMATO DE REFERÊNCIAS:
-- SEMPRE que mencionar uma seção da lista, use o formato $[Nome Exato da Lista]
-- Exemplos CORRETOS:
-  * "influenciada pelo $[Conceito e Pilares]" ✅
-  * "através do $[Combate Estratégico]" ✅
-  * "inspiração da $[Mitologia Nórdica]" ✅
-- Exemplos ERRADOS:
-  * "influenciada pelo Conceito e Pilares" ❌
-  * "o sistema de combate estratégico" ❌
-  * "Gênero e Inspiração" ❌
+✅ REFERÊNCIAS (obrigatório):
+- Sistemas: "no $[Sistema de Loot]", "exploração dos $[Dungeons Procedurais]"
+- Itens/conceitos nomeados: "$[Espada de Fogo]: uma espada...", "$[Armadura de Escudo]", "$[Poção de Saúde]"
+❌ Listar itens ou conceitos com nome próprio sem $[Nome]
+
+**ANTES DE RETORNAR:** Revise o texto. Toda menção a "dungeons procedurais", "combate", "loot", e a qualquer item ou conceito com nome próprio (Espada de Fogo, Poção de Saúde, etc.) deve estar no formato $[Nome]. Se estiver em texto solto, substitua por $[Nome].
 
 ${contextInfo}`;
 
+    const referenceReminder = `\n\n🔴 OBRIGATÓRIO – REFERÊNCIAS: Ao escrever, use $[Nome] para TODOS os conceitos que merecem página no GDD. Exemplos: "dungeons procedurais" → $[Dungeons Procedurais]; "Espada de Fogo" → $[Espada de Fogo]; "Poção de Saúde" → $[Poção de Saúde]; "combate" → $[Combate] (ou nome exato da seção). Itens em listas (Espada de Fogo, Armadura de Escudo, etc.) DEVEM ser $[Nome]. Não entregue texto com esses termos em texto solto.`;
+
     let userPrompt = currentContent.trim() 
-      ? `**Conteúdo atual da seção "${sectionTitle}":**\n\n${currentContent}\n\n---\n\nMelhore este conteúdo seguindo as regras acima.\n\n⚠️ LEMBRE-SE: Retorne APENAS o conteúdo melhorado. NÃO inclua nenhuma menção à lista de seções, nenhum texto sobre "TODAS AS SEÇÕES DO GDD", nenhum comentário sobre o processo. Apenas o conteúdo final.`
-      : `A seção "${sectionTitle}" está vazia. Crie um conteúdo completo e profissional baseado no contexto fornecido.\n\n⚠️ LEMBRE-SE: Retorne APENAS o conteúdo criado. NÃO inclua nenhuma menção à lista de seções, nenhum texto sobre "TODAS AS SEÇÕES DO GDD", nenhum comentário sobre o processo. Apenas o conteúdo final.`;
+      ? `**Conteúdo atual da seção "${sectionTitle}":**\n\n${currentContent}\n\n---\n\nMelhore este conteúdo seguindo as regras acima.${referenceReminder}\n\n⚠️ Retorne APENAS o conteúdo melhorado (Markdown), sem comentários.`
+      : `A seção "${sectionTitle}" está vazia. Crie um conteúdo completo e profissional baseado no contexto fornecido.${referenceReminder}\n\n⚠️ Retorne APENAS o conteúdo criado (Markdown), sem comentários.`;
     
     // Adiciona solicitação específica do usuário se houver
     if (additionalRequest) {
       userPrompt += `\n\n**📝 SOLICITAÇÃO DO USUÁRIO:**\n${additionalRequest}\n\n⚠️ Aplique esta modificação mantendo todas as regras anteriores (preservar imagens, links, etc).`;
+      const lower = additionalRequest.toLowerCase();
+      if (/\brefer[eê]ncias?\b|\brefer[eê]nciar\b|\blinks?\b|\b\$\[|\bcriar refer|adicionar refer|colocar refer|usar refer/i.test(lower)) {
+        userPrompt += `\n\n🔴 O usuário pediu referências: substitua no texto todas as menções a sistemas, mecânicas e temas (combate, dungeons, loot, exploração, áudio, etc.) pelo formato $[Nome da Seção], usando os nomes exatos da lista "TODAS AS SEÇÕES DO GDD" quando existirem, ou $[Nome do Tópico] para conceitos que mereçam seção.`;
+      }
     }
 
     const messages: AIMessage[] = [
@@ -253,11 +260,20 @@ function buildContextInfo(
   preserved: ReturnType<typeof extractPreservedElements>
 ) {
   let info = `\n**CONTEXTO DO GDD:**\n`;
-  info += `- Projeto: "${projectTitle}"\n`;
-  info += `- Seção: "${sectionTitle}"\n`;
-  
-  if (context.parentTitle) {
+  info += `- Projeto: "${projectTitle}" (NÃO é uma seção — nunca use $[${projectTitle}])\n`;
+  info += `- Seção atual: "${sectionTitle}"\n`;
+
+  if (context.breadcrumb && context.breadcrumb.length > 0) {
+    info += `\n**CAMINHO DA SEÇÃO (hierarquia):** ${context.breadcrumb.join(" > ")}\n`;
+    info += `- O conteúdo deve ser **específico ao escopo deste ramo**. Ex.: "Mitologia Nórdica" sob "Composição" = foco em composição musical inspirada em mitologia nórdica, não texto genérico sobre mitologia.\n`;
+  } else if (context.parentTitle) {
     info += `- Seção pai: "${context.parentTitle}"\n`;
+  }
+
+  if (context.parentContent && context.parentContent.trim()) {
+    const snippet = context.parentContent.trim().slice(0, 800);
+    info += `\n**CONTEÚDO DA SEÇÃO PAI (para alinhar o tema):**\n${snippet}${context.parentContent.length > 800 ? "…" : ""}\n`;
+    info += `- Use este contexto para que o texto da seção atual seja coerente com o ramo (ex.: se o pai fala de composição musical, a seção atual deve tratar do subtema no mesmo ângulo).\n`;
   }
   
   if (context.subsections && context.subsections.length > 0) {

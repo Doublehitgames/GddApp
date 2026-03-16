@@ -77,11 +77,12 @@ export default function ProjectEditClient({ projectId }: Props) {
             }
           }
         },
+        // "table" removido: plugin de tabelas do Toast UI causa erros (CellSelection/removeRow) em certas interações
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
           ["ul", "ol", "task"],
-          ["table", "link"],
+          ["link"],
           ["code", "codeblock"],
         ],
       });

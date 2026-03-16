@@ -99,7 +99,7 @@ export default function Home() {
                     key={p.id}
                     className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all flex items-center justify-between gap-3"
                   >
-                    <Link href={`/projects/${p.id}`} className="flex-1 min-w-0">
+                    <Link href={`/projects/${p.id}`} className="flex-1 min-w-0" prefetch={false}>
                       <div className="flex flex-col gap-2.5">
                         <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
                         <div className="flex flex-wrap gap-2 text-xs font-medium">

@@ -38,6 +38,20 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Converte URL do Google Drive para thumbnail (funciona em <img>; iframe é bloqueado por CSP do Drive). */
+function toDriveThumbnailUrl(src: string): string | null {
+  if (!src || !src.includes("drive.google.com")) return null;
+  let id: string | null = null;
+  const idMatch = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) id = idMatch[1];
+  else {
+    const fileMatch = src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch) id = fileMatch[1];
+  }
+  if (!id) return null;
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
+}
+
 function convertMarkdownLinksInsideHtmlBlocks(content: string): string {
   if (!content || !content.includes("<")) return content;
 
@@ -197,9 +211,12 @@ export function MarkdownWithReferences({
             const safeSrc = typeof src === "string" ? src.trim() : "";
             if (!safeSrc) return null;
 
+            const driveThumb = toDriveThumbnailUrl(safeSrc);
+            const imgSrc = driveThumb ?? safeSrc;
+
             return (
               <img
-                src={safeSrc}
+                src={imgSrc}
                 alt={alt || ""}
                 className="max-w-full h-auto rounded-md my-3"
                 loading="lazy"
@@ -271,7 +288,13 @@ export function MarkdownWithReferences({
             }
 
             return (
-              <a href={href} target="_blank" rel="noopener noreferrer">
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium"
+                title={typeof href === "string" ? href : undefined}
+              >
                 {children}
               </a>
             );

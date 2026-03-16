@@ -147,7 +147,12 @@
     "aiConfigWarningSuffix": "para usar este recurso",
     "aiHelpPrefix": "A IA vai melhorar o conteúdo preservando",
     "aiHelpHighlight": "imagens, links e referências",
-    "aiHelpSuffix": "existentes."
+    "aiHelpSuffix": "existentes.",
+    "insertFromDrive": "Inserir do Google Drive",
+    "insertFromDriveTooltip": "Inserir imagem do Google Drive",
+    "insertFromDriveHint": "Use o botão de imagem do Drive na barra de ferramentas. A imagem precisa estar compartilhada como \"Qualquer pessoa com o link\" para aparecer no documento.",
+    "driveNotConfigured": "Google Drive não configurado. Adicione NEXT_PUBLIC_GOOGLE_CLIENT_ID nas variáveis de ambiente (ver documentação). No Vercel, após adicionar a variável, faça um novo deploy (Redeploy) para ela passar a valer.",
+    "drivePasteHint": "Link da imagem copiado. Cole no editor com Ctrl+V (ou Cmd+V no Mac)."
   },
   "projectExport": {
     "backToProject": "Voltar ao Projeto",
@@ -194,7 +199,10 @@
     "actions": {
       "exitFullscreen": "Sair do Fullscreen",
       "fullscreen": "Fullscreen",
-      "deleteSection": "Excluir seção"
+      "deleteSection": "Excluir seção",
+      "goToDocument": "Ir para o documento",
+      "goToSectionPage": "Ir para a página da seção",
+      "goToMindMap": "Ir para o mapa mental"
     },
     "confirmDelete": "Tem certeza que deseja excluir esta seção?",
     "confirmDeleteWithChildren": "Tem certeza que deseja excluir esta seção e suas {count} subseção(s)?",
@@ -213,7 +221,18 @@
     "ai": {
       "modifying": "Modificando...",
       "modify": "Modificar",
-      "confirmApply": "Confirmar e Aplicar"
+      "confirmApply": "Confirmar e Aplicar",
+      "unresolvedRefsTitle": "Referências que ainda não existem como seção",
+      "createSection": "Criar seção",
+      "createHere": "Criar como subseção aqui",
+      "createAtRoot": "Criar no nível raiz",
+      "chooseParent": "Escolher seção pai…",
+      "useAI": "Usar IA (criar no lugar certo)",
+      "useAILoading": "IA analisando…",
+      "chooseParentModalTitle": "Onde criar \"{name}\"?",
+      "createSectionHint": "Escolha onde criar cada seção: aqui como subseção, no nível raiz do projeto ou sob outra seção.",
+      "projectNotSection": "projeto não é seção",
+      "removeProjectRef": "Remover referência"
     },
     "move": {
       "cannotBeOwnParent": "A seção não pode ser pai de si mesma.",

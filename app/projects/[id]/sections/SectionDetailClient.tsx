@@ -6,9 +6,10 @@ import { useEffect, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
-import { getBacklinks, convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
+import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { driveFileIdToImageUrl, normalizeDriveUrlsInMarkdown } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
   DndContext,
@@ -32,18 +33,16 @@ import { useI18n } from "@/lib/i18n/provider";
 interface Props {
   projectId: string;
   sectionId: string;
+  /** Quando true, abre direto no modo edição inline (ex.: vindo de /sections/[id]/edit) */
+  openEdit?: boolean;
 }
 
-type SubsectionSuggestion = {
-  title: string;
-  description?: string;
-};
-
-export default function SectionDetailClient({ projectId, sectionId }: Props) {
+export default function SectionDetailClient({ projectId, sectionId, openEdit = false }: Props) {
   const { t } = useI18n();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const removeSection = useProjectStore((s) => s.removeSection);
+  const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
   const countDescendants = useProjectStore((s) => s.countDescendants);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
@@ -79,6 +78,11 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
   const sections = project?.sections || [];
   const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections });
 
+  // Redirecionamento de /sections/[id]/edit: abrir direto no modo edição inline
+  useEffect(() => {
+    if (openEdit) setInlineEdit(true);
+  }, [openEdit]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -104,6 +108,15 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         }));
       
       const parentSection = section.parentId ? sections.find((s: any) => s.id === section.parentId) : null;
+
+      // Breadcrumb: caminho da raiz até a seção atual (títulos) para a IA entender a hierarquia
+      const breadcrumb: string[] = [];
+      let ancestor: typeof section | undefined = section;
+      const sectionById = new Map(sections.map((s: any) => [s.id, s]));
+      while (ancestor) {
+        breadcrumb.unshift(String(ancestor.title || ""));
+        ancestor = ancestor.parentId ? sectionById.get(ancestor.parentId) : undefined;
+      }
       
       // IDs das próprias subseções (não incluir na lista de outras seções)
       const ownSubsectionIds = subsections.map((s: any) => s.id);
@@ -126,6 +139,8 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
         sectionTitle: String(section.title || ''),
         sectionContext: {
           parentTitle: parentSection?.title ? String(parentSection.title) : undefined,
+          breadcrumb: breadcrumb.length > 0 ? breadcrumb : undefined,
+          parentContent: parentSection?.content ? String(parentSection.content).trim().slice(0, 1500) : undefined,
           subsections: subsections,
           otherSections: otherSections
         },
@@ -278,7 +293,9 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       const ToastEditor = mod.default || mod;
       const project = getProject(projectId);
       const sections = project?.sections || [];
-      const contentForEditor = convertReferencesToNames(section?.content || "", sections);
+      const contentForEditor = normalizeDriveUrlsInMarkdown(
+        convertReferencesToNames(section?.content || "", sections)
+      );
       instance = new ToastEditor({
         el: containerEl,
         initialEditType: editorMode,
@@ -297,11 +314,12 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
             }
           }
         },
+        // "table" removido: plugin de tabelas do Toast UI causa erros no console (CellSelection/removeRow) em certas interações
         toolbarItems: [
           ["heading", "bold", "italic", "strike"],
           ["hr", "quote"],
           ["ul", "ol", "task"],
-          ["table", "link"],
+          ["link"],
           ["code", "codeblock"],
         ],
       });
@@ -312,6 +330,17 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
 
       // Adiciona botão de imagem por URL
       addImageUrlButtonToToolbar(instance);
+
+      // Adiciona botão de imagem do Google Drive (ao lado do anterior). getCurrentEditor evita referência destruída após o Picker fechar.
+      addDriveImageButtonToToolbar(instance, {
+        notConfiguredMessage: t("sectionEdit.driveNotConfigured"),
+        pasteHintMessage: t("sectionEdit.drivePasteHint"),
+        getMarkdownToInsert: (fileId, fileName) => {
+          const alt = fileName.replace(/\.(png|jpe?g|gif|webp|bmp|svg)$/i, "");
+          return `![${alt}](${driveFileIdToImageUrl(fileId)})`;
+        },
+        getCurrentEditor: () => (editorRef as any).current ?? null,
+      });
     }
     mountEditor();
     return () => {
@@ -321,13 +350,33 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
       }
       (editorRef as any).current = null;
     };
-  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId, editorHeight]);
+  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId, editorHeight, t]);
 
   useEffect(() => {
     if ((editorRef as any).current) {
       (editorRef as any).current.setHeight(editorHeight);
     }
   }, [editorHeight]);
+
+  // Inserção de imagem do Drive: plugin dispara evento em document; aqui temos o editorRef válido
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ markdownImage: string }>).detail;
+      if (!detail?.markdownImage) return;
+      const inst = (editorRef as any).current;
+      if (!inst || typeof inst.getMarkdown !== "function" || typeof inst.setMarkdown !== "function") return;
+      try {
+        const current = inst.getMarkdown();
+        const newMarkdown = (current || "").trimEnd() + "\n" + detail.markdownImage;
+        inst.setMarkdown(newMarkdown, false);
+        (document as unknown as { __gddDriveImageInserted?: boolean }).__gddDriveImageInserted = true;
+      } catch {
+        // ignore
+      }
+    };
+    document.addEventListener("gdd-insert-drive-image", handler);
+    return () => document.removeEventListener("gdd-insert-drive-image", handler);
+  }, []);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -531,6 +580,7 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setNewSubTitle={setNewSubTitle}
     nameError={nameError}
     setNameError={setNameError}
+    addSection={addSection}
     addSubsection={addSubsection}
     hasDuplicateName={hasDuplicateName}
     router={router}
@@ -544,9 +594,12 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setIsFullscreen={setIsFullscreen}
     isImproving={isImproving}
     improveError={improveError}
+    setImproveError={setImproveError}
+    getAIHeaders={getAIHeaders}
     handleImproveWithAI={handleImproveWithAI}
     showPreview={showPreview}
     previewContent={previewContent}
+    setPreviewContent={setPreviewContent}
     modificationRequest={modificationRequest}
     setModificationRequest={setModificationRequest}
     handleConfirmImprovement={handleConfirmImprovement}
@@ -561,117 +614,320 @@ export default function SectionDetailClient({ projectId, sectionId }: Props) {
     setSelectedNewParent={setSelectedNewParent}
     handleMoveSection={handleMoveSection}
     sections={project?.sections || []}
+    setSection={setSection}
       />
       <AutocompleteDropdown />
     </>
   );
 }
 
-function extractSubsectionSuggestions(content: string): SubsectionSuggestion[] {
-  if (!content) return [];
-
-  const lines = content.split(/\r?\n/);
-  const startIndex = lines.findIndex((line) => /sugest[aã]o/i.test(line) && /subse[cç][oõ]es/i.test(line));
-
-  if (startIndex === -1) return [];
-
-  const suggestions: SubsectionSuggestion[] = [];
-
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const rawLine = lines[index].trim();
-    if (!rawLine) {
-      if (suggestions.length > 0) break;
+/** Retorna referências $[Nome] do conteúdo que não existem como seção e se o projeto foi referenciado como seção */
+function getUnresolvedRefsFromContent(
+  content: string,
+  sections: Array<{ id: string; title: string }>,
+  projectTitle: string
+): { unresolvedNames: string[]; hasProjectTitleRef: boolean } {
+  if (!content || !sections) return { unresolvedNames: [], hasProjectTitleRef: false };
+  const refs = extractSectionReferences(content);
+  const projectTitleLower = (projectTitle || "").trim().toLowerCase();
+  const unresolvedNames: string[] = [];
+  let hasProjectTitleRef = false;
+  const seen = new Set<string>();
+  for (const ref of refs) {
+    const found = findSection(sections, ref);
+    if (found) continue;
+    if (ref.refType !== "name") continue;
+    const name = ref.refValue.trim();
+    if (!name) continue;
+    if (name.toLowerCase() === projectTitleLower) {
+      hasProjectTitleRef = true;
       continue;
     }
-
-    const line = rawLine.replace(/^>\s*/, "").trim();
-    if (!line.startsWith("- ")) {
-      if (suggestions.length > 0) break;
-      continue;
+    const key = name.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unresolvedNames.push(name);
     }
-
-    const bulletText = line.replace(/^-\s*/, "").trim();
-    if (!bulletText) continue;
-
-    const normalizedText = bulletText.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
-    const separatorIndex = normalizedText.indexOf(":");
-
-    const rawTitle = separatorIndex >= 0 ? normalizedText.slice(0, separatorIndex) : normalizedText;
-    const rawDescription = separatorIndex >= 0 ? normalizedText.slice(separatorIndex + 1) : "";
-
-    const title = rawTitle.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
-    const description = rawDescription.replace(/^\*\*(.*?)\*\*$/, "$1").trim();
-
-    if (!title) continue;
-    if (suggestions.some((suggestion) => suggestion.title.toLowerCase() === title.toLowerCase())) continue;
-
-    suggestions.push({
-      title,
-      description: description || undefined,
-    });
   }
-
-  return suggestions;
+  return { unresolvedNames, hasProjectTitleRef };
 }
 
-function SubsectionSuggestionPanel({
-  suggestions,
+function getBreadcrumb(sectionId: string, sections: Array<{ id: string; title?: string; parentId?: string }>): string[] {
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  const path: string[] = [];
+  let curr = byId.get(sectionId);
+  while (curr) {
+    path.unshift(String(curr.title || ""));
+    curr = curr.parentId ? byId.get(curr.parentId) : undefined;
+  }
+  return path;
+}
+
+function UnresolvedRefsPanel({
+  unresolvedNames,
+  hasProjectTitleRef,
+  projectTitle,
+  previewContent,
+  setPreviewContent,
+  onRemoveProjectRefFromSection,
   projectId,
   sectionId,
-  hasDuplicateName,
+  sections,
+  currentContextPath,
+  addSection,
   addSubsection,
+  getAIHeaders,
+  router,
   onLimitError,
+  onAiError,
+  hasDuplicateName,
 }: {
-  suggestions: SubsectionSuggestion[];
+  unresolvedNames: string[];
+  hasProjectTitleRef: boolean;
+  projectTitle: string;
+  previewContent?: string;
+  setPreviewContent?: (content: string) => void;
+  onRemoveProjectRefFromSection?: () => void;
   projectId: string;
   sectionId: string;
-  hasDuplicateName: (projectId: string, title: string, parentId?: string, excludeId?: string) => boolean;
+  sections: Array<{ id: string; title?: string; parentId?: string }>;
+  currentContextPath?: string[];
+  addSection: (projectId: string, title: string, content?: string) => string;
   addSubsection: (projectId: string, parentId: string, title: string, content?: string) => string;
+  getAIHeaders?: () => Record<string, string>;
+  router: { push: (url: string) => void };
   onLimitError?: (message: string) => void;
+  onAiError?: (message: string) => void;
+  hasDuplicateName: (projectId: string, title: string, parentId?: string, excludeId?: string) => boolean;
 }) {
   const { t } = useI18n();
-  if (suggestions.length === 0) return null;
+  const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
+  const [chooseParentFor, setChooseParentFor] = useState<string | null>(null);
+  const [useAILoadingFor, setUseAILoadingFor] = useState<string | null>(null);
+
+  if (unresolvedNames.length === 0 && !hasProjectTitleRef) return null;
+
+  const runWithLimitCheck = (fn: () => void) => {
+    try {
+      fn();
+      setOpenMenuFor(null);
+      setChooseParentFor(null);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
+        onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+      } else {
+        throw e;
+      }
+    }
+  };
+
+  const handleRemoveProjectRef = () => {
+    if (setPreviewContent && previewContent != null && projectTitle) {
+      const re = new RegExp(`\\$\\[${escapeRegExp(projectTitle)}\\]`, "gi");
+      setPreviewContent(previewContent.replace(re, projectTitle));
+    } else if (onRemoveProjectRefFromSection) {
+      onRemoveProjectRefFromSection();
+    }
+  };
+
+  const possibleParents = chooseParentFor
+    ? sections.filter((s) => !hasDuplicateName(projectId, chooseParentFor, s.id))
+    : [];
+
+  const findSectionByTitleUnderParent = (title: string, parentId: string | undefined) =>
+    sections.find(
+      (s) => (s.parentId ?? undefined) === (parentId ?? undefined) && (s.title || "").toLowerCase() === title.toLowerCase()
+    );
+
+  const applyPathAndNavigate = async (name: string) => {
+    if (!getAIHeaders) {
+      onAiError?.(t("sectionDetail.errors.apiConnection"));
+      setUseAILoadingFor(null);
+      return;
+    }
+    setUseAILoadingFor(name);
+    setOpenMenuFor(null);
+    setChooseParentFor(null);
+    try {
+      const res = await fetch("/api/ai/suggest-section-path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAIHeaders() },
+        body: JSON.stringify({
+          projectTitle,
+          sections: sections.map((s) => ({ id: s.id, title: s.title ?? "", parentId: s.parentId ?? undefined })),
+          newSectionTitle: name,
+          currentContextPath: currentContextPath?.length ? currentContextPath : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        onAiError?.(data.error || "Erro ao sugerir caminho");
+        setUseAILoadingFor(null);
+        return;
+      }
+      const path = Array.isArray(data.path) ? data.path.map((p: string) => String(p).trim()).filter(Boolean) : [];
+      if (path.length === 0) {
+        onAiError?.("IA não retornou um caminho válido.");
+        setUseAILoadingFor(null);
+        return;
+      }
+      let parentId: string | undefined = undefined;
+      for (const segment of path) {
+        const existing = findSectionByTitleUnderParent(segment, parentId);
+        if (existing) {
+          parentId = existing.id;
+        } else {
+          try {
+            parentId = parentId === undefined
+              ? addSection(projectId, segment, "")
+              : addSubsection(projectId, parentId, segment, "");
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
+              onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+            } else {
+              throw e;
+            }
+            setUseAILoadingFor(null);
+            return;
+          }
+        }
+      }
+      if (parentId) router.push(`/projects/${projectId}/sections/${parentId}`);
+    } catch (err) {
+      onAiError?.(err instanceof Error ? err.message : "Erro ao usar IA");
+    } finally {
+      setUseAILoadingFor(null);
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto mb-4 bg-indigo-900/20 border border-indigo-700/50 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-indigo-200 mb-3">💡 {t('sectionDetail.suggestions.title')}</h3>
+    <div className="max-w-6xl mx-auto mb-4 bg-amber-900/20 border border-amber-700/50 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-amber-200 mb-3">🔗 {t("sectionDetail.ai.unresolvedRefsTitle")}</h3>
+      <p className="text-xs text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
       <div className="space-y-2">
-        {suggestions.map((suggestion) => {
-          const alreadyExists = hasDuplicateName(projectId, suggestion.title, sectionId);
-
+        {unresolvedNames.map((name) => {
+          const existsHere = hasDuplicateName(projectId, name, sectionId);
+          const existsAtRoot = hasDuplicateName(projectId, name);
+          const anyExists = existsHere || existsAtRoot;
           return (
-            <div key={suggestion.title} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-sm text-white font-medium truncate">{suggestion.title}</p>
-                {suggestion.description && (
-                  <p className="text-xs text-gray-400 truncate">{suggestion.description}</p>
+            <div key={name} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
+              <span className="text-sm text-amber-100 truncate">$[{name}]</span>
+              <div className="shrink-0 relative">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  disabled={anyExists}
+                  onClick={() => setOpenMenuFor((prev) => (prev === name ? null : name))}
+                >
+                  {anyExists ? t("sectionDetail.suggestions.alreadyCreated") : t("sectionDetail.ai.createSection")}
+                  {!anyExists && " ▾"}
+                </button>
+                {openMenuFor === name && !anyExists && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setOpenMenuFor(null)} aria-hidden />
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl">
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        onClick={() => runWithLimitCheck(() => addSubsection(projectId, sectionId, name, ""))}
+                      >
+                        {t("sectionDetail.ai.createHere")}
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        onClick={() => runWithLimitCheck(() => addSection(projectId, name, ""))}
+                      >
+                        {t("sectionDetail.ai.createAtRoot")}
+                      </button>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        onClick={() => {
+                          setOpenMenuFor(null);
+                          setChooseParentFor(name);
+                        }}
+                      >
+                        {t("sectionDetail.ai.chooseParent")}
+                      </button>
+                      {getAIHeaders && (
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm text-amber-200 hover:bg-amber-900/50 border-t border-gray-600 mt-1"
+                          onClick={() => applyPathAndNavigate(name)}
+                          disabled={useAILoadingFor !== null}
+                        >
+                          {useAILoadingFor === name ? t("sectionDetail.ai.useAILoading") : `✨ ${t("sectionDetail.ai.useAI")}`}
+                        </button>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
-
-              <button
-                className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                disabled={alreadyExists}
-                onClick={() => {
-                  if (alreadyExists) return;
-                  try {
-                    addSubsection(projectId, sectionId, suggestion.title, suggestion.description || "");
-                  } catch (e) {
-                    if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
-                      onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
-                    } else {
-                      throw e;
-                    }
-                  }
-                }}
-              >
-                {alreadyExists ? t('sectionDetail.suggestions.alreadyCreated') : t('sectionDetail.suggestions.createSubsection')}
-              </button>
             </div>
           );
         })}
+        {hasProjectTitleRef && (
+          <div className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
+            <span className="text-sm text-amber-100">
+              $[{projectTitle}] — {t("sectionDetail.ai.projectNotSection")}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-700 transition-colors"
+              onClick={handleRemoveProjectRef}
+            >
+              {t("sectionDetail.ai.removeProjectRef")}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Modal: escolher seção pai para criar a nova seção */}
+      {chooseParentFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setChooseParentFor(null)}>
+          <div className="bg-gray-800 border border-gray-600 rounded-xl shadow-xl max-w-md w-full max-h-[70vh] flex flex-col text-white" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-600">
+              <h4 className="font-semibold">{t("sectionDetail.ai.chooseParentModalTitle").replace("{name}", chooseParentFor)}</h4>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700"
+                onClick={() => runWithLimitCheck(() => addSection(projectId, chooseParentFor, ""))}
+              >
+                📁 {t("sectionDetail.ai.createAtRoot")}
+              </button>
+              {possibleParents.map((s) => {
+                const path = getBreadcrumb(s.id, sections);
+                const pathStr = path.length > 0 ? path.join(" › ") : String(s.title || "");
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700 truncate"
+                    title={pathStr}
+                    onClick={() => runWithLimitCheck(() => addSubsection(projectId, s.id, chooseParentFor, ""))}
+                  >
+                    {pathStr}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="px-4 py-2 border-t border-gray-600">
+              <button type="button" className="text-sm text-gray-400 hover:text-white" onClick={() => setChooseParentFor(null)}>
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Componente sortable para subseções
@@ -757,21 +1013,29 @@ function SectionDetailContent({
   isEditingTitle, setIsEditingTitle, editedTitle, setEditedTitle, editSection,
   inlineEdit, setInlineEdit, containerEl, setContainerEl, editorRef, editorMode, setEditorMode,
   removeSection, countDescendants, renderSubsectionTree,
-  newSubTitle, setNewSubTitle, nameError, setNameError, addSubsection, hasDuplicateName,
+  newSubTitle, setNewSubTitle, nameError, setNameError, addSection, addSubsection, hasDuplicateName,
   router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
   editorHeight, setEditorHeight, isFullscreen, setIsFullscreen,
-  isImproving, improveError, handleImproveWithAI,
-  showPreview, previewContent, modificationRequest, setModificationRequest,
+  isImproving, improveError, setImproveError, getAIHeaders, handleImproveWithAI,
+  showPreview, previewContent, setPreviewContent, modificationRequest, setModificationRequest,
   handleConfirmImprovement, handleCancelImprovement, handleRequestModification,
   sectionColor, setSectionColor, hasValidConfig,
   showMoveModal, setShowMoveModal,
   selectedNewParent, setSelectedNewParent,
   handleMoveSection,
   sections,
+  setSection,
 }: any) {
   const { t } = useI18n();
-  const sectionSuggestions = extractSubsectionSuggestions(section?.content || "");
-  const previewSuggestions = extractSubsectionSuggestions(previewContent || "");
+  const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
+    ? getUnresolvedRefsFromContent(previewContent, sections || [], project?.title || "")
+    : { unresolvedNames: [] as string[], hasProjectTitleRef: false };
+  const unresolvedFromPage = getUnresolvedRefsFromContent(
+    section?.content || "",
+    sections || [],
+    project?.title || ""
+  );
+  const showPageRefsPanel = !showPreview && (unresolvedFromPage.unresolvedNames.length > 0 || unresolvedFromPage.hasProjectTitleRef);
 
   return (
     <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
@@ -820,131 +1084,145 @@ function SectionDetailContent({
       )}
 
       {!(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto flex items-center gap-2 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
-        {isEditingTitle ? (
-          <div className="flex items-center gap-2 flex-1">
-            <input
-              type="text"
-              value={editedTitle}
-              onChange={(e) => setEditedTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && editedTitle.trim()) {
-                  const sections = project?.sections || [];
-                  const convertedContent = convertReferencesToIds(section.content || '', sections);
-                  editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
-                  setIsEditingTitle(false);
-                } else if (e.key === 'Escape') {
-                  setEditedTitle(section.title);
-                  setIsEditingTitle(false);
-                }
-              }}
-              autoFocus
-              className="flex-1 text-2xl font-bold bg-gray-900 border border-blue-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={() => {
-                if (editedTitle.trim()) {
-                  const sections = project?.sections || [];
-                  const convertedContent = convertReferencesToIds(section.content || '', sections);
-                  editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
-                  setIsEditingTitle(false);
-                }
-              }}
-              className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors"
-            >
-              ✓ {t('common.save')}
-            </button>
-            <button
-              onClick={() => {
-                setEditedTitle(section.title);
-                setIsEditingTitle(false);
-              }}
-              className="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-500 transition-colors"
-            >
-              ✕ {t('common.cancel')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={sectionColor}
-                onChange={(e) => {
-                  const newColor = e.target.value;
-                  setSectionColor(newColor);
-                  editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
-                }}
-                className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900"
-                title="Cor no mapa mental"
-              />
-              {section?.color && (
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
+          {/* Esquerda: cor, título (ou edição) e lápis de editar */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {isEditingTitle ? (
+              <>
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && editedTitle.trim()) {
+                      const sections = project?.sections || [];
+                      const convertedContent = convertReferencesToIds(section.content || '', sections);
+                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
+                      setIsEditingTitle(false);
+                    } else if (e.key === 'Escape') {
+                      setEditedTitle(section.title);
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  autoFocus
+                  className="flex-1 text-2xl font-bold bg-gray-900 border border-blue-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
                 <button
                   onClick={() => {
-                    setSectionColor("#3b82f6");
-                    editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
+                    if (editedTitle.trim()) {
+                      const sections = project?.sections || [];
+                      const convertedContent = convertReferencesToIds(section.content || '', sections);
+                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
+                      setIsEditingTitle(false);
+                    }
                   }}
-                  className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-                  title="Resetar para cor padrão do nível"
+                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors"
                 >
-                  🔄
+                  ✓ {t('common.save')}
                 </button>
-              )}
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{section.title}</h1>
-            <button
-              onClick={() => setIsEditingTitle(true)}
-              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300 transition-opacity text-xl"
-              title="Editar nome da seção"
-            >
-              ✏️
-            </button>
-          </>
-        )}
-        {!inlineEdit && !isEditingTitle && (
-          <>
-            <button
-              onClick={handleImproveWithAI}
-              disabled={isImproving || !hasValidConfig}
-              className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
-            >
-              {isImproving ? "⏳" : "✨"}
-            </button>
-            <button
-              onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
-              className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              title="Ver no mapa mental"
-            >
-              🌐
-            </button>
-            <button
-              onClick={() => setShowMoveModal(true)}
-              className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
-              title="Mover seção para outro local"
-            >
-              ↗️
-            </button>
-          </>
-        )}
-        {!isEditingTitle && (
-          <button
-            className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-            onClick={() => {
-              const count = countDescendants(projectId, sectionId);
-              const msg = count > 0 
-                ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
-                : t('sectionDetail.confirmDelete');
-              if (window.confirm(msg)) {
-                removeSection(projectId, sectionId);
-                router.push(`/projects/${projectId}`);
-              }
-            }}
-            title={t('sectionDetail.actions.deleteSection')}
-          >
-            🗑️
-          </button>
-        )}
+                <button
+                  onClick={() => {
+                    setEditedTitle(section.title);
+                    setIsEditingTitle(false);
+                  }}
+                  className="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-500 transition-colors"
+                >
+                  ✕ {t('common.cancel')}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 shrink-0">
+                  <input
+                    type="color"
+                    value={sectionColor}
+                    onChange={(e) => {
+                      const newColor = e.target.value;
+                      setSectionColor(newColor);
+                      editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
+                    }}
+                    className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900"
+                    title="Cor no mapa mental"
+                  />
+                  {section?.color && (
+                    <button
+                      onClick={() => {
+                        setSectionColor("#3b82f6");
+                        editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
+                      }}
+                      className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                      title="Resetar para cor padrão do nível"
+                    >
+                      🔄
+                    </button>
+                  )}
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{section.title}</h1>
+                <button
+                  onClick={() => setIsEditingTitle(true)}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300 transition-opacity text-xl shrink-0"
+                  title="Editar nome da seção"
+                >
+                  ✏️
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Direita: ações (IA, mapa mental, documento, mover, excluir) */}
+          <div className="flex items-center gap-2 shrink-0">
+            {!inlineEdit && !isEditingTitle && (
+              <>
+                <button
+                  onClick={handleImproveWithAI}
+                  disabled={isImproving || !hasValidConfig}
+                  className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
+                >
+                  {isImproving ? "⏳" : "✨"}
+                </button>
+                <button
+                  onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
+                  className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Ver no mapa mental"
+                >
+                  🌐
+                </button>
+                <button
+                  onClick={() => router.push(`/projects/${projectId}/view?focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
+                  className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                  title={t('sectionDetail.actions.goToDocument')}
+                >
+                  📄
+                </button>
+                <button
+                  onClick={() => setShowMoveModal(true)}
+                  className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+                  title="Mover seção para outro local"
+                >
+                  ↗️
+                </button>
+              </>
+            )}
+            {!isEditingTitle && (
+              <button
+                className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                onClick={() => {
+                  const count = countDescendants(projectId, sectionId);
+                  const msg = count > 0 
+                    ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
+                    : t('sectionDetail.confirmDelete');
+                  if (window.confirm(msg)) {
+                    removeSection(projectId, sectionId);
+                    router.push(`/projects/${projectId}`);
+                  }
+                }}
+                title={t('sectionDetail.actions.deleteSection')}
+              >
+                🗑️
+              </button>
+            )}
+          </div>
         </div>
       )}
       
@@ -955,7 +1233,7 @@ function SectionDetailContent({
         </div>
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
-        <div 
+        <div
           className="max-w-6xl mx-auto mb-4 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5"
           onDoubleClick={() => setInlineEdit(true)}
         >
@@ -971,14 +1249,30 @@ function SectionDetailContent({
         </div>
       )}
 
-      {!inlineEdit && !(inlineEdit && isFullscreen) && (
-        <SubsectionSuggestionPanel
-          suggestions={sectionSuggestions}
+      {showPageRefsPanel && (
+        <UnresolvedRefsPanel
+          unresolvedNames={unresolvedFromPage.unresolvedNames}
+          hasProjectTitleRef={unresolvedFromPage.hasProjectTitleRef}
+          projectTitle={project?.title || ""}
+          onRemoveProjectRefFromSection={() => {
+            const projectTitle = project?.title || "";
+            if (!section?.content || !projectTitle) return;
+            const re = new RegExp(`\\$\\[${escapeRegExp(projectTitle)}\\]`, "gi");
+            const newContent = section.content.replace(re, projectTitle);
+            editSection(projectId, sectionId, section.title, newContent);
+            setSection({ ...section, content: newContent });
+          }}
           projectId={projectId}
           sectionId={sectionId}
-          hasDuplicateName={hasDuplicateName}
+          sections={sections || []}
+          currentContextPath={getBreadcrumb(sectionId, sections || [])}
+          addSection={addSection}
           addSubsection={addSubsection}
+          getAIHeaders={getAIHeaders}
+          router={router}
           onLimitError={(msg) => setNameError(msg)}
+          onAiError={setImproveError}
+          hasDuplicateName={hasDuplicateName}
         />
       )}
 
@@ -1172,14 +1466,24 @@ function SectionDetailContent({
                 />
               </div>
 
-              <div className="mt-4">
-                <SubsectionSuggestionPanel
-                  suggestions={previewSuggestions}
+              <div className="mt-4 space-y-4">
+                <UnresolvedRefsPanel
+                  unresolvedNames={unresolvedNames}
+                  hasProjectTitleRef={hasProjectTitleRef}
+                  projectTitle={project?.title || ""}
+                  previewContent={previewContent || ""}
+                  setPreviewContent={setPreviewContent}
                   projectId={projectId}
                   sectionId={sectionId}
-                  hasDuplicateName={hasDuplicateName}
+                  sections={sections || []}
+                  currentContextPath={getBreadcrumb(sectionId, sections || [])}
+                  addSection={addSection}
                   addSubsection={addSubsection}
+                  getAIHeaders={getAIHeaders}
+                  router={router}
                   onLimitError={(msg) => setNameError(msg)}
+                  onAiError={setImproveError}
+                  hasDuplicateName={hasDuplicateName}
                 />
               </div>
             </div>

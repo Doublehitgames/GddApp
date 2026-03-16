@@ -421,7 +421,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                     </button>
                 )}
                 {!hasChildren && <span className="w-4"></span>}
-                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-300 underline hover:text-blue-200">
+                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-300 underline hover:text-blue-200" prefetch={false}>
                     {highlightText(section.title, searchTerm)}
                 </Link>
                 {directMatch && searchTerm.trim() && (
@@ -533,7 +533,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSe
                                 </button>
                             )}
                             {!hasChildren && <span className="w-4"></span>}
-                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-200">
+                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-200" prefetch={false}>
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
                             {directMatch && searchTerm && searchTerm.trim() && (
