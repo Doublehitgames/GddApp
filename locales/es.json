@@ -254,6 +254,12 @@
       "makeRoot": "Convertir en sección principal (sin padre)",
       "move": "Mover"
     },
+    "audit": {
+      "createdBy": "Creado por {{name}} el {{date}}",
+      "updatedBy": "Última modificación por {{name}} el {{date}}",
+      "createdAt": "Creado el {{date}}",
+      "updatedAt": "Modificado el {{date}}"
+    },
     "backlinks": "Referenciado por:"
   },
   "settings": {

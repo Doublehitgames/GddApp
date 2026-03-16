@@ -182,6 +182,9 @@ export type MindMapSettings = {
   };
 };
 
+/** Dados do usuário para auditoria (criado por / modificado por). */
+export type SectionAuditBy = { userId: string; displayName: string | null };
+
 //Definição da Seção. A seção pode ter um parentId opcional para suportar subseções.
 export type Section = {
   id: UUID;
@@ -191,6 +194,13 @@ export type Section = {
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
   order: number; // Ordem de exibição dentro do mesmo nível (mesmo parentId)
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
+  /** Quem criou a seção (id e nome para exibição). */
+  created_by?: string | null;
+  created_by_name?: string | null;
+  /** Última modificação. */
+  updated_at?: string | null;
+  updated_by?: string | null;
+  updated_by_name?: string | null;
 };
 
 //Definição do Projeto. Um projeto pode ter várias seções.
@@ -243,11 +253,11 @@ interface ProjectStore {
   // Mutations
   addProject: (name: string, description: string) => string;
   getProject: (id: UUID) => Project | undefined;
-  addSection: (projectId: UUID, title: string, content?: string) => UUID;
-  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => UUID;
+  addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
+  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
   removeProject: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
-  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string) => void;
+  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -789,7 +799,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       return get().projects.find((p) => p.id === id);
     },
 
-    addSection: (projectId: UUID, title: string, content?: string) => {
+    addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -802,6 +812,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const audit = createdBy
+        ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
+        : {};
       wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -810,10 +824,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
               return {
                 ...p,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
                 sections: [
                   ...(p.sections || []),
-                  { id: newId, title, content: content || "", created_at: new Date().toISOString(), parentId: undefined, order: maxOrder + 1 } as Section,
+                  { id: newId, title, content: content || "", created_at: now, parentId: undefined, order: maxOrder + 1, ...audit } as Section,
                 ],
               };
             }
@@ -824,7 +838,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       return newId;
     },
 
-    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string) => {
+    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -837,6 +851,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const audit = createdBy
+        ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
+        : {};
       wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -845,10 +863,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               const maxOrder = siblings.length > 0 ? Math.max(...siblings.map((s) => s.order || 0)) : -1;
               return {
                 ...p,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
                 sections: [
                   ...(p.sections || []),
-                  { id: newId, title, content: content || "", created_at: new Date().toISOString(), parentId, order: maxOrder + 1 } as Section,
+                  { id: newId, title, content: content || "", created_at: now, parentId, order: maxOrder + 1, ...audit } as Section,
                 ],
               };
             }
@@ -883,17 +901,23 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string) => {
+    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy) => {
+      const now = new Date().toISOString();
+      const audit: Partial<Section> = { updated_at: now };
+      if (updatedBy) {
+        audit.updated_by = updatedBy.userId;
+        audit.updated_by_name = updatedBy.displayName ?? null;
+      }
       wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
             p.id === projectId
               ? {
                   ...p,
-                  updatedAt: new Date().toISOString(),
+                  updatedAt: now,
                   sections: (p.sections || []).map((s) => {
                     if (s.id === sectionId) {
-                      const updated: any = { ...s, title, content };
+                      const updated: Section = { ...s, title, content, ...audit };
                       const isColorPassedAsParentId =
                         typeof parentId === "string" && parentId.startsWith("#") && color === undefined;
 
@@ -905,7 +929,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
                         else updated.parentId = resolvedParentId;
                       }
                       if (resolvedColor !== undefined) updated.color = resolvedColor;
-                      else delete updated.color;
+                      else if (resolvedColor === undefined) delete updated.color;
                       return updated;
                     }
                     return s;

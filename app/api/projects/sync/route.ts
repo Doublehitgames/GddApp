@@ -504,7 +504,11 @@ export async function POST(request: NextRequest) {
         sort_order: Number(s.order) ?? 0,
         color: s.color != null ? String(s.color) : null,
         created_at: s.created_at ? String(s.created_at) : nowIso,
-        updated_at: nowIso,
+        updated_at: s.updated_at ? String(s.updated_at) : nowIso,
+        created_by: s.created_by ?? null,
+        created_by_name: s.created_by_name ?? null,
+        updated_by: s.updated_by ?? null,
+        updated_by_name: s.updated_by_name ?? null,
       }));
 
       const { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });

@@ -254,6 +254,12 @@
       "makeRoot": "Make it a top-level section (no parent)",
       "move": "Move"
     },
+    "audit": {
+      "createdBy": "Created by {{name}} on {{date}}",
+      "updatedBy": "Last modified by {{name}} on {{date}}",
+      "createdAt": "Created on {{date}}",
+      "updatedAt": "Modified on {{date}}"
+    },
     "backlinks": "Referenced by:"
   },
   "settings": {

@@ -305,6 +305,11 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     parentId: (row.parent_id as string) || undefined,
     order: ((row.sort_order ?? (row as { order?: number }).order) as number) ?? 0,
     color: (row.color as string) || undefined,
+    created_by: (row.created_by as string) || undefined,
+    created_by_name: (row.created_by_name as string) || undefined,
+    updated_at: (row.updated_at as string) || undefined,
+    updated_by: (row.updated_by as string) || undefined,
+    updated_by_name: (row.updated_by_name as string) || undefined,
   };
 }
 

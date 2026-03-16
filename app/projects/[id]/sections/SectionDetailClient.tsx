@@ -1,6 +1,7 @@
 "use client";
 
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
@@ -39,6 +40,7 @@ interface Props {
 
 export default function SectionDetailClient({ projectId, sectionId, openEdit = false }: Props) {
   const { t } = useI18n();
+  const { user, profile } = useAuthStore();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
   const getProject = useProjectStore((s) => s.getProject);
   const removeSection = useProjectStore((s) => s.removeSection);
@@ -49,6 +51,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
   const projects = useProjectStore((s) => s.projects);
+
+  const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
   const [section, setSection] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
@@ -192,7 +196,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     if (!section) return;
     
     // Aplica o conteúdo melhorado
-    editSection(projectId, sectionId, section.title, previewContent);
+    editSection(projectId, sectionId, section.title, previewContent, undefined, undefined, sectionAuditBy);
     setSection({ ...section, content: previewContent });
     
     // Fecha o preview
@@ -253,7 +257,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     }
     
     // Atualizar o parentId (não mexe em title, content e color)
-    editSection(projectId, sectionId, section.title, section.content, newParentId, section.color);
+    editSection(projectId, sectionId, section.title, section.content, newParentId, section.color, sectionAuditBy);
     
     // Fechar modal e resetar
     setShowMoveModal(false);
@@ -574,7 +578,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setIsEditingTitle={setIsEditingTitle}
     editedTitle={editedTitle}
     setEditedTitle={setEditedTitle}
-    editSection={editSection}
+    editSection={(pid: string, sid: string, title: string, content: string, parentId?: string | null, color?: string) => editSection(pid, sid, title, content, parentId, color, sectionAuditBy)}
     inlineEdit={inlineEdit}
     setInlineEdit={setInlineEdit}
     containerEl={containerEl}
@@ -590,8 +594,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setNewSubTitle={setNewSubTitle}
     nameError={nameError}
     setNameError={setNameError}
-    addSection={addSection}
-    addSubsection={addSubsection}
+    addSection={(pid: string, title: string, content?: string) => addSection(pid, title, content, sectionAuditBy)}
+    addSubsection={(pid: string, parentId: string, title: string, content?: string) => addSubsection(pid, parentId, title, content, sectionAuditBy)}
     hasDuplicateName={hasDuplicateName}
     router={router}
     searchTerm={searchTerm}
@@ -1107,7 +1111,7 @@ function SectionDetailContent({
                     if (e.key === 'Enter' && editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
+                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
                     } else if (e.key === 'Escape') {
                       setEditedTitle(section.title);
@@ -1122,7 +1126,7 @@ function SectionDetailContent({
                     if (editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent);
+                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
                     }
                   }}
@@ -1256,6 +1260,22 @@ function SectionDetailContent({
           ) : (
             <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
           )}
+          {(section?.created_by_name != null || section?.created_at != null || section?.updated_by_name != null || section?.updated_at != null) && (
+            <div className="mt-4 pt-3 border-t border-gray-700/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+              {section?.created_by_name != null && section?.created_at != null && (
+                <span>{t("sectionDetail.audit.createdBy").replace("{{name}}", section.created_by_name).replace("{{date}}", new Date(section.created_at).toLocaleString())}</span>
+              )}
+              {section?.updated_by_name != null && section?.updated_at != null && (
+                <span>{t("sectionDetail.audit.updatedBy").replace("{{name}}", section.updated_by_name).replace("{{date}}", new Date(section.updated_at).toLocaleString())}</span>
+              )}
+              {section?.created_by_name == null && section?.created_at != null && (
+                <span>{t("sectionDetail.audit.createdAt").replace("{{date}}", new Date(section.created_at).toLocaleString())}</span>
+              )}
+              {section?.updated_by_name == null && section?.updated_at != null && section?.created_at !== section?.updated_at && (
+                <span>{t("sectionDetail.audit.updatedAt").replace("{{date}}", new Date(section.updated_at).toLocaleString())}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1269,7 +1289,7 @@ function SectionDetailContent({
             if (!section?.content || !projectTitle) return;
             const re = new RegExp(`\\$\\[${escapeRegExp(projectTitle)}\\]`, "gi");
             const newContent = section.content.replace(re, projectTitle);
-            editSection(projectId, sectionId, section.title, newContent);
+            editSection(projectId, sectionId, section.title, newContent, undefined, undefined);
             setSection({ ...section, content: newContent });
           }}
           projectId={projectId}
@@ -1335,7 +1355,7 @@ function SectionDetailContent({
                 const md = (editorRef as any).current?.getMarkdown?.() || "";
                 const sections = project?.sections || [];
                 const convertedMd = convertReferencesToIds(md, sections);
-                editSection(projectId, sectionId, section.title, convertedMd);
+                editSection(projectId, sectionId, section.title, convertedMd, undefined, undefined);
                 setInlineEdit(false);
               }}
             >Salvar</button>
@@ -1425,7 +1445,7 @@ function SectionDetailContent({
               const trimmed = newSubTitle.trim();
               if (!trimmed || nameError) return;
               try {
-                addSubsection(projectId, sectionId, trimmed);
+                addSubsection(projectId, sectionId, trimmed, "");
                 setNewSubTitle("");
                 setNameError("");
               } catch (e) {
