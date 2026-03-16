@@ -428,3 +428,153 @@ export function addDriveImageButtonToToolbar(
     }
   }, 140);
 }
+
+export interface ReferenceButtonOptions {
+  sections: Array<{ id: string; title?: string; name?: string }>;
+  buttonTitle?: string;
+  searchPlaceholder?: string;
+}
+
+/** Adiciona botão "Inserir referência" na toolbar: abre lista de seções com busca para inserir $[Nome]. */
+export function addReferenceButtonToToolbar(
+  editor: ToastEditorLike,
+  options: ReferenceButtonOptions
+) {
+  const { sections, buttonTitle = "Inserir referência", searchPlaceholder = "Buscar seção…" } = options;
+
+  setTimeout(() => {
+    const editorRoot =
+      editor?.el?.closest?.(".toastui-editor-defaultUI") ||
+      document.querySelector(".toastui-editor-defaultUI");
+    const toolbarElement = editorRoot?.querySelector(".toastui-editor-toolbar") as HTMLElement | null;
+    if (!toolbarElement) return;
+    if (toolbarElement.querySelector(".reference-button-wrapper")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "reference-button-wrapper";
+    wrapper.style.cssText = "position: relative; display: inline-block;";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toastui-editor-toolbar-icons reference";
+    btn.style.cssText = "padding: 5px 8px; margin: 0 2px; border: none; background: transparent; cursor: pointer; font-size: 16px;";
+    btn.innerHTML = "🔗";
+    btn.title = buttonTitle;
+
+    function renderList(container: HTMLElement, list: Array<{ id: string; title?: string; name?: string }>) {
+      container.innerHTML = "";
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.padding = "12px";
+        empty.style.color = "#94a3b8";
+        empty.textContent = "Nenhuma seção encontrada.";
+        container.appendChild(empty);
+        return;
+      }
+      list.forEach((sec) => {
+        const title = (sec.title || sec.name || "").trim() || "(sem título)";
+        const row = document.createElement("div");
+        row.style.cssText = "padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #334155;";
+        row.textContent = title;
+        row.addEventListener("mouseenter", () => { row.style.background = "#334155"; });
+        row.addEventListener("mouseleave", () => { row.style.background = "transparent"; });
+        row.addEventListener("click", () => {
+          const text = `$[${title}]`;
+          const modeEditor = editor?.getCurrentModeEditor?.();
+          if (typeof modeEditor?.replaceSelection === "function") {
+            modeEditor.replaceSelection(text);
+          }
+          const d = document.getElementById("gdd-reference-dropdown");
+          d?.remove();
+        });
+        container.appendChild(row);
+      });
+    }
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      let dropdown = document.getElementById("gdd-reference-dropdown");
+      if (dropdown) {
+        dropdown.remove();
+        return;
+      }
+      const rect = btn.getBoundingClientRect();
+      dropdown = document.createElement("div");
+      dropdown.id = "gdd-reference-dropdown";
+      dropdown.style.cssText = `
+        position: fixed;
+        top: ${rect.bottom + 6}px;
+        left: ${rect.left}px;
+        background: #1e293b;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        z-index: 10001;
+        min-width: 260px;
+        max-width: 360px;
+        color: #e2e8f0;
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        max-height: 320px;
+      `;
+
+      const list = sections || [];
+      const header = document.createElement("div");
+      header.style.cssText = "padding: 8px; border-bottom: 1px solid #334155; flex-shrink: 0;";
+      const search = document.createElement("input");
+      search.type = "text";
+      search.placeholder = searchPlaceholder;
+      search.autocomplete = "off";
+      search.style.cssText = `
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #475569;
+        border-radius: 6px;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-size: 13px;
+        outline: none;
+        box-sizing: border-box;
+      `;
+      search.addEventListener("input", () => {
+        const q = (search.value || "").trim().toLowerCase();
+        const filtered = q
+          ? list.filter((s) => ((s.title || s.name || "").trim() || "").toLowerCase().includes(q))
+          : list;
+        renderList(listContainer, filtered);
+      });
+      header.appendChild(search);
+      dropdown.appendChild(header);
+
+      const listContainer = document.createElement("div");
+      listContainer.style.cssText = "overflow-y: auto; max-height: 260px;";
+      dropdown.appendChild(listContainer);
+
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.padding = "12px";
+        empty.textContent = "Nenhuma seção no projeto.";
+        listContainer.appendChild(empty);
+      } else {
+        renderList(listContainer, list);
+      }
+
+      document.body.appendChild(dropdown);
+      search.focus();
+      const onOutside = (ev: MouseEvent) => {
+        const t = ev.target as Node;
+        if (dropdown && !dropdown.contains(t) && !btn.contains(t)) {
+          dropdown.remove();
+          document.removeEventListener("click", onOutside);
+        }
+      };
+      setTimeout(() => document.addEventListener("click", onOutside), 0);
+    });
+
+    wrapper.appendChild(btn);
+    const firstGroup = toolbarElement.querySelector(".toastui-editor-toolbar-group");
+    if (firstGroup) firstGroup.appendChild(wrapper);
+  }, 140);
+}

@@ -152,7 +152,15 @@
     "insertFromDriveTooltip": "Insertar imagen desde Google Drive",
     "insertFromDriveHint": "Use el botón de imagen de Drive en la barra de herramientas. La imagen debe estar compartida como \"Cualquier persona con el enlace\" para aparecer en el documento.",
     "driveNotConfigured": "Google Drive no configurado. Añada NEXT_PUBLIC_GOOGLE_CLIENT_ID a las variables de entorno (ver documentación). En Vercel, tras añadir la variable, haga un nuevo deploy (Redeploy) para que tenga efecto.",
-    "drivePasteHint": "Enlace de la imagen copiado. Pegue en el editor con Ctrl+V (o Cmd+V en Mac)."
+    "drivePasteHint": "Enlace de la imagen copiado. Pegue en el editor con Ctrl+V (o Cmd+V en Mac).",
+    "insertReference": "Insertar referencia",
+    "referenceSearchPlaceholder": "Buscar sección…"
+  },
+  "view": {
+    "actionsMenu": "Acciones",
+    "managementMode": "Modo gestión",
+    "mindMap": "Mapa mental",
+    "print": "Imprimir"
   },
   "projectExport": {
     "backToProject": "Volver al proyecto",

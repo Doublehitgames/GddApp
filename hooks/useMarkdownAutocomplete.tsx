@@ -24,80 +24,134 @@ export function useMarkdownAutocomplete({ sections, textareaSelector = "textarea
   const lastCursorPos = useRef<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
+  const insertSectionRef = useRef<(section: Section) => void>(() => {});
+  const stateRef = useRef({ showAutocomplete: false, filteredSections: [] as Section[], selectedIndex: 0, setShowAutocomplete, setSelectedIndex, setFilteredSections });
+
+  stateRef.current = {
+    showAutocomplete,
+    filteredSections,
+    selectedIndex,
+    setShowAutocomplete,
+    setSelectedIndex,
+    setFilteredSections,
+  };
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    
-    const findTextarea = () => {
-      // Se tem containerRef, procura dentro dele
-      const root = containerRef?.current || document;
-      
-      let textarea: HTMLTextAreaElement | null = null;
-      
-      // Toast UI Editor - vários modos (procura direto nos específicos)
-      const selectors = [
-        ".toastui-editor-contents[contenteditable]",
-        ".ProseMirror",
-        ".toastui-editor-ww-container [contenteditable]",
-        ".toastui-editor .CodeMirror textarea",
-        ".toastui-editor-md-container textarea",
-        ".w-md-editor-text-input", // MDEditor
-        textareaSelector, // Genérico por último
-      ];
-      
-      for (const selector of selectors) {
-        const found = root.querySelector(selector);
-        textarea = found as any;
-        if (textarea) {
-          // Ignora textarea de clipboard
-          if (textarea.className?.includes("pseudo-clipboard")) {
-            textarea = null;
-            continue;
-          }
-          break;
-        }
-      }
-      
-      if (textarea && textarea !== textareaRef.current) {
-        textareaRef.current = textarea;
-        
-        // Para quando encontrar
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-        
-        // Para contenteditable (Toast UI Editor WYSIWYG), usa eventos diferentes
-        if (textarea.getAttribute?.("contenteditable") === "true") {
-          textarea.addEventListener("input", handleInputContentEditable as any);
-          textarea.addEventListener("keydown", handleKeyDown);
-        } else {
-          textarea.addEventListener("input", handleInput);
-          textarea.addEventListener("keydown", handleKeyDown);
-          textarea.addEventListener("click", handleClick);
-        }
-      }
-    };
+    function getEditableFromTarget(target: EventTarget | null): HTMLElement | null {
+      if (!target || !(target instanceof Node)) return null;
+      const el = target as HTMLElement;
+      const inContainer = !containerRef?.current || containerRef.current.contains(el);
+      if (!inContainer) return null;
+      if (el.tagName === "TEXTAREA") return el;
+      if (el.getAttribute?.("contenteditable") === "true") return el;
+      const editable = el.closest?.("[contenteditable=true], textarea") as HTMLElement | null;
+      return editable;
+    }
 
-    // Procura textarea periodicamente (porque editores podem renderizar depois)
-    intervalId = setInterval(findTextarea, 1000);
-    findTextarea();
+    function getTextAndCursor(editable: HTMLElement): { text: string; cursorPos: number } | null {
+      if (editable.tagName === "TEXTAREA") {
+        const ta = editable as HTMLTextAreaElement;
+        return { text: ta.value, cursorPos: ta.selectionStart ?? 0 };
+      }
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return null;
+      const range = selection.getRangeAt(0);
+      if (!editable.contains(range.commonAncestorContainer)) return null;
+      try {
+        const text = editable.innerText || editable.textContent || "";
+        const pre = range.cloneRange();
+        pre.selectNodeContents(editable);
+        pre.setEnd(range.endContainer, range.endOffset);
+        const cursorPos = pre.toString().length;
+        return { text, cursorPos };
+      } catch {
+        return null;
+      }
+    }
+
+    function tryShowAutocomplete(editable: HTMLElement) {
+      const data = getTextAndCursor(editable);
+      if (!data) return;
+      const { text, cursorPos } = data;
+      lastCursorPos.current = cursorPos;
+      textareaRef.current = editable as any;
+      const textBeforeCursor = text.substring(0, cursorPos);
+      const match = textBeforeCursor.match(/\$\[([^\]]*?)$/);
+      if (!match) {
+        stateRef.current.setShowAutocomplete(false);
+        return;
+      }
+      const query = match[1];
+      const filtered = sections.filter((s) => {
+        const name = (s?.title || s?.name || "").trim();
+        return name && name.toLowerCase().includes(query.toLowerCase());
+      });
+      stateRef.current.setFilteredSections(filtered);
+      stateRef.current.setSelectedIndex(0);
+      if (filtered.length === 0) {
+        stateRef.current.setShowAutocomplete(false);
+        return;
+      }
+      let top = 0;
+      let left = 0;
+      try {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const rect = selection.getRangeAt(0).getBoundingClientRect();
+          top = rect.bottom + window.scrollY + 4;
+          left = rect.left + window.scrollX;
+        }
+      } catch {
+        // ignora
+      }
+      setAutocompletePosition({ top, left });
+      stateRef.current.setShowAutocomplete(true);
+    }
+
+    function onDocKeyUp(e: Event) {
+      const editable = getEditableFromTarget(e.target);
+      if (editable) tryShowAutocomplete(editable);
+    }
+
+    function onDocInput(e: Event) {
+      const editable = getEditableFromTarget(e.target);
+      if (editable) tryShowAutocomplete(editable);
+    }
+
+    function onDocKeyDown(e: Event) {
+      const keyEvent = e as KeyboardEvent;
+      const { showAutocomplete: open, filteredSections: list, selectedIndex: idx, setShowAutocomplete: setOpen, setSelectedIndex: setIdx } = stateRef.current;
+      if (!open || list.length === 0) return;
+      if (keyEvent.key === "ArrowDown") {
+        keyEvent.preventDefault();
+        setIdx((prev) => (prev + 1) % list.length);
+        setTimeout(() => selectedItemRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 0);
+      } else if (keyEvent.key === "ArrowUp") {
+        keyEvent.preventDefault();
+        setIdx((prev) => (prev - 1 + list.length) % list.length);
+        setTimeout(() => selectedItemRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 0);
+      } else if (keyEvent.key === "Enter" || keyEvent.key === "Tab") {
+        const section = list[idx];
+        if (section) {
+          keyEvent.preventDefault();
+          insertSectionRef.current?.(section);
+          setOpen(false);
+        }
+      } else if (keyEvent.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("keyup", onDocKeyUp, true);
+    document.addEventListener("input", onDocInput, true);
+    document.addEventListener("keydown", onDocKeyDown, true);
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
-      if (textareaRef.current) {
-        const isContentEditable = textareaRef.current.getAttribute?.("contenteditable") === "true";
-        if (isContentEditable) {
-          textareaRef.current.removeEventListener("input", handleInputContentEditable as any);
-          textareaRef.current.removeEventListener("keydown", handleKeyDown);
-        } else {
-          textareaRef.current.removeEventListener("input", handleInput);
-          textareaRef.current.removeEventListener("keydown", handleKeyDown);
-          textareaRef.current.removeEventListener("click", handleClick);
-        }
-      }
+      document.removeEventListener("keyup", onDocKeyUp, true);
+      document.removeEventListener("input", onDocInput, true);
+      document.removeEventListener("keydown", onDocKeyDown, true);
     };
-  }, [sections]);
+  }, [sections, containerRef]);
 
   const handleClick = () => {
     setShowAutocomplete(false);
@@ -143,31 +197,30 @@ export function useMarkdownAutocomplete({ sections, textareaSelector = "textarea
 
   const handleInputContentEditable = () => {
     if (!textareaRef.current) return;
-    const element = textareaRef.current as any;
-    
-    // Para contenteditable, pega o texto completo
-    const content = element.innerText || element.textContent || "";
-    
-    // Tenta obter posição do cursor
+    const element = textareaRef.current as HTMLElement;
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
-    
     const range = selection.getRangeAt(0);
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(element);
-    preCaretRange.setEnd(range.endContainer, range.endOffset);
-    const cursorPos = preCaretRange.toString().length;
-    
-    lastCursorPos.current = cursorPos;
+    if (!element.contains(range.commonAncestorContainer)) return;
 
-    // Procura por $[ antes do cursor
+    let cursorPos: number;
+    try {
+      const preCaretRange = range.cloneRange();
+      preCaretRange.selectNodeContents(element);
+      preCaretRange.setEnd(range.endContainer, range.endOffset);
+      cursorPos = preCaretRange.toString().length;
+      lastCursorPos.current = cursorPos;
+    } catch {
+      return;
+    }
+
+    const content = element.innerText || element.textContent || "";
     const textBeforeCursor = content.substring(0, cursorPos);
     const match = textBeforeCursor.match(/\$\[([^\]]*?)$/);
 
     if (match) {
       const query = match[1];
-
-      // Filtra seções que correspondem à busca (usa 'title' ou 'name')
       const filtered = sections.filter((s) => {
         const sectionName = s?.title || s?.name || "";
         return sectionName && sectionName.toLowerCase().includes(query.toLowerCase());
@@ -177,12 +230,15 @@ export function useMarkdownAutocomplete({ sections, textareaSelector = "textarea
       setSelectedIndex(0);
 
       if (filtered.length > 0) {
-        // Posição fixa para contenteditable (mais simples)
-        const rect = range.getBoundingClientRect();
-        setAutocompletePosition({
-          top: rect.bottom + window.scrollY + 5,
-          left: rect.left + window.scrollX,
-        });
+        try {
+          const rect = range.getBoundingClientRect();
+          setAutocompletePosition({
+            top: rect.bottom + window.scrollY + 5,
+            left: rect.left + window.scrollX,
+          });
+        } catch {
+          setAutocompletePosition({ top: 0, left: 0 });
+        }
         setShowAutocomplete(true);
       } else {
         setShowAutocomplete(false);
@@ -328,6 +384,7 @@ export function useMarkdownAutocomplete({ sections, textareaSelector = "textarea
 
     setShowAutocomplete(false);
   };
+  insertSectionRef.current = insertSection;
 
   // Função auxiliar para obter coordenadas do cursor
   const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {

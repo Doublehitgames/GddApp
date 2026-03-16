@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar } from "@/utils/toastui-color-plugin";
 import { driveFileIdToImageUrl, normalizeDriveUrlsInMarkdown } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
@@ -76,7 +76,11 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const router = useRouter();
 
   const sections = project?.sections || [];
-  const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections });
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
+  const { AutocompleteDropdown } = useMarkdownAutocomplete({
+    sections,
+    containerRef: inlineEdit ? editorContainerRef : undefined,
+  });
 
   // Redirecionamento de /sections/[id]/edit: abrir direto no modo edição inline
   useEffect(() => {
@@ -341,6 +345,11 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
         },
         getCurrentEditor: () => (editorRef as any).current ?? null,
       });
+      addReferenceButtonToToolbar(instance, {
+        sections: project?.sections || [],
+        buttonTitle: t("sectionEdit.insertReference"),
+        searchPlaceholder: t("sectionEdit.referenceSearchPlaceholder"),
+      });
     }
     mountEditor();
     return () => {
@@ -570,6 +579,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setInlineEdit={setInlineEdit}
     containerEl={containerEl}
     setContainerEl={setContainerEl}
+    editorContainerRef={editorContainerRef}
     editorRef={editorRef}
     editorMode={editorMode}
     setEditorMode={setEditorMode}
@@ -1011,7 +1021,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
 function SectionDetailContent({ 
   project, projectId, section, sectionId, breadcrumbs, 
   isEditingTitle, setIsEditingTitle, editedTitle, setEditedTitle, editSection,
-  inlineEdit, setInlineEdit, containerEl, setContainerEl, editorRef, editorMode, setEditorMode,
+  inlineEdit, setInlineEdit, containerEl, setContainerEl, editorContainerRef, editorRef, editorMode, setEditorMode,
   removeSection, countDescendants, renderSubsectionTree,
   newSubTitle, setNewSubTitle, nameError, setNameError, addSection, addSubsection, hasDuplicateName,
   router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
@@ -1317,7 +1327,7 @@ function SectionDetailContent({
               </button>
             </div>
           )}
-          <div ref={setContainerEl as any} />
+          <div ref={(el) => { editorContainerRef.current = el; setContainerEl(el); }} />
           <div className="mt-2 flex gap-2">
             <button
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors"

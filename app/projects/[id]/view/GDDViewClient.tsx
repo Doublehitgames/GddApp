@@ -27,9 +27,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [showMobileToc, setShowMobileToc] = useState(false);
   const [showDesktopToc, setShowDesktopToc] = useState(false);
   const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const isPublicMode = Boolean(publicToken);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
   const sectionMenuRef = useRef<HTMLDivElement>(null);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -44,6 +46,16 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, [openSectionMenuId]);
+
+  useEffect(() => {
+    if (!showActionsMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsMenuRef.current?.contains(e.target as Node)) return;
+      setShowActionsMenu(false);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showActionsMenu]);
 
   useEffect(() => {
     if (mounted && !isPublicMode) {
@@ -455,41 +467,72 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {!isPublicMode ? (
-                <>
-                  <button
-                    onClick={() => router.push(`/projects/${projectId}`)}
-                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2"
-                  >
-                    ← Modo Gerenciamento
-                  </button>
-                  <button
-                    onClick={() => router.push("/")}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-                  >
-                    🏠 Home
-                  </button>
-                </>
+                <button
+                  onClick={() => router.push("/")}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  🏠 Home
+                </button>
               ) : (
                 <span className="text-sm text-gray-600">🔓 Visualização pública</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="relative" ref={actionsMenuRef}>
               <button
-                onClick={() => router.push(
-                  isPublicMode
-                    ? `/s/${encodeURIComponent(publicToken || "")}?mode=mindmap`
-                    : `/projects/${projectId}/mindmap`
-                )}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                type="button"
+                onClick={() => setShowActionsMenu((v) => !v)}
+                className="p-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center"
+                title={t("view.actionsMenu")}
+                aria-expanded={showActionsMenu}
+                aria-haspopup="true"
+                aria-label={t("view.actionsMenu")}
               >
-                🧠 Mapa Mental
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                  <circle cx="12" cy="18" r="1.5" fill="currentColor" />
+                </svg>
               </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                🖨️ Imprimir
-              </button>
+              {showActionsMenu && (
+                <div className="absolute right-0 top-full mt-1 py-1 min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  {!isPublicMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowActionsMenu(false);
+                        router.push(`/projects/${projectId}`);
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      ← {t("view.managementMode")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      router.push(
+                        isPublicMode
+                          ? `/s/${encodeURIComponent(publicToken || "")}?mode=mindmap`
+                          : `/projects/${projectId}/mindmap`
+                      );
+                    }}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    🧠 {t("view.mindMap")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      window.print();
+                    }}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    🖨️ {t("view.print")}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
