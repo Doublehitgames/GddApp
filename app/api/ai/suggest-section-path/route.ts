@@ -8,6 +8,7 @@ interface SectionItem {
   id: string;
   title: string;
   parentId?: string;
+  domainTags?: string[];
 }
 
 interface SuggestPathRequest {
@@ -36,7 +37,8 @@ function buildTreeText(sections: SectionItem[]): string {
     const children = byParent.get(parentId) ?? [];
     const lines: string[] = [];
     for (const s of children) {
-      lines.push("  ".repeat(indent) + "- " + s.title);
+      const tags = s.domainTags?.length ? ` [${s.domainTags.join(", ")}]` : "";
+      lines.push("  ".repeat(indent) + "- " + s.title + tags);
       lines.push(...render(s.id, indent + 1));
     }
     return lines;

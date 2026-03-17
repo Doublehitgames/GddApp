@@ -93,6 +93,8 @@ ${request.additionalInfo ? `**Informações Adicionais:** ${request.additionalIn
 
 Retorne um JSON válido no seguinte formato (sem markdown, apenas JSON puro):
 
+**DOMÍNIOS VÁLIDOS (use em domainTags, minúsculo):** combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other
+
 {
   "projectTitle": "Nome criativo e chamativo do projeto",
   "projectDescription": "Descrição breve do projeto (2-3 linhas)",
@@ -100,10 +102,12 @@ Retorne um JSON válido no seguinte formato (sem markdown, apenas JSON puro):
     {
       "title": "Nome da Seção",
       "content": "Conteúdo inicial da seção em Markdown. Use ## para subtítulos, - para listas, etc.",
+      "domainTags": ["economy", "progression"],
       "subsections": [
         {
           "title": "Nome da Subseção",
-          "content": "Conteúdo da subseção em Markdown"
+          "content": "Conteúdo da subseção em Markdown",
+          "domainTags": ["items"]
         }
       ]
     }
@@ -118,7 +122,8 @@ Retorne um JSON válido no seguinte formato (sem markdown, apenas JSON puro):
 5. Preencha cada seção com conteúdo inicial útil (não deixe vazio)
 6. Use Markdown para formatação (listas, títulos, negrito, etc.)
 7. Seja específico ao tipo de jogo mencionado
-8. Retorne APENAS o JSON, sem texto adicional antes ou depois
+8. Para CADA seção e subseção inclua "domainTags": array de 1 a 3 domínios (use só os IDs listados: combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other). Ex.: Overview → ["other"], Combate → ["combat"], Economia → ["economy"], Progressão → ["progression"].
+9. Retorne APENAS o JSON, sem texto adicional antes ou depois
 
 Seções típicas de um GDD incluem:
 - Overview/Visão Geral
@@ -150,7 +155,7 @@ export function generateChatWithContextPrompt(
   userMessage: string,
   projectContext?: {
     projectTitle: string;
-    sections: Array<{ id: string; title: string; content?: string }>;
+    sections: Array<{ id: string; title: string; content?: string; domainTags?: string[] }>;
   }
 ): string {
   if (!projectContext) {
@@ -158,13 +163,16 @@ export function generateChatWithContextPrompt(
   }
 
   const sectionsInfo = projectContext.sections
-    .map(s => `- ${s.title}${s.content ? ` (${s.content.length} chars)` : ' (vazia)'}`)
-    .join('\n');
+    .map(s => {
+      const tags = s.domainTags?.length ? ` [${s.domainTags.join(", ")}]` : "";
+      return `- ${s.title}${tags}${s.content ? ` (${s.content.length} chars)` : " (vazia)"}`;
+    })
+    .join("\n");
 
   return `Contexto do projeto atual:
 
 **Projeto:** ${projectContext.projectTitle}
-**Seções existentes:**
+**Seções existentes (tags de sistema entre colchetes):**
 ${sectionsInfo}
 
 **Requisição do usuário:**
@@ -174,6 +182,7 @@ Responda de forma útil considerando o contexto do GDD atual. Se o usuário pedi
 - Criar seções: sugira títulos e conteúdo inicial
 - Editar conteúdo: forneça o texto em Markdown
 - Analisar: revise as seções e dê feedback construtivo
+- Sugerir relações: use as tags (combat, economy, progression, crafting, items, world, etc.) para sugerir conexões entre sistemas (ex.: Combate → Itens, Economia → Crafting)
 - Completar: preencha lacunas com conteúdo relevante`;
 }
 

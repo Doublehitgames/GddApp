@@ -13,6 +13,7 @@ interface ProjectContext {
     title: string;
     content: string;
     parentId?: string;
+    domainTags?: string[];
   }>;
 }
 
@@ -42,11 +43,12 @@ export async function POST(req: NextRequest) {
 Projeto: ${projectContext.projectTitle} (ID: ${projectContext.projectId})
 Seções atuais: ${projectContext.sections.length}
 
-📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER):
+📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Entre colchetes: tags de sistema (combat, economy, progression, crafting, items, world, narrative, etc.):
 ${projectContext.sections.map(s => {
   const isRoot = !s.parentId;
   const prefix = isRoot ? '📁' : '  └─';
-  return `${prefix} ${s.title} (ID: ${s.id})`;
+  const tags = s.domainTags?.length ? ` [${s.domainTags.join(', ')}]` : '';
+  return `${prefix} ${s.title} (ID: ${s.id})${tags}`;
 }).join('\n')}
 
 💡 DICAS:
@@ -54,6 +56,7 @@ ${projectContext.sections.map(s => {
 - Para SUBSECAO, use o nome exato da seção pai
 - Para EDITAR/REMOVER, use o ID mostrado acima
 - Exemplo de referência: "Este sistema se relaciona com $[Sistema de Combate]"
+- Use as tags das seções para sugerir relações entre sistemas (ex.: Combate ↔ Itens, Economia → Crafting)
 ` : '';
 
     const enhancedMessages: AIMessage[] = [

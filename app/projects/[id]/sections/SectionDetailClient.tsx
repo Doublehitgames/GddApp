@@ -30,6 +30,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
+import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 
 interface Props {
   projectId: string;
@@ -82,6 +83,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [sectionVersions, setSectionVersions] = useState<Array<{ id: string; title: string; content: string; color?: string | null; created_at: string; updated_by_name?: string | null }>>([]);
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
+  const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
   const router = useRouter();
 
   const sections = project?.sections || [];
@@ -611,7 +613,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setIsEditingTitle={setIsEditingTitle}
     editedTitle={editedTitle}
     setEditedTitle={setEditedTitle}
-    editSection={(pid: string, sid: string, title: string, content: string, parentId?: string | null, color?: string) => editSection(pid, sid, title, content, parentId, color, sectionAuditBy)}
+    editSection={(pid: string, sid: string, title: string, content: string, parentId?: string | null, color?: string, domainTags?: string[]) => editSection(pid, sid, title, content, parentId, color, sectionAuditBy, domainTags)}
     inlineEdit={inlineEdit}
     setInlineEdit={setInlineEdit}
     containerEl={containerEl}
@@ -667,6 +669,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     restoreVersionId={restoreVersionId}
     setSectionVersions={setSectionVersions}
     setRestoreVersionId={setRestoreVersionId}
+    suggestDomainLoading={suggestDomainLoading}
+    setSuggestDomainLoading={setSuggestDomainLoading}
       />
       <AutocompleteDropdown />
     </>
@@ -806,7 +810,7 @@ function UnresolvedRefsPanel({
         headers: { "Content-Type": "application/json", ...getAIHeaders() },
         body: JSON.stringify({
           projectTitle,
-          sections: sections.map((s) => ({ id: s.id, title: s.title ?? "", parentId: s.parentId ?? undefined })),
+          sections: sections.map((s) => ({ id: s.id, title: s.title ?? "", parentId: s.parentId ?? undefined, domainTags: (s as { domainTags?: string[] }).domainTags })),
           newSectionTitle: name,
           currentContextPath: currentContextPath?.length ? currentContextPath : undefined,
         }),
@@ -1082,6 +1086,8 @@ function SectionDetailContent({
   restoreVersionId,
   setSectionVersions,
   setRestoreVersionId,
+  suggestDomainLoading,
+  setSuggestDomainLoading,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
@@ -1282,6 +1288,69 @@ function SectionDetailContent({
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Domínio / Sistemas (modelo de game design para IA e relações) */}
+      {section && !inlineEdit && (
+        <div className="max-w-6xl mx-auto px-4 md:px-6 mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-400">{t("sectionDetail.domain.label")}:</span>
+          {GAME_DESIGN_DOMAIN_IDS.map((id) => {
+            const current = section?.domainTags ?? [];
+            const isSelected = current.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  const next = isSelected
+                    ? current.filter((t: string) => t !== id)
+                    : normalizeDomainTags([...current, id]);
+                  editSection(projectId, sectionId, section.title, section.content ?? "", undefined, undefined, next);
+                  setSection({ ...section, domainTags: next.length ? next : undefined });
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  isSelected
+                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
+                    : "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-300"
+                }`}
+              >
+                {t(`sectionDetail.domain.${id}`)}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            disabled={suggestDomainLoading || !hasValidConfig}
+            onClick={async () => {
+              if (!section || !hasValidConfig) return;
+              setSuggestDomainLoading(true);
+              try {
+                const res = await fetch("/api/ai/suggest-domain-tags", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...getAIHeaders() },
+                  body: JSON.stringify({
+                    sectionTitle: section.title,
+                    sectionContent: (section.content || "").slice(0, 2000),
+                    existingTags: section.domainTags,
+                  }),
+                });
+                const data = await res.json();
+                if (res.ok && Array.isArray(data.suggestedTags) && data.suggestedTags.length > 0) {
+                  const next = normalizeDomainTags(data.suggestedTags);
+                  editSection(projectId, sectionId, section.title, section.content ?? "", undefined, undefined, next);
+                  setSection({ ...section, domainTags: next });
+                }
+              } catch (e) {
+                console.error("Suggest domain tags:", e);
+              } finally {
+                setSuggestDomainLoading(false);
+              }
+            }}
+            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
+          </button>
         </div>
       )}
       

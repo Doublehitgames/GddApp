@@ -27,6 +27,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
+import { useAIConfig } from "@/hooks/useAIConfig";
+import AIChat from "@/components/AIChat";
 
 interface Props {
     projectId: string;
@@ -35,6 +37,7 @@ interface Props {
 export default function ProjectDetailClient({ projectId }: Props) {
     const { t } = useI18n();
     const { user, profile } = useAuthStore();
+    const { hasValidConfig, getAIHeaders } = useAIConfig();
     const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
 
     const router = useRouter();
@@ -46,6 +49,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const [mounted, setMounted] = useState(false);
     const [project, setProject] = useState<any>(null);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [aiMenuOpen, setAiMenuOpen] = useState(false);
+    const [navMenuOpen, setNavMenuOpen] = useState(false);
+    const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
@@ -103,17 +110,19 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const projectContext = project ? {
         projectId: project.id,
-        projectTitle: project.title || project.name,
+        projectTitle: project.title,
         sections: (project.sections || []).map((s: any) => ({
             id: s.id,
             title: s.title,
             content: s.content,
+            parentId: s.parentId,
+            domainTags: s.domainTags,
         })),
     } : undefined;
 
     const navLinkClass = "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900";
 
-        return (
+    return (
         <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
             <div className="mx-auto w-full max-w-6xl space-y-6">
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-gray-800/50 border border-gray-700/60 px-4 py-3">
@@ -129,42 +138,139 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             <span className="hidden sm:inline">{t("projectDetail.backHome")}</span>
                         </Link>
                         <span className="text-gray-500 hidden sm:inline">/</span>
-                        <span className="truncate text-gray-300 font-semibold" title={project.title || project.name}>
-                            {project.title || project.name}
+                        <span className="truncate text-gray-300 font-semibold" title={project.title}>
+                            {project.title}
                         </span>
                     </div>
                     <nav className="flex flex-wrap items-center gap-1" aria-label={t("projectDetail.actionsNavLabel", "Ações do projeto")}>
-                        <Link href={`/projects/${projectId}/mindmap`} className={navLinkClass} prefetch={false}>
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                            {t("projectDetail.actions.mindMap")}
-                        </Link>
-                        <Link href={`/projects/${projectId}/view`} className={navLinkClass} prefetch={false}>
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            {t("projectDetail.actions.viewDocument")}
-                        </Link>
-                        <Link href={`/projects/${projectId}/settings`} className={navLinkClass} prefetch={false}>
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {t("projectDetail.actions.settings")}
-                        </Link>
-                        <Link href={`/projects/${projectId}/backup`} className={navLinkClass} prefetch={false}>
-                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            {t("projectDetail.actions.backup")}
-                        </Link>
+                        {/* Menu Navegação: Mapa Mental + Ver como Documento */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => { setNavMenuOpen((v) => !v); setProjectMenuOpen(false); setAiMenuOpen(false); }}
+                                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${navMenuOpen ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+                                aria-expanded={navMenuOpen}
+                                aria-haspopup="true"
+                            >
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                                {t("projectDetail.actions.navMenuLabel")}
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            {navMenuOpen && (
+                                <>
+                                    <div className="absolute left-0 top-full mt-1 py-1 w-52 rounded-lg bg-gray-800 border border-gray-600 shadow-xl z-50" role="menu">
+                                        <Link href={`/projects/${projectId}/mindmap`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 rounded-t-lg" role="menuitem" onClick={() => setNavMenuOpen(false)} prefetch={false}>
+                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                                            {t("projectDetail.actions.mindMap")}
+                                        </Link>
+                                        <Link href={`/projects/${projectId}/view`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700" role="menuitem" onClick={() => setNavMenuOpen(false)} prefetch={false}>
+                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            {t("projectDetail.actions.viewDocument")}
+                                        </Link>
+                                    </div>
+                                    <div className="fixed inset-0 z-40" onClick={() => setNavMenuOpen(false)} aria-hidden />
+                                </>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => { setAiMenuOpen((v) => !v); setNavMenuOpen(false); setProjectMenuOpen(false); }}
+                                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${aiMenuOpen ? "bg-indigo-600/80 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+                                aria-expanded={aiMenuOpen}
+                                aria-haspopup="true"
+                            >
+                                <span className="shrink-0">✨</span>
+                                {t("projectDetail.aiMenu.title")}
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            {aiMenuOpen && (
+                                <>
+                                    <div className="absolute right-0 top-full mt-1 py-1 w-56 rounded-lg bg-gray-800 border border-gray-600 shadow-xl z-50" role="menu">
+                                        <Link
+                                            href={`/projects/${projectId}/relations`}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 rounded-t-lg flex items-center gap-2"
+                                            role="menuitem"
+                                            onClick={() => setAiMenuOpen(false)}
+                                        >
+                                            <span>🔗</span>
+                                            {t("projectDetail.aiMenu.suggestRelations")}
+                                        </Link>
+                                        <Link
+                                            href={`/projects/${projectId}/analysis`}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2"
+                                            role="menuitem"
+                                            onClick={() => setAiMenuOpen(false)}
+                                        >
+                                            <span>⚖️</span>
+                                            {t("projectDetail.aiMenu.analyzeConsistency")}
+                                        </Link>
+                                        <Link
+                                            href={`/projects/${projectId}/assign-tags`}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2"
+                                            role="menuitem"
+                                            onClick={() => setAiMenuOpen(false)}
+                                        >
+                                            <span>🏷️</span>
+                                            {t("projectDetail.aiMenu.assignTags")}
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setChatOpen(true); setAiMenuOpen(false); }}
+                                            className="w-full text-left px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2"
+                                            role="menuitem"
+                                        >
+                                            <span>💬</span>
+                                            {t("projectDetail.aiMenu.openChat")}
+                                        </button>
+                                        <div className="border-t border-gray-600 px-4 py-2 text-xs text-gray-500">
+                                            {t("projectDetail.aiMenu.improveHint")}
+                                        </div>
+                                    </div>
+                                    <div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} aria-hidden />
+                                </>
+                            )}
+                        </div>
+                        {/* Menu Projeto: Configurações + Backup (por último) */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => { setProjectMenuOpen((v) => !v); setNavMenuOpen(false); setAiMenuOpen(false); }}
+                                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${projectMenuOpen ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800 hover:text-white"}`}
+                                aria-expanded={projectMenuOpen}
+                                aria-haspopup="true"
+                            >
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                {t("projectDetail.actions.projectMenuLabel")}
+                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            {projectMenuOpen && (
+                                <>
+                                    <div className="absolute left-0 top-full mt-1 py-1 w-52 rounded-lg bg-gray-800 border border-gray-600 shadow-xl z-50" role="menu">
+                                        <Link href={`/projects/${projectId}/settings`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700 rounded-t-lg" role="menuitem" onClick={() => setProjectMenuOpen(false)} prefetch={false}>
+                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            {t("projectDetail.actions.settings")}
+                                        </Link>
+                                        <Link href={`/projects/${projectId}/backup`} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700" role="menuitem" onClick={() => setProjectMenuOpen(false)} prefetch={false}>
+                                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                            {t("projectDetail.actions.backup")}
+                                        </Link>
+                                    </div>
+                                    <div className="fixed inset-0 z-40" onClick={() => setProjectMenuOpen(false)} aria-hidden />
+                                </>
+                            )}
+                        </div>
                     </nav>
                 </header>
 
                 <section className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{project.title || project.name}</h1>
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{project.title}</h1>
                         <button
                             className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
                             onClick={() => router.push(`/projects/${projectId}/edit`)}
@@ -259,6 +365,20 @@ export default function ProjectDetailClient({ projectId }: Props) {
                     </div>
                 </section>
             </div>
+
+            {/* Painel do chat IA (drawer lateral) - aberto pelo menu */}
+            {chatOpen && (
+                <div className="fixed inset-0 z-50 flex justify-end">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setChatOpen(false)} aria-hidden />
+                    <div className="relative w-full max-w-md bg-white shadow-xl flex flex-col h-full">
+                        <AIChat
+                            projectContext={projectContext}
+                            onClose={() => setChatOpen(false)}
+                            isOpen={chatOpen}
+                        />
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

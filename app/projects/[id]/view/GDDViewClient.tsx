@@ -650,7 +650,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 </div>
               </div>
               <h1 className="text-5xl font-bold text-gray-900 mb-4">
-                {project.title || project.name}
+                {project.title}
               </h1>
               <p className="text-xl text-gray-700 font-semibold mb-8">
                 Game Design Document
@@ -704,7 +704,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
             {/* Footer */}
             <div className="mt-16 pt-8 border-t border-gray-200 text-center text-gray-600 text-sm">
-              <p>Game Design Document - {project.title || project.name}</p>
+              <p>Game Design Document - {project.title}</p>
               <p className="mt-1">Gerado pelo GDD Manager</p>
             </div>
           </div>

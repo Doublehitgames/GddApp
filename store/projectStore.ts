@@ -16,6 +16,19 @@ import {
 
 export type UUID = string;
 
+/** Resultado da última análise de consistência por projeto (persistido em localStorage). */
+export type LastConsistencyAnalysis = {
+  alerts: Array<{ severity?: string; title?: string; message?: string; relatedSections?: string[] }>;
+  simulation: { combat?: { playerHP: number; enemyDamage: number; healPerPotion?: number; hitsToDie: number; healsToOffsetOneHit?: number } } | null;
+  runAt: string;
+};
+
+/** Resultado da última análise de relações entre sistemas por projeto (persistido em localStorage). */
+export type LastRelationsAnalysis = {
+  suggestions: Array<{ type?: string; fromTitle?: string; toTitle?: string; domains?: string[]; suggestion?: string }>;
+  runAt: string;
+};
+
 // Tipo para configuração de um nível no mapa mental
 export type LevelConfig = {
   level: number; // 0, 1, 2, 3...
@@ -195,6 +208,8 @@ export type Section = {
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
   order: number; // Ordem de exibição dentro do mesmo nível (mesmo parentId)
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
+  /** Tags de domínio de game design (combat, economy, progression, etc.) para IA e relações entre sistemas. */
+  domainTags?: string[];
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
@@ -263,7 +278,7 @@ interface ProjectStore {
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
-  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy) => void;
+  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy, domainTags?: string[]) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -279,6 +294,14 @@ interface ProjectStore {
   flushPendingSyncs: () => Promise<void>;
   /** IDs dos projetos com alterações ainda não enviadas (para estimativa de créditos). */
   getPendingProjectIds: () => string[];
+  /** Última análise de consistência por projectId (persistida). */
+  lastConsistencyAnalysisByProject: Record<string, LastConsistencyAnalysis>;
+  setLastConsistencyAnalysis: (projectId: string, data: LastConsistencyAnalysis) => void;
+  getLastConsistencyAnalysis: (projectId: string) => LastConsistencyAnalysis | undefined;
+  /** Última análise de relações entre sistemas por projectId (persistida). */
+  lastRelationsAnalysisByProject: Record<string, LastRelationsAnalysis>;
+  setLastRelationsAnalysis: (projectId: string, data: LastRelationsAnalysis) => void;
+  getLastRelationsAnalysis: (projectId: string) => LastRelationsAnalysis | undefined;
   /** Limpa o histórico de syncs (lastSyncStatsHistory) e persiste. */
   clearSyncHistory: () => void;
   /** Atualiza lastQuotaStatus com a cota do projeto (cota é por projeto). Sem projectId limpa a cota (ex.: na home). */
@@ -293,6 +316,8 @@ interface ProjectStore {
 const STORAGE_KEY = "gdd_projects_v1";
 const PERSISTENCE_CONFIG_KEY = "gdd_persistence_config_v1";
 const SYNC_STATE_KEY = "gdd_sync_state_v1";
+const LAST_ANALYSES_KEY = "gdd_last_analyses_v1";
+const LAST_RELATIONS_KEY = "gdd_last_relations_v1";
 const MAX_IMAGE_SRC_LENGTH = 2048;
 const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
 const SYNC_FAILURE_WINDOW_MS = 120000;
@@ -389,6 +414,48 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     try {
       localStorage.setItem(PERSISTENCE_CONFIG_KEY, JSON.stringify(config));
     } catch {}
+  };
+
+  const loadLastAnalyses = (): Record<string, LastConsistencyAnalysis> => {
+    try {
+      if (typeof window === "undefined") return {};
+      const raw = localStorage.getItem(LAST_ANALYSES_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, LastConsistencyAnalysis>;
+      return typeof parsed === "object" && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const persistLastAnalyses = (data: Record<string, LastConsistencyAnalysis>) => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LAST_ANALYSES_KEY, JSON.stringify(data));
+    } catch (e) {
+      logWarn("Could not persist last analyses", e);
+    }
+  };
+
+  const loadLastRelations = (): Record<string, LastRelationsAnalysis> => {
+    try {
+      if (typeof window === "undefined") return {};
+      const raw = localStorage.getItem(LAST_RELATIONS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, LastRelationsAnalysis>;
+      return typeof parsed === "object" && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const persistLastRelations = (data: Record<string, LastRelationsAnalysis>) => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LAST_RELATIONS_KEY, JSON.stringify(data));
+    } catch (e) {
+      logWarn("Could not persist last relations", e);
+    }
   };
 
   type PersistedSyncState = {
@@ -774,6 +841,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     lastSyncError: null,
     persistenceConfig: loadPersistenceConfig(),
     userId: null,
+    lastConsistencyAnalysisByProject: {},
+    lastRelationsAnalysisByProject: {},
 
     updatePersistenceConfig: (config: Partial<PersistenceConfig>) => {
       const current = get().persistenceConfig;
@@ -928,7 +997,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy) => {
+    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy, domainTags?: string[]) => {
       const now = new Date().toISOString();
       const audit: Partial<Section> = { updated_at: now };
       if (updatedBy) {
@@ -957,6 +1026,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
                       }
                       if (resolvedColor !== undefined) updated.color = resolvedColor;
                       else if (resolvedColor === undefined) delete updated.color;
+                      if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
                       return updated;
                     }
                     return s;
@@ -1079,6 +1149,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     loadFromStorage: () => {
       try {
+        const analyses = loadLastAnalyses();
+        if (Object.keys(analyses).length > 0) {
+          set({ lastConsistencyAnalysisByProject: analyses });
+        }
+        const relations = loadLastRelations();
+        if (Object.keys(relations).length > 0) {
+          set({ lastRelationsAnalysisByProject: relations });
+        }
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const parsed = parseProjectsFromStorage(raw);
@@ -1122,6 +1200,26 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       } catch (e) {
         logWarn("Failed to load projects from localStorage", e);
       }
+    },
+
+    setLastConsistencyAnalysis: (projectId: string, data: LastConsistencyAnalysis) => {
+      const next = { ...get().lastConsistencyAnalysisByProject, [projectId]: data };
+      set({ lastConsistencyAnalysisByProject: next });
+      persistLastAnalyses(next);
+    },
+
+    getLastConsistencyAnalysis: (projectId: string) => {
+      return get().lastConsistencyAnalysisByProject[projectId];
+    },
+
+    setLastRelationsAnalysis: (projectId: string, data: LastRelationsAnalysis) => {
+      const next = { ...get().lastRelationsAnalysisByProject, [projectId]: data };
+      set({ lastRelationsAnalysisByProject: next });
+      persistLastRelations(next);
+    },
+
+    getLastRelationsAnalysis: (projectId: string) => {
+      return get().lastRelationsAnalysisByProject[projectId];
     },
 
     persistToStorage: () => {

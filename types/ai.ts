@@ -34,9 +34,12 @@ export interface GDDTemplate {
   sections: {
     title: string;
     content: string;
+    /** Domínios de game design: combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other */
+    domainTags?: string[];
     subsections?: {
       title: string;
       content: string;
+      domainTags?: string[];
     }[];
   }[];
 }
@@ -50,6 +53,8 @@ export interface ChatRequest {
       id: string;
       title: string;
       content?: string;
+      parentId?: string;
+      domainTags?: string[];
     }>;
   };
   model?: string;

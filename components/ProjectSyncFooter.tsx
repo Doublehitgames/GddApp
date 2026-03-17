@@ -25,6 +25,7 @@ export default function ProjectSyncFooter() {
   const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
   const getProject = useProjectStore((s) => s.getProject);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
+  const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
   const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
   const projects = useProjectStore((s) => s.projects);

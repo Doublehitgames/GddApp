@@ -15,6 +15,8 @@ interface AIChatProps {
       id: string;
       title: string;
       content?: string;
+      parentId?: string;
+      domainTags?: string[];
     }>;
   };
   onClose?: () => void;
@@ -29,7 +31,7 @@ interface ChatMessage extends AIMessage {
 
 export default function AIChat({ projectContext, onClose, isOpen = true }: AIChatProps) {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
   const editSection = useProjectStore((state) => state.editSection);
@@ -48,6 +50,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [relationsLoading, setRelationsLoading] = useState(false);
   const [pendingActions, setPendingActions] = useState<any[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
   const [autoSwitchedModel, setAutoSwitchedModel] = useState(false);
@@ -464,6 +467,69 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     }
   };
 
+  const handleSuggestRelations = async () => {
+    if (!projectContext || relationsLoading) return;
+    setRelationsLoading(true);
+    try {
+      const res = await fetch("/api/ai/suggest-relations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAIHeaders() },
+        body: JSON.stringify({
+          projectTitle: projectContext.projectTitle,
+          sections: projectContext.sections.map((s) => ({
+            id: s.id,
+            title: s.title,
+            parentId: s.parentId,
+            domainTags: s.domainTags,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `relations-err-${Date.now()}`,
+            role: "assistant",
+            content: `❌ ${data.error || "Erro ao sugerir relações."}`,
+            timestamp: new Date(),
+          },
+        ]);
+        return;
+      }
+      const suggestions = data.suggestions || [];
+      const text =
+        suggestions.length > 0
+          ? "**🔗 Sugestões de relações entre sistemas:**\n\n" +
+            suggestions
+              .map((s: { type?: string; suggestion?: string }, i: number) => `${i + 1}. ${s.suggestion || ""}`)
+              .join("\n\n")
+          : "Nenhuma sugestão no momento. Marque as seções com tags (Combate, Economia, Itens, etc.) na página de cada seção para receber sugestões mais precisas.";
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `relations-${Date.now()}`,
+          role: "assistant",
+          content: text,
+          timestamp: new Date(),
+        },
+      ]);
+    } catch (e) {
+      console.error("Suggest relations:", e);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `relations-err-${Date.now()}`,
+          role: "assistant",
+          content: "❌ Erro ao conectar. Tente novamente.",
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setRelationsLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   // Verificar se tem configuração de IA válida
@@ -600,6 +666,22 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
             ⚠️ Cada modelo tem limites: <strong>por minuto</strong> e <strong>por dia</strong>. Se atingir, aguarde alguns segundos/minutos.
           </p>
         </div>
+
+        {projectContext && (
+          <div className="mb-3">
+            <button
+              type="button"
+              onClick={handleSuggestRelations}
+              disabled={relationsLoading || isLoading}
+              className="text-sm px-3 py-1.5 rounded-lg bg-indigo-100 text-indigo-800 hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {relationsLoading ? `⏳ ${t("projectDetail.relationsSuggesting")}` : `🔗 ${t("projectDetail.relationsSuggestButton")}`}
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              {t("projectDetail.relationsSuggestHint")}
+            </p>
+          </div>
+        )}
         
         <div className="flex gap-2">
           <textarea

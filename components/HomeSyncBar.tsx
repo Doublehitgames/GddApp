@@ -16,6 +16,7 @@ export default function HomeSyncBar() {
   const getProject = useProjectStore((s) => s.getProject);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
   const projects = useProjectStore((s) => s.projects);
+  const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
   const [syncPreviewItems, setSyncPreviewItems] = useState<SyncPreviewItem[] | null>(null);
@@ -32,7 +33,6 @@ export default function HomeSyncBar() {
       .filter(Boolean)
       .join("|");
   }, [projects, getPendingProjectIds]);
-  const pendingSyncCount = getPendingProjectIds().length;
 
   const refreshEstimatedCredits = useCallback(() => {
     const ids = getPendingProjectIds();

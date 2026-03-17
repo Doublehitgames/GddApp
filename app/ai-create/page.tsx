@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
+import { normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
 import { useI18n } from "@/lib/i18n/provider";
@@ -85,7 +86,8 @@ export default function AICreateProject() {
         const createdSection = project?.sections?.find((s) => s.title === section.title);
 
         if (createdSection) {
-          store.editSection(projectId, createdSection.id, section.title, section.content);
+          const sectionTags = normalizeDomainTags(section.domainTags);
+          store.editSection(projectId, createdSection.id, section.title, section.content, undefined, undefined, undefined, sectionTags.length ? sectionTags : undefined);
 
           if (section.subsections && section.subsections.length > 0) {
             section.subsections.forEach((subsection) => {
@@ -97,7 +99,8 @@ export default function AICreateProject() {
               );
 
               if (createdSubsection) {
-                store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content);
+                const subsectionTags = normalizeDomainTags(subsection.domainTags);
+                store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content, createdSection.id, undefined, undefined, subsectionTags.length ? subsectionTags : undefined);
               }
             });
           }

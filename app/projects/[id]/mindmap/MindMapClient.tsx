@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo, createContext, useContext } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import ReactFlow, {
   Node,
@@ -24,6 +24,7 @@ import { extractSectionReferences, findSection, getBacklinks, SectionReference }
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
+import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -882,7 +883,7 @@ function MarkdownWithMapReferences({
 // Componente interno que tem acesso ao contexto do ReactFlow
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   // Tipos estáveis por instância (evita warning React Flow #002: "new nodeTypes/edgeTypes object")
   const nodeTypesStable = useMemo(
     () => ({ sectionNode: SectionNode, projectNode: ProjectNode }),
@@ -969,10 +970,20 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // Estados de busca
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Set<string>>(new Set());
+  const flowWrapperRef = useRef<HTMLDivElement>(null);
   const panelContentScaleRaw = Number((config as any)?.sidebar?.contentScale ?? 0.85);
   const panelContentScale = Number.isFinite(panelContentScaleRaw)
     ? Math.min(1.2, Math.max(0.5, panelContentScaleRaw))
     : 0.85;
+
+  // Impedir que o scroll do mouse role a página quando estiver sobre o mapa (zoom do ReactFlow deve consumir o wheel)
+  useEffect(() => {
+    const el = flowWrapperRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => e.preventDefault();
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   // Função para realizar busca
   const performSearch = useCallback((term: string) => {
@@ -1817,7 +1828,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
         `}
       </style>
-      <div className="h-screen w-screen bg-gray-900">
+      <div className="fixed inset-0 overflow-hidden bg-gray-900">
         {/* Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1880,8 +1891,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           </div>
         </div>
 
-        {/* React Flow */}
-        <div className="h-full pt-16">
+        {/* React Flow - overflow-hidden evita barras de rolagem; onWheel evita scroll da página ao zoomar */}
+        <div className="h-full pt-16 overflow-hidden" ref={flowWrapperRef}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1930,6 +1941,23 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 ×
               </button>
             </div>
+
+            {/* Tags de domínio (só para seções, não para o node do projeto) */}
+            {selectedNode.id !== "project" && (selectedNode.domainTags?.length ?? 0) > 0 && (
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                {(selectedNode.domainTags || []).map((tag) => {
+                  const label = DOMAIN_I18N_KEYS[tag as GameDesignDomainId] ? t(DOMAIN_I18N_KEYS[tag as GameDesignDomainId]) : tag;
+                  return (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center rounded-md bg-gray-600/80 px-2 py-0.5 text-xs font-medium text-gray-200 border border-gray-500/50"
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="prose prose-invert max-w-none" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
