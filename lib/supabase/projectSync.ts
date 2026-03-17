@@ -309,6 +309,11 @@ function dbProjectToStore(
 }
 
 function dbSectionToStore(row: Record<string, unknown>): Section {
+  const rawTags = row.domain_tags;
+  const domainTags =
+    Array.isArray(rawTags) && rawTags.length > 0
+      ? (rawTags as string[])
+      : undefined;
   return {
     id: row.id as string,
     title: row.title as string,
@@ -322,6 +327,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_at: (row.updated_at as string) || undefined,
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
+    domainTags,
   };
 }
 

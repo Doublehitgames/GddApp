@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingSections, error: existingErr } = await supabase
       .from("sections")
-      .select("id,parent_id,title,content,sort_order,color")
+      .select("id,parent_id,title,content,sort_order,color,domain_tags")
       .eq("project_id", project.id);
 
     if (existingErr) {
@@ -302,6 +302,13 @@ export async function POST(request: NextRequest) {
     const existingById = new Map((existingSections || []).map((section: any) => [section.id, section]));
     const incomingIds = new Set(incomingSections.map((section: any) => section.id));
 
+    const domainTagsEqual = (a: unknown, b: unknown): boolean => {
+      const arrA = Array.isArray(a) ? [...a].sort() : [];
+      const arrB = Array.isArray(b) ? [...b].sort() : [];
+      if (arrA.length !== arrB.length) return false;
+      return arrA.every((v, i) => v === arrB[i]);
+    };
+
     const sectionsToUpsert = incomingSections.filter((section: any) => {
       const existing = existingById.get(section.id);
       if (!existing) return true;
@@ -311,7 +318,8 @@ export async function POST(request: NextRequest) {
         (existing.title || "") !== (section.title || "") ||
         (existing.content || "") !== (section.content || "") ||
         Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0) ||
-        (existing.color || null) !== (section.color || null)
+        (existing.color || null) !== (section.color || null) ||
+        !domainTagsEqual(existing.domain_tags, section.domainTags)
       );
     });
 
@@ -339,7 +347,8 @@ export async function POST(request: NextRequest) {
         (existing.parent_id || null) === (section.parentId || null) &&
         (existing.title || "") === (section.title || "") &&
         (existing.content || "") === (section.content || "") &&
-        (existing.color || null) === (section.color || null);
+        (existing.color || null) === (section.color || null) &&
+        domainTagsEqual(existing.domain_tags, section.domainTags);
       if (onlyOrderChanged) {
         orderOnlyList.push(section);
       } else {
@@ -542,6 +551,7 @@ export async function POST(request: NextRequest) {
         created_by_name: s.created_by_name ?? null,
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
+        domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
       }));
 
       const { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });
