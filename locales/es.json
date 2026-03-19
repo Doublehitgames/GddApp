@@ -243,15 +243,119 @@
       "word": {
         "label": "Word",
         "description": "Editable en Microsoft Word (.docx)"
+      },
+      "unityJson": {
+        "label": "Unity JSON",
+        "description": "Tabla de balance por nivel lista para integrar en la engine."
       }
     },
     "info": {
       "markdown": "Mejor para edición y versionado (Git)",
       "pdf": "Mejor para presentación y compartir",
-      "word": "Mejor para edición colaborativa"
+      "word": "Mejor para edición colaborativa",
+      "unityJson": "Exporta curvas LV -> XP calculadas para uso directo en la engine"
     },
     "errors": {
       "exportFailed": "Error al exportar el documento. Inténtalo de nuevo."
+    }
+  },
+  "balanceAddon": {
+    "nameLabel": "Nombre del bloque",
+    "namePlaceholder": "Ej.: XP por nivel",
+    "removeButton": "Quitar addon",
+    "removeConfirm": "¿Seguro que quieres quitar este addon de balance?",
+    "profile": {
+      "rpg": "RPG",
+      "idle": "Idle",
+      "roguelite": "Roguelite",
+      "casual": "Casual"
+    },
+    "simulation": {
+      "title": "Simulación de sesión",
+      "xpRateMode": {
+        "fixed": "XP fijo",
+        "byLevelRange": "XP por rangos de nivel"
+      }
+    },
+    "target": {
+      "title": "Meta de progresión"
+    },
+    "presets": {
+      "linear": {
+        "label": "Lineal",
+        "tip": "Lineal sube siempre al mismo ritmo (ej.: +50 XP por nivel). Ideal para progresión simple y predecible."
+      },
+      "exponential": {
+        "label": "Exponencial",
+        "tip": "Exponencial empieza suave y se vuelve más exigente después. Ideal para early game rápido y endgame desafiante."
+      },
+      "tiered": {
+        "label": "Por tiers",
+        "tip": "Divide la progresión en rangos de nivel y permite saltos por etapa. Útil para hitos claros de dificultad."
+      },
+      "softCap": {
+        "label": "Soft cap",
+        "tip": "Crece rápido al inicio y se desacelera cerca de un techo sin cortar de golpe."
+      },
+      "hardCap": {
+        "label": "Hard cap",
+        "tip": "Define un límite máximo absoluto para evitar inflación extrema."
+      },
+      "diminishingReturns": {
+        "label": "Retorno decreciente",
+        "tip": "Cada nivel aporta menos que el anterior. Bueno para stats y pasivas."
+      },
+      "piecewise": {
+        "label": "Por etapas",
+        "tip": "Usa un ritmo antes de un hito y otro después. Útil para cambios de pacing en mid/endgame."
+      }
+    },
+    "params": {
+      "base": {
+        "label": "base",
+        "tooltip": "Define el punto de partida de los valores.",
+        "expected": "Subir base hace el inicio más pesado; bajar base lo hace más liviano."
+      },
+      "growth": {
+        "label": "growth",
+        "tooltip": "Controla qué tan rápido acelera la curva entre niveles.",
+        "expected": "Growth mayor acelera más la curva."
+      },
+      "offset": {
+        "label": "offset",
+        "tooltip": "Ajuste fijo sumado al final.",
+        "expected": "Offset positivo sube todos los valores; negativo los baja."
+      },
+      "tierStep": {
+        "label": "tierStep",
+        "tooltip": "Cuántos niveles cubre cada tier.",
+        "expected": "TierStep menor cambia de tier con más frecuencia."
+      },
+      "tierMultiplier": {
+        "label": "tierMultiplier",
+        "tooltip": "Fuerza del salto entre tiers.",
+        "expected": "Multiplier mayor crea saltos más agresivos."
+      },
+      "capValue": {
+        "label": "capValue",
+        "tooltip": "Valor techo usado por fórmulas con cap.",
+        "expected": "CapValue mayor permite endgame más alto antes de estabilizar."
+      },
+      "capStrength": {
+        "label": "capStrength",
+        "tooltip": "Fuerza de aproximación al soft cap.",
+        "expected": "CapStrength mayor llega antes al techo."
+      },
+      "plateauStartLevel": {
+        "label": "plateauStartLevel",
+        "tooltip": "Nivel donde empieza la segunda etapa en piecewise.",
+        "expected": "Valor menor adelanta el cambio de ritmo."
+      },
+      "plateauFactor": {
+        "label": "plateauFactor",
+        "tooltip": "Reductor de crecimiento en la segunda etapa.",
+        "expected": "Valor menor suaviza más el tramo final."
+      }
     }
   },
   "sectionDetail": {

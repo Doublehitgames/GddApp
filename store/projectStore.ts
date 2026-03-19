@@ -13,6 +13,7 @@ import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
+import type { BalanceAddonDraft } from "@/lib/balance/types";
 
 export type UUID = string;
 
@@ -210,6 +211,8 @@ export type Section = {
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
   /** Tags de domínio de game design (combat, economy, progression, etc.) para IA e relações entre sistemas. */
   domainTags?: string[];
+  /** Addons de balanceamento vinculados a esta seção. */
+  balanceAddons?: BalanceAddonDraft[];
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
@@ -278,7 +281,18 @@ interface ProjectStore {
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
-  editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy, domainTags?: string[]) => void;
+  editSection: (
+    projectId: UUID,
+    sectionId: UUID,
+    title: string,
+    content: string,
+    parentId?: string | null,
+    color?: string,
+    updatedBy?: SectionAuditBy,
+    domainTags?: string[],
+    balanceAddons?: BalanceAddonDraft[]
+  ) => void;
+  setSectionBalanceAddons: (projectId: UUID, sectionId: UUID, addons: BalanceAddonDraft[], updatedBy?: SectionAuditBy) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -545,6 +559,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         parentId: section.parentId || null,
         order: section.order,
         color: section.color || null,
+        balanceAddons: section.balanceAddons || [],
       }));
 
     const payload = {
@@ -997,7 +1012,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    editSection: (projectId: UUID, sectionId: UUID, title: string, content: string, parentId?: string | null, color?: string, updatedBy?: SectionAuditBy, domainTags?: string[]) => {
+    editSection: (
+      projectId: UUID,
+      sectionId: UUID,
+      title: string,
+      content: string,
+      parentId?: string | null,
+      color?: string,
+      updatedBy?: SectionAuditBy,
+      domainTags?: string[],
+      balanceAddons?: BalanceAddonDraft[]
+    ) => {
       const now = new Date().toISOString();
       const audit: Partial<Section> = { updated_at: now };
       if (updatedBy) {
@@ -1027,6 +1052,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
                       if (resolvedColor !== undefined) updated.color = resolvedColor;
                       else if (resolvedColor === undefined) delete updated.color;
                       if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
+                      if (balanceAddons !== undefined) updated.balanceAddons = balanceAddons.length ? balanceAddons : undefined;
                       return updated;
                     }
                     return s;
@@ -1035,6 +1061,23 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               : p
           ),
         projectId
+      );
+    },
+
+    setSectionBalanceAddons: (projectId: UUID, sectionId: UUID, addons: BalanceAddonDraft[], updatedBy?: SectionAuditBy) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      const section = project?.sections?.find((s) => s.id === sectionId);
+      if (!section) return;
+      get().editSection(
+        projectId,
+        sectionId,
+        section.title,
+        section.content || "",
+        undefined,
+        section.color,
+        updatedBy,
+        section.domainTags,
+        addons
       );
     },
 

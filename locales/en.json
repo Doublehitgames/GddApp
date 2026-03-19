@@ -243,15 +243,119 @@
       "word": {
         "label": "Word",
         "description": "Editable in Microsoft Word (.docx)"
+      },
+      "unityJson": {
+        "label": "Unity JSON",
+        "description": "Level balance table ready for engine integration."
       }
     },
     "info": {
       "markdown": "Best for editing and versioning (Git)",
       "pdf": "Best for presentation and sharing",
-      "word": "Best for collaborative editing"
+      "word": "Best for collaborative editing",
+      "unityJson": "Exports computed LV -> XP curves for direct engine usage"
     },
     "errors": {
       "exportFailed": "Error exporting document. Please try again."
+    }
+  },
+  "balanceAddon": {
+    "nameLabel": "Block name",
+    "namePlaceholder": "Ex.: XP per Level",
+    "removeButton": "Remove addon",
+    "removeConfirm": "Are you sure you want to remove this balance addon?",
+    "profile": {
+      "rpg": "RPG",
+      "idle": "Idle",
+      "roguelite": "Roguelite",
+      "casual": "Casual"
+    },
+    "simulation": {
+      "title": "Session simulation",
+      "xpRateMode": {
+        "fixed": "Fixed XP",
+        "byLevelRange": "XP by level ranges"
+      }
+    },
+    "target": {
+      "title": "Progression target"
+    },
+    "presets": {
+      "linear": {
+        "label": "Linear",
+        "tip": "Linear increases at a constant pace (ex.: +50 XP per level). Use it when you want simple and predictable progression."
+      },
+      "exponential": {
+        "label": "Exponential",
+        "tip": "Exponential starts smooth and becomes heavier later. Great when early levels should be fast and endgame should be challenging."
+      },
+      "tiered": {
+        "label": "Tiered",
+        "tip": "Tiered progression splits levels into ranges and can apply stronger growth in each range. Useful for clear difficulty milestones."
+      },
+      "softCap": {
+        "label": "Soft cap",
+        "tip": "Soft cap grows quickly early and slows down near a ceiling without a hard stop."
+      },
+      "hardCap": {
+        "label": "Hard cap",
+        "tip": "Hard cap enforces a strict maximum value. Useful to avoid runaway inflation."
+      },
+      "diminishingReturns": {
+        "label": "Diminishing returns",
+        "tip": "Each level increases less than the previous one. Good for stat/passive systems."
+      },
+      "piecewise": {
+        "label": "By stages",
+        "tip": "Uses one pace before a breakpoint and another after it. Good for midgame/endgame shifts."
+      }
+    },
+    "params": {
+      "base": {
+        "label": "base",
+        "tooltip": "Defines the starting point for values.",
+        "expected": "Higher base makes early levels heavier. Lower base makes early levels lighter."
+      },
+      "growth": {
+        "label": "growth",
+        "tooltip": "Controls how quickly values accelerate between levels.",
+        "expected": "Higher growth makes the curve ramp faster."
+      },
+      "offset": {
+        "label": "offset",
+        "tooltip": "Constant value added at the end.",
+        "expected": "Positive offset raises all values; negative offset lowers all values."
+      },
+      "tierStep": {
+        "label": "tierStep",
+        "tooltip": "How many levels each tier spans.",
+        "expected": "Lower tierStep changes tiers more often."
+      },
+      "tierMultiplier": {
+        "label": "tierMultiplier",
+        "tooltip": "How strong each tier jump is.",
+        "expected": "Higher multiplier creates sharper jumps."
+      },
+      "capValue": {
+        "label": "capValue",
+        "tooltip": "Ceiling value used by cap-based formulas.",
+        "expected": "Higher capValue allows stronger late game before stabilizing."
+      },
+      "capStrength": {
+        "label": "capStrength",
+        "tooltip": "Strength of convergence to the soft cap.",
+        "expected": "Higher capStrength reaches the ceiling earlier."
+      },
+      "plateauStartLevel": {
+        "label": "plateauStartLevel",
+        "tooltip": "Level where the second stage starts in piecewise mode.",
+        "expected": "Lower value makes the pacing shift happen earlier."
+      },
+      "plateauFactor": {
+        "label": "plateauFactor",
+        "tooltip": "Growth reducer in the second piecewise stage.",
+        "expected": "Lower plateauFactor makes the late segment smoother."
+      }
     }
   },
   "sectionDetail": {

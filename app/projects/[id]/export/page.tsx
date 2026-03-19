@@ -7,8 +7,9 @@ import { jsPDF } from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 import { useI18n } from '@/lib/i18n/provider';
+import { buildUnityExport } from '@/lib/balance/unityExport';
 
-type ExportFormat = 'markdown' | 'pdf' | 'word';
+type ExportFormat = 'markdown' | 'pdf' | 'word' | 'unityJson';
 
 export default function ExportPage() {
   const { t } = useI18n();
@@ -250,6 +251,12 @@ export default function ExportPage() {
     saveAs(blob, `${project.title}.docx`);
   };
 
+  const exportUnityJson = () => {
+    const payload = buildUnityExport(project);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    saveAs(blob, `${project.title}.unity-export.v1.json`);
+  };
+
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -262,6 +269,9 @@ export default function ExportPage() {
           break;
         case 'word':
           await exportWord();
+          break;
+        case 'unityJson':
+          exportUnityJson();
           break;
       }
       
@@ -282,7 +292,9 @@ export default function ExportPage() {
       ? t('projectExport.formats.markdown.label')
       : selectedFormat === 'pdf'
         ? t('projectExport.formats.pdf.label')
-        : t('projectExport.formats.word.label');
+        : selectedFormat === 'word'
+          ? t('projectExport.formats.word.label')
+          : t('projectExport.formats.unityJson.label', 'Unity JSON');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-12 px-4">
@@ -307,7 +319,7 @@ export default function ExportPage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('projectExport.selectFormat')}</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             {/* Markdown */}
             <button
               onClick={() => setSelectedFormat('markdown')}
@@ -361,6 +373,23 @@ export default function ExportPage() {
                 </div>
               </div>
             </button>
+
+            <button
+              onClick={() => setSelectedFormat('unityJson')}
+              className={`p-6 rounded-lg border-2 transition-all ${
+                selectedFormat === 'unityJson'
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'border-gray-300 hover:border-emerald-300'
+              }`}
+            >
+              <div className="text-center">
+                <div className="text-4xl mb-2">🎮</div>
+                <div className="font-semibold text-gray-900 mb-1">{t('projectExport.formats.unityJson.label', 'Unity JSON')}</div>
+                <div className="text-xs text-gray-600">
+                  {t('projectExport.formats.unityJson.description', 'Tabela de balanceamento por level para integrar na engine.')}
+                </div>
+              </div>
+            </button>
           </div>
 
           {/* Options */}
@@ -384,6 +413,7 @@ export default function ExportPage() {
             <li>• <strong>{t('projectExport.formats.markdown.label')}:</strong> {t('projectExport.info.markdown')}</li>
             <li>• <strong>{t('projectExport.formats.pdf.label')}:</strong> {t('projectExport.info.pdf')}</li>
             <li>• <strong>{t('projectExport.formats.word.label')}:</strong> {t('projectExport.info.word')}</li>
+            <li>• <strong>{t('projectExport.formats.unityJson.label', 'Unity JSON')}:</strong> {t('projectExport.info.unityJson', 'Exporta curvas calculadas LV -> XP para uso direto na engine')}</li>
           </ul>
         </div>
 

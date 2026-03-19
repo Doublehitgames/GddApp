@@ -90,6 +90,19 @@ function isMissingUsageTable(error: unknown) {
   );
 }
 
+function isMissingBalanceAddonsColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  return combined.includes("balance_addons") && combined.includes("column");
+}
+
 /** Extrai mensagem legível de erro Supabase/PostgREST (message, error, details, hint, code). */
 function getSupabaseErrorMessage(err: unknown, fallback: string): string {
   if (!err) return fallback;
@@ -266,7 +279,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingSections, error: existingErr } = await supabase
       .from("sections")
-      .select("id,parent_id,title,content,sort_order,color,domain_tags")
+      .select("id,parent_id,title,content,sort_order,color,domain_tags,balance_addons")
       .eq("project_id", project.id);
 
     if (existingErr) {
@@ -308,6 +321,16 @@ export async function POST(request: NextRequest) {
       if (arrA.length !== arrB.length) return false;
       return arrA.every((v, i) => v === arrB[i]);
     };
+    const balanceAddonsEqual = (a: unknown, b: unknown): boolean => {
+      const arrA = Array.isArray(a) ? a : [];
+      const arrB = Array.isArray(b) ? b : [];
+      if (arrA.length !== arrB.length) return false;
+      try {
+        return JSON.stringify(arrA) === JSON.stringify(arrB);
+      } catch {
+        return false;
+      }
+    };
 
     const sectionsToUpsert = incomingSections.filter((section: any) => {
       const existing = existingById.get(section.id);
@@ -319,7 +342,8 @@ export async function POST(request: NextRequest) {
         (existing.content || "") !== (section.content || "") ||
         Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0) ||
         (existing.color || null) !== (section.color || null) ||
-        !domainTagsEqual(existing.domain_tags, section.domainTags)
+        !domainTagsEqual(existing.domain_tags, section.domainTags) ||
+        !balanceAddonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.balanceAddons)
       );
     });
 
@@ -348,7 +372,8 @@ export async function POST(request: NextRequest) {
         (existing.title || "") === (section.title || "") &&
         (existing.content || "") === (section.content || "") &&
         (existing.color || null) === (section.color || null) &&
-        domainTagsEqual(existing.domain_tags, section.domainTags);
+        domainTagsEqual(existing.domain_tags, section.domainTags) &&
+        balanceAddonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.balanceAddons);
       if (onlyOrderChanged) {
         orderOnlyList.push(section);
       } else {
@@ -552,9 +577,15 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
+        balance_addons: Array.isArray(s.balanceAddons) && s.balanceAddons.length > 0 ? s.balanceAddons : [],
       }));
 
-      const { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });
+      let { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });
+      if (sErr && isMissingBalanceAddonsColumn(sErr)) {
+        const rowsWithoutAddons = rows.map(({ balance_addons: _ignored, ...rest }) => rest);
+        const retry = await supabase.from("sections").upsert(rowsWithoutAddons, { onConflict: "id" });
+        sErr = retry.error;
+      }
 
       if (sErr) {
         const msg = getSupabaseErrorMessage(sErr, "sections_upsert_failed");

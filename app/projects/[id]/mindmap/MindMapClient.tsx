@@ -29,6 +29,7 @@ import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
 
 interface MindMapClientProps {
   projectId: string;
@@ -1970,6 +1971,13 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 <p className="text-gray-500 italic">{tr("Sem conteúdo", "No content", "Sin contenido")}</p>
               )}
             </div>
+            {selectedNode.id !== "project" && Array.isArray((selectedNode as Section).balanceAddons) && (selectedNode as Section).balanceAddons!.length > 0 && (
+              <div className="mt-4">
+                {(selectedNode as Section).balanceAddons!.map((addon) => (
+                  <BalanceAddonReadOnly key={addon.id} addon={addon} compact showChart={false} maxRows={10} />
+                ))}
+              </div>
+            )}
 
             {/* Seção de Referenciado por */}
             {selectedNode.id !== 'project' && (() => {

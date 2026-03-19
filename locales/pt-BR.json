@@ -243,15 +243,119 @@
       "word": {
         "label": "Word",
         "description": "Editável no Microsoft Word (.docx)"
+      },
+      "unityJson": {
+        "label": "Unity JSON",
+        "description": "Tabela de balanceamento por level para integrar na engine."
       }
     },
     "info": {
       "markdown": "Melhor para edição e versionamento (Git)",
       "pdf": "Melhor para apresentação e compartilhamento",
-      "word": "Melhor para edição colaborativa"
+      "word": "Melhor para edição colaborativa",
+      "unityJson": "Exporta curvas calculadas LV -> XP para uso direto na engine"
     },
     "errors": {
       "exportFailed": "Erro ao exportar o documento. Tente novamente."
+    }
+  },
+  "balanceAddon": {
+    "nameLabel": "Nome do bloco",
+    "namePlaceholder": "Ex.: XP por Level",
+    "removeButton": "Remover addon",
+    "removeConfirm": "Tem certeza que deseja remover este addon de balanceamento?",
+    "profile": {
+      "rpg": "RPG",
+      "idle": "Idle",
+      "roguelite": "Roguelite",
+      "casual": "Casual"
+    },
+    "simulation": {
+      "title": "Simulacao de sessao",
+      "xpRateMode": {
+        "fixed": "XP fixo",
+        "byLevelRange": "XP por faixas de level"
+      }
+    },
+    "target": {
+      "title": "Meta de progressao"
+    },
+    "presets": {
+      "linear": {
+        "label": "Linear",
+        "tip": "Linear aumenta sempre no mesmo ritmo (ex.: +50 XP por level). Use quando voce quer uma progressao simples e previsivel. Funciona muito bem em jogos casuais, educativos ou projetos pequenos onde a leitura precisa ser facil."
+      },
+      "exponential": {
+        "label": "Exponencial",
+        "tip": "Exponencial comeca suave e fica mais pesado conforme o level sobe. Use quando voce quer que os primeiros niveis sejam rapidos e o endgame seja desafiador. Comum em RPGs, MMOs e jogos com foco em longo prazo."
+      },
+      "tiered": {
+        "label": "Por tiers",
+        "tip": "Por tiers divide a progressao em faixas (ex.: 1-10, 11-20...) e cada faixa pode subir mais forte. Use quando voce quer marcos claros de dificuldade, como novos mundos/atos/ranks. Muito util em idle games, roguelites e jogos por capitulos."
+      },
+      "softCap": {
+        "label": "Soft cap",
+        "tip": "Soft cap cresce rapido no inicio e desacelera perto de um teto, sem travar de forma brusca. Ideal para jogos com progressao longa e necessidade de controle no endgame."
+      },
+      "hardCap": {
+        "label": "Hard cap",
+        "tip": "Hard cap define um limite maximo absoluto. Quando chega no teto, para de subir. Ideal para evitar inflacao total em jogos competitivos ou economias muito sensiveis."
+      },
+      "diminishingReturns": {
+        "label": "Retorno decrescente",
+        "tip": "Retorno decrescente aumenta cada vez menos a cada level. Bom para sistemas de atributos/passivas onde voce quer evitar que um stat escale demais."
+      },
+      "piecewise": {
+        "label": "Por estagios",
+        "tip": "Por estagios usa um ritmo antes de um marco e outro ritmo depois. Bom para jogos por capitulos, temporadas ou mudancas de meta no mid/endgame."
+      }
+    },
+    "params": {
+      "base": {
+        "label": "base",
+        "tooltip": "Define o ponto de partida. E quanto custa (ou vale) no comeco dos levels.",
+        "expected": "Se aumentar base, os niveis iniciais ficam mais caros/fortes. Se reduzir, o inicio fica mais leve."
+      },
+      "growth": {
+        "label": "growth",
+        "tooltip": "Controla o ritmo de crescimento entre os levels. Pense como o acelerador da curva.",
+        "expected": "Growth maior faz a curva subir mais rapido. Growth menor deixa a progressao mais suave."
+      },
+      "offset": {
+        "label": "offset",
+        "tooltip": "Ajuste fixo somado no final. Serve para corrigir tudo de uma vez sem mexer no formato da curva.",
+        "expected": "Offset positivo sobe todos os valores. Offset negativo desce todos os valores."
+      },
+      "tierStep": {
+        "label": "tierStep",
+        "tooltip": "Define de quantos em quantos levels muda a faixa (tier). Ex.: 10 cria faixas 1-10, 11-20...",
+        "expected": "TierStep menor cria mudancas mais frequentes. TierStep maior deixa as mudancas mais espacadas."
+      },
+      "tierMultiplier": {
+        "label": "tierMultiplier",
+        "tooltip": "Forca de aumento aplicada quando troca de faixa. E o tamanho do degrau entre tiers.",
+        "expected": "Multiplier maior gera saltos mais agressivos. Multiplier menor deixa transicoes mais suaves."
+      },
+      "capValue": {
+        "label": "capValue",
+        "tooltip": "Valor de teto usado por formulas de cap (soft/hard/diminishing).",
+        "expected": "Aumentar capValue permite endgame mais alto antes de estabilizar."
+      },
+      "capStrength": {
+        "label": "capStrength",
+        "tooltip": "Forca da aproximacao ao cap no soft cap.",
+        "expected": "Maior capStrength faz a curva encostar no teto mais cedo."
+      },
+      "plateauStartLevel": {
+        "label": "plateauStartLevel",
+        "tooltip": "Level em que comeca o segundo estagio da curva piecewise.",
+        "expected": "Menor valor antecipa a mudanca de ritmo da progressao."
+      },
+      "plateauFactor": {
+        "label": "plateauFactor",
+        "tooltip": "Redutor de crescimento no segundo estagio da curva piecewise.",
+        "expected": "Menor plateauFactor deixa o trecho final mais suave."
+      }
     }
   },
   "sectionDetail": {

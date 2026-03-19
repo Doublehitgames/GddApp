@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { useI18n } from "@/lib/i18n/provider";
+import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
 
 interface Props {
   projectId: string;
@@ -32,6 +33,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
   const sectionMenuRef = useRef<HTMLDivElement>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const showChartInDoc = true;
 
   useEffect(() => {
     setMounted(true);
@@ -397,6 +399,22 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 ) : (
                   <span>Conteúdo não preenchido</span>
                 )}
+              </div>
+            )}
+            {Array.isArray(node.balanceAddons) && node.balanceAddons.length > 0 && (
+              <div className="mb-6">
+                {node.balanceAddons.map((addon: any) => (
+                  <BalanceAddonReadOnly
+                    key={addon.id}
+                    addon={addon}
+                    showChart={showChartInDoc}
+                    maxRows={100}
+                    theme="light"
+                    layout="sideBySide"
+                    showSummary
+                    showTable={false}
+                  />
+                ))}
               </div>
             )}
           </div>

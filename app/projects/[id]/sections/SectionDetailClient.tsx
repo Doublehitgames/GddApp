@@ -31,6 +31,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
+import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
+import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
+import type { BalanceAddonDraft } from "@/lib/balance/types";
 
 interface Props {
   projectId: string;
@@ -51,6 +54,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
+  const setSectionBalanceAddons = useProjectStore((s) => s.setSectionBalanceAddons);
   const projects = useProjectStore((s) => s.projects);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
@@ -84,9 +88,11 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
+  const [showAddonMenu, setShowAddonMenu] = useState(false);
   const router = useRouter();
 
   const sections = project?.sections || [];
+  const balanceAddons = section?.balanceAddons || [];
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const { AutocompleteDropdown } = useMarkdownAutocomplete({
     sections,
@@ -296,6 +302,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
   }, [projectId, sectionId, getProject, projects]);
+
+  useEffect(() => {
+    setShowAddonMenu(false);
+  }, [sectionId]);
 
   // Buscar histórico de versões da seção (após carregar)
   useEffect(() => {
@@ -517,7 +527,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={filtered.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
-            <ul className="list-circle ml-6 mt-2">
+            <ul className="mt-2 space-y-2">
               {filtered.map((sub: any) => (
                 <SortableSubsectionItem 
                   key={sub.id} 
@@ -541,7 +551,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
     // Para níveis mais profundos, renderizar sem DnD mas com busca e highlighting
     return (
-      <ul className="list-circle ml-6 mt-2">
+      <ul className="mt-2 space-y-2 pl-3 border-l border-gray-700/60">
         {filtered.map((sub: any) => {
           const hasChildren = (project?.sections || []).some((s: any) => s.parentId === sub.id);
           const isExpanded = expandedSections.has(sub.id) || searchTerm.trim();
@@ -576,7 +586,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <button
-                  className="text-blue-300 underline hover:text-blue-200"
+                  className="min-w-0 flex-1 text-left text-blue-300 underline hover:text-blue-200 break-words"
                   onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
                 >
                   {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
@@ -586,7 +596,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
                 )}
               </div>
               {contentSnippet && (
-                <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
+                <div className="ml-3 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
                   {highlightText(contentSnippet, searchTerm)}
                 </div>
               )}
@@ -600,6 +610,31 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
   if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
   if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>{t('common.back')}</button></div>;
+
+  const addBalanceAddon = () => {
+    const addonId = `balance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newAddon = createDefaultBalanceAddon(addonId);
+    setSectionBalanceAddons(projectId, sectionId, [...balanceAddons, newAddon], sectionAuditBy);
+    setShowAddonMenu(false);
+  };
+
+  const updateBalanceAddon = (addonId: string, nextAddon: BalanceAddonDraft) => {
+    setSectionBalanceAddons(
+      projectId,
+      sectionId,
+      balanceAddons.map((addon: BalanceAddonDraft) => (addon.id === addonId ? nextAddon : addon)),
+      sectionAuditBy
+    );
+  };
+
+  const removeBalanceAddon = (addonId: string) => {
+    setSectionBalanceAddons(
+      projectId,
+      sectionId,
+      balanceAddons.filter((addon: BalanceAddonDraft) => addon.id !== addonId),
+      sectionAuditBy
+    );
+  };
 
   return (
     <>
@@ -671,6 +706,12 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setRestoreVersionId={setRestoreVersionId}
     suggestDomainLoading={suggestDomainLoading}
     setSuggestDomainLoading={setSuggestDomainLoading}
+    showAddonMenu={showAddonMenu}
+    setShowAddonMenu={setShowAddonMenu}
+    balanceAddons={balanceAddons}
+    onAddBalanceAddon={addBalanceAddon}
+    onUpdateBalanceAddon={updateBalanceAddon}
+    onRemoveBalanceAddon={removeBalanceAddon}
       />
       <AutocompleteDropdown />
     </>
@@ -858,7 +899,12 @@ function UnresolvedRefsPanel({
 
   return (
     <div className="max-w-6xl mx-auto mb-4 bg-amber-900/20 border border-amber-700/50 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-amber-200 mb-3">🔗 {t("sectionDetail.ai.unresolvedRefsTitle")}</h3>
+      <h3 className="text-sm font-semibold text-amber-200 mb-3 flex items-center gap-2">
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
+        </svg>
+        {t("sectionDetail.ai.unresolvedRefsTitle")}
+      </h3>
       <p className="text-xs text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
       <div className="space-y-2">
         {unresolvedNames.map((name) => {
@@ -913,7 +959,16 @@ function UnresolvedRefsPanel({
                           onClick={() => applyPathAndNavigate(name)}
                           disabled={useAILoadingFor !== null}
                         >
-                          {useAILoadingFor === name ? t("sectionDetail.ai.useAILoading") : `✨ ${t("sectionDetail.ai.useAI")}`}
+                          {useAILoadingFor === name ? (
+                            t("sectionDetail.ai.useAILoading")
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l1.8 4.8L19 9.6l-4.1 3.2L16.2 18 12 15l-4.2 3 1.3-5.2L5 9.6l5.2-1.8L12 3z" />
+                              </svg>
+                              {t("sectionDetail.ai.useAI")}
+                            </span>
+                          )}
                         </button>
                       )}
                     </div>
@@ -1044,7 +1099,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
         )}
         {!hasChildren && <span className="w-4"></span>}
         <button
-          className="text-blue-300 underline hover:text-blue-200"
+          className="min-w-0 flex-1 text-left text-blue-300 underline hover:text-blue-200 break-words"
           onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
         >
           {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
@@ -1054,7 +1109,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
         )}
       </div>
       {contentSnippet && (
-        <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
+        <div className="ml-3 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
           {highlightText(contentSnippet, searchTerm)}
         </div>
       )}
@@ -1088,10 +1143,18 @@ function SectionDetailContent({
   setRestoreVersionId,
   suggestDomainLoading,
   setSuggestDomainLoading,
+  showAddonMenu,
+  setShowAddonMenu,
+  balanceAddons,
+  onAddBalanceAddon,
+  onUpdateBalanceAddon,
+  onRemoveBalanceAddon,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
+  const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
   const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
     ? getUnresolvedRefsFromContent(previewContent, sections || [], project?.title || "")
     : { unresolvedNames: [] as string[], hasProjectTitleRef: false };
@@ -1101,6 +1164,115 @@ function SectionDetailContent({
     project?.title || ""
   );
   const showPageRefsPanel = !showPreview && (unresolvedFromPage.unresolvedNames.length > 0 || unresolvedFromPage.hasProjectTitleRef);
+  const subsectionsPanel = (
+    <div className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5 overflow-x-hidden">
+      <h2 className="font-semibold text-lg">{t('sectionDetail.subsections.title')}</h2>
+
+      {/* Campo de busca */}
+      <div className="mb-3">
+        <input
+          type="text"
+          placeholder={t('sectionDetail.subsections.searchPlaceholder')}
+          value={searchTerm}
+          onChange={(e) => {
+            const term = e.target.value;
+            setSearchTerm(term);
+            // Se houver busca, expandir automaticamente todas as seções
+            if (term.trim()) {
+              const allIds = new Set<string>();
+              function collectIds(parentId: string) {
+                const subs = (project?.sections || []).filter((s: any) => s.parentId === parentId);
+                subs.forEach((s: any) => {
+                  allIds.add(s.id);
+                  collectIds(s.id);
+                });
+              }
+              collectIds(sectionId);
+              setExpandedSections(allIds);
+            }
+          }}
+          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden pr-1">
+        {renderSubsectionTree(sectionId) || (
+          <p className="text-gray-400 text-sm">{t('sectionDetail.subsections.empty')}</p>
+        )}
+      </div>
+
+      <div className="mt-2">
+        <div className="flex gap-2">
+          <input
+            value={newSubTitle}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNewSubTitle(val);
+              if (val.trim() && hasDuplicateName(projectId, val.trim(), sectionId)) {
+                setNameError(t('sectionDetail.subsections.duplicate'));
+              } else {
+                setNameError("");
+              }
+            }}
+            placeholder={t('sectionDetail.subsections.addPlaceholder')}
+            className={`flex-1 min-w-0 bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
+          />
+          <button
+            className="shrink-0 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+            disabled={!newSubTitle.trim() || !!nameError}
+            onClick={() => {
+              const trimmed = newSubTitle.trim();
+              if (!trimmed || nameError) return;
+              try {
+                addSubsection(projectId, sectionId, trimmed, "");
+                setNewSubTitle("");
+                setNameError("");
+              } catch (e) {
+                if (e instanceof Error && e.message.startsWith("structural_limit")) {
+                  setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+                } else {
+                  throw e;
+                }
+              }
+            }}
+          >{t('projectDetail.add')}</button>
+        </div>
+        {nameError && (
+          <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
+        )}
+      </div>
+    </div>
+  );
+
+  useEffect(() => {
+    const balanceKeys = new Set(
+      (Array.isArray(balanceAddons) ? balanceAddons : []).map((addon: BalanceAddonDraft) => `balance:${addon.id}`)
+    );
+    setCollapsedAddonKeys((prev) => {
+      const next = { ...prev };
+
+      // Novos addons iniciam ocultos por padrão.
+      for (const key of balanceKeys) {
+        if (next[key] === undefined) next[key] = true;
+      }
+
+      // Remove chaves antigas de balance addons removidos.
+      for (const key of Object.keys(next)) {
+        if (key.startsWith("balance:") && !balanceKeys.has(key)) {
+          delete next[key];
+        }
+      }
+
+      return next;
+    });
+  }, [balanceAddons]);
+
+  const toggleAddonCollapsed = (addonKey: string) => {
+    setCollapsedAddonKeys((prev) => ({
+      ...prev,
+      [addonKey]: !(prev[addonKey] ?? true),
+    }));
+  };
 
   return (
     <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
@@ -1218,7 +1390,9 @@ function SectionDetailContent({
                       className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
                       title="Resetar para cor padrão do nível"
                     >
-                      🔄
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5.636 18.364A9 9 0 003.05 9m17.9 6a9 9 0 00-2.586-9.364" />
+                      </svg>
                     </button>
                   )}
                 </div>
@@ -1228,44 +1402,96 @@ function SectionDetailContent({
                   className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300 transition-opacity text-xl shrink-0"
                   title="Editar nome da seção"
                 >
-                  ✏️
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
+                  </svg>
                 </button>
               </>
             )}
           </div>
 
           {/* Direita: ações (IA, mapa mental, documento, mover, excluir) */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="relative flex items-center gap-2 shrink-0">
             {!inlineEdit && !isEditingTitle && (
               <>
+                <button
+                  onClick={() => setShowAddonMenu((prev: boolean) => !prev)}
+                  className={`h-8 w-8 flex items-center justify-center rounded transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
+                    showAddonMenu ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                  }`}
+                  title="Adicionar addon nesta pagina"
+                  aria-expanded={showAddonMenu}
+                  aria-haspopup="true"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+                {showAddonMenu && (
+                  <>
+                    <div className="absolute right-0 top-10 z-50 w-52 rounded-lg border border-gray-600 bg-gray-800 shadow-xl py-1" role="menu">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onAddBalanceAddon();
+                          setShowAddonMenu(false);
+                        }}
+                        className="w-full text-left rounded px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 flex items-center gap-2"
+                        role="menuitem"
+                      >
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+                        </svg>
+                        Balanceamento
+                      </button>
+                    </div>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowAddonMenu(false)} aria-hidden />
+                  </>
+                )}
                 <button
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}
                   className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
                 >
-                  {isImproving ? "⏳" : "✨"}
+                  {isImproving ? (
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l1.8 4.8L19 9.6l-4.1 3.2L16.2 18 12 15l-4.2 3 1.3-5.2L5 9.6l5.2-1.8L12 3z" />
+                    </svg>
+                  )}
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
                   className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   title="Ver no mapa mental"
                 >
-                  🌐
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16M8 4a16 16 0 000 16m8-16a16 16 0 010 16" />
+                  </svg>
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${projectId}/view?focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
                   className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
                   title={t('sectionDetail.actions.goToDocument')}
                 >
-                  📄
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 3h7l5 5v13a1 1 0 01-1 1H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3v6h6M9 13h6M9 17h6" />
+                  </svg>
                 </button>
                 <button
                   onClick={() => setShowMoveModal(true)}
                   className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
                   title="Mover seção para outro local"
                 >
-                  ↗️
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
+                  </svg>
                 </button>
               </>
             )}
@@ -1278,13 +1504,20 @@ function SectionDetailContent({
                     ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
                     : t('sectionDetail.confirmDelete');
                   if (window.confirm(msg)) {
+                    const parentId = section?.parentId;
                     removeSection(projectId, sectionId);
-                    router.push(`/projects/${projectId}`);
+                    if (parentId) {
+                      router.push(`/projects/${projectId}/sections/${parentId}`);
+                    } else {
+                      router.push(`/projects/${projectId}`);
+                    }
                   }
                 }}
                 title={t('sectionDetail.actions.deleteSection')}
               >
-                🗑️
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12" />
+                </svg>
               </button>
             )}
           </div>
@@ -1390,6 +1623,40 @@ function SectionDetailContent({
               )}
             </div>
           )}
+        </div>
+      )}
+      {!inlineEdit && balanceAddons.length > 0 && (
+        <div className="max-w-6xl mx-auto mb-4 space-y-3">
+          {balanceAddons.map((addon: BalanceAddonDraft) => (
+            <div key={addon.id} className="rounded-2xl border border-cyan-800/60 bg-gray-900/70 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleAddonCollapsed(`balance:${addon.id}`)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors"
+                aria-expanded={!(collapsedAddonKeys[`balance:${addon.id}`] ?? true)}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-cyan-200 truncate">{addon.name || "Addon de balanceamento"}</p>
+                  <p className="text-xs text-gray-400">Balanceamento</p>
+                </div>
+                <span
+                  className="text-gray-300 shrink-0 transition-transform duration-200"
+                  style={{ transform: (collapsedAddonKeys[`balance:${addon.id}`] ?? true) ? "rotate(0deg)" : "rotate(180deg)" }}
+                >
+                  ▼
+                </span>
+              </button>
+              {!(collapsedAddonKeys[`balance:${addon.id}`] ?? true) && (
+                <div className="border-t border-cyan-900/50 p-3">
+                  <BalanceAddonPanel
+                    addon={addon}
+                    onChange={(nextAddon) => onUpdateBalanceAddon(addon.id, nextAddon)}
+                    onRemove={() => onRemoveBalanceAddon(addon.id)}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -1591,81 +1858,17 @@ function SectionDetailContent({
       )}
 
       {!(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto mt-6 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
-      <h2 className="font-semibold text-lg">{t('sectionDetail.subsections.title')}</h2>
-      
-      {/* Campo de busca */}
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder={t('sectionDetail.subsections.searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => {
-            const term = e.target.value;
-            setSearchTerm(term);
-            // Se houver busca, expandir automaticamente todas as seções
-            if (term.trim()) {
-              const allIds = new Set<string>();
-              function collectIds(parentId: string) {
-                const subs = (project?.sections || []).filter((s: any) => s.parentId === parentId);
-                subs.forEach((s: any) => {
-                  allIds.add(s.id);
-                  collectIds(s.id);
-                });
-              }
-              collectIds(sectionId);
-              setExpandedSections(allIds);
-            }
-          }}
-          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+        <>
+          {/* Desktop grande: painel lateral fixo para navegação rápida entre subseções */}
+          <div className="hidden 2xl:block fixed left-4 top-24 w-80 z-20 max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden">
+            {subsectionsPanel}
+          </div>
 
-      {renderSubsectionTree(sectionId) || (
-        <p className="text-gray-400 text-sm">{t('sectionDetail.subsections.empty')}</p>
-      )}
-
-      <div className="mt-2">
-        <div className="flex gap-2">
-          <input
-            value={newSubTitle}
-            onChange={(e) => {
-              const val = e.target.value;
-              setNewSubTitle(val);
-              if (val.trim() && hasDuplicateName(projectId, val.trim(), sectionId)) {
-                setNameError(t('sectionDetail.subsections.duplicate'));
-              } else {
-                setNameError("");
-              }
-            }}
-            placeholder={t('sectionDetail.subsections.addPlaceholder')}
-            className={`bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
-          />
-          <button
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-            disabled={!newSubTitle.trim() || !!nameError}
-            onClick={() => {
-              const trimmed = newSubTitle.trim();
-              if (!trimmed || nameError) return;
-              try {
-                addSubsection(projectId, sectionId, trimmed, "");
-                setNewSubTitle("");
-                setNameError("");
-              } catch (e) {
-                if (e instanceof Error && e.message.startsWith("structural_limit")) {
-                  setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
-                } else {
-                  throw e;
-                }
-              }
-            }}
-          >{t('projectDetail.add')}</button>
-        </div>
-        {nameError && (
-          <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
-        )}
-      </div>
-      </div>
+          {/* Telas menores: mantém bloco abaixo para evitar sobreposição */}
+          <div className="2xl:hidden max-w-6xl mx-auto mt-6">
+            {subsectionsPanel}
+          </div>
+        </>
       )}
 
       {/* Modal de Preview da IA */}
@@ -1675,7 +1878,9 @@ function SectionDetailContent({
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <span>✨</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l1.8 4.8L19 9.6l-4.1 3.2L16.2 18 12 15l-4.2 3 1.3-5.2L5 9.6l5.2-1.8L12 3z" />
+                </svg>
                 Preview do Conteúdo Melhorado
               </h2>
               <p className="text-purple-100 text-sm mt-1">
@@ -1724,8 +1929,11 @@ function SectionDetailContent({
             {/* Footer com ações */}
             <div className="border-t border-gray-700 p-6 bg-gray-900/90">
               <div className="mb-4">
-                <label className="block text-sm font-semibold text-gray-200 mb-2">
-                  📝 Solicitar modificações (opcional):
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
+                  </svg>
+                  Solicitar modificações (opcional):
                 </label>
                 <textarea
                   value={modificationRequest}
@@ -1740,9 +1948,12 @@ function SectionDetailContent({
                 <button
                   onClick={handleCancelImprovement}
                   disabled={isImproving}
-                  className="px-6 py-3 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  className="px-6 py-3 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
                 >
-                  ✕ {t('common.cancel')}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {t('common.cancel')}
                 </button>
                 
                 <button
@@ -1752,12 +1963,17 @@ function SectionDetailContent({
                 >
                   {isImproving ? (
                     <>
-                      <span className="animate-spin">⏳</span>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                      </svg>
                       <span>{t('sectionDetail.ai.modifying')}</span>
                     </>
                   ) : (
                     <>
-                      <span>🔄</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5.636 18.364A9 9 0 003.05 9m17.9 6a9 9 0 00-2.586-9.364" />
+                      </svg>
                       <span>{t('sectionDetail.ai.modify')}</span>
                     </>
                   )}
@@ -1768,7 +1984,9 @@ function SectionDetailContent({
                   disabled={isImproving}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <span>✓</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                   <span>{t('sectionDetail.ai.confirmApply')}</span>
                 </button>
               </div>
@@ -1784,8 +2002,11 @@ function SectionDetailContent({
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">
-                  ↗️ Mover Seção
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
+                  </svg>
+                  Mover Seção
                 </h2>
                 <button
                   onClick={() => {
@@ -1976,7 +2197,9 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
   return (
     <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
       <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
-        <span>🔗</span>
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
+        </svg>
         <span>{t('sectionDetail.backlinks')}</span>
       </h3>
       <div className="flex flex-wrap gap-2">

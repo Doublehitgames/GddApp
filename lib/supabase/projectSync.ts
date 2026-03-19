@@ -314,6 +314,8 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     Array.isArray(rawTags) && rawTags.length > 0
       ? (rawTags as string[])
       : undefined;
+  const rawBalanceAddons = row.balance_addons;
+  const balanceAddons = Array.isArray(rawBalanceAddons) && rawBalanceAddons.length > 0 ? rawBalanceAddons : undefined;
   return {
     id: row.id as string,
     title: row.title as string,
@@ -328,6 +330,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
     domainTags,
+    balanceAddons: balanceAddons as Section["balanceAddons"],
   };
 }
 
