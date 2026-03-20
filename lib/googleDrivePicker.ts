@@ -78,6 +78,20 @@ export function driveFileIdToImageUrl(fileId: string): string {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
 }
 
+/**
+ * Retorna URLs candidatas para renderizar imagem do Drive.
+ * Alguns arquivos falham em um endpoint e funcionam em outro.
+ */
+export function driveFileIdToImageCandidates(fileId: string): string[] {
+  const id = String(fileId || "").trim();
+  if (!id) return [];
+  return [
+    `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
+    `https://drive.google.com/uc?export=view&id=${id}`,
+    `https://lh3.googleusercontent.com/d/${id}=w1600`,
+  ];
+}
+
 const DRIVE_UC_REGEX = /https:\/\/drive\.google\.com\/uc\?export=view&id=([a-zA-Z0-9_-]+)/g;
 const DRIVE_FILE_REGEX = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)(?:\/view)?/g;
 
@@ -89,6 +103,17 @@ export function getDriveImageDisplayUrl(src: string): string {
   const idMatch = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   const id = idMatch?.[1] ?? src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
   return id ? driveFileIdToImageUrl(id) : src;
+}
+
+/**
+ * Similar ao getDriveImageDisplayUrl, mas retorna múltiplas URLs fallback.
+ */
+export function getDriveImageDisplayCandidates(src: string): string[] {
+  if (!src) return [];
+  if (!src.includes("drive.google.com")) return [src];
+  const idMatch = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  const id = idMatch?.[1] ?? src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+  return id ? driveFileIdToImageCandidates(id) : [src];
 }
 
 /**

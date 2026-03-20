@@ -1,15 +1,80 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { useI18n } from "@/lib/i18n/provider";
-import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
+import { ADDON_REGISTRY } from "@/lib/addons/registry";
+import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 
 interface Props {
   projectId: string;
   publicToken?: string;
+}
+
+interface DocumentAnchorPreview {
+  title: string;
+  shortDescription: string;
+}
+
+const DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH = 180;
+
+function normalizeReferenceText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function replaceReferenceTokens(text: string, sections: any[]): string {
+  if (!text || !text.includes("$[")) return text;
+
+  const sectionById = new Map<string, any>();
+  const sectionByNormalizedName = new Map<string, any>();
+
+  for (const section of sections) {
+    if (section?.id) {
+      sectionById.set(section.id, section);
+    }
+    const normalizedTitle = normalizeReferenceText(section?.title || "");
+    if (normalizedTitle && !sectionByNormalizedName.has(normalizedTitle)) {
+      sectionByNormalizedName.set(normalizedTitle, section);
+    }
+  }
+
+  return text.replace(/\$\[([^\]]+)\]/g, (_fullMatch, rawRef: string) => {
+    const ref = String(rawRef || "").trim();
+    if (!ref) return "";
+
+    if (ref.startsWith("#")) {
+      const targetId = ref.slice(1).trim();
+      return sectionById.get(targetId)?.title || targetId;
+    }
+
+    const normalizedRef = normalizeReferenceText(ref);
+    return sectionByNormalizedName.get(normalizedRef)?.title || ref;
+  });
+}
+
+function toPlainTextPreview(value: string): string {
+  if (!value) return "";
+
+  return value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#>*_~]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncatePreview(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 export default function GDDViewClient({ projectId, publicToken }: Props) {
@@ -29,15 +94,24 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [showDesktopToc, setShowDesktopToc] = useState(false);
   const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [coverImageCandidateIndex, setCoverImageCandidateIndex] = useState(0);
   const isPublicMode = Boolean(publicToken);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
   const sectionMenuRef = useRef<HTMLDivElement>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const showChartInDoc = true;
+  const coverImageCandidates = useMemo(
+    () => getDriveImageDisplayCandidates(project?.coverImageUrl || ""),
+    [project?.coverImageUrl]
+  );
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setCoverImageCandidateIndex(0);
+  }, [project?.coverImageUrl]);
 
   useEffect(() => {
     if (openSectionMenuId === null) return;
@@ -123,6 +197,30 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     });
 
   const projectSections = project?.sections || [];
+  const sectionPreviewById = useMemo(() => {
+    const map = new Map<string, DocumentAnchorPreview>();
+
+    for (const section of projectSections) {
+      const title = (section?.title || "").trim() || t("sectionDetail.history.untitled");
+      const descriptionSource =
+        typeof section?.description === "string" && section.description.trim()
+          ? section.description
+          : section?.content || "";
+      const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionSource, projectSections);
+      const plainTextDescription = toPlainTextPreview(descriptionWithResolvedReferences);
+
+      map.set(section.id, {
+        title,
+        shortDescription: truncatePreview(plainTextDescription, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
+      });
+    }
+
+    return map;
+  }, [projectSections, t]);
+
+  const resolveDocumentAnchorPreview = (sectionId: string): DocumentAnchorPreview | null => {
+    return sectionPreviewById.get(sectionId) || null;
+  };
 
   const buildSectionTree = (parentId?: string): any[] => {
     const children = sortByManagerOrder(
@@ -385,6 +483,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   sections={project.sections || []}
                   referenceLinkMode="document"
                   documentAnchorOffset={180}
+                  resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
                 />
               </div>
             ) : (
@@ -401,20 +500,24 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 )}
               </div>
             )}
-            {Array.isArray(node.balanceAddons) && node.balanceAddons.length > 0 && (
+            {Array.isArray(node.addons) && node.addons.length > 0 && (
               <div className="mb-6">
-                {node.balanceAddons.map((addon: any) => (
-                  <BalanceAddonReadOnly
-                    key={addon.id}
-                    addon={addon}
-                    showChart={showChartInDoc}
-                    maxRows={100}
-                    theme="light"
-                    layout="sideBySide"
-                    showSummary
-                    showTable={false}
-                  />
-                ))}
+                {node.addons.map((addon: any) => {
+                  const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
+                  if (!entry) return null;
+                  return (
+                    <div key={addon.id}>
+                      {entry.renderReadOnly(addon, {
+                        showChart: showChartInDoc,
+                        maxRows: 100,
+                        theme: "light",
+                        layout: "sideBySide",
+                        showSummary: true,
+                        showTable: false,
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -662,6 +765,21 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               <div className="p-12">
             {/* Cover Page */}
             <div className="text-center mb-16 pb-12 border-b-2 border-gray-200">
+              {project.coverImageUrl && (
+                <div className="mb-8">
+                  {coverImageCandidateIndex < coverImageCandidates.length ? (
+                    <img
+                      src={coverImageCandidates[coverImageCandidateIndex]}
+                      alt={t("projectDetail.cover.alt", "Capa do projeto")}
+                      onError={() => setCoverImageCandidateIndex((prev) => prev + 1)}
+                      className="w-full max-h-[420px] object-cover rounded-2xl border border-gray-200 shadow-sm"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <p className="text-sm text-amber-700">{t("projectDetail.cover.loadFailed")}</p>
+                  )}
+                </div>
+              )}
               <div className="mb-6">
                 <div className="inline-block p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6">
                   <span className="text-6xl">🎮</span>
@@ -681,6 +799,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     sections={project.sections || []}
                     referenceLinkMode="document"
                     documentAnchorOffset={180}
+                    resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
                   />
                 </div>
               )}

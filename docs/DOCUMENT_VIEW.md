@@ -25,6 +25,7 @@ Na página de gerenciamento do projeto, clique no botão **"📄 Ver como Docume
 ## 🎨 Features da Visualização
 
 ### Capa Profissional
+- Imagem de capa do projeto (quando configurada)
 - Ícone de jogo destacado
 - Título do projeto em destaque
 - Descrição do projeto
@@ -85,10 +86,16 @@ A página detecta quando você imprime e automaticamente:
 ## 🔧 Customização
 
 Para ajustar o design do documento, edite:
-- **Capa:** Linha ~100 em `GDDViewClient.tsx`
-- **Índice:** Linha ~130
-- **Seções:** Linha ~160
+- **Capa:** `app/projects/[id]/view/GDDViewClient.tsx` (bloco "Cover Page")
+- **Índice:** `app/projects/[id]/view/GDDViewClient.tsx` (render de TOC)
+- **Seções:** `app/projects/[id]/view/GDDViewClient.tsx` (render de conteúdo)
 - **Estilos de impressão:** Tag `<style jsx global>` no final
+
+## Google Drive na capa
+
+- Se a capa vier do Google Drive, o app usa fallback de URLs para melhorar compatibilidade.
+- Se nenhuma URL renderizar, aparece aviso de falha de carregamento.
+- Para funcionar em qualquer visualização, o arquivo no Drive deve estar como **"Qualquer pessoa com o link"**.
 
 ## 🐛 Debug
 

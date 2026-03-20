@@ -10,6 +10,7 @@ import HomeSyncBar from "@/components/HomeSyncBar";
 import { useI18n } from "@/lib/i18n/provider";
 import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
 import type { Project } from "@/store/projectStore";
+import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
@@ -33,6 +34,11 @@ export default function Home() {
   const projectsLeft = FREE_MAX_PROJECTS - myProjects.length;
   const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - mySections;
   const showLimitWarning = projectsLeft <= 1 || sectionsLeft <= 10;
+
+  const getProjectCoverUrl = (project: Project): string | null => {
+    const candidates = getDriveImageDisplayCandidates(project.coverImageUrl || "");
+    return candidates.length > 0 ? candidates[0] : null;
+  };
 
   return (
     <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10 pb-14">
@@ -97,10 +103,18 @@ export default function Home() {
                     return (
                       <div
                         key={p.id}
-                        className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all flex items-center justify-between gap-3"
+                        className="relative overflow-hidden p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all flex items-center justify-between gap-3"
                       >
+                        {getProjectCoverUrl(p) && (
+                          <div
+                            className="absolute inset-0 bg-cover bg-center"
+                            style={{ backgroundImage: `url("${getProjectCoverUrl(p)}")` }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/85 via-gray-900/70 to-gray-900/85" aria-hidden="true" />
                         <Link href={`/projects/${p.id}`} className="flex-1 min-w-0" prefetch={false}>
-                          <div className="flex flex-col gap-2.5">
+                          <div className="relative z-10 flex flex-col gap-2.5">
                             <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
                             <div className="flex flex-wrap gap-2 text-xs font-medium">
                               <span className="bg-blue-600/90 px-2.5 py-1 rounded-md" title="Seções raiz">📑 {rootSections}</span>
@@ -111,7 +125,7 @@ export default function Home() {
                         </Link>
                         <Link
                           href={`/projects/${p.id}/settings`}
-                          className="p-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors shrink-0 inline-flex items-center justify-center"
+                          className="relative z-10 p-2 bg-gray-700/95 text-white rounded-lg hover:bg-gray-600 transition-colors shrink-0 inline-flex items-center justify-center"
                           title={t("home.projects.settings")}
                           aria-label={t("home.projects.settings")}
                         >
@@ -144,10 +158,18 @@ export default function Home() {
                       return (
                         <div
                           key={p.id}
-                          className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all"
+                          className="relative overflow-hidden p-4 bg-gray-800/80 border border-gray-700 rounded-xl hover:border-gray-500 hover:bg-gray-800 transition-all"
                         >
+                          {getProjectCoverUrl(p) && (
+                            <div
+                              className="absolute inset-0 bg-cover bg-center"
+                              style={{ backgroundImage: `url("${getProjectCoverUrl(p)}")` }}
+                              aria-hidden="true"
+                            />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-r from-gray-900/85 via-gray-900/70 to-gray-900/85" aria-hidden="true" />
                           <Link href={`/projects/${p.id}`} className="block" prefetch={false}>
-                            <div className="flex flex-col gap-2.5">
+                            <div className="relative z-10 flex flex-col gap-2.5">
                               <h3 className="text-base md:text-lg font-semibold truncate leading-tight">{p.title}</h3>
                               <div className="flex flex-wrap gap-2 text-xs font-medium">
                                 <span className="bg-blue-600/90 px-2.5 py-1 rounded-md">📑 {rootSections}</span>

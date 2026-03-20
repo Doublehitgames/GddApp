@@ -16,6 +16,29 @@ Há uma dica abaixo do editor lembrando do compartilhamento.
 
 ---
 
+## Capa do projeto com Google Drive
+
+Além das seções, o app também usa Google Drive para a **imagem de capa do projeto**:
+
+- Na página do projeto (`/projects/[id]`), existe um espaço de capa clicável entre título e descrição.
+- Ao clicar no espaço, abre o mesmo fluxo de seleção do Drive.
+- A capa é exibida em:
+  - detalhe do projeto;
+  - modo documento (`/projects/[id]/view`), no topo da capa;
+  - home (`/`), como fundo do card do projeto.
+
+### Renderização e fallback de URL
+
+Para reduzir falhas de preview no navegador, o app tenta múltiplos formatos de URL para o mesmo arquivo:
+
+1. `drive.google.com/thumbnail`
+2. `drive.google.com/uc?export=view`
+3. `lh3.googleusercontent.com`
+
+Mesmo com fallback, o arquivo precisa estar compartilhado como **"Qualquer pessoa com o link"** para renderizar.
+
+---
+
 ## Configuração passo a passo (quem instala o app)
 
 Siga na ordem. Pode usar o **mesmo** cliente OAuth do "Login com Google" (Supabase) ou criar um novo.

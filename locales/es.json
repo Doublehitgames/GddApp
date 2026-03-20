@@ -114,6 +114,16 @@
     "notFound": "Proyecto no encontrado.",
     "edit": "Editar",
     "noDescription": "Sin descripción.",
+    "cover": {
+      "selectFromDrive": "Seleccionar imagen de Google Drive",
+      "picking": "Abriendo Google Drive...",
+      "hint": "La imagen se usará como portada del proyecto y en el modo DOC.",
+      "noImage": "Sin imagen de portada.",
+      "loadFailed": "No se pudo cargar la imagen. En Google Drive, compártela como \"Cualquier persona con el enlace\".",
+      "alt": "Portada del proyecto",
+      "missingGoogleConfig": "Google Drive no está configurado. Define NEXT_PUBLIC_GOOGLE_CLIENT_ID en las variables de entorno.",
+      "pickFailed": "No fue posible seleccionar la imagen. Inténtalo de nuevo."
+    },
     "sectionsTitle": "Secciones del proyecto",
     "sectionsSubtitle": "Busca, navega y reordena las secciones principales con arrastrar y soltar.",
     "searchPlaceholder": "🔍 Buscar secciones por título o contenido...",
@@ -220,7 +230,13 @@
     "actionsMenu": "Acciones",
     "managementMode": "Modo gestión",
     "mindMap": "Mapa mental",
-    "print": "Imprimir"
+    "print": "Imprimir",
+    "anchorPreview": {
+      "title": "Vista previa de la sección",
+      "goButton": "Ir a la sección",
+      "goToSection": "Abrir vista previa de la sección",
+      "noDescription": "No hay descripción disponible para esta sección."
+    }
   },
   "projectExport": {
     "backToProject": "Volver al proyecto",
@@ -478,7 +494,25 @@
       "publicSharingOwnerOnly": "Solo el dueño del proyecto puede crear o cambiar el enlace de compartir público.",
       "publicLinkLabel": "Enlace de visualización pública (configurado por el dueño):",
       "publicLinkMemberHint": "Puedes copiar y compartir este enlace. Solo el dueño puede generar o cambiar el token.",
-      "membersListOnly": "Miembros del proyecto (solo visualización)."
+      "membersListOnly": "Miembros del proyecto (solo visualización).",
+      "transfer": {
+        "openAction": "Transferir ownership",
+        "memberDetailsTitle": "Detalles del miembro",
+        "memberNameLabel": "Nombre",
+        "memberEmailLabel": "Correo",
+        "memberRoleLabel": "Rol",
+        "button": "Transferir proyecto",
+        "confirmDescription": "Esta acción cambia el dueño del proyecto. Para confirmar, escribe exactamente el nombre del proyecto.",
+        "confirmPlaceholder": "Escribe el nombre del proyecto",
+        "confirmHint": "El dueño actual pasará a ser editor de este proyecto.",
+        "confirmButton": "Confirmar transferencia",
+        "transferring": "Transfiriendo...",
+        "onlyEditor": "La transferencia solo está permitida para miembros editores.",
+        "confirmMismatch": "El nombre escrito no coincide con el proyecto.",
+        "errorGeneric": "No se pudo transferir el ownership del proyecto.",
+        "errorNetwork": "Error de red al transferir el proyecto.",
+        "success": "Ownership transferido con éxito."
+      }
     },
     "aiPage": {
       "title": "Configuración de IA",

@@ -1,30 +1,36 @@
-# Addon de Balanceamento: Proximos passos
+# Addon de Balanceamento: estado atual e próximos passos
 
-Este documento registra o que foi propositalmente deixado fora do MVP visual atual.
+Este documento reflete o estado atual do addon de balanceamento e os próximos incrementos.
 
-## Fase 2: persistencia e sync
+## O que já está implementado
 
-- Persistir addons no modelo de `Section` no `projectStore`.
-- Garantir serializacao no `localStorage` junto dos projetos.
-- Incluir addons no payload de sync (`projectSync`) e no diff da API de sync.
-- Definir schema no Supabase para armazenar os addons (jsonb em `sections` ou tabela dedicada).
+- Modelo unificado de addon em seção (`SectionAddon`) com normalização em `lib/addons/normalize.ts`.
+- Persistência local dos addons no `projectStore` (`section.addons`).
+- Sync de addons no payload de seções (coluna `balance_addons` no Supabase).
+- Fallback no sync para banco antigo sem coluna `balance_addons` (não bloqueia sync geral).
+- Migração SQL disponível: `lib/supabase/add_sections_balance_addons.sql`.
 
-## Fase 3: exportacao Unity
+## Próximos passos recomendados
 
-- Criar exportador JSON dedicado para engine (`unity-export-v1`).
-- Exportar tabela calculada (`level -> value`) por addon de balanceamento.
-- Opcionalmente exportar tambem formula e parametros para runtime.
-- Versionar o schema para evolucao sem quebrar consumidores.
+### 1) Exportação Unity
 
-## Fase 4: i18n e UX final
+- Consolidar exportador dedicado por addon no fluxo de export.
+- Garantir versão estável de schema para integração com engine.
+- Cobrir presets/fórmulas no output com validação consistente.
 
-- Migrar textos do addon para i18n (`pt-BR`, `en`, `es`).
-- Padronizar labels/ajudas para clareza de design de progressao.
-- Adicionar validacoes de UX (limites de faixa, mensagens de erro mais guiadas).
+### 2) i18n e UX
 
-## Fase 5: testes
+- Revisar todos os textos de addon em `pt-BR`, `en`, `es`.
+- Melhorar mensagens de validação para cenários inválidos de parâmetros.
+- Padronizar rótulos para novos tipos de addon no registry.
 
-- Testes unitarios para `formulaEngine` (presets, parser, funcoes permitidas, erros).
-- Testes de componente para `BalanceAddonPanel` (modo preset/avancado, tabela e grafico).
-- Testes de integracao na pagina de secao para fluxo de adicionar/remover varios addons.
-- Na fase de sync, cobrir cenarios de diff e impacto em quota.
+### 3) Testes
+
+- Aumentar cobertura unitária de normalização e engine de fórmula.
+- Adicionar testes de integração para fluxo completo (criar/editar/remover addons + sync).
+- Cobrir cenários de retrocompatibilidade (DB com/sem `balance_addons`).
+
+### 4) Expansão de arquitetura
+
+- Evoluir `ADDON_REGISTRY` para mais tipos de bloco (além de balanceamento).
+- Definir contrato estável para render read-only e editor por tipo de addon.

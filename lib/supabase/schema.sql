@@ -54,6 +54,7 @@ create table public.projects (
   owner_id uuid references auth.users(id) on delete cascade not null,
   title text not null,
   description text default '',
+  cover_image_url text,
   mindmap_settings jsonb default '{}'::jsonb,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null

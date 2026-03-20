@@ -114,6 +114,16 @@
     "notFound": "Project not found.",
     "edit": "Edit",
     "noDescription": "No description.",
+    "cover": {
+      "selectFromDrive": "Select image from Google Drive",
+      "picking": "Opening Google Drive...",
+      "hint": "This image will be used as the project cover and in DOC mode.",
+      "noImage": "No cover image.",
+      "loadFailed": "Could not load the image. In Google Drive, share it as \"Anyone with the link\".",
+      "alt": "Project cover image",
+      "missingGoogleConfig": "Google Drive is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in environment variables.",
+      "pickFailed": "Could not select the image. Please try again."
+    },
     "sectionsTitle": "Project Sections",
     "sectionsSubtitle": "Search, browse, and reorder top-level sections with drag and drop.",
     "searchPlaceholder": "🔍 Search sections by title or content...",
@@ -220,7 +230,13 @@
     "actionsMenu": "Actions",
     "managementMode": "Management Mode",
     "mindMap": "Mind Map",
-    "print": "Print"
+    "print": "Print",
+    "anchorPreview": {
+      "title": "Section preview",
+      "goButton": "Go to section",
+      "goToSection": "Open section preview",
+      "noDescription": "No description available for this section."
+    }
   },
   "projectExport": {
     "backToProject": "Back to Project",
@@ -478,7 +494,25 @@
       "publicSharingOwnerOnly": "Only the project owner can create or change the public share link.",
       "publicLinkLabel": "Public view link (set by owner):",
       "publicLinkMemberHint": "You can copy and share this link. Only the owner can generate or change the token.",
-      "membersListOnly": "Project members (view only)."
+      "membersListOnly": "Project members (view only).",
+      "transfer": {
+        "openAction": "Transfer ownership",
+        "memberDetailsTitle": "Member details",
+        "memberNameLabel": "Name",
+        "memberEmailLabel": "Email",
+        "memberRoleLabel": "Role",
+        "button": "Transfer project",
+        "confirmDescription": "This action changes the project owner. To confirm, type the exact project name.",
+        "confirmPlaceholder": "Type the project name",
+        "confirmHint": "The current owner will become an editor of this project.",
+        "confirmButton": "Confirm transfer",
+        "transferring": "Transferring...",
+        "onlyEditor": "Transfer is only allowed to editor members.",
+        "confirmMismatch": "Typed name does not match the project name.",
+        "errorGeneric": "Could not transfer project ownership.",
+        "errorNetwork": "Network error while transferring project.",
+        "success": "Ownership transferred successfully."
+      }
     },
     "aiPage": {
       "title": "AI Settings",

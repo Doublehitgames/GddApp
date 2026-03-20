@@ -50,3 +50,20 @@ Assim você paga apenas pelo **diff final** (ex.: 0 créditos se no fim não sob
   - `consumedThisSync = contentChangeCount + (orderOnlyCount > 0 ? 1 : 0) + sectionsDeleted`.
 
 - **Comentários no código** deixam explícito que não cobramos delete de seção que nunca foi para o cloud.
+
+## Metadados do projeto (capa, título, descrição)
+
+O sync também envia metadados do projeto (ex.: título, descrição e `cover_image_url` da capa), mas a regra de créditos deste documento continua baseada no diff de **seções**:
+
+- criação/edição de seção;
+- reordenação;
+- exclusão de seção já existente no cloud.
+
+Em outras palavras, alterar só metadados visuais do projeto não entra na contagem “1 crédito por seção” descrita acima.
+
+## Retrocompatibilidade de schema (`cover_image_url`)
+
+Se o banco ainda não tiver a coluna `projects.cover_image_url`, a API de sync tenta novamente sem esse campo para não bloquear sincronização do restante.
+
+- Resultado: o projeto continua sincronizando normalmente;
+- Limitação temporária: a capa não persiste na nuvem até rodar a migração `lib/supabase/add_project_cover_image.sql`.

@@ -224,6 +224,8 @@ Antes de liberar para usuários, confirme também:
       - [ ] Redirect URL: `http://localhost:3000/auth/callback`
       - [ ] Redirect URL: `https://*.vercel.app/auth/callback`
 - [ ] Schema SQL aplicado no Supabase (`profiles`, `projects`, `sections`, `project_members`)
+- [ ] Migração de capa aplicada: `lib/supabase/add_project_cover_image.sql` (`projects.cover_image_url`)
+- [ ] Migração de addons aplicada: `lib/supabase/add_sections_balance_addons.sql` (`sections.balance_addons`)
 - [ ] Fix de RLS aplicado (`fix_rls_recursion.sql`)
 - [ ] Coluna de IA aplicada em `profiles` (`add_ai_config.sql`)
 - [ ] Google OAuth configurado no Supabase (se habilitado no app)

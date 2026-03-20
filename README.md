@@ -36,6 +36,14 @@
 
 ## ✨ Funcionalidades
 
+### 🆕 Atualizações recentes
+
+- **Imagem de capa do projeto** com seleção via Google Drive.
+- **Capa visível em 3 pontos**: detalhe do projeto, modo documento (DOC) e fundo do card na home.
+- **Fallback de render de imagem do Drive** com múltiplas URLs candidatas.
+- **Addons de seção** com arquitetura extensível via registry (`lib/addons/*`), incluindo persistência/sync.
+- **Atalhos com emojis** para nome do projeto e títulos de seções.
+
 ### 🤖 Assistente de IA (NOVO!)
 
 - **Geração Automática de GDD**: Descreva seu jogo e a IA cria toda a estrutura

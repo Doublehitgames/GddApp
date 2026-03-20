@@ -13,7 +13,8 @@ import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
-import type { BalanceAddonDraft } from "@/lib/balance/types";
+import type { SectionAddon } from "@/lib/addons/types";
+import { normalizeSectionAddons } from "@/lib/addons/normalize";
 
 export type UUID = string;
 
@@ -211,8 +212,8 @@ export type Section = {
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
   /** Tags de domínio de game design (combat, economy, progression, etc.) para IA e relações entre sistemas. */
   domainTags?: string[];
-  /** Addons de balanceamento vinculados a esta seção. */
-  balanceAddons?: BalanceAddonDraft[];
+  /** Addons genéricos vinculados a esta seção. */
+  addons?: SectionAddon[];
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
@@ -227,6 +228,7 @@ export type Project = {
   id: UUID;
   title: string;
   description?: string;
+  coverImageUrl?: string;
   sections?: Section[];
   createdAt: string;
   updatedAt: string;
@@ -281,6 +283,7 @@ interface ProjectStore {
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
+  setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
   editSection: (
     projectId: UUID,
     sectionId: UUID,
@@ -290,9 +293,12 @@ interface ProjectStore {
     color?: string,
     updatedBy?: SectionAuditBy,
     domainTags?: string[],
-    balanceAddons?: BalanceAddonDraft[]
+    addons?: SectionAddon[]
   ) => void;
-  setSectionBalanceAddons: (projectId: UUID, sectionId: UUID, addons: BalanceAddonDraft[], updatedBy?: SectionAuditBy) => void;
+  setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;
+  addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;
+  updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => void;
+  removeSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, updatedBy?: SectionAuditBy) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -320,6 +326,8 @@ interface ProjectStore {
   clearSyncHistory: () => void;
   /** Atualiza lastQuotaStatus com a cota do projeto (cota é por projeto). Sem projectId limpa a cota (ex.: na home). */
   refreshQuotaStatus: (projectId?: string) => Promise<void>;
+  /** Atualiza ownerId localmente e persiste. Não marca dirty nem dispara sync. */
+  setProjectOwnerLocally: (projectId: UUID, ownerId: string) => void;
   importProject: (project: Project) => void;
   importAllProjects: (projects: Project[]) => void;
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
@@ -382,6 +390,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       sections: (project.sections || []).map((section) => ({
         ...section,
         content: sanitizeRichText(section.content),
+        addons: normalizeSectionAddons(
+          section.addons || (section as unknown as { balanceAddons?: unknown }).balanceAddons
+        ),
       })),
     };
   };
@@ -559,7 +570,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         parentId: section.parentId || null,
         order: section.order,
         color: section.color || null,
-        balanceAddons: section.balanceAddons || [],
+        addons: section.addons || [],
       }));
 
     const payload = {
@@ -1012,6 +1023,22 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
+    setProjectCoverImage: (id: UUID, coverImageUrl?: string) => {
+      const normalizedCoverUrl =
+        typeof coverImageUrl === "string" && coverImageUrl.trim()
+          ? coverImageUrl.trim()
+          : undefined;
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === id
+              ? { ...p, coverImageUrl: normalizedCoverUrl, updatedAt: new Date().toISOString() }
+              : p
+          ),
+        id
+      );
+    },
+
     editSection: (
       projectId: UUID,
       sectionId: UUID,
@@ -1021,7 +1048,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       color?: string,
       updatedBy?: SectionAuditBy,
       domainTags?: string[],
-      balanceAddons?: BalanceAddonDraft[]
+      addons?: SectionAddon[]
     ) => {
       const now = new Date().toISOString();
       const audit: Partial<Section> = { updated_at: now };
@@ -1052,7 +1079,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
                       if (resolvedColor !== undefined) updated.color = resolvedColor;
                       else if (resolvedColor === undefined) delete updated.color;
                       if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
-                      if (balanceAddons !== undefined) updated.balanceAddons = balanceAddons.length ? balanceAddons : undefined;
+                      if (addons !== undefined) updated.addons = addons.length ? addons : undefined;
                       return updated;
                     }
                     return s;
@@ -1064,7 +1091,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       );
     },
 
-    setSectionBalanceAddons: (projectId: UUID, sectionId: UUID, addons: BalanceAddonDraft[], updatedBy?: SectionAuditBy) => {
+    setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => {
       const project = get().projects.find((p) => p.id === projectId);
       const section = project?.sections?.find((s) => s.id === sectionId);
       if (!section) return;
@@ -1078,6 +1105,37 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         updatedBy,
         section.domainTags,
         addons
+      );
+    },
+    addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      const section = project?.sections?.find((s) => s.id === sectionId);
+      if (!section) return;
+      const current = section.addons || [];
+      get().setSectionAddons(projectId, sectionId, [...current, addon], updatedBy);
+    },
+    updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      const section = project?.sections?.find((s) => s.id === sectionId);
+      if (!section) return;
+      const current = section.addons || [];
+      get().setSectionAddons(
+        projectId,
+        sectionId,
+        current.map((addon) => (addon.id === addonId ? nextAddon : addon)),
+        updatedBy
+      );
+    },
+    removeSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, updatedBy?: SectionAuditBy) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      const section = project?.sections?.find((s) => s.id === sectionId);
+      if (!section) return;
+      const current = section.addons || [];
+      get().setSectionAddons(
+        projectId,
+        sectionId,
+        current.filter((addon) => addon.id !== addonId),
+        updatedBy
       );
     },
 
@@ -1296,6 +1354,16 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         set({ lastQuotaStatus: q });
         persistSyncState();
       }
+    },
+
+    setProjectOwnerLocally: (projectId: UUID, ownerId: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? { ...p, ownerId, updatedAt: new Date().toISOString() }
+            : p
+        )
+      );
     },
 
     flushPendingSyncs: async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useInitProjects } from "@/hooks/useInitProjects";
@@ -29,6 +29,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIChat from "@/components/AIChat";
+import {
+    driveFileIdToImageUrl,
+    getDriveImageDisplayCandidates,
+    getGoogleClientId,
+    openGoogleDriveImagePicker,
+} from "@/lib/googleDrivePicker";
 
 interface Props {
     projectId: string;
@@ -45,6 +51,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const addSection = useProjectStore((s) => s.addSection);
     const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
     const reorderSections = useProjectStore((s) => s.reorderSections);
+    const setProjectCoverImage = useProjectStore((s) => s.setProjectCoverImage);
     const projects = useProjectStore((s) => s.projects);
 
     const [mounted, setMounted] = useState(false);
@@ -57,6 +64,9 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+    const [isPickingCoverImage, setIsPickingCoverImage] = useState(false);
+    const [coverImageError, setCoverImageError] = useState("");
+    const [coverImageCandidateIndex, setCoverImageCandidateIndex] = useState(0);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -74,6 +84,15 @@ export default function ProjectDetailClient({ projectId }: Props) {
             setProject(p);
         }
     }, [mounted, projectId, projects]);
+
+    const coverImageCandidates = useMemo(
+        () => getDriveImageDisplayCandidates(project?.coverImageUrl || ""),
+        [project?.coverImageUrl]
+    );
+
+    useEffect(() => {
+        setCoverImageCandidateIndex(0);
+    }, [project?.coverImageUrl]);
 
 
     if (!mounted) return <div className="min-h-screen bg-gray-900 text-white p-6">{t("common.loading")}</div>;
@@ -108,9 +127,31 @@ export default function ProjectDetailClient({ projectId }: Props) {
         }
     }
 
+    async function handlePickCoverImage() {
+        if (isPickingCoverImage) return;
+        setCoverImageError("");
+        setIsPickingCoverImage(true);
+        try {
+            const googleClientId = await getGoogleClientId();
+            if (!googleClientId) {
+                setCoverImageError(t("projectDetail.cover.missingGoogleConfig"));
+                return;
+            }
+            const picked = await openGoogleDriveImagePicker(googleClientId);
+            if (!picked?.id) return;
+            setProjectCoverImage(projectId, driveFileIdToImageUrl(picked.id));
+            setCoverImageCandidateIndex(0);
+        } catch {
+            setCoverImageError(t("projectDetail.cover.pickFailed"));
+        } finally {
+            setIsPickingCoverImage(false);
+        }
+    }
+
     const projectContext = project ? {
         projectId: project.id,
         projectTitle: project.title,
+        projectDescription: project.description,
         sections: (project.sections || []).map((s: any) => ({
             id: s.id,
             title: s.title,
@@ -277,6 +318,49 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         >
                             {t("projectDetail.edit")}
                         </button>
+                    </div>
+
+                    <div className="mb-4">
+                        {coverImageError && (
+                            <p className="text-sm text-red-300 mb-3">{coverImageError}</p>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handlePickCoverImage}
+                            disabled={isPickingCoverImage}
+                            aria-label={t("projectDetail.cover.selectFromDrive")}
+                            className="w-full text-left rounded-xl overflow-hidden border border-gray-600/70 bg-gray-900/60 hover:border-blue-500/70 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {project.coverImageUrl && coverImageCandidateIndex < coverImageCandidates.length ? (
+                                <div className="relative">
+                                    <img
+                                        src={coverImageCandidates[coverImageCandidateIndex]}
+                                        alt={t("projectDetail.cover.alt", "Capa do projeto")}
+                                        onError={() => {
+                                            setCoverImageCandidateIndex((prev) => prev + 1);
+                                        }}
+                                        className="w-full max-h-[320px] object-cover"
+                                        loading="lazy"
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs bg-black/55 text-gray-100">
+                                        {isPickingCoverImage ? t("projectDetail.cover.picking") : t("projectDetail.cover.hint")}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-48 md:h-56 border-2 border-dashed border-gray-600 rounded-xl m-3 flex flex-col items-center justify-center gap-2 text-center px-4">
+                                    <span className="text-3xl">🖼️</span>
+                                    <p className="text-sm font-medium text-gray-200">
+                                        {isPickingCoverImage
+                                            ? t("projectDetail.cover.picking")
+                                            : t("projectDetail.cover.selectFromDrive")}
+                                    </p>
+                                    <p className="text-xs text-gray-400">{t("projectDetail.cover.noImage")}</p>
+                                </div>
+                            )}
+                        </button>
+                        {project.coverImageUrl && coverImageCandidateIndex >= coverImageCandidates.length && (
+                            <p className="text-amber-300 text-sm mt-2">{t("projectDetail.cover.loadFailed")}</p>
+                        )}
                     </div>
 
                     <div className="text-gray-200">
@@ -556,7 +640,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, expandedSe
                     </button>
                 )}
                 {!hasChildren && <span className="w-4"></span>}
-                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-300 underline hover:text-blue-200" prefetch={false}>
+                <Link href={`/projects/${projectId}/sections/${section.id}`} className="text-blue-300 hover:text-blue-200" prefetch={false}>
                     {highlightText(section.title, searchTerm)}
                 </Link>
                 {directMatch && searchTerm.trim() && (
@@ -668,7 +752,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, expandedSe
                                 </button>
                             )}
                             {!hasChildren && <span className="w-4"></span>}
-                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 underline hover:text-blue-200" prefetch={false}>
+                            <Link href={`/projects/${projectId}/sections/${sec.id}`} className="text-blue-300 hover:text-blue-200" prefetch={false}>
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
                             {directMatch && searchTerm && searchTerm.trim() && (

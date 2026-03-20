@@ -7,6 +7,7 @@ import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
+import { normalizeSectionAddons, stableAddonsForCompare } from "@/lib/addons/normalize";
 
 /** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
 const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
@@ -101,6 +102,19 @@ function isMissingBalanceAddonsColumn(error: unknown) {
       : "";
   const combined = `${message} ${details}`.toLowerCase();
   return combined.includes("balance_addons") && combined.includes("column");
+}
+
+function isMissingProjectCoverImageColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  return combined.includes("cover_image_url") && combined.includes("column");
 }
 
 /** Extrai mensagem legível de erro Supabase/PostgREST (message, error, details, hint, code). */
@@ -321,16 +335,7 @@ export async function POST(request: NextRequest) {
       if (arrA.length !== arrB.length) return false;
       return arrA.every((v, i) => v === arrB[i]);
     };
-    const balanceAddonsEqual = (a: unknown, b: unknown): boolean => {
-      const arrA = Array.isArray(a) ? a : [];
-      const arrB = Array.isArray(b) ? b : [];
-      if (arrA.length !== arrB.length) return false;
-      try {
-        return JSON.stringify(arrA) === JSON.stringify(arrB);
-      } catch {
-        return false;
-      }
-    };
+    const addonsEqual = (a: unknown, b: unknown): boolean => stableAddonsForCompare(a) === stableAddonsForCompare(b);
 
     const sectionsToUpsert = incomingSections.filter((section: any) => {
       const existing = existingById.get(section.id);
@@ -343,7 +348,7 @@ export async function POST(request: NextRequest) {
         Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0) ||
         (existing.color || null) !== (section.color || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
-        !balanceAddonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.balanceAddons)
+        !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons)
       );
     });
 
@@ -373,7 +378,7 @@ export async function POST(request: NextRequest) {
         (existing.content || "") === (section.content || "") &&
         (existing.color || null) === (section.color || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
-        balanceAddonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.balanceAddons);
+        addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons);
       if (onlyOrderChanged) {
         orderOnlyList.push(section);
       } else {
@@ -502,32 +507,43 @@ export async function POST(request: NextRequest) {
         ...(project.mindMapSettings || {}),
         sharing: existingSharing ?? (project.mindMapSettings?.sharing ?? {}),
       };
-      const { error: pErr } = await supabase
+      const updatePayload = {
+        title: project.title,
+        description: project.description || "",
+        cover_image_url: project.coverImageUrl || null,
+        mindmap_settings: mergedMindmapSettings,
+        updated_at: project.updatedAt,
+      };
+      let { error: pErr } = await supabase
         .from("projects")
-        .update({
-          title: project.title,
-          description: project.description || "",
-          mindmap_settings: mergedMindmapSettings,
-          updated_at: project.updatedAt,
-        })
+        .update(updatePayload)
         .eq("id", project.id);
+      if (pErr && isMissingProjectCoverImageColumn(pErr)) {
+        const { cover_image_url: _ignore, ...payloadWithoutCover } = updatePayload;
+        const retry = await supabase.from("projects").update(payloadWithoutCover).eq("id", project.id);
+        pErr = retry.error;
+      }
       if (pErr) {
         const msg = getSupabaseErrorMessage(pErr, "projects_update_failed");
         return NextResponse.json({ error: msg, code: "projects_update" }, { status: 500 });
       }
     } else {
-      const { error: pErr } = await supabase.from("projects").upsert(
-        {
-          id: project.id,
-          owner_id: projectOwnerId,
-          title: project.title,
-          description: project.description || "",
-          mindmap_settings: project.mindMapSettings || {},
-          created_at: project.createdAt,
-          updated_at: project.updatedAt,
-        },
-        { onConflict: "id" }
-      );
+      const upsertPayload = {
+        id: project.id,
+        owner_id: projectOwnerId,
+        title: project.title,
+        description: project.description || "",
+        cover_image_url: project.coverImageUrl || null,
+        mindmap_settings: project.mindMapSettings || {},
+        created_at: project.createdAt,
+        updated_at: project.updatedAt,
+      };
+      let { error: pErr } = await supabase.from("projects").upsert(upsertPayload, { onConflict: "id" });
+      if (pErr && isMissingProjectCoverImageColumn(pErr)) {
+        const { cover_image_url: _ignore, ...payloadWithoutCover } = upsertPayload;
+        const retry = await supabase.from("projects").upsert(payloadWithoutCover, { onConflict: "id" });
+        pErr = retry.error;
+      }
 
       if (pErr) {
         const msg = getSupabaseErrorMessage(pErr, "projects_upsert_failed");
@@ -577,7 +593,7 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
-        balance_addons: Array.isArray(s.balanceAddons) && s.balanceAddons.length > 0 ? s.balanceAddons : [],
+        balance_addons: normalizeSectionAddons(s.addons) || [],
       }));
 
       let { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });

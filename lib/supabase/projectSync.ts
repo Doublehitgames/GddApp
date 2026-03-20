@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { Project, Section } from "@/store/projectStore";
+import { normalizeSectionAddons } from "@/lib/addons/normalize";
 
 const isProduction = process.env.NODE_ENV === "production";
 const logInfo = (...args: unknown[]) => {
@@ -298,6 +299,7 @@ function dbProjectToStore(
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) || "",
+    coverImageUrl: (row.cover_image_url as string) || undefined,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
@@ -314,8 +316,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     Array.isArray(rawTags) && rawTags.length > 0
       ? (rawTags as string[])
       : undefined;
-  const rawBalanceAddons = row.balance_addons;
-  const balanceAddons = Array.isArray(rawBalanceAddons) && rawBalanceAddons.length > 0 ? rawBalanceAddons : undefined;
+  const addons = normalizeSectionAddons(row.balance_addons);
   return {
     id: row.id as string,
     title: row.title as string,
@@ -330,7 +331,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
     domainTags,
-    balanceAddons: balanceAddons as Section["balanceAddons"],
+    addons: addons as Section["addons"],
   };
 }
 
