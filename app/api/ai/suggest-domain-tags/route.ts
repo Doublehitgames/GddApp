@@ -5,6 +5,8 @@ import { getAIConfigFromRequest } from "@/utils/ai/apiHelpers";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 
 interface SuggestDomainTagsRequest {
+  projectTitle?: string;
+  projectDescription?: string;
   sectionTitle: string;
   sectionContent?: string;
   existingTags?: string[];
@@ -15,7 +17,7 @@ const DOMAIN_LIST = GAME_DESIGN_DOMAIN_IDS.join(", ");
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SuggestDomainTagsRequest;
-    const { sectionTitle, sectionContent = "", existingTags } = body;
+    const { projectTitle, projectDescription, sectionTitle, sectionContent = "", existingTags } = body;
 
     if (!sectionTitle?.trim()) {
       return NextResponse.json({ error: "sectionTitle is required" }, { status: 400 });
@@ -57,9 +59,13 @@ ${DOMAIN_LIST}
 
 - "tags" = array de 1 a 4 domínios mais relevantes para a seção
 - Use apenas os IDs listados acima
-- Ordem por relevância (mais importante primeiro)`;
+- Ordem por relevância (mais importante primeiro)
+- Priorize tags alinhadas ao tema do projeto descrito`;
 
     const userPrompt = `Classifique esta seção do GDD nos domínios de game design.
+
+**Projeto:** ${projectTitle?.trim() || "GDD"}
+**Descrição do projeto:** ${projectDescription?.trim() || "Sem descrição informada."}
 
 **Título da seção:** ${sectionTitle.trim()}
 ${contentSnippet ? `**Trecho do conteúdo:**\n${contentSnippet}` : "(conteúdo vazio)"}

@@ -1,7 +1,7 @@
 // app/api/ai/generate-template/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
-import { generateTemplatePrompt, SYSTEM_PROMPT } from '@/utils/ai/prompts';
+import { generateTemplatePrompt, TEMPLATE_SYSTEM_PROMPT } from '@/utils/ai/prompts';
 import { GDDTemplateRequest, GDDTemplate } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 
@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     });
     
     const response = await aiClient.chat([
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: TEMPLATE_SYSTEM_PROMPT },
       { role: 'user', content: generateTemplatePrompt(body) }
     ], {
-      temperature: 0.7,
+      temperature: 0.4,
       maxTokens: 4000,
     });
 

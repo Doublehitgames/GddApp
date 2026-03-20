@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAIClient } from "@/utils/ai/client";
 import { getAIConfigFromRequest } from "@/utils/ai/apiHelpers";
+import { assessThematicRelevance } from "@/utils/ai/thematicGuardrails";
 
 interface SectionItem {
   id: string;
@@ -12,6 +13,7 @@ interface SectionItem {
 
 interface SuggestRelationsRequest {
   projectTitle: string;
+  projectDescription?: string;
   sections: SectionItem[];
 }
 
@@ -30,7 +32,7 @@ export interface RelationSuggestion {
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SuggestRelationsRequest;
-    const { projectTitle, sections } = body;
+    const { projectTitle, projectDescription, sections } = body;
 
     const aiConfig = getAIConfigFromRequest(req);
     if (aiConfig instanceof NextResponse) return aiConfig;
@@ -58,7 +60,9 @@ export async function POST(req: NextRequest) {
 2. Se uma seção tem tags (ex.: [combat, items]), sugira como ela pode se conectar a outras seções ou o que está faltando documentar.
 3. Se há domínios sem seção (ex.: economy sem "Economia"), sugira criar ou ligar a algo existente.
 4. Seja conciso: 3 a 6 sugestões no máximo.
-5. Responda APENAS com um JSON válido, sem markdown, no formato:
+5. Priorize aderência ao tema do projeto; evite sistemas fora do escopo da descrição.
+6. Se sugerir algo opcional fora do núcleo, inclua justificativa curta conectando com a descrição.
+7. Responda APENAS com um JSON válido, sem markdown, no formato:
 {"suggestions": [{"type": "relation" ou "missing_link", "fromTitle": "opcional", "toTitle": "opcional", "domains": ["opcional"], "suggestion": "texto curto e acionável"}]}
 
 - type "relation" = ligação entre duas seções/sistemas existentes ou a criar
@@ -66,6 +70,7 @@ export async function POST(req: NextRequest) {
 - suggestion = uma frase clara para o designer (ex.: "Adicione uma seção 'Custos de Crafting' ligando Economia ao Sistema de Crafting")`;
 
     const userPrompt = `Projeto: "${projectTitle || "GDD"}"
+Descrição do projeto: "${projectDescription?.trim() || "Sem descrição informada."}"
 
 Seções atuais (entre colchetes = tags de sistema):
 ${sectionList || "(nenhuma seção com tags ainda)"}
@@ -94,7 +99,14 @@ Sugira relações ou elos faltantes entre os sistemas. Retorne só o JSON.`;
       );
     }
 
-    const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+    const suggestions = (Array.isArray(data.suggestions) ? data.suggestions : []).filter((item) => {
+      const relevance = assessThematicRelevance(item.suggestion || "", {
+        projectTitle,
+        projectDescription,
+        sections: sectionsWithTags,
+      });
+      return !relevance.needsReview;
+    });
     return NextResponse.json({ suggestions });
   } catch (error) {
     console.error("suggest-relations error:", error);

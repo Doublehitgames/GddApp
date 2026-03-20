@@ -4,10 +4,12 @@ import { createAIClient } from '@/utils/ai/client';
 import { AI_TOOLS, TOOLS_SYSTEM_PROMPT } from '@/utils/ai/tools';
 import { AIMessage } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
+import { assessThematicRelevance } from '@/utils/ai/thematicGuardrails';
 
 interface ProjectContext {
   projectId: string;
   projectTitle: string;
+  projectDescription?: string;
   sections: Array<{
     id: string;
     title: string;
@@ -41,9 +43,10 @@ export async function POST(req: NextRequest) {
     const contextInfo = projectContext ? `
 [CONTEXTO DO PROJETO]
 Projeto: ${projectContext.projectTitle} (ID: ${projectContext.projectId})
+Descrição: ${projectContext.projectDescription?.trim() || "Sem descrição informada."}
 Seções atuais: ${projectContext.sections.length}
 
-📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Entre colchetes: tags de sistema (combat, economy, progression, crafting, items, world, narrative, etc.):
+📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Entre colchetes: tags de sistema (economy, progression, crafting, items, world, narrative, etc.):
 ${projectContext.sections.map(s => {
   const isRoot = !s.parentId;
   const prefix = isRoot ? '📁' : '  └─';
@@ -55,8 +58,9 @@ ${projectContext.sections.map(s => {
 - Use $[Nome da Seção] para criar referências clicáveis
 - Para SUBSECAO, use o nome exato da seção pai
 - Para EDITAR/REMOVER, use o ID mostrado acima
-- Exemplo de referência: "Este sistema se relaciona com $[Sistema de Combate]"
-- Use as tags das seções para sugerir relações entre sistemas (ex.: Combate ↔ Itens, Economia → Crafting)
+- Exemplo de referência: "Este sistema se relaciona com $[Economia da Fazenda]"
+- Só proponha sistemas aderentes ao tema descrito no projeto
+- Se sugerir algo fora do núcleo, explique claramente a conexão com a descrição do jogo
 ` : '';
 
     const enhancedMessages: AIMessage[] = [
@@ -66,15 +70,44 @@ ${projectContext.sections.map(s => {
 
     // Desabilitado function calling - usando formato JSON na resposta
     const response = await client.chat(enhancedMessages);
+    let finalContent = response.content || 'Desculpe, não consegui processar sua mensagem.';
+
+    const relevance = assessThematicRelevance(finalContent, {
+      projectTitle: projectContext?.projectTitle,
+      projectDescription: projectContext?.projectDescription,
+      sections: projectContext?.sections,
+    });
+
+    if (projectContext && relevance.needsReview) {
+      const rewriteMessages: AIMessage[] = [
+        ...enhancedMessages,
+        { role: 'assistant', content: finalContent },
+        {
+          role: 'user',
+          content:
+            'Reescreva sua resposta para ficar mais aderente ao tema do projeto. Evite sistemas fora de contexto; se citar algo fora do núcleo, justifique explicitamente o vínculo com a descrição do jogo. Preserve o formato de comandos [EXECUTAR] quando necessário.',
+        },
+      ];
+
+      const rewriteResponse = await client.chat(rewriteMessages, { temperature: 0.2, maxTokens: 1800 });
+      finalContent = rewriteResponse.content || finalContent;
+    }
+
+    const finalRelevance = assessThematicRelevance(finalContent, {
+      projectTitle: projectContext?.projectTitle,
+      projectDescription: projectContext?.projectDescription,
+      sections: projectContext?.sections,
+    });
 
     // Resposta sempre como mensagem (sem function calling)
     return NextResponse.json({
       type: 'message',
-      message: response.content || 'Desculpe, não consegui processar sua mensagem.',
+      message: finalContent,
       meta: {
         provider: response.provider,
         model: response.model,
-        tokensUsed: response.tokensUsed
+        tokensUsed: response.tokensUsed,
+        thematicRelevance: finalRelevance,
       }
     });
 

@@ -1,5 +1,6 @@
 import { buildUnityExport } from "@/lib/balance/unityExport";
 import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
+import { balanceDraftToSectionAddon } from "@/lib/addons/types";
 
 describe("unity export", () => {
   it("exports computed LV -> XP table for section balance addons", () => {
@@ -15,7 +16,7 @@ describe("unity export", () => {
           id: "section-1",
           parentId: null,
           title: "Progression",
-          balanceAddons: [addon],
+          addons: [balanceDraftToSectionAddon(addon)],
         },
       ],
     } as any;

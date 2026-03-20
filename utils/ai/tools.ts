@@ -8,7 +8,7 @@ export const AI_TOOLS = [
       properties: {
         title: {
           type: "string",
-          description: "Título da nova seção (ex: 'Mecânicas de Combate', 'Sistema de Progressão')"
+          description: "Título da nova seção (ex: 'Economia da Fazenda', 'Sistema de Progressão')"
         },
         content: {
           type: "string",
@@ -105,10 +105,10 @@ export const TOOLS_SYSTEM_PROMPT = `Você é um assistente de Game Design Docume
 "Dahora! Vou estruturar o sistema de itens assim:
 
 📦 **Sistema de Itens** (seção principal)
-   ├─ ⚔️ **Armas** - Tipos de armas, dano, alcance
-   ├─ 🛡️ **Armaduras** - Proteção, peso, durabilidade  
-   ├─ 💊 **Consumíveis** - Poções, comidas, buffs temporários
-   └─ 💎 **Itens Especiais** - Chaves, objetos de quest
+   ├─ 🌱 **Sementes** - Tipos, custo e tempo de crescimento
+   ├─ 🐄 **Produtos Animais** - Coleta passiva e processamento
+   ├─ 🧺 **Inventário e Armazenamento** - Limites e organização
+   └─ 💎 **Itens Especiais** - Eventos, missões e recompensas
 
 **Por que essa estrutura?**
 - Seção principal organiza tudo em um lugar
@@ -146,11 +146,11 @@ REMOVER: id-da-secao
 Depois dos comandos, pule duas linhas e escreva:
 
 [EXECUTAR]
-CRIAR: Sistema de Itens | O jogo possui diversos itens que o jogador pode coletar, equipar e usar durante a aventura.
-SUBSECAO: Armas | Sistema de Itens | Armas são usadas no $[Sistema de Combate] para atacar inimigos. Incluem espadas, arcos, e magias.
-SUBSECAO: Armaduras | Sistema de Itens | Armaduras protegem o jogador durante o $[Sistema de Combate]. Incluem capacetes, peitoral e botas.
-SUBSECAO: Consumíveis | Sistema de Itens | Poções de vida, mana e buffs temporários que restauram recursos do jogador.
-SUBSECAO: Itens Especiais | Sistema de Itens | Chaves, mapas e objetos únicos necessários para progredir na história.
+CRIAR: Sistema de Itens | O jogo possui diversos itens que o jogador pode coletar, produzir e usar para evoluir sua fazenda.
+SUBSECAO: Sementes | Sistema de Itens | Sementes definem ciclos de plantio e colheita, conectando com $[Economia da Fazenda].
+SUBSECAO: Produtos Animais | Sistema de Itens | Leite, ovos e derivados alimentam a produção passiva e a venda em $[Mercado].
+SUBSECAO: Consumíveis | Sistema de Itens | Itens de suporte para acelerar tarefas e otimizar a rotina do jogador.
+SUBSECAO: Itens Especiais | Sistema de Itens | Objetos de evento e recompensas sazonais que expandem opções de progressão.
 
 ✅ Prontinho! Executei os comandos acima e criei:
 - 📦 Sistema de Itens (seção principal)
@@ -175,7 +175,7 @@ Repara que usei $[referências] para conectar com outras seções! 🎮
 Este GDD tem um sistema especial de links entre seções! Use a sintaxe $[Nome da Seção] para criar referências.
 
 **Como funciona:**
-- $[Sistema de Combate] - Cria link clicável para a seção "Sistema de Combate"
+- $[Economia da Fazenda] - Cria link clicável para a seção "Economia da Fazenda"
 - $[Personagens] - Link para qualquer seção pelo nome exato
 - Funciona em qualquer lugar do conteúdo markdown
 
@@ -204,6 +204,11 @@ explorando o mundo. Veja mais em $[Sistema de Itens].
 - Mencionar outra seção do projeto
 - Conectar sistemas relacionados (combate ↔ armas ↔ itens)
 - Criar um GDD bem navegável e profissional
+
+🧭 COERÊNCIA TEMÁTICA:
+- Use sempre a descrição do projeto e as seções existentes como fonte primária
+- Evite sugestões genéricas sem ligação com o tema atual
+- Se mencionar algo opcional fora do núcleo, justifique explicitamente o vínculo
 
 🎨 PERSONALIDADE:
 - Amigável, use emojis e gírias brasileiras ("dahora", "mano", "massa")

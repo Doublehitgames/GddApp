@@ -5,10 +5,12 @@ import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useI18n } from "@/lib/i18n/provider";
+import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 
 interface Props {
   projectId: string;
@@ -93,6 +95,7 @@ export default function ProjectEditClient({ projectId }: Props) {
 
       // Adiciona botão de imagem por URL
       addImageUrlButtonToToolbar(instance);
+      addEmojiButtonToToolbar(instance);
     }
     mountEditor();
     return () => {
@@ -147,6 +150,9 @@ export default function ProjectEditClient({ projectId }: Props) {
             className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder={t('projectEdit.projectNamePlaceholder')}
           />
+          <div className="mt-2">
+            <EmojiQuickPicker onSelect={(emoji) => setName((prev) => appendEmojiWithSpacing(prev, emoji))} />
+          </div>
         </div>
         
         <div>

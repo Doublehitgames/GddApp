@@ -6,11 +6,13 @@ import { useProjectStore } from "@/store/projectStore";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
 import { useI18n } from "@/lib/i18n/provider";
+import { assessThematicRelevance } from "@/utils/ai/thematicGuardrails";
 
 interface AIChatProps {
   projectContext?: {
     projectId: string;
     projectTitle: string;
+    projectDescription?: string;
     sections: Array<{
       id: string;
       title: string;
@@ -27,6 +29,12 @@ interface ChatMessage extends AIMessage {
   id: string;
   timestamp: Date;
   isLoading?: boolean;
+}
+
+interface PendingCommandExecution {
+  commands: string[];
+  cleanMessage: string;
+  relevanceWarning: string | null;
 }
 
 export default function AIChat({ projectContext, onClose, isOpen = true }: AIChatProps) {
@@ -51,7 +59,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [relationsLoading, setRelationsLoading] = useState(false);
-  const [pendingActions, setPendingActions] = useState<any[]>([]);
+  const [pendingExecution, setPendingExecution] = useState<PendingCommandExecution | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
   const [autoSwitchedModel, setAutoSwitchedModel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -137,6 +145,96 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     }
   }, [isOpen]);
 
+  const parseExecutionCommands = (message: string): string[] => {
+    const commandsMatch = message.match(/\[EXECUTAR\]([\s\S]*?)(?=\n\n|$)/);
+    if (!commandsMatch) return [];
+    return commandsMatch[1]
+      .trim()
+      .split("\n")
+      .map((cmd) => cmd.trim())
+      .filter(Boolean);
+  };
+
+  const executeCommands = (commands: string[]) => {
+    if (!projectContext) return;
+
+    const results: string[] = [];
+    let successCount = 0;
+    const createdSections: Map<string, string> = new Map();
+
+    for (const command of commands) {
+      const trimmed = command.trim();
+
+      try {
+        if (trimmed.startsWith("CRIAR:")) {
+          const parts = trimmed.substring(6).split("|").map((p: string) => p.trim());
+          if (parts.length >= 2) {
+            const [title, content] = parts;
+            const newId = addSection(projectContext.projectId, title, content);
+            createdSections.set(title, newId);
+            results.push(`✅ Criou: ${title}`);
+            successCount++;
+          }
+        } else if (trimmed.startsWith("SUBSECAO:")) {
+          const parts = trimmed.substring(9).split("|").map((p: string) => p.trim());
+          if (parts.length >= 3) {
+            const [title, parentTitle, content] = parts;
+            const parentId =
+              createdSections.get(parentTitle) ||
+              projectContext.sections.find((s) => s.title === parentTitle)?.id;
+
+            if (parentId) {
+              addSubsection(projectContext.projectId, parentId, title, content);
+              results.push(`✅ Criou subseção: ${title} em ${parentTitle}`);
+              successCount++;
+            } else {
+              results.push(`❌ Não encontrou seção pai: ${parentTitle}`);
+            }
+          }
+        } else if (trimmed.startsWith("EDITAR:")) {
+          const parts = trimmed.substring(7).split("|").map((p: string) => p.trim());
+          if (parts.length >= 2) {
+            const [sectionId, newContent] = parts;
+            const section = projectContext.sections.find((s) => s.id === sectionId);
+            if (section) {
+              editSection(projectContext.projectId, sectionId, section.title, newContent);
+              results.push(`✅ Editou: ${section.title}`);
+              successCount++;
+            } else {
+              results.push(`❌ Seção não encontrada: ${sectionId}`);
+            }
+          }
+        } else if (trimmed.startsWith("REMOVER:")) {
+          const sectionId = trimmed.substring(8).trim();
+          const section = projectContext.sections.find((s) => s.id === sectionId);
+          if (section) {
+            removeSection(projectContext.projectId, sectionId);
+            results.push(`✅ Removeu: ${section.title}`);
+            successCount++;
+          } else {
+            results.push(`❌ Seção não encontrada: ${sectionId}`);
+          }
+        }
+      } catch (err) {
+        console.error("Error executing command:", trimmed, err);
+        results.push(`❌ Erro ao executar: ${trimmed}`);
+      }
+    }
+
+    const updatedProject = getProject(projectContext.projectId);
+    if (updatedProject) {
+      projectContext.sections = updatedProject.sections || [];
+    }
+
+    const summaryMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: `${results.join("\n")}\n\n**${successCount} de ${commands.length} ações executadas!**`,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, summaryMessage]);
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -150,6 +248,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setPendingExecution(null);
 
     // Add loading message
     const loadingMessage: ChatMessage = {
@@ -250,99 +349,38 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
       setMessages((prev) => prev.filter((m) => !m.isLoading));
 
       const message = data.message || data.content || "Desculpe, não entendi.";
+      const commands = parseExecutionCommands(message);
 
-      // Sistema de comandos simples - muito mais confiável que JSON
-      const commandsMatch = message.match(/\[EXECUTAR\]([\s\S]*?)(?=\n\n|$)/);
-      
-      if (commandsMatch && projectContext) {
-        const commands = commandsMatch[1].trim().split('\n').filter((cmd: string) => cmd.trim());
-        const results: string[] = [];
-        let successCount = 0;
-        const createdSections: Map<string, string> = new Map(); // title -> id
-        
-        for (const command of commands) {
-          const trimmed = command.trim();
-          
-          try {
-            // CRIAR: título | conteúdo
-            if (trimmed.startsWith('CRIAR:')) {
-              const parts = trimmed.substring(6).split('|').map((p: string) => p.trim());
-              if (parts.length >= 2) {
-                const [title, content] = parts;
-                const newId = addSection(projectContext.projectId, title, content);
-                createdSections.set(title, newId);
-                results.push(`✅ Criou: ${title}`);
-                successCount++;
-              }
-            }
-            // SUBSECAO: título | pai | conteúdo
-            else if (trimmed.startsWith('SUBSECAO:')) {
-              const parts = trimmed.substring(9).split('|').map((p: string) => p.trim());
-              if (parts.length >= 3) {
-                const [title, parentTitle, content] = parts;
-                const parentId = createdSections.get(parentTitle) || 
-                  projectContext.sections.find(s => s.title === parentTitle)?.id;
-                
-                if (parentId) {
-                  addSubsection(projectContext.projectId, parentId, title, content);
-                  results.push(`✅ Criou subseção: ${title} em ${parentTitle}`);
-                  successCount++;
-                } else {
-                  results.push(`❌ Não encontrou seção pai: ${parentTitle}`);
-                }
-              }
-            }
-            // EDITAR: id | novo conteúdo
-            else if (trimmed.startsWith('EDITAR:')) {
-              const parts = trimmed.substring(7).split('|').map((p: string) => p.trim());
-              if (parts.length >= 2) {
-                const [sectionId, newContent] = parts;
-                const section = projectContext.sections.find(s => s.id === sectionId);
-                if (section) {
-                  editSection(projectContext.projectId, sectionId, section.title, newContent);
-                  results.push(`✅ Editou: ${section.title}`);
-                  successCount++;
-                } else {
-                  results.push(`❌ Seção não encontrada: ${sectionId}`);
-                }
-              }
-            }
-            // REMOVER: id
-            else if (trimmed.startsWith('REMOVER:')) {
-              const sectionId = trimmed.substring(8).trim();
-              const section = projectContext.sections.find(s => s.id === sectionId);
-              if (section) {
-                removeSection(projectContext.projectId, sectionId);
-                results.push(`✅ Removeu: ${section.title}`);
-                successCount++;
-              } else {
-                results.push(`❌ Seção não encontrada: ${sectionId}`);
-              }
-            }
-          } catch (err) {
-            console.error('Error executing command:', trimmed, err);
-            results.push(`❌ Erro ao executar: ${trimmed}`);
-          }
-        }
+      if (commands.length > 0 && projectContext) {
+        const cleanMessage = message.replace(/\[EXECUTAR\][\s\S]*?(?=\n\n|$)/, "").trim();
+        const relevanceFromApi = data?.meta?.thematicRelevance as
+          | { needsReview?: boolean; conflictHits?: string[]; score?: number }
+          | undefined;
+        const localRelevance = assessThematicRelevance(message, {
+          projectTitle: projectContext.projectTitle,
+          projectDescription: projectContext.projectDescription,
+          sections: projectContext.sections,
+        });
+        const needsReview = Boolean(relevanceFromApi?.needsReview || localRelevance.needsReview);
+        const conflicts = relevanceFromApi?.conflictHits?.length
+          ? relevanceFromApi.conflictHits
+          : localRelevance.conflictHits;
 
-        // Atualiza o contexto
-        const updatedProject = getProject(projectContext.projectId);
-        if (updatedProject) {
-          projectContext.sections = updatedProject.sections || [];
-        }
+        setPendingExecution({
+          commands,
+          cleanMessage,
+          relevanceWarning: needsReview
+            ? `⚠️ As ações propostas parecem pouco alinhadas ao tema do projeto${conflicts.length ? ` (${conflicts.join(", ")})` : ""}. Revise antes de confirmar.`
+            : null,
+        });
 
-        // Mostra resultado
-        const cleanMessage = message.replace(/\[EXECUTAR\][\s\S]*?(?=\n\n|$)/, '').trim();
-        const resultSummary = results.join('\n');
-        
         const assistantMessage: ChatMessage = {
           id: Date.now().toString(),
           role: "assistant",
-          content: `${resultSummary}\n\n**${successCount} de ${commands.length} ações executadas!**\n\n${cleanMessage}`,
+          content: `${cleanMessage}\n\n**Ações prontas para execução:** ${commands.length}. Use os botões abaixo para confirmar ou cancelar.`,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, assistantMessage]);
-        
       } else {
         // Resposta normal sem comandos
         const assistantMessage: ChatMessage = {
@@ -460,6 +498,26 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     }
   };
 
+  const handleConfirmPendingExecution = () => {
+    if (!pendingExecution) return;
+    executeCommands(pendingExecution.commands);
+    setPendingExecution(null);
+  };
+
+  const handleCancelPendingExecution = () => {
+    if (!pendingExecution) return;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `cancel-${Date.now()}`,
+        role: "assistant",
+        content: "Execução cancelada. Posso ajustar a proposta para ficar mais alinhada ao seu projeto.",
+        timestamp: new Date(),
+      },
+    ]);
+    setPendingExecution(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -476,6 +534,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
         headers: { "Content-Type": "application/json", ...getAIHeaders() },
         body: JSON.stringify({
           projectTitle: projectContext.projectTitle,
+          projectDescription: projectContext.projectDescription,
           sections: projectContext.sections.map((s) => ({
             id: s.id,
             title: s.title,
@@ -680,6 +739,33 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
             <p className="text-xs text-gray-500 mt-1">
               {t("projectDetail.relationsSuggestHint")}
             </p>
+          </div>
+        )}
+
+        {pendingExecution && (
+          <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+            <p className="text-sm font-medium text-amber-900">
+              Confirma executar {pendingExecution.commands.length} ação(ões)?
+            </p>
+            {pendingExecution.relevanceWarning && (
+              <p className="mt-1 text-xs text-amber-800">{pendingExecution.relevanceWarning}</p>
+            )}
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmPendingExecution}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelPendingExecution}
+                className="rounded-lg bg-gray-200 px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
         

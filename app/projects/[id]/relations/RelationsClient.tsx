@@ -69,6 +69,7 @@ export default function RelationsClient({ projectId }: Props) {
         headers: { "Content-Type": "application/json", ...getAIHeaders() },
         body: JSON.stringify({
           projectTitle: project.title,
+          projectDescription: project.description,
           sections,
         }),
       });

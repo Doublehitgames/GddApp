@@ -1457,7 +1457,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           // Prefere local se for mais recente OU se tiver mais seções (evita perder dados quando sync de seções falhou)
           const preferLocal =
             localUpdated > remoteUpdated || (localUpdated >= remoteUpdated && localSections >= remoteSections);
-          return preferLocal ? local : remoteProject;
+          if (preferLocal) return local;
+
+          // Retrocompatibilidade: se a nuvem ainda não tem cover_image_url,
+          // mantém a capa local para não "sumir" após refresh/load.
+          const localCover = typeof local.coverImageUrl === "string" ? local.coverImageUrl.trim() : "";
+          const remoteCover = typeof remoteProject.coverImageUrl === "string" ? remoteProject.coverImageUrl.trim() : "";
+          if (localCover && !remoteCover) {
+            return { ...remoteProject, coverImageUrl: localCover };
+          }
+
+          return remoteProject;
         }),
         ...localOnly, // Projetos que só existem localmente
       ];

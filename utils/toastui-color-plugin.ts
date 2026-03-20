@@ -6,6 +6,7 @@ import {
   driveFileIdToImageUrl,
   getGoogleClientId,
 } from "@/lib/googleDrivePicker";
+import { GDD_EMOJI_CATEGORIES, GDD_EMOJI_PRESETS } from "@/lib/emojiPresets";
 
 // Predefined color palette
 export const COLOR_PALETTE = [
@@ -574,6 +575,147 @@ export function addReferenceButtonToToolbar(
     });
 
     wrapper.appendChild(btn);
+    const firstGroup = toolbarElement.querySelector(".toastui-editor-toolbar-group");
+    if (firstGroup) firstGroup.appendChild(wrapper);
+  }, 140);
+}
+
+/** Adiciona botão de emojis na toolbar para inserção rápida. */
+export function addEmojiButtonToToolbar(editor: ToastEditorLike) {
+  setTimeout(() => {
+    const editorRoot =
+      editor?.el?.closest?.(".toastui-editor-defaultUI") ||
+      document.querySelector(".toastui-editor-defaultUI");
+    const toolbarElement = editorRoot?.querySelector(".toastui-editor-toolbar") as HTMLElement | null;
+    if (!toolbarElement) return;
+    if (toolbarElement.querySelector(".emoji-button-wrapper")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "emoji-button-wrapper";
+    wrapper.style.cssText = "position: relative; display: inline-block;";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "toastui-editor-toolbar-icons emoji";
+    btn.style.cssText = "padding: 5px 8px; margin: 0 2px; border: none; background: transparent; cursor: pointer; font-size: 16px;";
+    btn.innerHTML = "😊";
+    btn.title = "Inserir emoji";
+
+    const dropdown = document.createElement("div");
+    dropdown.style.cssText = `
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: #1f2937;
+      border: 1px solid #4b5563;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      padding: 8px;
+      z-index: 10001;
+      width: 380px;
+    `;
+
+    const insertEmoji = (emoji: string) => {
+      const modeEditor = editor?.getCurrentModeEditor?.();
+      if (typeof modeEditor?.replaceSelection === "function") {
+        modeEditor.replaceSelection(emoji);
+        return;
+      }
+      if (typeof editor?.insertText === "function") {
+        editor.insertText(emoji);
+        return;
+      }
+      const currentMarkdown = editor?.getMarkdown?.() || "";
+      editor?.setMarkdown?.(`${currentMarkdown}${emoji}`);
+    };
+
+    const categories = [{ id: "all", label: "Todos", emojis: GDD_EMOJI_PRESETS }, ...GDD_EMOJI_CATEGORIES];
+    let activeCategoryId = "all";
+
+    const tabs = document.createElement("div");
+    tabs.style.cssText = "display:flex; flex-wrap:wrap; gap:4px; padding-bottom:6px; margin-bottom:6px;";
+
+    const grid = document.createElement("div");
+    grid.style.cssText = "display: grid; grid-template-columns: repeat(10, minmax(0,1fr)); gap: 4px;";
+
+    const setActiveTabStyles = () => {
+      Array.from(tabs.querySelectorAll("button")).forEach((node) => {
+        const tab = node as HTMLButtonElement;
+        if (tab.dataset.category === activeCategoryId) {
+          tab.style.background = "#4f46e5";
+          tab.style.color = "#ffffff";
+        } else {
+          tab.style.background = "#374151";
+          tab.style.color = "#e5e7eb";
+        }
+      });
+    };
+
+    const renderEmojiGrid = () => {
+      const activeCategory = categories.find((category) => category.id === activeCategoryId) || categories[0];
+      grid.innerHTML = "";
+      activeCategory.emojis.forEach((emoji) => {
+        const emojiBtn = document.createElement("button");
+        emojiBtn.type = "button";
+        emojiBtn.textContent = emoji;
+        emojiBtn.title = `Inserir ${emoji}`;
+        emojiBtn.style.cssText =
+          "height: 28px; width: 28px; border: none; border-radius: 6px; background: transparent; cursor: pointer; font-size: 18px; line-height: 1;";
+        emojiBtn.addEventListener("mouseenter", () => {
+          emojiBtn.style.background = "#374151";
+        });
+        emojiBtn.addEventListener("mouseleave", () => {
+          emojiBtn.style.background = "transparent";
+        });
+        emojiBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          insertEmoji(emoji);
+          dropdown.style.display = "none";
+        });
+        grid.appendChild(emojiBtn);
+      });
+      setActiveTabStyles();
+    };
+
+    categories.forEach((category) => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.dataset.category = category.id;
+      tab.textContent = category.label;
+      tab.style.cssText =
+        "padding: 4px 8px; border: none; border-radius: 6px; font-size: 11px; white-space: nowrap; cursor: pointer; transition: background 120ms;";
+      tab.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activeCategoryId = category.id;
+        renderEmojiGrid();
+      });
+      tabs.appendChild(tab);
+    });
+
+    renderEmojiGrid();
+    dropdown.appendChild(tabs);
+    dropdown.appendChild(grid);
+
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target as Node;
+      if (!wrapper.contains(target)) {
+        dropdown.style.display = "none";
+      }
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(dropdown);
+
     const firstGroup = toolbarElement.querySelector(".toastui-editor-toolbar-group");
     if (firstGroup) firstGroup.appendChild(wrapper);
   }, 140);

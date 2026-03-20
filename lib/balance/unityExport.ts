@@ -1,5 +1,6 @@
 import { generateBalanceCurve } from "@/lib/balance/formulaEngine";
 import type { Project, Section } from "@/store/projectStore";
+import { sectionAddonToBalanceDraft } from "@/lib/addons/types";
 
 type UnitySectionExport = {
   id: string;
@@ -27,21 +28,24 @@ export function buildUnityExport(project: Project): UnityExportV1 {
     id: section.id,
     parentId: section.parentId || null,
     title: section.title,
-    balanceAddons: (section.balanceAddons || []).map((addon) => {
+    balanceAddons: (section.addons || [])
+      .filter((addon) => addon.type === "balance")
+      .map((addon) => {
+      const balanceAddon = sectionAddonToBalanceDraft(addon);
       const curve = generateBalanceCurve({
-        mode: addon.mode,
-        preset: addon.preset,
-        expression: addon.expression,
-        startLevel: addon.startLevel,
-        endLevel: addon.endLevel,
-        decimals: addon.decimals,
-        clampMin: addon.clampMin,
-        clampMax: addon.clampMax,
-        params: addon.params,
+        mode: balanceAddon.mode,
+        preset: balanceAddon.preset,
+        expression: balanceAddon.expression,
+        startLevel: balanceAddon.startLevel,
+        endLevel: balanceAddon.endLevel,
+        decimals: balanceAddon.decimals,
+        clampMin: balanceAddon.clampMin,
+        clampMax: balanceAddon.clampMax,
+        params: balanceAddon.params,
       });
       return {
-        id: addon.id,
-        name: addon.name,
+        id: balanceAddon.id,
+        name: balanceAddon.name,
         computedTable: curve.points,
       };
     }),

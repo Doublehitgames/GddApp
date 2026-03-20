@@ -20,7 +20,15 @@ export default function SettingsClient({ projectId }: Props) {
   const { user } = useAuthStore();
   const isPt = locale === "pt-BR";
   const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
-  const { getProject, updateProjectSettings, updateProjectMindMapSettingsOnly, removeProject } = useProjectStore();
+  const {
+    getProject,
+    updateProjectSettings,
+    updateProjectMindMapSettingsOnly,
+    removeProject,
+    loadFromSupabase,
+    refreshQuotaStatus,
+    setProjectOwnerLocally,
+  } = useProjectStore();
   const project = getProject(projectId);
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
@@ -36,6 +44,12 @@ export default function SettingsClient({ projectId }: Props) {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [memberDialog, setMemberDialog] = useState<MemberRow | null>(null);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferConfirmValue, setTransferConfirmValue] = useState("");
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
   const [deleteBackupChecked, setDeleteBackupChecked] = useState(false);
@@ -58,6 +72,12 @@ export default function SettingsClient({ projectId }: Props) {
   useEffect(() => {
     if (projectId) void fetchMembers();
   }, [projectId, fetchMembers]);
+
+  useEffect(() => {
+    if (!transferSuccess) return;
+    const id = setTimeout(() => setTransferSuccess(null), 3000);
+    return () => clearTimeout(id);
+  }, [transferSuccess]);
 
   const handleInvite = async () => {
     const email = inviteEmail.trim().toLowerCase();
@@ -121,6 +141,59 @@ export default function SettingsClient({ projectId }: Props) {
       setRemoveError(t("settings.mindmapShareMembers.inviteErrorNetwork"));
     } finally {
       setRemovingUserId(null);
+    }
+  };
+
+  const handleOpenMemberDialog = (member: MemberRow) => {
+    setTransferError(null);
+    setMemberDialog(member);
+  };
+
+  const handleTransferProject = async () => {
+    if (!memberDialog || !project || !isOwner) return;
+    if (memberDialog.role !== "editor") {
+      setTransferError(t("settings.mindmapShareMembers.transfer.onlyEditor"));
+      return;
+    }
+    if (transferConfirmValue.trim() !== project.title.trim()) {
+      setTransferError(t("settings.mindmapShareMembers.transfer.confirmMismatch"));
+      return;
+    }
+
+    setTransferError(null);
+    setTransferLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          targetUserId: memberDialog.userId,
+          confirmProjectTitle: transferConfirmValue.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setTransferError(
+          (data.message as string) ||
+            (data.error as string) ||
+            t("settings.mindmapShareMembers.transfer.errorGeneric")
+        );
+        return;
+      }
+
+      setProjectOwnerLocally(projectId, memberDialog.userId);
+      setTransferSuccess(t("settings.mindmapShareMembers.transfer.success"));
+      setTransferModalOpen(false);
+      setMemberDialog(null);
+      setTransferConfirmValue("");
+      await fetchMembers();
+      await loadFromSupabase();
+      await refreshQuotaStatus(projectId);
+    } catch {
+      setTransferError(t("settings.mindmapShareMembers.transfer.errorNetwork"));
+    } finally {
+      setTransferLoading(false);
     }
   };
 
@@ -428,8 +501,9 @@ export default function SettingsClient({ projectId }: Props) {
   };
 
   const deleteConfirmMatch = Boolean(project && deleteConfirmValue.trim() === project.title.trim());
+  const transferConfirmMatch = Boolean(project && transferConfirmValue.trim() === project.title.trim());
 
-  if (!project) return <div>{isPt ? "Projeto não encontrado" : "Project not found"}</div>;
+  if (!project) return <div>{tr("Projeto não encontrado", "Project not found")}</div>;
   const levels = settings.levels || [];
   const shareToken = (getValue("sharing.shareToken") || "") as string;
   const isPublicShareEnabled = Boolean(getValue("sharing.isPublic"));
@@ -627,6 +701,8 @@ export default function SettingsClient({ projectId }: Props) {
                   </div>
                   {inviteError && <p className="text-sm text-red-400 mb-2">{inviteError}</p>}
                   {removeError && <p className="text-sm text-red-400 mb-2">{removeError}</p>}
+                  {transferError && <p className="text-sm text-red-400 mb-2">{transferError}</p>}
+                  {transferSuccess && <p className="text-sm text-green-400 mb-2">{transferSuccess}</p>}
                 </>
               )}
               {!isOwner && <p className="text-sm text-gray-400 mb-3">{t("settings.mindmapShareMembers.membersListOnly")}</p>}
@@ -636,9 +712,24 @@ export default function SettingsClient({ projectId }: Props) {
                 <ul className="space-y-2 text-sm">
                   {members.map((m) => (
                     <li key={m.userId} className="flex items-center gap-2 text-gray-300 flex-wrap">
-                      <span className="font-medium">{m.displayName || m.email || m.userId}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenMemberDialog(m)}
+                        className="font-medium hover:text-white underline-offset-2 hover:underline"
+                      >
+                        {m.displayName || m.email || m.userId}
+                      </button>
                       {m.email && m.displayName && <span className="text-gray-500">({m.email})</span>}
                       <span className="px-2 py-0.5 rounded bg-gray-600 text-xs">{m.role}</span>
+                      {isOwner && m.role === "editor" && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenMemberDialog(m)}
+                          className="text-indigo-300 hover:text-indigo-200 text-xs font-medium"
+                        >
+                          {t("settings.mindmapShareMembers.transfer.openAction")}
+                        </button>
+                      )}
                       {isOwner && m.role !== "owner" && (
                         <button
                           type="button"
@@ -1145,6 +1236,95 @@ export default function SettingsClient({ projectId }: Props) {
           <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
           <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
         </div>
+
+        {memberDialog && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+            onClick={() => {
+              setMemberDialog(null);
+              setTransferModalOpen(false);
+              setTransferConfirmValue("");
+            }}
+          >
+            <div
+              className="bg-gray-800 rounded-xl border border-gray-600 shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-white mb-2">{t("settings.mindmapShareMembers.transfer.memberDetailsTitle")}</h3>
+              <p className="text-sm text-gray-300 mb-1">
+                <span className="font-medium">{t("settings.mindmapShareMembers.transfer.memberNameLabel")}:</span>{" "}
+                {memberDialog.displayName || memberDialog.email || memberDialog.userId}
+              </p>
+              <p className="text-sm text-gray-300 mb-1">
+                <span className="font-medium">{t("settings.mindmapShareMembers.transfer.memberEmailLabel")}:</span>{" "}
+                {memberDialog.email || "—"}
+              </p>
+              <p className="text-sm text-gray-300 mb-4">
+                <span className="font-medium">{t("settings.mindmapShareMembers.transfer.memberRoleLabel")}:</span>{" "}
+                {memberDialog.role}
+              </p>
+
+              {isOwner && memberDialog.role === "editor" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferError(null);
+                    setTransferModalOpen(true);
+                  }}
+                  className="w-full mb-4 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold"
+                >
+                  {t("settings.mindmapShareMembers.transfer.button")}
+                </button>
+              )}
+
+              {isOwner && memberDialog.role !== "editor" && memberDialog.role !== "owner" && (
+                <p className="text-sm text-yellow-300 mb-4">{t("settings.mindmapShareMembers.transfer.onlyEditor")}</p>
+              )}
+
+              {transferModalOpen && (
+                <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-300 mb-2">{t("settings.mindmapShareMembers.transfer.confirmDescription")}</p>
+                  <p className="text-sm font-medium text-white mb-2">{project.title}</p>
+                  <input
+                    type="text"
+                    value={transferConfirmValue}
+                    onChange={(e) => {
+                      setTransferConfirmValue(e.target.value);
+                      setTransferError(null);
+                    }}
+                    placeholder={t("settings.mindmapShareMembers.transfer.confirmPlaceholder")}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 mb-3 text-white placeholder-gray-400"
+                  />
+                  <p className="text-xs text-gray-400 mb-3">{t("settings.mindmapShareMembers.transfer.confirmHint")}</p>
+                  <button
+                    type="button"
+                    onClick={() => void handleTransferProject()}
+                    disabled={!transferConfirmMatch || transferLoading}
+                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold"
+                  >
+                    {transferLoading
+                      ? t("settings.mindmapShareMembers.transfer.transferring")
+                      : t("settings.mindmapShareMembers.transfer.confirmButton")}
+                  </button>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMemberDialog(null);
+                    setTransferModalOpen(false);
+                    setTransferConfirmValue("");
+                  }}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium"
+                >
+                  {t("settings.deleteProject.cancel")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {deleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => setDeleteModalOpen(false)}>

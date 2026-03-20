@@ -84,6 +84,16 @@ EXEMPLOS BONS (FAÇA):
 
 Lembre-se: você é um parceiro criativo que conversa NATURALMENTE, UMA coisa por vez, sendo CONSISTENTE com o que já foi dito! 🎮✨`;
 
+export const TEMPLATE_SYSTEM_PROMPT = `Você é um especialista em criação de estrutura de GDD.
+
+Gere somente estruturas alinhadas ao tema fornecido pelo usuário.
+
+Regras críticas:
+- Não inclua sistemas genéricos que não apareçam no contexto do projeto.
+- Se sugerir algo opcional fora do núcleo descrito, justifique explicitamente a conexão.
+- Prefira linguagem concreta e aderente ao loop principal descrito.
+- Retorne apenas JSON válido, sem texto adicional.`;
+
 export function generateTemplatePrompt(request: GDDTemplateRequest): string {
   return `Crie um template completo de GDD para o seguinte projeto:
 
@@ -124,6 +134,7 @@ Retorne um JSON válido no seguinte formato (sem markdown, apenas JSON puro):
 7. Seja específico ao tipo de jogo mencionado
 8. Para CADA seção e subseção inclua "domainTags": array de 1 a 3 domínios (use só os IDs listados: combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other). Ex.: Overview → ["other"], Combate → ["combat"], Economia → ["economy"], Progressão → ["progression"].
 9. Retorne APENAS o JSON, sem texto adicional antes ou depois
+10. NÃO invente sistemas fora do escopo descrito. Se sugerir algo opcional além do núcleo, explique por que isso combina com a descrição do projeto.
 
 Seções típicas de um GDD incluem:
 - Overview/Visão Geral
@@ -136,7 +147,7 @@ Seções típicas de um GDD incluem:
 - Audio/Música
 - UI/UX
 - Níveis/Mundo do Jogo
-- Sistemas específicos do gênero (combate, puzzles, economia, etc.)
+- Sistemas específicos do gênero descrito (somente os que forem coerentes com a descrição informada)
 - Tecnologia
 - Plano de Desenvolvimento/Milestones
 
@@ -155,6 +166,7 @@ export function generateChatWithContextPrompt(
   userMessage: string,
   projectContext?: {
     projectTitle: string;
+    projectDescription?: string;
     sections: Array<{ id: string; title: string; content?: string; domainTags?: string[] }>;
   }
 ): string {
@@ -172,6 +184,7 @@ export function generateChatWithContextPrompt(
   return `Contexto do projeto atual:
 
 **Projeto:** ${projectContext.projectTitle}
+**Descrição:** ${projectContext.projectDescription || "Sem descrição informada."}
 **Seções existentes (tags de sistema entre colchetes):**
 ${sectionsInfo}
 
@@ -182,8 +195,10 @@ Responda de forma útil considerando o contexto do GDD atual. Se o usuário pedi
 - Criar seções: sugira títulos e conteúdo inicial
 - Editar conteúdo: forneça o texto em Markdown
 - Analisar: revise as seções e dê feedback construtivo
-- Sugerir relações: use as tags (combat, economy, progression, crafting, items, world, etc.) para sugerir conexões entre sistemas (ex.: Combate → Itens, Economia → Crafting)
-- Completar: preencha lacunas com conteúdo relevante`;
+- Sugerir relações: use as tags (economy, progression, crafting, items, world, etc.) para sugerir conexões entre sistemas aderentes ao tema
+- Completar: preencha lacunas com conteúdo relevante
+
+Nunca proponha sistemas fora do tema do projeto sem justificar claramente o vínculo com a descrição.`;
 }
 
 export function generateSectionContentPrompt(

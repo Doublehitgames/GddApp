@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface MarkdownWithReferencesProps {
   content: string;
@@ -11,6 +13,12 @@ interface MarkdownWithReferencesProps {
   sections: any[];
   referenceLinkMode?: "manager" | "document";
   documentAnchorOffset?: number;
+  resolveDocumentAnchorPreview?: (
+    sectionId: string
+  ) => {
+    title: string;
+    shortDescription: string;
+  } | null;
 }
 
 interface SectionRef {
@@ -19,6 +27,14 @@ interface SectionRef {
   refValue: string;
   startIndex: number;
   endIndex: number;
+}
+
+interface PendingAnchorNavigation {
+  href: string;
+  targetId: string;
+  rawSectionId: string;
+  title: string;
+  shortDescription: string;
 }
 
 function normalizeReferenceText(value: string): string {
@@ -143,8 +159,51 @@ export function MarkdownWithReferences({
   sections,
   referenceLinkMode = "manager",
   documentAnchorOffset = 180,
+  resolveDocumentAnchorPreview,
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
+  const { t } = useI18n();
+  const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
+  const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
+
+  const navigateToDocumentAnchor = (href: string, targetId: string, rawSectionId: string) => {
+    const targetElement =
+      document.getElementById(targetId) ||
+      (document.querySelector(`[data-section-anchor="${rawSectionId}"]`) as HTMLElement | null);
+    if (!targetElement) return;
+
+    const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - documentAnchorOffset;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    window.history.replaceState(null, "", href);
+
+    targetElement.classList.add("gdd-anchor-highlight");
+    window.setTimeout(() => {
+      targetElement.classList.remove("gdd-anchor-highlight");
+    }, 1800);
+  };
+
+  useEffect(() => {
+    if (!pendingAnchorNavigation) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (anchorPreviewCardRef.current?.contains(event.target as Node)) return;
+      setPendingAnchorNavigation(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPendingAnchorNavigation(null);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pendingAnchorNavigation]);
 
   const buildMarkdownWithReferenceLinks = () => {
     const normalizedContent = convertMarkdownLinksInsideHtmlBlocks(content);
@@ -265,22 +324,26 @@ export function MarkdownWithReferences({
                     event.preventDefault();
                     const targetId = href.slice(1);
                     const rawSectionId = targetId.replace(/^section-/, "");
-                    const targetElement =
-                      document.getElementById(targetId) ||
-                      (document.querySelector(`[data-section-anchor="${rawSectionId}"]`) as HTMLElement | null);
-                    if (!targetElement) return;
+                    const anchorPreview =
+                      referenceLinkMode === "document"
+                        ? resolveDocumentAnchorPreview?.(rawSectionId) || null
+                        : null;
 
-                    const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - documentAnchorOffset;
-                    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
-                    window.history.replaceState(null, "", href);
+                    if (anchorPreview) {
+                      setPendingAnchorNavigation({
+                        href,
+                        targetId,
+                        rawSectionId,
+                        title: anchorPreview.title,
+                        shortDescription: anchorPreview.shortDescription,
+                      });
+                      return;
+                    }
 
-                    targetElement.classList.add("gdd-anchor-highlight");
-                    window.setTimeout(() => {
-                      targetElement.classList.remove("gdd-anchor-highlight");
-                    }, 1800);
+                    navigateToDocumentAnchor(href, targetId, rawSectionId);
                   }}
                   className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                  title="Ir para seção no documento"
+                  title={t("view.anchorPreview.goToSection")}
                 >
                   {children}
                 </a>
@@ -303,6 +366,55 @@ export function MarkdownWithReferences({
       >
         {renderedContent}
       </ReactMarkdown>
+      {pendingAnchorNavigation && (
+        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
+          <div
+            ref={anchorPreviewCardRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("view.anchorPreview.title")}
+            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
+          >
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("view.anchorPreview.title")}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">
+                {pendingAnchorNavigation.title}
+              </h3>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm leading-6 text-gray-700">
+                {pendingAnchorNavigation.shortDescription || t("view.anchorPreview.noDescription")}
+              </p>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingAnchorNavigation(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  navigateToDocumentAnchor(
+                    pendingAnchorNavigation.href,
+                    pendingAnchorNavigation.targetId,
+                    pendingAnchorNavigation.rawSectionId
+                  );
+                  setPendingAnchorNavigation(null);
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {t("view.anchorPreview.goButton")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

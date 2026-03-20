@@ -49,6 +49,7 @@ export interface ChatRequest {
   projectContext?: {
     projectId: string;
     projectTitle: string;
+    projectDescription?: string;
     sections: Array<{
       id: string;
       title: string;

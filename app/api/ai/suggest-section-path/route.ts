@@ -13,6 +13,7 @@ interface SectionItem {
 
 interface SuggestPathRequest {
   projectTitle: string;
+  projectDescription?: string;
   sections: SectionItem[];
   newSectionTitle: string;
   /** Caminho da seção atual (onde a ref foi encontrada) para contexto */
@@ -50,7 +51,7 @@ function buildTreeText(sections: SectionItem[]): string {
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as SuggestPathRequest;
-    const { projectTitle, sections, newSectionTitle, currentContextPath } = body;
+    const { projectTitle, projectDescription, sections, newSectionTitle, currentContextPath } = body;
 
     if (!newSectionTitle?.trim()) {
       return NextResponse.json({ error: "newSectionTitle is required" }, { status: 400 });
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
 - "path" = array da raiz até a nova seção (inclusive). Use títulos EXATOS das seções existentes quando reaproveitar.
 - O último elemento do path deve ser o título da nova seção (igual ou variação coerente de newSectionTitle).
 - Máximo de níveis: 4 ou 5.
+- O caminho sugerido deve respeitar o tema descrito do projeto.
 
 **🔴 HIERARQUIA SEMÂNTICA (pense como game designer):**
 
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
 - "Dungeons Procedurais" (mecânica/ambiente) → pode ficar sob Gameplay, Ambientes ou Sistemas, conforme a árvore.`;
 
     const userPrompt = `Projeto: "${projectTitle}"
+Descrição do projeto: "${projectDescription?.trim() || "Sem descrição informada."}"
 ${contextHint}
 
 Estrutura atual do documento (hierarquia de seções):

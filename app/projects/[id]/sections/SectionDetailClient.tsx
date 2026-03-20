@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
 import { driveFileIdToImageUrl, normalizeDriveUrlsInMarkdown } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
@@ -31,9 +31,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
-import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
-import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
 import type { BalanceAddonDraft } from "@/lib/balance/types";
+import { ADDON_REGISTRY } from "@/lib/addons/registry";
+import type { SectionAddon } from "@/lib/addons/types";
+import { balanceDraftToSectionAddon } from "@/lib/addons/types";
+import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 
 interface Props {
   projectId: string;
@@ -54,7 +57,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
-  const setSectionBalanceAddons = useProjectStore((s) => s.setSectionBalanceAddons);
+  const addSectionAddon = useProjectStore((s) => s.addSectionAddon);
+  const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
+  const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
   const projects = useProjectStore((s) => s.projects);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
@@ -92,7 +97,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const router = useRouter();
 
   const sections = project?.sections || [];
-  const balanceAddons = section?.balanceAddons || [];
+  const addons = section?.addons || [];
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const { AutocompleteDropdown } = useMarkdownAutocomplete({
     sections,
@@ -383,6 +388,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
       // Adiciona botão de imagem por URL
       addImageUrlButtonToToolbar(instance);
+      addEmojiButtonToToolbar(instance);
 
       // Adiciona botão de imagem do Google Drive (ao lado do anterior). getCurrentEditor evita referência destruída após o Picker fechar.
       addDriveImageButtonToToolbar(instance, {
@@ -586,7 +592,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <button
-                  className="min-w-0 flex-1 text-left text-blue-300 underline hover:text-blue-200 break-words"
+                  className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
                   onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
                 >
                   {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
@@ -611,29 +617,19 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
   if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>{t('common.back')}</button></div>;
 
-  const addBalanceAddon = () => {
-    const addonId = `balance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const newAddon = createDefaultBalanceAddon(addonId);
-    setSectionBalanceAddons(projectId, sectionId, [...balanceAddons, newAddon], sectionAuditBy);
+  const addAddon = (type: SectionAddon["type"]) => {
+    const entry = ADDON_REGISTRY.find((item) => item.type === type);
+    if (!entry) return;
+    addSectionAddon(projectId, sectionId, entry.createDefault(), sectionAuditBy);
     setShowAddonMenu(false);
   };
 
   const updateBalanceAddon = (addonId: string, nextAddon: BalanceAddonDraft) => {
-    setSectionBalanceAddons(
-      projectId,
-      sectionId,
-      balanceAddons.map((addon: BalanceAddonDraft) => (addon.id === addonId ? nextAddon : addon)),
-      sectionAuditBy
-    );
+    updateSectionAddon(projectId, sectionId, addonId, balanceDraftToSectionAddon(nextAddon), sectionAuditBy);
   };
 
-  const removeBalanceAddon = (addonId: string) => {
-    setSectionBalanceAddons(
-      projectId,
-      sectionId,
-      balanceAddons.filter((addon: BalanceAddonDraft) => addon.id !== addonId),
-      sectionAuditBy
-    );
+  const removeAddon = (addonId: string) => {
+    removeSectionAddon(projectId, sectionId, addonId, sectionAuditBy);
   };
 
   return (
@@ -708,10 +704,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSuggestDomainLoading={setSuggestDomainLoading}
     showAddonMenu={showAddonMenu}
     setShowAddonMenu={setShowAddonMenu}
-    balanceAddons={balanceAddons}
-    onAddBalanceAddon={addBalanceAddon}
+    addons={addons}
+    onAddAddon={addAddon}
     onUpdateBalanceAddon={updateBalanceAddon}
-    onRemoveBalanceAddon={removeBalanceAddon}
+    onRemoveAddon={removeAddon}
       />
       <AutocompleteDropdown />
     </>
@@ -764,6 +760,7 @@ function UnresolvedRefsPanel({
   unresolvedNames,
   hasProjectTitleRef,
   projectTitle,
+  projectDescription,
   previewContent,
   setPreviewContent,
   onRemoveProjectRefFromSection,
@@ -782,6 +779,7 @@ function UnresolvedRefsPanel({
   unresolvedNames: string[];
   hasProjectTitleRef: boolean;
   projectTitle: string;
+  projectDescription?: string;
   previewContent?: string;
   setPreviewContent?: (content: string) => void;
   onRemoveProjectRefFromSection?: () => void;
@@ -851,6 +849,7 @@ function UnresolvedRefsPanel({
         headers: { "Content-Type": "application/json", ...getAIHeaders() },
         body: JSON.stringify({
           projectTitle,
+          projectDescription,
           sections: sections.map((s) => ({ id: s.id, title: s.title ?? "", parentId: s.parentId ?? undefined, domainTags: (s as { domainTags?: string[] }).domainTags })),
           newSectionTitle: name,
           currentContextPath: currentContextPath?.length ? currentContextPath : undefined,
@@ -1099,7 +1098,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
         )}
         {!hasChildren && <span className="w-4"></span>}
         <button
-          className="min-w-0 flex-1 text-left text-blue-300 underline hover:text-blue-200 break-words"
+          className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
           onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
         >
           {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
@@ -1145,10 +1144,10 @@ function SectionDetailContent({
   setSuggestDomainLoading,
   showAddonMenu,
   setShowAddonMenu,
-  balanceAddons,
-  onAddBalanceAddon,
+  addons,
+  onAddAddon,
   onUpdateBalanceAddon,
-  onRemoveBalanceAddon,
+  onRemoveAddon,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
@@ -1246,7 +1245,7 @@ function SectionDetailContent({
 
   useEffect(() => {
     const balanceKeys = new Set(
-      (Array.isArray(balanceAddons) ? balanceAddons : []).map((addon: BalanceAddonDraft) => `balance:${addon.id}`)
+      (Array.isArray(addons) ? addons : []).map((addon: SectionAddon) => `${addon.type}:${addon.id}`)
     );
     setCollapsedAddonKeys((prev) => {
       const next = { ...prev };
@@ -1265,7 +1264,7 @@ function SectionDetailContent({
 
       return next;
     });
-  }, [balanceAddons]);
+  }, [addons]);
 
   const toggleAddonCollapsed = (addonKey: string) => {
     setCollapsedAddonKeys((prev) => ({
@@ -1343,6 +1342,9 @@ function SectionDetailContent({
                   }}
                   autoFocus
                   className="flex-1 text-2xl font-bold bg-gray-900 border border-blue-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <EmojiQuickPicker
+                  onSelect={(emoji) => setEditedTitle((prev: string) => appendEmojiWithSpacing(prev, emoji))}
                 />
                 <button
                   onClick={() => {
@@ -1430,20 +1432,23 @@ function SectionDetailContent({
                 {showAddonMenu && (
                   <>
                     <div className="absolute right-0 top-10 z-50 w-52 rounded-lg border border-gray-600 bg-gray-800 shadow-xl py-1" role="menu">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddBalanceAddon();
-                          setShowAddonMenu(false);
-                        }}
-                        className="w-full text-left rounded px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 flex items-center gap-2"
-                        role="menuitem"
-                      >
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
-                        </svg>
-                        Balanceamento
-                      </button>
+                      {ADDON_REGISTRY.map((entry) => (
+                        <button
+                          key={entry.type}
+                          type="button"
+                          onClick={() => {
+                            onAddAddon(entry.type);
+                            setShowAddonMenu(false);
+                          }}
+                          className="w-full text-left rounded px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 flex items-center gap-2"
+                          role="menuitem"
+                        >
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
+                          </svg>
+                          {entry.label}
+                        </button>
+                      ))}
                     </div>
                     <div className="fixed inset-0 z-40" onClick={() => setShowAddonMenu(false)} aria-hidden />
                   </>
@@ -1563,6 +1568,8 @@ function SectionDetailContent({
                   method: "POST",
                   headers: { "Content-Type": "application/json", ...getAIHeaders() },
                   body: JSON.stringify({
+                    projectTitle: project?.title,
+                    projectDescription: project?.description,
                     sectionTitle: section.title,
                     sectionContent: (section.content || "").slice(0, 2000),
                     existingTags: section.domainTags,
@@ -1625,38 +1632,45 @@ function SectionDetailContent({
           )}
         </div>
       )}
-      {!inlineEdit && balanceAddons.length > 0 && (
+      {!inlineEdit && addons.length > 0 && (
         <div className="max-w-6xl mx-auto mb-4 space-y-3">
-          {balanceAddons.map((addon: BalanceAddonDraft) => (
+          {addons.map((addon: SectionAddon) => {
+            const addonKey = `${addon.type}:${addon.id}`;
+            const isCollapsed = collapsedAddonKeys[addonKey] ?? true;
+            const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
+            return (
             <div key={addon.id} className="rounded-2xl border border-cyan-800/60 bg-gray-900/70 overflow-hidden">
               <button
                 type="button"
-                onClick={() => toggleAddonCollapsed(`balance:${addon.id}`)}
+                onClick={() => toggleAddonCollapsed(addonKey)}
                 className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors"
-                aria-expanded={!(collapsedAddonKeys[`balance:${addon.id}`] ?? true)}
+                aria-expanded={!isCollapsed}
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-cyan-200 truncate">{addon.name || "Addon de balanceamento"}</p>
-                  <p className="text-xs text-gray-400">Balanceamento</p>
+                  <p className="text-xs text-gray-400">{addon.type}</p>
                 </div>
                 <span
                   className="text-gray-300 shrink-0 transition-transform duration-200"
-                  style={{ transform: (collapsedAddonKeys[`balance:${addon.id}`] ?? true) ? "rotate(0deg)" : "rotate(180deg)" }}
+                  style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)" }}
                 >
                   ▼
                 </span>
               </button>
-              {!(collapsedAddonKeys[`balance:${addon.id}`] ?? true) && (
+              {!isCollapsed && (
                 <div className="border-t border-cyan-900/50 p-3">
-                  <BalanceAddonPanel
-                    addon={addon}
-                    onChange={(nextAddon) => onUpdateBalanceAddon(addon.id, nextAddon)}
-                    onRemove={() => onRemoveBalanceAddon(addon.id)}
-                  />
+                  {entry
+                    ? entry.renderEditor(
+                        addon,
+                        (nextAddon) =>
+                          onUpdateBalanceAddon(addon.id, nextAddon.data as BalanceAddonDraft),
+                        () => onRemoveAddon(addon.id)
+                      )
+                    : null}
                 </div>
               )}
             </div>
-          ))}
+          )})}
         </div>
       )}
 
@@ -1754,6 +1768,7 @@ function SectionDetailContent({
           unresolvedNames={unresolvedFromPage.unresolvedNames}
           hasProjectTitleRef={unresolvedFromPage.hasProjectTitleRef}
           projectTitle={project?.title || ""}
+          projectDescription={project?.description || ""}
           onRemoveProjectRefFromSection={() => {
             const projectTitle = project?.title || "";
             if (!section?.content || !projectTitle) return;
@@ -1909,6 +1924,7 @@ function SectionDetailContent({
                   unresolvedNames={unresolvedNames}
                   hasProjectTitleRef={hasProjectTitleRef}
                   projectTitle={project?.title || ""}
+                  projectDescription={project?.description || ""}
                   previewContent={previewContent || ""}
                   setPreviewContent={setPreviewContent}
                   projectId={projectId}
