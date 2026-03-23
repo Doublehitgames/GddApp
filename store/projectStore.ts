@@ -1095,6 +1095,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const project = get().projects.find((p) => p.id === projectId);
       const section = project?.sections?.find((s) => s.id === sectionId);
       if (!section) return;
+      const normalizedAddons = normalizeSectionAddons(addons) || [];
       get().editSection(
         projectId,
         sectionId,
@@ -1104,7 +1105,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         section.color,
         updatedBy,
         section.domainTags,
-        addons
+        normalizedAddons
       );
     },
     addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => {

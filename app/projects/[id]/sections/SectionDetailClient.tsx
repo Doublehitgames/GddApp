@@ -31,10 +31,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
-import type { BalanceAddonDraft } from "@/lib/balance/types";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import type { SectionAddon } from "@/lib/addons/types";
-import { balanceDraftToSectionAddon } from "@/lib/addons/types";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 
@@ -60,6 +58,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const addSectionAddon = useProjectStore((s) => s.addSectionAddon);
   const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
   const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
+  const setSectionAddons = useProjectStore((s) => s.setSectionAddons);
   const projects = useProjectStore((s) => s.projects);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
@@ -624,12 +623,16 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setShowAddonMenu(false);
   };
 
-  const updateBalanceAddon = (addonId: string, nextAddon: BalanceAddonDraft) => {
-    updateSectionAddon(projectId, sectionId, addonId, balanceDraftToSectionAddon(nextAddon), sectionAuditBy);
+  const updateAddon = (addonId: string, nextAddon: SectionAddon) => {
+    updateSectionAddon(projectId, sectionId, addonId, nextAddon, sectionAuditBy);
   };
 
   const removeAddon = (addonId: string) => {
     removeSectionAddon(projectId, sectionId, addonId, sectionAuditBy);
+  };
+
+  const reorderAddons = (nextAddons: SectionAddon[]) => {
+    setSectionAddons(projectId, sectionId, nextAddons, sectionAuditBy);
   };
 
   return (
@@ -706,8 +709,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setShowAddonMenu={setShowAddonMenu}
     addons={addons}
     onAddAddon={addAddon}
-    onUpdateBalanceAddon={updateBalanceAddon}
+    onUpdateAddon={updateAddon}
     onRemoveAddon={removeAddon}
+    onReorderAddons={reorderAddons}
       />
       <AutocompleteDropdown />
     </>
@@ -1117,6 +1121,71 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
   );
 }
 
+function SortableAddonItem({
+  addon,
+  addonKey,
+  isCollapsed,
+  toggleAddonCollapsed,
+  getAddonTypeLabel,
+  entry,
+  onUpdateAddon,
+  onRemoveAddon,
+}: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: addon.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-2xl border border-gray-700/80 bg-gray-800/70 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => toggleAddonCollapsed(addonKey)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors"
+        aria-expanded={!isCollapsed}
+      >
+        <div className="min-w-0 flex items-center gap-2">
+          <span
+            className="text-gray-400 cursor-grab active:cursor-grabbing text-sm leading-none"
+            {...attributes}
+            {...listeners}
+            onClick={(event) => event.stopPropagation()}
+            aria-label="Reordenar addon"
+            title="Arrastar para reordenar"
+          >
+            ⋮⋮
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-200 truncate">
+              {addon.name || getAddonTypeLabel(addon.type)}
+            </p>
+            <p className="text-xs text-gray-400">{getAddonTypeLabel(addon.type)}</p>
+          </div>
+        </div>
+        <span
+          className="text-gray-300 shrink-0 transition-transform duration-200"
+          style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)" }}
+        >
+          ▼
+        </span>
+      </button>
+      {!isCollapsed && (
+        <div className="border-t border-gray-700/80 p-3">
+          {entry
+            ? entry.renderEditor(
+                addon,
+                (nextAddon: SectionAddon) => onUpdateAddon(addon.id, nextAddon),
+                () => onRemoveAddon(addon.id)
+              )
+            : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Componente principal de conteúdo
 function SectionDetailContent({ 
   project, projectId, section, sectionId, breadcrumbs, 
@@ -1146,8 +1215,9 @@ function SectionDetailContent({
   setShowAddonMenu,
   addons,
   onAddAddon,
-  onUpdateBalanceAddon,
+  onUpdateAddon,
   onRemoveAddon,
+  onReorderAddons,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
@@ -1244,20 +1314,20 @@ function SectionDetailContent({
   );
 
   useEffect(() => {
-    const balanceKeys = new Set(
+      const addonKeys = new Set(
       (Array.isArray(addons) ? addons : []).map((addon: SectionAddon) => `${addon.type}:${addon.id}`)
     );
     setCollapsedAddonKeys((prev) => {
       const next = { ...prev };
 
       // Novos addons iniciam ocultos por padrão.
-      for (const key of balanceKeys) {
+      for (const key of addonKeys) {
         if (next[key] === undefined) next[key] = true;
       }
 
-      // Remove chaves antigas de balance addons removidos.
+      // Remove chaves antigas de addons removidos.
       for (const key of Object.keys(next)) {
-        if (key.startsWith("balance:") && !balanceKeys.has(key)) {
+        if (!addonKeys.has(key)) {
           delete next[key];
         }
       }
@@ -1271,6 +1341,31 @@ function SectionDetailContent({
       ...prev,
       [addonKey]: !(prev[addonKey] ?? true),
     }));
+  };
+
+  const addonSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleAddonDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = addons.findIndex((addon: SectionAddon) => addon.id === String(active.id));
+    const newIndex = addons.findIndex((addon: SectionAddon) => addon.id === String(over.id));
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+    onReorderAddons(arrayMove(addons, oldIndex, newIndex));
+  };
+
+  const getAddonTypeLabel = (type: SectionAddon["type"]) => {
+    if (type === "progressionTable") {
+      return t("progressionTableAddon.addonTypeLabel", "Tabela de balanceamento");
+    }
+    return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
   };
 
   return (
@@ -1446,7 +1541,7 @@ function SectionDetailContent({
                           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
                           </svg>
-                          {entry.label}
+                          {getAddonTypeLabel(entry.type)}
                         </button>
                       ))}
                     </div>
@@ -1633,45 +1728,30 @@ function SectionDetailContent({
         </div>
       )}
       {!inlineEdit && addons.length > 0 && (
-        <div className="max-w-6xl mx-auto mb-4 space-y-3">
-          {addons.map((addon: SectionAddon) => {
-            const addonKey = `${addon.type}:${addon.id}`;
-            const isCollapsed = collapsedAddonKeys[addonKey] ?? true;
-            const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
-            return (
-            <div key={addon.id} className="rounded-2xl border border-cyan-800/60 bg-gray-900/70 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleAddonCollapsed(addonKey)}
-                className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors"
-                aria-expanded={!isCollapsed}
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-cyan-200 truncate">{addon.name || "Addon de balanceamento"}</p>
-                  <p className="text-xs text-gray-400">{addon.type}</p>
-                </div>
-                <span
-                  className="text-gray-300 shrink-0 transition-transform duration-200"
-                  style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)" }}
-                >
-                  ▼
-                </span>
-              </button>
-              {!isCollapsed && (
-                <div className="border-t border-cyan-900/50 p-3">
-                  {entry
-                    ? entry.renderEditor(
-                        addon,
-                        (nextAddon) =>
-                          onUpdateBalanceAddon(addon.id, nextAddon.data as BalanceAddonDraft),
-                        () => onRemoveAddon(addon.id)
-                      )
-                    : null}
-                </div>
-              )}
+        <DndContext sensors={addonSensors} collisionDetection={closestCenter} onDragEnd={handleAddonDragEnd}>
+          <SortableContext items={addons.map((addon: SectionAddon) => addon.id)} strategy={verticalListSortingStrategy}>
+            <div className="max-w-6xl mx-auto mb-4 space-y-3">
+              {addons.map((addon: SectionAddon) => {
+                const addonKey = `${addon.type}:${addon.id}`;
+                const isCollapsed = collapsedAddonKeys[addonKey] ?? true;
+                const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
+                return (
+                  <SortableAddonItem
+                    key={addon.id}
+                    addon={addon}
+                    addonKey={addonKey}
+                    isCollapsed={isCollapsed}
+                    toggleAddonCollapsed={toggleAddonCollapsed}
+                    getAddonTypeLabel={getAddonTypeLabel}
+                    entry={entry}
+                    onUpdateAddon={onUpdateAddon}
+                    onRemoveAddon={onRemoveAddon}
+                  />
+                );
+              })}
             </div>
-          )})}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Histórico de versões (colapsável) */}

@@ -10,6 +10,11 @@ const localStorageMock = {
 }
 
 global.localStorage = localStorageMock as any
+global.fetch = jest.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  json: async () => ({ ok: true }),
+}) as unknown as typeof fetch
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -24,4 +29,14 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
   })),
+})
+
+beforeEach(() => {
+  localStorageMock.getItem.mockClear()
+  localStorageMock.setItem.mockClear()
+  localStorageMock.removeItem.mockClear()
+  localStorageMock.clear.mockClear()
+  if (typeof global.fetch === 'function' && 'mockClear' in global.fetch) {
+    ;(global.fetch as jest.Mock).mockClear()
+  }
 })

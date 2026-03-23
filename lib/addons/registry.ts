@@ -1,8 +1,14 @@
 import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
-import { balanceDraftToSectionAddon, sectionAddonToBalanceDraft } from "@/lib/addons/types";
+import {
+  balanceDraftToSectionAddon,
+  createDefaultProgressionTableAddon,
+  sectionAddonToBalanceDraft,
+} from "@/lib/addons/types";
 import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
 import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
+import { ProgressionTableAddonPanel } from "@/components/ProgressionTableAddonPanel";
+import { ProgressionTableAddonReadOnly } from "@/components/ProgressionTableAddonReadOnly";
 import React from "react";
 
 export type AddonRegistryEntry = {
@@ -18,13 +24,14 @@ export type AddonRegistryEntry = {
 
 export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
-    type: "balance",
-    label: "Balanceamento",
+    type: "xpBalance",
+    label: "Balanceamento de XP",
     createDefault: () => {
       const addonId = `balance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return balanceDraftToSectionAddon(createDefaultBalanceAddon(addonId));
     },
     renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "xpBalance") return null;
       const draft = sectionAddonToBalanceDraft(addon);
       return React.createElement(BalanceAddonPanel, {
         addon: draft,
@@ -33,6 +40,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       });
     },
     renderReadOnly: (addon, options) => {
+      if (addon.type !== "xpBalance") return null;
       const draft = sectionAddonToBalanceDraft(addon);
       return React.createElement(BalanceAddonReadOnly, {
         addon: draft,
@@ -43,6 +51,30 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
         layout: options?.layout,
         showSummary: options?.showSummary,
         showTable: options?.showTable,
+      });
+    },
+  },
+  {
+    type: "progressionTable",
+    label: "Tabela de Balanceamento",
+    createDefault: () => {
+      const addonId = `progression-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultProgressionTableAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "progressionTable") return null;
+      return React.createElement(ProgressionTableAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "progressionTable") return null;
+      return React.createElement(ProgressionTableAddonReadOnly, {
+        addon: addon.data,
+        maxRows: options?.maxRows,
+        theme: options?.theme,
       });
     },
   },

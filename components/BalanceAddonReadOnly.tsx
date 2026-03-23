@@ -335,10 +335,10 @@ function MiniChart({
         role="img"
         aria-label="Grafico da curva LV para XP"
       >
-        {yTicks.map((tick) => {
+        {yTicks.map((tick, idx) => {
           const y = plot.top + (1 - (tick - minY) / yRange) * plotHeight;
           return (
-            <g key={`y-${tick}`}>
+            <g key={`y-${idx}-${tick}`}>
               <line
                 x1={plot.left}
                 y1={y}

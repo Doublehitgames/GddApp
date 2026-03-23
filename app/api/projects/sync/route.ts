@@ -291,10 +291,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingSections, error: existingErr } = await supabase
+    let { data: existingSections, error: existingErr } = await supabase
       .from("sections")
       .select("id,parent_id,title,content,sort_order,color,domain_tags,balance_addons")
       .eq("project_id", project.id);
+
+    if (existingErr && isMissingBalanceAddonsColumn(existingErr)) {
+      const retry = await supabase
+        .from("sections")
+        .select("id,parent_id,title,content,sort_order,color,domain_tags")
+        .eq("project_id", project.id);
+      existingSections = (retry.data || []).map((section: any) => ({
+        ...section,
+        balance_addons: null,
+      }));
+      existingErr = retry.error;
+    }
 
     if (existingErr) {
       const msg = getSupabaseErrorMessage(existingErr, "sections_select_failed");

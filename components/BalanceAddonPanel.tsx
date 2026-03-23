@@ -12,6 +12,7 @@ import type { BalanceAddonDraft } from "@/lib/balance/types";
 import { BalanceComparisonPanel } from "@/components/BalanceComparisonPanel";
 import { calculateSensitivity, compareCurves } from "@/lib/balance/simulationEngine";
 import { useI18n } from "@/lib/i18n/provider";
+import { blurOnEnterKey, useBlurCommitText } from "@/hooks/useBlurCommitText";
 
 interface BalanceAddonPanelProps {
   addon: BalanceAddonDraft;
@@ -138,6 +139,13 @@ const PARAM_KEYS: Array<keyof BalanceAddonDraft["params"]> = [
 ];
 
 const ALLOWED_FN_NAMES = new Set(["min", "max", "abs", "floor", "ceil", "round", "sqrt", "log", "exp", "pow"]);
+const PANEL_SHELL_CLASS = "rounded-2xl border border-gray-700/80 bg-gray-900/70 p-4 md:p-5";
+const PANEL_BLOCK_CLASS = "rounded-xl border border-gray-700/80 bg-gray-800/70 p-3";
+const INPUT_CLASS =
+  "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
+const BUTTON_PRIMARY_CLASS = "rounded-lg px-3 py-1.5 text-sm transition-colors bg-gray-600 text-white hover:bg-gray-500";
+const BUTTON_SECONDARY_CLASS = "rounded-lg px-3 py-1.5 text-sm transition-colors bg-gray-700 text-gray-200 hover:bg-gray-600";
+const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
 
 export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPanelProps) {
   const { t } = useI18n();
@@ -146,6 +154,18 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
   const profileLabels = useMemo(() => getProfileLabels(t), [t]);
   const paramMeta = useMemo(() => getParamMeta(t), [t]);
   const [showTable, setShowTable] = useState(true);
+  const [showCurveInsights, setShowCurveInsights] = useState(false);
+  const [showSimulationInsights, setShowSimulationInsights] = useState(false);
+  const nameDraft = useBlurCommitText({
+    value: addon.name,
+    resetKey: addon.id,
+    onCommit: (nextName) => onChange({ ...addon, name: nextName }),
+  });
+  const expressionDraft = useBlurCommitText({
+    value: addon.expression,
+    resetKey: addon.id,
+    onCommit: (nextExpression) => onChange({ ...addon, expression: nextExpression }),
+  });
 
   const curveState = useMemo(() => {
     try {
@@ -393,61 +413,46 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
   };
 
   return (
-    <section className="rounded-2xl border border-cyan-700/50 bg-gray-900/70 p-4 md:p-5">
+    <section className={PANEL_SHELL_CLASS}>
       <div className="mb-4 space-y-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-cyan-300">
+          <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
             {t("balanceAddon.nameLabel", "Nome do bloco")}
           </label>
           <input
             type="text"
-            value={addon.name}
-            onChange={(e) => onChange({ ...addon, name: e.target.value })}
-            className="w-full rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+            value={nameDraft.draft}
+            onChange={(e) => nameDraft.setDraft(e.target.value)}
+            onBlur={nameDraft.commitDraft}
+            onKeyDown={blurOnEnterKey}
+            className={INPUT_CLASS}
             placeholder={t("balanceAddon.namePlaceholder", "Ex.: XP por Level")}
           />
-        </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm(t("balanceAddon.removeConfirm", "Tem certeza que deseja remover este addon de balanceamento?"))) {
-                onRemove();
-              }
-            }}
-            className="rounded-lg border border-red-700/60 bg-red-900/30 px-3 py-2 text-sm text-red-200 hover:bg-red-900/50"
-          >
-            {t("balanceAddon.removeButton", "Remover addon")}
-          </button>
         </div>
       </div>
 
       <div className="mb-4 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+        <div className={PANEL_BLOCK_CLASS}>
           <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Modo de formula</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => onChange({ ...addon, mode: "preset" })}
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                addon.mode === "preset" ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-              }`}
+              className={addon.mode === "preset" ? BUTTON_PRIMARY_CLASS : BUTTON_SECONDARY_CLASS}
             >
               Preset
             </button>
             <button
               type="button"
               onClick={() => onChange({ ...addon, mode: "advanced" })}
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                addon.mode === "advanced" ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-              }`}
+              className={addon.mode === "advanced" ? BUTTON_PRIMARY_CLASS : BUTTON_SECONDARY_CLASS}
             >
               Avancado
             </button>
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+        <div className={PANEL_BLOCK_CLASS}>
           <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Faixa de niveis</p>
           <div className="grid grid-cols-3 gap-2">
             <NumberInput
@@ -469,7 +474,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
         </div>
       </div>
 
-      <div className="mb-4 rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+      <div className={PANEL_BLOCK_CLASS}>
         <label className="mb-2 block text-xs uppercase tracking-wide text-gray-400">Perfil de jogo (atalho)</label>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(profileLabels) as Array<keyof typeof profileLabels>).map((profileId) => (
@@ -483,9 +488,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
                   params: createProfileDefaults(profileId),
                 })
               }
-              className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                addon.profile === profileId ? "bg-emerald-600 text-white" : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-              }`}
+              className={addon.profile === profileId ? BUTTON_PRIMARY_CLASS : BUTTON_SECONDARY_CLASS}
             >
               {profileLabels[profileId]}
             </button>
@@ -497,12 +500,12 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
       </div>
 
       {addon.mode === "preset" ? (
-        <div className="mb-4 rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+        <div className={`mb-4 ${PANEL_BLOCK_CLASS}`}>
           <label className="mb-2 block text-xs uppercase tracking-wide text-gray-400">Preset</label>
           <select
             value={addon.preset}
             onChange={(e) => onChange({ ...addon, preset: e.target.value as BalanceAddonDraft["preset"] })}
-            className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+            className={INPUT_CLASS}
           >
             {Object.entries(presetLabels).map(([value, label]) => (
               <option key={value} value={value}>
@@ -513,13 +516,15 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
           <p className="mt-2 text-xs text-gray-400">{presetTips[addon.preset]}</p>
         </div>
       ) : (
-        <div className="mb-4 rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+        <div className={`mb-4 ${PANEL_BLOCK_CLASS}`}>
           <label className="mb-2 block text-xs uppercase tracking-wide text-gray-400">Expressao</label>
           <input
             type="text"
-            value={addon.expression}
-            onChange={(e) => onChange({ ...addon, expression: e.target.value })}
-            className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+            value={expressionDraft.draft}
+            onChange={(e) => expressionDraft.setDraft(e.target.value)}
+            onBlur={expressionDraft.commitDraft}
+            onKeyDown={blurOnEnterKey}
+            className={INPUT_CLASS}
             placeholder="base * pow(level, growth) + offset"
           />
           <p className="mt-2 text-xs text-gray-400">
@@ -579,467 +584,531 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
             <span>Min: {curveState.curve?.minValue}</span>
             <span>Max: {curveState.curve?.maxValue}</span>
           </div>
-          <div className="mb-3 grid gap-2 md:grid-cols-3 text-xs">
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Subida media por level:</strong> {formatReadableNumber(metrics.averageStep)}
-              <p className="mt-1 text-gray-400">
-                Em media, quanto o valor aumenta de um level para o proximo.
-              </p>
-              <p className="mt-1 text-gray-500">{metricExamples.stepExample}</p>
-            </div>
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Ritmo medio de crescimento:</strong> {metrics.averageGrowthPercent}%
-              <p className="mt-1 text-gray-400">
-                Percentual medio de aumento entre levels consecutivos.
-              </p>
-              <p className="mt-1 text-gray-500">{metricExamples.growthExample}</p>
-            </div>
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Total acumulado na faixa:</strong> {formatReadableNumber(metrics.cumulativeValue)}
-              <p className="mt-1 text-gray-400">
-                Soma de todos os valores do level inicial ao final selecionado.
-              </p>
-              <p className="mt-1 text-gray-500">{metricExamples.cumulativeExample}</p>
-            </div>
-          </div>
-          <div className="mb-3 grid gap-2 md:grid-cols-3 text-xs">
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Saltos bruscos (spikes):</strong> {metrics.spikeLevels.length ? metrics.spikeLevels.join(", ") : "Nenhum"}
-              <p className="mt-1 text-gray-400">
-                Muitos spikes = sensacao de parede de grind.
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Trechos parados (platos):</strong> {metrics.plateauLevels.length ? metrics.plateauLevels.join(", ") : "Nenhum"}
-              <p className="mt-1 text-gray-400">
-                Platos no inicio podem ser bons para onboarding (levels faceis). Revise apenas se esses trechos se estenderem demais no meio/final do jogo.
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
-              <strong className="text-gray-100">Quedas de curva (regressoes):</strong> {metrics.regressionLevels.length ? metrics.regressionLevels.join(", ") : "Nenhuma"}
-              <p className="mt-1 text-gray-400">
-                Qualquer regressao em XP por level pede revisao da formula (a nao ser que seja proposital).
-              </p>
-            </div>
+          <div className="mb-3 rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowCurveInsights((prev) => !prev)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs text-gray-100 hover:bg-gray-700/50 transition-colors"
+              aria-expanded={showCurveInsights}
+            >
+              <span className="font-semibold">
+                {showCurveInsights ? "Ocultar informacoes da curva" : "Mostrar informacoes da curva"}
+              </span>
+              <span
+                className="text-gray-300 shrink-0 transition-transform duration-200"
+                style={{ transform: showCurveInsights ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
+                ▼
+              </span>
+            </button>
+            {showCurveInsights && (
+              <div className="border-t border-gray-700 p-2.5">
+                <div className="mb-3 grid gap-2 md:grid-cols-3 text-xs">
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Subida media por level:</strong> {formatReadableNumber(metrics.averageStep)}
+                    <p className="mt-1 text-gray-400">
+                      Em media, quanto o valor aumenta de um level para o proximo.
+                    </p>
+                    <p className="mt-1 text-gray-500">{metricExamples.stepExample}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Ritmo medio de crescimento:</strong> {metrics.averageGrowthPercent}%
+                    <p className="mt-1 text-gray-400">
+                      Percentual medio de aumento entre levels consecutivos.
+                    </p>
+                    <p className="mt-1 text-gray-500">{metricExamples.growthExample}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Total acumulado na faixa:</strong> {formatReadableNumber(metrics.cumulativeValue)}
+                    <p className="mt-1 text-gray-400">
+                      Soma de todos os valores do level inicial ao final selecionado.
+                    </p>
+                    <p className="mt-1 text-gray-500">{metricExamples.cumulativeExample}</p>
+                  </div>
+                </div>
+                <div className="grid gap-2 md:grid-cols-3 text-xs">
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Saltos bruscos (spikes):</strong> {metrics.spikeLevels.length ? metrics.spikeLevels.join(", ") : "Nenhum"}
+                    <p className="mt-1 text-gray-400">
+                      Muitos spikes = sensacao de parede de grind.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Trechos parados (platos):</strong> {metrics.plateauLevels.length ? metrics.plateauLevels.join(", ") : "Nenhum"}
+                    <p className="mt-1 text-gray-400">
+                      Platos no inicio podem ser bons para onboarding (levels faceis). Revise apenas se esses trechos se estenderem demais no meio/final do jogo.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-gray-200">
+                    <strong className="text-gray-100">Quedas de curva (regressoes):</strong> {metrics.regressionLevels.length ? metrics.regressionLevels.join(", ") : "Nenhuma"}
+                    <p className="mt-1 text-gray-400">
+                      Qualquer regressao em XP por level pede revisao da formula (a nao ser que seja proposital).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <SimpleLineChart points={points} simulation={simulation} simulationMode={simulationInput.mode} simulationInput={simulationInput} />
-          <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 p-3">
-            <h4 className="text-sm font-semibold text-gray-100 mb-2">{t("balanceAddon.simulation.title", "Simulacao de sessao")}</h4>
-            <p className="mb-2 text-xs text-gray-400">
-              Esta simulacao estima quanto tempo o jogador leva para evoluir, com base no ritmo medio de ganho de XP em partidas reais.
-            </p>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  onChange({
-                    ...addon,
-                    simulationInput: { ...simulationInput, mode: "continuous" },
-                  })
-                }
-                className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                  (simulationInput.mode || "continuous") === "continuous"
-                    ? "bg-cyan-600 text-white"
-                    : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                }`}
+          <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowTable((prev) => !prev)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs text-gray-100 hover:bg-gray-700/50 transition-colors"
+              aria-expanded={showTable}
+            >
+              <span className="font-semibold">Tabela por level</span>
+              <span
+                className="text-gray-300 shrink-0 transition-transform duration-200"
+                style={{ transform: showTable ? "rotate(180deg)" : "rotate(0deg)" }}
               >
-                Simulacao continua
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  onChange({
-                    ...addon,
-                    simulationInput: { ...simulationInput, mode: "sessionBased" },
-                  })
-                }
-                className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                  simulationInput.mode === "sessionBased"
-                    ? "bg-cyan-600 text-white"
-                    : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                }`}
-              >
-                Simulacao por sessoes/dia
-              </button>
-            </div>
-            <div className="mb-3 rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-              <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Ritmo de ganho de XP</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      ...addon,
-                      simulationInput: {
-                        ...simulationInput,
-                        xpRateMode: "fixed",
-                      },
-                    })
-                  }
-                  className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                    (simulationInput.xpRateMode || "fixed") === "fixed"
-                      ? "bg-cyan-600 text-white"
-                      : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  }`}
-                >
-                  {t("balanceAddon.simulation.xpRateMode.fixed", "XP fixo")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      ...addon,
-                      simulationInput: {
-                        ...simulationInput,
-                        xpRateMode: "byLevelRange",
-                        xpRanges:
-                          simulationInput.xpRanges && simulationInput.xpRanges.length > 0
-                            ? simulationInput.xpRanges
-                            : [
-                                { fromLevel: addon.startLevel, toLevel: Math.min(addon.endLevel, addon.startLevel + 9), xpPerMinute: simulationInput.xpPerMinute },
-                                { fromLevel: Math.min(addon.endLevel, addon.startLevel + 10), toLevel: addon.endLevel, xpPerMinute: Math.max(1, simulationInput.xpPerMinute * 0.75) },
-                              ],
-                      },
-                    })
-                  }
-                  className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                    simulationInput.xpRateMode === "byLevelRange"
-                      ? "bg-cyan-600 text-white"
-                      : "bg-gray-700 text-gray-200 hover:bg-gray-600"
-                  }`}
-                >
-                  {t("balanceAddon.simulation.xpRateMode.byLevelRange", "XP por faixas de level")}
-                </button>
+                ▼
+              </span>
+            </button>
+            {showTable && (
+              <div className="max-h-56 overflow-auto border-t border-gray-700">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-gray-900 text-gray-300">
+                    <tr>
+                      <th className="px-3 py-2">Level</th>
+                      <th className="px-3 py-2">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {points.map((point) => (
+                      <tr key={point.level} className="border-t border-gray-800 text-gray-200">
+                        <td className="px-3 py-1.5">{point.level}</td>
+                        <td className="px-3 py-1.5">{point.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <p className="mt-2 text-xs text-gray-400">
-                Cada faixa representa o ritmo de farm de uma etapa do jogo (onboarding, midgame, endgame). Assim, a simulacao fica mais proxima da realidade.
-              </p>
-            </div>
-            <div className="grid gap-2 md:grid-cols-4">
-              {(simulationInput.xpRateMode || "fixed") === "fixed" ? (
-                <NumberInput
-                  label="XP/min"
-                  tooltip="Quantidade media de XP que o jogador ganha por minuto jogando."
-                  expected="Maior XP/min reduz o tempo necessario para subir de level."
-                  value={simulationInput.xpPerMinute}
-                  onChange={(value) =>
-                    onChange({ ...addon, simulationInput: { ...simulationInput, xpPerMinute: value } })
-                  }
-                />
-              ) : (
-                <div className="md:col-span-2 rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-                  <p className="mb-2 text-xs font-medium text-gray-200">Faixas de XP/min por level</p>
-                  <div className="space-y-2">
-                    {(simulationInput.xpRanges || []).map((range, index) => (
-                      <div key={`${index}-${range.fromLevel}-${range.toLevel}`} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
-                        <NumberInput
-                          label="De"
-                          value={range.fromLevel}
-                          onChange={(value) =>
+            )}
+          </div>
+          <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowSimulationInsights((prev) => !prev)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-xs text-gray-100 hover:bg-gray-700/50 transition-colors"
+              aria-expanded={showSimulationInsights}
+            >
+              <span className="font-semibold">
+                {showSimulationInsights
+                  ? "Ocultar simulacao, metas e comparacoes"
+                  : "Mostrar simulacao, metas e comparacoes"}
+              </span>
+              <span
+                className="text-gray-300 shrink-0 transition-transform duration-200"
+                style={{ transform: showSimulationInsights ? "rotate(180deg)" : "rotate(0deg)" }}
+              >
+                ▼
+              </span>
+            </button>
+            {showSimulationInsights && (
+              <div className="border-t border-gray-700 p-2.5">
+                <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-3">
+                  <h4 className="text-sm font-semibold text-gray-100 mb-2">{t("balanceAddon.simulation.title", "Simulacao de sessao")}</h4>
+                  <p className="mb-2 text-xs text-gray-400">
+                    Esta simulacao estima quanto tempo o jogador leva para evoluir, com base no ritmo medio de ganho de XP em partidas reais.
+                  </p>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({
+                          ...addon,
+                          simulationInput: { ...simulationInput, mode: "continuous" },
+                        })
+                      }
+                      className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                        (simulationInput.mode || "continuous") === "continuous"
+                          ? "bg-gray-600 text-white"
+                          : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                      }`}
+                    >
+                      Simulacao continua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({
+                          ...addon,
+                          simulationInput: { ...simulationInput, mode: "sessionBased" },
+                        })
+                      }
+                      className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                        simulationInput.mode === "sessionBased"
+                          ? "bg-gray-600 text-white"
+                          : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                      }`}
+                    >
+                      Simulacao por sessoes/dia
+                    </button>
+                  </div>
+                  <div className="mb-3 rounded-lg border border-gray-700 bg-gray-900/40 p-2">
+                    <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Ritmo de ganho de XP</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...addon,
+                            simulationInput: {
+                              ...simulationInput,
+                              xpRateMode: "fixed",
+                            },
+                          })
+                        }
+                        className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                          (simulationInput.xpRateMode || "fixed") === "fixed"
+                            ? "bg-gray-600 text-white"
+                            : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                        }`}
+                      >
+                        {t("balanceAddon.simulation.xpRateMode.fixed", "XP fixo")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...addon,
+                            simulationInput: {
+                              ...simulationInput,
+                              xpRateMode: "byLevelRange",
+                              xpRanges:
+                                simulationInput.xpRanges && simulationInput.xpRanges.length > 0
+                                  ? simulationInput.xpRanges
+                                  : [
+                                      { fromLevel: addon.startLevel, toLevel: Math.min(addon.endLevel, addon.startLevel + 9), xpPerMinute: simulationInput.xpPerMinute },
+                                      { fromLevel: Math.min(addon.endLevel, addon.startLevel + 10), toLevel: addon.endLevel, xpPerMinute: Math.max(1, simulationInput.xpPerMinute * 0.75) },
+                                    ],
+                            },
+                          })
+                        }
+                        className={`rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                          simulationInput.xpRateMode === "byLevelRange"
+                            ? "bg-gray-600 text-white"
+                            : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                        }`}
+                      >
+                        {t("balanceAddon.simulation.xpRateMode.byLevelRange", "XP por faixas de level")}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      Cada faixa representa o ritmo de farm de uma etapa do jogo (onboarding, midgame, endgame). Assim, a simulacao fica mais proxima da realidade.
+                    </p>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-4">
+                    {(simulationInput.xpRateMode || "fixed") === "fixed" ? (
+                      <NumberInput
+                        label="XP/min"
+                        tooltip="Quantidade media de XP que o jogador ganha por minuto jogando."
+                        expected="Maior XP/min reduz o tempo necessario para subir de level."
+                        value={simulationInput.xpPerMinute}
+                        onChange={(value) =>
+                          onChange({ ...addon, simulationInput: { ...simulationInput, xpPerMinute: value } })
+                        }
+                      />
+                    ) : (
+                      <div className="md:col-span-2 rounded-lg border border-gray-700 bg-gray-900/40 p-2">
+                        <p className="mb-2 text-xs font-medium text-gray-200">Faixas de XP/min por level</p>
+                        <div className="space-y-2">
+                          {(simulationInput.xpRanges || []).map((range, index) => (
+                            <div key={`${index}-${range.fromLevel}-${range.toLevel}`} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                              <NumberInput
+                                label="De"
+                                value={range.fromLevel}
+                                onChange={(value) =>
+                                  onChange({
+                                    ...addon,
+                                    simulationInput: {
+                                      ...simulationInput,
+                                      xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
+                                        entryIndex === index ? { ...entry, fromLevel: Math.max(1, Math.floor(value)) } : entry
+                                      ),
+                                    },
+                                  })
+                                }
+                              />
+                              <NumberInput
+                                label="Ate"
+                                value={range.toLevel}
+                                onChange={(value) =>
+                                  onChange({
+                                    ...addon,
+                                    simulationInput: {
+                                      ...simulationInput,
+                                      xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
+                                        entryIndex === index ? { ...entry, toLevel: Math.max(1, Math.floor(value)) } : entry
+                                      ),
+                                    },
+                                  })
+                                }
+                              />
+                              <NumberInput
+                                label="XP/min"
+                                value={range.xpPerMinute}
+                                onChange={(value) =>
+                                  onChange({
+                                    ...addon,
+                                    simulationInput: {
+                                      ...simulationInput,
+                                      xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
+                                        entryIndex === index ? { ...entry, xpPerMinute: Math.max(0.1, value) } : entry
+                                      ),
+                                    },
+                                  })
+                                }
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onChange({
+                                    ...addon,
+                                    simulationInput: {
+                                      ...simulationInput,
+                                      xpRanges: (simulationInput.xpRanges || []).filter((_, entryIndex) => entryIndex !== index),
+                                    },
+                                  })
+                                }
+                                className="h-10 rounded-lg border border-rose-700/60 bg-rose-900/20 px-2 text-xs text-rose-200 hover:bg-rose-900/40"
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ranges = simulationInput.xpRanges || [];
+                            const last = ranges[ranges.length - 1];
+                            const nextFrom = last ? Math.max(1, Math.floor(last.toLevel + 1)) : addon.startLevel;
+                            const nextTo = Math.min(addon.endLevel, nextFrom + 9);
                             onChange({
                               ...addon,
                               simulationInput: {
                                 ...simulationInput,
-                                xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
-                                  entryIndex === index ? { ...entry, fromLevel: Math.max(1, Math.floor(value)) } : entry
-                                ),
+                                xpRanges: [
+                                  ...ranges,
+                                  {
+                                    fromLevel: nextFrom,
+                                    toLevel: Math.max(nextFrom, nextTo),
+                                    xpPerMinute: last?.xpPerMinute || simulationInput.xpPerMinute,
+                                  },
+                                ],
                               },
-                            })
-                          }
-                        />
-                        <NumberInput
-                          label="Ate"
-                          value={range.toLevel}
-                          onChange={(value) =>
-                            onChange({
-                              ...addon,
-                              simulationInput: {
-                                ...simulationInput,
-                                xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
-                                  entryIndex === index ? { ...entry, toLevel: Math.max(1, Math.floor(value)) } : entry
-                                ),
-                              },
-                            })
-                          }
-                        />
-                        <NumberInput
-                          label="XP/min"
-                          value={range.xpPerMinute}
-                          onChange={(value) =>
-                            onChange({
-                              ...addon,
-                              simulationInput: {
-                                ...simulationInput,
-                                xpRanges: (simulationInput.xpRanges || []).map((entry, entryIndex) =>
-                                  entryIndex === index ? { ...entry, xpPerMinute: Math.max(0.1, value) } : entry
-                                ),
-                              },
-                            })
-                          }
-                        />
+                            });
+                          }}
+                          className="mt-2 rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
+                        >
+                          + Adicionar faixa
+                        </button>
+                        {xpRangeWarnings.length > 0 && (
+                          <div className="mt-2 rounded-lg border border-amber-700/60 bg-amber-900/20 p-2 text-xs text-amber-200">
+                            {xpRangeWarnings.map((warning) => (
+                              <p key={warning}>{warning}</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {simulationInput.mode !== "sessionBased" && (
+                      <NumberInput
+                        label="WinRate (0-1)"
+                        tooltip="Taxa media de vitoria. Use 0.5 para 50%, 0.7 para 70%."
+                        expected="WinRate maior acelera a progressao; menor deixa a progressao mais lenta."
+                        value={simulationInput.winRate}
+                        onChange={(value) =>
+                          onChange({ ...addon, simulationInput: { ...simulationInput, winRate: value } })
+                        }
+                      />
+                    )}
+                    <NumberInput
+                      label={simulationInput.mode === "sessionBased" ? "Min por sessao" : "Duracao partida (min)"}
+                      tooltip={
+                        simulationInput.mode === "sessionBased"
+                          ? "Tempo medio de uma sessao no jogo, em minutos. Ex.: 3 = 3 minutos."
+                          : "Tempo medio de cada partida em minutos. Ex.: 8 = 8 minutos."
+                      }
+                      expected={
+                        simulationInput.mode === "sessionBased"
+                          ? "Define quanto tempo de tela o jogador realmente joga por retorno."
+                          : "Partidas mais curtas permitem ciclos mais rapidos de ganho e ajuste."
+                      }
+                      value={simulationInput.matchDurationMinutes}
+                      onChange={(value) =>
+                        onChange({ ...addon, simulationInput: { ...simulationInput, matchDurationMinutes: value } })
+                      }
+                    />
+                    {simulationInput.mode === "sessionBased" && (
+                      <NumberInput
+                        label="Sessoes por dia"
+                        tooltip="Quantas vezes, em media, o jogador retorna ao jogo no mesmo dia."
+                        expected="Menos sessoes por dia aumenta o tempo em dias de progressao."
+                        value={simulationInput.sessionsPerDay}
+                        onChange={(value) =>
+                          onChange({ ...addon, simulationInput: { ...simulationInput, sessionsPerDay: value } })
+                        }
+                      />
+                    )}
+                    <NumberInput
+                      label="Bonus"
+                      tooltip="Multiplicador de bonus de XP (eventos, booster, passe, etc). 1 = sem bonus."
+                      expected="Bonus maior acelera a evolucao; 1.2 significa +20% de ganho."
+                      value={simulationInput.bonusMultiplier}
+                      onChange={(value) =>
+                        onChange({ ...addon, simulationInput: { ...simulationInput, bonusMultiplier: value } })
+                      }
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-gray-300">
+                    {simulation.hoursToMilestones.map((milestone) => (
+                      <span key={milestone.level} className="mr-3">
+                        {simulationInput.mode === "sessionBased" && milestone.calendarDays != null
+                          ? `Lv ${milestone.level}: ${formatCalendarDaysHuman(milestone.calendarDays)} (calendario real) | ${formatHoursHuman(
+                              milestone.hours
+                            )} de jogo ativo`
+                          : `Lv ${milestone.level}: ${formatHoursHuman(milestone.hours)}`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 p-3">
+                  <h4 className="text-sm font-semibold text-gray-100 mb-2">{t("balanceAddon.target.title", "Meta de progressao")}</h4>
+                  <p className="mb-2 text-xs text-gray-400">
+                    {targetUnit === "days"
+                      ? "A meta abaixo esta em dias reais de calendario (modo sessoes/dia)."
+                      : "A meta abaixo esta em horas de jogo ativo (modo continuo)."}
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <NumberInput
+                      label="Level alvo"
+                      value={addon.target?.targetLevel}
+                      onChange={(value) =>
+                        onChange({
+                          ...addon,
+                          target: {
+                            targetLevel: value,
+                            targetValue,
+                            targetUnit,
+                          },
+                        })
+                      }
+                    />
+                    <NumberInput
+                      label={targetUnit === "days" ? "Dias alvo" : "Horas alvo"}
+                      value={targetValue}
+                      onChange={(value) =>
+                        onChange({
+                          ...addon,
+                          target: {
+                            targetLevel: addon.target?.targetLevel ?? 50,
+                            targetValue: value,
+                            targetUnit,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  {targetSuggestion && (
+                    <div className="mt-2 space-y-2">
+                      {targetStatus && (
+                        <div className={`rounded-lg border px-2.5 py-2 text-xs ${targetStatus.className}`}>
+                          <strong>{targetStatus.label}</strong>
+                          <p className="mt-1 opacity-90">{targetStatus.detail}</p>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-300">{targetSuggestion.message}</p>
+                      {suggestedAdjustments != null && adjustmentLabel !== "Sem ajuste necessario" && (
                         <button
                           type="button"
                           onClick={() =>
                             onChange({
                               ...addon,
-                              simulationInput: {
-                                ...simulationInput,
-                                xpRanges: (simulationInput.xpRanges || []).filter((_, entryIndex) => entryIndex !== index),
+                              params: {
+                                ...suggestedAdjustments,
                               },
                             })
                           }
-                          className="h-10 rounded-lg border border-rose-700/60 bg-rose-900/20 px-2 text-xs text-rose-200 hover:bg-rose-900/40"
+                          className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-100 hover:bg-gray-700"
                         >
-                          Remover
+                          Aplicar ajuste sugerido ({adjustmentLabel})
                         </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ranges = simulationInput.xpRanges || [];
-                      const last = ranges[ranges.length - 1];
-                      const nextFrom = last ? Math.max(1, Math.floor(last.toLevel + 1)) : addon.startLevel;
-                      const nextTo = Math.min(addon.endLevel, nextFrom + 9);
-                      onChange({
-                        ...addon,
-                        simulationInput: {
-                          ...simulationInput,
-                          xpRanges: [
-                            ...ranges,
-                            {
-                              fromLevel: nextFrom,
-                              toLevel: Math.max(nextFrom, nextTo),
-                              xpPerMinute: last?.xpPerMinute || simulationInput.xpPerMinute,
-                            },
-                          ],
-                        },
-                      });
-                    }}
-                    className="mt-2 rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
-                  >
-                    + Adicionar faixa
-                  </button>
-                  {xpRangeWarnings.length > 0 && (
-                    <div className="mt-2 rounded-lg border border-amber-700/60 bg-amber-900/20 p-2 text-xs text-amber-200">
-                      {xpRangeWarnings.map((warning) => (
-                        <p key={warning}>{warning}</p>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-              {simulationInput.mode !== "sessionBased" && (
-                <NumberInput
-                  label="WinRate (0-1)"
-                  tooltip="Taxa media de vitoria. Use 0.5 para 50%, 0.7 para 70%."
-                  expected="WinRate maior acelera a progressao; menor deixa a progressao mais lenta."
-                  value={simulationInput.winRate}
-                  onChange={(value) =>
-                    onChange({ ...addon, simulationInput: { ...simulationInput, winRate: value } })
-                  }
-                />
-              )}
-              <NumberInput
-                label={simulationInput.mode === "sessionBased" ? "Min por sessao" : "Duracao partida (min)"}
-                tooltip={
-                  simulationInput.mode === "sessionBased"
-                    ? "Tempo medio de uma sessao no jogo, em minutos. Ex.: 3 = 3 minutos."
-                    : "Tempo medio de cada partida em minutos. Ex.: 8 = 8 minutos."
-                }
-                expected={
-                  simulationInput.mode === "sessionBased"
-                    ? "Define quanto tempo de tela o jogador realmente joga por retorno."
-                    : "Partidas mais curtas permitem ciclos mais rapidos de ganho e ajuste."
-                }
-                value={simulationInput.matchDurationMinutes}
-                onChange={(value) =>
-                  onChange({ ...addon, simulationInput: { ...simulationInput, matchDurationMinutes: value } })
-                }
-              />
-              {simulationInput.mode === "sessionBased" && (
-                <NumberInput
-                  label="Sessoes por dia"
-                  tooltip="Quantas vezes, em media, o jogador retorna ao jogo no mesmo dia."
-                  expected="Menos sessoes por dia aumenta o tempo em dias de progressao."
-                  value={simulationInput.sessionsPerDay}
-                  onChange={(value) =>
-                    onChange({ ...addon, simulationInput: { ...simulationInput, sessionsPerDay: value } })
-                  }
-                />
-              )}
-              <NumberInput
-                label="Bonus"
-                tooltip="Multiplicador de bonus de XP (eventos, booster, passe, etc). 1 = sem bonus."
-                expected="Bonus maior acelera a evolucao; 1.2 significa +20% de ganho."
-                value={simulationInput.bonusMultiplier}
-                onChange={(value) =>
-                  onChange({ ...addon, simulationInput: { ...simulationInput, bonusMultiplier: value } })
-                }
-              />
-            </div>
-            <div className="mt-2 text-xs text-gray-300">
-              {simulation.hoursToMilestones.map((milestone) => (
-                <span key={milestone.level} className="mr-3">
-                  {simulationInput.mode === "sessionBased" && milestone.calendarDays != null
-                    ? `Lv ${milestone.level}: ${formatCalendarDaysHuman(milestone.calendarDays)} (calendario real) | ${formatHoursHuman(
-                        milestone.hours
-                      )} de jogo ativo`
-                    : `Lv ${milestone.level}: ${formatHoursHuman(milestone.hours)}`}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 p-3">
-            <h4 className="text-sm font-semibold text-gray-100 mb-2">{t("balanceAddon.target.title", "Meta de progressao")}</h4>
-            <p className="mb-2 text-xs text-gray-400">
-              {targetUnit === "days"
-                ? "A meta abaixo esta em dias reais de calendario (modo sessoes/dia)."
-                : "A meta abaixo esta em horas de jogo ativo (modo continuo)."}
-            </p>
-            <div className="grid gap-2 md:grid-cols-2">
-              <NumberInput
-                label="Level alvo"
-                value={addon.target?.targetLevel}
-                onChange={(value) =>
-                  onChange({
-                    ...addon,
-                    target: {
-                      targetLevel: value,
-                      targetValue,
-                      targetUnit,
-                    },
-                  })
-                }
-              />
-              <NumberInput
-                label={targetUnit === "days" ? "Dias alvo" : "Horas alvo"}
-                value={targetValue}
-                onChange={(value) =>
-                  onChange({
-                    ...addon,
-                    target: {
-                      targetLevel: addon.target?.targetLevel ?? 50,
-                      targetValue: value,
-                      targetUnit,
-                    },
-                  })
-                }
-              />
-            </div>
-            {targetSuggestion && (
-              <div className="mt-2 space-y-2">
-                {targetStatus && (
-                  <div className={`rounded-lg border px-2.5 py-2 text-xs ${targetStatus.className}`}>
-                    <strong>{targetStatus.label}</strong>
-                    <p className="mt-1 opacity-90">{targetStatus.detail}</p>
+                <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 p-3">
+                  <h4 className="text-sm font-semibold text-gray-100 mb-1">Comparacao A/B (antes e depois)</h4>
+                  <p className="text-xs text-gray-400 mb-2">
+                    A baseline A e uma foto da curva atual. Depois de mudar parametros, a curva nova vira B e mostramos a diferenca.
+                  </p>
+                  {baselineStatus && (
+                    <div className="mb-2 rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-xs text-gray-200">
+                      <strong className="text-gray-100">{baselineStatus.label}.</strong>
+                      <p className="mt-1 text-gray-400">{baselineStatus.detail}</p>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...addon, comparisonBaseline: points })}
+                      className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
+                    >
+                      Salvar baseline A (estado atual)
+                    </button>
+                    {addon.comparisonBaseline && addon.comparisonBaseline.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onChange({ ...addon, comparisonBaseline: [] })}
+                        className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
+                      >
+                        Limpar comparacao A/B
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {addon.comparisonBaseline && addon.comparisonBaseline.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <BalanceComparisonPanel basePoints={addon.comparisonBaseline} candidatePoints={points} />
+                    {sensitivity && (
+                      <div className="rounded-xl border border-gray-700 bg-gray-900/60 p-3 text-xs text-gray-200">
+                        <strong className="text-gray-100">Sensibilidade de parametros:</strong>{" "}
+                        ao ajustar <strong>{sensitivity.parameter}</strong> em {sensitivity.percentChange}%, os niveis mais sensiveis foram{" "}
+                        {sensitivity.topAffectedLevels.map((entry) => `Lv ${entry.level} (${entry.impactPercent.toFixed(1)}%)`).join(", ")}.
+                        <p className="mt-1 text-gray-400">
+                          Leitura humana: niveis com impacto alto mudam muito com pequenos ajustes. Se o impacto estiver concentrado em poucos levels,
+                          pode haver risco de pico ou vale na progressao.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
-                <p className="text-xs text-emerald-300">{targetSuggestion.message}</p>
-                {suggestedAdjustments != null && adjustmentLabel !== "Sem ajuste necessario" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onChange({
-                        ...addon,
-                        params: {
-                          ...suggestedAdjustments,
-                        },
-                      })
-                    }
-                    className="rounded-lg border border-emerald-700/70 bg-emerald-900/30 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-900/50"
-                  >
-                    Aplicar ajuste sugerido ({adjustmentLabel})
-                  </button>
-                )}
               </div>
             )}
           </div>
-          <div className="mt-3 rounded-xl border border-gray-700 bg-gray-800/50 p-3">
-            <h4 className="text-sm font-semibold text-gray-100 mb-1">Comparacao A/B (antes e depois)</h4>
-            <p className="text-xs text-gray-400 mb-2">
-              A baseline A e uma foto da curva atual. Depois de mudar parametros, a curva nova vira B e mostramos a diferenca.
-            </p>
-            {baselineStatus && (
-              <div className="mb-2 rounded-lg border border-gray-700 bg-gray-900/60 p-2 text-xs text-gray-200">
-                <strong className="text-gray-100">{baselineStatus.label}.</strong>
-                <p className="mt-1 text-gray-400">{baselineStatus.detail}</p>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() => onChange({ ...addon, comparisonBaseline: points })}
+              onClick={exportLevelXpJson}
               className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
             >
-              Salvar baseline A (estado atual)
+              Exportar Lv-&gt;XP (JSON)
             </button>
-            {addon.comparisonBaseline && addon.comparisonBaseline.length > 0 && (
-              <button
-                type="button"
-                onClick={() => onChange({ ...addon, comparisonBaseline: [] })}
-                className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
-              >
-                Limpar comparacao A/B
-              </button>
-            )}
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(t("balanceAddon.removeConfirm", "Tem certeza que deseja remover este addon de balanceamento?"))) {
+                  onRemove();
+                }
+              }}
+              className={BUTTON_DANGER_CLASS}
+            >
+              {t("balanceAddon.removeButton", "Remover addon")}
+            </button>
           </div>
-          {addon.comparisonBaseline && addon.comparisonBaseline.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <BalanceComparisonPanel basePoints={addon.comparisonBaseline} candidatePoints={points} />
-              {sensitivity && (
-                <div className="rounded-xl border border-gray-700 bg-gray-900/60 p-3 text-xs text-gray-200">
-                  <strong className="text-gray-100">Sensibilidade de parametros:</strong>{" "}
-                  ao ajustar <strong>{sensitivity.parameter}</strong> em {sensitivity.percentChange}%, os niveis mais sensiveis foram{" "}
-                  {sensitivity.topAffectedLevels.map((entry) => `Lv ${entry.level} (${entry.impactPercent.toFixed(1)}%)`).join(", ")}.
-                  <p className="mt-1 text-gray-400">
-                    Leitura humana: niveis com impacto alto mudam muito com pequenos ajustes. Se o impacto estiver concentrado em poucos levels,
-                    pode haver risco de pico ou vale na progressao.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="mt-3">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setShowTable((prev) => !prev)}
-                className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
-              >
-                {showTable ? "Ocultar tabela" : "Mostrar tabela"}
-              </button>
-              <button
-                type="button"
-                onClick={exportLevelXpJson}
-                className="rounded-lg border border-emerald-700/70 bg-emerald-900/30 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-900/50"
-              >
-                Exportar Lv-&gt;XP (JSON)
-              </button>
-            </div>
-          </div>
-          {showTable && (
-            <div className="mt-3 max-h-56 overflow-auto rounded-xl border border-gray-700">
-              <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 bg-gray-900 text-gray-300">
-                  <tr>
-                    <th className="px-3 py-2">Level</th>
-                    <th className="px-3 py-2">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {points.map((point) => (
-                    <tr key={point.level} className="border-t border-gray-800 text-gray-200">
-                      <td className="px-3 py-1.5">{point.level}</td>
-                      <td className="px-3 py-1.5">{point.value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </>
       )}
     </section>
@@ -1142,7 +1211,7 @@ function NumberInput({
           const parsed = Number(e.target.value);
           onChange(Number.isFinite(parsed) ? parsed : 0);
         }}
-        className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+        className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500"
       />
       {expected && <span className="mt-1 block text-[11px] text-gray-500">{expected}</span>}
     </label>
@@ -1202,10 +1271,10 @@ function SimpleLineChart({
         role="img"
         aria-label="Grafico de progressao por nivel"
       >
-        {yTicks.map((tick) => {
+        {yTicks.map((tick, idx) => {
           const y = plot.top + (1 - (tick - minY) / yRange) * plotHeight;
           return (
-            <g key={`y-${tick}`}>
+            <g key={`y-${idx}-${tick}`}>
               <line x1={plot.left} y1={y} x2={width - plot.right} y2={y} stroke="#334155" strokeWidth="1" strokeDasharray="3 3" />
               <text x={plot.left - 6} y={y + 4} textAnchor="end" fill="#94a3b8" fontSize="10">
                 {formatAxisNumber(tick)}

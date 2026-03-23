@@ -29,7 +29,7 @@ export function buildUnityExport(project: Project): UnityExportV1 {
     parentId: section.parentId || null,
     title: section.title,
     balanceAddons: (section.addons || [])
-      .filter((addon) => addon.type === "balance")
+      .filter((addon) => addon.type === "xpBalance")
       .map((addon) => {
       const balanceAddon = sectionAddonToBalanceDraft(addon);
       const curve = generateBalanceCurve({

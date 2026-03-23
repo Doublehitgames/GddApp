@@ -15,4 +15,9 @@ describe('Jest Configuration', () => {
     expect(window.matchMedia).toBeDefined()
     expect(typeof window.matchMedia).toBe('function')
   })
+
+  it('should have fetch mock', () => {
+    expect(global.fetch).toBeDefined()
+    expect(typeof global.fetch).toBe('function')
+  })
 })

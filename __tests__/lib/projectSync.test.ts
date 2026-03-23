@@ -51,6 +51,52 @@ describe('projectSync auth/session behavior', () => {
     )
   })
 
+  it("sends progressionTable addons in sync payload", async () => {
+    const projectWithAddon = {
+      ...projectPayload,
+      id: "project-with-addon",
+      sections: [
+        {
+          ...projectPayload.sections[0],
+          id: "section-with-addon",
+          addons: [
+            {
+              id: "prog-1",
+              type: "progressionTable",
+              name: "Tabela de progressao",
+              data: {
+                id: "prog-1",
+                name: "Tabela de progressao",
+                startLevel: 1,
+                endLevel: 2,
+                columns: [{ id: "hp", name: "HP", decimals: 0, generator: { mode: "manual" } }],
+                rows: [
+                  { level: 1, values: { hp: 100 } },
+                  { level: 2, values: { hp: 120 } },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, stats: {} }),
+    });
+
+    const result = await upsertProjectToSupabase(projectWithAddon);
+    expect(result.error).toBeNull();
+
+    const [, requestInit] = mockFetch.mock.calls[mockFetch.mock.calls.length - 1] as [string, RequestInit];
+    const payload = JSON.parse(String(requestInit.body ?? "{}")) as { project?: { sections?: Array<{ addons?: unknown[] }> } };
+    expect(payload.project?.sections?.[0]?.addons?.[0]).toMatchObject({
+      id: "prog-1",
+      type: "progressionTable",
+    });
+  });
+
   it('returns quota info when route includes quota in response', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
