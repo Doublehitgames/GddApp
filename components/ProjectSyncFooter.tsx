@@ -27,12 +27,15 @@ export default function ProjectSyncFooter() {
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
+  const discardPendingChangesForProject = useProjectStore((s) => s.discardPendingChangesForProject);
   const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
   const projects = useProjectStore((s) => s.projects);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
   const [syncPreviewItems, setSyncPreviewItems] = useState<SyncPreviewItem[] | null>(null);
   const [showPreviewPopover, setShowPreviewPopover] = useState(false);
+  const [discardingChanges, setDiscardingChanges] = useState(false);
+  const [discardFeedback, setDiscardFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const previewPopoverRef = useRef<HTMLDivElement>(null);
 
   const project = projectId ? getProject(projectId as import("@/store/projectStore").UUID) : null;
@@ -47,7 +50,7 @@ export default function ProjectSyncFooter() {
   );
   const noCreditsLeft = Boolean(lastQuotaStatus && lastQuotaStatus.remainingInWindow === 0);
   const isSyncing = syncStatus === "syncing";
-  const syncDisabled = isSyncing || cloudSyncPaused || noCreditsLeft;
+  const syncDisabled = isSyncing || cloudSyncPaused || noCreditsLeft || discardingChanges;
 
   const refreshEstimatedCredits = useCallback(() => {
     if (!projectId || !project) {
@@ -114,6 +117,37 @@ export default function ProjectSyncFooter() {
     }
   };
 
+  const handleDiscardPendingChanges = useCallback(async () => {
+    if (!projectId || !isDirty || discardingChanges || isSyncing) return;
+
+    const confirmed = window.confirm(t("settings.persistencePage.syncBadge.discardConfirmMessage"));
+    if (!confirmed) return;
+
+    setDiscardingChanges(true);
+    setDiscardFeedback(null);
+    setShowPreviewPopover(false);
+
+    const { error } = await discardPendingChangesForProject(projectId);
+    if (error) {
+      const key =
+        error === "unauthenticated"
+          ? "settings.persistencePage.syncBadge.discardErrorUnauthenticated"
+          : error === "sync_in_progress"
+            ? "settings.persistencePage.syncBadge.discardErrorSyncing"
+            : error === "project_not_found_in_cloud"
+              ? "settings.persistencePage.syncBadge.discardErrorCloudMissing"
+              : "settings.persistencePage.syncBadge.discardErrorGeneric";
+      setDiscardFeedback({ type: "error", message: t(key) });
+      setDiscardingChanges(false);
+      return;
+    }
+
+    setEstimatedCreditsToSync(null);
+    setSyncPreviewItems(null);
+    setDiscardFeedback({ type: "success", message: t("settings.persistencePage.syncBadge.discardSuccess") });
+    setDiscardingChanges(false);
+  }, [projectId, isDirty, discardingChanges, isSyncing, t, discardPendingChangesForProject]);
+
   const quotaPercent =
     lastQuotaStatus && lastQuotaStatus.limitPerHour > 0
       ? Math.min(100, Math.round((lastQuotaStatus.usedInWindow / lastQuotaStatus.limitPerHour) * 100))
@@ -165,6 +199,11 @@ export default function ProjectSyncFooter() {
         </div>
 
         <div className="flex items-center gap-3">
+          {discardFeedback && (
+            <span className={discardFeedback.type === "error" ? "text-red-300" : "text-emerald-300"}>
+              {discardFeedback.message}
+            </span>
+          )}
           {isDirty && (
             <div className="relative" ref={previewPopoverRef}>
               <button
@@ -205,6 +244,23 @@ export default function ProjectSyncFooter() {
                 </div>
               )}
             </div>
+          )}
+          {isDirty && (
+            <button
+              type="button"
+              onClick={() => void handleDiscardPendingChanges()}
+              disabled={discardingChanges || isSyncing}
+              title={t("settings.persistencePage.syncBadge.discardButtonHint")}
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+                discardingChanges || isSyncing
+                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  : "bg-red-700 hover:bg-red-600 text-white"
+              }`}
+            >
+              {discardingChanges
+                ? t("settings.persistencePage.syncBadge.discarding")
+                : t("settings.persistencePage.syncBadge.discardButton")}
+            </button>
           )}
           <button
             onClick={() => projectId && void syncProjectToSupabase(projectId)}

@@ -952,7 +952,16 @@
         "previewTitle": "Incluido en el próximo sync",
         "previewNew": "Nuevas",
         "previewUpdated": "Actualizadas",
-        "previewDeleted": "Eliminadas"
+        "previewDeleted": "Eliminadas",
+        "discardButton": "Descartar pendientes",
+        "discardButtonHint": "Revertir cambios locales pendientes a la versión de la nube",
+        "discardConfirmMessage": "¿Descartar los pendientes de este proyecto y restaurar el último estado en la nube? Se perderán los cambios locales no sincronizados.",
+        "discarding": "Descartando...",
+        "discardSuccess": "Cambios locales pendientes descartados con éxito.",
+        "discardErrorUnauthenticated": "Inicia sesión nuevamente para descartar pendientes.",
+        "discardErrorSyncing": "Espera a que termine el sync actual antes de descartar pendientes.",
+        "discardErrorCloudMissing": "No se pudo restaurar: proyecto no encontrado en la nube.",
+        "discardErrorGeneric": "No se pudieron descartar los pendientes en este momento."
       },
       "credits": {
         "title": "Créditos de sync en la nube",

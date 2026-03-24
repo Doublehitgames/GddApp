@@ -1,6 +1,7 @@
 // src/store/projectStore.ts
 import { create } from "zustand";
 import {
+  fetchProjectFromSupabase,
   fetchProjectsFromSupabase,
   fetchDeletedProjectIds,
   fetchQuotaStatus,
@@ -311,6 +312,8 @@ interface ProjectStore {
   /** Grava o estado atual no localStorage (útil em beforeunload/visibilitychange para não perder dados). */
   persistToStorage: () => void;
   syncProjectToSupabase: (projectId: UUID) => Promise<void>;
+  /** Descarta alterações pendentes de um projeto restaurando o último estado da nuvem. */
+  discardPendingChangesForProject: (projectId: UUID) => Promise<{ error: string | null }>;
   flushPendingSyncs: () => Promise<void>;
   /** IDs dos projetos com alterações ainda não enviadas (para estimativa de créditos). */
   getPendingProjectIds: () => string[];
@@ -1335,6 +1338,37 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     syncProjectToSupabase: async (projectId: UUID) => {
       markProjectDirty(projectId);
       await syncNow(projectId);
+    },
+
+    discardPendingChangesForProject: async (projectId: UUID) => {
+      const { userId, projects } = get();
+      if (!userId) {
+        return { error: "unauthenticated" };
+      }
+
+      if (!projects.some((p) => p.id === projectId)) {
+        return { error: "project_not_found_local" };
+      }
+
+      if (inFlightSyncProjectIds.has(projectId)) {
+        return { error: "sync_in_progress" };
+      }
+
+      const remoteProject = await fetchProjectFromSupabase(projectId);
+      if (!remoteProject) {
+        return { error: "project_not_found_in_cloud" };
+      }
+
+      wrappedSet((prev) => prev.map((project) => (project.id === projectId ? remoteProject : project)));
+      clearProjectDirty(projectId);
+      clearProjectBackoff(projectId);
+      syncRetryCount.delete(projectId);
+      syncedProjectHash.set(projectId, buildProjectHash(remoteProject));
+
+      set({ syncStatus: "idle", lastSyncError: null, lastSyncFailureReason: null });
+      persistSyncState();
+
+      return { error: null };
     },
 
     getPendingProjectIds: () => Array.from(dirtyProjectIds),

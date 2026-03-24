@@ -952,7 +952,16 @@
         "previewTitle": "Included in next sync",
         "previewNew": "New",
         "previewUpdated": "Updated",
-        "previewDeleted": "Deleted"
+        "previewDeleted": "Deleted",
+        "discardButton": "Discard pending changes",
+        "discardButtonHint": "Revert pending local changes to the cloud version",
+        "discardConfirmMessage": "Discard this project's pending changes and restore the latest cloud state? Unsynced local changes will be lost.",
+        "discarding": "Discarding...",
+        "discardSuccess": "Pending local changes discarded successfully.",
+        "discardErrorUnauthenticated": "Please sign in again to discard pending changes.",
+        "discardErrorSyncing": "Wait for the current sync to finish before discarding pending changes.",
+        "discardErrorCloudMissing": "Could not restore: project not found in cloud.",
+        "discardErrorGeneric": "Could not discard pending changes right now."
       },
       "credits": {
         "title": "Cloud sync credits",

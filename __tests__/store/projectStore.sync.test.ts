@@ -1,8 +1,9 @@
 import { useProjectStore } from '@/store/projectStore'
-import { fetchProjectsFromSupabase, upsertProjectToSupabase } from '@/lib/supabase/projectSync'
+import { fetchProjectFromSupabase, fetchProjectsFromSupabase, upsertProjectToSupabase } from '@/lib/supabase/projectSync'
 
 jest.mock('@/lib/supabase/projectSync', () => ({
   fetchProjectsFromSupabase: jest.fn(),
+  fetchProjectFromSupabase: jest.fn(async () => null),
   upsertProjectToSupabase: jest.fn(async () => ({ error: null })),
   deleteProjectFromSupabase: jest.fn(async () => ({ error: null })),
   migrateLocalProjectsToSupabase: jest.fn(async () => ({ migrated: 0, errors: 0 })),
@@ -11,6 +12,7 @@ jest.mock('@/lib/supabase/projectSync', () => ({
 
 describe('ProjectStore sync behavior', () => {
   const fetchProjectsMock = fetchProjectsFromSupabase as jest.Mock
+  const fetchProjectMock = fetchProjectFromSupabase as jest.Mock
   const upsertProjectMock = upsertProjectToSupabase as jest.Mock
 
   let storage: Record<string, string>
@@ -210,5 +212,55 @@ describe('ProjectStore sync behavior', () => {
     const section = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === sectionId)
     expect(section?.parentId).toBeUndefined()
     expect(section?.color).toBe('#ff0000')
+  })
+
+  it('discards pending changes by restoring project from cloud', async () => {
+    useProjectStore.setState({ userId: 'user-1' })
+    const store = useProjectStore.getState()
+    const projectId = store.addProject('Projeto local', 'Descrição local')
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    store.editProject(projectId, 'Projeto alterado localmente', 'Alteração local')
+    expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
+
+    fetchProjectMock.mockResolvedValueOnce({
+      id: projectId,
+      title: 'Projeto na nuvem',
+      description: 'Versão cloud',
+      sections: [],
+      createdAt: '2026-03-01T10:00:00.000Z',
+      updatedAt: '2026-03-01T11:00:00.000Z',
+    })
+
+    const result = await useProjectStore.getState().discardPendingChangesForProject(projectId)
+
+    expect(result).toEqual({ error: null })
+    expect(fetchProjectMock).toHaveBeenCalledWith(projectId)
+    expect(useProjectStore.getState().getProject(projectId)?.title).toBe('Projeto na nuvem')
+    expect(useProjectStore.getState().pendingSyncCount).toBe(0)
+    expect(useProjectStore.getState().getPendingProjectIds()).not.toContain(projectId)
+  })
+
+  it('keeps local pending data when discard fails to load cloud snapshot', async () => {
+    useProjectStore.setState({ userId: 'user-1' })
+    const store = useProjectStore.getState()
+    const projectId = store.addProject('Projeto local', 'Descrição local')
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    store.editProject(projectId, 'Projeto alterado localmente', 'Alteração local')
+    const localBeforeDiscard = useProjectStore.getState().getProject(projectId)
+
+    fetchProjectMock.mockResolvedValueOnce(null)
+
+    const result = await useProjectStore.getState().discardPendingChangesForProject(projectId)
+
+    expect(result).toEqual({ error: 'project_not_found_in_cloud' })
+    expect(useProjectStore.getState().getProject(projectId)).toEqual(localBeforeDiscard)
+    expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
+    expect(useProjectStore.getState().pendingSyncCount).toBe(1)
   })
 })

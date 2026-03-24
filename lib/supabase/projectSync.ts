@@ -404,6 +404,49 @@ export async function fetchProjectsFromSupabase(): Promise<Project[] | null> {
   );
 }
 
+/** Carrega um único projeto do usuário autenticado do Supabase. */
+export async function fetchProjectFromSupabase(projectId: string): Promise<Project | null> {
+  const supabase = createClient();
+
+  const projectQuery = supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  const projectResult = await withTimeout(projectQuery, SUPABASE_QUERY_TIMEOUT_MS);
+  if (projectResult.timedOut || !projectResult.value) {
+    logWarn("[supabaseSync] Timeout ao carregar projeto do Supabase:", projectId);
+    return null;
+  }
+
+  const { data: projectRow, error: projectError } = projectResult.value;
+  if (projectError || !projectRow) {
+    logWarn("[supabaseSync] Erro ao carregar projeto:", projectError?.message);
+    return null;
+  }
+
+  const sectionsQuery = supabase
+    .from("sections")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: true });
+
+  const sectionsResult = await withTimeout(sectionsQuery, SUPABASE_QUERY_TIMEOUT_MS);
+  if (sectionsResult.timedOut || !sectionsResult.value) {
+    logWarn("[supabaseSync] Timeout ao carregar seções do projeto:", projectId);
+    return null;
+  }
+
+  const { data: sections, error: sectionsError } = sectionsResult.value;
+  if (sectionsError) {
+    logWarn("[supabaseSync] Erro ao carregar seções do projeto:", sectionsError?.message);
+    return null;
+  }
+
+  return dbProjectToStore(projectRow as Record<string, unknown>, (sections || []) as Record<string, unknown>[]);
+}
+
 // ── Escrita ───────────────────────────────────────────────────────────────────
 
 /** Salva (upsert) um projeto inteiro no Supabase incluindo suas seções */
