@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 export default function PersistenceSettingsPage() {
   const router = useRouter();
@@ -117,11 +118,10 @@ export default function PersistenceSettingsPage() {
         <div className="bg-gray-800 rounded-lg p-6 space-y-6 border border-gray-700">
           <div className="flex items-start gap-3">
             <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={persistenceConfig.syncAutomatic}
-                onChange={(e) => updatePersistenceConfig({ syncAutomatic: e.target.checked })}
-                className="rounded border-gray-500"
+                onChange={(next) => updatePersistenceConfig({ syncAutomatic: next })}
+                ariaLabel={t("settings.persistencePage.form.syncAutomatic")}
               />
               <span className="font-medium">{t("settings.persistencePage.form.syncAutomatic")}</span>
             </label>

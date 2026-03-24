@@ -1,6 +1,11 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
 import type {
+  CurrencyAddonDraft,
+  EconomyLinkAddonDraft,
+  GlobalVariableAddonDraft,
+  InventoryAddonDraft,
   LegacySectionAddonType,
+  ProductionAddonDraft,
   ProgressionTableAddonDraft,
   ProgressionTableColumn,
   ProgressionTableRow,
@@ -47,18 +52,23 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
     const decimalsValue = asFiniteNumber(rawColumn.decimals);
     const minValue = asFiniteNumber(rawColumn.min);
     const maxValue = asFiniteNumber(rawColumn.max);
+    const isPercentage =
+      typeof rawColumn.isPercentage === "boolean"
+        ? rawColumn.isPercentage
+        : String(rawColumn.isPercentage ?? "").trim().toLowerCase() === "true";
     const column: ProgressionTableColumn = {
       id,
       name,
       generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" },
       decimals: decimalsValue == null ? 0 : Math.max(0, Math.min(6, Math.floor(decimalsValue))),
+      isPercentage,
       min: minValue == null ? undefined : minValue,
       max: maxValue == null ? undefined : maxValue,
     };
     columns.push(column);
   }
   if (columns.length > 0) return columns;
-  return [{ id: "value", name: "Value", generator: { mode: "manual" }, decimals: 0 }];
+  return [{ id: "value", name: "Value", generator: { mode: "manual" }, decimals: 0, isPercentage: false }];
 }
 
 function normalizeProgressionRows(rawRows: unknown[], columns: ProgressionTableColumn[]): ProgressionTableRow[] {
@@ -79,11 +89,339 @@ function normalizeProgressionRows(rawRows: unknown[], columns: ProgressionTableC
   return normalizedRows.sort((a, b) => a.level - b.level);
 }
 
+function normalizeModifierRefs(raw: unknown): Array<{ refId: string }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ refId: string }> = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const refId = item.trim();
+      if (refId) out.push({ refId });
+      continue;
+    }
+    if (!isObject(item)) continue;
+    if (typeof item.refId !== "string") continue;
+    const refId = item.refId.trim();
+    if (!refId) continue;
+    out.push({ refId });
+  }
+  return out;
+}
+
+function asPositiveIntegerOrUndefined(value: unknown): number | undefined {
+  const parsed = asFiniteNumber(value);
+  if (parsed == null) return undefined;
+  return Math.max(0, Math.floor(parsed));
+}
+
+function asBooleanLoose(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "false" || normalized === "0" || normalized === "no") return false;
+    if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+  }
+  return Boolean(value);
+}
+
+function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const buyValue = asPositiveIntegerOrUndefined(value.buyValue);
+  const minBuyValue = asPositiveIntegerOrUndefined(value.minBuyValue);
+  const sellValue = asPositiveIntegerOrUndefined(value.sellValue);
+  const maxSellValue = asPositiveIntegerOrUndefined(value.maxSellValue);
+  const produceMin = asPositiveIntegerOrUndefined(value.produceMin);
+  const produceMax = asPositiveIntegerOrUndefined(value.produceMax);
+  const normalizedProduceMin = produceMin == null ? undefined : produceMin;
+  const normalizedProduceMax =
+    produceMax == null
+      ? undefined
+      : normalizedProduceMin == null
+        ? produceMax
+        : Math.max(normalizedProduceMin, produceMax);
+
+  const buyCurrencyRef = typeof value.buyCurrencyRef === "string" ? value.buyCurrencyRef.trim() : "";
+  const sellCurrencyRef = typeof value.sellCurrencyRef === "string" ? value.sellCurrencyRef.trim() : "";
+  const producedItemRef = typeof value.producedItemRef === "string" ? value.producedItemRef.trim() : "";
+  const unlockRef = typeof value.unlockRef === "string" ? value.unlockRef.trim() : "";
+  const notes = typeof value.notes === "string" ? value.notes : "";
+  const buyModifiers = normalizeModifierRefs(value.buyModifiers);
+  const sellModifiers = normalizeModifierRefs(value.sellModifiers);
+  const hasBuyConfig =
+    typeof value.hasBuyConfig === "boolean"
+      ? value.hasBuyConfig
+      : Boolean(buyCurrencyRef || buyValue != null || buyModifiers.length > 0);
+  const hasSellConfig =
+    typeof value.hasSellConfig === "boolean"
+      ? value.hasSellConfig
+      : Boolean(sellCurrencyRef || sellValue != null || sellModifiers.length > 0);
+  const hasProductionConfig =
+    typeof value.hasProductionConfig === "boolean"
+      ? value.hasProductionConfig
+      : Boolean(
+          producedItemRef ||
+            produceMin != null ||
+            produceMax != null ||
+            asPositiveIntegerOrUndefined(value.productionTimeSeconds) != null
+        );
+  const unlockValue = asPositiveIntegerOrUndefined(value.unlockValue);
+  const hasUnlockConfig =
+    typeof value.hasUnlockConfig === "boolean"
+      ? value.hasUnlockConfig
+      : Boolean(unlockRef || unlockValue != null);
+
+  return {
+    id: value.id,
+    name: value.name,
+    hasBuyConfig,
+    buyCurrencyRef: buyCurrencyRef || undefined,
+    buyValue,
+    minBuyValue,
+    buyModifiers,
+    hasSellConfig,
+    sellCurrencyRef: sellCurrencyRef || undefined,
+    sellValue,
+    maxSellValue,
+    sellModifiers,
+    hasProductionConfig,
+    producedItemRef: producedItemRef || undefined,
+    produceMin: normalizedProduceMin,
+    produceMax: normalizedProduceMax,
+    productionTimeSeconds: asPositiveIntegerOrUndefined(value.productionTimeSeconds),
+    hasUnlockConfig,
+    unlockRef: unlockRef || undefined,
+    unlockValue,
+    notes: notes || undefined,
+  };
+}
+
+function normalizeCurrencyDraft(value: unknown): CurrencyAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const code = typeof value.code === "string" ? value.code.trim().toUpperCase() : "";
+  const displayName = typeof value.displayName === "string" ? value.displayName : "";
+  const rawKind = typeof value.kind === "string" ? value.kind : "other";
+  const kind = rawKind === "soft" || rawKind === "premium" || rawKind === "event" || rawKind === "other" ? rawKind : "other";
+  const decimals = asPositiveIntegerOrUndefined(value.decimals) ?? 0;
+  const notes = typeof value.notes === "string" ? value.notes : "";
+
+  return {
+    id: value.id,
+    name: value.name,
+    code,
+    displayName,
+    kind,
+    decimals,
+    notes: notes || undefined,
+  };
+}
+
+function normalizeGlobalVariableDraft(value: unknown): GlobalVariableAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const keyRaw = typeof value.key === "string" ? value.key : "";
+  const key = keyRaw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_\-\s]+/g, "")
+    .replace(/\s+/g, "_");
+  const displayName = typeof value.displayName === "string" ? value.displayName : "";
+
+  const rawValueType = typeof value.valueType === "string" ? value.valueType : "percent";
+  const valueType =
+    rawValueType === "percent" || rawValueType === "multiplier" || rawValueType === "flat" || rawValueType === "boolean"
+      ? rawValueType
+      : "percent";
+
+  let defaultValue: number | boolean;
+  if (valueType === "boolean") {
+    defaultValue = Boolean(value.defaultValue);
+  } else {
+    defaultValue = asFiniteNumber(value.defaultValue) ?? 0;
+  }
+
+  const rawScope = typeof value.scope === "string" ? value.scope : "global";
+  const scope = rawScope === "global" || rawScope === "mode" || rawScope === "event" || rawScope === "season" ? rawScope : "global";
+  const notes = typeof value.notes === "string" ? value.notes : "";
+
+  return {
+    id: value.id,
+    name: value.name,
+    key,
+    displayName,
+    valueType,
+    defaultValue,
+    scope,
+    notes: notes || undefined,
+  };
+}
+
+function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const weight = asFiniteNumber(value.weight) ?? 0;
+  const stackable = Boolean(value.stackable);
+  const maxStackRaw = asPositiveIntegerOrUndefined(value.maxStack) ?? 1;
+  const maxStack = stackable ? Math.max(1, maxStackRaw) : 1;
+  const inventoryCategory = typeof value.inventoryCategory === "string" ? value.inventoryCategory : "";
+  const slotSize = asFiniteNumber(value.slotSize) ?? 0;
+  const durability = Math.max(0, asFiniteNumber(value.durability) ?? 0);
+  const volume = asFiniteNumber(value.volume);
+  const maxDurability = asFiniteNumber(value.maxDurability);
+  const hasDurabilityConfig =
+    typeof value.hasDurabilityConfig === "boolean" || typeof value.hasDurabilityConfig === "string"
+      ? asBooleanLoose(value.hasDurabilityConfig)
+      : durability > 0 || (maxDurability != null && maxDurability > 0);
+  const hasVolumeConfig =
+    typeof value.hasVolumeConfig === "boolean" || typeof value.hasVolumeConfig === "string"
+      ? asBooleanLoose(value.hasVolumeConfig)
+      : volume != null && volume > 0;
+  const bindTypeRaw = typeof value.bindType === "string" ? value.bindType : "none";
+  const bindType = bindTypeRaw === "none" || bindTypeRaw === "onPickup" || bindTypeRaw === "onEquip" ? bindTypeRaw : "none";
+  let showInShop = true;
+  if (value.showInShop != null) showInShop = asBooleanLoose(value.showInShop);
+  const consumable = asBooleanLoose(value.consumable);
+  const discardable = value.discardable == null ? true : asBooleanLoose(value.discardable);
+  const notes = typeof value.notes === "string" ? value.notes : "";
+
+  return {
+    id: value.id,
+    name: value.name,
+    weight: Math.max(0, weight),
+    stackable,
+    maxStack,
+    inventoryCategory,
+    slotSize: Math.max(0, slotSize),
+    hasDurabilityConfig,
+    durability: hasDurabilityConfig ? durability : 0,
+    hasVolumeConfig,
+    volume: hasVolumeConfig ? (volume == null ? 0 : Math.max(0, volume)) : undefined,
+    maxDurability: hasDurabilityConfig ? (maxDurability == null ? 0 : Math.max(0, maxDurability)) : undefined,
+    bindType,
+    showInShop,
+    consumable,
+    discardable,
+    notes: notes || undefined,
+  };
+}
+
+function normalizeProductionItems(raw: unknown): Array<{ itemRef: string; quantity: number }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ itemRef: string; quantity: number }> = [];
+  for (const item of raw) {
+    if (!isObject(item)) continue;
+    const itemRef = typeof item.itemRef === "string" ? item.itemRef.trim() : "";
+    const quantity = Math.max(1, asPositiveIntegerOrUndefined(item.quantity) ?? 1);
+    out.push({ itemRef, quantity });
+  }
+  return out;
+}
+
+function normalizeProductionProgressionLink(
+  value: unknown
+): { progressionAddonId: string; columnId: string; columnName: string } | undefined {
+  if (!isObject(value)) return undefined;
+  const progressionAddonId =
+    typeof value.progressionAddonId === "string" ? value.progressionAddonId.trim() : "";
+  const columnId = typeof value.columnId === "string" ? value.columnId.trim() : "";
+  const columnName = typeof value.columnName === "string" ? value.columnName.trim() : "";
+  if (!progressionAddonId || !columnId || !columnName) return undefined;
+  return {
+    progressionAddonId,
+    columnId,
+    columnName,
+  };
+}
+
+function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const mode = value.mode === "recipe" ? "recipe" : "passive";
+  const outputRef = typeof value.outputRef === "string" ? value.outputRef.trim() : "";
+  const minOutput = asPositiveIntegerOrUndefined(value.minOutput);
+  const maxOutputRaw = asPositiveIntegerOrUndefined(value.maxOutput);
+  const maxOutput = maxOutputRaw == null ? undefined : minOutput == null ? maxOutputRaw : Math.max(minOutput, maxOutputRaw);
+  const minOutputProgressionLink = normalizeProductionProgressionLink(value.minOutputProgressionLink);
+  const maxOutputProgressionLink = normalizeProductionProgressionLink(value.maxOutputProgressionLink);
+  const intervalSeconds = asPositiveIntegerOrUndefined(value.intervalSeconds);
+  const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
+  const capacity = asPositiveIntegerOrUndefined(value.capacity);
+  const ingredients = normalizeProductionItems(value.ingredients);
+  const outputs = normalizeProductionItems(value.outputs);
+  const craftTimeSeconds = asPositiveIntegerOrUndefined(value.craftTimeSeconds);
+  const intervalSecondsProgressionLink = normalizeProductionProgressionLink(value.intervalSecondsProgressionLink);
+  const craftTimeSecondsProgressionLink = normalizeProductionProgressionLink(value.craftTimeSecondsProgressionLink);
+  const notes = typeof value.notes === "string" ? value.notes : "";
+
+  return {
+    id: value.id,
+    name: value.name,
+    mode,
+    outputRef: outputRef || undefined,
+    minOutput,
+    minOutputProgressionLink,
+    maxOutput,
+    maxOutputProgressionLink,
+    intervalSeconds,
+    intervalSecondsProgressionLink,
+    requiresCollection,
+    capacity,
+    ingredients,
+    outputs,
+    craftTimeSeconds,
+    craftTimeSecondsProgressionLink,
+    notes: notes || undefined,
+  };
+}
+
+function shouldMigrateEconomyProduction(draft: EconomyLinkAddonDraft): boolean {
+  return Boolean(
+    draft.hasProductionConfig &&
+      (draft.producedItemRef || draft.produceMin != null || draft.produceMax != null || draft.productionTimeSeconds != null)
+  );
+}
+
+function buildProductionFromEconomy(draft: EconomyLinkAddonDraft): ProductionAddonDraft {
+  return {
+    id: `production-${draft.id}`,
+    name: "Production",
+    mode: "passive",
+    outputRef: draft.producedItemRef,
+    minOutput: draft.produceMin,
+    maxOutput: draft.produceMax,
+    intervalSeconds: draft.productionTimeSeconds,
+    requiresCollection: false,
+    ingredients: [],
+    outputs: [],
+    craftTimeSeconds: draft.productionTimeSeconds,
+  };
+}
+
 function asSectionAddon(value: unknown): SectionAddon | null {
   if (!isObject(value)) return null;
   if (typeof value.id !== "string") return null;
   if (typeof value.name !== "string") return null;
-  if (value.type !== "xpBalance" && value.type !== "progressionTable") return null;
+  if (
+    value.type !== "xpBalance" &&
+    value.type !== "progressionTable" &&
+    value.type !== "economyLink" &&
+    value.type !== "currency" &&
+    value.type !== "globalVariable" &&
+      value.type !== "inventory" &&
+      value.type !== "production"
+  ) {
+    return null;
+  }
   if (!isObject(value.data)) return null;
   return value as unknown as SectionAddon;
 }
@@ -143,12 +481,96 @@ function normalizeProgressionTableDraft(value: unknown): ProgressionTableAddonDr
 
 export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const hasExplicitProductionAddon = raw.some((item) => isObject(item) && item.type === "production");
   const out: SectionAddon[] = [];
+  let migratedProductionFromEconomy = false;
   for (const item of raw) {
     const addon = asSectionAddon(item);
     if (addon) {
       if (addon.type === "progressionTable") {
         const draft = normalizeProgressionTableDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "economyLink") {
+        const draft = normalizeEconomyLinkDraft(addon.data);
+        if (!draft) continue;
+        let migratedProductionAddon: ProductionAddonDraft | null = null;
+        if (!hasExplicitProductionAddon && !migratedProductionFromEconomy && shouldMigrateEconomyProduction(draft)) {
+          migratedProductionAddon = buildProductionFromEconomy(draft);
+        }
+
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: {
+            ...draft,
+            hasProductionConfig: false,
+            producedItemRef: undefined,
+            produceMin: undefined,
+            produceMax: undefined,
+            productionTimeSeconds: undefined,
+          },
+        });
+
+        if (migratedProductionAddon) {
+          const baseId = migratedProductionAddon.id || `production-${addon.id}`;
+          let nextId = baseId;
+          let dedupe = 2;
+          while (out.some((existing) => existing.id === nextId)) {
+            nextId = `${baseId}_${dedupe}`;
+            dedupe += 1;
+          }
+          out.push({
+            id: nextId,
+            type: "production",
+            name: migratedProductionAddon.name,
+            data: {
+              ...migratedProductionAddon,
+              id: nextId,
+            },
+          });
+          migratedProductionFromEconomy = true;
+        }
+        continue;
+      }
+      if (addon.type === "currency") {
+        const draft = normalizeCurrencyDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "globalVariable") {
+        const draft = normalizeGlobalVariableDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "inventory") {
+        const draft = normalizeInventoryDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "production") {
+        const draft = normalizeProductionDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,

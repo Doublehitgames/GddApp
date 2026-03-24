@@ -6,11 +6,13 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
+import { resolveProjectSpecialTokens, type ProjectTokenSource } from "@/lib/addons/projectSpecialTokens";
 
 interface MarkdownWithReferencesProps {
   content: string;
   projectId: string;
   sections: any[];
+  projectTokenSource?: ProjectTokenSource;
   referenceLinkMode?: "manager" | "document";
   documentAnchorOffset?: number;
   resolveDocumentAnchorPreview?: (
@@ -157,6 +159,7 @@ export function MarkdownWithReferences({
   content,
   projectId,
   sections,
+  projectTokenSource,
   referenceLinkMode = "manager",
   documentAnchorOffset = 180,
   resolveDocumentAnchorPreview,
@@ -206,7 +209,11 @@ export function MarkdownWithReferences({
   }, [pendingAnchorNavigation]);
 
   const buildMarkdownWithReferenceLinks = () => {
-    const normalizedContent = convertMarkdownLinksInsideHtmlBlocks(content);
+    const contentWithResolvedTokens = resolveProjectSpecialTokens(content, {
+      updatedAt: projectTokenSource?.updatedAt,
+      sections: projectTokenSource?.sections ?? sections,
+    });
+    const normalizedContent = convertMarkdownLinksInsideHtmlBlocks(contentWithResolvedTokens);
     const refs = extractRefs(normalizedContent);
     if (refs.length === 0) return normalizedContent;
 

@@ -607,12 +607,23 @@ export async function POST(request: NextRequest) {
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         balance_addons: normalizeSectionAddons(s.addons) || [],
       }));
+      const hasAnyAddonPayload = rows.some((row) => Array.isArray(row.balance_addons) && row.balance_addons.length > 0);
 
       let { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });
       if (sErr && isMissingBalanceAddonsColumn(sErr)) {
         const rowsWithoutAddons = rows.map(({ balance_addons: _ignored, ...rest }) => rest);
         const retry = await supabase.from("sections").upsert(rowsWithoutAddons, { onConflict: "id" });
         sErr = retry.error;
+        if (!sErr && hasAnyAddonPayload) {
+          return NextResponse.json(
+            {
+              error: "addons_column_missing_in_sections",
+              code: "sections_balance_addons_column_missing",
+              hint: "Aplique a migração de addons (coluna sections.balance_addons) no Supabase para persistir os addons.",
+            },
+            { status: 500 }
+          );
+        }
       }
 
       if (sErr) {
@@ -645,12 +656,18 @@ export async function POST(request: NextRequest) {
           content: r.content ?? "",
           sort_order: r.sort_order ?? 0,
           color: r.color ?? null,
+          balance_addons: r.balance_addons ?? [],
           created_at: r.updated_at ?? nowIso,
           updated_by: r.updated_by ?? null,
           updated_by_name: r.updated_by_name ?? null,
         }));
       if (versionRows.length > 0) {
-        const { error: verErr } = await supabase.from("section_versions").insert(versionRows);
+        let { error: verErr } = await supabase.from("section_versions").insert(versionRows);
+        if (verErr && isMissingBalanceAddonsColumn(verErr)) {
+          const versionRowsWithoutAddons = versionRows.map(({ balance_addons: _ignored, ...rest }) => rest);
+          const retry = await supabase.from("section_versions").insert(versionRowsWithoutAddons);
+          verErr = retry.error;
+        }
         if (verErr) console.error("[api/projects/sync] section_versions insert failed:", verErr);
       }
     }

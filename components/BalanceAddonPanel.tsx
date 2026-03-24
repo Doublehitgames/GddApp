@@ -156,11 +156,6 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
   const [showTable, setShowTable] = useState(true);
   const [showCurveInsights, setShowCurveInsights] = useState(false);
   const [showSimulationInsights, setShowSimulationInsights] = useState(false);
-  const nameDraft = useBlurCommitText({
-    value: addon.name,
-    resetKey: addon.id,
-    onCommit: (nextName) => onChange({ ...addon, name: nextName }),
-  });
   const expressionDraft = useBlurCommitText({
     value: addon.expression,
     resetKey: addon.id,
@@ -414,24 +409,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
 
   return (
     <section className={PANEL_SHELL_CLASS}>
-      <div className="mb-4 space-y-3">
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-            {t("balanceAddon.nameLabel", "Nome do bloco")}
-          </label>
-          <input
-            type="text"
-            value={nameDraft.draft}
-            onChange={(e) => nameDraft.setDraft(e.target.value)}
-            onBlur={nameDraft.commitDraft}
-            onKeyDown={blurOnEnterKey}
-            className={INPUT_CLASS}
-            placeholder={t("balanceAddon.namePlaceholder", "Ex.: XP por Level")}
-          />
-        </div>
-      </div>
-
-      <div className="mb-4 grid gap-4 md:grid-cols-2">
+      <div className="mb-4 space-y-4">
         <div className={PANEL_BLOCK_CLASS}>
           <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Modo de formula</p>
           <div className="flex flex-wrap gap-2">
@@ -454,7 +432,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
 
         <div className={PANEL_BLOCK_CLASS}>
           <p className="mb-2 text-xs uppercase tracking-wide text-gray-400">Faixa de niveis</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid gap-2 sm:grid-cols-3">
             <NumberInput
               label="Inicio"
               value={addon.startLevel}
@@ -556,7 +534,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
         </div>
       )}
 
-      <div className="mb-4 grid gap-3 md:grid-cols-2">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
         <NumberInput
           label="Clamp minimo (opcional)"
           tooltip="Limite inferior da curva. Impede que o valor calculado fique abaixo deste numero."

@@ -35,6 +35,8 @@ import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import type { SectionAddon } from "@/lib/addons/types";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
+import SpecialTokensHelp from "@/components/SpecialTokensHelp";
+import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
 
 interface Props {
   projectId: string;
@@ -1127,11 +1129,31 @@ function SortableAddonItem({
   isCollapsed,
   toggleAddonCollapsed,
   getAddonTypeLabel,
+  t,
   entry,
   onUpdateAddon,
   onRemoveAddon,
 }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: addon.id });
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(addon.name || "");
+
+  useEffect(() => {
+    setDraftName(addon.name || "");
+    setIsEditingName(false);
+  }, [addon.id, addon.name]);
+
+  const commitAddonName = () => {
+    const nextName = draftName;
+    if (nextName !== addon.name) {
+      onUpdateAddon(addon.id, {
+        ...addon,
+        name: nextName,
+        data: addon?.data && typeof addon.data === "object" ? { ...addon.data, name: nextName } : addon?.data,
+      });
+    }
+    setIsEditingName(false);
+  };
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -1140,11 +1162,9 @@ function SortableAddonItem({
 
   return (
     <div ref={setNodeRef} style={style} className="rounded-2xl border border-gray-700/80 bg-gray-800/70 overflow-hidden">
-      <button
-        type="button"
+      <div
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors cursor-pointer"
         onClick={() => toggleAddonCollapsed(addonKey)}
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors"
-        aria-expanded={!isCollapsed}
       >
         <div className="min-w-0 flex items-center gap-2">
           <span
@@ -1152,25 +1172,62 @@ function SortableAddonItem({
             {...attributes}
             {...listeners}
             onClick={(event) => event.stopPropagation()}
-            aria-label="Reordenar addon"
-            title="Arrastar para reordenar"
+            aria-label={t("sectionDetail.addons.reorderAria", "Reordenar addon")}
+            title={t("sectionDetail.addons.dragToReorder", "Arrastar para reordenar")}
           >
             ⋮⋮
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-200 truncate">
-              {addon.name || getAddonTypeLabel(addon.type)}
-            </p>
+            {isEditingName ? (
+              <input
+                autoFocus
+                value={draftName}
+                onChange={(event) => setDraftName(event.target.value)}
+                onBlur={commitAddonName}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.currentTarget.blur();
+                  } else if (event.key === "Escape") {
+                    setDraftName(addon.name || "");
+                    setIsEditingName(false);
+                  }
+                }}
+                onClick={(event) => event.stopPropagation()}
+                className="rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm font-semibold text-gray-100 outline-none focus:border-gray-500 max-w-[24rem]"
+                style={{ width: `${Math.max(10, draftName.length + 2)}ch` }}
+                placeholder={getAddonTypeLabel(addon.type)}
+                aria-label={t("sectionDetail.addons.nameInputAria", "Nome do addon")}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsEditingName(true);
+                }}
+                className="inline-block text-left text-sm font-semibold text-gray-200 hover:text-white"
+                title={t("sectionDetail.addons.editNameTitle", "Editar nome do addon")}
+              >
+                {addon.name || getAddonTypeLabel(addon.type)}
+              </button>
+            )}
             <p className="text-xs text-gray-400">{getAddonTypeLabel(addon.type)}</p>
           </div>
         </div>
-        <span
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleAddonCollapsed(addonKey);
+          }}
           className="text-gray-300 shrink-0 transition-transform duration-200"
           style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)" }}
+          aria-expanded={!isCollapsed}
+          aria-label={t("sectionDetail.addons.expandCollapseAria", "Expandir/ocultar addon")}
         >
           ▼
-        </span>
-      </button>
+        </button>
+      </div>
       {!isCollapsed && (
         <div className="border-t border-gray-700/80 p-3">
           {entry
@@ -1364,6 +1421,21 @@ function SectionDetailContent({
   const getAddonTypeLabel = (type: SectionAddon["type"]) => {
     if (type === "progressionTable") {
       return t("progressionTableAddon.addonTypeLabel", "Tabela de balanceamento");
+    }
+    if (type === "economyLink") {
+      return t("economyLinkAddon.addonTypeLabel", "Economia vinculada");
+    }
+    if (type === "currency") {
+      return t("currencyAddon.addonTypeLabel", "Moeda");
+    }
+    if (type === "globalVariable") {
+      return t("globalVariableAddon.addonTypeLabel", "Variavel global");
+    }
+    if (type === "inventory") {
+      return t("inventoryAddon.addonTypeLabel", "Estoque");
+    }
+    if (type === "production") {
+      return t("productionAddon.addonTypeLabel", "Producao");
     }
     return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
   };
@@ -1705,6 +1777,7 @@ function SectionDetailContent({
               content={section.content} 
               projectId={projectId} 
               sections={project?.sections || []} 
+              projectTokenSource={project}
             />
           ) : (
             <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
@@ -1743,6 +1816,7 @@ function SectionDetailContent({
                     isCollapsed={isCollapsed}
                     toggleAddonCollapsed={toggleAddonCollapsed}
                     getAddonTypeLabel={getAddonTypeLabel}
+                    t={t}
                     entry={entry}
                     onUpdateAddon={onUpdateAddon}
                     onRemoveAddon={onRemoveAddon}
@@ -1913,13 +1987,29 @@ function SectionDetailContent({
             </div>
           )}
           <div ref={(el) => { editorContainerRef.current = el; setContainerEl(el); }} />
+          <div className="mt-3">
+            <SpecialTokensHelp
+              title={t("sectionDetail.specialTokens.title", "Chaves especiais de addons")}
+              onInsertToken={(token) => {
+                const inst = (editorRef as any).current;
+                if (inst?.insertText) {
+                  inst.insertText(token);
+                  return;
+                }
+                const current = inst?.getMarkdown?.() || "";
+                const next = `${current}${current.endsWith("\n") || current.length === 0 ? "" : "\n"}${token}`;
+                inst?.setMarkdown?.(next);
+              }}
+            />
+          </div>
           <div className="mt-2 flex gap-2">
             <button
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => {
                 const md = (editorRef as any).current?.getMarkdown?.() || "";
+                const normalizedMd = normalizeSpecialTokenSyntax(md);
                 const sections = project?.sections || [];
-                const convertedMd = convertReferencesToIds(md, sections);
+                const convertedMd = convertReferencesToIds(normalizedMd, sections);
                 editSection(projectId, sectionId, section.title, convertedMd, undefined, undefined);
                 setInlineEdit(false);
               }}
@@ -1996,6 +2086,7 @@ function SectionDetailContent({
                   content={previewContent} 
                   projectId={projectId} 
                   sections={project?.sections || []} 
+                  projectTokenSource={project}
                 />
               </div>
 

@@ -27,7 +27,8 @@ import {
 } from "@/lib/addons/progressionTableGenerator";
 import { buildProgressionTableComputedExport } from "@/lib/addons/progressionTableExport";
 import { useI18n } from "@/lib/i18n/provider";
-import { blurOnEnterKey, useBlurCommitText } from "@/hooks/useBlurCommitText";
+import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 const FORMULA_ALLOWED_VARIABLES = new Set(["base", "level", "delta"]);
@@ -61,11 +62,12 @@ function normalizeColumns(columns: ProgressionTableColumn[]): ProgressionTableCo
       ...column,
       generator: column.generator ?? { mode: "manual" },
       decimals: Number.isFinite(column.decimals) ? Math.max(0, Math.min(6, Math.floor(Number(column.decimals)))) : 0,
+      isPercentage: Boolean(column.isPercentage),
       min: Number.isFinite(column.min) ? Number(column.min) : undefined,
       max: Number.isFinite(column.max) ? Number(column.max) : undefined,
     }));
   }
-  return [{ id: "value", name: "Valor", generator: { mode: "manual" }, decimals: 0, min: undefined, max: undefined }];
+  return [{ id: "value", name: "Valor", generator: { mode: "manual" }, decimals: 0, isPercentage: false, min: undefined, max: undefined }];
 }
 
 function remapRows(
@@ -275,11 +277,6 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const endLevel = Math.max(startLevel, Math.floor(addon.endLevel || startLevel));
   const rows = remapRows(addon.rows || [], columns, startLevel, endLevel);
   const columnIdSignature = useMemo(() => columns.map((column) => column.id).join("|"), [columns]);
-  const tableNameDraft = useBlurCommitText({
-    value: addon.name,
-    resetKey: addon.id,
-    onCommit: (nextName) => commit({ name: nextName }),
-  });
 
   useEffect(() => {
     setCollapsedColumns((prev) => {
@@ -480,6 +477,14 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     }));
   };
 
+  const updateColumnPercentage = (columnId: string, isPercentage: boolean) => {
+    const nextColumns = columns.map((column) => (column.id === columnId ? { ...column, isPercentage } : column));
+    commit({
+      columns: nextColumns,
+      rows: remapRows(rows, nextColumns, startLevel, endLevel),
+    });
+  };
+
   const generateColumn = (columnId: string) => {
     const column = columns.find((item) => item.id === columnId);
     if (!column) return;
@@ -545,6 +550,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       { id, name: "Nova Coluna", generator: { mode: "manual" as const }, min: undefined, max: undefined },
     ];
     nextColumns[nextColumns.length - 1].decimals = 0;
+    nextColumns[nextColumns.length - 1].isPercentage = false;
     commit({
       columns: nextColumns,
       rows: remapRows(rows, nextColumns, startLevel, endLevel),
@@ -651,21 +657,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="mb-4 space-y-3">
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-            {t("progressionTableAddon.nameLabel", "Nome da tabela")}
-          </label>
-          <input
-            type="text"
-            value={tableNameDraft.draft}
-            onChange={(e) => tableNameDraft.setDraft(e.target.value)}
-            onBlur={tableNameDraft.commitDraft}
-            onKeyDown={blurOnEnterKey}
-            className={INPUT_CLASS_LG}
-            placeholder={t("progressionTableAddon.namePlaceholder", "Ex.: Galinha - Balanceamento geral")}
-          />
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
               {t("progressionTableAddon.startLevelLabel", "Level inicial")}
@@ -775,7 +767,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                   </button>
 
                   {!collapsedColumns[column.id] && (
-                    <div className="grid gap-3 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+                    <div className="space-y-3">
                       <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                         <div className="flex items-center gap-2">
                           <input
@@ -822,20 +814,32 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </select>
                         </label>
 
-                        <label className="block">
-                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-                            {t("progressionTableAddon.decimalsLabel", "Casas decimais")}
-                          </span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            step={1}
-                            value={column.decimals ?? 0}
-                            onChange={(e) => updateColumnDecimals(column.id, e.target.value)}
-                            className={INPUT_CLASS}
-                          />
-                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="block">
+                            <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                              {t("progressionTableAddon.decimalsLabel", "Casas decimais")}
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              step={1}
+                              value={column.decimals ?? 0}
+                              onChange={(e) => updateColumnDecimals(column.id, e.target.value)}
+                              className={INPUT_CLASS}
+                            />
+                          </label>
+                          <div className="block">
+                            <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                              {t("progressionTableAddon.percentageLabel", "Percentual (%)")}
+                            </span>
+                            <ToggleSwitch
+                              checked={Boolean(column.isPercentage)}
+                              onChange={(next) => updateColumnPercentage(column.id, next)}
+                              ariaLabel={t("progressionTableAddon.percentageLabel", "Percentual (%)")}
+                            />
+                          </div>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
@@ -1065,12 +1069,19 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   {t("progressionTableAddon.levelPrefix", "Lv")} {row.level}
                                 </td>
                                 <td className="px-3 py-1.5">
-                                  <input
-                                    type="number"
-                                    value={Number(row.values[column.id] ?? 0)}
-                                    onChange={(e) => updateCell(row.level, column.id, e.target.value)}
-                                    className={INPUT_CLASS}
-                                  />
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      value={Number(row.values[column.id] ?? 0)}
+                                      onChange={(e) => updateCell(row.level, column.id, e.target.value)}
+                                      className={`${INPUT_CLASS} ${column.isPercentage ? "pr-6" : ""}`}
+                                    />
+                                    {column.isPercentage && (
+                                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
+                                        %
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}

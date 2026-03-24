@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 interface Props {
   projectId: string;
@@ -613,11 +614,10 @@ export default function SettingsClient({ projectId }: Props) {
                 <>
                   <div className="flex items-center gap-3 mb-3">
                     <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <ToggleSwitch
                         checked={isPublicShareEnabled}
-                        onChange={(e) => setValue("sharing.isPublic", e.target.checked)}
-                        className="w-5 h-5"
+                        onChange={(next) => setValue("sharing.isPublic", next)}
+                        ariaLabel={tr("Permitir visualização pública", "Allow public viewing")}
                       />
                       <span className="text-sm text-gray-300">{tr("Permitir visualização pública", "Allow public viewing")}</span>
                     </label>
@@ -772,17 +772,19 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{tr("Tracejada?", "Dashed?")}</label>
-                <select value={getValue("project.edge.dashed") ? "true" : "false"} onChange={(e) => setValue("project.edge.dashed", e.target.value === "true")} className="w-full bg-gray-700 rounded px-3 py-2">
-                  <option value="false">{tr("Não", "No")}</option>
-                  <option value="true">{tr("Sim", "Yes")}</option>
-                </select>
+                <ToggleSwitch
+                  checked={Boolean(getValue("project.edge.dashed"))}
+                  onChange={(next) => setValue("project.edge.dashed", next)}
+                  ariaLabel={tr("Tracejada?", "Dashed?")}
+                />
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{tr("Animada?", "Animated?")}</label>
-                <select value={getValue("project.edge.animated") ? "true" : "false"} onChange={(e) => setValue("project.edge.animated", e.target.value === "true")} className="w-full bg-gray-700 rounded px-3 py-2">
-                  <option value="false">{tr("Não", "No")}</option>
-                  <option value="true">{tr("Sim", "Yes")}</option>
-                </select>
+                <ToggleSwitch
+                  checked={Boolean(getValue("project.edge.animated"))}
+                  onChange={(next) => setValue("project.edge.animated", next)}
+                  ariaLabel={tr("Animada?", "Animated?")}
+                />
               </div>
             </div>
           </div>
@@ -835,8 +837,8 @@ export default function SettingsClient({ projectId }: Props) {
                       <div><label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
                       <div><label className="block text-sm text-gray-400 mb-1">{tr("Espessura", "Thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
                       <div className="flex gap-4">
-                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.animated || false} onChange={(e) => handleLevelChange(lvl.level, "edge.animated", e.target.checked)} className="w-5 h-5" /><span className="text-sm">{tr("Animado", "Animated")}</span></label>
-                        <label className="flex items-center gap-2"><input type="checkbox" checked={lvl.edge.dashed || false} onChange={(e) => handleLevelChange(lvl.level, "edge.dashed", e.target.checked)} className="w-5 h-5" /><span className="text-sm">{tr("Tracejado", "Dashed")}</span></label>
+                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.animated || false} onChange={(next) => handleLevelChange(lvl.level, "edge.animated", next)} ariaLabel={tr("Animado", "Animated")} /><span className="text-sm">{tr("Animado", "Animated")}</span></label>
+                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.dashed || false} onChange={(next) => handleLevelChange(lvl.level, "edge.dashed", next)} ariaLabel={tr("Tracejado", "Dashed")} /><span className="text-sm">{tr("Tracejado", "Dashed")}</span></label>
                       </div>
                     </div>
                   </div>
@@ -846,11 +848,10 @@ export default function SettingsClient({ projectId }: Props) {
                     <div className="flex items-center gap-2 mb-3">
                       <h3 className="font-semibold text-gray-300">🔲 {tr("Borda para Nós com Filhos", "Border for Nodes with Children")}</h3>
                       <label className="flex items-center gap-2">
-                        <input 
-                          type="checkbox" 
-                          checked={lvl.node.hasChildrenBorder?.enabled || false} 
-                          onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", e.target.checked)} 
-                          className="w-5 h-5" 
+                        <ToggleSwitch
+                          checked={lvl.node.hasChildrenBorder?.enabled || false}
+                          onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", next)}
+                          ariaLabel={tr("Ativar", "Enable")}
                         />
                         <span className="text-sm text-gray-400">{tr("Ativar", "Enable")}</span>
                       </label>
@@ -888,11 +889,10 @@ export default function SettingsClient({ projectId }: Props) {
                         </div>
                         <div className="col-span-2">
                           <label className="flex items-center gap-2">
-                            <input 
-                              type="checkbox" 
-                              checked={lvl.node.hasChildrenBorder?.dashed || false} 
-                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", e.target.checked)} 
-                              className="w-5 h-5" 
+                            <ToggleSwitch
+                              checked={lvl.node.hasChildrenBorder?.dashed || false}
+                              onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", next)}
+                              ariaLabel={tr("Tracejada", "Dashed")}
                             />
                             <span className="text-sm text-gray-400">{tr("Tracejada", "Dashed")}</span>
                           </label>
@@ -921,7 +921,7 @@ export default function SettingsClient({ projectId }: Props) {
                 <input type="number" step="0.5" value={getValue("sections.edge.highlighted.dashPattern")} onChange={(e) => setHighlightValue("dashPattern", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
                 <p className="text-xs text-gray-500 mt-1">{tr("Ex: 5 = traços de 5px", "Ex: 5 = 5px dashes")}</p>
               </div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Animado", "Animated")}</label><input type="checkbox" checked={getValue("sections.edge.highlighted.animated")} onChange={(e) => setHighlightValue("animated", e.target.checked)} className="w-6 h-6 mt-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{tr("Animado", "Animated")}</label><ToggleSwitch checked={Boolean(getValue("sections.edge.highlighted.animated"))} onChange={(next) => setHighlightValue("animated", next)} ariaLabel={tr("Animado", "Animated")} /></div>
             </div>
             <p className="text-xs text-gray-500">{tr("A espessura e tracejado das linhas destacadas são proporcionais ao zoom para manter visual constante.", "The thickness and dashing of highlighted lines are proportional to zoom to keep a consistent visual.")}</p>
           </div>
@@ -980,11 +980,10 @@ export default function SettingsClient({ projectId }: Props) {
             <p className="text-sm text-gray-400 mb-4">{tr("Quando um nó é selecionado, os nós que NÃO estão no caminho ficam esmaecidos para destacar a hierarquia.", "When a node is selected, nodes NOT in the path are faded to highlight hierarchy.")}</p>
             <div className="mb-3">
               <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={getValue("fadeEffect.enabled") ?? true} 
-                  onChange={(e) => setValue("fadeEffect.enabled", e.target.checked)} 
-                  className="mr-2" 
+                <ToggleSwitch
+                  checked={getValue("fadeEffect.enabled") ?? true}
+                  onChange={(next) => setValue("fadeEffect.enabled", next)}
+                  ariaLabel={tr("Ativar efeito de esmaecer", "Enable fade effect")}
                 />
                 <span className="text-sm">{tr("Ativar efeito de esmaecer", "Enable fade effect")}</span>
               </label>
@@ -1040,11 +1039,10 @@ export default function SettingsClient({ projectId }: Props) {
             <p className="text-sm text-gray-400 mb-4">{tr("Ao selecionar um nó, mostra conexões azuis para seções referenciadas no conteúdo usando a sintaxe $[Nome da Seção]", "When selecting a node, it shows blue links to sections referenced in content using $[Section Name] syntax")}</p>
             <div className="mb-3">
               <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={getValue("references.enabled") ?? true} 
-                  onChange={(e) => setValue("references.enabled", e.target.checked)} 
-                  className="mr-2" 
+                <ToggleSwitch
+                  checked={getValue("references.enabled") ?? true}
+                  onChange={(next) => setValue("references.enabled", next)}
+                  ariaLabel={tr("Mostrar referências cruzadas", "Show cross references")}
                 />
                 <span className="text-sm">{tr("Mostrar referências cruzadas", "Show cross references")}</span>
               </label>
@@ -1076,24 +1074,22 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
               <div>
                 <label className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    checked={getValue("references.edgeAnimated") || false} 
-                    onChange={(e) => setValue("references.edgeAnimated", e.target.checked)} 
-                    className="mr-2"
+                  <ToggleSwitch
+                    checked={getValue("references.edgeAnimated") || false}
+                    onChange={(next) => setValue("references.edgeAnimated", next)}
                     disabled={!getValue("references.enabled")}
+                    ariaLabel={tr("Animar linha (movimento)", "Animate line (movement)")}
                   />
                   <span className="text-sm">{tr("Animar linha (movimento)", "Animate line (movement)")}</span>
                 </label>
               </div>
               <div>
                 <label className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    checked={getValue("references.edgeDashed") !== false} 
-                    onChange={(e) => setValue("references.edgeDashed", e.target.checked)} 
-                    className="mr-2"
+                  <ToggleSwitch
+                    checked={getValue("references.edgeDashed") !== false}
+                    onChange={(next) => setValue("references.edgeDashed", next)}
                     disabled={!getValue("references.enabled")}
+                    ariaLabel={tr("Linha tracejada", "Dashed line")}
                   />
                   <span className="text-sm">{tr("Linha tracejada", "Dashed line")}</span>
                 </label>
@@ -1118,12 +1114,11 @@ export default function SettingsClient({ projectId }: Props) {
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
                 <label className="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    checked={getValue("references.showIcon") ?? true} 
-                    onChange={(e) => setValue("references.showIcon", e.target.checked)} 
-                    className="mr-2"
+                  <ToggleSwitch
+                    checked={getValue("references.showIcon") ?? true}
+                    onChange={(next) => setValue("references.showIcon", next)}
                     disabled={!getValue("references.enabled")}
+                    ariaLabel={tr("Mostrar ícone na linha", "Show icon on line")}
                   />
                   <span className="text-sm">{tr("Mostrar ícone na linha", "Show icon on line")}</span>
                 </label>
@@ -1159,12 +1154,11 @@ export default function SettingsClient({ projectId }: Props) {
             <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Destaque dos Nós Referenciados", "Referenced Node Highlight")}</h3>
             <div className="mb-3">
               <label className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={getValue("references.nodeHighlight.enabled") ?? true} 
-                  onChange={(e) => setValue("references.nodeHighlight.enabled", e.target.checked)} 
-                  className="mr-2"
+                <ToggleSwitch
+                  checked={getValue("references.nodeHighlight.enabled") ?? true}
+                  onChange={(next) => setValue("references.nodeHighlight.enabled", next)}
                   disabled={!getValue("references.enabled")}
+                  ariaLabel={tr("Destacar nós referenciados", "Highlight referenced nodes")}
                 />
                 <span className="text-sm">{tr("Destacar nós referenciados", "Highlight referenced nodes")}</span>
               </label>
@@ -1341,11 +1335,10 @@ export default function SettingsClient({ projectId }: Props) {
                 autoFocus
               />
               <label className="flex items-center gap-2 mb-6 text-sm text-gray-300">
-                <input
-                  type="checkbox"
+                <ToggleSwitch
                   checked={deleteBackupChecked}
-                  onChange={(e) => setDeleteBackupChecked(e.target.checked)}
-                  className="w-4 h-4"
+                  onChange={setDeleteBackupChecked}
+                  ariaLabel={t("settings.deleteProject.backupCheckbox")}
                 />
                 {t("settings.deleteProject.backupCheckbox")}
               </label>

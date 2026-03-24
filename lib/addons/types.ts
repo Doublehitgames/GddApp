@@ -5,6 +5,7 @@ export type ProgressionTableColumn = {
   name: string;
   generator?: ProgressionColumnGenerator;
   decimals?: number;
+  isPercentage?: boolean;
   min?: number;
   max?: number;
 };
@@ -29,7 +30,130 @@ export type ProgressionTableAddonDraft = {
   rows: ProgressionTableRow[];
 };
 
-export type SectionAddonType = "xpBalance" | "progressionTable";
+export type EconomyModifierRef = {
+  refId: string;
+};
+
+export type CurrencyKind = "soft" | "premium" | "event" | "other";
+
+export type CurrencyAddonDraft = {
+  id: string;
+  name: string;
+  code: string;
+  displayName: string;
+  kind: CurrencyKind;
+  decimals: number;
+  notes?: string;
+};
+
+export type GlobalVariableValueType = "percent" | "multiplier" | "flat" | "boolean";
+export type GlobalVariableScope = "global" | "mode" | "event" | "season";
+
+export type GlobalVariableAddonDraft = {
+  id: string;
+  name: string;
+  key: string;
+  displayName: string;
+  valueType: GlobalVariableValueType;
+  defaultValue: number | boolean;
+  scope: GlobalVariableScope;
+  notes?: string;
+};
+
+export type InventoryBindType = "none" | "onPickup" | "onEquip";
+
+export type InventoryAddonDraft = {
+  id: string;
+  name: string;
+  weight: number;
+  stackable: boolean;
+  maxStack: number;
+  inventoryCategory: string;
+  slotSize: number;
+  hasDurabilityConfig?: boolean;
+  durability: number;
+  hasVolumeConfig?: boolean;
+  volume?: number;
+  maxDurability?: number;
+  bindType: InventoryBindType;
+  showInShop: boolean;
+  consumable: boolean;
+  discardable: boolean;
+  notes?: string;
+};
+
+export type EconomyLinkAddonDraft = {
+  id: string;
+  name: string;
+  hasBuyConfig?: boolean;
+  buyCurrencyRef?: string;
+  buyValue?: number;
+  minBuyValue?: number;
+  buyModifiers: EconomyModifierRef[];
+  hasSellConfig?: boolean;
+  sellCurrencyRef?: string;
+  sellValue?: number;
+  maxSellValue?: number;
+  sellModifiers: EconomyModifierRef[];
+  hasProductionConfig?: boolean;
+  producedItemRef?: string;
+  produceMin?: number;
+  produceMax?: number;
+  productionTimeSeconds?: number;
+  hasUnlockConfig?: boolean;
+  unlockRef?: string;
+  unlockValue?: number;
+  notes?: string;
+};
+
+export type ProductionMode = "passive" | "recipe";
+
+export type ProductionIngredient = {
+  itemRef: string;
+  quantity: number;
+};
+
+export type ProductionOutput = {
+  itemRef: string;
+  quantity: number;
+};
+
+export type ProductionProgressionLink = {
+  progressionAddonId: string;
+  columnId: string;
+  columnName: string;
+};
+
+export type ProductionAddonDraft = {
+  id: string;
+  name: string;
+  mode: ProductionMode;
+  // Passive mode
+  outputRef?: string;
+  minOutput?: number;
+  minOutputProgressionLink?: ProductionProgressionLink;
+  maxOutput?: number;
+  maxOutputProgressionLink?: ProductionProgressionLink;
+  intervalSeconds?: number;
+  intervalSecondsProgressionLink?: ProductionProgressionLink;
+  requiresCollection?: boolean;
+  capacity?: number;
+  // Recipe mode
+  ingredients: ProductionIngredient[];
+  outputs: ProductionOutput[];
+  craftTimeSeconds?: number;
+  craftTimeSecondsProgressionLink?: ProductionProgressionLink;
+  notes?: string;
+};
+
+export type SectionAddonType =
+  | "xpBalance"
+  | "progressionTable"
+  | "economyLink"
+  | "currency"
+  | "globalVariable"
+  | "inventory"
+  | "production";
 export type LegacySectionAddonType = "balance";
 
 export type XpBalanceSectionAddon = {
@@ -46,7 +170,49 @@ export type ProgressionTableSectionAddon = {
   data: ProgressionTableAddonDraft;
 };
 
-export type SectionAddon = XpBalanceSectionAddon | ProgressionTableSectionAddon;
+export type EconomyLinkSectionAddon = {
+  id: string;
+  type: "economyLink";
+  name: string;
+  data: EconomyLinkAddonDraft;
+};
+
+export type CurrencySectionAddon = {
+  id: string;
+  type: "currency";
+  name: string;
+  data: CurrencyAddonDraft;
+};
+
+export type GlobalVariableSectionAddon = {
+  id: string;
+  type: "globalVariable";
+  name: string;
+  data: GlobalVariableAddonDraft;
+};
+
+export type InventorySectionAddon = {
+  id: string;
+  type: "inventory";
+  name: string;
+  data: InventoryAddonDraft;
+};
+
+export type ProductionSectionAddon = {
+  id: string;
+  type: "production";
+  name: string;
+  data: ProductionAddonDraft;
+};
+
+export type SectionAddon =
+  | XpBalanceSectionAddon
+  | ProgressionTableSectionAddon
+  | EconomyLinkSectionAddon
+  | CurrencySectionAddon
+  | GlobalVariableSectionAddon
+  | InventorySectionAddon
+  | ProductionSectionAddon;
 
 function createDefaultRows(
   startLevel: number,
@@ -88,6 +254,103 @@ export function createDefaultProgressionTableAddon(addonId: string): Progression
       endLevel,
       columns,
       rows: createDefaultRows(startLevel, endLevel, columns),
+    },
+  };
+}
+
+export function createDefaultEconomyLinkAddon(addonId: string): EconomyLinkSectionAddon {
+  return {
+    id: addonId,
+    type: "economyLink",
+    name: "Economy Link",
+    data: {
+      id: addonId,
+      name: "Economy Link",
+      hasBuyConfig: true,
+      buyModifiers: [],
+      hasSellConfig: true,
+      sellModifiers: [],
+      hasProductionConfig: false,
+      hasUnlockConfig: false,
+    },
+  };
+}
+
+export function createDefaultCurrencyAddon(addonId: string): CurrencySectionAddon {
+  return {
+    id: addonId,
+    type: "currency",
+    name: "Currency",
+    data: {
+      id: addonId,
+      name: "Currency",
+      code: "",
+      displayName: "",
+      kind: "soft",
+      decimals: 0,
+    },
+  };
+}
+
+export function createDefaultGlobalVariableAddon(addonId: string): GlobalVariableSectionAddon {
+  return {
+    id: addonId,
+    type: "globalVariable",
+    name: "Global Variable",
+    data: {
+      id: addonId,
+      name: "Global Variable",
+      key: "",
+      displayName: "",
+      valueType: "percent",
+      defaultValue: 0,
+      scope: "global",
+    },
+  };
+}
+
+export function createDefaultInventoryAddon(addonId: string): InventorySectionAddon {
+  return {
+    id: addonId,
+    type: "inventory",
+    name: "Inventory",
+    data: {
+      id: addonId,
+      name: "Inventory",
+      weight: 0,
+      stackable: true,
+      maxStack: 99,
+      inventoryCategory: "",
+      slotSize: 1,
+      hasDurabilityConfig: false,
+      durability: 0,
+      hasVolumeConfig: false,
+      volume: 0,
+      maxDurability: 0,
+      bindType: "none",
+      showInShop: true,
+      consumable: false,
+      discardable: true,
+    },
+  };
+}
+
+export function createDefaultProductionAddon(addonId: string): ProductionSectionAddon {
+  return {
+    id: addonId,
+    type: "production",
+    name: "Production",
+    data: {
+      id: addonId,
+      name: "Production",
+      mode: "passive",
+      minOutput: 1,
+      maxOutput: 1,
+      intervalSeconds: 60,
+      requiresCollection: false,
+      ingredients: [],
+      outputs: [],
+      craftTimeSeconds: 60,
     },
   };
 }

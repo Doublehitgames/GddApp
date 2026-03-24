@@ -7,6 +7,7 @@ import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { useI18n } from "@/lib/i18n/provider";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
+import { resolveProjectSpecialTokensForProject } from "@/lib/addons/projectSpecialTokens";
 
 interface Props {
   projectId: string;
@@ -206,7 +207,8 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         typeof section?.description === "string" && section.description.trim()
           ? section.description
           : section?.content || "";
-      const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionSource, projectSections);
+      const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project);
+      const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionWithResolvedTokens, projectSections);
       const plainTextDescription = toPlainTextPreview(descriptionWithResolvedReferences);
 
       map.set(section.id, {
@@ -216,7 +218,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     }
 
     return map;
-  }, [projectSections, t]);
+  }, [project, projectSections, t]);
 
   const resolveDocumentAnchorPreview = (sectionId: string): DocumentAnchorPreview | null => {
     return sectionPreviewById.get(sectionId) || null;
@@ -481,6 +483,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   content={node.content}
                   projectId={projectId}
                   sections={project.sections || []}
+                  projectTokenSource={project}
                   referenceLinkMode="document"
                   documentAnchorOffset={180}
                   resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
@@ -797,6 +800,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     content={project.description}
                     projectId={projectId}
                     sections={project.sections || []}
+                    projectTokenSource={project}
                     referenceLinkMode="document"
                     documentAnchorOffset={180}
                     resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}

@@ -369,6 +369,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 content={project.description}
                                 projectId={projectId}
                                 sections={project.sections || []}
+                                projectTokenSource={project}
                             />
                         ) : (
                             <p className="text-gray-400 italic">{t("projectDetail.noDescription")}</p>

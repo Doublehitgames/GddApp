@@ -8,6 +8,8 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { saveAs } from 'file-saver';
 import { useI18n } from '@/lib/i18n/provider';
 import { buildUnityExport } from '@/lib/balance/unityExport';
+import { ToggleSwitch } from '@/components/ToggleSwitch';
+import { resolveProjectSpecialTokensForProject } from '@/lib/addons/projectSpecialTokens';
 
 type ExportFormat = 'markdown' | 'pdf' | 'word' | 'unityJson';
 
@@ -40,6 +42,11 @@ export default function ExportPage() {
     );
   }
 
+  const resolveExportContent = (value?: string) => {
+    if (!value) return "";
+    return resolveProjectSpecialTokensForProject(value, project);
+  };
+
   const getSectionsHierarchy = () => {
     const sections = project.sections || [];
     const rootSections = sections.filter(s => !s.parentId);
@@ -62,7 +69,7 @@ export default function ExportPage() {
     let markdown = `# ${project.title}\n\n`;
     
     if (project.description) {
-      markdown += `${project.description}\n\n---\n\n`;
+      markdown += `${resolveExportContent(project.description)}\n\n---\n\n`;
     }
 
     const renderSection = (section: Section & { subsections?: Section[] }, level: number) => {
@@ -74,7 +81,7 @@ export default function ExportPage() {
       md += `${headerPrefix} ${section.title}\n\n`;
       
       if (section.content) {
-        md += `${section.content}\n\n`;
+        md += `${resolveExportContent(section.content)}\n\n`;
       }
 
       if (section.subsections) {
@@ -119,7 +126,7 @@ export default function ExportPage() {
     if (project.description) {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      const descLines = doc.splitTextToSize(project.description, 170);
+      const descLines = doc.splitTextToSize(resolveExportContent(project.description), 170);
       checkPageBreak(descLines.length * lineHeight);
       doc.text(descLines, margin, yPosition);
       yPosition += descLines.length * lineHeight + 10;
@@ -145,7 +152,7 @@ export default function ExportPage() {
       if (section.content) {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        const contentLines = doc.splitTextToSize(section.content, 170 - (level - 1) * 10);
+        const contentLines = doc.splitTextToSize(resolveExportContent(section.content), 170 - (level - 1) * 10);
         
         contentLines.forEach((line: string) => {
           checkPageBreak(lineHeight);
@@ -190,7 +197,7 @@ export default function ExportPage() {
     if (project.description) {
       children.push(
         new Paragraph({
-          text: project.description,
+          text: resolveExportContent(project.description),
           spacing: { after: 400 }
         })
       );
@@ -215,7 +222,7 @@ export default function ExportPage() {
 
       // Conteúdo
       if (section.content) {
-        const paragraphs = section.content.split('\n\n');
+        const paragraphs = resolveExportContent(section.content).split('\n\n');
         paragraphs.forEach(para => {
           if (para.trim()) {
             children.push(
@@ -395,11 +402,10 @@ export default function ExportPage() {
           {/* Options */}
           <div className="border-t pt-4">
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
+              <ToggleSwitch
                 checked={includeEmptySections}
-                onChange={(e) => setIncludeEmptySections(e.target.checked)}
-                className="w-4 h-4"
+                onChange={setIncludeEmptySections}
+                ariaLabel={t('projectExport.includeEmptySections')}
               />
               {t('projectExport.includeEmptySections')}
             </label>

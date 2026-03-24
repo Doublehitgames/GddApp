@@ -163,6 +163,20 @@ ${contextInfo}`;
     console.error('Error improving content:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Failed to improve content';
+    const normalizedError = errorMessage.toLowerCase();
+
+    // Detecta chave de API inválida para orientar correção no cliente
+    if (
+      normalizedError.includes('invalid_api_key') ||
+      normalizedError.includes('invalid api key') ||
+      normalizedError.includes('unauthorized') ||
+      normalizedError.includes('401')
+    ) {
+      return NextResponse.json({
+        error: '🔑 Chave de API inválida. Abra Configurações de IA e atualize sua chave.',
+        errorType: 'invalid_api_key',
+      }, { status: 401 });
+    }
     
     // Detecta rate limit
     if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('Rate limit')) {

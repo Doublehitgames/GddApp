@@ -11,6 +11,8 @@ import remarkGfm from "remark-gfm";
 import { useI18n } from "@/lib/i18n/provider";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
+import SpecialTokensHelp from "@/components/SpecialTokensHelp";
+import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
 
 interface Props {
   projectId: string;
@@ -127,12 +129,25 @@ export default function ProjectEditClient({ projectId }: Props) {
   function handleSave() {
     if (!notFound && projectId) {
       const md = editorRef.current?.getMarkdown?.() || description;
+      const normalizedMd = normalizeSpecialTokenSyntax(md);
       const project = getProject(projectId);
       const sections = project?.sections || [];
-      const convertedMd = convertReferencesToIds(md, sections);
+      const convertedMd = convertReferencesToIds(normalizedMd, sections);
       editProject(projectId, name, convertedMd);
       router.push(`/projects/${projectId}`);
     }
+  }
+
+  function insertSpecialToken(token: string) {
+    const editor = editorRef.current;
+    if (editor?.insertText) {
+      editor.insertText(token);
+      return;
+    }
+    const current = editor?.getMarkdown?.() || description || "";
+    const next = `${current}${current.endsWith("\n") || current.length === 0 ? "" : "\n"}${token}`;
+    editor?.setMarkdown?.(next);
+    setDescription(next);
   }
 
   if (!loaded) return <div className="p-6">{t('common.loading')}</div>;
@@ -208,6 +223,13 @@ export default function ProjectEditClient({ projectId }: Props) {
               (containerRef as any).current = el;
             }
           }} />
+          <div className="mt-3">
+            <SpecialTokensHelp
+              title={t("projectEdit.specialTokens.title", "Chaves especiais de addons")}
+              theme="light"
+              onInsertToken={insertSpecialToken}
+            />
+          </div>
         </div>
 
         <div className="flex gap-2 items-center">

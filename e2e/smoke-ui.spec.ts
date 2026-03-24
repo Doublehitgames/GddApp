@@ -19,15 +19,15 @@ test.describe('@smoke GDD Manager - Smoke UI', () => {
 
   test('deve carregar home e ações rápidas', async ({ page }) => {
     await expect(page).toHaveTitle(/GDD App/i);
-    await expect(page.getByRole('heading', { level: 1, name: 'GDD App' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '🤖 Criar GDD com IA' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '✨ Importar Documento com IA' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'GDD Manager' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '🤖 Create GDD with AI' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '✨ Import Document (AI optional)' })).toBeVisible();
   });
 
   test('deve abrir página de criação manual de projeto', async ({ page }) => {
-    await page.getByRole('button', { name: 'Criar manualmente' }).click();
+    await page.locator('a[href="/projects"]').first().click();
     await expect(page).toHaveURL('/projects');
-    await expect(page.getByRole('heading', { name: 'Criar Projeto' })).toBeVisible();
-    await expect(page.getByPlaceholder('Nome do projeto')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Create Project' })).toBeVisible();
+    await expect(page.getByPlaceholder('Project name')).toBeVisible();
   });
 });
