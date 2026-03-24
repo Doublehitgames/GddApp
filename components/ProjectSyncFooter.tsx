@@ -121,14 +121,11 @@ export default function ProjectSyncFooter() {
 
   const isViewRoute = /^\/projects\/[^/]+\/view(?:\/|$)/.test(pathname || "");
   const isMindMapRoute = /^\/projects\/[^/]+\/mindmap(?:\/|$)/.test(pathname || "");
-  const isSectionRoute = /^\/projects\/[^/]+\/sections\/[^/]+(?:\/|$)/.test(pathname || "");
   if (!user || !projectId || isViewRoute || isMindMapRoute) return null;
 
   return (
     <footer
-      className={`fixed bottom-0 right-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur py-2 px-4 ${
-        isSectionRoute ? "left-0 2xl:left-[22rem]" : "left-0"
-      }`}
+      className="fixed bottom-0 left-0 right-0 z-40 w-screen border-t border-gray-700 bg-gray-900/95 px-4 py-2 backdrop-blur"
     >
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-4">
