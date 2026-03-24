@@ -782,7 +782,26 @@
       "by": "por {{name}}",
       "untitled": "Sin título",
       "restore": "Restaurar",
-      "restoring": "Restaurando…"
+      "restoring": "Restaurando…",
+      "modifiedPrefix": "Modificado",
+      "moreItems": "(+{{count}})",
+      "changeFacets": {
+        "title": "Título",
+        "content": "Descripción",
+        "order": "Orden",
+        "color": "Color",
+        "addonLabel": "Addon {{name}}"
+      },
+      "addonType": {
+        "xpBalance": "Balanceo",
+        "progressionTable": "Tabla",
+        "economyLink": "Economía",
+        "currency": "Moneda",
+        "globalVariable": "Variable",
+        "inventory": "Inventario",
+        "production": "Producción",
+        "generic": "Addon"
+      }
     },
     "backlinks": "Referenciado por:"
   },
@@ -936,7 +955,19 @@
         "credits": "Créditos",
         "clearButton": "Limpiar historial",
         "syncedBy": "por {{name}}",
-        "unknownUser": "?"
+        "unknownUser": "?",
+        "modifiedPrefix": "Modificado",
+        "moreItems": "(+{{count}})",
+        "changeFacets": {
+          "created": "Sección nueva",
+          "title": "Título",
+          "content": "Descripción",
+          "domainTags": "Tags",
+          "parent": "Jerarquía",
+          "order": "Orden",
+          "color": "Color",
+          "addonLabel": "Addon {{name}}"
+        }
       },
       "syncBadge": {
         "pausedQuota": "Límite de créditos",

@@ -23,6 +23,19 @@ export type SyncStats = {
   sectionsUpserted: number;
   sectionsDeleted: number;
   sectionsUnchanged: number;
+  changeSummary?: {
+    sections: Array<{
+      sectionId: string;
+      sectionTitle: string;
+      facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "addons">;
+      addons: Array<{
+        action: "added" | "updated" | "removed";
+        addonId: string;
+        addonType: string;
+        addonName: string;
+      }>;
+    }>;
+  };
 };
 
 export type CloudSyncQuotaStatus = {

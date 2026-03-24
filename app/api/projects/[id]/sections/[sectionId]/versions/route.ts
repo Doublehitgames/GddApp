@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+function isMissingBalanceAddonsColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  return combined.includes("balance_addons") && combined.includes("column");
+}
+
 /**
  * GET: lista versões (histórico) de uma seção. Qualquer membro do projeto pode ver.
  */
@@ -48,13 +61,25 @@ export async function GET(
       }
     }
 
-    const { data: versions, error: versionsErr } = await supabase
+    let { data: versions, error: versionsErr } = await supabase
       .from("section_versions")
-      .select("id, section_id, project_id, title, content, sort_order, color, created_at, updated_by, updated_by_name")
+      .select("id, section_id, project_id, title, content, sort_order, color, balance_addons, created_at, updated_by, updated_by_name")
       .eq("section_id", sectionId)
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
       .limit(50);
+
+    if (versionsErr && isMissingBalanceAddonsColumn(versionsErr)) {
+      const retry = await supabase
+        .from("section_versions")
+        .select("id, section_id, project_id, title, content, sort_order, color, created_at, updated_by, updated_by_name")
+        .eq("section_id", sectionId)
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      versions = (retry.data || []).map((version: any) => ({ ...version, balance_addons: [] }));
+      versionsErr = retry.error;
+    }
 
     if (versionsErr) {
       return NextResponse.json(

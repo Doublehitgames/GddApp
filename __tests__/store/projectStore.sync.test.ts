@@ -263,4 +263,44 @@ describe('ProjectStore sync behavior', () => {
     expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
     expect(useProjectStore.getState().pendingSyncCount).toBe(1)
   })
+
+  it('persists changeSummary in sync history when API provides detailed changes', async () => {
+    upsertProjectMock.mockResolvedValueOnce({
+      error: null,
+      stats: {
+        sectionsTotal: 1,
+        sectionsUpserted: 1,
+        sectionsDeleted: 0,
+        sectionsUnchanged: 0,
+        changeSummary: {
+          sections: [
+            {
+              sectionId: 'section-1',
+              sectionTitle: 'Gameplay',
+              facets: ['content', 'addons'],
+              addons: [
+                {
+                  action: 'updated',
+                  addonId: 'eco-1',
+                  addonType: 'economyLink',
+                  addonName: 'Economia',
+                },
+              ],
+            },
+          ],
+        },
+      },
+    })
+
+    const store = useProjectStore.getState()
+    store.addProject('Projeto com resumo', 'Desc')
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const history = useProjectStore.getState().lastSyncStatsHistory
+    expect(history.length).toBeGreaterThan(0)
+    expect(history[0].changeSummary?.sections).toHaveLength(1)
+    expect(history[0].changeSummary?.sections[0].facets).toContain('addons')
+  })
 })

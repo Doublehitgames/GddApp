@@ -48,6 +48,20 @@ type CloudSyncQuotaStatus = {
   consumedThisSync: number;
 };
 
+type SyncAddonChange = {
+  action: "added" | "updated" | "removed";
+  addonId: string;
+  addonType: string;
+  addonName: string;
+};
+
+type SyncSectionChangeSummary = {
+  sectionId: string;
+  sectionTitle: string;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "addons">;
+  addons: SyncAddonChange[];
+};
+
 function getHourlyCreditLimit(): number {
   const raw = process.env.CLOUD_SYNC_CREDITS_PER_HOUR;
   const parsed = Number(raw);
@@ -137,6 +151,35 @@ function getSupabaseErrorMessage(err: unknown, fallback: string): string {
     if (s && s !== "{}") return s;
   } catch {}
   return fallback;
+}
+
+function getDefaultAddonNameByType(type: string): string {
+  switch (type) {
+    case "xpBalance":
+      return "Balanceamento";
+    case "progressionTable":
+      return "Tabela";
+    case "economyLink":
+      return "Economia";
+    case "currency":
+      return "Moeda";
+    case "globalVariable":
+      return "Variável";
+    case "inventory":
+      return "Inventário";
+    case "production":
+      return "Produção";
+    default:
+      return "Addon";
+  }
+}
+
+function getAddonNameForSummary(rawAddon: unknown): string {
+  if (!rawAddon || typeof rawAddon !== "object") return "Addon";
+  const addon = rawAddon as { name?: unknown; type?: unknown };
+  if (typeof addon.name === "string" && addon.name.trim()) return addon.name.trim();
+  if (typeof addon.type === "string" && addon.type.trim()) return getDefaultAddonNameByType(addon.type.trim());
+  return "Addon";
 }
 
 export async function POST(request: NextRequest) {
@@ -348,6 +391,68 @@ export async function POST(request: NextRequest) {
       return arrA.every((v, i) => v === arrB[i]);
     };
     const addonsEqual = (a: unknown, b: unknown): boolean => stableAddonsForCompare(a) === stableAddonsForCompare(b);
+    const getSectionChangeSummary = (existing: any | undefined, section: any): SyncSectionChangeSummary => {
+      const facets: SyncSectionChangeSummary["facets"] = [];
+      const addons: SyncAddonChange[] = [];
+
+      if (!existing) {
+        facets.push("created");
+      } else {
+        if ((existing.title || "") !== (section.title || "")) facets.push("title");
+        if ((existing.content || "") !== (section.content || "")) facets.push("content");
+        if (!domainTagsEqual(existing.domain_tags, section.domainTags)) facets.push("domainTags");
+        if ((existing.parent_id || null) !== (section.parentId || null)) facets.push("parent");
+        if (Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0)) facets.push("order");
+        if ((existing.color || null) !== (section.color || null)) facets.push("color");
+      }
+
+      const previousAddons = normalizeSectionAddons(existing?.balance_addons) || [];
+      const incomingAddons = normalizeSectionAddons(section?.addons) || [];
+      const previousById = new Map(previousAddons.map((addon) => [addon.id, addon]));
+      const incomingById = new Map(incomingAddons.map((addon) => [addon.id, addon]));
+
+      for (const incomingAddon of incomingAddons) {
+        const previousAddon = previousById.get(incomingAddon.id);
+        if (!previousAddon) {
+          addons.push({
+            action: "added",
+            addonId: incomingAddon.id,
+            addonType: incomingAddon.type,
+            addonName: getAddonNameForSummary(incomingAddon),
+          });
+          continue;
+        }
+        if (stableAddonsForCompare([previousAddon]) !== stableAddonsForCompare([incomingAddon])) {
+          addons.push({
+            action: "updated",
+            addonId: incomingAddon.id,
+            addonType: incomingAddon.type,
+            addonName: getAddonNameForSummary(incomingAddon),
+          });
+        }
+      }
+
+      for (const previousAddon of previousAddons) {
+        if (!incomingById.has(previousAddon.id)) {
+          addons.push({
+            action: "removed",
+            addonId: previousAddon.id,
+            addonType: previousAddon.type,
+            addonName: getAddonNameForSummary(previousAddon),
+          });
+        }
+      }
+
+      if (addons.length > 0) facets.push("addons");
+
+      const uniqueFacets = Array.from(new Set(facets));
+      return {
+        sectionId: String(section.id),
+        sectionTitle: (section.title && String(section.title).trim()) || "Sem título",
+        facets: uniqueFacets,
+        addons,
+      };
+    };
 
     const sectionsToUpsert = incomingSections.filter((section: any) => {
       const existing = existingById.get(section.id);
@@ -504,6 +609,10 @@ export async function POST(request: NextRequest) {
       deletesToApply = [...removedSectionIds];
       actualCredits = consumedThisSync;
     }
+
+    const appliedSectionChanges = sectionsToApply.map((section: any) =>
+      getSectionChangeSummary(existingById.get(section.id), section)
+    );
 
     // Dono: upsert completo. Membro: só atualiza campos editáveis (não altera owner_id nem sharing público)
     const isOwner = projectOwnerId === user.id;
@@ -718,6 +827,9 @@ export async function POST(request: NextRequest) {
         sectionsUpserted: sectionsToApply.length,
         sectionsDeleted: deletesToApply.length,
         sectionsUnchanged: Math.max(0, incomingSections.length - sectionsToApply.length),
+        changeSummary: {
+          sections: appliedSectionChanges,
+        },
       },
       quota,
       syncedBy: { userId: user.id, displayName: syncedByDisplayName },

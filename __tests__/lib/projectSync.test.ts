@@ -336,6 +336,47 @@ describe('projectSync auth/session behavior', () => {
     expect(result.quota?.remainingInWindow).toBe(29)
   })
 
+  it('returns changeSummary when route includes detailed changes', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        stats: {
+          sectionsTotal: 1,
+          sectionsUpserted: 1,
+          sectionsDeleted: 0,
+          sectionsUnchanged: 0,
+          changeSummary: {
+            sections: [
+              {
+                sectionId: "section-1",
+                sectionTitle: "Gameplay",
+                facets: ["content", "addons"],
+                addons: [
+                  {
+                    action: "updated",
+                    addonId: "eco-1",
+                    addonType: "economyLink",
+                    addonName: "Economia",
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    })
+
+    const result = await upsertProjectToSupabase(projectPayload)
+
+    expect(result.error).toBeNull()
+    expect(result.stats?.changeSummary?.sections).toHaveLength(1)
+    expect(result.stats?.changeSummary?.sections[0]).toMatchObject({
+      sectionId: "section-1",
+      facets: ["content", "addons"],
+    })
+  })
+
   it('returns skippedReason unauthenticated when route returns 401', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,

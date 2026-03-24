@@ -33,6 +33,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import type { SectionAddon } from "@/lib/addons/types";
+import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
@@ -44,6 +45,17 @@ interface Props {
   /** Quando true, abre direto no modo edição inline (ex.: vindo de /sections/[id]/edit) */
   openEdit?: boolean;
 }
+
+type SectionVersionEntry = {
+  id: string;
+  title: string;
+  content: string;
+  color?: string | null;
+  sort_order?: number | null;
+  balance_addons?: unknown;
+  created_at: string;
+  updated_by_name?: string | null;
+};
 
 export default function SectionDetailClient({ projectId, sectionId, openEdit = false }: Props) {
   const { t } = useI18n();
@@ -90,7 +102,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [sectionColor, setSectionColor] = useState("#3b82f6");
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [selectedNewParent, setSelectedNewParent] = useState<string | null>(null);
-  const [sectionVersions, setSectionVersions] = useState<Array<{ id: string; title: string; content: string; color?: string | null; created_at: string; updated_by_name?: string | null }>>([]);
+  const [sectionVersions, setSectionVersions] = useState<SectionVersionEntry[]>([]);
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
@@ -1279,6 +1291,82 @@ function SectionDetailContent({
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const getAddonTypeFallbackLabel = (type: string): string => {
+    switch (type) {
+      case "xpBalance":
+        return t("sectionDetail.history.addonType.xpBalance");
+      case "progressionTable":
+        return t("sectionDetail.history.addonType.progressionTable");
+      case "economyLink":
+        return t("sectionDetail.history.addonType.economyLink");
+      case "currency":
+        return t("sectionDetail.history.addonType.currency");
+      case "globalVariable":
+        return t("sectionDetail.history.addonType.globalVariable");
+      case "inventory":
+        return t("sectionDetail.history.addonType.inventory");
+      case "production":
+        return t("sectionDetail.history.addonType.production");
+      default:
+        return t("sectionDetail.history.addonType.generic");
+    }
+  };
+  const buildVersionChangeSummary = (current: SectionVersionEntry, previous?: SectionVersionEntry): string | null => {
+    if (!previous) return null;
+    const labels: string[] = [];
+    const seen = new Set<string>();
+    const pushUnique = (value: string) => {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      labels.push(value.trim());
+    };
+
+    if ((current.title || "") !== (previous.title || "")) {
+      pushUnique(t("sectionDetail.history.changeFacets.title"));
+    }
+    if ((current.content || "") !== (previous.content || "")) {
+      pushUnique(t("sectionDetail.history.changeFacets.content"));
+    }
+    if ((current.color || null) !== (previous.color || null)) {
+      pushUnique(t("sectionDetail.history.changeFacets.color"));
+    }
+    if (Number(current.sort_order ?? 0) !== Number(previous.sort_order ?? 0)) {
+      pushUnique(t("sectionDetail.history.changeFacets.order"));
+    }
+
+    const currentAddons = normalizeSectionAddons(current.balance_addons) || [];
+    const previousAddons = normalizeSectionAddons(previous.balance_addons) || [];
+    const previousById = new Map(previousAddons.map((addon) => [addon.id, addon]));
+    const currentById = new Map(currentAddons.map((addon) => [addon.id, addon]));
+
+    for (const addon of currentAddons) {
+      const oldAddon = previousById.get(addon.id);
+      if (!oldAddon || JSON.stringify(oldAddon) !== JSON.stringify(addon)) {
+        const addonName = addon.name?.trim() || getAddonTypeFallbackLabel(addon.type);
+        pushUnique(
+          t("sectionDetail.history.changeFacets.addonLabel").replace("{{name}}", addonName)
+        );
+      }
+    }
+    for (const addon of previousAddons) {
+      if (!currentById.has(addon.id)) {
+        const addonName = addon.name?.trim() || getAddonTypeFallbackLabel(addon.type);
+        pushUnique(
+          t("sectionDetail.history.changeFacets.addonLabel").replace("{{name}}", addonName)
+        );
+      }
+    }
+
+    if (labels.length === 0) return null;
+    const maxLabels = 6;
+    const visible = labels.slice(0, maxLabels);
+    const extraCount = Math.max(0, labels.length - visible.length);
+    const suffix = extraCount > 0
+      ? ` ${t("sectionDetail.history.moreItems").replace("{{count}}", String(extraCount))}`
+      : "";
+    return `${t("sectionDetail.history.modifiedPrefix")}: ${visible.join(", ")}${suffix}`;
+  };
   // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
   const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
   const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
@@ -1856,8 +1944,9 @@ function SectionDetailContent({
           <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.empty")}</p>
         ) : (
           <ul className="space-y-2 max-h-64 overflow-auto pt-2">
-            {sectionVersions.map((v: { id: string; title: string; content: string; color?: string | null; created_at: string; updated_by_name?: string | null }) => {
+            {sectionVersions.map((v: SectionVersionEntry, index: number) => {
               const contentPreview = (v.content || "").replace(/\s+/g, " ").trim().slice(0, 80);
+              const versionSummary = buildVersionChangeSummary(v, sectionVersions[index + 1]);
               return (
               <li
                 key={v.id}
@@ -1875,7 +1964,11 @@ function SectionDetailContent({
                   <div className="text-gray-400 font-medium truncate mt-0.5" title={v.title}>
                     {(v.title && v.title.trim()) || t("sectionDetail.history.untitled")}
                   </div>
-                  {contentPreview ? (
+                  {versionSummary ? (
+                    <div className="text-gray-400 truncate mt-0.5" title={versionSummary}>
+                      {versionSummary}
+                    </div>
+                  ) : contentPreview ? (
                     <div className="text-gray-500 truncate mt-0.5" title={v.content}>
                       {contentPreview}{v.content.length > 80 ? "…" : ""}
                     </div>

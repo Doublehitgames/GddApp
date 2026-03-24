@@ -39,6 +39,50 @@ export default function PersistenceSettingsPage() {
     setTimeout(() => setSaving(false), 300);
   };
 
+  const formatSyncChangeSummary = (entry: (typeof lastSyncStatsHistory)[number]): string | null => {
+    const sections = entry.changeSummary?.sections;
+    if (!sections || sections.length === 0) return null;
+
+    const labels: string[] = [];
+    const seen = new Set<string>();
+    const pushUnique = (value: string) => {
+      const normalized = value.trim().toLowerCase();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      labels.push(value.trim());
+    };
+
+    for (const section of sections) {
+      for (const facet of section.facets || []) {
+        if (facet === "addons") continue;
+        if (facet === "created") pushUnique(t("settings.persistencePage.history.changeFacets.created"));
+        if (facet === "title") pushUnique(t("settings.persistencePage.history.changeFacets.title"));
+        if (facet === "content") pushUnique(t("settings.persistencePage.history.changeFacets.content"));
+        if (facet === "domainTags") pushUnique(t("settings.persistencePage.history.changeFacets.domainTags"));
+        if (facet === "parent") pushUnique(t("settings.persistencePage.history.changeFacets.parent"));
+        if (facet === "order") pushUnique(t("settings.persistencePage.history.changeFacets.order"));
+        if (facet === "color") pushUnique(t("settings.persistencePage.history.changeFacets.color"));
+      }
+
+      for (const addon of section.addons || []) {
+        const addonLabel = t("settings.persistencePage.history.changeFacets.addonLabel").replace(
+          "{{name}}",
+          addon.addonName || addon.addonType
+        );
+        pushUnique(addonLabel);
+      }
+    }
+
+    if (labels.length === 0) return null;
+    const maxLabels = 6;
+    const visible = labels.slice(0, maxLabels);
+    const extraCount = Math.max(0, labels.length - visible.length);
+    const suffix = extraCount > 0
+      ? ` ${t("settings.persistencePage.history.moreItems").replace("{{count}}", String(extraCount))}`
+      : "";
+    return `${t("settings.persistencePage.history.modifiedPrefix")}: ${visible.join(", ")}${suffix}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto p-6">
@@ -204,6 +248,7 @@ export default function PersistenceSettingsPage() {
               <div className="space-y-1.5 max-h-56 overflow-auto pr-1">
                 {lastSyncStatsHistory.map((entry) => {
                   const who = entry.syncedByDisplayName ?? entry.syncedByUserId ?? t("settings.persistencePage.history.unknownUser");
+                  const changeSummaryText = formatSyncChangeSummary(entry);
                   return (
                     <div
                       key={`${entry.projectId}-${entry.syncedAt}`}
@@ -223,6 +268,11 @@ export default function PersistenceSettingsPage() {
                       <span className="text-gray-500 shrink-0">
                         {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
                       </span>
+                      {changeSummaryText && (
+                        <span className="w-full text-gray-300 truncate" title={changeSummaryText}>
+                          {changeSummaryText}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
