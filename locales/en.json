@@ -163,6 +163,40 @@
       "errorGeneric": "Error loading suggestions. Try again.",
       "close": "Close"
     },
+    "aiChat": {
+      "invalidJsonObject": "Invalid JSON: expected an object.",
+      "invalidJsonSyntax": "Invalid JSON: check quotes, commas, and braces.",
+      "commandFormatAddonCreate": "Invalid ADDON_CRIAR format. Use: ADDON_CRIAR: sectionId | addonType | jsonData",
+      "commandFormatAddonEdit": "Invalid ADDON_EDITAR format. Use: ADDON_EDITAR: sectionId | addonId | jsonPatch",
+      "commandFormatAddonRemove": "Invalid ADDON_REMOVER format. Use: ADDON_REMOVER: sectionId | addonId",
+      "sectionNotFound": "Section not found",
+      "addonNotFound": "Addon not found",
+      "addonTypeNotSupported": "Addon type not supported in this version",
+      "addonCreated": "Addon created",
+      "addonUpdated": "Addon updated",
+      "addonRemoved": "Addon removed",
+      "actionsExecuted": "of",
+      "actionsExecutedSuffix": "actions executed",
+      "actionsReadyPrefix": "Actions ready to run",
+      "confirmOrCancelHint": "Use the buttons below to confirm or cancel.",
+      "executionCancelled": "Execution cancelled. I can adjust the proposal to better fit your project.",
+      "confirmExecute": "Confirm execution of",
+      "actionsCount": "action(s)",
+      "commandWarningsTitle": "Validation warnings found. You can still confirm:",
+      "filterAll": "All",
+      "filterCritical": "Critical",
+      "filterWarning": "Warnings",
+      "filterInfo": "Info",
+      "noWarningsForFilter": "No warnings for this filter.",
+      "criticalAcknowledgeLabel": "I understand the critical warnings and still want to continue.",
+      "opportunityInventoryMissing": "ADDON_OPPORTUNITY: \"{{title}}\" looks like an item/inventory entity, but there is no ADDON_CRIAR inventory in the plan.",
+      "opportunityEconomyLinkMissing": "ADDON_OPPORTUNITY: \"{{title}}\" mentions buy/sell/price, but there is no ADDON_CRIAR economyLink in the plan.",
+      "opportunityProductionMissing": "ADDON_OPPORTUNITY: \"{{title}}\" suggests production/recipe/passive generation, but there is no ADDON_CRIAR production in the plan.",
+      "opportunityProgressionMissing": "ADDON_OPPORTUNITY: \"{{title}}\" suggests level/XP progression, but there is no ADDON_CRIAR xpBalance or progressionTable in the plan.",
+      "opportunityPetAddonMissing": "ADDON_OPPORTUNITY: \"{{title}}\" looks like a pet/animal; evaluate inventory (storage), economyLink (buy/sell), and production (passive generation).",
+      "confirmButton": "Confirm",
+      "cancelButton": "Cancel"
+    },
     "analysis": {
       "runAnalysis": "Run analysis",
       "lastRun": "Last run",
@@ -708,6 +742,15 @@
       "goToSectionPage": "Go to section page",
       "goToMindMap": "Go to mind map"
     },
+    "thumbnail": {
+      "pickTooltip": "Select page thumbnail (Google Drive)",
+      "removeTooltip": "Remove page thumbnail",
+      "missingGoogleConfig": "Google Drive is not configured for image picking.",
+      "pickFailed": "Could not select the page thumbnail.",
+      "empty": "Thumb",
+      "picking": "Opening...",
+      "alt": "Page thumbnail"
+    },
     "addons": {
       "reorderAria": "Reorder addon",
       "dragToReorder": "Drag to reorder",
@@ -790,6 +833,7 @@
         "content": "Description",
         "order": "Order",
         "color": "Color",
+        "thumbnail": "Thumbnail",
         "addonLabel": "Addon {{name}}"
       },
       "addonType": {
@@ -966,6 +1010,7 @@
           "parent": "Hierarchy",
           "order": "Order",
           "color": "Color",
+          "thumbnail": "Thumbnail",
           "addonLabel": "Addon {{name}}"
         }
       },

@@ -16,6 +16,7 @@ interface ProjectContext {
     content: string;
     parentId?: string;
     domainTags?: string[];
+    addonTypes?: string[];
   }>;
 }
 
@@ -51,7 +52,8 @@ ${projectContext.sections.map(s => {
   const isRoot = !s.parentId;
   const prefix = isRoot ? '📁' : '  └─';
   const tags = s.domainTags?.length ? ` [${s.domainTags.join(', ')}]` : '';
-  return `${prefix} ${s.title} (ID: ${s.id})${tags}`;
+  const addons = s.addonTypes?.length ? ` {addons: ${s.addonTypes.join(', ')}}` : '';
+  return `${prefix} ${s.title} (ID: ${s.id})${tags}${addons}`;
 }).join('\n')}
 
 💡 DICAS:
@@ -61,6 +63,13 @@ ${projectContext.sections.map(s => {
 - Exemplo de referência: "Este sistema se relaciona com $[Economia da Fazenda]"
 - Só proponha sistemas aderentes ao tema descrito no projeto
 - Se sugerir algo fora do núcleo, explique claramente a conexão com a descrição do jogo
+- Quando criar entidades de gameplay, avalie addons por domínio (inventory, economyLink, production, xpBalance/progressionTable, currency, globalVariable)
+- Não crie item/moeda/pet na raiz se já existir contêiner adequado (Itens, Economia, Moedas, Produção etc.)
+- Se faltar dado para configurar addon com segurança, faça perguntas curtas antes de emitir [EXECUTAR]
+- Pré-requisitos comuns:
+  - economyLink compra/venda -> referência de moeda (seção com addon currency)
+  - production recipe/passive -> referências para itens com addon inventory
+  - unlock por nível -> referência para seção com addon xpBalance
 ` : '';
 
     const enhancedMessages: AIMessage[] = [

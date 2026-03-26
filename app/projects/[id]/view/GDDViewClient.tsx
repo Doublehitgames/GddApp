@@ -21,6 +21,50 @@ interface DocumentAnchorPreview {
 
 const DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH = 180;
 
+function SectionThumb({
+  src,
+  alt,
+  depth,
+  compact = false,
+}: {
+  src?: string;
+  alt: string;
+  depth: number;
+  compact?: boolean;
+}) {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const candidates = useMemo(() => getDriveImageDisplayCandidates(src || ""), [src]);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [src]);
+
+  if (!src) return null;
+  if (candidateIndex >= candidates.length) return null;
+
+  const sizeClass = compact
+    ? depth <= 0
+      ? "h-6 w-6"
+      : "h-5 w-5"
+    : depth <= 0
+      ? "h-12 w-12"
+      : depth === 1
+        ? "h-10 w-10"
+        : "h-9 w-9";
+
+  return (
+    <span className={`inline-flex shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 ${sizeClass}`}>
+      <img
+        src={candidates[candidateIndex]}
+        alt={alt}
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setCandidateIndex((prev) => prev + 1)}
+      />
+    </span>
+  );
+}
+
 function normalizeReferenceText(value: string): string {
   return value
     .normalize("NFD")
@@ -371,6 +415,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 isActive ? "bg-amber-500" : "bg-slate-300 group-hover:bg-slate-400"
               }`}
             />
+            <SectionThumb
+              src={node.thumbImageUrl}
+              alt={t("sectionDetail.thumbnail.alt")}
+              depth={depth}
+              compact
+            />
             <span className="leading-5">{highlightSearchTerm(node.title)}</span>
           </a>
 
@@ -442,11 +492,16 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     e.stopPropagation();
                     setOpenSectionMenuId((prev) => (prev === node.id ? null : node.id));
                   }}
-                  className="text-left rounded-md hover:bg-gray-100 px-1 -mx-1 transition-colors inline-flex items-baseline gap-1.5"
+                  className="text-left rounded-md hover:bg-gray-100 px-1 -mx-1 transition-colors inline-flex items-center gap-2"
                   title="Opções"
                 >
+                  <SectionThumb
+                    src={node.thumbImageUrl}
+                    alt={t("sectionDetail.thumbnail.alt")}
+                    depth={depth}
+                  />
                   {highlightSearchTerm(node.title)}
-                  <span className="text-gray-400 text-sm" aria-hidden>▾</span>
+                  <span className="text-gray-400 text-sm shrink-0" aria-hidden>▾</span>
                 </button>
                 {openSectionMenuId === node.id && (
                   <div className="absolute left-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-white border border-gray-200 rounded-lg shadow-lg">
@@ -711,23 +766,35 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
       </div>
 
       {/* Document Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className={`lg:grid lg:gap-2 ${showDesktopToc ? "lg:grid-cols-[280px_24px_minmax(0,1fr)]" : "lg:grid-cols-[24px_minmax(0,1fr)]"}`}>
-          {sectionsWithHierarchy.length > 0 && showDesktopToc && (
-            <aside className="hidden lg:block gdd-sidebar-toc">
-              <div className="sticky top-28 rounded-2xl border border-slate-200 bg-white/85 backdrop-blur-md shadow-lg p-4 max-h-[calc(100vh-9rem)] overflow-y-auto">
-                <div className="mb-3 pb-3 border-b border-slate-200">
-                  <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+      <div className="w-full px-4 py-8 lg:px-8 xl:px-10">
+        <div
+          className={`xl:grid xl:gap-3 ${
+            sectionsWithHierarchy.length > 0
+              ? showDesktopToc
+                ? "xl:grid-cols-[minmax(280px,30fr)_24px_minmax(0,70fr)]"
+                : "xl:grid-cols-[minmax(0,15fr)_24px_minmax(0,70fr)_minmax(0,15fr)]"
+              : "xl:grid-cols-[minmax(0,1fr)]"
+          }`}
+        >
+          {sectionsWithHierarchy.length > 0 && (
+            <aside className="hidden xl:block gdd-sidebar-toc w-full">
+              {showDesktopToc ? (
+                <div className="sticky top-28 w-full rounded-2xl border border-slate-200 bg-white/85 backdrop-blur-md shadow-lg p-4 max-h-[calc(100vh-9rem)] overflow-y-auto">
+                  <div className="mb-3 pb-3 border-b border-slate-200">
+                    <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+                  </div>
+                  <div className="space-y-1.5">
+                    {renderTocNodes(sectionsWithHierarchy)}
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  {renderTocNodes(sectionsWithHierarchy)}
-                </div>
-              </div>
+              ) : (
+                <div className="w-full" aria-hidden />
+              )}
             </aside>
           )}
 
           {sectionsWithHierarchy.length > 0 && (
-            <div className="hidden lg:flex gdd-toc-toggle -mx-2 z-10">
+            <div className="hidden xl:flex gdd-toc-toggle -mx-2 z-10">
               <div className="sticky top-1/2 -translate-y-1/2 self-start">
                 <button
                   onClick={() => setShowDesktopToc((prev) => !prev)}
@@ -741,9 +808,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             </div>
           )}
 
-          <div className="min-w-0 lg:-ml-2">
+          <div className="min-w-0 xl:-ml-2">
             {sectionsWithHierarchy.length > 0 && (
-              <div className="lg:hidden mb-4 gdd-mobile-toc">
+              <div className="xl:hidden mb-4 gdd-mobile-toc">
                 <button
                   onClick={() => setShowMobileToc((prev) => !prev)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 font-semibold text-left"
@@ -851,6 +918,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           </div>
         </div>
           </div>
+          {sectionsWithHierarchy.length > 0 && !showDesktopToc && (
+            <div className="hidden xl:block" aria-hidden />
+          )}
         </div>
       </div>
 

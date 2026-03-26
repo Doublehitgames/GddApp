@@ -58,7 +58,7 @@ type SyncAddonChange = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "addons">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons">;
   addons: SyncAddonChange[];
 };
 
@@ -129,6 +129,19 @@ function isMissingProjectCoverImageColumn(error: unknown) {
       : "";
   const combined = `${message} ${details}`.toLowerCase();
   return combined.includes("cover_image_url") && combined.includes("column");
+}
+
+function isMissingSectionThumbImageColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  return combined.includes("thumb_image_url") && combined.includes("column");
 }
 
 /** Extrai mensagem legível de erro Supabase/PostgREST (message, error, details, hint, code). */
@@ -334,21 +347,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let { data: existingSections, error: existingErr } = await supabase
-      .from("sections")
-      .select("id,parent_id,title,content,sort_order,color,domain_tags,balance_addons")
-      .eq("project_id", project.id);
+    let includeBalanceAddonsColumn = true;
+    let includeThumbImageColumn = true;
+    let existingSections: any[] | null = null;
+    let existingErr: unknown = null;
 
-    if (existingErr && isMissingBalanceAddonsColumn(existingErr)) {
-      const retry = await supabase
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const selectedColumns = [
+        "id",
+        "parent_id",
+        "title",
+        "content",
+        "sort_order",
+        "color",
+        "domain_tags",
+        includeBalanceAddonsColumn ? "balance_addons" : null,
+        includeThumbImageColumn ? "thumb_image_url" : null,
+      ]
+        .filter(Boolean)
+        .join(",");
+
+      const current = await supabase
         .from("sections")
-        .select("id,parent_id,title,content,sort_order,color,domain_tags")
+        .select(selectedColumns)
         .eq("project_id", project.id);
-      existingSections = (retry.data || []).map((section: any) => ({
-        ...section,
-        balance_addons: null,
-      }));
-      existingErr = retry.error;
+
+      existingErr = current.error;
+      if (!existingErr) {
+        existingSections = (current.data || []).map((section: any) => ({
+          ...section,
+          balance_addons: includeBalanceAddonsColumn ? section.balance_addons ?? null : null,
+          thumb_image_url: includeThumbImageColumn ? section.thumb_image_url ?? null : null,
+        }));
+        break;
+      }
+
+      let retried = false;
+      if (includeBalanceAddonsColumn && isMissingBalanceAddonsColumn(existingErr)) {
+        includeBalanceAddonsColumn = false;
+        retried = true;
+      }
+      if (includeThumbImageColumn && isMissingSectionThumbImageColumn(existingErr)) {
+        includeThumbImageColumn = false;
+        retried = true;
+      }
+      if (!retried) break;
     }
 
     if (existingErr) {
@@ -404,6 +447,7 @@ export async function POST(request: NextRequest) {
         if ((existing.parent_id || null) !== (section.parentId || null)) facets.push("parent");
         if (Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0)) facets.push("order");
         if ((existing.color || null) !== (section.color || null)) facets.push("color");
+        if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
       }
 
       const previousAddons = normalizeSectionAddons(existing?.balance_addons) || [];
@@ -464,6 +508,7 @@ export async function POST(request: NextRequest) {
         (existing.content || "") !== (section.content || "") ||
         Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0) ||
         (existing.color || null) !== (section.color || null) ||
+        (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons)
       );
@@ -494,6 +539,7 @@ export async function POST(request: NextRequest) {
         (existing.title || "") === (section.title || "") &&
         (existing.content || "") === (section.content || "") &&
         (existing.color || null) === (section.color || null) &&
+        (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
         addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons);
       if (onlyOrderChanged) {
@@ -707,6 +753,7 @@ export async function POST(request: NextRequest) {
         content: String(s.content ?? ""),
         sort_order: Number(s.order) ?? 0,
         color: s.color != null ? String(s.color) : null,
+        thumb_image_url: s.thumbImageUrl != null ? String(s.thumbImageUrl) : null,
         created_at: s.created_at ? String(s.created_at) : nowIso,
         updated_at: s.updated_at ? String(s.updated_at) : nowIso,
         created_by: s.created_by ?? null,
@@ -717,22 +764,43 @@ export async function POST(request: NextRequest) {
         balance_addons: normalizeSectionAddons(s.addons) || [],
       }));
       const hasAnyAddonPayload = rows.some((row) => Array.isArray(row.balance_addons) && row.balance_addons.length > 0);
+      const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
 
-      let { error: sErr } = await supabase.from("sections").upsert(rows, { onConflict: "id" });
-      if (sErr && isMissingBalanceAddonsColumn(sErr)) {
-        const rowsWithoutAddons = rows.map(({ balance_addons: _ignored, ...rest }) => rest);
-        const retry = await supabase.from("sections").upsert(rowsWithoutAddons, { onConflict: "id" });
-        sErr = retry.error;
-        if (!sErr && hasAnyAddonPayload) {
-          return NextResponse.json(
-            {
-              error: "addons_column_missing_in_sections",
-              code: "sections_balance_addons_column_missing",
-              hint: "Aplique a migração de addons (coluna sections.balance_addons) no Supabase para persistir os addons.",
-            },
-            { status: 500 }
-          );
+      let rowsForUpsert = rows;
+      let droppedAddonsColumn = false;
+      let droppedThumbColumn = false;
+      let sErr: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const upsertResult = await supabase.from("sections").upsert(rowsForUpsert, { onConflict: "id" });
+        sErr = upsertResult.error;
+        if (!sErr) break;
+
+        let retried = false;
+        if (!droppedAddonsColumn && isMissingBalanceAddonsColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(({ balance_addons: _ignored, ...rest }) => rest);
+          droppedAddonsColumn = true;
+          retried = true;
         }
+        if (!droppedThumbColumn && isMissingSectionThumbImageColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(({ thumb_image_url: _ignored, ...rest }) => rest);
+          droppedThumbColumn = true;
+          retried = true;
+        }
+        if (!retried) break;
+      }
+
+      if (!sErr && droppedAddonsColumn && hasAnyAddonPayload) {
+        return NextResponse.json(
+          {
+            error: "addons_column_missing_in_sections",
+            code: "sections_balance_addons_column_missing",
+            hint: "Aplique a migração de addons (coluna sections.balance_addons) no Supabase para persistir os addons.",
+          },
+          { status: 500 }
+        );
+      }
+      if (!sErr && droppedThumbColumn && hasAnyThumbPayload) {
+        console.warn("[api/projects/sync] sections.thumb_image_url ausente; sincronizando sem thumbs.");
       }
 
       if (sErr) {

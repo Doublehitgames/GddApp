@@ -3,14 +3,20 @@
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
-import { driveFileIdToImageUrl, normalizeDriveUrlsInMarkdown } from "@/lib/googleDrivePicker";
+import {
+  driveFileIdToImageUrl,
+  getDriveImageDisplayCandidates,
+  getGoogleClientId,
+  normalizeDriveUrlsInMarkdown,
+  openGoogleDriveImagePicker,
+} from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
   DndContext,
@@ -69,6 +75,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
+  const setSectionThumbImage = useProjectStore((s) => s.setSectionThumbImage);
   const addSectionAddon = useProjectStore((s) => s.addSectionAddon);
   const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
   const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
@@ -107,10 +114,17 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
   const [showAddonMenu, setShowAddonMenu] = useState(false);
+  const [isPickingSectionThumb, setIsPickingSectionThumb] = useState(false);
+  const [sectionThumbError, setSectionThumbError] = useState("");
+  const [sectionThumbCandidateIndex, setSectionThumbCandidateIndex] = useState(0);
   const router = useRouter();
 
   const sections = project?.sections || [];
   const addons = section?.addons || [];
+  const sectionThumbCandidates = useMemo(
+    () => getDriveImageDisplayCandidates(section?.thumbImageUrl || ""),
+    [section?.thumbImageUrl]
+  );
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const { AutocompleteDropdown } = useMarkdownAutocomplete({
     sections,
@@ -295,6 +309,29 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSelectedNewParent(null);
   }
 
+  async function handlePickSectionThumb() {
+    if (!section || isPickingSectionThumb) return;
+    setSectionThumbError("");
+    setIsPickingSectionThumb(true);
+    try {
+      const googleClientId = await getGoogleClientId();
+      if (!googleClientId) {
+        setSectionThumbError(t("sectionDetail.thumbnail.missingGoogleConfig"));
+        return;
+      }
+      const picked = await openGoogleDriveImagePicker(googleClientId);
+      if (!picked?.id) return;
+      const nextThumb = driveFileIdToImageUrl(picked.id);
+      setSectionThumbImage(projectId, sectionId, nextThumb);
+      setSectionThumbCandidateIndex(0);
+      setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: nextThumb } : prev));
+    } catch {
+      setSectionThumbError(t("sectionDetail.thumbnail.pickFailed"));
+    } finally {
+      setIsPickingSectionThumb(false);
+    }
+  }
+
   useEffect(() => {
     const proj = getProject(projectId);
     setProject(proj || null);
@@ -324,6 +361,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   useEffect(() => {
     setShowAddonMenu(false);
   }, [sectionId]);
+
+  useEffect(() => {
+    setSectionThumbCandidateIndex(0);
+  }, [section?.thumbImageUrl]);
 
   // Buscar histórico de versões da seção (após carregar)
   useEffect(() => {
@@ -721,6 +762,13 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSuggestDomainLoading={setSuggestDomainLoading}
     showAddonMenu={showAddonMenu}
     setShowAddonMenu={setShowAddonMenu}
+    isPickingSectionThumb={isPickingSectionThumb}
+    sectionThumbError={sectionThumbError}
+    sectionThumbCandidateIndex={sectionThumbCandidateIndex}
+    setSectionThumbCandidateIndex={setSectionThumbCandidateIndex}
+    sectionThumbCandidates={sectionThumbCandidates}
+    handlePickSectionThumb={handlePickSectionThumb}
+    setSectionThumbImage={setSectionThumbImage}
     addons={addons}
     onAddAddon={addAddon}
     onUpdateAddon={updateAddon}
@@ -1282,6 +1330,13 @@ function SectionDetailContent({
   setSuggestDomainLoading,
   showAddonMenu,
   setShowAddonMenu,
+  isPickingSectionThumb,
+  sectionThumbError,
+  sectionThumbCandidateIndex,
+  setSectionThumbCandidateIndex,
+  sectionThumbCandidates,
+  handlePickSectionThumb,
+  setSectionThumbImage,
   addons,
   onAddAddon,
   onUpdateAddon,
@@ -1578,6 +1633,48 @@ function SectionDetailContent({
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
           {/* Esquerda: cor, título (ou edição) e lápis de editar */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={handlePickSectionThumb}
+                disabled={isPickingSectionThumb}
+                className="h-14 w-14 rounded-xl border border-gray-600 bg-gray-900/80 overflow-hidden flex items-center justify-center hover:border-blue-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                title={t("sectionDetail.thumbnail.pickTooltip")}
+                aria-label={t("sectionDetail.thumbnail.pickTooltip")}
+              >
+                {section?.thumbImageUrl && sectionThumbCandidateIndex < sectionThumbCandidates.length ? (
+                  <img
+                    src={sectionThumbCandidates[sectionThumbCandidateIndex]}
+                    alt={t("sectionDetail.thumbnail.alt")}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                    onError={() => {
+                      setSectionThumbCandidateIndex((idx) => idx + 1);
+                    }}
+                  />
+                ) : (
+                  <span className="text-[11px] text-gray-400 px-1 text-center leading-tight">
+                    {isPickingSectionThumb ? t("sectionDetail.thumbnail.picking") : t("sectionDetail.thumbnail.empty")}
+                  </span>
+                )}
+              </button>
+              {section?.thumbImageUrl && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSectionThumbImage(projectId, sectionId, undefined);
+                    setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: undefined } : prev));
+                    setSectionThumbCandidateIndex(0);
+                  }}
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white text-xs hover:bg-red-700 transition-colors"
+                  title={t("sectionDetail.thumbnail.removeTooltip")}
+                  aria-label={t("sectionDetail.thumbnail.removeTooltip")}
+                >
+                  ×
+                </button>
+              )}
+            </div>
             {isEditingTitle ? (
               <>
                 <input
@@ -1781,6 +1878,11 @@ function SectionDetailContent({
               </button>
             )}
           </div>
+        </div>
+      )}
+      {sectionThumbError && (
+        <div className="max-w-6xl mx-auto mb-2 text-xs text-red-300">
+          {sectionThumbError}
         </div>
       )}
 

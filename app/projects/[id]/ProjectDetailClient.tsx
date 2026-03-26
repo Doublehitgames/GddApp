@@ -158,6 +158,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             content: s.content,
             parentId: s.parentId,
             domainTags: s.domainTags,
+            addonTypes: Array.from(new Set((s.addons || []).map((addon: any) => addon.type))).filter(Boolean),
         })),
     } : undefined;
 

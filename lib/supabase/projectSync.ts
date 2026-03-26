@@ -27,7 +27,7 @@ export type SyncStats = {
     sections: Array<{
       sectionId: string;
       sectionTitle: string;
-      facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "addons">;
+      facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons">;
       addons: Array<{
         action: "added" | "updated" | "removed";
         addonId: string;
@@ -333,6 +333,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
   return {
     id: row.id as string,
     title: row.title as string,
+    thumbImageUrl: (row.thumb_image_url as string) || undefined,
     content: (row.content as string) || "",
     created_at: row.created_at as string,
     parentId: (row.parent_id as string) || undefined,

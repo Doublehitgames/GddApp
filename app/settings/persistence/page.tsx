@@ -62,6 +62,7 @@ export default function PersistenceSettingsPage() {
         if (facet === "parent") pushUnique(t("settings.persistencePage.history.changeFacets.parent"));
         if (facet === "order") pushUnique(t("settings.persistencePage.history.changeFacets.order"));
         if (facet === "color") pushUnique(t("settings.persistencePage.history.changeFacets.color"));
+        if (facet === "thumbnail") pushUnique(t("settings.persistencePage.history.changeFacets.thumbnail"));
       }
 
       for (const addon of section.addons || []) {

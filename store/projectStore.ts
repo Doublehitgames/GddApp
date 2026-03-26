@@ -206,6 +206,7 @@ export type SectionAuditBy = { userId: string; displayName: string | null };
 export type Section = {
   id: UUID;
   title: string;
+  thumbImageUrl?: string;
   content?: string;
   created_at: string;
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
@@ -285,6 +286,7 @@ interface ProjectStore {
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
+  setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;
   editSection: (
     projectId: UUID,
     sectionId: UUID,
@@ -569,6 +571,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       .map((section) => ({
         id: section.id,
         title: section.title,
+        thumbImageUrl: section.thumbImageUrl || null,
         content: section.content || "",
         parentId: section.parentId || null,
         order: section.order,
@@ -1039,6 +1042,29 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
               : p
           ),
         id
+      );
+    },
+
+    setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => {
+      const normalizedThumbUrl =
+        typeof thumbImageUrl === "string" && thumbImageUrl.trim()
+          ? thumbImageUrl.trim()
+          : undefined;
+      const now = new Date().toISOString();
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId ? { ...s, thumbImageUrl: normalizedThumbUrl, updated_at: now } : s
+                  ),
+                }
+              : p
+          ),
+        projectId
       );
     },
 
