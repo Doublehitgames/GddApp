@@ -766,12 +766,14 @@ export async function POST(request: NextRequest) {
       const hasAnyAddonPayload = rows.some((row) => Array.isArray(row.balance_addons) && row.balance_addons.length > 0);
       const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
 
-      let rowsForUpsert = rows;
+      let rowsForUpsert: Array<Record<string, unknown>> = [...rows];
       let droppedAddonsColumn = false;
       let droppedThumbColumn = false;
       let sErr: unknown = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
-        const upsertResult = await supabase.from("sections").upsert(rowsForUpsert, { onConflict: "id" });
+        const upsertResult = await supabase
+          .from("sections")
+          .upsert(rowsForUpsert as unknown as object[], { onConflict: "id" });
         sErr = upsertResult.error;
         if (!sErr) break;
 

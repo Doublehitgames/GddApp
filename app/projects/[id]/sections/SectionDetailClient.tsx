@@ -1649,7 +1649,7 @@ function SectionDetailContent({
                     className="h-full w-full object-cover"
                     loading="lazy"
                     onError={() => {
-                      setSectionThumbCandidateIndex((idx) => idx + 1);
+                      setSectionThumbCandidateIndex((idx: number) => idx + 1);
                     }}
                   />
                 ) : (
