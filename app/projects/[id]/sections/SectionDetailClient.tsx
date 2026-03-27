@@ -1602,32 +1602,6 @@ function SectionDetailContent({
         </div>
       )}
       
-      {/* Breadcrumbs locais substituídos pela barra superior global */}
-      {false && !(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto mb-4 text-sm text-gray-400 flex items-center gap-1 flex-wrap">
-        <button
-          className="hover:text-blue-300 underline"
-          onClick={() => router.push(`/projects/${projectId}`)}
-        >
-          {project?.title || "Projeto"}
-        </button>
-        {breadcrumbs.map((crumb: any, idx: number) => (
-          <span key={crumb.id} className="flex items-center gap-1">
-            <span>/</span>
-            {idx === breadcrumbs.length - 1 ? (
-              <span className="text-gray-200 font-semibold">{crumb.title}</span>
-            ) : (
-              <button
-                className="hover:text-blue-300 underline"
-                onClick={() => router.push(`/projects/${projectId}/sections/${crumb.id}`)}
-              >
-                {crumb.title}
-              </button>
-            )}
-          </span>
-        ))}
-        </div>
-      )}
 
       {!(inlineEdit && isFullscreen) && (
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
@@ -2237,19 +2211,6 @@ function SectionDetailContent({
         />
       )}
 
-      {false && !(inlineEdit && isFullscreen) && (
-        <>
-          {/* Desktop grande: painel lateral fixo para navegação rápida entre subseções */}
-          <div className="hidden 2xl:block fixed left-4 top-24 w-80 z-20 max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden">
-            {subsectionsPanel}
-          </div>
-
-          {/* Telas menores: mantém bloco abaixo para evitar sobreposição */}
-          <div className="2xl:hidden max-w-6xl mx-auto mt-6">
-            {subsectionsPanel}
-          </div>
-        </>
-      )}
 
       {/* Modal de Preview da IA */}
       {showPreview && (

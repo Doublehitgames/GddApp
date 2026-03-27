@@ -168,6 +168,40 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [addonFilterMenuOpen]);
 
+  useEffect(() => {
+    if (!currentSectionId) return;
+    const sections = project?.sections || [];
+    if (sections.length === 0) return;
+
+    const sectionById = new Map(sections.map((section: any) => [section.id, section]));
+    const currentSection = sectionById.get(currentSectionId);
+    if (!currentSection) return;
+
+    const idsToExpand = new Set<string>();
+
+    // Keep lineage visible so current section is always reachable in the tree.
+    let cursor = currentSection;
+    const visited = new Set<string>();
+    while (cursor?.parentId && !visited.has(cursor.id)) {
+      const parent = sectionById.get(cursor.parentId);
+      if (!parent) break;
+      idsToExpand.add(parent.id);
+      visited.add(cursor.id);
+      cursor = parent;
+    }
+
+    // If current section has children, open exactly one level for quick navigation.
+    const hasChildren = sections.some((section: any) => section.parentId === currentSectionId);
+    if (hasChildren) idsToExpand.add(currentSectionId);
+
+    if (idsToExpand.size === 0) return;
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      idsToExpand.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [currentSectionId, project?.sections]);
+
   const canExpandAll = sectionIds.some((id: string) => !expandedSections.has(id));
   const canCollapseAll = expandedSections.size > 0;
 
