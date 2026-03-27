@@ -1221,9 +1221,9 @@ function SortableAddonItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-2xl border border-gray-700/80 bg-gray-800/70 overflow-hidden">
+    <div ref={setNodeRef} style={style} className="ui-card-premium overflow-hidden">
       <div
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/70 transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
         onClick={() => toggleAddonCollapsed(addonKey)}
       >
         <div className="min-w-0 flex items-center gap-2">
@@ -1253,7 +1253,7 @@ function SortableAddonItem({
                   }
                 }}
                 onClick={(event) => event.stopPropagation()}
-                className="rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm font-semibold text-gray-100 outline-none focus:border-gray-500 max-w-[24rem]"
+                className="ui-input-dark ui-focus-ring-indigo rounded px-2 py-1 text-sm font-semibold text-gray-100 max-w-[24rem]"
                 style={{ width: `${Math.max(10, draftName.length + 2)}ch` }}
                 placeholder={getAddonTypeLabel(addon.type)}
                 aria-label={t("sectionDetail.addons.nameInputAria", "Nome do addon")}
@@ -1289,7 +1289,7 @@ function SortableAddonItem({
         </button>
       </div>
       {!isCollapsed && (
-        <div className="border-t border-gray-700/80 p-3">
+        <div className="border-t border-gray-700/80 p-3 bg-gray-900/30">
           {entry
             ? entry.renderEditor(
                 addon,
@@ -1604,15 +1604,16 @@ function SectionDetailContent({
       
 
       {!(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-2 group bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-3 group ui-card-premium relative">
+          <span className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" aria-hidden />
           {/* Esquerda: cor, título (ou edição) e lápis de editar */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="relative flex items-center gap-2 flex-1 min-w-0">
             <div className="relative shrink-0">
               <button
                 type="button"
                 onClick={handlePickSectionThumb}
                 disabled={isPickingSectionThumb}
-                className="h-14 w-14 rounded-xl border border-gray-600 bg-gray-900/80 overflow-hidden flex items-center justify-center hover:border-blue-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="h-14 w-14 rounded-xl border border-gray-600 bg-gray-900/80 overflow-hidden flex items-center justify-center hover:border-indigo-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 title={t("sectionDetail.thumbnail.pickTooltip")}
                 aria-label={t("sectionDetail.thumbnail.pickTooltip")}
               >
@@ -1667,7 +1668,7 @@ function SectionDetailContent({
                     }
                   }}
                   autoFocus
-                  className="flex-1 text-2xl font-bold bg-gray-900 border border-blue-500 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="ui-input-dark ui-focus-ring-indigo flex-1 text-2xl font-bold rounded-lg px-3 py-2 border border-indigo-500/70"
                 />
                 <EmojiQuickPicker
                   onSelect={(emoji) => setEditedTitle((prev: string) => appendEmojiWithSpacing(prev, emoji))}
@@ -1681,7 +1682,7 @@ function SectionDetailContent({
                       setIsEditingTitle(false);
                     }
                   }}
-                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 transition-colors"
+                  className="inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-600/85 text-white px-3 py-1 text-sm hover:bg-emerald-500 transition-colors"
                 >
                   ✓ {t('common.save')}
                 </button>
@@ -1690,7 +1691,7 @@ function SectionDetailContent({
                     setEditedTitle(section.title);
                     setIsEditingTitle(false);
                   }}
-                  className="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-500 transition-colors"
+                  className="inline-flex items-center rounded-lg border border-gray-500/50 bg-gray-700 text-white px-3 py-1 text-sm hover:bg-gray-600 transition-colors"
                 >
                   ✕ {t('common.cancel')}
                 </button>
@@ -1706,7 +1707,7 @@ function SectionDetailContent({
                       setSectionColor(newColor);
                       editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
                     }}
-                    className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900"
+                    className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900/90"
                     title="Cor no mapa mental"
                   />
                   {section?.color && (
@@ -1715,7 +1716,7 @@ function SectionDetailContent({
                         setSectionColor("#3b82f6");
                         editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
                       }}
-                      className="h-8 px-2 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                      className="h-8 px-2 text-xs bg-gray-700/90 hover:bg-gray-600 text-white rounded border border-gray-500/40 transition-colors"
                       title="Resetar para cor padrão do nível"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1727,7 +1728,7 @@ function SectionDetailContent({
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{section.title}</h1>
                 <button
                   onClick={() => setIsEditingTitle(true)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-300 transition-opacity text-xl shrink-0"
+                  className="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-indigo-300 transition-opacity text-xl shrink-0"
                   title="Editar nome da seção"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1744,8 +1745,8 @@ function SectionDetailContent({
               <>
                 <button
                   onClick={() => setShowAddonMenu((prev: boolean) => !prev)}
-                  className={`h-8 w-8 flex items-center justify-center rounded transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                    showAddonMenu ? "bg-cyan-600 text-white" : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                  className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${
+                    showAddonMenu ? "border-cyan-400/60 bg-cyan-600/80 text-white" : "border-gray-600 bg-gray-800/90 text-gray-100 hover:bg-gray-700 hover:border-cyan-400/50"
                   }`}
                   title="Adicionar addon nesta pagina"
                   aria-expanded={showAddonMenu}
@@ -1757,7 +1758,7 @@ function SectionDetailContent({
                 </button>
                 {showAddonMenu && (
                   <>
-                    <div className="absolute right-0 top-10 z-50 w-52 rounded-lg border border-gray-600 bg-gray-800 shadow-xl py-1" role="menu">
+                    <div className="ui-menu-pop absolute right-0 top-10 z-50 w-56 rounded-xl border border-gray-600/90 bg-gray-900/95 backdrop-blur-sm shadow-2xl shadow-black/35 py-1.5" role="menu">
                       {ADDON_REGISTRY.map((entry) => (
                         <button
                           key={entry.type}
@@ -1766,7 +1767,7 @@ function SectionDetailContent({
                             onAddAddon(entry.type);
                             setShowAddonMenu(false);
                           }}
-                          className="w-full text-left rounded px-3 py-2 text-sm text-gray-100 hover:bg-gray-700 flex items-center gap-2"
+                          className="w-full text-left rounded-lg mx-1 px-3 py-2 text-sm text-gray-100 hover:bg-gray-800 flex items-center gap-2"
                           role="menuitem"
                         >
                           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1782,7 +1783,7 @@ function SectionDetailContent({
                 <button
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}
-                  className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg border border-purple-400/40 hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
                 >
                   {isImproving ? (
@@ -1798,7 +1799,7 @@ function SectionDetailContent({
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
-                  className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg border border-blue-400/40 hover:bg-blue-700 transition-colors"
                   title="Ver no mapa mental"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1807,7 +1808,7 @@ function SectionDetailContent({
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${projectId}/view?focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
-                  className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-lg border border-indigo-400/40 hover:bg-indigo-700 transition-colors"
                   title={t('sectionDetail.actions.goToDocument')}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1817,7 +1818,7 @@ function SectionDetailContent({
                 </button>
                 <button
                   onClick={() => setShowMoveModal(true)}
-                  className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded-lg border border-amber-400/40 hover:bg-amber-700 transition-colors"
                   title="Mover seção para outro local"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1828,7 +1829,7 @@ function SectionDetailContent({
             )}
             {!isEditingTitle && (
               <button
-                className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded-lg border border-red-400/40 hover:bg-red-700 transition-colors"
                 onClick={() => {
                   const count = countDescendants(projectId, sectionId);
                   const msg = count > 0 
@@ -1862,7 +1863,7 @@ function SectionDetailContent({
 
       {/* Domínio / Sistemas (modelo de game design para IA e relações) */}
       {section && !inlineEdit && (
-        <div className="max-w-6xl mx-auto px-4 md:px-6 mb-3 flex flex-wrap items-center gap-2">
+        <div className="max-w-6xl mx-auto mb-3 ui-card-premium flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-400">{t("sectionDetail.domain.label")}:</span>
           {GAME_DESIGN_DOMAIN_IDS.map((id) => {
             const current = section?.domainTags ?? [];
@@ -1878,10 +1879,10 @@ function SectionDetailContent({
                   editSection(projectId, sectionId, section.title, section.content ?? "", undefined, undefined, next);
                   setSection({ ...section, domainTags: next.length ? next : undefined });
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                   isSelected
-                    ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                    : "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-300"
+                    ? "border-indigo-400/60 bg-indigo-600/85 text-white hover:bg-indigo-500"
+                    : "border-gray-600 bg-gray-800/90 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
                 }`}
               >
                 {t(`sectionDetail.domain.${id}`)}
@@ -1918,7 +1919,7 @@ function SectionDetailContent({
                 setSuggestDomainLoading(false);
               }
             }}
-            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-600 bg-gray-800/90 text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
           </button>
@@ -1927,13 +1928,13 @@ function SectionDetailContent({
       
       {/* Mensagem de erro/aviso da IA */}
       {improveError && (
-        <div className="mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-amber-200 text-sm">
+        <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-xl text-amber-200 text-sm">
           {improveError}
         </div>
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
         <div
-          className="max-w-6xl mx-auto mb-4 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5"
+          className="max-w-6xl mx-auto mb-4 ui-card-premium"
           onDoubleClick={() => setInlineEdit(true)}
         >
           {section.content ? (
@@ -1947,7 +1948,7 @@ function SectionDetailContent({
             <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
           )}
           {(section?.created_by_name != null || section?.created_at != null || section?.updated_by_name != null || section?.updated_at != null) && (
-            <div className="mt-4 pt-3 border-t border-gray-700/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+            <div className="mt-4 pt-3 border-t border-gray-700/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
               {section?.created_by_name != null && section?.created_at != null && (
                 <span>{t("sectionDetail.audit.createdBy").replace("{{name}}", section.created_by_name).replace("{{date}}", new Date(section.created_at).toLocaleString())}</span>
               )}
@@ -1993,11 +1994,11 @@ function SectionDetailContent({
       )}
 
       {/* Histórico de versões (colapsável) */}
-      <div className="max-w-6xl mx-auto mb-4 bg-gray-800/70 border border-gray-700/80 rounded-2xl overflow-hidden">
+      <div className="max-w-6xl mx-auto mb-4 ui-card-premium overflow-hidden">
         <button
           type="button"
           onClick={() => setHistoryExpanded((e) => !e)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-700/50 transition-colors"
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/80 transition-colors"
           aria-expanded={historyExpanded}
         >
           <span className="text-sm font-semibold text-gray-200">
@@ -2013,7 +2014,7 @@ function SectionDetailContent({
           </span>
         </button>
         {historyExpanded && (
-          <div className="px-4 pb-4 pt-0 border-t border-gray-700/80">
+          <div className="px-4 pb-4 pt-0 border-t border-gray-700/80 bg-gray-900/25">
         {sectionVersionsLoading ? (
           <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.loading")}</p>
         ) : sectionVersions.length === 0 ? (
@@ -2073,7 +2074,7 @@ function SectionDetailContent({
                       setRestoreVersionId(null);
                     }
                   }}
-                  className="text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                  className="text-blue-300 hover:text-blue-200 disabled:opacity-50 rounded px-1.5 py-0.5 hover:bg-blue-500/10 transition-colors"
                 >
                   {restoreVersionId === v.id ? t("sectionDetail.history.restoring") : t("sectionDetail.history.restore")}
                 </button>
@@ -2115,10 +2116,10 @@ function SectionDetailContent({
       )}
 
       {inlineEdit && (
-        <div className="max-w-6xl mx-auto mb-3 bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5">
+        <div className="max-w-6xl mx-auto mb-3 ui-card-premium">
           {!isFullscreen && (
             <div className="flex items-center gap-2 mb-2 justify-end">
-              <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-1 border border-gray-700">
+              <div className="flex items-center gap-2 bg-gray-800/90 rounded-lg px-3 py-1 border border-gray-700">
                 <button
                   onClick={() => setEditorHeight((prev: string) => {
                     const current = parseInt(prev);
@@ -2148,7 +2149,7 @@ function SectionDetailContent({
                   setIsFullscreen(true);
                   setEditorHeight('calc(100vh - 200px)');
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm border border-blue-400/40 flex items-center gap-1 transition-colors"
                 title="Fullscreen"
               >
                 ⤢ {t('sectionDetail.actions.fullscreen')}
