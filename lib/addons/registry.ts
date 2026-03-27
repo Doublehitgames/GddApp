@@ -3,6 +3,7 @@ import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import {
   balanceDraftToSectionAddon,
   createDefaultCurrencyAddon,
+  createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
   createDefaultGlobalVariableAddon,
   createDefaultInventoryAddon,
@@ -16,6 +17,8 @@ import { CurrencyAddonPanel } from "@/components/CurrencyAddonPanel";
 import { CurrencyAddonReadOnly } from "@/components/CurrencyAddonReadOnly";
 import { EconomyLinkAddonPanel } from "@/components/EconomyLinkAddonPanel";
 import { EconomyLinkAddonReadOnly } from "@/components/EconomyLinkAddonReadOnly";
+import { DataSchemaAddonPanel } from "@/components/DataSchemaAddonPanel";
+import { DataSchemaAddonReadOnly } from "@/components/DataSchemaAddonReadOnly";
 import { GlobalVariableAddonPanel } from "@/components/GlobalVariableAddonPanel";
 import { GlobalVariableAddonReadOnly } from "@/components/GlobalVariableAddonReadOnly";
 import { InventoryAddonPanel } from "@/components/InventoryAddonPanel";
@@ -140,6 +143,29 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     },
   },
   {
+    type: "dataSchema",
+    label: "Schema de Dados",
+    createDefault: () => {
+      const addonId = `data-schema-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultDataSchemaAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "dataSchema" && addon.type !== "genericStats") return null;
+      return React.createElement(DataSchemaAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "dataSchema" && addon.type !== "genericStats") return null;
+      return React.createElement(DataSchemaAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
     type: "globalVariable",
     label: "Global Variable",
     createDefault: () => {
@@ -211,6 +237,9 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
 ];
 
 export function getAddonRegistryEntry(type: SectionAddonType): AddonRegistryEntry | undefined {
+  if (type === "genericStats") {
+    return ADDON_REGISTRY.find((entry) => entry.type === "dataSchema");
+  }
   return ADDON_REGISTRY.find((entry) => entry.type === type);
 }
 

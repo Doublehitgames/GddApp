@@ -607,6 +607,36 @@
     "recipeToConnector": "->",
     "none": "ninguno"
   },
+  "dataSchemaAddon": {
+    "addonTypeLabel": "Esquema de Datos",
+    "defaultName": "Esquema de Datos",
+    "addStatButton": "+ Campo",
+    "newStatLabel": "Nuevo campo",
+    "emptyState": "No hay campos todavía. Haz clic en \"+ Campo\" para empezar.",
+    "keyLabel": "Clave",
+    "keyPlaceholder": "harvest_xp",
+    "labelLabel": "Nombre",
+    "labelPlaceholder": "XP de cosecha",
+    "typeLabel": "Tipo",
+    "valueLabel": "Valor",
+    "minLabel": "Mínimo",
+    "maxLabel": "Máximo",
+    "unitLabel": "Unidad (opcional)",
+    "unitXpRefLabel": "Vínculo con página de XP (opcional)",
+    "unitPlaceholder": "s, kg, pts",
+    "selectNone": "Sin vínculo",
+    "invalidUnitXpRef": "Vínculo inválido (página de XP no encontrada)",
+    "removeStatButton": "Quitar campo",
+    "removeAddonButton": "Quitar addon",
+    "readOnlyEmpty": "No hay campos configurados.",
+    "readOnlyLabelKey": "Nombre / Clave",
+    "readOnlyValue": "Valor",
+    "readOnlyTypeUnit": "Tipo / Unidad",
+    "validation": {
+      "keyRequired": "La clave es obligatoria.",
+      "keyUnique": "La clave debe ser única."
+    }
+  },
   "currencyAddon": {
     "addonTypeLabel": "Moneda",
     "defaultName": "Currency",
@@ -857,6 +887,8 @@
         "globalVariable": "Variable",
         "inventory": "Inventario",
         "production": "Producción",
+        "dataSchema": "Esquema de Datos",
+        "genericStats": "Esquema de Datos",
         "generic": "Addon"
       }
     },

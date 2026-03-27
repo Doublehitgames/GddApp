@@ -38,7 +38,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
-import type { SectionAddon } from "@/lib/addons/types";
+import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
@@ -1362,6 +1362,10 @@ function SectionDetailContent({
         return t("sectionDetail.history.addonType.inventory");
       case "production":
         return t("sectionDetail.history.addonType.production");
+      case "dataSchema":
+        return t("sectionDetail.history.addonType.dataSchema");
+      case "genericStats":
+        return t("sectionDetail.history.addonType.dataSchema");
       default:
         return t("sectionDetail.history.addonType.generic");
     }
@@ -1561,7 +1565,10 @@ function SectionDetailContent({
     onReorderAddons(arrayMove(addons, oldIndex, newIndex));
   };
 
-  const getAddonTypeLabel = (type: SectionAddon["type"]) => {
+  const getAddonTypeLabel = (type: SectionAddonType) => {
+    if (type === "xpBalance") {
+      return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
+    }
     if (type === "progressionTable") {
       return t("progressionTableAddon.addonTypeLabel", "Tabela de balanceamento");
     }
@@ -1580,7 +1587,10 @@ function SectionDetailContent({
     if (type === "production") {
       return t("productionAddon.addonTypeLabel", "Producao");
     }
-    return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
+    if (type === "dataSchema" || type === "genericStats") {
+      return t("dataSchemaAddon.addonTypeLabel", "Schema de Dados");
+    }
+    return t("sectionDetail.history.addonType.generic");
   };
 
   return (

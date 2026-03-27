@@ -567,4 +567,150 @@ describe("AIChat addon commands", () => {
       expect(addon?.data.craftTimeSecondsProgressionLink).toBeUndefined();
     });
   });
+
+  it("creates dataSchema addon through ADDON_CRIAR command", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ message: "ok" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message:
+            "Plano pronto.\n\n[EXECUTAR]\nADDON_CRIAR: sec-1 | dataSchema | {\"name\":\"Schema da Semente\",\"entries\":[{\"key\":\"harvest_xp\",\"label\":\"Harvest XP\",\"valueType\":\"int\",\"value\":9},{\"key\":\"growth_seconds\",\"label\":\"Growth Seconds\",\"valueType\":\"seconds\",\"value\":181}]}",
+        }),
+      });
+
+    render(
+      <I18nProvider initialLocale="pt-BR">
+        <AIChat
+          isOpen
+          projectContext={{
+            projectId,
+            projectTitle: "Projeto IA",
+            sections: [{ id: "sec-1", title: "Economia" }],
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Digite sua mensagem/i), {
+      target: { value: "Crie addon data schema" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enviar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirma executar/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+
+    await waitFor(() => {
+      const project = useProjectStore.getState().getProject(projectId);
+      const section = project?.sections.find((item) => item.id === "sec-1");
+      const addon = section?.addons?.find((item) => item.type === "dataSchema");
+      expect(addon).toBeDefined();
+      expect(addon?.name).toBe("Schema da Semente");
+      expect(addon?.data.entries?.[0]?.key).toBe("harvest_xp");
+      expect(addon?.data.entries?.[1]?.value).toBe(181);
+    });
+  });
+
+  it("edits dataSchema addon through ADDON_EDITAR command", async () => {
+    const existingAddonId = "generic-stats-existing";
+    useProjectStore.setState((state) => ({
+      projects: state.projects.map((project) =>
+        project.id !== projectId
+          ? project
+          : {
+              ...project,
+              sections: (project.sections || []).map((section) =>
+                section.id !== "sec-1"
+                  ? section
+                  : {
+                      ...section,
+                      addons: [
+                        ...(section.addons || []),
+                        {
+                          id: existingAddonId,
+                          type: "dataSchema",
+                          name: "Atributos da Semente",
+                          data: {
+                            id: existingAddonId,
+                            name: "Atributos da Semente",
+                            entries: [
+                              {
+                                id: "entry-1",
+                                key: "harvest_xp",
+                                label: "Harvest XP",
+                                valueType: "int",
+                                value: 9,
+                              },
+                              {
+                                id: "entry-2",
+                                key: "growth_seconds",
+                                label: "Growth Seconds",
+                                valueType: "seconds",
+                                value: 181,
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    }
+              ),
+            }
+      ),
+    }));
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ message: "ok" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message:
+            `Plano pronto.\n\n[EXECUTAR]\nADDON_EDITAR: sec-1 | ${existingAddonId} | {"name":"Atributos da Semente V2","entries":[{"id":"entry-1","key":"harvest_xp","label":"Harvest XP","valueType":"int","value":12},{"id":"entry-2","key":"growth_seconds","label":"Growth Seconds","valueType":"seconds","value":240}]}`,
+        }),
+      });
+
+    render(
+      <I18nProvider initialLocale="pt-BR">
+        <AIChat
+          isOpen
+          projectContext={{
+            projectId,
+            projectTitle: "Projeto IA",
+            sections: [{ id: "sec-1", title: "Economia" }],
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Digite sua mensagem/i), {
+      target: { value: "Edite addon data schema existente" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enviar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirma executar/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+
+    await waitFor(() => {
+      const project = useProjectStore.getState().getProject(projectId);
+      const section = project?.sections.find((item) => item.id === "sec-1");
+      const addon = section?.addons?.find((item) => item.id === existingAddonId);
+      expect(addon).toBeDefined();
+      expect(addon?.name).toBe("Atributos da Semente V2");
+      expect(addon?.data.entries?.[0]?.value).toBe(12);
+      expect(addon?.data.entries?.[1]?.value).toBe(240);
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
 import type {
   CurrencyAddonDraft,
+  DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
   GlobalVariableAddonDraft,
   InventoryAddonDraft,
@@ -384,6 +385,76 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   };
 }
 
+function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const rawEntries = Array.isArray(value.entries) ? value.entries : [];
+  const normalizedEntries: DataSchemaAddonDraft["entries"] = [];
+  const seenKeys = new Set<string>();
+  for (let index = 0; index < rawEntries.length; index += 1) {
+    const rawEntry = rawEntries[index];
+    if (!isObject(rawEntry)) continue;
+    const entryId = typeof rawEntry.id === "string" && rawEntry.id.trim() ? rawEntry.id.trim() : `stat_${index + 1}`;
+    const keyRaw = typeof rawEntry.key === "string" ? rawEntry.key : "";
+    const key = keyRaw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_\s-]/g, "")
+      .replace(/[\s-]+/g, "_")
+      .replace(/_+/g, "_");
+    if (!key) continue;
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const label = typeof rawEntry.label === "string" ? rawEntry.label : key;
+    const valueTypeRaw = typeof rawEntry.valueType === "string" ? rawEntry.valueType : "int";
+    const valueType =
+      valueTypeRaw === "int" ||
+      valueTypeRaw === "float" ||
+      valueTypeRaw === "seconds" ||
+      valueTypeRaw === "percent" ||
+      valueTypeRaw === "boolean" ||
+      valueTypeRaw === "string"
+        ? valueTypeRaw
+        : "int";
+    const min = asFiniteNumber(rawEntry.min) ?? undefined;
+    const max = asFiniteNumber(rawEntry.max) ?? undefined;
+    const unit = typeof rawEntry.unit === "string" && rawEntry.unit.trim() ? rawEntry.unit.trim() : undefined;
+    const unitXpRef = typeof rawEntry.unitXpRef === "string" && rawEntry.unitXpRef.trim() ? rawEntry.unitXpRef.trim() : undefined;
+    const notes = typeof rawEntry.notes === "string" && rawEntry.notes.trim() ? rawEntry.notes : undefined;
+    let normalizedValue: number | boolean | string = 0;
+    if (valueType === "boolean") {
+      normalizedValue = asBooleanLoose(rawEntry.value);
+    } else if (valueType === "string") {
+      normalizedValue = typeof rawEntry.value === "string" ? rawEntry.value : "";
+    } else {
+      const rawNumber = asFiniteNumber(rawEntry.value) ?? 0;
+      let safeNumber = valueType === "float" ? rawNumber : Math.floor(rawNumber);
+      if (min != null) safeNumber = Math.max(min, safeNumber);
+      if (max != null) safeNumber = Math.min(max, safeNumber);
+      normalizedValue = safeNumber;
+    }
+    normalizedEntries.push({
+      id: entryId,
+      key,
+      label,
+      valueType,
+      value: normalizedValue,
+      min: valueType === "boolean" || valueType === "string" ? undefined : min,
+      max: valueType === "boolean" || valueType === "string" ? undefined : max,
+      unit,
+      unitXpRef,
+      notes,
+    });
+  }
+
+  return {
+    id: value.id,
+    name: value.name,
+    entries: normalizedEntries,
+  };
+}
+
 function shouldMigrateEconomyProduction(draft: EconomyLinkAddonDraft): boolean {
   return Boolean(
     draft.hasProductionConfig &&
@@ -417,8 +488,10 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "economyLink" &&
     value.type !== "currency" &&
     value.type !== "globalVariable" &&
-      value.type !== "inventory" &&
-      value.type !== "production"
+    value.type !== "inventory" &&
+    value.type !== "production" &&
+    value.type !== "dataSchema" &&
+    value.type !== "genericStats"
   ) {
     return null;
   }
@@ -574,6 +647,17 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
         if (!draft) continue;
         out.push({
           ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "dataSchema" || addon.type === "genericStats") {
+        const draft = normalizeDataSchemaDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          type: "dataSchema",
           name: addon.name || draft.name,
           data: draft,
         });

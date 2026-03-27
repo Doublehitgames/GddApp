@@ -607,6 +607,36 @@
     "recipeToConnector": "->",
     "none": "none"
   },
+  "dataSchemaAddon": {
+    "addonTypeLabel": "Data Schema",
+    "defaultName": "Data Schema",
+    "addStatButton": "+ Field",
+    "newStatLabel": "New field",
+    "emptyState": "No fields yet. Click \"+ Field\" to start.",
+    "keyLabel": "Key",
+    "keyPlaceholder": "harvest_xp",
+    "labelLabel": "Label",
+    "labelPlaceholder": "Harvest XP",
+    "typeLabel": "Type",
+    "valueLabel": "Value",
+    "minLabel": "Min",
+    "maxLabel": "Max",
+    "unitLabel": "Unit (optional)",
+    "unitXpRefLabel": "Link to XP page (optional)",
+    "unitPlaceholder": "s, kg, pts",
+    "selectNone": "No link",
+    "invalidUnitXpRef": "Invalid link (XP page not found)",
+    "removeStatButton": "Remove field",
+    "removeAddonButton": "Remove addon",
+    "readOnlyEmpty": "No fields configured.",
+    "readOnlyLabelKey": "Label / Key",
+    "readOnlyValue": "Value",
+    "readOnlyTypeUnit": "Type / Unit",
+    "validation": {
+      "keyRequired": "Key is required.",
+      "keyUnique": "Key must be unique."
+    }
+  },
   "currencyAddon": {
     "addonTypeLabel": "Currency",
     "defaultName": "Currency",
@@ -857,6 +887,8 @@
         "globalVariable": "Variable",
         "inventory": "Inventory",
         "production": "Production",
+        "dataSchema": "Data Schema",
+        "genericStats": "Data Schema",
         "generic": "Addon"
       }
     },

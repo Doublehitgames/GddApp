@@ -10,6 +10,7 @@ import { assessThematicRelevance } from "@/utils/ai/thematicGuardrails";
 import {
   balanceDraftToSectionAddon,
   createDefaultCurrencyAddon,
+  createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
   createDefaultGlobalVariableAddon,
   createDefaultInventoryAddon,
@@ -65,6 +66,9 @@ const SUPPORTED_ADDON_TYPES = new Set([
   "progressionTable",
   "inventory",
   "production",
+  "dataSchema",
+  // legacy alias
+  "genericStats",
 ]);
 type EconomyRefSnapshot = {
   currencyRefs: Set<string>;
@@ -713,6 +717,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     if (addonType === "progressionTable") addon = createDefaultProgressionTableAddon(addonId);
     if (addonType === "inventory") addon = createDefaultInventoryAddon(addonId);
     if (addonType === "production") addon = createDefaultProductionAddon(addonId);
+    if (addonType === "dataSchema" || addonType === "genericStats") addon = createDefaultDataSchemaAddon(addonId);
     if (!addon) return null;
 
     const payloadName = typeof payload.name === "string" ? payload.name.trim() : "";

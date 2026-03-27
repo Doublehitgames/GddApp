@@ -155,6 +155,7 @@ REMOVER: id-da-secao
 - progressionTable
 - inventory
 - production
+- dataSchema (alias legado aceito: genericStats)
 
 **JSON esperado (resumo):**
 - ADDON_CRIAR currency: {"name":"Moeda Base","code":"GOLD","displayName":"Ouro","kind":"soft","decimals":0}
@@ -164,6 +165,7 @@ REMOVER: id-da-secao
 - ADDON_CRIAR progressionTable: {"name":"Tabela de Atributos","startLevel":1,"endLevel":20}
 - ADDON_CRIAR inventory: {"name":"Item Basico","inventoryCategory":"consumivel","maxStack":99,"stackable":true}
 - ADDON_CRIAR production: {"name":"Receita Trigo","mode":"recipe","ingredients":[],"outputs":[]}
+- ADDON_CRIAR dataSchema: {"name":"Schema da Semente","entries":[{"key":"harvest_xp","label":"Harvest XP","valueType":"int","value":9},{"key":"growth_seconds","label":"Growth Seconds","valueType":"seconds","value":181}]}
 - ADDON_EDITAR: envie apenas campos que precisam mudar no jsonPatch
 - ADDON_REMOVER: remove pelo addonId
 

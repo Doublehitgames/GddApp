@@ -146,6 +146,32 @@ export type ProductionAddonDraft = {
   notes?: string;
 };
 
+export type DataSchemaValueType = "int" | "float" | "seconds" | "percent" | "boolean" | "string";
+
+export type DataSchemaEntry = {
+  id: string;
+  key: string;
+  label: string;
+  valueType: DataSchemaValueType;
+  value: number | boolean | string;
+  min?: number;
+  max?: number;
+  unit?: string;
+  unitXpRef?: string;
+  notes?: string;
+};
+
+export type DataSchemaAddonDraft = {
+  id: string;
+  name: string;
+  entries: DataSchemaEntry[];
+};
+
+// Legacy aliases: keep old type names to avoid broad refactors.
+export type GenericStatValueType = DataSchemaValueType;
+export type GenericStatEntry = DataSchemaEntry;
+export type GenericStatsAddonDraft = DataSchemaAddonDraft;
+
 export type SectionAddonType =
   | "xpBalance"
   | "progressionTable"
@@ -153,7 +179,10 @@ export type SectionAddonType =
   | "currency"
   | "globalVariable"
   | "inventory"
-  | "production";
+  | "production"
+  | "dataSchema"
+  // legacy type kept for compatibility/migration
+  | "genericStats";
 export type LegacySectionAddonType = "balance";
 
 export type XpBalanceSectionAddon = {
@@ -205,6 +234,21 @@ export type ProductionSectionAddon = {
   data: ProductionAddonDraft;
 };
 
+export type DataSchemaSectionAddon = {
+  id: string;
+  type: "dataSchema";
+  name: string;
+  data: DataSchemaAddonDraft;
+};
+
+// Legacy addon shape kept for compatibility in normalize/migration flows.
+export type GenericStatsSectionAddon = {
+  id: string;
+  type: "genericStats";
+  name: string;
+  data: DataSchemaAddonDraft;
+};
+
 export type SectionAddon =
   | XpBalanceSectionAddon
   | ProgressionTableSectionAddon
@@ -212,7 +256,9 @@ export type SectionAddon =
   | CurrencySectionAddon
   | GlobalVariableSectionAddon
   | InventorySectionAddon
-  | ProductionSectionAddon;
+  | ProductionSectionAddon
+  | DataSchemaSectionAddon
+  | GenericStatsSectionAddon;
 
 function createDefaultRows(
   startLevel: number,
@@ -354,6 +400,37 @@ export function createDefaultProductionAddon(addonId: string): ProductionSection
     },
   };
 }
+
+export function createDefaultDataSchemaAddon(addonId: string): DataSchemaSectionAddon {
+  return {
+    id: addonId,
+    type: "dataSchema",
+    name: "Schema de Dados",
+    data: {
+      id: addonId,
+      name: "Schema de Dados",
+      entries: [
+        {
+          id: `stat-${Date.now()}-a`,
+          key: "stat_key",
+          label: "Stat Label",
+          valueType: "int",
+          value: 0,
+        },
+        {
+          id: `stat-${Date.now()}-b`,
+          key: "other_stat",
+          label: "Other Stat",
+          valueType: "float",
+          value: 0,
+        },
+      ],
+    },
+  };
+}
+
+// Legacy alias: prefer createDefaultDataSchemaAddon in new code.
+export const createDefaultGenericStatsAddon = createDefaultDataSchemaAddon;
 
 export function buildProgressionRowsFromRange(
   startLevel: number,
