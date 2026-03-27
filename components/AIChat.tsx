@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { AIMessage } from "@/types/ai";
+import { AIMessage, AIProvider } from "@/types/ai";
 import { type Project, useProjectStore } from "@/store/projectStore";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
@@ -81,8 +81,31 @@ type PlannedSectionCommand = {
   parentTitle?: string;
 };
 
+const DEFAULT_MODEL_BY_PROVIDER: Record<AIProvider, string> = {
+  groq: "llama-3.3-70b-versatile",
+  openai: "gpt-4o-mini",
+  claude: "claude-3-5-sonnet-20241022",
+};
+
+const MODEL_OPTIONS_BY_PROVIDER: Record<AIProvider, Array<{ value: string; label: string }>> = {
+  groq: [
+    { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Premium) - Melhor qualidade" },
+    { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Rápido) - Mais econômico" },
+  ],
+  openai: [
+    { value: "gpt-4o-mini", label: "GPT-4o mini (Rápido) - Mais econômico" },
+    { value: "gpt-4o", label: "GPT-4o (Premium) - Melhor qualidade" },
+    { value: "gpt-4.1-mini", label: "GPT-4.1 mini (Equilibrado)" },
+    { value: "gpt-4.1", label: "GPT-4.1 (Premium) - Raciocínio avançado" },
+  ],
+  claude: [
+    { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet - Melhor qualidade" },
+    { value: "claude-3-5-haiku-20241022", label: "Claude 3.5 Haiku - Mais econômico" },
+  ],
+};
+
 export default function AIChat({ projectContext, onClose, isOpen = true }: AIChatProps) {
-  const { hasValidConfig, getAIHeaders } = useAIConfig();
+  const { config, hasValidConfig, getAIHeaders } = useAIConfig();
   const { locale, t } = useI18n();
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
@@ -109,24 +132,37 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
   const [pendingExecution, setPendingExecution] = useState<PendingCommandExecution | null>(null);
   const [warningFilter, setWarningFilter] = useState<ValidationFilter>("all");
   const [criticalWarningsAcknowledged, setCriticalWarningsAcknowledged] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
+  const activeProvider: AIProvider = config?.provider || "groq";
+  const modelOptions = MODEL_OPTIONS_BY_PROVIDER[activeProvider];
+  const defaultModel = DEFAULT_MODEL_BY_PROVIDER[activeProvider];
+  const [selectedModel, setSelectedModel] = useState<string>(defaultModel);
   const [autoSwitchedModel, setAutoSwitchedModel] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Carrega modelo salvo do localStorage na inicialização
+  // Carrega modelo salvo por provider e valida opções disponíveis
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedModel = localStorage.getItem('ai-model-preference');
-      if (savedModel) {
-        setSelectedModel(savedModel);
-      }
+    if (typeof window === "undefined") return;
+    const providerKey = `ai-model-preference:${activeProvider}`;
+    const savedModel =
+      localStorage.getItem(providerKey) || localStorage.getItem("ai-model-preference");
+    const isModelValid = !!savedModel && modelOptions.some((option) => option.value === savedModel);
+    setSelectedModel(isModelValid ? savedModel! : defaultModel);
+    setAutoSwitchedModel(false);
+  }, [activeProvider, defaultModel, modelOptions]);
+
+  // Garante consistência caso provider mude com modelo inválido
+  useEffect(() => {
+    const isValid = modelOptions.some((option) => option.value === selectedModel);
+    if (!isValid) {
+      setSelectedModel(defaultModel);
     }
-  }, []);
+  }, [selectedModel, modelOptions, defaultModel]);
 
   // Detecção automática inicial: testa se modelo premium está disponível
   useEffect(() => {
     const testModelAvailability = async () => {
+      if (activeProvider !== "groq") return;
       // Só testa se ainda não trocamos manualmente e estamos no modelo premium
       if (autoSwitchedModel || selectedModel !== 'llama-3.3-70b-versatile') return;
       
@@ -167,15 +203,15 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
       }
     };
 
-    // Executa teste apenas uma vez ao montar
     testModelAvailability();
-  }, []); // Dependências vazias = executa só na montagem
+  }, [activeProvider, autoSwitchedModel, projectContext, selectedModel]);
 
   // Salva preferência de modelo
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
     setAutoSwitchedModel(false);
     if (typeof window !== 'undefined') {
+      localStorage.setItem(`ai-model-preference:${activeProvider}`, model);
       localStorage.setItem('ai-model-preference', model);
     }
   };
@@ -1243,7 +1279,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
           const waitTime = errorData.waitTime || 'alguns instantes';
           
           // Se estamos no modelo premium e é limite diário, tenta fallback
-          if (selectedModel === 'llama-3.3-70b-versatile' && !autoSwitchedModel && isPerDay) {
+          if (activeProvider === "groq" && selectedModel === 'llama-3.3-70b-versatile' && !autoSwitchedModel && isPerDay) {
             console.log('Rate limit diário no modelo premium, tentando modelo rápido...');
             setSelectedModel('llama-3.1-8b-instant');
             setAutoSwitchedModel(true);
@@ -1685,14 +1721,13 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
               disabled={isLoading}
               className="text-sm rounded-md border border-gray-300 bg-white px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              <option value="llama-3.3-70b-versatile">
-                Llama 3.3 70B (Premium) - Melhor qualidade
-              </option>
-              <option value="llama-3.1-8b-instant">
-                Llama 3.1 8B (Rápido) - Mais econômico
-              </option>
+              {modelOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
-            {autoSwitchedModel && (
+            {activeProvider === "groq" && autoSwitchedModel && (
               <span className="text-xs text-amber-600 flex items-center gap-1">
                 ⚡ Mudado automaticamente
               </span>
