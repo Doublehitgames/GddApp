@@ -29,7 +29,13 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
-    return match?.[1] ?? null;
+    const rawId = match?.[1] ?? null;
+    if (!rawId) return null;
+    try {
+      return decodeURIComponent(rawId);
+    } catch {
+      return rawId;
+    }
   }, [pathname]);
 
   const breadcrumbSections = useMemo(() => {

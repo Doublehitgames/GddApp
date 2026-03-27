@@ -77,7 +77,13 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
 
   const currentSectionId = useMemo(() => {
     const match = pathname.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
-    return match?.[1] ?? null;
+    const rawId = match?.[1] ?? null;
+    if (!rawId) return null;
+    try {
+      return decodeURIComponent(rawId);
+    } catch {
+      return rawId;
+    }
   }, [pathname]);
 
   const sectionIds = useMemo(
@@ -173,14 +179,16 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     const sections = project?.sections || [];
     if (sections.length === 0) return;
 
-    const sectionById = new Map(sections.map((section: any) => [section.id, section]));
+    const sectionById = new Map<string, any>(
+      sections.map((section: any) => [section.id, section])
+    );
     const currentSection = sectionById.get(currentSectionId);
     if (!currentSection) return;
 
     const idsToExpand = new Set<string>();
 
     // Keep lineage visible so current section is always reachable in the tree.
-    let cursor = currentSection;
+    let cursor: any = currentSection;
     const visited = new Set<string>();
     while (cursor?.parentId && !visited.has(cursor.id)) {
       const parent = sectionById.get(cursor.parentId);
