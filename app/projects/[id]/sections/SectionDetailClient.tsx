@@ -2237,7 +2237,7 @@ function SectionDetailContent({
         />
       )}
 
-      {!(inlineEdit && isFullscreen) && (
+      {false && !(inlineEdit && isFullscreen) && (
         <>
           {/* Desktop grande: painel lateral fixo para navegação rápida entre subseções */}
           <div className="hidden 2xl:block fixed left-4 top-24 w-80 z-20 max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden">

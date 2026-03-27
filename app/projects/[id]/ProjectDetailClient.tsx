@@ -333,7 +333,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     return (
         <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
             <div className="mx-auto w-full max-w-7xl">
-                <div className="grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="grid gap-6 items-start">
                     <div className="space-y-6">
                         <header className="rounded-xl bg-gray-800/50 border border-gray-700/60 px-4 py-3">
                             <div className="flex items-center gap-3 min-w-0">
@@ -485,6 +485,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         </section>
                     </div>
 
+                    {false && (
                     <aside className="relative overflow-hidden bg-gray-800/75 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 lg:sticky lg:top-6 lg:self-start lg:h-[calc(100vh-6.5rem)] lg:flex lg:flex-col">
                         <span className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" aria-hidden />
                         <div className="relative mb-4" ref={tagFilterMenuRef}>
@@ -758,6 +759,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             )}
                         </div>
                     </aside>
+                    )}
                 </div>
             </div>
 
