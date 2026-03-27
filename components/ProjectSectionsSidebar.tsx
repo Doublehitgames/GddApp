@@ -685,8 +685,17 @@ function SortableRootItem({
           >
             {isExpanded ? "−" : "+"}
           </button>
-        ) : (
-          <span className="w-4" />
+        ) : null}
+        {section?.thumbImageUrl && (
+          <img
+            src={section.thumbImageUrl}
+            alt=""
+            loading="lazy"
+            className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
         )}
         <Link
           href={`/projects/${projectId}/sections/${section.id}`}
@@ -850,8 +859,17 @@ function SectionChildren({
                 >
                   {isExpanded ? "−" : "+"}
                 </button>
-              ) : (
-                <span className="w-5" />
+              ) : null}
+              {sec?.thumbImageUrl && (
+                <img
+                  src={sec.thumbImageUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-6 w-6 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
               )}
               <Link
                 href={`/projects/${projectId}/sections/${sec.id}`}

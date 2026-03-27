@@ -126,6 +126,8 @@
     },
     "sectionsTitle": "Project Sections",
     "sectionsSubtitle": "Search, browse, and reorder top-level sections with drag and drop.",
+    "showSectionsMenu": "Show sections menu",
+    "hideSectionsMenu": "Hide sections menu",
     "searchPlaceholder": "🔍 Search sections by title or content...",
     "rootSectionDuplicate": "A root section with this name already exists.",
     "newSectionPlaceholder": "New section",

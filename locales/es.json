@@ -126,6 +126,8 @@
     },
     "sectionsTitle": "Secciones del proyecto",
     "sectionsSubtitle": "Busca, navega y reordena las secciones principales con arrastrar y soltar.",
+    "showSectionsMenu": "Mostrar menú de secciones",
+    "hideSectionsMenu": "Ocultar menú de secciones",
     "searchPlaceholder": "🔍 Buscar secciones por título o contenido...",
     "rootSectionDuplicate": "Ya existe una sección raíz con este nombre.",
     "newSectionPlaceholder": "Nueva sección",

@@ -1602,8 +1602,8 @@ function SectionDetailContent({
         </div>
       )}
       
-      {/* Breadcrumbs */}
-      {!(inlineEdit && isFullscreen) && (
+      {/* Breadcrumbs locais substituídos pela barra superior global */}
+      {false && !(inlineEdit && isFullscreen) && (
         <div className="max-w-6xl mx-auto mb-4 text-sm text-gray-400 flex items-center gap-1 flex-wrap">
         <button
           className="hover:text-blue-300 underline"

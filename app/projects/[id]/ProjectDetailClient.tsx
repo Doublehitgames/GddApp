@@ -334,8 +334,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
         <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
             <div className="mx-auto w-full max-w-7xl">
                 <div className="grid gap-6 items-start">
-                    <div className="space-y-6">
-                        <header className="rounded-xl bg-gray-800/50 border border-gray-700/60 px-4 py-3">
+                    <div className="space-y-4">
+                        {false && <header className="rounded-xl bg-gray-800/50 border border-gray-700/60 px-4 py-3">
                             <div className="flex items-center gap-3 min-w-0">
                                 <Link
                                     href="/"
@@ -352,7 +352,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     {project.title}
                                 </span>
                             </div>
-                        </header>
+                        </header>}
                         <section className="ui-card-premium">
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{project.title}</h1>
