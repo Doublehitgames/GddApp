@@ -156,6 +156,9 @@ REMOVER: id-da-secao
 - inventory
 - production
 - dataSchema (alias legado aceito: genericStats)
+- attributeDefinitions
+- attributeProfile
+- attributeModifiers
 
 **JSON esperado (resumo):**
 - ADDON_CRIAR currency: {"name":"Moeda Base","code":"GOLD","displayName":"Ouro","kind":"soft","decimals":0}
@@ -166,6 +169,9 @@ REMOVER: id-da-secao
 - ADDON_CRIAR inventory: {"name":"Item Basico","inventoryCategory":"consumivel","maxStack":99,"stackable":true}
 - ADDON_CRIAR production: {"name":"Receita Trigo","mode":"recipe","ingredients":[],"outputs":[]}
 - ADDON_CRIAR dataSchema: {"name":"Schema da Semente","entries":[{"key":"harvest_xp","label":"Harvest XP","valueType":"int","value":9},{"key":"growth_seconds","label":"Growth Seconds","valueType":"seconds","value":181}]}
+- ADDON_CRIAR attributeDefinitions: {"name":"Atributos Base","attributes":[{"key":"strength","label":"Força","valueType":"int","defaultValue":0,"min":0},{"key":"stamina","label":"Stamina","valueType":"float","defaultValue":100}]}
+- ADDON_CRIAR attributeProfile: {"name":"Perfil do Personagem","definitionsRef":"section-id-definicoes","values":[{"attributeKey":"strength","value":12},{"attributeKey":"stamina","value":95}]}
+- ADDON_CRIAR attributeModifiers: {"name":"Buff da Espada","definitionsRef":"section-id-definicoes","modifiers":[{"attributeKey":"strength","mode":"add","value":5},{"attributeKey":"stamina","mode":"mult","value":1.1}]}
 - ADDON_EDITAR: envie apenas campos que precisam mudar no jsonPatch
 - ADDON_REMOVER: remove pelo addonId
 

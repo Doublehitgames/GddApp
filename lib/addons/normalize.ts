@@ -1,5 +1,8 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
 import type {
+  AttributeDefinitionsAddonDraft,
+  AttributeModifiersAddonDraft,
+  AttributeProfileAddonDraft,
   CurrencyAddonDraft,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
@@ -455,6 +458,126 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
   };
 }
 
+function normalizeAttributeKey(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_");
+}
+
+function normalizeAttributeValueType(raw: unknown): "int" | "float" | "percent" | "boolean" {
+  if (raw === "int" || raw === "float" || raw === "percent" || raw === "boolean") return raw;
+  return "int";
+}
+
+function normalizeAttributeDefinitionsDraft(value: unknown): AttributeDefinitionsAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const rawAttributes = Array.isArray(value.attributes) ? value.attributes : [];
+  const seen = new Set<string>();
+  const attributes: AttributeDefinitionsAddonDraft["attributes"] = [];
+  for (let index = 0; index < rawAttributes.length; index += 1) {
+    const item = rawAttributes[index];
+    if (!isObject(item)) continue;
+    const key = normalizeAttributeKey(item.key);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const valueType = normalizeAttributeValueType(item.valueType);
+    const min = asFiniteNumber(item.min) ?? undefined;
+    const max = asFiniteNumber(item.max) ?? undefined;
+    let defaultValue: number | boolean;
+    if (valueType === "boolean") {
+      defaultValue = asBooleanLoose(item.defaultValue);
+    } else {
+      const parsed = asFiniteNumber(item.defaultValue) ?? 0;
+      defaultValue = valueType === "int" ? Math.floor(parsed) : parsed;
+    }
+    const boundedDefault =
+      typeof defaultValue === "number"
+        ? Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, defaultValue))
+        : defaultValue;
+    attributes.push({
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `attr_${index + 1}`,
+      key,
+      label: typeof item.label === "string" && item.label.trim() ? item.label : key,
+      valueType,
+      defaultValue: boundedDefault,
+      min: valueType === "boolean" ? undefined : min,
+      max: valueType === "boolean" ? undefined : max,
+      unit: typeof item.unit === "string" && item.unit.trim() ? item.unit.trim() : undefined,
+    });
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    attributes,
+  };
+}
+
+function normalizeAttributeProfileDraft(value: unknown): AttributeProfileAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const definitionsRef =
+    typeof value.definitionsRef === "string" && value.definitionsRef.trim() ? value.definitionsRef.trim() : undefined;
+  const rawValues = Array.isArray(value.values) ? value.values : [];
+  const values: AttributeProfileAddonDraft["values"] = [];
+  for (let index = 0; index < rawValues.length; index += 1) {
+    const item = rawValues[index];
+    if (!isObject(item)) continue;
+    const attributeKey = normalizeAttributeKey(item.attributeKey);
+    if (!attributeKey) continue;
+    const numeric = asFiniteNumber(item.value);
+    const normalizedValue = numeric == null ? asBooleanLoose(item.value) : numeric;
+    values.push({
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `attr_profile_${index + 1}`,
+      attributeKey,
+      value: normalizedValue,
+    });
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    definitionsRef,
+    values,
+  };
+}
+
+function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const definitionsRef =
+    typeof value.definitionsRef === "string" && value.definitionsRef.trim() ? value.definitionsRef.trim() : undefined;
+  const rawModifiers = Array.isArray(value.modifiers) ? value.modifiers : [];
+  const modifiers: AttributeModifiersAddonDraft["modifiers"] = [];
+  for (let index = 0; index < rawModifiers.length; index += 1) {
+    const item = rawModifiers[index];
+    if (!isObject(item)) continue;
+    const attributeKey = normalizeAttributeKey(item.attributeKey);
+    if (!attributeKey) continue;
+    const mode = item.mode === "mult" || item.mode === "set" ? item.mode : "add";
+    const numeric = asFiniteNumber(item.value);
+    const normalizedValue = numeric == null ? asBooleanLoose(item.value) : numeric;
+    modifiers.push({
+      id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `attr_mod_${index + 1}`,
+      attributeKey,
+      mode,
+      value: normalizedValue,
+    });
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    definitionsRef,
+    modifiers,
+  };
+}
+
 function shouldMigrateEconomyProduction(draft: EconomyLinkAddonDraft): boolean {
   return Boolean(
     draft.hasProductionConfig &&
@@ -491,6 +614,9 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "inventory" &&
     value.type !== "production" &&
     value.type !== "dataSchema" &&
+    value.type !== "attributeDefinitions" &&
+    value.type !== "attributeProfile" &&
+    value.type !== "attributeModifiers" &&
     value.type !== "genericStats"
   ) {
     return null;
@@ -663,6 +789,36 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
         });
         continue;
       }
+      if (addon.type === "attributeDefinitions") {
+        const draft = normalizeAttributeDefinitionsDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "attributeProfile") {
+        const draft = normalizeAttributeProfileDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "attributeModifiers") {
+        const draft = normalizeAttributeModifiersDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
       out.push({
         ...addon,
         name: addon.name.trim() || addon.name,
@@ -679,7 +835,41 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       out.push(balanceDraftToSectionAddon(maybeLegacyDraft));
     }
   }
-  return out.length > 0 ? out : undefined;
+  if (out.length === 0) return undefined;
+
+  // Local integrity pass: when a reference matches a definitions addon id present in the same payload,
+  // remove orphaned keys from profile/modifiers.
+  const localDefinitionKeysByRef = new Map<string, Set<string>>();
+  for (const addon of out) {
+    if (addon.type !== "attributeDefinitions") continue;
+    const keys = new Set((addon.data.attributes || []).map((item) => item.key));
+    localDefinitionKeysByRef.set(addon.id, keys);
+    localDefinitionKeysByRef.set(addon.data.id, keys);
+  }
+  const sanitized = out.map((addon) => {
+    if (addon.type !== "attributeProfile" && addon.type !== "attributeModifiers") return addon;
+    const ref = addon.data.definitionsRef;
+    if (!ref) return addon;
+    const validKeys = localDefinitionKeysByRef.get(ref);
+    if (!validKeys) return addon;
+    if (addon.type === "attributeProfile") {
+      return {
+        ...addon,
+        data: {
+          ...addon.data,
+          values: (addon.data.values || []).filter((item) => validKeys.has(item.attributeKey)),
+        },
+      };
+    }
+    return {
+      ...addon,
+      data: {
+        ...addon.data,
+        modifiers: (addon.data.modifiers || []).filter((item) => validKeys.has(item.attributeKey)),
+      },
+    };
+  });
+  return sanitized;
 }
 
 export function stableAddonsForCompare(raw: unknown): string {

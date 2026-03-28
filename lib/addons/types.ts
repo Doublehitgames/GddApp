@@ -167,6 +167,54 @@ export type DataSchemaAddonDraft = {
   entries: DataSchemaEntry[];
 };
 
+export type AttributeValueType = "int" | "float" | "percent" | "boolean";
+
+export type AttributeDefinitionEntry = {
+  id: string;
+  key: string;
+  label: string;
+  valueType: AttributeValueType;
+  defaultValue: number | boolean;
+  min?: number;
+  max?: number;
+  unit?: string;
+};
+
+export type AttributeDefinitionsAddonDraft = {
+  id: string;
+  name: string;
+  attributes: AttributeDefinitionEntry[];
+};
+
+export type AttributeProfileValueEntry = {
+  id: string;
+  attributeKey: string;
+  value: number | boolean;
+};
+
+export type AttributeProfileAddonDraft = {
+  id: string;
+  name: string;
+  definitionsRef?: string;
+  values: AttributeProfileValueEntry[];
+};
+
+export type AttributeModifierMode = "add" | "mult" | "set";
+
+export type AttributeModifierEntry = {
+  id: string;
+  attributeKey: string;
+  mode: AttributeModifierMode;
+  value: number | boolean;
+};
+
+export type AttributeModifiersAddonDraft = {
+  id: string;
+  name: string;
+  definitionsRef?: string;
+  modifiers: AttributeModifierEntry[];
+};
+
 // Legacy aliases: keep old type names to avoid broad refactors.
 export type GenericStatValueType = DataSchemaValueType;
 export type GenericStatEntry = DataSchemaEntry;
@@ -181,6 +229,9 @@ export type SectionAddonType =
   | "inventory"
   | "production"
   | "dataSchema"
+  | "attributeDefinitions"
+  | "attributeProfile"
+  | "attributeModifiers"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -241,6 +292,27 @@ export type DataSchemaSectionAddon = {
   data: DataSchemaAddonDraft;
 };
 
+export type AttributeDefinitionsSectionAddon = {
+  id: string;
+  type: "attributeDefinitions";
+  name: string;
+  data: AttributeDefinitionsAddonDraft;
+};
+
+export type AttributeProfileSectionAddon = {
+  id: string;
+  type: "attributeProfile";
+  name: string;
+  data: AttributeProfileAddonDraft;
+};
+
+export type AttributeModifiersSectionAddon = {
+  id: string;
+  type: "attributeModifiers";
+  name: string;
+  data: AttributeModifiersAddonDraft;
+};
+
 // Legacy addon shape kept for compatibility in normalize/migration flows.
 export type GenericStatsSectionAddon = {
   id: string;
@@ -258,6 +330,9 @@ export type SectionAddon =
   | InventorySectionAddon
   | ProductionSectionAddon
   | DataSchemaSectionAddon
+  | AttributeDefinitionsSectionAddon
+  | AttributeProfileSectionAddon
+  | AttributeModifiersSectionAddon
   | GenericStatsSectionAddon;
 
 function createDefaultRows(
@@ -425,6 +500,54 @@ export function createDefaultDataSchemaAddon(addonId: string): DataSchemaSection
           value: 0,
         },
       ],
+    },
+  };
+}
+
+export function createDefaultAttributeDefinitionsAddon(addonId: string): AttributeDefinitionsSectionAddon {
+  return {
+    id: addonId,
+    type: "attributeDefinitions",
+    name: "Definições de Atributos",
+    data: {
+      id: addonId,
+      name: "Definições de Atributos",
+      attributes: [
+        {
+          id: `attr-${Date.now()}-a`,
+          key: "strength",
+          label: "Força",
+          valueType: "int",
+          defaultValue: 0,
+          min: 0,
+        },
+      ],
+    },
+  };
+}
+
+export function createDefaultAttributeProfileAddon(addonId: string): AttributeProfileSectionAddon {
+  return {
+    id: addonId,
+    type: "attributeProfile",
+    name: "Perfil de Atributos",
+    data: {
+      id: addonId,
+      name: "Perfil de Atributos",
+      values: [],
+    },
+  };
+}
+
+export function createDefaultAttributeModifiersAddon(addonId: string): AttributeModifiersSectionAddon {
+  return {
+    id: addonId,
+    type: "attributeModifiers",
+    name: "Modificadores de Atributos",
+    data: {
+      id: addonId,
+      name: "Modificadores de Atributos",
+      modifiers: [],
     },
   };
 }

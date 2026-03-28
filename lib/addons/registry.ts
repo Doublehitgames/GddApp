@@ -2,6 +2,9 @@ import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import {
   balanceDraftToSectionAddon,
+  createDefaultAttributeDefinitionsAddon,
+  createDefaultAttributeModifiersAddon,
+  createDefaultAttributeProfileAddon,
   createDefaultCurrencyAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
@@ -11,6 +14,12 @@ import {
   createDefaultProgressionTableAddon,
   sectionAddonToBalanceDraft,
 } from "@/lib/addons/types";
+import { AttributeDefinitionsAddonPanel } from "@/components/AttributeDefinitionsAddonPanel";
+import { AttributeDefinitionsAddonReadOnly } from "@/components/AttributeDefinitionsAddonReadOnly";
+import { AttributeModifiersAddonPanel } from "@/components/AttributeModifiersAddonPanel";
+import { AttributeModifiersAddonReadOnly } from "@/components/AttributeModifiersAddonReadOnly";
+import { AttributeProfileAddonPanel } from "@/components/AttributeProfileAddonPanel";
+import { AttributeProfileAddonReadOnly } from "@/components/AttributeProfileAddonReadOnly";
 import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
 import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
 import { CurrencyAddonPanel } from "@/components/CurrencyAddonPanel";
@@ -114,6 +123,75 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "economyLink") return null;
       return React.createElement(EconomyLinkAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
+    type: "attributeDefinitions",
+    label: "Definições de Atributos",
+    createDefault: () => {
+      const addonId = `attr-defs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultAttributeDefinitionsAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "attributeDefinitions") return null;
+      return React.createElement(AttributeDefinitionsAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "attributeDefinitions") return null;
+      return React.createElement(AttributeDefinitionsAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
+    type: "attributeProfile",
+    label: "Perfil de Atributos",
+    createDefault: () => {
+      const addonId = `attr-profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultAttributeProfileAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "attributeProfile") return null;
+      return React.createElement(AttributeProfileAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "attributeProfile") return null;
+      return React.createElement(AttributeProfileAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
+    type: "attributeModifiers",
+    label: "Modificadores de Atributos",
+    createDefault: () => {
+      const addonId = `attr-modifiers-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultAttributeModifiersAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "attributeModifiers") return null;
+      return React.createElement(AttributeModifiersAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "attributeModifiers") return null;
+      return React.createElement(AttributeModifiersAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
       });

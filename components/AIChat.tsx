@@ -9,6 +9,9 @@ import { useI18n } from "@/lib/i18n/provider";
 import { assessThematicRelevance } from "@/utils/ai/thematicGuardrails";
 import {
   balanceDraftToSectionAddon,
+  createDefaultAttributeDefinitionsAddon,
+  createDefaultAttributeModifiersAddon,
+  createDefaultAttributeProfileAddon,
   createDefaultCurrencyAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
@@ -67,6 +70,9 @@ const SUPPORTED_ADDON_TYPES = new Set([
   "inventory",
   "production",
   "dataSchema",
+  "attributeDefinitions",
+  "attributeProfile",
+  "attributeModifiers",
   // legacy alias
   "genericStats",
 ]);
@@ -382,6 +388,15 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     rawPatch: Record<string, unknown>
   ): Record<string, unknown> => {
     const merged: Record<string, unknown> = { ...baseData, ...rawPatch };
+    const normalizeAttributeKey = (raw: unknown): string =>
+      asString(raw)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_\s-]/g, "")
+        .replace(/[\s-]+/g, "_")
+        .replace(/_+/g, "_");
+    const optionalNumber = (raw: unknown): number | undefined =>
+      typeof raw === "number" && Number.isFinite(raw) ? raw : undefined;
 
     if (addonType === "currency") {
       const allowedKinds = new Set(["soft", "premium", "event", "other"]);
@@ -489,6 +504,80 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
         startLevel,
         endLevel,
         decimals,
+      };
+    }
+
+    if (addonType === "attributeDefinitions") {
+      const allowedValueTypes = new Set(["int", "float", "percent", "boolean"]);
+      const rawAttributes = Array.isArray(merged.attributes) ? merged.attributes : [];
+      const attributes = rawAttributes
+        .map((item, index) => {
+          if (!isRecord(item)) return null;
+          const key = normalizeAttributeKey(item.key);
+          if (!key) return null;
+          const valueType = allowedValueTypes.has(asString(item.valueType)) ? asString(item.valueType) : "int";
+          const parsedDefault = asFiniteNumber(item.defaultValue, 0);
+          return {
+            id: asString(item.id, `attr_${index + 1}`),
+            key,
+            label: asString(item.label, key),
+            valueType,
+            defaultValue: valueType === "boolean" ? asBoolean(item.defaultValue, false) : parsedDefault,
+            min: valueType === "boolean" ? undefined : optionalNumber(item.min),
+            max: valueType === "boolean" ? undefined : optionalNumber(item.max),
+            unit: asString(item.unit).trim() || undefined,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+      return {
+        ...merged,
+        attributes,
+      };
+    }
+
+    if (addonType === "attributeProfile") {
+      const rawValues = Array.isArray(merged.values) ? merged.values : [];
+      const values = rawValues
+        .map((item, index) => {
+          if (!isRecord(item)) return null;
+          const attributeKey = normalizeAttributeKey(item.attributeKey);
+          if (!attributeKey) return null;
+          const numeric = asFiniteNumber(item.value, Number.NaN);
+          return {
+            id: asString(item.id, `attr_profile_${index + 1}`),
+            attributeKey,
+            value: Number.isFinite(numeric) ? numeric : asBoolean(item.value, false),
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+      return {
+        ...merged,
+        definitionsRef: asString(merged.definitionsRef).trim() || undefined,
+        values,
+      };
+    }
+
+    if (addonType === "attributeModifiers") {
+      const allowedModes = new Set(["add", "mult", "set"]);
+      const rawModifiers = Array.isArray(merged.modifiers) ? merged.modifiers : [];
+      const modifiers = rawModifiers
+        .map((item, index) => {
+          if (!isRecord(item)) return null;
+          const attributeKey = normalizeAttributeKey(item.attributeKey);
+          if (!attributeKey) return null;
+          const numeric = asFiniteNumber(item.value, Number.NaN);
+          return {
+            id: asString(item.id, `attr_mod_${index + 1}`),
+            attributeKey,
+            mode: allowedModes.has(asString(item.mode)) ? asString(item.mode) : "add",
+            value: Number.isFinite(numeric) ? numeric : asBoolean(item.value, false),
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+      return {
+        ...merged,
+        definitionsRef: asString(merged.definitionsRef).trim() || undefined,
+        modifiers,
       };
     }
 
@@ -718,6 +807,9 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
     if (addonType === "inventory") addon = createDefaultInventoryAddon(addonId);
     if (addonType === "production") addon = createDefaultProductionAddon(addonId);
     if (addonType === "dataSchema" || addonType === "genericStats") addon = createDefaultDataSchemaAddon(addonId);
+    if (addonType === "attributeDefinitions") addon = createDefaultAttributeDefinitionsAddon(addonId);
+    if (addonType === "attributeProfile") addon = createDefaultAttributeProfileAddon(addonId);
+    if (addonType === "attributeModifiers") addon = createDefaultAttributeModifiersAddon(addonId);
     if (!addon) return null;
 
     const payloadName = typeof payload.name === "string" ? payload.name.trim() : "";

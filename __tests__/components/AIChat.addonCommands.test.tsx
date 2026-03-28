@@ -43,6 +43,28 @@ describe("AIChat addon commands", () => {
               order: 1,
               addons: [],
             },
+            {
+              id: "sec-defs",
+              title: "Definições de Atributos",
+              content: "Atributos globais",
+              created_at: "2026-03-01T00:00:00.000Z",
+              order: 2,
+              addons: [
+                {
+                  id: "addon-defs",
+                  type: "attributeDefinitions",
+                  name: "Definições Base",
+                  data: {
+                    id: "addon-defs",
+                    name: "Definições Base",
+                    attributes: [
+                      { id: "a1", key: "strength", label: "Força", valueType: "int", defaultValue: 0, min: 0 },
+                      { id: "a2", key: "stamina", label: "Stamina", valueType: "float", defaultValue: 100 },
+                    ],
+                  },
+                },
+              ],
+            },
           ],
         },
       ],
@@ -711,6 +733,156 @@ describe("AIChat addon commands", () => {
       expect(addon?.name).toBe("Atributos da Semente V2");
       expect(addon?.data.entries?.[0]?.value).toBe(12);
       expect(addon?.data.entries?.[1]?.value).toBe(240);
+    });
+  });
+
+  it("creates attributeDefinitions addon through ADDON_CRIAR command", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ message: "ok" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message:
+            "Plano pronto.\n\n[EXECUTAR]\nADDON_CRIAR: sec-1 | attributeDefinitions | {\"name\":\"Atributos de Combate\",\"attributes\":[{\"key\":\"critical_rate\",\"label\":\"Taxa Crítica\",\"valueType\":\"percent\",\"defaultValue\":5},{\"key\":\"is_boss\",\"label\":\"É Boss\",\"valueType\":\"boolean\",\"defaultValue\":false}]}",
+        }),
+      });
+
+    render(
+      <I18nProvider initialLocale="pt-BR">
+        <AIChat
+          isOpen
+          projectContext={{
+            projectId,
+            projectTitle: "Projeto IA",
+            sections: [{ id: "sec-1", title: "Economia" }],
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Digite sua mensagem/i), {
+      target: { value: "Crie definições de atributos" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enviar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirma executar/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+
+    await waitFor(() => {
+      const project = useProjectStore.getState().getProject(projectId);
+      const section = project?.sections.find((item) => item.id === "sec-1");
+      const addon = section?.addons?.find((item) => item.type === "attributeDefinitions");
+      expect(addon).toBeDefined();
+      expect(addon?.name).toBe("Atributos de Combate");
+      expect(addon?.data.attributes?.[0]?.key).toBe("critical_rate");
+      expect(addon?.data.attributes?.[1]?.valueType).toBe("boolean");
+    });
+  });
+
+  it("creates attributeProfile addon through ADDON_CRIAR command", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ message: "ok" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message:
+            "Plano pronto.\n\n[EXECUTAR]\nADDON_CRIAR: sec-1 | attributeProfile | {\"name\":\"Perfil do Guerreiro\",\"definitionsRef\":\"sec-defs\",\"values\":[{\"attributeKey\":\"strength\",\"value\":12},{\"attributeKey\":\"stamina\",\"value\":95.5}]}",
+        }),
+      });
+
+    render(
+      <I18nProvider initialLocale="pt-BR">
+        <AIChat
+          isOpen
+          projectContext={{
+            projectId,
+            projectTitle: "Projeto IA",
+            sections: [{ id: "sec-1", title: "Economia" }],
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Digite sua mensagem/i), {
+      target: { value: "Crie perfil de atributos" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enviar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirma executar/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+
+    await waitFor(() => {
+      const project = useProjectStore.getState().getProject(projectId);
+      const section = project?.sections.find((item) => item.id === "sec-1");
+      const addon = section?.addons?.find((item) => item.type === "attributeProfile");
+      expect(addon).toBeDefined();
+      expect(addon?.name).toBe("Perfil do Guerreiro");
+      expect(addon?.data.definitionsRef).toBe("sec-defs");
+      expect(addon?.data.values?.[0]?.attributeKey).toBe("strength");
+    });
+  });
+
+  it("creates attributeModifiers addon through ADDON_CRIAR command", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ message: "ok" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message:
+            "Plano pronto.\n\n[EXECUTAR]\nADDON_CRIAR: sec-1 | attributeModifiers | {\"name\":\"Buff da Armadura\",\"definitionsRef\":\"sec-defs\",\"modifiers\":[{\"attributeKey\":\"strength\",\"mode\":\"add\",\"value\":3},{\"attributeKey\":\"stamina\",\"mode\":\"mult\",\"value\":1.2}]}",
+        }),
+      });
+
+    render(
+      <I18nProvider initialLocale="pt-BR">
+        <AIChat
+          isOpen
+          projectContext={{
+            projectId,
+            projectTitle: "Projeto IA",
+            sections: [{ id: "sec-1", title: "Economia" }],
+          }}
+        />
+      </I18nProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Digite sua mensagem/i), {
+      target: { value: "Crie modificadores de atributos" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enviar/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Confirma executar/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+
+    await waitFor(() => {
+      const project = useProjectStore.getState().getProject(projectId);
+      const section = project?.sections.find((item) => item.id === "sec-1");
+      const addon = section?.addons?.find((item) => item.type === "attributeModifiers");
+      expect(addon).toBeDefined();
+      expect(addon?.name).toBe("Buff da Armadura");
+      expect(addon?.data.definitionsRef).toBe("sec-defs");
+      expect(addon?.data.modifiers?.[1]?.mode).toBe("mult");
     });
   });
 });

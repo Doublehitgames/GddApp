@@ -1366,6 +1366,12 @@ function SectionDetailContent({
         return t("sectionDetail.history.addonType.dataSchema");
       case "genericStats":
         return t("sectionDetail.history.addonType.dataSchema");
+      case "attributeDefinitions":
+        return t("sectionDetail.history.addonType.attributeDefinitions");
+      case "attributeProfile":
+        return t("sectionDetail.history.addonType.attributeProfile");
+      case "attributeModifiers":
+        return t("sectionDetail.history.addonType.attributeModifiers");
       default:
         return t("sectionDetail.history.addonType.generic");
     }
@@ -1589,6 +1595,15 @@ function SectionDetailContent({
     }
     if (type === "dataSchema" || type === "genericStats") {
       return t("dataSchemaAddon.addonTypeLabel", "Schema de Dados");
+    }
+    if (type === "attributeDefinitions") {
+      return t("attributeDefinitionsAddon.addonTypeLabel", "Definições de Atributos");
+    }
+    if (type === "attributeProfile") {
+      return t("attributeProfileAddon.addonTypeLabel", "Perfil de Atributos");
+    }
+    if (type === "attributeModifiers") {
+      return t("attributeModifiersAddon.addonTypeLabel", "Modificadores de Atributos");
     }
     return t("sectionDetail.history.addonType.generic");
   };
