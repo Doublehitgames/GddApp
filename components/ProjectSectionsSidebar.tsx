@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
@@ -849,6 +848,7 @@ function SortableRootItem({
     reorder: string;
   };
 }) {
+  const router = useRouter();
   const highlightText = (text: string, term?: string) => {
     if (!term || !term.trim()) return text;
     const regex = new RegExp(`(${term})`, "gi");
@@ -891,6 +891,9 @@ function SortableRootItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
+  const clickGuardStartRef = useRef<{ x: number; y: number } | null>(null);
+  const shouldBlockClickRef = useRef(false);
+  const CLICK_GUARD_THRESHOLD_PX = 6;
   const stableTransform = transform
     ? {
         ...transform,
@@ -905,21 +908,71 @@ function SortableRootItem({
     opacity: isDragging ? 0.35 : 1,
     transformOrigin: "top left" as const,
   };
+  const dragVisualClass = isTreeDragging
+    ? isDragging
+      ? "ring-2 ring-indigo-300/70 shadow-lg shadow-indigo-900/30"
+      : "opacity-85"
+    : "";
+  const handlePointerDownCapture = (event: React.PointerEvent<HTMLDivElement>) => {
+    clickGuardStartRef.current = { x: event.clientX, y: event.clientY };
+    shouldBlockClickRef.current = false;
+  };
+  const handlePointerMoveCapture = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = clickGuardStartRef.current;
+    if (!start || shouldBlockClickRef.current) return;
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.abs(dx) >= CLICK_GUARD_THRESHOLD_PX || Math.abs(dy) >= CLICK_GUARD_THRESHOLD_PX) {
+      shouldBlockClickRef.current = true;
+    }
+  };
+  const handlePointerUpCapture = () => {
+    clickGuardStartRef.current = null;
+  };
+  const handlePointerCancelCapture = () => {
+    clickGuardStartRef.current = null;
+    shouldBlockClickRef.current = false;
+  };
+  const handleClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!shouldBlockClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    shouldBlockClickRef.current = false;
+  };
+  const handleCardClick = () => {
+    if (shouldBlockClickRef.current) return;
+    router.push(`/projects/${projectId}/sections/${section.id}`);
+  };
 
   return (
     <li ref={setNodeRef} style={style} className="mb-2">
-      <div className={`group relative overflow-hidden flex items-center gap-2 border transition-all duration-150 ${
-        isRootLevel
-          ? "p-2.5 rounded-xl"
-          : "px-2.5 py-2 rounded-lg"
-      } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`}`}>
+      <div
+        className={`group relative overflow-hidden flex items-center gap-2 border transition-all duration-150 cursor-grab active:cursor-grabbing ${
+          isRootLevel
+            ? "p-2.5 rounded-xl"
+            : "px-2.5 py-2 rounded-lg"
+        } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`} ${dragVisualClass}`}
+        {...attributes}
+        {...listeners}
+        aria-label={labels.reorder}
+        onPointerDownCapture={handlePointerDownCapture}
+        onPointerMoveCapture={handlePointerMoveCapture}
+        onPointerUpCapture={handlePointerUpCapture}
+        onPointerCancelCapture={handlePointerCancelCapture}
+        onClickCapture={handleClickCapture}
+        onClick={handleCardClick}
+      >
         <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
-        <span className="relative text-gray-400 cursor-grab active:cursor-grabbing" {...attributes} {...listeners} aria-label={labels.reorder}>
+        <span className="relative text-gray-400 pointer-events-none select-none" aria-hidden>
           ⋮⋮
         </span>
         {hasChildren ? (
           <button
-            onClick={() => {
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
               const next = new Set(expandedSections);
               if (next.has(section.id)) next.delete(section.id);
               else next.add(section.id);
@@ -941,13 +994,11 @@ function SortableRootItem({
             }}
           />
         )}
-        <Link
-          href={`/projects/${projectId}/sections/${section.id}`}
-          prefetch={false}
-          className={`relative flex-1 min-w-0 truncate text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset rounded px-0.5 ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
+        <span
+          className={`relative flex-1 min-w-0 truncate text-sm transition-colors rounded px-0.5 pointer-events-none ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 group-hover:text-blue-200"}`}
         >
           {highlightText(section.title, searchTerm)}
-        </Link>
+        </span>
         {directMatch && searchTerm.trim() && (
           <span className="relative text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">
             ✓ {labels.match}
@@ -1004,7 +1055,7 @@ function DragPreviewCard({
       style={width ? { width: `${width}px`, maxWidth: "min(420px, 80vw)" } : { width: "min(420px, 80vw)" }}
     >
       <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
-      <span className="relative text-gray-300 cursor-grabbing select-none" aria-label={labels.reorder}>
+      <span className="relative text-gray-300 pointer-events-none select-none" aria-hidden>
         ⋮⋮
       </span>
       {section?.thumbImageUrl && (
