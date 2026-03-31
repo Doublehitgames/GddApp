@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
@@ -8,10 +9,16 @@ import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
+  Collision,
+  CollisionDetection,
   DndContext,
-  closestCenter,
+  DragOverlay,
+  DragCancelEvent,
   DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   useSensor,
   useSensors,
@@ -454,7 +461,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       <div className="relative flex-1 min-h-0">
         <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b from-gray-800/90 to-transparent transition-opacity duration-300 ease-out ${showSectionTopFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-gray-800/90 to-transparent transition-opacity duration-300 ease-out ${showSectionBottomFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
-        <div ref={sectionListRef} onScroll={updateSectionFades} className="scrollbar-premium h-full max-h-[45vh] lg:max-h-none overflow-y-auto overscroll-y-contain pr-1">
+        <div ref={sectionListRef} onScroll={updateSectionFades} className="scrollbar-premium h-full max-h-[45vh] lg:max-h-none overflow-y-auto overflow-x-hidden overscroll-y-contain pr-1">
           <SectionTree
             sections={project.sections || []}
             projectId={projectId}
@@ -584,20 +591,174 @@ function SectionTree({
     .filter((s) => !s.parentId)
     .filter((s) => sectionMatchesOrHasMatchingChildren(s.id, sections))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const parentById = useMemo(() => {
+    const map = new Map<string, string | null>();
+    sections.forEach((section: any) => {
+      map.set(section.id, section.parentId ?? null);
+    });
+    return map;
+  }, [sections]);
+  const siblingsByParent = useMemo(() => {
+    const map = new Map<string, any[]>();
+    sections.forEach((section: any) => {
+      const key = section.parentId ?? "__root__";
+      const current = map.get(key) ?? [];
+      current.push(section);
+      map.set(key, current);
+    });
+    map.forEach((items, key) => {
+      map.set(
+        key,
+        [...items].sort((a, b) => (a.order || 0) - (b.order || 0))
+      );
+    });
+    return map;
+  }, [sections]);
+  const sectionById = useMemo(
+    () => new Map<string, any>(sections.map((section: any) => [section.id, section])),
+    [sections]
+  );
+  const expandedBeforeDragRef = useRef<Set<string> | null>(null);
+  const lastValidOverIdRef = useRef<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [activeDragWidth, setActiveDragWidth] = useState<number | null>(null);
 
   const totalMatches =
     searchTerm.trim() || selectedTagFilters.length > 0 || selectedAddonFilters.length > 0
       ? sections.filter(matchesFilters).length
       : 0;
+  const dragContextKey = useMemo(
+    () => `${activeSectionId ?? "home"}::${roots.map((r) => r.id).join("|")}`,
+    [activeSectionId, roots]
+  );
+  const isTreeDragging = activeDragId !== null;
+  const collisionDetection = useCallback<CollisionDetection>((args) => {
+    const activeId = String(args.active.id);
+    const activeParent = parentById.get(activeId) ?? null;
+    const siblingContainers = args.droppableContainers.filter((container) => {
+      const containerId = String(container.id);
+      if (containerId === activeId) return false;
+      return (parentById.get(containerId) ?? null) === activeParent;
+    });
+
+    if (siblingContainers.length === 0) return [];
+
+    // Use dragged element geometry instead of pointer coordinates to avoid
+    // horizontal-position side effects when sidebar/content have different hit areas.
+    const collisionCenterY = args.collisionRect.top + args.collisionRect.height / 2;
+    const collisions: Collision[] = siblingContainers
+      .map((container) => {
+        const rect = args.droppableRects.get(container.id);
+        if (!rect) return null;
+        const centerY = rect.top + rect.height / 2;
+        const yDistance = Math.abs(collisionCenterY - centerY);
+        return {
+          id: container.id,
+          data: { droppableContainer: container, value: yDistance },
+        } as Collision;
+      })
+      .filter((collision): collision is Collision => collision !== null)
+      .sort((a, b) => {
+        const av = Number(a.data?.value ?? Number.MAX_SAFE_INTEGER);
+        const bv = Number(b.data?.value ?? Number.MAX_SAFE_INTEGER);
+        return av - bv;
+      });
+
+    return collisions;
+  }, [parentById]);
+
+  function restoreExpandedSections() {
+    if (!expandedBeforeDragRef.current) return;
+    setExpandedSections(new Set(expandedBeforeDragRef.current));
+    expandedBeforeDragRef.current = null;
+  }
+
+  function handleDragStart(_event: DragStartEvent) {
+    const activeId = String(_event.active.id);
+    setActiveDragId(activeId);
+    lastValidOverIdRef.current = null;
+    const measuredWidth =
+      _event.active.rect.current?.initial?.width ?? _event.active.rect.current?.translated?.width ?? null;
+    setActiveDragWidth(
+      typeof measuredWidth === "number" && Number.isFinite(measuredWidth) && measuredWidth > 0
+        ? measuredWidth
+        : null
+    );
+    if (!expandedBeforeDragRef.current) {
+      expandedBeforeDragRef.current = new Set(expandedSections);
+    }
+    const contextualExpanded = new Set<string>();
+    let cursor = parentById.get(activeId) ?? null;
+    const visited = new Set<string>();
+    while (cursor && !visited.has(cursor)) {
+      contextualExpanded.add(cursor);
+      visited.add(cursor);
+      cursor = parentById.get(cursor) ?? null;
+    }
+    // For nested drags, collapse must be immediate; delaying by frame causes
+    // stale Y geometry and noticeable offset on child items.
+    flushSync(() => {
+      setExpandedSections(contextualExpanded);
+    });
+  }
+
+  function handleDragCancel(_event: DragCancelEvent) {
+    setActiveDragId(null);
+    setActiveDragWidth(null);
+    lastValidOverIdRef.current = null;
+    restoreExpandedSections();
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) return;
+    const activeParent = parentById.get(activeId) ?? null;
+    const overParent = parentById.get(overId) ?? null;
+    if (activeParent !== overParent) return;
+    lastValidOverIdRef.current = overId;
+  }
+
+  useEffect(() => {
+    // Navegacao sem refresh: limpa estado transitório de drag.
+    expandedBeforeDragRef.current = null;
+    lastValidOverIdRef.current = null;
+    setActiveDragWidth(null);
+  }, [activeSectionId]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = roots.findIndex((r) => r.id === active.id);
-    const newIndex = roots.findIndex((r) => r.id === over.id);
-    const newRoots = arrayMove(roots, oldIndex, newIndex);
-    const newOrder = newRoots.map((r) => r.id);
-    reorderSections(projectId, newOrder);
+    const activeId = String(active.id);
+    const fallbackOverId = lastValidOverIdRef.current;
+    const overId = over ? String(over.id) : fallbackOverId;
+    setActiveDragId(null);
+    setActiveDragWidth(null);
+    lastValidOverIdRef.current = null;
+    if (!overId || activeId === overId) {
+      restoreExpandedSections();
+      return;
+    }
+    const activeParent = parentById.get(activeId) ?? null;
+    const overParent = parentById.get(overId) ?? null;
+    if (activeParent !== overParent) {
+      restoreExpandedSections();
+      return;
+    }
+
+    const parentKey = activeParent ?? "__root__";
+    const siblings = siblingsByParent.get(parentKey) ?? [];
+    const oldIndex = siblings.findIndex((s) => s.id === activeId);
+    const newIndex = siblings.findIndex((s) => s.id === overId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
+      restoreExpandedSections();
+      return;
+    }
+
+    const reordered = arrayMove(siblings, oldIndex, newIndex);
+    reorderSections(projectId, reordered.map((s) => s.id));
+    restoreExpandedSections();
   }
 
   return (
@@ -608,7 +769,21 @@ function SectionTree({
             {totalMatches} {totalMatches === 1 ? labels.resultsFoundOne : labels.resultsFoundMany}
           </p>
         )}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        key={dragContextKey}
+        sensors={sensors}
+        collisionDetection={collisionDetection}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
+        autoScroll={false}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={roots.map((r) => r.id)} strategy={verticalListSortingStrategy}>
           <ul className="space-y-2">
             {roots.map((sec) => (
@@ -623,11 +798,22 @@ function SectionTree({
                 activeSectionId={activeSectionId}
                 expandedSections={expandedSections}
                 setExpandedSections={setExpandedSections}
+                isTreeDragging={isTreeDragging}
+                isRootLevel={true}
                 labels={labels}
               />
             ))}
           </ul>
         </SortableContext>
+        <DragOverlay dropAnimation={null} adjustScale={false}>
+          {activeDragId ? (
+            <DragPreviewCard
+              section={sectionById.get(activeDragId) ?? null}
+              labels={labels}
+              width={activeDragWidth}
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </>
   );
@@ -643,6 +829,8 @@ function SortableRootItem({
   activeSectionId,
   expandedSections,
   setExpandedSections,
+  isTreeDragging,
+  isRootLevel,
   labels,
 }: {
   section: any;
@@ -654,6 +842,8 @@ function SortableRootItem({
   activeSectionId: string | null;
   expandedSections: Set<string>;
   setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  isTreeDragging: boolean;
+  isRootLevel?: boolean;
   labels: {
     match: string;
     reorder: string;
@@ -701,16 +891,28 @@ function SortableRootItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: section.id,
   });
+  const stableTransform = transform
+    ? {
+        ...transform,
+        scaleX: 1,
+        scaleY: 1,
+      }
+    : null;
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transform: CSS.Transform.toString(stableTransform),
+    transition: isTreeDragging ? undefined : transition,
+    opacity: isDragging ? 0.35 : 1,
+    transformOrigin: "top left" as const,
   };
 
   return (
     <li ref={setNodeRef} style={style} className="mb-2">
-      <div className={`group relative overflow-hidden flex items-center gap-2 border p-2.5 rounded-xl transition-all duration-150 ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : "border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 hover:-translate-y-px"}`}>
+      <div className={`group relative overflow-hidden flex items-center gap-2 border transition-all duration-150 ${
+        isRootLevel
+          ? "p-2.5 rounded-xl"
+          : "px-2.5 py-2 rounded-lg"
+      } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`}`}>
         <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
         <span className="relative text-gray-400 cursor-grab active:cursor-grabbing" {...attributes} {...listeners} aria-label={labels.reorder}>
           ⋮⋮
@@ -733,7 +935,7 @@ function SortableRootItem({
             src={section.thumbImageUrl}
             alt=""
             loading="lazy"
-            className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
+            className={`${isRootLevel ? "h-7 w-7" : "h-6 w-6"} shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover`}
             onError={(event) => {
               event.currentTarget.style.display = "none";
             }}
@@ -752,13 +954,17 @@ function SortableRootItem({
           </span>
         )}
       </div>
-      {contentSnippet && (
+      {contentSnippet && isRootLevel && (
         <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded-lg">
           {highlightText(contentSnippet, searchTerm)}
         </div>
       )}
       {hasChildren && (
-        <div className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
+        <div
+          className={`grid ${
+            isTreeDragging ? "transition-none duration-0" : "transition-all duration-200 ease-out"
+          } ${isExpanded ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}
+        >
           <div className="overflow-hidden">
             <SectionChildren
               parentId={section.id}
@@ -770,12 +976,52 @@ function SortableRootItem({
               activeSectionId={activeSectionId}
               expandedSections={expandedSections}
               setExpandedSections={setExpandedSections}
+              isTreeDragging={isTreeDragging}
               labels={labels}
             />
           </div>
         </div>
       )}
     </li>
+  );
+}
+
+function DragPreviewCard({
+  section,
+  labels,
+  width,
+}: {
+  section: any | null;
+  labels: {
+    reorder: string;
+  };
+  width: number | null;
+}) {
+  if (!section) return null;
+  return (
+    <div
+      className="group relative overflow-hidden flex items-center gap-2 border p-2.5 rounded-xl transition-all duration-150 border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25 pointer-events-none"
+      style={width ? { width: `${width}px`, maxWidth: "min(420px, 80vw)" } : { width: "min(420px, 80vw)" }}
+    >
+      <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
+      <span className="relative text-gray-300 cursor-grabbing select-none" aria-label={labels.reorder}>
+        ⋮⋮
+      </span>
+      {section?.thumbImageUrl && (
+        <img
+          src={section.thumbImageUrl}
+          alt=""
+          loading="lazy"
+          className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+      )}
+      <span className="relative flex-1 min-w-0 truncate text-sm text-indigo-100 font-semibold">
+        {section.title}
+      </span>
+    </div>
   );
 }
 
@@ -789,6 +1035,7 @@ function SectionChildren({
   activeSectionId,
   expandedSections,
   setExpandedSections,
+  isTreeDragging,
   labels,
 }: {
   parentId: string;
@@ -800,8 +1047,10 @@ function SectionChildren({
   activeSectionId: string | null;
   expandedSections: Set<string>;
   setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  isTreeDragging: boolean;
   labels: {
     match: string;
+    reorder: string;
   };
 }) {
   const matchesSearch = (section: any): boolean => {
@@ -847,111 +1096,29 @@ function SectionChildren({
     .filter((s) => sectionMatchesOrHasMatchingChildren(s.id, sections))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  const highlightText = (text: string, term?: string) => {
-    if (!term || !term.trim()) return text;
-    const regex = new RegExp(`(${term})`, "gi");
-    const parts = text.split(regex);
-    return parts.map((part, i) =>
-      regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
-    );
-  };
-
-  const getContentSnippet = (content: string, term: string): string => {
-    if (!content || !term) return "";
-    const lowerContent = content.toLowerCase();
-    const lowerTerm = term.toLowerCase();
-    const index = lowerContent.indexOf(lowerTerm);
-    if (index === -1) return "";
-    const start = Math.max(0, index - 40);
-    const end = Math.min(content.length, index + term.length + 40);
-    let snippet = content.substring(start, end);
-    if (start > 0) snippet = "..." + snippet;
-    if (end < content.length) snippet = snippet + "...";
-    return snippet;
-  };
-
   if (kids.length === 0) return null;
 
   return (
-    <ul className="ml-4 mt-2 pl-3 border-l border-gray-700/70 space-y-2">
-      {kids.map((sec) => {
-        const directMatch = matchesSearch(sec);
-        const contentSnippet =
-          directMatch && sec.content && searchTerm ? getContentSnippet(sec.content, searchTerm) : "";
-        const hasChildren = sections.some((s: any) => s.parentId === sec.id);
-        const isExpanded =
-          expandedSections.has(sec.id) ||
-          searchTerm?.trim() ||
-          selectedTagFilters.length > 0 ||
-          selectedAddonFilters.length > 0;
-        const isActiveSection = activeSectionId === sec.id;
-
-        return (
-          <li key={sec.id} className="mb-2">
-            <div className={`group relative overflow-hidden flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors ${isActiveSection ? "border-indigo-300/60 bg-indigo-600/20" : "border-gray-700/80 bg-gray-900/50 hover:border-indigo-500/50"}`}>
-              {hasChildren ? (
-                <button
-                  onClick={() => {
-                    const next = new Set(expandedSections);
-                    if (next.has(sec.id)) next.delete(sec.id);
-                    else next.add(sec.id);
-                    setExpandedSections(next);
-                  }}
-                  className={`inline-flex items-center justify-center h-5 w-5 rounded-md border text-sm transition-colors ${isActiveSection ? "border-indigo-300/60 text-indigo-100 bg-indigo-500/20" : "border-gray-600 text-gray-300 hover:text-white hover:border-indigo-400"}`}
-                >
-                  {isExpanded ? "−" : "+"}
-                </button>
-              ) : null}
-              {sec?.thumbImageUrl && (
-                <img
-                  src={sec.thumbImageUrl}
-                  alt=""
-                  loading="lazy"
-                  className="h-6 w-6 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
-                  onError={(event) => {
-                    event.currentTarget.style.display = "none";
-                  }}
-                />
-              )}
-              <Link
-                href={`/projects/${projectId}/sections/${sec.id}`}
-                prefetch={false}
-                className={`flex-1 min-w-0 truncate text-sm transition-colors ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
-              >
-                {highlightText(sec.title, searchTerm)}
-              </Link>
-              {directMatch && searchTerm && searchTerm.trim() && (
-                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">
-                  ✓ {labels.match}
-                </span>
-              )}
-            </div>
-            {contentSnippet && (
-              <div className="text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded ml-4">
-                {highlightText(contentSnippet, searchTerm || "")}
-              </div>
-            )}
-            {hasChildren && (
-              <div className={`grid transition-all duration-200 ease-out ${isExpanded ? "grid-rows-[1fr] opacity-100 mt-1" : "grid-rows-[0fr] opacity-0"}`}>
-                <div className="overflow-hidden">
-                  <SectionChildren
-                    parentId={sec.id}
-                    sections={sections}
-                    projectId={projectId}
-                    searchTerm={searchTerm}
-                    selectedTagFilters={selectedTagFilters}
-                    selectedAddonFilters={selectedAddonFilters}
-                    activeSectionId={activeSectionId}
-                    expandedSections={expandedSections}
-                    setExpandedSections={setExpandedSections}
-                    labels={labels}
-                  />
-                </div>
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <SortableContext items={kids.map((k) => k.id)} strategy={verticalListSortingStrategy}>
+      <ul className="ml-4 mt-2 pl-3 border-l border-gray-700/70 space-y-2">
+        {kids.map((sec) => (
+          <SortableRootItem
+            key={sec.id}
+            section={sec}
+            sections={sections}
+            projectId={projectId}
+            searchTerm={searchTerm || ""}
+            selectedTagFilters={selectedTagFilters}
+            selectedAddonFilters={selectedAddonFilters}
+            activeSectionId={activeSectionId}
+            expandedSections={expandedSections}
+            setExpandedSections={setExpandedSections}
+            isTreeDragging={isTreeDragging}
+            isRootLevel={false}
+            labels={labels}
+          />
+        ))}
+      </ul>
+    </SortableContext>
   );
 }
