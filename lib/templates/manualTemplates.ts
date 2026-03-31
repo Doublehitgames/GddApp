@@ -1,3 +1,5 @@
+import type { AppLocale } from "@/lib/i18n/config";
+
 export type WizardProjectType = "digital_game";
 export type WizardGenre = "rpg" | "roguelike" | "platformer" | "puzzle" | "simulation";
 export type WizardPlatform = "pc" | "mobile" | "console" | "web";
@@ -30,6 +32,11 @@ type GenreMeta = {
   description: string;
 };
 
+type LocaleText = {
+  en: string;
+  es: string;
+};
+
 const section = (
   id: string,
   title: string,
@@ -58,6 +65,122 @@ const GENRE_META: Record<WizardGenre, GenreMeta> = {
     baseTitle: "Projeto Simulacao",
     description: "Template de simulacao focado em sistemas interligados, economia e tuning.",
   },
+};
+
+const TEMPLATE_TEXT_TRANSLATIONS: Record<string, LocaleText> = {
+  "Visao Geral": { en: "Overview", es: "Visión general" },
+  "Visao Geral Completa": { en: "Full Overview", es: "Visión general completa" },
+  "Core Loop": { en: "Core Loop", es: "Bucle principal" },
+  "Core Loop e Loops Secundarios": { en: "Core Loop and Secondary Loops", es: "Bucle principal y bucles secundarios" },
+  "Progressao": { en: "Progression", es: "Progresión" },
+  "Progressao e Dificuldade": { en: "Progression and Difficulty", es: "Progresión y dificultad" },
+  "Progressao, Dificuldade e Balanceamento": { en: "Progression, Difficulty and Balance", es: "Progresión, dificultad y balance" },
+  "Controles e Input": { en: "Controls and Input", es: "Controles e input" },
+  "Controles, Input e Acessibilidade": { en: "Controls, Input and Accessibility", es: "Controles, input y accesibilidad" },
+  "Controles, Acessibilidade e QoL": { en: "Controls, Accessibility and QoL", es: "Controles, accesibilidad y QoL" },
+  "UX/UI": { en: "UX/UI", es: "UX/UI" },
+  "UX/UI Essencial": { en: "Essential UX/UI", es: "UX/UI esencial" },
+  "UX/UI e Feedback": { en: "UX/UI and Feedback", es: "UX/UI y feedback" },
+  "Roadmap Inicial": { en: "Initial Roadmap", es: "Roadmap inicial" },
+  "Roadmap e Riscos": { en: "Roadmap and Risks", es: "Roadmap y riesgos" },
+  "Roadmap de Producao": { en: "Production Roadmap", es: "Roadmap de producción" },
+  "Mecanicas Centrais": { en: "Core Mechanics", es: "Mecánicas centrales" },
+  "Mecanicas e Regras de Sistema": { en: "Mechanics and System Rules", es: "Mecánicas y reglas de sistema" },
+  "Direcao de Arte e Audio": { en: "Art and Audio Direction", es: "Dirección de arte y audio" },
+  "Arte e Audio": { en: "Art and Audio", es: "Arte y audio" },
+  "Tecnologia": { en: "Technology", es: "Tecnología" },
+  "Tecnologia e Arquitetura": { en: "Technology and Architecture", es: "Tecnología y arquitectura" },
+  "Riscos e Mitigacoes": { en: "Risks and Mitigations", es: "Riesgos y mitigaciones" },
+  "KPIs e Telemetria": { en: "KPIs and Telemetry", es: "KPIs y telemetría" },
+  "Monetizacao (quando aplicavel)": { en: "Monetization (when applicable)", es: "Monetización (cuando aplica)" },
+  "QA, Testes e Instrumentacao": { en: "QA, Testing and Instrumentation", es: "QA, pruebas e instrumentación" },
+  "Classes e Atributos": { en: "Classes and Attributes", es: "Clases y atributos" },
+  "Sistema de Combate": { en: "Combat System", es: "Sistema de combate" },
+  "Combate": { en: "Combat", es: "Combate" },
+  "Mundo e Narrativa": { en: "World and Narrative", es: "Mundo y narrativa" },
+  "Personagens Jogaveis": { en: "Playable Characters", es: "Personajes jugables" },
+  "Atributos": { en: "Attributes", es: "Atributos" },
+  "Itens e Equipamentos": { en: "Items and Equipment", es: "Ítems y equipamiento" },
+  "Narrativa e NPCs": { en: "Narrative and NPCs", es: "Narrativa y NPCs" },
+  "Economia": { en: "Economy", es: "Economía" },
+  "Mecanicas Principais de RPG": { en: "Main RPG Mechanics", es: "Mecánicas principales de RPG" },
+  "Exploracao": { en: "Exploration", es: "Exploración" },
+  "Inventario": { en: "Inventory", es: "Inventario" },
+  "Personagens, Classes e Buildcraft": { en: "Characters, Classes and Buildcraft", es: "Personajes, clases y buildcraft" },
+  "Classes": { en: "Classes", es: "Clases" },
+  "Arvore de Habilidades": { en: "Skill Tree", es: "Árbol de habilidades" },
+  "Sistema de Combate Avancado": { en: "Advanced Combat System", es: "Sistema de combate avanzado" },
+  "Formulas Base": { en: "Base Formulas", es: "Fórmulas base" },
+  "IA Inimiga e Bosses": { en: "Enemy AI and Bosses", es: "IA enemiga y jefes" },
+  "Itens, Equipamentos e Loot": { en: "Items, Equipment and Loot", es: "Ítems, equipamiento y loot" },
+  "Politica de Loot": { en: "Loot Policy", es: "Política de loot" },
+  "Upgrade e Encantamento": { en: "Upgrade and Enchanting", es: "Mejora y encantamiento" },
+  "Narrativa, Lore e Missoes": { en: "Narrative, Lore and Quests", es: "Narrativa, lore y misiones" },
+  "Sistemas Secundarios": { en: "Secondary Systems", es: "Sistemas secundarios" },
+  "Economia e Monetizacao de RPG": { en: "RPG Economy and Monetization", es: "Economía y monetización de RPG" },
+  "Estrutura de Run": { en: "Run Structure", es: "Estructura de run" },
+  "Metaprogressao": { en: "Meta Progression", es: "Meta progresión" },
+  "Run Design": { en: "Run Design", es: "Diseño de run" },
+  "Geracao Procedural": { en: "Procedural Generation", es: "Generación procedural" },
+  "Buildcraft e Sinergias": { en: "Buildcraft and Synergies", es: "Buildcraft y sinergias" },
+  "Metaprogressao e Persistencia": { en: "Meta Progression and Persistence", es: "Meta progresión y persistencia" },
+  "Economia de Run": { en: "Run Economy", es: "Economía de run" },
+  "Arquitetura de Run": { en: "Run Architecture", es: "Arquitectura de run" },
+  "Curva de Risco": { en: "Risk Curve", es: "Curva de riesgo" },
+  "Objetivos Primario e Secundario": { en: "Primary and Secondary Objectives", es: "Objetivos primario y secundario" },
+  "Geracao Procedural Avancada": { en: "Advanced Procedural Generation", es: "Generación procedural avanzada" },
+  "Combate, Armas e Modificadores": { en: "Combat, Weapons and Modifiers", es: "Combate, armas y modificadores" },
+  "Buildcraft": { en: "Buildcraft", es: "Buildcraft" },
+  "Elites e Bosses": { en: "Elites and Bosses", es: "Élites y jefes" },
+  "Economia e Loja de Run": { en: "Run Economy and Shop", es: "Economía y tienda de run" },
+  "Movimento": { en: "Movement", es: "Movimiento" },
+  "Estrutura de Fases": { en: "Level Structure", es: "Estructura de niveles" },
+  "Physics e Controle": { en: "Physics and Control", es: "Física y control" },
+  "Level Design": { en: "Level Design", es: "Diseño de niveles" },
+  "Checkpoints e Recuperacao": { en: "Checkpoints and Recovery", es: "Checkpoints y recuperación" },
+  "Inimigos e Obstaculos": { en: "Enemies and Obstacles", es: "Enemigos y obstáculos" },
+  "Recompensas e Colecionaveis": { en: "Rewards and Collectibles", es: "Recompensas y coleccionables" },
+  "Sistema de Movimento Avancado": { en: "Advanced Movement System", es: "Sistema de movimiento avanzado" },
+  "Parametros de Movimento": { en: "Movement Parameters", es: "Parámetros de movimiento" },
+  "Assistencias": { en: "Assists", es: "Asistencias" },
+  "Arquitetura de Fases": { en: "Level Architecture", es: "Arquitectura de niveles" },
+  "Curva de Dificuldade e Pacing": { en: "Difficulty Curve and Pacing", es: "Curva de dificultad y pacing" },
+  "Combate (se aplicavel)": { en: "Combat (if applicable)", es: "Combate (si aplica)" },
+  "Boss Fights": { en: "Boss Fights", es: "Combates de jefe" },
+  "Economia de Colecionaveis": { en: "Collectibles Economy", es: "Economía de coleccionables" },
+  "Playtest de Sensacao de Controle": { en: "Control Feel Playtest", es: "Playtest de sensación de control" },
+  "Regras do Puzzle": { en: "Puzzle Rules", es: "Reglas del puzzle" },
+  "Progressao de Fases": { en: "Level Progression", es: "Progresión de niveles" },
+  "Feedback": { en: "Feedback", es: "Feedback" },
+  "Regras Formais": { en: "Formal Rules", es: "Reglas formales" },
+  "Taxonomia de Puzzles": { en: "Puzzle Taxonomy", es: "Taxonomía de puzzles" },
+  "Onboarding Pedagogico": { en: "Pedagogical Onboarding", es: "Onboarding pedagógico" },
+  "Sistema de Dicas": { en: "Hint System", es: "Sistema de pistas" },
+  "Telemetria de Dificuldade": { en: "Difficulty Telemetry", es: "Telemetría de dificultad" },
+  "Modelo Formal do Puzzle": { en: "Formal Puzzle Model", es: "Modelo formal del puzzle" },
+  "Solver de Referencia": { en: "Reference Solver", es: "Solver de referencia" },
+  "Geracao de Conteudo": { en: "Content Generation", es: "Generación de contenido" },
+  "Curva de Dificuldade": { en: "Difficulty Curve", es: "Curva de dificultad" },
+  "Onboarding e Tutoriais": { en: "Onboarding and Tutorials", es: "Onboarding y tutoriales" },
+  "Sistema de Hints e Recuperacao": { en: "Hints and Recovery System", es: "Sistema de pistas y recuperación" },
+  "UI Cognitiva": { en: "Cognitive UI", es: "UI cognitiva" },
+  "Analytics de Qualidade": { en: "Quality Analytics", es: "Analítica de calidad" },
+  "Plano de Conteudo": { en: "Content Plan", es: "Plan de contenido" },
+  "Loop de Gestao": { en: "Management Loop", es: "Bucle de gestión" },
+  "Recursos": { en: "Resources", es: "Recursos" },
+  "Cadeias de Producao": { en: "Production Chains", es: "Cadenas de producción" },
+  "Economia Sistemica": { en: "Systemic Economy", es: "Economía sistémica" },
+  "Agentes e Comportamento": { en: "Agents and Behavior", es: "Agentes y comportamiento" },
+  "Eventos Dinamicos": { en: "Dynamic Events", es: "Eventos dinámicos" },
+  "UI de Operacao e Telemetria": { en: "Operations UI and Telemetry", es: "UI operativa y telemetría" },
+  "Modelagem de Sistemas": { en: "Systems Modeling", es: "Modelado de sistemas" },
+  "Buffers e Capacidade": { en: "Buffers and Capacity", es: "Buffers y capacidad" },
+  "Economia de Simulacao": { en: "Simulation Economy", es: "Economía de simulación" },
+  "Agentes, IA e Comportamentos": { en: "Agents, AI and Behaviors", es: "Agentes, IA y comportamientos" },
+  "Eventos e Gestao de Crise": { en: "Events and Crisis Management", es: "Eventos y gestión de crisis" },
+  "Balanceamento e Tuning": { en: "Balancing and Tuning", es: "Balance y tuning" },
+  "UX de Supervisao": { en: "Supervision UX", es: "UX de supervisión" },
+  "Expansao de Conteudo": { en: "Content Expansion", es: "Expansión de contenido" },
 };
 
 const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
@@ -372,6 +495,21 @@ const STYLE_EXTRA: Record<WizardStyle, string> = {
   profundo: "Objetivo: detalhar criterios, edge cases e metricas de acompanhamento.",
 };
 
+const STYLE_EXTRA_I18N: Record<WizardStyle, LocaleText> = {
+  enxuto: {
+    en: "Goal: keep this section direct, clear and operational.",
+    es: "Objetivo: mantener esta sección directa, clara y operacional.",
+  },
+  padrao: {
+    en: "Goal: balance context, rules and practical examples.",
+    es: "Objetivo: equilibrar contexto, reglas y ejemplos prácticos.",
+  },
+  profundo: {
+    en: "Goal: detail criteria, edge cases and tracking metrics.",
+    es: "Objetivo: detallar criterios, casos límite y métricas de seguimiento.",
+  },
+};
+
 const GENRE_LABEL: Record<WizardGenre, string> = {
   rpg: "RPG",
   roguelike: "Roguelike",
@@ -387,6 +525,28 @@ const PLATFORM_LABEL: Record<WizardPlatform, string> = {
   web: "Web",
 };
 
+const GENRE_LABEL_I18N: Record<WizardGenre, LocaleText> = {
+  rpg: { en: "RPG", es: "RPG" },
+  roguelike: { en: "Roguelike", es: "Roguelike" },
+  platformer: { en: "Platformer", es: "Plataformas" },
+  puzzle: { en: "Puzzle", es: "Puzzle" },
+  simulation: { en: "Simulation", es: "Simulación" },
+};
+
+const PLATFORM_LABEL_I18N: Record<WizardPlatform, LocaleText> = {
+  pc: { en: "PC", es: "PC" },
+  mobile: { en: "Mobile", es: "Móvil" },
+  console: { en: "Console", es: "Consola" },
+  web: { en: "Web", es: "Web" },
+};
+
+function localizeTemplateText(text: string, locale: AppLocale): string {
+  if (locale === "pt-BR") return text;
+  const entry = TEMPLATE_TEXT_TRANSLATIONS[text];
+  if (!entry) return text;
+  return locale === "es" ? entry.es : entry.en;
+}
+
 function cloneSection(item: TemplateSection): TemplateSection {
   return {
     ...item,
@@ -394,11 +554,14 @@ function cloneSection(item: TemplateSection): TemplateSection {
   };
 }
 
-function applyStyleToSection(item: TemplateSection, style: WizardStyle): TemplateSection {
+function applyStyleToSection(item: TemplateSection, style: WizardStyle, locale: AppLocale): TemplateSection {
+  const suffix =
+    locale === "pt-BR" ? STYLE_EXTRA[style] : locale === "es" ? STYLE_EXTRA_I18N[style].es : STYLE_EXTRA_I18N[style].en;
   return {
     ...item,
-    content: `${item.content}\n\n${STYLE_EXTRA[style]}`,
-    subsections: item.subsections?.map((child) => applyStyleToSection(child, style)),
+    title: localizeTemplateText(item.title, locale),
+    content: `${localizeTemplateText(item.content, locale)}\n\n${suffix}`,
+    subsections: item.subsections?.map((child) => applyStyleToSection(child, style, locale)),
   };
 }
 
@@ -408,26 +571,40 @@ function composeSections(scope: WizardScope, genre: WizardGenre): TemplateSectio
   return [...common, ...genreSpecific];
 }
 
-export function getWizardGenreOptions(): Array<{ id: WizardGenre; label: string }> {
+export function getWizardGenreOptions(locale: AppLocale = "pt-BR"): Array<{ id: WizardGenre; label: string }> {
   return [
-    { id: "rpg", label: "RPG" },
-    { id: "roguelike", label: "Roguelike" },
-    { id: "platformer", label: "Platformer" },
-    { id: "puzzle", label: "Puzzle" },
-    { id: "simulation", label: "Simulacao" },
+    { id: "rpg", label: locale === "pt-BR" ? "RPG" : locale === "es" ? GENRE_LABEL_I18N.rpg.es : GENRE_LABEL_I18N.rpg.en },
+    { id: "roguelike", label: locale === "pt-BR" ? "Roguelike" : locale === "es" ? GENRE_LABEL_I18N.roguelike.es : GENRE_LABEL_I18N.roguelike.en },
+    { id: "platformer", label: locale === "pt-BR" ? "Platformer" : locale === "es" ? GENRE_LABEL_I18N.platformer.es : GENRE_LABEL_I18N.platformer.en },
+    { id: "puzzle", label: locale === "pt-BR" ? "Puzzle" : locale === "es" ? GENRE_LABEL_I18N.puzzle.es : GENRE_LABEL_I18N.puzzle.en },
+    { id: "simulation", label: locale === "pt-BR" ? "Simulacao" : locale === "es" ? GENRE_LABEL_I18N.simulation.es : GENRE_LABEL_I18N.simulation.en },
   ];
 }
 
-export function getWizardPlatformOptions(): Array<{ id: WizardPlatform; label: string }> {
+export function getWizardPlatformOptions(locale: AppLocale = "pt-BR"): Array<{ id: WizardPlatform; label: string }> {
   return [
-    { id: "pc", label: "PC" },
-    { id: "mobile", label: "Mobile" },
-    { id: "console", label: "Console" },
-    { id: "web", label: "Web" },
+    { id: "pc", label: locale === "pt-BR" ? "PC" : locale === "es" ? PLATFORM_LABEL_I18N.pc.es : PLATFORM_LABEL_I18N.pc.en },
+    { id: "mobile", label: locale === "pt-BR" ? "Mobile" : locale === "es" ? PLATFORM_LABEL_I18N.mobile.es : PLATFORM_LABEL_I18N.mobile.en },
+    { id: "console", label: locale === "pt-BR" ? "Console" : locale === "es" ? PLATFORM_LABEL_I18N.console.es : PLATFORM_LABEL_I18N.console.en },
+    { id: "web", label: locale === "pt-BR" ? "Web" : locale === "es" ? PLATFORM_LABEL_I18N.web.es : PLATFORM_LABEL_I18N.web.en },
   ];
 }
 
-export function getWizardScopeOptions(): Array<{ id: WizardScope; label: string; summary: string }> {
+export function getWizardScopeOptions(locale: AppLocale = "pt-BR"): Array<{ id: WizardScope; label: string; summary: string }> {
+  if (locale === "en") {
+    return [
+      { id: "mini", label: "Mini", summary: "Lean structure to start fast." },
+      { id: "medio", label: "Medium", summary: "Balanced coverage for early production." },
+      { id: "completo", label: "Complete", summary: "Broad structure with more depth." },
+    ];
+  }
+  if (locale === "es") {
+    return [
+      { id: "mini", label: "Mini", summary: "Estructura ligera para empezar rápido." },
+      { id: "medio", label: "Medio", summary: "Cobertura equilibrada para producción inicial." },
+      { id: "completo", label: "Completo", summary: "Estructura amplia con mayor profundidad." },
+    ];
+  }
   return [
     { id: "mini", label: "Mini", summary: "Estrutura enxuta para iniciar rapido." },
     { id: "medio", label: "Medio", summary: "Cobertura equilibrada para producao inicial." },
@@ -435,7 +612,21 @@ export function getWizardScopeOptions(): Array<{ id: WizardScope; label: string;
   ];
 }
 
-export function getWizardStyleOptions(): Array<{ id: WizardStyle; label: string; summary: string }> {
+export function getWizardStyleOptions(locale: AppLocale = "pt-BR"): Array<{ id: WizardStyle; label: string; summary: string }> {
+  if (locale === "en") {
+    return [
+      { id: "enxuto", label: "Lean", summary: "Straight to the point and objective." },
+      { id: "padrao", label: "Standard", summary: "Balanced for most projects." },
+      { id: "profundo", label: "Deep", summary: "More details and criteria per section." },
+    ];
+  }
+  if (locale === "es") {
+    return [
+      { id: "enxuto", label: "Ligero", summary: "Directo al punto y objetivo." },
+      { id: "padrao", label: "Estándar", summary: "Equilibrado para la mayoría de proyectos." },
+      { id: "profundo", label: "Profundo", summary: "Más detalles y criterios por sección." },
+    ];
+  }
   return [
     { id: "enxuto", label: "Enxuto", summary: "Direto ao ponto e objetivo." },
     { id: "padrao", label: "Padrao", summary: "Equilibrado para a maioria dos projetos." },
@@ -443,34 +634,93 @@ export function getWizardStyleOptions(): Array<{ id: WizardStyle; label: string;
   ];
 }
 
-export function resolveTemplateFromWizard(choices: WizardChoices): ResolvedTemplate {
+export function resolveTemplateFromWizard(choices: WizardChoices, locale: AppLocale = "pt-BR"): ResolvedTemplate {
   const meta = GENRE_META[choices.genre];
   const sections = composeSections(choices.scope, choices.genre).map((item) =>
-    applyStyleToSection(item, choices.style)
+    applyStyleToSection(item, choices.style, locale)
   );
 
   const platforms =
     choices.platforms.length > 0
-      ? choices.platforms.map((platform) => PLATFORM_LABEL[platform]).join(", ")
-      : "Nao definido";
+      ? choices.platforms
+          .map((platform) =>
+            locale === "pt-BR"
+              ? PLATFORM_LABEL[platform]
+              : locale === "es"
+                ? PLATFORM_LABEL_I18N[platform].es
+                : PLATFORM_LABEL_I18N[platform].en
+          )
+          .join(", ")
+      : locale === "es"
+        ? "No definido"
+        : locale === "en"
+          ? "Not defined"
+          : "Nao definido";
 
   const scopeLabel =
-    choices.scope === "mini"
-      ? "Mini"
-      : choices.scope === "medio"
-        ? "Medio"
-        : "Completo";
+    locale === "en"
+      ? choices.scope === "mini"
+        ? "Mini"
+        : choices.scope === "medio"
+          ? "Medium"
+          : "Complete"
+      : locale === "es"
+        ? choices.scope === "mini"
+          ? "Mini"
+          : choices.scope === "medio"
+            ? "Medio"
+            : "Completo"
+        : choices.scope === "mini"
+          ? "Mini"
+          : choices.scope === "medio"
+            ? "Medio"
+            : "Completo";
 
   const styleLabel =
-    choices.style === "enxuto"
-      ? "Enxuto"
-      : choices.style === "padrao"
-        ? "Padrao"
-        : "Profundo";
+    locale === "en"
+      ? choices.style === "enxuto"
+        ? "Lean"
+        : choices.style === "padrao"
+          ? "Standard"
+          : "Deep"
+      : locale === "es"
+        ? choices.style === "enxuto"
+          ? "Ligero"
+          : choices.style === "padrao"
+            ? "Estándar"
+            : "Profundo"
+        : choices.style === "enxuto"
+          ? "Enxuto"
+          : choices.style === "padrao"
+            ? "Padrao"
+            : "Profundo";
+
+  const projectBaseTitle =
+    locale === "pt-BR"
+      ? meta.baseTitle
+      : locale === "es"
+        ? localizeTemplateText(meta.baseTitle, "es")
+        : localizeTemplateText(meta.baseTitle, "en");
+  const projectGenreLabel =
+    locale === "pt-BR"
+      ? GENRE_LABEL[choices.genre]
+      : locale === "es"
+        ? GENRE_LABEL_I18N[choices.genre].es
+        : GENRE_LABEL_I18N[choices.genre].en;
+
+  const descriptionBase =
+    locale === "pt-BR"
+      ? meta.description
+      : locale === "es"
+        ? localizeTemplateText(meta.description, "es")
+        : localizeTemplateText(meta.description, "en");
+  const platformsLabel = locale === "pt-BR" ? "Plataformas alvo" : locale === "es" ? "Plataformas objetivo" : "Target platforms";
+  const scopeText = locale === "pt-BR" ? "Escopo" : locale === "es" ? "Alcance" : "Scope";
+  const styleText = locale === "pt-BR" ? "Estilo" : locale === "es" ? "Estilo" : "Style";
 
   return {
-    projectTitle: `${meta.baseTitle} ${GENRE_LABEL[choices.genre]}`,
-    projectDescription: `${meta.description}\nPlataformas alvo: ${platforms}.\nEscopo: ${scopeLabel}. Estilo: ${styleLabel}.`,
+    projectTitle: `${projectBaseTitle} ${projectGenreLabel}`,
+    projectDescription: `${descriptionBase}\n${platformsLabel}: ${platforms}.\n${scopeText}: ${scopeLabel}. ${styleText}: ${styleLabel}.`,
     sections,
   };
 }

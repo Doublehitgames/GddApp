@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
+import type { AppLocale } from "@/lib/i18n/config";
 import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
 import {
   getWizardGenreOptions,
@@ -36,12 +37,28 @@ const STEP_META: Array<{ id: WizardStep; label: string; title: string; descripti
   { id: 6, label: "Passo 6", title: "Preview", description: "Revise a estrutura e crie o projeto." },
 ];
 
-const GENRE_ADJECTIVES: Record<WizardGenre, string[]> = {
-  rpg: ["Lendas", "Cronicas", "Reinos", "Ecos", "Guardioes"],
-  roguelike: ["Abismo", "Ruina", "Labirinto", "Cinzas", "Catacumba"],
-  platformer: ["Salto", "Horizonte", "Circuito", "Neblina", "Pulsar"],
-  puzzle: ["Enigma", "Nexo", "Prisma", "Sintonia", "Mosaico"],
-  simulation: ["Projeto", "Nucleo", "Ciclo", "Fluxo", "Operacao"],
+const GENRE_ADJECTIVES: Record<AppLocale, Record<WizardGenre, string[]>> = {
+  "pt-BR": {
+    rpg: ["Lendas", "Cronicas", "Reinos", "Ecos", "Guardioes"],
+    roguelike: ["Abismo", "Ruina", "Labirinto", "Cinzas", "Catacumba"],
+    platformer: ["Salto", "Horizonte", "Circuito", "Neblina", "Pulsar"],
+    puzzle: ["Enigma", "Nexo", "Prisma", "Sintonia", "Mosaico"],
+    simulation: ["Projeto", "Nucleo", "Ciclo", "Fluxo", "Operacao"],
+  },
+  en: {
+    rpg: ["Legends", "Chronicles", "Realms", "Echoes", "Guardians"],
+    roguelike: ["Abyss", "Ruin", "Labyrinth", "Ashes", "Catacomb"],
+    platformer: ["Leap", "Horizon", "Circuit", "Mist", "Pulse"],
+    puzzle: ["Enigma", "Nexus", "Prism", "Harmony", "Mosaic"],
+    simulation: ["Project", "Core", "Cycle", "Flow", "Operation"],
+  },
+  es: {
+    rpg: ["Leyendas", "Cronicas", "Reinos", "Ecos", "Guardianes"],
+    roguelike: ["Abismo", "Ruina", "Laberinto", "Cenizas", "Catacumba"],
+    platformer: ["Salto", "Horizonte", "Circuito", "Niebla", "Pulso"],
+    puzzle: ["Enigma", "Nexo", "Prisma", "Sintonia", "Mosaico"],
+    simulation: ["Proyecto", "Nucleo", "Ciclo", "Flujo", "Operacion"],
+  },
 };
 
 function getStructuralLimitMessage(errorCode: string, t: (key: string) => string): string {
@@ -61,8 +78,8 @@ function randomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function generateProjectName(genre: WizardGenre): string {
-  const adjective = randomItem(GENRE_ADJECTIVES[genre]);
+function generateProjectName(genre: WizardGenre, locale: AppLocale): string {
+  const adjective = randomItem(GENRE_ADJECTIVES[locale][genre]);
   const number = 10 + Math.floor(Math.random() * 90);
   return `${adjective} ${number}`;
 }
@@ -77,7 +94,7 @@ function cardClass(selected: boolean): string {
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const addProject = useProjectStore((state) => state.addProject);
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
@@ -94,10 +111,10 @@ export default function ProjectsPage() {
   const [projectName, setProjectName] = useState("");
   const [selectedRootSectionIds, setSelectedRootSectionIds] = useState<string[]>([]);
 
-  const genreOptions = getWizardGenreOptions();
-  const platformOptions = getWizardPlatformOptions();
-  const scopeOptions = getWizardScopeOptions();
-  const styleOptions = getWizardStyleOptions();
+  const genreOptions = useMemo(() => getWizardGenreOptions(locale), [locale]);
+  const platformOptions = useMemo(() => getWizardPlatformOptions(locale), [locale]);
+  const scopeOptions = useMemo(() => getWizardScopeOptions(locale), [locale]);
+  const styleOptions = useMemo(() => getWizardStyleOptions(locale), [locale]);
 
   const choices = useMemo<WizardChoices | null>(() => {
     if (!form.genre || !form.scope || !form.style) return null;
@@ -112,8 +129,8 @@ export default function ProjectsPage() {
 
   const resolvedTemplate = useMemo(() => {
     if (!choices) return null;
-    return resolveTemplateFromWizard(choices);
-  }, [choices]);
+    return resolveTemplateFromWizard(choices, locale);
+  }, [choices, locale]);
 
   useEffect(() => {
     if (!resolvedTemplate) return;
@@ -123,8 +140,8 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (!form.genre) return;
     if (projectName.trim()) return;
-    setProjectName(generateProjectName(form.genre));
-  }, [form.genre, projectName]);
+    setProjectName(generateProjectName(form.genre, locale));
+  }, [form.genre, projectName, locale]);
 
   const selectedSections = useMemo(() => {
     if (!resolvedTemplate) return [];
@@ -405,7 +422,7 @@ export default function ProjectsPage() {
                     placeholder={t("projectsPage.wizard.projectNamePlaceholder")}
                   />
                   <button
-                    onClick={() => form.genre && setProjectName(generateProjectName(form.genre))}
+                    onClick={() => form.genre && setProjectName(generateProjectName(form.genre, locale))}
                     className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
                   >
                     {t("projectsPage.wizard.generateAnotherName")}
