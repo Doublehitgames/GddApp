@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
+import { useI18n } from "@/lib/i18n/provider";
 import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
 import {
   getWizardGenreOptions,
@@ -16,11 +17,6 @@ import {
   type WizardScope,
   type WizardStyle,
 } from "@/lib/templates/manualTemplates";
-import {
-  FREE_MAX_PROJECTS,
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -48,17 +44,17 @@ const GENRE_ADJECTIVES: Record<WizardGenre, string[]> = {
   simulation: ["Projeto", "Nucleo", "Ciclo", "Fluxo", "Operacao"],
 };
 
-function getStructuralLimitMessage(errorCode: string): string {
+function getStructuralLimitMessage(errorCode: string, t: (key: string) => string): string {
   if (errorCode === "structural_limit_projects") {
-    return `Limite do plano Free: voce pode ter no maximo ${FREE_MAX_PROJECTS} projetos.`;
+    return t("limits.projects");
   }
   if (errorCode === "structural_limit_sections_per_project") {
-    return `Limite do plano Free: maximo de ${FREE_MAX_SECTIONS_PER_PROJECT} secoes por projeto.`;
+    return t("limits.sectionsPerProject");
   }
   if (errorCode === "structural_limit_sections_total") {
-    return `Limite do plano Free: maximo de ${FREE_MAX_SECTIONS_TOTAL} secoes na conta.`;
+    return t("limits.sectionsTotal");
   }
-  return "Nao foi possivel criar o projeto neste momento.";
+  return t("projectsPage.wizard.errors.createFailed");
 }
 
 function randomItem<T>(items: T[]): T {
@@ -81,6 +77,7 @@ function cardClass(selected: boolean): string {
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const addProject = useProjectStore((state) => state.addProject);
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
@@ -139,16 +136,31 @@ export default function ProjectsPage() {
     () => selectedSections.reduce((sum, section) => sum + (section.subsections?.length || 0), 0),
     [selectedSections]
   );
-  const currentStep = STEP_META.find((item) => item.id === step) || STEP_META[0];
-  const selectedGenreLabel = genreOptions.find((item) => item.id === form.genre)?.label || "Nao definido";
-  const selectedScopeLabel = scopeOptions.find((item) => item.id === form.scope)?.label || "Nao definido";
-  const selectedStyleLabel = styleOptions.find((item) => item.id === form.style)?.label || "Nao definido";
+  const localizedStepMeta = useMemo(
+    () =>
+      STEP_META.map((item) => ({
+        ...item,
+        label: t(`projectsPage.wizard.stepMeta.${item.id}.label`),
+        title: t(`projectsPage.wizard.stepMeta.${item.id}.title`),
+        description: t(`projectsPage.wizard.stepMeta.${item.id}.description`),
+      })),
+    [t]
+  );
+
+  const currentStep = localizedStepMeta.find((item) => item.id === step) || localizedStepMeta[0];
+
+  const selectedGenreLabel =
+    genreOptions.find((item) => item.id === form.genre)?.label || t("projectsPage.wizard.notDefined");
+  const selectedScopeLabel =
+    scopeOptions.find((item) => item.id === form.scope)?.label || t("projectsPage.wizard.notDefined");
+  const selectedStyleLabel =
+    styleOptions.find((item) => item.id === form.style)?.label || t("projectsPage.wizard.notDefined");
   const selectedPlatformLabel = form.platforms.length
     ? platformOptions
         .filter((item) => form.platforms.includes(item.id))
         .map((item) => item.label)
         .join(", ")
-    : "Nao definido";
+    : t("projectsPage.wizard.notDefined");
 
   const canGoNext =
     (step === 1 && true) ||
@@ -193,11 +205,11 @@ export default function ProjectsPage() {
   const handleCreate = () => {
     if (!resolvedTemplate) return;
     if (!projectName.trim()) {
-      setError("Defina um nome para o projeto.");
+      setError(t("projectsPage.wizard.errors.nameRequired"));
       return;
     }
     if (selectedRootSectionIds.length === 0) {
-      setError("Selecione pelo menos uma secao para criar o projeto.");
+      setError(t("projectsPage.wizard.errors.sectionRequired"));
       return;
     }
 
@@ -218,9 +230,9 @@ export default function ProjectsPage() {
       router.push(`/projects/${projectId}`);
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("structural_limit_")) {
-        setError(getStructuralLimitMessage(e.message));
+        setError(getStructuralLimitMessage(e.message, t));
       } else {
-        setError("Nao foi possivel criar o projeto. Tente novamente.");
+        setError(t("projectsPage.wizard.errors.createFailed"));
       }
     } finally {
       setIsCreating(false);
@@ -234,17 +246,21 @@ export default function ProjectsPage() {
           onClick={previousStep}
           className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm"
         >
-          ← {step === 1 ? "Voltar para Home" : "Voltar"}
+          ← {step === 1 ? t("projectsPage.wizard.backHome") : t("common.back")}
         </button>
 
         <header className="mt-5 mb-6 rounded-2xl border border-gray-700/80 bg-gray-900/70 p-5 backdrop-blur-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-blue-300">{currentStep.label}</p>
-              <h1 className="text-3xl font-bold mt-1">Wizard de Criacao Manual</h1>
+              <h1 className="text-3xl font-bold mt-1">{t("projectsPage.wizard.title")}</h1>
               <p className="text-gray-300 mt-2">{currentStep.title} - {currentStep.description}</p>
             </div>
-            <p className="text-sm text-gray-400">Passo {step} de 6</p>
+            <p className="text-sm text-gray-400">
+              {t("projectsPage.wizard.stepOf")
+                .replace("{{step}}", String(step))
+                .replace("{{total}}", "6")}
+            </p>
           </div>
           <div className="w-full bg-gray-800 rounded-full h-2 mt-5">
             <div
@@ -253,7 +269,7 @@ export default function ProjectsPage() {
             />
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-4">
-            {STEP_META.map((item) => {
+            {localizedStepMeta.map((item) => {
               const done = item.id < step;
               const active = item.id === step;
               return (
@@ -277,18 +293,18 @@ export default function ProjectsPage() {
         <section className="bg-gray-900/70 border border-gray-700/80 rounded-2xl p-6 backdrop-blur-sm shadow-xl shadow-black/20">
           {step === 1 && (
             <div>
-              <h2 className="text-xl font-semibold mb-2">1. Tipo de projeto</h2>
-              <p className="text-gray-300 mb-4">Neste MVP, o wizard esta focado em jogo digital.</p>
+              <h2 className="text-xl font-semibold mb-2">{t("projectsPage.wizard.step1.heading")}</h2>
+              <p className="text-gray-300 mb-4">{t("projectsPage.wizard.step1.description")}</p>
               <button className="w-full text-left p-5 rounded-xl border border-blue-500 bg-blue-600/20 shadow-md shadow-blue-900/20">
-                <p className="font-semibold">Jogo digital</p>
-                <p className="text-sm text-gray-300">Estrutura de GDD com secoes de gameplay, producao e UX.</p>
+                <p className="font-semibold">{t("projectsPage.wizard.step1.cardTitle")}</p>
+                <p className="text-sm text-gray-300">{t("projectsPage.wizard.step1.cardDescription")}</p>
               </button>
             </div>
           )}
 
           {step === 2 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">2. Escolha o genero principal</h2>
+              <h2 className="text-xl font-semibold mb-4">{t("projectsPage.wizard.step2.heading")}</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {genreOptions.map((option) => {
                   const selected = form.genre === option.id;
@@ -299,7 +315,9 @@ export default function ProjectsPage() {
                       className={cardClass(selected)}
                     >
                       <p className="font-semibold">{option.label}</p>
-                      <p className="text-sm text-gray-300 mt-1">Template otimizado para {option.label}.</p>
+                      <p className="text-sm text-gray-300 mt-1">
+                        {t("projectsPage.wizard.step2.optimizedFor").replace("{{genre}}", option.label)}
+                      </p>
                     </button>
                   );
                 })}
@@ -309,8 +327,8 @@ export default function ProjectsPage() {
 
           {step === 3 && (
             <div>
-              <h2 className="text-xl font-semibold mb-2">3. Plataforma alvo</h2>
-              <p className="text-gray-300 mb-4">Selecione uma ou mais plataformas.</p>
+              <h2 className="text-xl font-semibold mb-2">{t("projectsPage.wizard.step3.heading")}</h2>
+              <p className="text-gray-300 mb-4">{t("projectsPage.wizard.step3.description")}</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {platformOptions.map((option) => {
                   const selected = form.platforms.includes(option.id);
@@ -330,7 +348,7 @@ export default function ProjectsPage() {
 
           {step === 4 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">4. Escopo inicial</h2>
+              <h2 className="text-xl font-semibold mb-4">{t("projectsPage.wizard.step4.heading")}</h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 {scopeOptions.map((option) => {
                   const selected = form.scope === option.id;
@@ -351,7 +369,7 @@ export default function ProjectsPage() {
 
           {step === 5 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">5. Estilo de template</h2>
+              <h2 className="text-xl font-semibold mb-4">{t("projectsPage.wizard.step5.heading")}</h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 {styleOptions.map((option) => {
                   const selected = form.style === option.id;
@@ -372,25 +390,25 @@ export default function ProjectsPage() {
 
           {step === 6 && resolvedTemplate && (
             <div>
-              <h2 className="text-xl font-semibold mb-2">6. Preview e confirmacao</h2>
+              <h2 className="text-xl font-semibold mb-2">{t("projectsPage.wizard.step6.heading")}</h2>
               <p className="text-gray-300 mb-4">
-                Ajuste o nome e marque quais secoes raiz entram no projeto.
+                {t("projectsPage.wizard.step6.description")}
               </p>
 
               <div className="mb-5">
-                <label className="block text-sm mb-2 text-gray-300">Nome do projeto</label>
+                <label className="block text-sm mb-2 text-gray-300">{t("projectsPage.wizard.projectNameLabel")}</label>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     value={projectName}
                     onChange={(event) => setProjectName(event.target.value)}
                     className="flex-1 p-3 rounded-lg bg-gray-950 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nome do projeto"
+                    placeholder={t("projectsPage.wizard.projectNamePlaceholder")}
                   />
                   <button
                     onClick={() => form.genre && setProjectName(generateProjectName(form.genre))}
                     className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
                   >
-                    Gerar outro nome
+                    {t("projectsPage.wizard.generateAnotherName")}
                   </button>
                 </div>
               </div>
@@ -401,19 +419,19 @@ export default function ProjectsPage() {
 
               <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm">
-                  <p className="text-gray-400">Genero</p>
+                  <p className="text-gray-400">{t("projectsPage.wizard.summary.genre")}</p>
                   <p className="font-medium">{selectedGenreLabel}</p>
                 </div>
                 <div className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm">
-                  <p className="text-gray-400">Plataformas</p>
+                  <p className="text-gray-400">{t("projectsPage.wizard.summary.platforms")}</p>
                   <p className="font-medium">{selectedPlatformLabel}</p>
                 </div>
                 <div className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm">
-                  <p className="text-gray-400">Escopo</p>
+                  <p className="text-gray-400">{t("projectsPage.wizard.summary.scope")}</p>
                   <p className="font-medium">{selectedScopeLabel}</p>
                 </div>
                 <div className="rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm">
-                  <p className="text-gray-400">Estilo</p>
+                  <p className="text-gray-400">{t("projectsPage.wizard.summary.style")}</p>
                   <p className="font-medium">{selectedStyleLabel}</p>
                 </div>
               </div>
@@ -435,7 +453,10 @@ export default function ProjectsPage() {
                             <p className="font-medium">{section.title}</p>
                             {section.subsections && section.subsections.length > 0 && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-200">
-                                {section.subsections.length} subsecoes
+                                {t("projectsPage.wizard.subsectionsCount").replace(
+                                  "{{count}}",
+                                  String(section.subsections.length)
+                                )}
                               </span>
                             )}
                           </div>
@@ -455,7 +476,9 @@ export default function ProjectsPage() {
               </div>
 
               <p className="text-sm text-gray-400 mt-4">
-                Estrutura selecionada: {selectedSections.length} secoes raiz e {totalSelectedSubsections} subsecoes.
+                {t("projectsPage.wizard.selectedStructure")
+                  .replace("{{root}}", String(selectedSections.length))
+                  .replace("{{sub}}", String(totalSelectedSubsections))}
               </p>
             </div>
           )}
@@ -473,7 +496,7 @@ export default function ProjectsPage() {
                 disabled={!canGoNext}
                 className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 transition-colors"
               >
-                Avancar
+                {t("projectsPage.wizard.next")}
               </button>
             ) : (
               <button
@@ -481,7 +504,7 @@ export default function ProjectsPage() {
                 disabled={isCreating}
                 className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 transition-colors"
               >
-                {isCreating ? "Criando..." : "Criar projeto"}
+                {isCreating ? t("projectsPage.wizard.creating") : t("projectsPage.wizard.createProject")}
               </button>
             )}
           </div>

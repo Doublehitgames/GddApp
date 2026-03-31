@@ -107,6 +107,87 @@
       "namePlaceholder": "Nombre del proyecto",
       "descriptionPlaceholder": "Descripción",
       "save": "Guardar proyecto"
+    },
+    "wizard": {
+      "title": "Wizard de creación manual",
+      "backHome": "Volver al inicio",
+      "stepOf": "Paso {{step}} de {{total}}",
+      "notDefined": "No definido",
+      "next": "Avanzar",
+      "creating": "Creando...",
+      "createProject": "Crear proyecto",
+      "projectNameLabel": "Nombre del proyecto",
+      "projectNamePlaceholder": "Nombre del proyecto",
+      "generateAnotherName": "Generar otro nombre",
+      "subsectionsCount": "{{count}} subsecciones",
+      "selectedStructure": "Estructura seleccionada: {{root}} secciones raíz y {{sub}} subsecciones.",
+      "stepMeta": {
+        "1": {
+          "label": "Paso 1",
+          "title": "Tipo de proyecto",
+          "description": "Define el formato principal del proyecto."
+        },
+        "2": {
+          "label": "Paso 2",
+          "title": "Género",
+          "description": "Elige el género principal de tu juego."
+        },
+        "3": {
+          "label": "Paso 3",
+          "title": "Plataforma",
+          "description": "Selecciona dónde se publicará el juego."
+        },
+        "4": {
+          "label": "Paso 4",
+          "title": "Alcance",
+          "description": "Ajusta la profundidad inicial del GDD."
+        },
+        "5": {
+          "label": "Paso 5",
+          "title": "Estilo",
+          "description": "Define el nivel de detalle de la plantilla."
+        },
+        "6": {
+          "label": "Paso 6",
+          "title": "Vista previa",
+          "description": "Revisa la estructura y crea el proyecto."
+        }
+      },
+      "step1": {
+        "heading": "1. Tipo de proyecto",
+        "description": "En este MVP, el wizard está enfocado en juego digital.",
+        "cardTitle": "Juego digital",
+        "cardDescription": "Estructura de GDD con secciones de gameplay, producción y UX."
+      },
+      "step2": {
+        "heading": "2. Elige el género principal",
+        "optimizedFor": "Plantilla optimizada para {{genre}}."
+      },
+      "step3": {
+        "heading": "3. Plataforma objetivo",
+        "description": "Selecciona una o más plataformas."
+      },
+      "step4": {
+        "heading": "4. Alcance inicial"
+      },
+      "step5": {
+        "heading": "5. Estilo de plantilla"
+      },
+      "step6": {
+        "heading": "6. Vista previa y confirmación",
+        "description": "Ajusta el nombre y marca qué secciones raíz entran en el proyecto."
+      },
+      "summary": {
+        "genre": "Género",
+        "platforms": "Plataformas",
+        "scope": "Alcance",
+        "style": "Estilo"
+      },
+      "errors": {
+        "nameRequired": "Define un nombre para el proyecto.",
+        "sectionRequired": "Selecciona al menos una sección para crear el proyecto.",
+        "createFailed": "No fue posible crear el proyecto. Inténtalo de nuevo."
+      }
     }
   },
   "projectDetail": {

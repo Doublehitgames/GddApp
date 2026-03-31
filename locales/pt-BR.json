@@ -107,6 +107,87 @@
       "namePlaceholder": "Nome do projeto",
       "descriptionPlaceholder": "Descrição",
       "save": "Salvar Projeto"
+    },
+    "wizard": {
+      "title": "Wizard de Criação Manual",
+      "backHome": "Voltar para Home",
+      "stepOf": "Passo {{step}} de {{total}}",
+      "notDefined": "Não definido",
+      "next": "Avançar",
+      "creating": "Criando...",
+      "createProject": "Criar projeto",
+      "projectNameLabel": "Nome do projeto",
+      "projectNamePlaceholder": "Nome do projeto",
+      "generateAnotherName": "Gerar outro nome",
+      "subsectionsCount": "{{count}} subseções",
+      "selectedStructure": "Estrutura selecionada: {{root}} seções raiz e {{sub}} subseções.",
+      "stepMeta": {
+        "1": {
+          "label": "Passo 1",
+          "title": "Tipo de projeto",
+          "description": "Defina o formato principal do projeto."
+        },
+        "2": {
+          "label": "Passo 2",
+          "title": "Gênero",
+          "description": "Escolha o gênero principal do seu jogo."
+        },
+        "3": {
+          "label": "Passo 3",
+          "title": "Plataforma",
+          "description": "Selecione onde o jogo será publicado."
+        },
+        "4": {
+          "label": "Passo 4",
+          "title": "Escopo",
+          "description": "Ajuste a profundidade inicial do GDD."
+        },
+        "5": {
+          "label": "Passo 5",
+          "title": "Estilo",
+          "description": "Defina o nível de detalhamento do template."
+        },
+        "6": {
+          "label": "Passo 6",
+          "title": "Preview",
+          "description": "Revise a estrutura e crie o projeto."
+        }
+      },
+      "step1": {
+        "heading": "1. Tipo de projeto",
+        "description": "Neste MVP, o wizard está focado em jogo digital.",
+        "cardTitle": "Jogo digital",
+        "cardDescription": "Estrutura de GDD com seções de gameplay, produção e UX."
+      },
+      "step2": {
+        "heading": "2. Escolha o gênero principal",
+        "optimizedFor": "Template otimizado para {{genre}}."
+      },
+      "step3": {
+        "heading": "3. Plataforma alvo",
+        "description": "Selecione uma ou mais plataformas."
+      },
+      "step4": {
+        "heading": "4. Escopo inicial"
+      },
+      "step5": {
+        "heading": "5. Estilo de template"
+      },
+      "step6": {
+        "heading": "6. Preview e confirmação",
+        "description": "Ajuste o nome e marque quais seções raiz entram no projeto."
+      },
+      "summary": {
+        "genre": "Gênero",
+        "platforms": "Plataformas",
+        "scope": "Escopo",
+        "style": "Estilo"
+      },
+      "errors": {
+        "nameRequired": "Defina um nome para o projeto.",
+        "sectionRequired": "Selecione pelo menos uma seção para criar o projeto.",
+        "createFailed": "Não foi possível criar o projeto. Tente novamente."
+      }
     }
   },
   "projectDetail": {

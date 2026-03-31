@@ -107,6 +107,87 @@
       "namePlaceholder": "Project name",
       "descriptionPlaceholder": "Description",
       "save": "Save Project"
+    },
+    "wizard": {
+      "title": "Manual Creation Wizard",
+      "backHome": "Back to Home",
+      "stepOf": "Step {{step}} of {{total}}",
+      "notDefined": "Not defined",
+      "next": "Next",
+      "creating": "Creating...",
+      "createProject": "Create project",
+      "projectNameLabel": "Project name",
+      "projectNamePlaceholder": "Project name",
+      "generateAnotherName": "Generate another name",
+      "subsectionsCount": "{{count}} subsections",
+      "selectedStructure": "Selected structure: {{root}} root sections and {{sub}} subsections.",
+      "stepMeta": {
+        "1": {
+          "label": "Step 1",
+          "title": "Project type",
+          "description": "Define the main project format."
+        },
+        "2": {
+          "label": "Step 2",
+          "title": "Genre",
+          "description": "Choose your game's main genre."
+        },
+        "3": {
+          "label": "Step 3",
+          "title": "Platform",
+          "description": "Select where the game will be published."
+        },
+        "4": {
+          "label": "Step 4",
+          "title": "Scope",
+          "description": "Adjust the initial GDD depth."
+        },
+        "5": {
+          "label": "Step 5",
+          "title": "Style",
+          "description": "Define the template detail level."
+        },
+        "6": {
+          "label": "Step 6",
+          "title": "Preview",
+          "description": "Review the structure and create the project."
+        }
+      },
+      "step1": {
+        "heading": "1. Project type",
+        "description": "In this MVP, the wizard is focused on digital games.",
+        "cardTitle": "Digital game",
+        "cardDescription": "GDD structure with gameplay, production, and UX sections."
+      },
+      "step2": {
+        "heading": "2. Choose the main genre",
+        "optimizedFor": "Template optimized for {{genre}}."
+      },
+      "step3": {
+        "heading": "3. Target platform",
+        "description": "Select one or more platforms."
+      },
+      "step4": {
+        "heading": "4. Initial scope"
+      },
+      "step5": {
+        "heading": "5. Template style"
+      },
+      "step6": {
+        "heading": "6. Preview and confirmation",
+        "description": "Adjust the name and choose which root sections to include."
+      },
+      "summary": {
+        "genre": "Genre",
+        "platforms": "Platforms",
+        "scope": "Scope",
+        "style": "Style"
+      },
+      "errors": {
+        "nameRequired": "Set a name for the project.",
+        "sectionRequired": "Select at least one section to create the project.",
+        "createFailed": "Could not create the project. Try again."
+      }
     }
   },
   "projectDetail": {
