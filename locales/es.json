@@ -116,6 +116,7 @@
       "next": "Avanzar",
       "creating": "Creando...",
       "createProject": "Crear proyecto",
+      "createWithoutTemplate": "Crear sin plantilla",
       "projectNameLabel": "Nombre del proyecto",
       "projectNamePlaceholder": "Nombre del proyecto",
       "generateAnotherName": "Generar otro nombre",
@@ -156,8 +157,15 @@
       "step1": {
         "heading": "1. Tipo de proyecto",
         "description": "En este MVP, el wizard está enfocado en juego digital.",
+        "modeHeading": "¿Cómo quieres empezar?",
         "cardTitle": "Juego digital",
-        "cardDescription": "Estructura de GDD con secciones de gameplay, producción y UX."
+        "cardDescription": "Estructura de GDD con secciones de gameplay, producción y UX.",
+        "templateOptionTitle": "Empezar con plantilla",
+        "templateOptionDescription": "Sigue los pasos para generar una estructura completa automáticamente.",
+        "blankOptionTitle": "Crear sin plantilla",
+        "blankOptionDescription": "Omite los pasos y crea solo con nombre y descripción.",
+        "blankFormTitle": "Creación rápida sin plantilla",
+        "blankDescriptionPlaceholder": "Descripción del proyecto (opcional)"
       },
       "step2": {
         "heading": "2. Elige el género principal",

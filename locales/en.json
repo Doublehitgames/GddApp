@@ -116,6 +116,7 @@
       "next": "Next",
       "creating": "Creating...",
       "createProject": "Create project",
+      "createWithoutTemplate": "Create without template",
       "projectNameLabel": "Project name",
       "projectNamePlaceholder": "Project name",
       "generateAnotherName": "Generate another name",
@@ -156,8 +157,15 @@
       "step1": {
         "heading": "1. Project type",
         "description": "In this MVP, the wizard is focused on digital games.",
+        "modeHeading": "How do you want to start?",
         "cardTitle": "Digital game",
-        "cardDescription": "GDD structure with gameplay, production, and UX sections."
+        "cardDescription": "GDD structure with gameplay, production, and UX sections.",
+        "templateOptionTitle": "Start with template",
+        "templateOptionDescription": "Follow the steps to automatically generate a complete structure.",
+        "blankOptionTitle": "Create without template",
+        "blankOptionDescription": "Skip the steps and create using only name and description.",
+        "blankFormTitle": "Quick creation without template",
+        "blankDescriptionPlaceholder": "Project description (optional)"
       },
       "step2": {
         "heading": "2. Choose the main genre",

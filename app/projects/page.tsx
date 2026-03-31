@@ -20,6 +20,7 @@ import {
 } from "@/lib/templates/manualTemplates";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
+type CreationMode = "template" | "blank";
 
 type WizardFormState = {
   genre: WizardGenre | null;
@@ -109,6 +110,8 @@ export default function ProjectsPage() {
     style: null,
   });
   const [projectName, setProjectName] = useState("");
+  const [blankDescription, setBlankDescription] = useState("");
+  const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [selectedRootSectionIds, setSelectedRootSectionIds] = useState<string[]>([]);
 
   const genreOptions = useMemo(() => getWizardGenreOptions(locale), [locale]);
@@ -180,7 +183,7 @@ export default function ProjectsPage() {
     : t("projectsPage.wizard.notDefined");
 
   const canGoNext =
-    (step === 1 && true) ||
+    (step === 1 && creationMode === "template") ||
     (step === 2 && !!form.genre) ||
     (step === 3 && form.platforms.length > 0) ||
     (step === 4 && !!form.scope) ||
@@ -256,6 +259,29 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleCreateWithoutTemplate = () => {
+    if (!projectName.trim()) {
+      setError(t("projectsPage.wizard.errors.nameRequired"));
+      return;
+    }
+
+    setError("");
+    setIsCreating(true);
+
+    try {
+      const projectId = addProject(projectName.trim(), blankDescription.trim());
+      router.push(`/projects/${projectId}`);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("structural_limit_")) {
+        setError(getStructuralLimitMessage(e.message, t));
+      } else {
+        setError(t("projectsPage.wizard.errors.createFailed"));
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white px-4 py-8">
       <div className="mx-auto max-w-5xl">
@@ -312,10 +338,43 @@ export default function ProjectsPage() {
             <div>
               <h2 className="text-xl font-semibold mb-2">{t("projectsPage.wizard.step1.heading")}</h2>
               <p className="text-gray-300 mb-4">{t("projectsPage.wizard.step1.description")}</p>
-              <button className="w-full text-left p-5 rounded-xl border border-blue-500 bg-blue-600/20 shadow-md shadow-blue-900/20">
-                <p className="font-semibold">{t("projectsPage.wizard.step1.cardTitle")}</p>
-                <p className="text-sm text-gray-300">{t("projectsPage.wizard.step1.cardDescription")}</p>
-              </button>
+              <p className="text-sm text-gray-400 mb-3">{t("projectsPage.wizard.step1.modeHeading")}</p>
+              <div className="grid gap-3 sm:grid-cols-2 mb-4">
+                <button
+                  onClick={() => setCreationMode("template")}
+                  className={cardClass(creationMode === "template")}
+                >
+                  <p className="font-semibold">{t("projectsPage.wizard.step1.templateOptionTitle")}</p>
+                  <p className="text-sm text-gray-300">{t("projectsPage.wizard.step1.templateOptionDescription")}</p>
+                </button>
+                <button
+                  onClick={() => setCreationMode("blank")}
+                  className={cardClass(creationMode === "blank")}
+                >
+                  <p className="font-semibold">{t("projectsPage.wizard.step1.blankOptionTitle")}</p>
+                  <p className="text-sm text-gray-300">{t("projectsPage.wizard.step1.blankOptionDescription")}</p>
+                </button>
+              </div>
+
+              {creationMode === "blank" && (
+                <div className="p-4 rounded-xl border border-gray-700 bg-gray-950/60">
+                  <h3 className="font-semibold mb-3">{t("projectsPage.wizard.step1.blankFormTitle")}</h3>
+                  <div className="space-y-3">
+                    <input
+                      value={projectName}
+                      onChange={(event) => setProjectName(event.target.value)}
+                      className="w-full p-3 rounded-lg bg-gray-950 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={t("projectsPage.wizard.projectNamePlaceholder")}
+                    />
+                    <textarea
+                      value={blankDescription}
+                      onChange={(event) => setBlankDescription(event.target.value)}
+                      className="w-full p-3 rounded-lg bg-gray-950 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-24"
+                      placeholder={t("projectsPage.wizard.step1.blankDescriptionPlaceholder")}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -507,7 +566,15 @@ export default function ProjectsPage() {
           )}
 
           <div className="mt-6 flex justify-end">
-            {step < 6 ? (
+            {step === 1 && creationMode === "blank" ? (
+              <button
+                onClick={handleCreateWithoutTemplate}
+                disabled={isCreating}
+                className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+              >
+                {isCreating ? t("projectsPage.wizard.creating") : t("projectsPage.wizard.createWithoutTemplate")}
+              </button>
+            ) : step < 6 ? (
               <button
                 onClick={nextStep}
                 disabled={!canGoNext}
