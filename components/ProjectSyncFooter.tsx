@@ -30,6 +30,7 @@ export default function ProjectSyncFooter() {
   const discardPendingChangesForProject = useProjectStore((s) => s.discardPendingChangesForProject);
   const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
   const projects = useProjectStore((s) => s.projects);
+  const diagramsBySection = useProjectStore((s) => s.diagramsBySection);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
   const [syncPreviewItems, setSyncPreviewItems] = useState<SyncPreviewItem[] | null>(null);
@@ -42,8 +43,12 @@ export default function ProjectSyncFooter() {
   const isDirty = projectId ? getPendingProjectIds().includes(projectId) : false;
   const pendingSignature = useMemo(() => {
     if (!project || !projectId) return "";
-    return `${projectId}:${(project.sections ?? []).length}:${project.updatedAt}`;
-  }, [projectId, project, projects]);
+    const diagramStamp = Object.entries(diagramsBySection)
+      .filter(([key]) => key.startsWith(`${projectId}:`))
+      .map(([, state]) => state?.updatedAt || "")
+      .join(",");
+    return `${projectId}:${(project.sections ?? []).length}:${project.updatedAt}:${diagramStamp}`;
+  }, [projectId, project, projects, diagramsBySection]);
 
   const cloudSyncPaused = Boolean(
     cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
@@ -155,7 +160,8 @@ export default function ProjectSyncFooter() {
 
   const isViewRoute = /^\/projects\/[^/]+\/view(?:\/|$)/.test(pathname || "");
   const isMindMapRoute = /^\/projects\/[^/]+\/mindmap(?:\/|$)/.test(pathname || "");
-  if (!user || !projectId || isViewRoute || isMindMapRoute) return null;
+  const isDiagramRoute = /\/diagramas(?:\/|$)/.test(pathname || "");
+  if (!user || !projectId || isViewRoute || isMindMapRoute || isDiagramRoute) return null;
 
   return (
     <footer

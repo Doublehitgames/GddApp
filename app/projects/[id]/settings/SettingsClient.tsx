@@ -17,10 +17,8 @@ type MemberRow = { userId: string; email: string | null; displayName: string | n
 
 export default function SettingsClient({ projectId }: Props) {
   const router = useRouter();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const { user } = useAuthStore();
-  const isPt = locale === "pt-BR";
-  const tr = useCallback((pt: string, en: string) => (isPt ? pt : en), [isPt]);
   const {
     getProject,
     updateProjectSettings,
@@ -211,7 +209,7 @@ export default function SettingsClient({ projectId }: Props) {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 1500);
     } catch {
-      alert(isPt ? "Não foi possível copiar o link." : "Could not copy the link.");
+      alert(t("settings.messages.copyFailed", "Could not copy the link."));
     }
   };
 
@@ -242,7 +240,7 @@ export default function SettingsClient({ projectId }: Props) {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       } catch (error) {
-        alert(isPt ? 'Erro ao importar configurações. Verifique se o arquivo é válido.' : 'Failed to import settings. Check if the file is valid.');
+        alert(t("settings.messages.importFailed", "Failed to import settings. Check if the file is valid."));
         console.error('Import error:', error);
       }
     };
@@ -273,7 +271,7 @@ export default function SettingsClient({ projectId }: Props) {
       const defaultLevels: LevelConfig[] = [
         { 
           level: 0, 
-          name: tr("Seções (Nível 0)", "Sections (Level 0)"), 
+          name: t("settings.levels.defaultLevel0", "Sections (Level 0)"),
           node: { 
             color: MINDMAP_CONFIG.sections.node.color, 
             textColor: MINDMAP_CONFIG.sections.node.textColor,
@@ -289,7 +287,7 @@ export default function SettingsClient({ projectId }: Props) {
         },
         { 
           level: 1, 
-          name: tr("Subseções (Nível 1)", "Subsections (Level 1)"), 
+          name: t("settings.levels.defaultLevel1", "Subsections (Level 1)"),
           node: { 
             color: MINDMAP_CONFIG.subsections.node.color, 
             textColor: MINDMAP_CONFIG.subsections.node.textColor,
@@ -305,7 +303,7 @@ export default function SettingsClient({ projectId }: Props) {
         },
         { 
           level: 2, 
-          name: tr("Sub-subseções (Nível 2+)", "Sub-subsections (Level 2+)"), 
+          name: t("settings.levels.defaultLevel2", "Sub-subsections (Level 2+)"),
           node: { 
             color: MINDMAP_CONFIG.deepSubsections.node.color, 
             textColor: MINDMAP_CONFIG.deepSubsections.node.textColor,
@@ -322,14 +320,14 @@ export default function SettingsClient({ projectId }: Props) {
       ];
       setSettings((prev) => ({ ...prev, levels: defaultLevels }));
     }
-  }, [project, tr]);
+  }, [project, t]);
 
   const handleAddLevel = () => {
     const currentLevels = settings.levels || [];
     const nextLevel = currentLevels.length;
     const newLevel: LevelConfig = { 
       level: nextLevel, 
-      name: `${tr("Nível", "Level")} ${nextLevel}`, 
+      name: `${t("settings.levels.levelPrefix", "Level")} ${nextLevel}`,
       node: { 
         color: "#a855f7", 
         textColor: "#ffffff",
@@ -354,7 +352,7 @@ export default function SettingsClient({ projectId }: Props) {
 
   const handleRemoveLevel = (level: number) => {
     const currentLevels = settings.levels || [];
-    if (currentLevels.length <= 1) { alert(isPt ? "Você precisa ter pelo menos 1 nível!" : "You need at least 1 level!"); return; }
+    if (currentLevels.length <= 1) { alert(t("settings.messages.minOneLevel", "You need at least 1 level!")); return; }
     const filtered = currentLevels.filter((l) => l.level !== level);
     const reindexed = filtered.map((l, index) => ({ ...l, level: index }));
     setSettings({ ...settings, levels: reindexed });
@@ -480,7 +478,7 @@ export default function SettingsClient({ projectId }: Props) {
     void pushProjectMindMapSettings(projectId, settings);
   };
   const handleReset = () => {
-    if (confirm(isPt ? "Resetar todas as configurações?" : "Reset all settings?")) {
+    if (confirm(t("settings.messages.resetAllConfirm", "Reset all settings?"))) {
       updateProjectMindMapSettingsOnly(projectId, {});
       setSettings({});
       setShowSuccess(true);
@@ -504,7 +502,7 @@ export default function SettingsClient({ projectId }: Props) {
   const deleteConfirmMatch = Boolean(project && deleteConfirmValue.trim() === project.title.trim());
   const transferConfirmMatch = Boolean(project && transferConfirmValue.trim() === project.title.trim());
 
-  if (!project) return <div>{tr("Projeto não encontrado", "Project not found")}</div>;
+  if (!project) return <div>{t("settings.messages.projectNotFound", "Project not found")}</div>;
   const levels = settings.levels || [];
   const shareToken = (getValue("sharing.shareToken") || "") as string;
   const isPublicShareEnabled = Boolean(getValue("sharing.isPublic"));
@@ -514,11 +512,11 @@ export default function SettingsClient({ projectId }: Props) {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-5xl mx-auto p-6">
         <div className="mb-8">
-          <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← {isPt ? "Voltar" : "Back"}</button>
+          <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← {t("settings.actions.backToProject", "Back")}</button>
           <h1 className="text-3xl font-bold mb-2">⚙️ {t("settings.pageTitle")}</h1>
           <p className="text-gray-400">{project.title}</p>
         </div>
-        {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ {isPt ? "Configurações salvas com sucesso!" : "Settings saved successfully!"}</div>}
+        {showSuccess && <div className="mb-6 bg-green-600 text-white px-4 py-3 rounded-lg">✓ {t("settings.messages.savedSuccess", "Settings saved successfully!")}</div>}
         
         {/* Input file oculto para importar */}
         <input
@@ -530,38 +528,38 @@ export default function SettingsClient({ projectId }: Props) {
         />
         
         <div className="flex gap-3 mb-8">
-          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
-          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
-          <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold">📥 {isPt ? "Exportar" : "Export"}</button>
-          <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {isPt ? "Importar" : "Import"}</button>
+          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {t("settings.actions.save", "Save")}</button>
+          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {t("settings.actions.reset", "Reset")}</button>
+          <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg font-semibold">📥 {t("settings.actions.export", "Export")}</button>
+          <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {t("settings.actions.import", "Import")}</button>
         </div>
         <div className="space-y-8">
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">📏 {tr("Tamanhos dos Nós", "Node Sizes")}</h2>
+            <h2 className="text-xl font-bold mb-4">📏 {t("settings.settingsClient.nodeSizes")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Base (px)", "Base (px)")}</label><input type="number" value={getValue("nodeSize.baseSize")} onChange={(e) => setValue("nodeSize.baseSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Redução", "Reduction")}</label><input type="number" step="0.1" value={getValue("nodeSize.reductionFactor")} onChange={(e) => setValue("nodeSize.reductionFactor", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Mínimo (px)", "Minimum (px)")}</label><input type="number" value={getValue("nodeSize.minSize")} onChange={(e) => setValue("nodeSize.minSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.basePx")}</label><input type="number" value={getValue("nodeSize.baseSize")} onChange={(e) => setValue("nodeSize.baseSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.reduction")}</label><input type="number" step="0.1" value={getValue("nodeSize.reductionFactor")} onChange={(e) => setValue("nodeSize.reductionFactor", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.minimumPx")}</label><input type="number" value={getValue("nodeSize.minSize")} onChange={(e) => setValue("nodeSize.minSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">📐 {tr("Espaçamento", "Spacing")}</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">📐 {t("settings.settingsClient.spacing")}</h3>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-sm text-gray-400 mb-2">{tr("Margem do Sol (px)", "Sun Margin (px)")}</label><input type="number" value={getValue("spacing.projectMargin") || 80} onChange={(e) => setValue("spacing.projectMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-                <div><label className="block text-sm text-gray-400 mb-2">{tr("Margem entre Níveis (px)", "Level Margin (px)")}</label><input type="number" value={getValue("spacing.levelMargin") || 60} onChange={(e) => setValue("spacing.levelMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.sunMarginPx")}</label><input type="number" value={getValue("spacing.projectMargin") || 80} onChange={(e) => setValue("spacing.projectMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.levelMarginPx")}</label><input type="number" value={getValue("spacing.levelMargin") || 60} onChange={(e) => setValue("spacing.levelMargin", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
-              <p className="text-xs text-gray-500">{tr("Margem do Sol = espaço entre o projeto central e as seções. Margem entre Níveis = espaço entre nós pai e filho.", "Sun Margin = spacing between the central project and sections. Level Margin = spacing between parent and child nodes.")}</p>
+              <p className="text-xs text-gray-500">{t("settings.settingsClient.sunMarginHelp")}</p>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🔤 {tr("Fonte", "Font")}</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🔤 {t("settings.settingsClient.font")}</h3>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Base (px)", "Base Size (px)")}</label><input type="number" value={getValue("nodeSize.baseFontSize") || 14} onChange={(e) => setValue("nodeSize.baseFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Mínimo (px)", "Minimum Size (px)")}</label><input type="number" value={getValue("nodeSize.minFontSize") || 8} onChange={(e) => setValue("nodeSize.minFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.baseSizePx")}</label><input type="number" value={getValue("nodeSize.baseFontSize") || 14} onChange={(e) => setValue("nodeSize.baseFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.minimumSizePx")}</label><input type="number" value={getValue("nodeSize.minFontSize") || 8} onChange={(e) => setValue("nodeSize.minFontSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">{tr("Família da Fonte", "Font Family")}</label>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.fontFamily")}</label>
                   <select value={getValue("nodeSize.fontFamily") || "system-ui"} onChange={(e) => setValue("nodeSize.fontFamily", e.target.value)} className="w-full bg-gray-700 rounded px-3 py-2">
-                    <option value="system-ui">{tr("System UI (Padrão)", "System UI (Default)")}</option>
+                    <option value="system-ui">{t("settings.settingsClient.systemUiDefault")}</option>
                     <option value="Arial, sans-serif">Arial</option>
                     <option value="'Courier New', monospace">Courier New (Mono)</option>
                     <option value="Georgia, serif">Georgia (Serif)</option>
@@ -574,7 +572,7 @@ export default function SettingsClient({ projectId }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">{tr("Peso da Fonte", "Font Weight")}</label>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.fontWeight")}</label>
                   <select value={getValue("nodeSize.fontWeight") || "bold"} onChange={(e) => setValue("nodeSize.fontWeight", e.target.value)} className="w-full bg-gray-700 rounded px-3 py-2">
                     <option value="100">100 - Thin</option>
                     <option value="200">200 - Extra Light</option>
@@ -588,13 +586,13 @@ export default function SettingsClient({ projectId }: Props) {
                   </select>
                 </div>
               </div>
-              <p className="text-xs text-gray-500">{tr("Tamanho Base = fonte quando a bolinha tem 100px. Escala proporcionalmente com o tamanho do nó. Ex: Base=14 + Nó=1000px = Fonte de 140px.", "Base Size = font when the node has 100px. It scales proportionally with node size. Ex: Base=14 + Node=1000px = 140px font.")}</p>
+              <p className="text-xs text-gray-500">{t("settings.settingsClient.baseFontSizeHelp")}</p>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🧾 {tr("Painel Lateral", "Sidebar Panel")}</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🧾 {t("settings.settingsClient.sidebarPanel")}</h3>
               <div className="grid grid-cols-1 gap-4 mb-2">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">{tr("Escala do Conteúdo", "Content Scale")}</label>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.contentScale")}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -606,10 +604,10 @@ export default function SettingsClient({ projectId }: Props) {
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-500">{tr("1.00 = 100% (normal). Exemplo: 0.85 reduz o texto para 85%. Botões não são afetados.", "1.00 = 100% (normal). Example: 0.85 reduces text to 85%. Buttons are not affected.")}</p>
+              <p className="text-xs text-gray-500">{t("settings.settingsClient.contentScaleHelp")}</p>
             </div>
             <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🌐 {tr("Compartilhamento Público", "Public Sharing")}</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🌐 {t("settings.settingsClient.publicSharing")}</h3>
               {isOwner ? (
                 <>
                   <div className="flex items-center gap-3 mb-3">
@@ -617,9 +615,9 @@ export default function SettingsClient({ projectId }: Props) {
                       <ToggleSwitch
                         checked={isPublicShareEnabled}
                         onChange={(next) => setValue("sharing.isPublic", next)}
-                        ariaLabel={tr("Permitir visualização pública", "Allow public viewing")}
+                        ariaLabel={t("settings.settingsClient.allowPublicViewing")}
                       />
-                      <span className="text-sm text-gray-300">{tr("Permitir visualização pública", "Allow public viewing")}</span>
+                      <span className="text-sm text-gray-300">{t("settings.settingsClient.allowPublicViewing")}</span>
                     </label>
                   </div>
 
@@ -628,7 +626,7 @@ export default function SettingsClient({ projectId }: Props) {
                       type="text"
                       readOnly
                       value={shareToken}
-                      placeholder={tr("Token de compartilhamento", "Share token")}
+                      placeholder={t("settings.settingsClient.shareToken")}
                       className="w-full bg-gray-700 rounded px-3 py-2 font-mono text-sm"
                     />
                     <button
@@ -636,7 +634,7 @@ export default function SettingsClient({ projectId }: Props) {
                       onClick={() => setValue("sharing.shareToken", generateShareToken())}
                       className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-semibold"
                     >
-                      {tr("Gerar Token", "Generate Token")}
+                      {t("settings.settingsClient.generateToken")}
                     </button>
                   </div>
 
@@ -644,17 +642,14 @@ export default function SettingsClient({ projectId }: Props) {
                     <div className="space-y-2">
                       <div className="flex gap-2 items-center">
                         <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
-                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
                       </div>
-                      <p className="text-xs text-gray-500">{tr("Este link único abre o Documento e permite alternar para o Mapa Mental.", "This single link opens the Document and allows switching to Mind Map.")}</p>
+                      <p className="text-xs text-gray-500">{t("settings.settingsClient.publicLinkHelp")}</p>
                     </div>
                   )}
 
                   <p className="text-xs text-gray-500 mt-2">
-                    {tr(
-                      "Salve as configurações para publicar os links. Quem tiver o token poderá abrir documento e mapa mental.",
-                      "Save settings to publish the link. Anyone with the token can open document and mind map."
-                    )}
+                    {t("settings.settingsClient.publicShareSaveHelp")}
                   </p>
                 </>
               ) : (
@@ -665,7 +660,7 @@ export default function SettingsClient({ projectId }: Props) {
                       <p className="text-sm text-gray-300 mt-2">{t("settings.mindmapShareMembers.publicLinkLabel")}</p>
                       <div className="flex gap-2 items-center">
                         <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
-                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{tr("Copiar", "Copy")}</button>
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
                       </div>
                       <p className="text-xs text-gray-500">{t("settings.mindmapShareMembers.publicLinkMemberHint")}</p>
                     </>
@@ -749,49 +744,49 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🎯 {tr("Projeto Central", "Central Project")}</h2>
-            <h3 className="text-lg font-semibold mb-3 text-gray-300">{tr("Nó (Bolinha)", "Node (Circle)")}</h3>
+            <h2 className="text-xl font-bold mb-4">🎯 {t("settings.settingsClient.centralProject")}</h2>
+            <h3 className="text-lg font-semibold mb-3 text-gray-300">{t("settings.settingsClient.nodeCircle")}</h3>
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho (px)", "Size (px)")}</label><input type="number" value={getValue("project.node.size")} onChange={(e) => setValue("project.node.size", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Gradiente (Início)", "Gradient (Start)")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Gradiente (Fim)", "Gradient (End)")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.sizePx")}</label><input type="number" value={getValue("project.node.size")} onChange={(e) => setValue("project.node.size", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.gradientStart")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.gradientEnd")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
             </div>
             
-            <h3 className="text-lg font-semibold mb-3 text-gray-300">{tr("Conexões (Linhas)", "Connections (Lines)")}</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-300">{t("settings.settingsClient.connectionsLines")}</h3>
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Linha", "Line Color")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.lineColor")}</label>
                 <div className="flex gap-2">
                   <input type="color" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="w-16 h-10 rounded" />
                   <input type="text" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura (px)", "Thickness (px)")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.thicknessPx")}</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("project.edge.strokeWidth")} onChange={(e) => setValue("project.edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Tracejada?", "Dashed?")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.dashed")}</label>
                 <ToggleSwitch
                   checked={Boolean(getValue("project.edge.dashed"))}
                   onChange={(next) => setValue("project.edge.dashed", next)}
-                  ariaLabel={tr("Tracejada?", "Dashed?")}
+                  ariaLabel={t("settings.settingsClient.dashed")}
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Animada?", "Animated?")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.animated")}</label>
                 <ToggleSwitch
                   checked={Boolean(getValue("project.edge.animated"))}
                   onChange={(next) => setValue("project.edge.animated", next)}
-                  ariaLabel={tr("Animada?", "Animated?")}
+                  ariaLabel={t("settings.settingsClient.animated")}
                 />
               </div>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">🎨 {isPt ? "Níveis de Hierarquia" : "Hierarchy Levels"}</h2>
-              <button onClick={handleAddLevel} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold">+ {isPt ? "Adicionar Nível" : "Add Level"}</button>
+              <h2 className="text-xl font-bold">🎨 {t("settings.levels.title", "Hierarchy Levels")}</h2>
+              <button onClick={handleAddLevel} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold">+ {t("settings.levels.add", "Add Level")}</button>
             </div>
             <div className="space-y-4">
               {levels.map((lvl) => {
@@ -817,7 +812,7 @@ export default function SettingsClient({ projectId }: Props) {
                     {isExpanded && (
                       <div className="p-4 border-t border-gray-600">
                         <div className="mb-3">
-                          <label className="block text-sm text-gray-400 mb-2">{tr("Nome do Nível", "Level Name")}</label>
+                          <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.levelName")}</label>
                           <input 
                             type="text" 
                             value={lvl.name} 
@@ -828,17 +823,17 @@ export default function SettingsClient({ projectId }: Props) {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-300">{tr("Nó", "Node")}</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Texto", "Text")}</label><div className="flex gap-2"><input type="color" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <h3 className="font-semibold text-gray-300">{t("settings.settingsClient.node")}</h3>
+                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.text")}</label><div className="flex gap-2"><input type="color" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
                     </div>
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-300">{tr("Conexão", "Connection")}</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">{tr("Espessura", "Thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
+                      <h3 className="font-semibold text-gray-300">{t("settings.settingsClient.connection")}</h3>
+                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
+                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
                       <div className="flex gap-4">
-                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.animated || false} onChange={(next) => handleLevelChange(lvl.level, "edge.animated", next)} ariaLabel={tr("Animado", "Animated")} /><span className="text-sm">{tr("Animado", "Animated")}</span></label>
-                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.dashed || false} onChange={(next) => handleLevelChange(lvl.level, "edge.dashed", next)} ariaLabel={tr("Tracejado", "Dashed")} /><span className="text-sm">{tr("Tracejado", "Dashed")}</span></label>
+                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.animated || false} onChange={(next) => handleLevelChange(lvl.level, "edge.animated", next)} ariaLabel={t("settings.settingsClient.animated2")} /><span className="text-sm">{t("settings.settingsClient.animated2")}</span></label>
+                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.dashed || false} onChange={(next) => handleLevelChange(lvl.level, "edge.dashed", next)} ariaLabel={t("settings.settingsClient.dashed2")} /><span className="text-sm">{t("settings.settingsClient.dashed2")}</span></label>
                       </div>
                     </div>
                   </div>
@@ -846,21 +841,21 @@ export default function SettingsClient({ projectId }: Props) {
                   {/* Borda para Nós com Filhos */}
                   <div className="mt-4 pt-4 border-t border-gray-600">
                     <div className="flex items-center gap-2 mb-3">
-                      <h3 className="font-semibold text-gray-300">🔲 {tr("Borda para Nós com Filhos", "Border for Nodes with Children")}</h3>
+                      <h3 className="font-semibold text-gray-300">🔲 {t("settings.settingsClient.childNodesBorder")}</h3>
                       <label className="flex items-center gap-2">
                         <ToggleSwitch
                           checked={lvl.node.hasChildrenBorder?.enabled || false}
                           onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", next)}
-                          ariaLabel={tr("Ativar", "Enable")}
+                          ariaLabel={t("settings.settingsClient.enable")}
                         />
-                        <span className="text-sm text-gray-400">{tr("Ativar", "Enable")}</span>
+                        <span className="text-sm text-gray-400">{t("settings.settingsClient.enable")}</span>
                       </label>
                     </div>
                     
                     {(lvl.node.hasChildrenBorder?.enabled) && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">{tr("Cor", "Color")}</label>
+                          <label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label>
                           <div className="flex gap-2">
                             <input 
                               type="color" 
@@ -877,7 +872,7 @@ export default function SettingsClient({ projectId }: Props) {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">{tr("Largura Base", "Base Width")}</label>
+                          <label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.baseWidth")}</label>
                           <input 
                             type="number" 
                             step="0.5" 
@@ -885,16 +880,16 @@ export default function SettingsClient({ projectId }: Props) {
                             onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.width", Number(e.target.value))} 
                             className="w-full bg-gray-600 rounded px-2 py-1" 
                           />
-                          <p className="text-xs text-gray-500 mt-1">{tr("Proporcional ao tamanho", "Proportional to size")}</p>
+                          <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.proportionalToSize")}</p>
                         </div>
                         <div className="col-span-2">
                           <label className="flex items-center gap-2">
                             <ToggleSwitch
                               checked={lvl.node.hasChildrenBorder?.dashed || false}
                               onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", next)}
-                              ariaLabel={tr("Tracejada", "Dashed")}
+                              ariaLabel={t("settings.settingsClient.dashed3")}
                             />
-                            <span className="text-sm text-gray-400">{tr("Tracejada", "Dashed")}</span>
+                            <span className="text-sm text-gray-400">{t("settings.settingsClient.dashed3")}</span>
                           </label>
                         </div>
                       </div>
@@ -908,89 +903,89 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">✨ {tr("Highlight (Seleção)", "Highlight (Selection)")}</h2>
+            <h2 className="text-xl font-bold mb-4">✨ {t("settings.settingsClient.highlightSelection")}</h2>
             <div className="grid grid-cols-4 gap-4 mb-3">
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Cor", "Color")}</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={getValue("sections.edge.highlighted.color")} onChange={(e) => setHighlightValue("color", e.target.value)} className="flex-1 bg-gray-700 rounded px-2 py-1 font-mono text-sm" /></div></div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura Base", "Base Thickness")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.baseThickness")}</label>
                 <input type="number" step="0.1" value={getValue("sections.edge.highlighted.strokeWidth")} onChange={(e) => setHighlightValue("strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Ajustado pelo zoom", "Adjusted by zoom")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.adjustedByZoom")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Padrão de Tracejado Base", "Base Dash Pattern")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.baseDashPattern")}</label>
                 <input type="number" step="0.5" value={getValue("sections.edge.highlighted.dashPattern")} onChange={(e) => setHighlightValue("dashPattern", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Ex: 5 = traços de 5px", "Ex: 5 = 5px dashes")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.ex55pxDashes")}</p>
               </div>
-              <div><label className="block text-sm text-gray-400 mb-2">{tr("Animado", "Animated")}</label><ToggleSwitch checked={Boolean(getValue("sections.edge.highlighted.animated"))} onChange={(next) => setHighlightValue("animated", next)} ariaLabel={tr("Animado", "Animated")} /></div>
+              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.animated2")}</label><ToggleSwitch checked={Boolean(getValue("sections.edge.highlighted.animated"))} onChange={(next) => setHighlightValue("animated", next)} ariaLabel={t("settings.settingsClient.animated2")} /></div>
             </div>
-            <p className="text-xs text-gray-500">{tr("A espessura e tracejado das linhas destacadas são proporcionais ao zoom para manter visual constante.", "The thickness and dashing of highlighted lines are proportional to zoom to keep a consistent visual.")}</p>
+            <p className="text-xs text-gray-500">{t("settings.settingsClient.highlightLineHelp")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🔍 {tr("Zoom", "Zoom")}</h2>
+            <h2 className="text-xl font-bold mb-4">🔍 {t("settings.settingsClient.zoom")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Zoom Mínimo", "Minimum Zoom")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.minimumZoom")}</label>
                 <input type="number" step="0.01" min="0.01" max="1" value={getValue("zoom.minZoom")} onChange={(e) => setValue("zoom.minZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Ex: 0.01 = 1%</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.ex0011")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">FitView Max Zoom</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.fitviewMaxZoom")}</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("zoom.fitViewMaxZoom")} onChange={(e) => setValue("zoom.fitViewMaxZoom", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Limite ao carregar", "Limit on load")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.limitOnLoad")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("FitView Margem", "FitView Padding")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.fitviewPadding")}</label>
                 <input type="number" step="0.05" min="0" max="0.5" value={getValue("zoom.fitViewPadding") || 0.2} onChange={(e) => setValue("zoom.fitViewPadding", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">Ex: 0.2 = 20%</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.ex0220")}</p>
               </div>
             </div>
             <p className="text-xs text-gray-500 mb-4">
-              <strong>{tr("Zoom Mínimo", "Minimum Zoom")}:</strong> {tr("Menor zoom possível (quanto menor, mais você pode afastar).", "Lowest possible zoom (the lower, the farther you can zoom out).")}
+              <strong>{t("settings.settingsClient.minimumZoom")}:</strong> {t("settings.settingsClient.minZoomHelp")}
               <br />
-              <strong>FitView Max Zoom:</strong> {tr("Limite de zoom ao carregar - valores altos (5+) permitem zoom out total para ver tudo.", "Zoom limit on load - high values (5+) allow full zoom out to see everything.")}
+              <strong>{t("settings.settingsClient.fitviewMaxZoom")}:</strong> {t("settings.settingsClient.fitViewMaxZoomHelp")}
               <br />
-              <strong>{tr("FitView Margem", "FitView Padding")}:</strong> {tr("Espaçamento ao redor do mapa ao carregar.", "Spacing around the map on load.")}
+              <strong>{t("settings.settingsClient.fitviewPadding")}:</strong> {t("settings.settingsClient.fitViewPaddingHelp")}
             </p>
             <div className="border-t border-gray-700 pt-4">
-              <h3 className="text-lg font-semibold mb-3 text-gray-300">🎯 {tr("Zoom ao Clicar", "Zoom on Click")}</h3>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">🎯 {t("settings.settingsClient.zoomOnClick")}</h3>
               <div className="grid grid-cols-1 gap-4">
-                <div><label className="block text-sm text-gray-400 mb-2">{tr("Tamanho Alvo na Tela (px)", "Target Size on Screen (px)")}</label><input type="number" value={getValue("zoom.onClickTargetSize") || 200} onChange={(e) => setValue("zoom.onClickTargetSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
+                <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.targetSizeOnScreenPx")}</label><input type="number" value={getValue("zoom.onClickTargetSize") || 200} onChange={(e) => setValue("zoom.onClickTargetSize", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">{tr("Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas", "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked")}</p>
+              <p className="text-xs text-gray-500 mt-2">{t("settings.settingsClient.zoomOnClickHelp")}</p>
             </div>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🎬 {tr("Animação das Conexões", "Connection Animation")}</h2>
+            <h2 className="text-xl font-bold mb-4">🎬 {t("settings.settingsClient.connectionAnimation")}</h2>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Velocidade (segundos)", "Speed (seconds)")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.speedSeconds")}</label>
                 <input type="number" step="0.5" min="0.5" max="10" value={getValue("animation.speed") || 2} onChange={(e) => setValue("animation.speed", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Menor = mais rápido", "Lower = faster")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.lowerFaster")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Distância do Movimento (px)", "Movement Distance (px)")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.movementDistancePx")}</label>
                 <input type="number" step="10" min="50" max="500" value={getValue("animation.distance") || 500} onChange={(e) => setValue("animation.distance", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Quanto os traços se movem", "How far dashes move")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.howFarDashesMove")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">{tr("Controla o movimento dos traços animados em todas as conexões. Teste valores diferentes para encontrar a melhor visibilidade!", "Controls animated dash movement on all connections. Try different values to find the best visibility!")}</p>
+            <p className="text-xs text-gray-500">{t("settings.settingsClient.connectionAnimationHelp")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🌫️ {tr("Efeito de Esmaecer", "Fade Effect")}</h2>
-            <p className="text-sm text-gray-400 mb-4">{tr("Quando um nó é selecionado, os nós que NÃO estão no caminho ficam esmaecidos para destacar a hierarquia.", "When a node is selected, nodes NOT in the path are faded to highlight hierarchy.")}</p>
+            <h2 className="text-xl font-bold mb-4">🌫️ {t("settings.settingsClient.fadeEffect")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.settingsClient.fadeEffectHelp")}</p>
             <div className="mb-3">
               <label className="flex items-center">
                 <ToggleSwitch
                   checked={getValue("fadeEffect.enabled") ?? true}
                   onChange={(next) => setValue("fadeEffect.enabled", next)}
-                  ariaLabel={tr("Ativar efeito de esmaecer", "Enable fade effect")}
+                  ariaLabel={t("settings.settingsClient.enableFadeEffect")}
                 />
-                <span className="text-sm">{tr("Ativar efeito de esmaecer", "Enable fade effect")}</span>
+                <span className="text-sm">{t("settings.settingsClient.enableFadeEffect")}</span>
               </label>
             </div>
             <div className="grid grid-cols-3 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Opacidade", "Opacity")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.opacity")}</label>
                 <input 
                   type="number" 
                   step="0.1" 
@@ -1001,10 +996,10 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2" 
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">{tr("0 = invisível, 1 = normal", "0 = invisible, 1 = normal")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.k0Invisible1Normal")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Grayscale (%)</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.grayscale")}</label>
                 <input 
                   type="number" 
                   step="5" 
@@ -1015,10 +1010,10 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">{tr("0 = colorido, 100 = cinza", "0 = colored, 100 = gray")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.k0Colored100Gray")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Blur (px)</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.blurPx")}</label>
                 <input 
                   type="number" 
                   step="0.5" 
@@ -1029,28 +1024,28 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("fadeEffect.enabled")}
                 />
-                <p className="text-xs text-gray-500 mt-1">{tr("0 = nítido, 10 = muito borrado", "0 = sharp, 10 = very blurry")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.k0Sharp10VeryBlurry")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">{tr("Combine opacidade, grayscale e blur para encontrar o efeito ideal. Recomendado: opacity 0.3, grayscale 50, blur 1", "Combine opacity, grayscale and blur to find the ideal effect. Recommended: opacity 0.3, grayscale 50, blur 1")}</p>
+            <p className="text-xs text-gray-500">{t("settings.settingsClient.fadeEffectAdvancedHelp")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">🔗 {tr("Referências Cruzadas", "Cross References")}</h2>
-            <p className="text-sm text-gray-400 mb-4">{tr("Ao selecionar um nó, mostra conexões azuis para seções referenciadas no conteúdo usando a sintaxe $[Nome da Seção]", "When selecting a node, it shows blue links to sections referenced in content using $[Section Name] syntax")}</p>
+            <h2 className="text-xl font-bold mb-4">🔗 {t("settings.settingsClient.crossReferences")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.settingsClient.crossReferencesHelp")}</p>
             <div className="mb-3">
               <label className="flex items-center">
                 <ToggleSwitch
                   checked={getValue("references.enabled") ?? true}
                   onChange={(next) => setValue("references.enabled", next)}
-                  ariaLabel={tr("Mostrar referências cruzadas", "Show cross references")}
+                  ariaLabel={t("settings.settingsClient.showCrossReferences")}
                 />
-                <span className="text-sm">{tr("Mostrar referências cruzadas", "Show cross references")}</span>
+                <span className="text-sm">{t("settings.settingsClient.showCrossReferences")}</span>
               </label>
             </div>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Estilo da Conexão", "Connection Style")}</h3>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{t("settings.settingsClient.connectionStyle")}</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Linha", "Line Color")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.lineColor")}</label>
                 <input 
                   type="color" 
                   value={getValue("references.edgeColor") || '#3b82f6'} 
@@ -1060,7 +1055,7 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura (px)", "Thickness (px)")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.thicknessPx")}</label>
                 <input 
                   type="number" 
                   step="0.5" 
@@ -1078,9 +1073,9 @@ export default function SettingsClient({ projectId }: Props) {
                     checked={getValue("references.edgeAnimated") || false}
                     onChange={(next) => setValue("references.edgeAnimated", next)}
                     disabled={!getValue("references.enabled")}
-                    ariaLabel={tr("Animar linha (movimento)", "Animate line (movement)")}
+                    ariaLabel={t("settings.settingsClient.animateLineMovement")}
                   />
-                  <span className="text-sm">{tr("Animar linha (movimento)", "Animate line (movement)")}</span>
+                  <span className="text-sm">{t("settings.settingsClient.animateLineMovement")}</span>
                 </label>
               </div>
               <div>
@@ -1089,13 +1084,13 @@ export default function SettingsClient({ projectId }: Props) {
                     checked={getValue("references.edgeDashed") !== false}
                     onChange={(next) => setValue("references.edgeDashed", next)}
                     disabled={!getValue("references.enabled")}
-                    ariaLabel={tr("Linha tracejada", "Dashed line")}
+                    ariaLabel={t("settings.settingsClient.dashedLine")}
                   />
-                  <span className="text-sm">{tr("Linha tracejada", "Dashed line")}</span>
+                  <span className="text-sm">{t("settings.settingsClient.dashedLine")}</span>
                 </label>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Padrão do tracejado", "Dash Pattern")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.dashPattern")}</label>
                 <input 
                   type="number" 
                   step="1" 
@@ -1106,11 +1101,11 @@ export default function SettingsClient({ projectId }: Props) {
                   className="w-full bg-gray-700 rounded px-3 py-2"
                   disabled={!getValue("references.enabled") || (getValue("references.edgeDashed") === false && !getValue("references.edgeAnimated"))}
                 />
-                <p className="text-xs text-gray-500 mt-1">{tr("Usado para traço e animação", "Used for dash and animation")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.usedForDashAndAnimation")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500 mb-4">💡 {tr("A animação usa as mesmas configurações globais (velocidade/distância) de outras conexões animadas", "Animation uses the same global settings (speed/distance) as other animated connections")}</p>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Ícone na Conexão", "Connection Icon")}</h3>
+            <p className="text-xs text-gray-500 mb-4">💡 {t("settings.settingsClient.crossReferencesAnimationHelp")}</p>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{t("settings.settingsClient.connectionIcon")}</h3>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
                 <label className="flex items-center">
@@ -1118,13 +1113,13 @@ export default function SettingsClient({ projectId }: Props) {
                     checked={getValue("references.showIcon") ?? true}
                     onChange={(next) => setValue("references.showIcon", next)}
                     disabled={!getValue("references.enabled")}
-                    ariaLabel={tr("Mostrar ícone na linha", "Show icon on line")}
+                    ariaLabel={t("settings.settingsClient.showIconOnLine")}
                   />
-                  <span className="text-sm">{tr("Mostrar ícone na linha", "Show icon on line")}</span>
+                  <span className="text-sm">{t("settings.settingsClient.showIconOnLine")}</span>
                 </label>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Ícone/Emoji", "Icon/Emoji")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.iconEmoji")}</label>
                 <input 
                   type="text" 
                   maxLength={2}
@@ -1137,7 +1132,7 @@ export default function SettingsClient({ projectId }: Props) {
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-2">{tr("Tamanho do Ícone", "Icon Size")}</label>
+              <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.iconSize")}</label>
               <div className="flex items-center gap-4">
                 <input 
                   type="range" 
@@ -1151,21 +1146,21 @@ export default function SettingsClient({ projectId }: Props) {
                 <span className="text-white w-16 text-center">{getValue("references.iconSize") ?? 32}px</span>
               </div>
             </div>
-            <h3 className="text-sm font-semibold mb-3 text-gray-300">{tr("Destaque dos Nós Referenciados", "Referenced Node Highlight")}</h3>
+            <h3 className="text-sm font-semibold mb-3 text-gray-300">{t("settings.settingsClient.referencedNodeHighlight")}</h3>
             <div className="mb-3">
               <label className="flex items-center">
                 <ToggleSwitch
                   checked={getValue("references.nodeHighlight.enabled") ?? true}
                   onChange={(next) => setValue("references.nodeHighlight.enabled", next)}
                   disabled={!getValue("references.enabled")}
-                  ariaLabel={tr("Destacar nós referenciados", "Highlight referenced nodes")}
+                  ariaLabel={t("settings.settingsClient.highlightReferencedNodes")}
                 />
-                <span className="text-sm">{tr("Destacar nós referenciados", "Highlight referenced nodes")}</span>
+                <span className="text-sm">{t("settings.settingsClient.highlightReferencedNodes")}</span>
               </label>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Cor da Borda", "Border Color")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.borderColor")}</label>
                 <input 
                   type="color" 
                   value={getValue("references.nodeHighlight.borderColor") || '#3b82f6'} 
@@ -1175,7 +1170,7 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Espessura da Borda", "Border Thickness")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.borderThickness")}</label>
                 <input 
                   type="number" 
                   step="0.5" 
@@ -1188,28 +1183,28 @@ export default function SettingsClient({ projectId }: Props) {
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500">{tr("As referências são detectadas automaticamente quando você usa $[Nome da Seção] ou $[#id] no conteúdo. Azul é recomendado por lembrar hyperlinks!", "References are detected automatically when you use $[Section Name] or $[#id] in content. Blue is recommended as it resembles hyperlinks!")}</p>
+            <p className="text-xs text-gray-500">{t("settings.settingsClient.crossReferencesDetectionHelp")}</p>
           </div>
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">⚙️ {tr("Física da Simulação", "Simulation Physics")}</h2>
+            <h2 className="text-xl font-bold mb-4">⚙️ {t("settings.settingsClient.simulationPhysics")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Link Strength</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.linkStrength")}</label>
                 <input type="number" step="0.01" min="0" max="1" value={getValue("physics.simulation.linkStrength") ?? 1} onChange={(e) => setValue("physics.simulation.linkStrength", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("0-1 (menor = mais livre)", "0-1 (lower = freer)")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.k01LowerFreer")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Collision Strength</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.collisionStrength")}</label>
                 <input type="number" step="0.1" min="0" max="1" value={getValue("physics.simulation.collisionStrength") ?? 0.3} onChange={(e) => setValue("physics.simulation.collisionStrength", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("0-1 (recomendado: 0.1-0.3 para simetria)", "0-1 (recommended: 0.1-0.3 for symmetry)")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.collisionStrengthHelp")}</p>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">{tr("Iterações", "Iterations")}</label>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.iterations")}</label>
                 <input type="number" step="10" min="10" max="500" value={getValue("physics.simulation.iterations") ?? 130} onChange={(e) => setValue("physics.simulation.iterations", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-                <p className="text-xs text-gray-500 mt-1">{tr("Precisão da simulação", "Simulation precision")}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.simulationPrecision")}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">{tr("Ajuste a física para controlar como os nós se organizam. Link = atração aos pais, Collision = evita sobreposição, Iterações = qualidade do cálculo.", "Tune physics to control how nodes organize. Link = attraction to parents, Collision = avoid overlap, Iterations = calculation quality.")}</p>
+            <p className="text-xs text-gray-500">{t("settings.settingsClient.simulationPhysicsHelp")}</p>
           </div>
 
           {isOwner && (
@@ -1227,8 +1222,8 @@ export default function SettingsClient({ projectId }: Props) {
           )}
         </div>
         <div className="flex gap-3 mt-8">
-          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {isPt ? "Salvar" : "Save"}</button>
-          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {isPt ? "Resetar" : "Reset"}</button>
+          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold">💾 {t("settings.actions.save", "Save")}</button>
+          <button onClick={handleReset} className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold">🔄 {t("settings.actions.reset", "Reset")}</button>
         </div>
 
         {memberDialog && (

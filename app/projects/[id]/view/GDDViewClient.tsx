@@ -123,7 +123,7 @@ function truncatePreview(value: string, maxLength: number): string {
 }
 
 export default function GDDViewClient({ projectId, publicToken }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const getProject = useProjectStore((s) => s.getProject);
@@ -493,7 +493,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     setOpenSectionMenuId((prev) => (prev === node.id ? null : node.id));
                   }}
                   className="text-left rounded-md hover:bg-gray-100 px-1 -mx-1 transition-colors inline-flex items-center gap-2"
-                  title="Opções"
+                  title={t("view.actionsMenu")}
                 >
                   <SectionThumb
                     src={node.thumbImageUrl}
@@ -551,10 +551,10 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
                     className="text-blue-600 hover:text-blue-800 underline"
                   >
-                    Conteúdo não preenchido
+                    {t("view.emptyContent")}
                   </button>
                 ) : (
-                  <span>Conteúdo não preenchido</span>
+                  <span>{t("view.emptyContent")}</span>
                 )}
               </div>
             )}
@@ -614,10 +614,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             onClick={() => router.push("/")}
             className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800"
           >
-            ← Voltar para Home
+            ← {t("view.backHome")}
           </button>
         )}
-        <div className="text-gray-600">{isPublicMode ? "Projeto público não encontrado ou link inválido." : "Projeto não encontrado."}</div>
+        <div className="text-gray-600">
+          {isPublicMode ? t("view.publicProjectNotFound") : t("view.projectNotFound")}
+        </div>
       </div>
     );
   }
@@ -629,7 +631,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
           <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3">
             <span className="text-2xl">✨</span>
-            <span className="font-semibold">Seu GDD está pronto! Role para baixo para ver tudo</span>
+            <span className="font-semibold">{t("view.welcomeReady")}</span>
             <button 
               onClick={() => setShowWelcome(false)}
               className="ml-2 hover:bg-white/20 rounded-full p-1"
@@ -650,10 +652,10 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   onClick={() => router.push("/")}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  🏠 Home
+                  🏠 {t("view.home")}
                 </button>
               ) : (
-                <span className="text-sm text-gray-600">🔓 Visualização pública</span>
+                <span className="text-sm text-gray-600">🔓 {t("view.publicView")}</span>
               )}
             </div>
             <div className="relative" ref={actionsMenuRef}>
@@ -725,14 +727,14 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   goToSearchMatch(e.shiftKey ? -1 : 1);
                 }
               }}
-              placeholder="Buscar no documento..."
+              placeholder={t("view.searchPlaceholder")}
               className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={() => goToSearchMatch(-1)}
               disabled={matchedSectionIds.length === 0}
               className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Resultado anterior"
+              title={t("view.previousResult")}
             >
               ↑
             </button>
@@ -740,14 +742,14 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               onClick={() => goToSearchMatch(1)}
               disabled={matchedSectionIds.length === 0}
               className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Próximo resultado"
+              title={t("view.nextResult")}
             >
               ↓
             </button>
             <span className="text-sm text-gray-600 whitespace-nowrap">
               {matchedSectionIds.length > 0
                 ? `${activeMatchIndex + 1}/${matchedSectionIds.length}`
-                : "0 resultados"}
+                : t("view.noResults")}
             </span>
             {documentSearch && (
               <button
@@ -756,9 +758,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   setActiveMatchIndex(0);
                 }}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                title="Limpar busca"
+                title={t("view.clearSearch")}
               >
-                Limpar
+                {t("view.clearSearch")}
               </button>
             )}
           </div>
@@ -781,7 +783,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               {showDesktopToc ? (
                 <div className="sticky top-28 w-full rounded-2xl border border-slate-200 bg-white/85 backdrop-blur-md shadow-lg p-4 max-h-[calc(100vh-9rem)] overflow-y-auto">
                   <div className="mb-3 pb-3 border-b border-slate-200">
-                    <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+                    <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 {t("view.navigation")}</h2>
                   </div>
                   <div className="space-y-1.5">
                     {renderTocNodes(sectionsWithHierarchy)}
@@ -799,8 +801,8 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 <button
                   onClick={() => setShowDesktopToc((prev) => !prev)}
                   className="w-8 h-8 rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm hover:bg-gray-100"
-                  title={showDesktopToc ? "Ocultar sumário" : "Mostrar sumário"}
-                  aria-label={showDesktopToc ? "Ocultar sumário" : "Mostrar sumário"}
+                  title={showDesktopToc ? t("view.hideSummary") : t("view.showSummary")}
+                  aria-label={showDesktopToc ? t("view.hideSummary") : t("view.showSummary")}
                 >
                   {showDesktopToc ? "‹" : "›"}
                 </button>
@@ -815,12 +817,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   onClick={() => setShowMobileToc((prev) => !prev)}
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 font-semibold text-left"
                 >
-                  {showMobileToc ? "✕ Ocultar Sumário" : "📑 Exibir Sumário"}
+                  {showMobileToc ? `✕ ${t("view.hideSummary")}` : `📑 ${t("view.showSummary")}`}
                 </button>
                 {showMobileToc && (
                   <div className="mt-2 rounded-2xl border border-slate-200 bg-white/95 shadow-lg p-4 max-h-[50vh] overflow-y-auto">
                     <div className="mb-3 pb-2 border-b border-slate-200">
-                      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">📑 Navegação</h2>
+                      <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">📑 {t("view.navigation")}</h2>
                     </div>
                     <div className="space-y-1.5">
                       {renderTocNodes(sectionsWithHierarchy, 0, () => setShowMobileToc(false))}
@@ -859,7 +861,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 {project.title}
               </h1>
               <p className="text-xl text-gray-700 font-semibold mb-8">
-                Game Design Document
+                {t("view.documentTitle")}
               </p>
               {project.description && (
                 <div className="max-w-2xl mx-auto prose prose-lg">
@@ -876,22 +878,22 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               )}
               <div className="mt-8 space-y-1 text-sm text-gray-600">
                 <div>
-                  <strong>Criado em:</strong> {project.createdAt ? new Date(project.createdAt).toLocaleDateString('pt-BR', {
+                  <strong>{t("view.createdAtLabel")}</strong> {project.createdAt ? new Date(project.createdAt).toLocaleDateString(locale, {
                     day: '2-digit',
                     month: 'long',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
-                  }) : 'Data não disponível'}
+                  }) : t("view.dateUnavailable")}
                 </div>
                 <div>
-                  <strong>Última modificação:</strong> {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('pt-BR', {
+                  <strong>{t("view.updatedAtLabel")}</strong> {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString(locale, {
                     day: '2-digit',
                     month: 'long',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
-                  }) : 'Data não disponível'}
+                  }) : t("view.dateUnavailable")}
                 </div>
               </div>
             </div>
@@ -900,9 +902,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             <div className="space-y-12">
               {sectionsWithHierarchy.length === 0 ? (
                 <div className="text-center py-16 text-gray-600">
-                  <p className="text-lg mb-2 font-medium">📝 Nenhuma seção criada ainda</p>
+                  <p className="text-lg mb-2 font-medium">📝 {t("view.noSectionsTitle")}</p>
                   <p className="text-sm">
-                    Volte ao modo gerenciamento para adicionar conteúdo ao seu GDD
+                    {t("view.noSectionsHint")}
                   </p>
                 </div>
               ) : (
@@ -912,8 +914,8 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
             {/* Footer */}
             <div className="mt-16 pt-8 border-t border-gray-200 text-center text-gray-600 text-sm">
-              <p>Game Design Document - {project.title}</p>
-              <p className="mt-1">Gerado pelo GDD Manager</p>
+              <p>{t("view.documentTitle")} - {project.title}</p>
+              <p className="mt-1">{t("view.generatedBy")}</p>
             </div>
           </div>
         </div>

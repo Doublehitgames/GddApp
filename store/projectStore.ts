@@ -32,6 +32,64 @@ export type LastRelationsAnalysis = {
   runAt: string;
 };
 
+export type DiagramMarkerType = "none" | "arrow" | "circle";
+
+export type DiagramNode = {
+  id: string;
+  type?: string;
+  position: { x: number; y: number };
+  data: {
+    label: string;
+    blockType?: "retangulo" | "losango" | "pill" | "circulo";
+    color?: string;
+    textColor?: string;
+    textAlign?: "left" | "center" | "right";
+    textVerticalAlign?: "top" | "middle" | "bottom";
+    fontSize?: number;
+    borderColor?: string;
+    borderWidth?: number;
+    borderRadius?: number;
+    gradientEnabled?: boolean;
+    width?: number;
+    height?: number;
+  };
+};
+
+export type DiagramEdge = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  label?: string;
+  edgeType?: "straight" | "step" | "smoothstep" | "bezier";
+  strokeWidth?: number;
+  dashed?: boolean;
+  dashLength?: number;
+  dashGap?: number;
+  animated?: boolean;
+  startMarker?: DiagramMarkerType;
+  endMarker?: DiagramMarkerType;
+};
+
+export type DiagramViewport = {
+  x: number;
+  y: number;
+  zoom: number;
+};
+
+export type DiagramState = {
+  version: number;
+  updatedAt: string;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  viewport: DiagramViewport;
+  settings?: {
+    snapToGrid?: boolean;
+    snapGridSize?: number;
+  };
+};
+
 // Tipo para configuração de um nível no mapa mental
 export type LevelConfig = {
   level: number; // 0, 1, 2, 3...
@@ -207,6 +265,8 @@ export type Section = {
   id: UUID;
   title: string;
   thumbImageUrl?: string;
+  flowchartEnabled?: boolean;
+  flowchartState?: DiagramState;
   content?: string;
   created_at: string;
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
@@ -327,6 +387,14 @@ interface ProjectStore {
   lastRelationsAnalysisByProject: Record<string, LastRelationsAnalysis>;
   setLastRelationsAnalysis: (projectId: string, data: LastRelationsAnalysis) => void;
   getLastRelationsAnalysis: (projectId: string) => LastRelationsAnalysis | undefined;
+  /** Estado local do editor de diagramas por seção (fonte imediata do editor; pode espelhar no sync). */
+  diagramsBySection: Record<string, DiagramState>;
+  getSectionDiagram: (projectId: string, sectionId: string) => DiagramState | undefined;
+  saveSectionDiagram: (projectId: string, sectionId: string, state: DiagramState) => void;
+  resetSectionDiagram: (projectId: string, sectionId: string) => void;
+  removeSectionDiagram: (projectId: string, sectionId: string) => void;
+  setSectionFlowchartEnabled: (projectId: UUID, sectionId: UUID, enabled: boolean) => void;
+  disableSectionFlowchartAndClearDiagram: (projectId: UUID, sectionId: UUID) => void;
   /** Limpa o histórico de syncs (lastSyncStatsHistory) e persiste. */
   clearSyncHistory: () => void;
   /** Atualiza lastQuotaStatus com a cota do projeto (cota é por projeto). Sem projectId limpa a cota (ex.: na home). */
@@ -345,6 +413,7 @@ const PERSISTENCE_CONFIG_KEY = "gdd_persistence_config_v1";
 const SYNC_STATE_KEY = "gdd_sync_state_v1";
 const LAST_ANALYSES_KEY = "gdd_last_analyses_v1";
 const LAST_RELATIONS_KEY = "gdd_last_relations_v1";
+const DIAGRAMS_KEY = "gdd_diagrams_by_section_v1";
 const MAX_IMAGE_SRC_LENGTH = 2048;
 const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
 const SYNC_FAILURE_WINDOW_MS = 120000;
@@ -488,6 +557,30 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     }
   };
 
+  const loadDiagrams = (): Record<string, DiagramState> => {
+    try {
+      if (typeof window === "undefined") return {};
+      const raw = localStorage.getItem(DIAGRAMS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, DiagramState>;
+      if (!parsed || typeof parsed !== "object") return {};
+      return parsed;
+    } catch {
+      return {};
+    }
+  };
+
+  const persistDiagrams = (data: Record<string, DiagramState>) => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(DIAGRAMS_KEY, JSON.stringify(data));
+    } catch (e) {
+      logWarn("Could not persist diagrams", e);
+    }
+  };
+
+  const buildSectionDiagramKey = (projectId: string, sectionId: string): string => `${projectId}:${sectionId}`;
+
   type PersistedSyncState = {
     lastQuotaStatus: CloudSyncQuotaStatus | null;
     lastSyncedAt: string | null;
@@ -562,7 +655,22 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
   let consecutiveSyncFailures = 0;
   let firstFailureAtMs = 0;
 
-  const sanitizeProjectForSync = (project: Project): Project => sanitizeProjectForStorage(project);
+  const attachSectionFlowchartState = (project: Project, diagramsBySection: Record<string, DiagramState>): Project => {
+    const sections = (project.sections || []).map((section) => {
+      const key = buildSectionDiagramKey(project.id, section.id);
+      const diagram = diagramsBySection[key] || section.flowchartState;
+      if (!section.flowchartEnabled) {
+        return { ...section, flowchartState: undefined };
+      }
+      return { ...section, flowchartState: diagram };
+    });
+    return { ...project, sections };
+  };
+
+  const sanitizeProjectForSync = (project: Project): Project => {
+    const enriched = attachSectionFlowchartState(project, get().diagramsBySection);
+    return sanitizeProjectForStorage(enriched);
+  };
 
   const buildProjectHash = (project: Project): string => {
     const normalized = sanitizeProjectForSync(project);
@@ -572,6 +680,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         id: section.id,
         title: section.title,
         thumbImageUrl: section.thumbImageUrl || null,
+        flowchartState: section.flowchartState || null,
         content: section.content || "",
         parentId: section.parentId || null,
         order: section.order,
@@ -666,14 +775,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
   const getProjectSnapshotForSync = (projectId: string): Project | null => {
     const fromState = get().projects.find((p) => p.id === projectId);
-    if (fromState) return fromState;
+    if (fromState) return attachSectionFlowchartState(fromState, get().diagramsBySection);
 
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const parsed = parseProjectsFromStorage(raw);
       if (!parsed) return null;
-      return parsed.find((p) => p.id === projectId) || null;
+      const fromStorage = parsed.find((p) => p.id === projectId) || null;
+      if (!fromStorage) return null;
+      const localDiagrams = loadDiagrams();
+      return attachSectionFlowchartState(fromStorage, { ...localDiagrams, ...get().diagramsBySection });
     } catch {
       return null;
     }
@@ -875,6 +987,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     userId: null,
     lastConsistencyAnalysisByProject: {},
     lastRelationsAnalysisByProject: {},
+    diagramsBySection: {},
 
     updatePersistenceConfig: (config: Partial<PersistenceConfig>) => {
       const current = get().persistenceConfig;
@@ -991,7 +1104,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     removeProject: (id: UUID) => {
+      const removedProject = get().projects.find((p) => p.id === id);
       wrappedSet((prev) => prev.filter((p) => p.id !== id));
+      const nextDiagrams = { ...get().diagramsBySection };
+      for (const section of removedProject?.sections || []) {
+        delete nextDiagrams[buildSectionDiagramKey(id, section.id)];
+      }
+      set({ diagramsBySection: nextDiagrams });
+      persistDiagrams(nextDiagrams);
       clearProjectDirty(id);
       syncedProjectHash.delete(id);
       clearProjectBackoff(id);
@@ -1006,7 +1126,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     removeProjectLocally: (id: UUID) => {
+      const removedProject = get().projects.find((p) => p.id === id);
       wrappedSet((prev) => prev.filter((p) => p.id !== id));
+      const nextDiagrams = { ...get().diagramsBySection };
+      for (const section of removedProject?.sections || []) {
+        delete nextDiagrams[buildSectionDiagramKey(id, section.id)];
+      }
+      set({ diagramsBySection: nextDiagrams });
+      persistDiagrams(nextDiagrams);
       clearProjectDirty(id);
       syncedProjectHash.delete(id);
       clearProjectBackoff(id);
@@ -1066,6 +1193,68 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           ),
         projectId
       );
+    },
+
+    setSectionFlowchartEnabled: (projectId: UUID, sectionId: UUID, enabled: boolean) => {
+      const now = new Date().toISOString();
+      const defaultFlowchartState: DiagramState = {
+        version: 1,
+        updatedAt: now,
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      };
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId
+                      ? {
+                          ...s,
+                          flowchartEnabled: enabled,
+                          flowchartState: enabled ? (s.flowchartState || defaultFlowchartState) : undefined,
+                          updated_at: now,
+                        }
+                      : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+      const next = { ...get().diagramsBySection };
+      if (enabled) {
+        next[buildSectionDiagramKey(projectId, sectionId)] =
+          next[buildSectionDiagramKey(projectId, sectionId)] || defaultFlowchartState;
+      } else {
+        delete next[buildSectionDiagramKey(projectId, sectionId)];
+      }
+      set({ diagramsBySection: next });
+      persistDiagrams(next);
+    },
+
+    disableSectionFlowchartAndClearDiagram: (projectId: UUID, sectionId: UUID) => {
+      const now = new Date().toISOString();
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId ? { ...s, flowchartEnabled: false, flowchartState: undefined, updated_at: now } : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+      get().removeSectionDiagram(projectId, sectionId);
     },
 
     editSection: (
@@ -1179,6 +1368,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           ),
         projectId
       );
+      get().removeSectionDiagram(projectId, sectionId);
     },
 
     moveSectionUp: (projectId: UUID, sectionId: UUID) => {
@@ -1288,6 +1478,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         if (Object.keys(relations).length > 0) {
           set({ lastRelationsAnalysisByProject: relations });
         }
+        const diagrams = loadDiagrams();
+        if (Object.keys(diagrams).length > 0) {
+          set({ diagramsBySection: diagrams });
+        }
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const parsed = parseProjectsFromStorage(raw);
@@ -1351,6 +1545,99 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
 
     getLastRelationsAnalysis: (projectId: string) => {
       return get().lastRelationsAnalysisByProject[projectId];
+    },
+
+    getSectionDiagram: (projectId: string, sectionId: string) => {
+      const fromMap = get().diagramsBySection[buildSectionDiagramKey(projectId, sectionId)];
+      if (fromMap) return fromMap;
+      const project = get().projects.find((p) => p.id === projectId);
+      const section = project?.sections?.find((s) => s.id === sectionId);
+      return section?.flowchartState;
+    },
+
+    saveSectionDiagram: (projectId: string, sectionId: string, state: DiagramState) => {
+      const now = new Date().toISOString();
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId
+                      ? {
+                          ...s,
+                          flowchartEnabled: true,
+                          flowchartState: state,
+                          updated_at: now,
+                        }
+                      : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+      const next = {
+        ...get().diagramsBySection,
+        [buildSectionDiagramKey(projectId, sectionId)]: state,
+      };
+      set({ diagramsBySection: next });
+      persistDiagrams(next);
+    },
+
+    resetSectionDiagram: (projectId: string, sectionId: string) => {
+      const now = new Date().toISOString();
+      const nextState: DiagramState = {
+        version: 1,
+        updatedAt: now,
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      };
+      wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId
+                      ? { ...s, flowchartEnabled: true, flowchartState: nextState, updated_at: now }
+                      : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+      const next = {
+        ...get().diagramsBySection,
+        [buildSectionDiagramKey(projectId, sectionId)]: nextState,
+      };
+      set({ diagramsBySection: next });
+      persistDiagrams(next);
+    },
+
+    removeSectionDiagram: (projectId: string, sectionId: string) => {
+      wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                sections: (p.sections || []).map((s) =>
+                  s.id === sectionId ? { ...s, flowchartState: undefined } : s
+                ),
+              }
+            : p
+        )
+      );
+      const next = { ...get().diagramsBySection };
+      delete next[buildSectionDiagramKey(projectId, sectionId)];
+      set({ diagramsBySection: next });
+      persistDiagrams(next);
     },
 
     persistToStorage: () => {

@@ -16,6 +16,7 @@ export default function HomeSyncBar() {
   const getProject = useProjectStore((s) => s.getProject);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
   const projects = useProjectStore((s) => s.projects);
+  const diagramsBySection = useProjectStore((s) => s.diagramsBySection);
   const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
@@ -28,11 +29,16 @@ export default function HomeSyncBar() {
     return ids
       .map((id) => {
         const p = projects.find((pr) => pr.id === id);
-        return p ? `${p.id}:${(p.sections ?? []).length}:${p.updatedAt}` : "";
+        if (!p) return "";
+        const diagramStamp = Object.entries(diagramsBySection)
+          .filter(([key]) => key.startsWith(`${p.id}:`))
+          .map(([, state]) => state?.updatedAt || "")
+          .join(",");
+        return `${p.id}:${(p.sections ?? []).length}:${p.updatedAt}:${diagramStamp}`;
       })
       .filter(Boolean)
       .join("|");
-  }, [projects, getPendingProjectIds]);
+  }, [projects, diagramsBySection, getPendingProjectIds]);
 
   const refreshEstimatedCredits = useCallback(() => {
     const ids = getPendingProjectIds();

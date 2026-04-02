@@ -97,6 +97,48 @@ describe('projectSync auth/session behavior', () => {
     });
   });
 
+  it("sends section flowchart state in sync payload", async () => {
+    const projectWithFlowchart = {
+      ...projectPayload,
+      id: "project-with-flowchart",
+      sections: [
+        {
+          ...projectPayload.sections[0],
+          id: "section-with-flowchart",
+          flowchartEnabled: true,
+          flowchartState: {
+            version: 1,
+            updatedAt: "2026-03-01T10:10:00.000Z",
+            nodes: [
+              {
+                id: "n-1",
+                position: { x: 10, y: 20 },
+                data: { label: "Inicio" },
+              },
+            ],
+            edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+        },
+      ],
+    } as any;
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, stats: {} }),
+    });
+
+    const result = await upsertProjectToSupabase(projectWithFlowchart);
+    expect(result.error).toBeNull();
+
+    const [, requestInit] = mockFetch.mock.calls[mockFetch.mock.calls.length - 1] as [string, RequestInit];
+    const payload = JSON.parse(String(requestInit.body ?? "{}")) as { project?: { sections?: Array<{ flowchartState?: unknown }> } };
+    expect(payload.project?.sections?.[0]?.flowchartState).toMatchObject({
+      version: 1,
+      nodes: [{ id: "n-1" }],
+    });
+  });
+
   it("sends economyLink addons in sync payload", async () => {
     const projectWithAddon = {
       ...projectPayload,

@@ -303,4 +303,35 @@ describe('ProjectStore sync behavior', () => {
     expect(history[0].changeSummary?.sections).toHaveLength(1)
     expect(history[0].changeSummary?.sections[0].facets).toContain('addons')
   })
+
+  it('marks project dirty and autosyncs when section flowchart changes', async () => {
+    const store = useProjectStore.getState()
+    const projectId = store.addProject('Projeto com flowchart', 'Desc')
+    const sectionId = store.addSection(projectId, 'Secao 1', '')
+
+    await Promise.resolve()
+    await Promise.resolve()
+    upsertProjectMock.mockClear()
+
+    store.updatePersistenceConfig({ syncAutomatic: true, debounceMs: 100 })
+    store.saveSectionDiagram(projectId, sectionId, {
+      version: 1,
+      updatedAt: '2026-03-01T12:00:00.000Z',
+      nodes: [{ id: 'n-1', position: { x: 0, y: 0 }, data: { label: 'N1' } }],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    } as any)
+
+    expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
+    expect(useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === sectionId)?.flowchartState).toBeDefined()
+
+    jest.advanceTimersByTime(200)
+    await Promise.resolve()
+
+    expect(upsertProjectMock).toHaveBeenCalledTimes(1)
+    const syncedProject = upsertProjectMock.mock.calls[0][0]
+    const syncedSection = syncedProject.sections.find((s: any) => s.id === sectionId)
+    expect(syncedSection.flowchartState).toBeDefined()
+    expect(syncedSection.flowchartState.nodes).toHaveLength(1)
+  })
 })

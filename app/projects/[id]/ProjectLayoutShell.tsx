@@ -24,7 +24,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   const shouldShowSidebar = useMemo(() => {
     if (!pathname) return true;
-    return !pathname.endsWith("/mindmap") && !pathname.endsWith("/view");
+    return !pathname.endsWith("/mindmap") && !pathname.endsWith("/view") && !pathname.endsWith("/diagramas");
   }, [pathname]);
 
   const currentSectionId = useMemo(() => {
@@ -36,6 +36,10 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     } catch {
       return rawId;
     }
+  }, [pathname]);
+  const isSectionDiagramRoute = useMemo(() => {
+    if (!pathname) return false;
+    return /^\/projects\/[^/]+\/sections\/[^/]+\/diagramas(?:\/|$)/.test(pathname);
   }, [pathname]);
 
   const breadcrumbSections = useMemo(() => {
@@ -94,7 +98,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
             {breadcrumbSections.map((section: any) => (
               <span key={section.id} className="min-w-0 flex items-center gap-2">
                 <span className="text-gray-500">/</span>
-                {section.id === currentSectionId ? (
+                {section.id === currentSectionId && !isSectionDiagramRoute ? (
                   <span className="min-w-0 truncate text-indigo-100 font-medium" title={section.title}>
                     {section.title}
                   </span>
@@ -109,6 +113,14 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 )}
               </span>
             ))}
+            {isSectionDiagramRoute && (
+              <span className="min-w-0 flex items-center gap-2">
+                <span className="text-gray-500">/</span>
+                <span className="min-w-0 truncate text-emerald-200 font-medium" title={t("sectionDetail.flowchart.breadcrumb")}>
+                  {t("sectionDetail.flowchart.breadcrumb")}
+                </span>
+              </span>
+            )}
           </div>
 
           {shouldShowSidebar && (

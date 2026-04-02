@@ -3,7 +3,7 @@
  * Testa todas as operações de gerenciamento de projetos e seções
  */
 
-import { useProjectStore, Project, Section } from '@/store/projectStore'
+import { useProjectStore, Project, Section, DiagramState } from '@/store/projectStore'
 
 jest.mock('@/lib/supabase/projectSync', () => ({
   fetchProjectsFromSupabase: jest.fn(async () => []),
@@ -30,7 +30,7 @@ global.crypto = {
 describe('ProjectStore', () => {
   beforeEach(() => {
     // Reset store state
-    useProjectStore.setState({ projects: [] })
+    useProjectStore.setState({ projects: [], diagramsBySection: {} })
     // Clear localStorage
     localStorage.clear()
     // Reset UUID index
@@ -520,6 +520,140 @@ describe('ProjectStore', () => {
       const store = useProjectStore.getState()
       expect(store.projects).toHaveLength(1)
       expect(store.projects[0].title).toBe('Imported 1')
+    })
+  })
+
+  describe('diagram storage', () => {
+    const createDiagramState = (): DiagramState => ({
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'diagramNode',
+          position: { x: 10, y: 20 },
+          data: { label: 'Bloco 1', width: 200, height: 110 },
+        },
+      ],
+      edges: [
+        {
+          id: 'edge-1',
+          source: 'node-1',
+          target: 'node-2',
+          label: 'Fluxo',
+          startMarker: 'circle',
+          endMarker: 'arrow',
+        },
+      ],
+      viewport: { x: 15, y: -20, zoom: 1.2 },
+    })
+
+    it('should save and retrieve diagram by section id', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto com diagrama', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção 1', '')
+      const payload = createDiagramState()
+
+      store.saveSectionDiagram(projectId, sectionId, payload)
+
+      const saved = useProjectStore.getState().getSectionDiagram(projectId, sectionId)
+      expect(saved).toBeDefined()
+      expect(saved?.nodes).toHaveLength(1)
+      expect(saved?.edges[0].label).toBe('Fluxo')
+      expect(saved?.viewport.zoom).toBe(1.2)
+    })
+
+    it('should persist diagrams to dedicated localStorage key', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto local', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção local', '')
+      const sectionKey = `${projectId}:${sectionId}`
+
+      store.saveSectionDiagram(projectId, sectionId, createDiagramState())
+
+      const raw = localStorage.getItem('gdd_diagrams_by_section_v1')
+      expect(raw).toBeTruthy()
+      const parsed = JSON.parse(raw!)
+      expect(parsed[sectionKey]).toBeDefined()
+      expect(parsed[sectionKey].nodes[0].data.label).toBe('Bloco 1')
+    })
+
+    it('should reset and remove diagram states', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto reset', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção reset', '')
+
+      store.saveSectionDiagram(projectId, sectionId, createDiagramState())
+      store.resetSectionDiagram(projectId, sectionId)
+
+      const reset = useProjectStore.getState().getSectionDiagram(projectId, sectionId)
+      expect(reset?.nodes).toEqual([])
+      expect(reset?.edges).toEqual([])
+      expect(reset?.viewport).toEqual({ x: 0, y: 0, zoom: 1 })
+
+      store.removeSectionDiagram(projectId, sectionId)
+      expect(useProjectStore.getState().getSectionDiagram(projectId, sectionId)).toBeUndefined()
+    })
+
+    it('should clean local diagram when section is removed', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto removido', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção removida', '')
+      const sectionKey = `${projectId}:${sectionId}`
+
+      store.saveSectionDiagram(projectId, sectionId, createDiagramState())
+      store.removeSection(projectId, sectionId)
+
+      expect(useProjectStore.getState().getSectionDiagram(projectId, sectionId)).toBeUndefined()
+
+      const raw = localStorage.getItem('gdd_diagrams_by_section_v1')
+      const parsed = raw ? JSON.parse(raw) : {}
+      expect(parsed[sectionKey]).toBeUndefined()
+    })
+
+    it('should clean section diagrams when project is removed', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto removido', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção removida', '')
+      const sectionKey = `${projectId}:${sectionId}`
+
+      store.saveSectionDiagram(projectId, sectionId, createDiagramState())
+      store.removeProjectLocally(projectId)
+
+      const raw = localStorage.getItem('gdd_diagrams_by_section_v1')
+      const parsed = raw ? JSON.parse(raw) : {}
+      expect(parsed[sectionKey]).toBeUndefined()
+    })
+
+    it('should toggle flowchart flag on section', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto flowchart', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção flowchart', '')
+
+      store.setSectionFlowchartEnabled(projectId, sectionId, true)
+      expect(store.getProject(projectId)?.sections?.find((s) => s.id === sectionId)?.flowchartEnabled).toBe(true)
+
+      store.setSectionFlowchartEnabled(projectId, sectionId, false)
+      expect(store.getProject(projectId)?.sections?.find((s) => s.id === sectionId)?.flowchartEnabled).toBe(false)
+    })
+
+    it('should disable flowchart and clear section diagram atomically', () => {
+      const store = useProjectStore.getState()
+      const projectId = store.addProject('Projeto flowchart clear', 'Desc')
+      const sectionId = store.addSection(projectId, 'Seção flowchart clear', '')
+      const sectionKey = `${projectId}:${sectionId}`
+
+      store.setSectionFlowchartEnabled(projectId, sectionId, true)
+      store.saveSectionDiagram(projectId, sectionId, createDiagramState())
+      expect(store.getSectionDiagram(projectId, sectionId)).toBeDefined()
+
+      store.disableSectionFlowchartAndClearDiagram(projectId, sectionId)
+
+      expect(store.getProject(projectId)?.sections?.find((s) => s.id === sectionId)?.flowchartEnabled).toBe(false)
+      expect(store.getSectionDiagram(projectId, sectionId)).toBeUndefined()
+      const raw = localStorage.getItem('gdd_diagrams_by_section_v1')
+      const parsed = raw ? JSON.parse(raw) : {}
+      expect(parsed[sectionKey]).toBeUndefined()
     })
   })
 })

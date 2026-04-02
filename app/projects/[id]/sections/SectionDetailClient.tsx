@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
@@ -76,6 +77,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
   const setSectionThumbImage = useProjectStore((s) => s.setSectionThumbImage);
+  const setSectionFlowchartEnabled = useProjectStore((s) => s.setSectionFlowchartEnabled);
+  const disableSectionFlowchartAndClearDiagram = useProjectStore((s) => s.disableSectionFlowchartAndClearDiagram);
   const addSectionAddon = useProjectStore((s) => s.addSectionAddon);
   const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
   const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
@@ -769,6 +772,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     sectionThumbCandidates={sectionThumbCandidates}
     handlePickSectionThumb={handlePickSectionThumb}
     setSectionThumbImage={setSectionThumbImage}
+    setSectionFlowchartEnabled={setSectionFlowchartEnabled}
+    disableSectionFlowchartAndClearDiagram={disableSectionFlowchartAndClearDiagram}
     addons={addons}
     onAddAddon={addAddon}
     onUpdateAddon={updateAddon}
@@ -1337,6 +1342,8 @@ function SectionDetailContent({
   sectionThumbCandidates,
   handlePickSectionThumb,
   setSectionThumbImage,
+  setSectionFlowchartEnabled,
+  disableSectionFlowchartAndClearDiagram,
   addons,
   onAddAddon,
   onUpdateAddon,
@@ -1733,7 +1740,7 @@ function SectionDetailContent({
                       editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
                     }}
                     className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900/90"
-                    title="Cor no mapa mental"
+                    title={t("sectionDetail.actions.mapColor")}
                   />
                   {section?.color && (
                     <button
@@ -1742,7 +1749,7 @@ function SectionDetailContent({
                         editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
                       }}
                       className="h-8 px-2 text-xs bg-gray-700/90 hover:bg-gray-600 text-white rounded border border-gray-500/40 transition-colors"
-                      title="Resetar para cor padrão do nível"
+                      title={t("sectionDetail.actions.resetLevelColor")}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v6h6M20 20v-6h-6M5.636 18.364A9 9 0 003.05 9m17.9 6a9 9 0 00-2.586-9.364" />
@@ -1754,7 +1761,7 @@ function SectionDetailContent({
                 <button
                   onClick={() => setIsEditingTitle(true)}
                   className="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-indigo-300 transition-opacity text-xl shrink-0"
-                  title="Editar nome da seção"
+                  title={t("sectionDetail.actions.editSectionName")}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
@@ -1773,7 +1780,7 @@ function SectionDetailContent({
                   className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${
                     showAddonMenu ? "border-cyan-400/60 bg-cyan-600/80 text-white" : "border-gray-600 bg-gray-800/90 text-gray-100 hover:bg-gray-700 hover:border-cyan-400/50"
                   }`}
-                  title="Adicionar addon nesta pagina"
+                  title={t("sectionDetail.actions.addAddon")}
                   aria-expanded={showAddonMenu}
                   aria-haspopup="true"
                 >
@@ -1809,7 +1816,11 @@ function SectionDetailContent({
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}
                   className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg border border-purple-400/40 hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={hasValidConfig ? "Melhorar conteúdo com IA preservando imagens e links" : "Configure sua API key em Configurações de IA"}
+                  title={
+                    hasValidConfig
+                      ? t("sectionDetail.ai.improveTooltip")
+                      : t("sectionDetail.ai.configureApiKeyTooltip")
+                  }
                 >
                   {isImproving ? (
                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
@@ -1825,7 +1836,7 @@ function SectionDetailContent({
                 <button
                   onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
                   className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg border border-blue-400/40 hover:bg-blue-700 transition-colors"
-                  title="Ver no mapa mental"
+                  title={t("sectionDetail.actions.goToMindMap")}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16M8 4a16 16 0 000 16m8-16a16 16 0 010 16" />
@@ -1844,7 +1855,7 @@ function SectionDetailContent({
                 <button
                   onClick={() => setShowMoveModal(true)}
                   className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded-lg border border-amber-400/40 hover:bg-amber-700 transition-colors"
-                  title="Mover seção para outro local"
+                  title={t("sectionDetail.actions.moveSection")}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
@@ -1986,6 +1997,72 @@ function SectionDetailContent({
               {section?.updated_by_name == null && section?.updated_at != null && section?.created_at !== section?.updated_at && (
                 <span>{t("sectionDetail.audit.updatedAt").replace("{{date}}", new Date(section.updated_at).toLocaleString())}</span>
               )}
+            </div>
+          )}
+        </div>
+      )}
+      {section && !inlineEdit && (
+        <div
+          className={`max-w-6xl mx-auto mb-4 ui-card-premium border ${
+            section?.flowchartEnabled ? "border-emerald-500/35 bg-emerald-900/10" : "border-gray-700/80"
+          }`}
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0 flex items-start gap-3">
+              <span
+                className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
+                  section?.flowchartEnabled
+                    ? "border-emerald-400/50 bg-emerald-600/25 text-emerald-200"
+                    : "border-gray-600/80 bg-gray-800/70 text-gray-300"
+                }`}
+                aria-hidden="true"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={1.8} />
+                  <rect x="14" y="3" width="7" height="6" rx="1.2" strokeWidth={1.8} />
+                  <rect x="8" y="15" width="8" height="6" rx="1.2" strokeWidth={1.8} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6.5h4m3.5 2.5v2.5M8.5 15v-2.5m6.5 2.5v-2.5" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-gray-100">{t("sectionDetail.flowchart.title")}</h3>
+                <p className="text-xs text-gray-400 mt-1">{t("sectionDetail.flowchart.description")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium ${section?.flowchartEnabled ? "text-emerald-300" : "text-gray-400"}`}>
+                {section?.flowchartEnabled ? t("sectionDetail.flowchart.statusOn") : t("sectionDetail.flowchart.statusOff")}
+              </span>
+              <ToggleSwitch
+                checked={Boolean(section?.flowchartEnabled)}
+                ariaLabel={t("sectionDetail.flowchart.switchAria")}
+                onChange={(nextEnabled) => {
+                  if (nextEnabled) {
+                    setSectionFlowchartEnabled(projectId, sectionId, true);
+                    setSection({ ...section, flowchartEnabled: true });
+                    return;
+                  }
+                  const confirmed = window.confirm(t("sectionDetail.flowchart.disableConfirm"));
+                  if (!confirmed) return;
+                  disableSectionFlowchartAndClearDiagram(projectId, sectionId);
+                  setSection({ ...section, flowchartEnabled: false });
+                }}
+              />
+            </div>
+          </div>
+          {section?.flowchartEnabled && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}/diagramas`)}
+                className="h-8 px-3 inline-flex items-center justify-center gap-1.5 bg-emerald-600 text-white rounded-lg border border-emerald-400/40 hover:bg-emerald-700 transition-colors text-xs font-medium"
+                title={t("sectionDetail.flowchart.open")}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                </svg>
+                {t("sectionDetail.flowchart.open")}
+              </button>
             </div>
           )}
         </div>
@@ -2151,7 +2228,7 @@ function SectionDetailContent({
                     return `${Math.max(200, current - 100)}px`;
                   })}
                   className="text-gray-300 hover:text-white font-bold"
-                  title="Diminuir altura"
+                  title={t("sectionDetail.actions.decreaseHeight")}
                 >
                   −
                 </button>
@@ -2164,7 +2241,7 @@ function SectionDetailContent({
                     return `${current + 100}px`;
                   })}
                   className="text-gray-300 hover:text-white font-bold"
-                  title="Aumentar altura"
+                  title={t("sectionDetail.actions.increaseHeight")}
                 >
                   +
                 </button>
@@ -2175,7 +2252,7 @@ function SectionDetailContent({
                   setEditorHeight('calc(100vh - 200px)');
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm border border-blue-400/40 flex items-center gap-1 transition-colors"
-                title="Fullscreen"
+                title={t("sectionDetail.actions.fullscreen")}
               >
                 ⤢ {t('sectionDetail.actions.fullscreen')}
               </button>
@@ -2208,7 +2285,7 @@ function SectionDetailContent({
                 editSection(projectId, sectionId, section.title, convertedMd, undefined, undefined);
                 setInlineEdit(false);
               }}
-            >Salvar</button>
+            >{t("common.save")}</button>
             <button
               className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => setInlineEdit(false)}
@@ -2222,7 +2299,9 @@ function SectionDetailContent({
                   (editorRef as any).current.changeMode(next, true);
                 }
               }}
-            >Modo: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}</button>
+            >
+              {t("sectionDetail.actions.editorModeLabel", "Modo")}: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}
+            </button>
           </div>
         </div>
       )}
@@ -2248,10 +2327,10 @@ function SectionDetailContent({
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3l1.8 4.8L19 9.6l-4.1 3.2L16.2 18 12 15l-4.2 3 1.3-5.2L5 9.6l5.2-1.8L12 3z" />
                 </svg>
-                Preview do Conteúdo Melhorado
+                {t("sectionDetail.ai.previewTitle")}
               </h2>
               <p className="text-purple-100 text-sm mt-1">
-                Revise o conteúdo e confirme ou solicite modificações
+                {t("sectionDetail.ai.previewSubtitle")}
               </p>
             </div>
 
@@ -2302,12 +2381,12 @@ function SectionDetailContent({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
                   </svg>
-                  Solicitar modificações (opcional):
+                  {t("sectionDetail.ai.modificationRequestLabel")}
                 </label>
                 <textarea
                   value={modificationRequest}
                   onChange={(e) => setModificationRequest(e.target.value)}
-                  placeholder="Ex: Adicione mais exemplos práticos, reduza o texto, foque mais em mecânicas..."
+                  placeholder={t("sectionDetail.ai.modificationRequestPlaceholder")}
                   className="w-full bg-gray-800 border border-gray-600 text-white placeholder:text-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
                   rows={2}
                 />

@@ -1,0 +1,50 @@
+export type DiagramThemeKey = "neon" | "minimal" | "pastel";
+export type DiagramBlockType = "retangulo" | "losango" | "pill" | "circulo";
+
+export type DiagramTheme = {
+  label: string;
+  appBgClass: string;
+  toolbarShellClass: string;
+  toolbarButtonClass: string;
+  primaryButtonClass: string;
+  dangerButtonClass: string;
+  panelClass: string;
+  emptyCardClass: string;
+  idleHintClass: string;
+  nodeSectionClass: string;
+  edgeSectionClass: string;
+  inputClass: string;
+  nodeCardClass: string;
+  nodeTextClass: string;
+  handleClass: string;
+  resizerColor: string;
+  resizerHandleBg: string;
+  resizerLineColor: string;
+  resizerVisualMode: "normal" | "minimal";
+  edgeStroke: string;
+  edgeSelectedStroke: string;
+  edgeGlow: string;
+  edgeLabelFill: string;
+  edgeLabelBg: string;
+  edgeLabelBorder: string;
+  dotColor: string;
+  controlsClass: string;
+  selectedNodeBorder: string;
+  selectedNodeRing: string;
+  selectedNodeGlow: string;
+};
+
+export type DiagramNodeData = {
+  label: string;
+  blockType?: DiagramBlockType;
+  color?: string;
+  textColor?: string;
+  textAlign?: "left" | "center" | "right";
+  textVerticalAlign?: "top" | "middle" | "bottom";
+  fontSize?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  gradientEnabled?: boolean;
+  theme?: DiagramThemeKey;
+};
