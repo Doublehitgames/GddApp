@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import ReactFlow, {
   addEdge,
   Background,
@@ -17,7 +18,7 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { DiagramMarkerType, useProjectStore } from "@/store/projectStore";
+import { DiagramMarkerType, DiagramState, useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import DiagramToolbar from "./components/DiagramToolbar";
 import PropertiesSidebar from "./components/PropertiesSidebar";
@@ -71,6 +72,11 @@ import {
 interface DiagramasClientProps {
   projectId: string;
   sectionId: string;
+  readOnlyPublic?: boolean;
+  publicToken?: string;
+  publicProjectTitle?: string;
+  publicSectionTitle?: string;
+  initialDiagramState?: DiagramState;
 }
 
 const SNAP_GRID_SIZE_OPTIONS = [10, 20, 30] as const;
@@ -103,8 +109,18 @@ function inferHandleByDirection(
   return dy >= 0 ? "bottom" : "top";
 }
 
-function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
+function DiagramasFlow({
+  projectId,
+  sectionId,
+  readOnlyPublic = false,
+  publicToken,
+  publicProjectTitle,
+  publicSectionTitle,
+  initialDiagramState,
+}: DiagramasClientProps) {
   const { t } = useI18n();
+  const router = useRouter();
+  const isReadOnly = Boolean(readOnlyPublic);
   const getSectionDiagram = useProjectStore((state) => state.getSectionDiagram);
   const saveSectionDiagram = useProjectStore((state) => state.saveSectionDiagram);
   const resetSectionDiagram = useProjectStore((state) => state.resetSectionDiagram);
@@ -203,7 +219,8 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
   );
 
   useEffect(() => {
-    const initial = getSectionDiagram(projectId, sectionId) || createEmptyDiagramState();
+    const initial = (isReadOnly ? (initialDiagramState || createEmptyDiagramState()) : getSectionDiagram(projectId, sectionId))
+      || createEmptyDiagramState();
     const flowNodes = toFlowNodes(initial.nodes || [], theme);
     const flowEdges = toFlowEdges(initial.edges || [], activeTheme);
     setNodes(flowNodes);
@@ -215,7 +232,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
       setFlowViewport(initial.viewport || { x: 0, y: 0, zoom: 1 }, { duration: 250 });
     }, 0);
     hydratedRef.current = true;
-  }, [projectId, sectionId, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles]);
+  }, [projectId, sectionId, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles, isReadOnly, initialDiagramState]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -254,6 +271,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
   }, [theme, activeTheme, setNodes, setEdges, backfillMissingEdgeHandles]);
 
   useEffect(() => {
+    if (isReadOnly) return;
     if (!hydratedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -272,7 +290,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [nodes, edges, viewport, snapToGrid, snapGridSize, saveSectionDiagram, projectId, sectionId]);
+  }, [nodes, edges, viewport, snapToGrid, snapGridSize, saveSectionDiagram, projectId, sectionId, isReadOnly]);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId) || null;
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId) || null;
@@ -501,6 +519,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
   };
 
   const clearBoard = () => {
+    if (isReadOnly) return;
     if (!window.confirm(t("sectionDetail.flowchart.editor.clearConfirm", "Deseja limpar todo o quadro de diagramas?"))) return;
     setNodes([]);
     setEdges([]);
@@ -525,6 +544,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
   };
 
   useEffect(() => {
+    if (isReadOnly) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (isTypingTarget(event.target)) return;
@@ -563,7 +583,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNode, duplicateNode, screenToFlowPosition]);
+  }, [selectedNode, duplicateNode, screenToFlowPosition, isReadOnly]);
 
   const themeOptions = getThemeOptions();
   const selectedStartMarker: DiagramMarkerType = selectedEdge ? fromEdgeMarker(selectedEdge.markerStart) : "none";
@@ -614,11 +634,11 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
     <div className={`fixed inset-x-0 bottom-0 top-16 md:top-20 text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
       <div
         className="flex-1 relative min-h-0 overflow-hidden"
-        onDragOver={(event) => {
+        onDragOver={isReadOnly ? undefined : (event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
         }}
-        onDrop={(event) => {
+        onDrop={isReadOnly ? undefined : (event) => {
           const blockTypeRaw = event.dataTransfer.getData(BLOCK_DND_MIME) || event.dataTransfer.getData("text/plain");
           if (!blockTypeRaw) return;
           event.preventDefault();
@@ -627,10 +647,26 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
           createNode(blockType, position);
         }}
       >
+        {isReadOnly && publicToken && (
+          <div className="absolute top-3 left-3 z-30 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white/90">
+            <button
+              type="button"
+              onClick={() => router.push(`/s/${encodeURIComponent(publicToken)}?mode=view&focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
+              className="hover:underline underline-offset-2"
+            >
+              {t("sectionDetail.actions.goToDocument")}
+            </button>
+            <span className="text-white/50">/</span>
+            <span className="font-semibold">{publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}</span>
+            {publicProjectTitle ? <span className="text-white/70">({publicProjectTitle})</span> : null}
+          </div>
+        )}
         <DiagramToolbar
           shellClass={activeTheme.toolbarShellClass}
           toolbarButtonClass={activeTheme.toolbarButtonClass}
           dangerButtonClass={activeTheme.dangerButtonClass}
+          isReadOnly={isReadOnly}
+          topClassName={isReadOnly ? "top-14" : "top-3"}
           currentTheme={theme}
           themeOptions={themeOptions}
           onCenter={() => fitView({ duration: 300, padding: 0.3 })}
@@ -649,11 +685,11 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={handleConnect}
-          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
-          onNodeDragStart={(event, node) => {
+          onNodesChange={isReadOnly ? undefined : onNodesChange}
+          onEdgesChange={isReadOnly ? undefined : onEdgesChange}
+          onConnect={isReadOnly ? undefined : handleConnect}
+          onNodeClick={isReadOnly ? undefined : (_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
+          onNodeDragStart={isReadOnly ? undefined : (event, node) => {
             setSelectedNodeId(node.id);
             setSelectedEdgeId(null);
             if (!(event.ctrlKey || event.altKey)) return;
@@ -672,7 +708,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
             setSelectedNodeId(clone.id);
             setSelectedEdgeId(null);
           }}
-          onNodeDrag={(_, node) => {
+          onNodeDrag={isReadOnly ? undefined : (_, node) => {
             const dragDuplicate = dragDuplicateRef.current;
             if (!dragDuplicate || dragDuplicate.sourceId !== node.id) return;
             setNodes((prev) =>
@@ -687,7 +723,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
               })
             );
           }}
-          onNodeDragStop={(_, node) => {
+          onNodeDragStop={isReadOnly ? undefined : (_, node) => {
             const dragDuplicate = dragDuplicateRef.current;
             if (!dragDuplicate || dragDuplicate.sourceId !== node.id) {
               setSelectedNodeId(node.id);
@@ -706,8 +742,8 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
             setSelectedNodeId(dragDuplicate.cloneId);
             setSelectedEdgeId(null);
           }}
-          onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
-          onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null); }}
+          onEdgeClick={isReadOnly ? undefined : (_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
+          onPaneClick={isReadOnly ? undefined : () => { setSelectedEdgeId(null); setSelectedNodeId(null); }}
           onPaneMouseEnter={() => {
             isPointerOverPaneRef.current = true;
           }}
@@ -718,7 +754,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
             isPointerOverPaneRef.current = true;
             lastPointerClientRef.current = { x: event.clientX, y: event.clientY };
           }}
-          onMoveEnd={(_, flowViewport) => setViewport(flowViewport)}
+          onMoveEnd={isReadOnly ? undefined : (_, flowViewport) => setViewport(flowViewport)}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.25 }}
@@ -726,12 +762,12 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
           connectionMode={ConnectionMode.Loose}
           snapToGrid={snapToGrid}
           snapGrid={[snapGridSize, snapGridSize]}
-          nodesConnectable
-          nodesDraggable
-          elementsSelectable
-          deleteKeyCode={["Delete", "Backspace"]}
-          onNodesDelete={(deleted) => { if (deleted.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null); }}
-          onEdgesDelete={(deleted) => { if (deleted.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null); }}
+          nodesConnectable={!isReadOnly}
+          nodesDraggable={!isReadOnly}
+          elementsSelectable={!isReadOnly}
+          deleteKeyCode={isReadOnly ? null : ["Delete", "Backspace"]}
+          onNodesDelete={isReadOnly ? undefined : (deleted) => { if (deleted.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null); }}
+          onEdgesDelete={isReadOnly ? undefined : (deleted) => { if (deleted.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null); }}
           proOptions={{ hideAttribution: true }}
         >
           <style>{`
@@ -754,6 +790,7 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
 
       </div>
 
+      {!isReadOnly && (
       <PropertiesSidebar
         panelClass={activeTheme.panelClass}
         idleHintClass={activeTheme.idleHintClass}
@@ -883,14 +920,31 @@ function DiagramasFlow({ projectId, sectionId }: DiagramasClientProps) {
         onEdgeStartMarkerChange={(marker) => updateSelectedEdge({ markerStart: toMarkerConfig(marker, activeTheme.edgeStroke) })}
         onEdgeEndMarkerChange={(marker) => updateSelectedEdge({ markerEnd: toMarkerConfig(marker, activeTheme.edgeStroke) })}
       />
+      )}
     </div>
   );
 }
 
-export default function DiagramasClient({ projectId, sectionId }: DiagramasClientProps) {
+export default function DiagramasClient({
+  projectId,
+  sectionId,
+  readOnlyPublic = false,
+  publicToken,
+  publicProjectTitle,
+  publicSectionTitle,
+  initialDiagramState,
+}: DiagramasClientProps) {
   return (
     <ReactFlowProvider>
-      <DiagramasFlow projectId={projectId} sectionId={sectionId} />
+      <DiagramasFlow
+        projectId={projectId}
+        sectionId={sectionId}
+        readOnlyPublic={readOnlyPublic}
+        publicToken={publicToken}
+        publicProjectTitle={publicProjectTitle}
+        publicSectionTitle={publicSectionTitle}
+        initialDiagramState={initialDiagramState}
+      />
     </ReactFlowProvider>
   );
 }

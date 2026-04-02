@@ -1805,6 +1805,13 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     return sectionId ? `${base}?focus=${encodeURIComponent(sectionId)}#section-${sectionId}` : base;
   };
 
+  const getFlowchartTargetUrl = (sectionId: string) => {
+    if (isPublicMode) {
+      return `/s/${encodeURIComponent(publicToken || "")}?mode=diagramas&sectionId=${encodeURIComponent(sectionId)}`;
+    }
+    return `/projects/${projectId}/sections/${sectionId}/diagramas`;
+  };
+
   if (!project) {
     if (isPublicMode && isPublicLoading) {
       return (
@@ -2035,10 +2042,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
             </div>
 
-            {!isPublicMode && selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
+            {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
               <div className="mt-3">
                 <button
-                  onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}/diagramas`)}
+                  onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
                   className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg border border-emerald-400/40 transition-colors text-sm font-medium"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

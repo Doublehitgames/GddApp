@@ -362,6 +362,13 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     return `/projects/${projectId}/mindmap?focus=${encodeURIComponent(sectionId)}`;
   };
 
+  const getFlowchartUrl = (sectionId: string) => {
+    if (isPublicMode) {
+      return `/s/${encodeURIComponent(publicToken || "")}?mode=diagramas&sectionId=${encodeURIComponent(sectionId)}`;
+    }
+    return `/projects/${projectId}/sections/${sectionId}/diagramas`;
+  };
+
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const highlightSearchTerm = (text: string) => {
     if (!normalizedSearch) return text;
@@ -527,12 +534,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                         📄 {t("sectionDetail.actions.goToSectionPage")}
                       </button>
                     )}
-                    {!isPublicMode && Boolean((node as any).flowchartEnabled) && (
+                    {Boolean((node as any).flowchartEnabled) && (
                       <button
                         type="button"
                         onClick={() => {
                           setOpenSectionMenuId(null);
-                          router.push(`/projects/${projectId}/sections/${node.id}/diagramas`);
+                          router.push(getFlowchartUrl(node.id));
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 flex items-center gap-2"
                       >
@@ -573,11 +580,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 )}
               </div>
             )}
-            {!isPublicMode && Boolean((node as any).flowchartEnabled) && (
+            {Boolean((node as any).flowchartEnabled) && (
               <div className="mb-6">
                 <button
                   type="button"
-                  onClick={() => router.push(`/projects/${projectId}/sections/${node.id}/diagramas`)}
+                  onClick={() => router.push(getFlowchartUrl(node.id))}
                   className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

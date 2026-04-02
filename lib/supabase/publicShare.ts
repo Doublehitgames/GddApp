@@ -13,6 +13,8 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       id: row.id,
       title: row.title,
       content: row.content || "",
+      flowchartEnabled: row.flowchart_state != null,
+      flowchartState: row.flowchart_state || undefined,
       created_at: row.created_at,
       parentId: row.parent_id || undefined,
       order: (row.sort_order ?? row.order) ?? 0,
@@ -41,7 +43,7 @@ export async function getPublicProjectByIdAndToken(id: string, token: string): P
 
   const { data: sectionRows, error: sectionErr } = await supabase
     .from("sections")
-    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags")
+    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state")
     .eq("project_id", id)
     .order("sort_order", { ascending: true });
 
@@ -68,7 +70,7 @@ export async function getPublicProjectByToken(token: string): Promise<Project | 
 
   const { data: sectionRows, error: sectionErr } = await supabase
     .from("sections")
-    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags")
+    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state")
     .eq("project_id", projectRow.id)
     .order("sort_order", { ascending: true });
 
