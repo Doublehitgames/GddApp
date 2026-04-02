@@ -2035,6 +2035,20 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
             </div>
 
+            {!isPublicMode && selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
+              <div className="mt-3">
+                <button
+                  onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}/diagramas`)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg border border-emerald-400/40 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                  </svg>
+                  {t("sectionDetail.flowchart.open")}
+                </button>
+              </div>
+            )}
+
             {!isPublicMode && (
               <div className="mt-6 flex gap-2">
                 {selectedNode.id !== 'project' && (

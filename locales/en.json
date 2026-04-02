@@ -973,6 +973,7 @@
       "statusOff": "Disabled",
       "switchAria": "Enable or disable page flowchart",
       "open": "Open flowchart",
+      "openWithTitle": "Open flowchart - {{title}}",
       "disableConfirm": "Disabling will erase all progress from this page flowchart. Do you want to continue?",
       "breadcrumb": "Flowchart",
       "editor": {

@@ -527,6 +527,21 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                         📄 {t("sectionDetail.actions.goToSectionPage")}
                       </button>
                     )}
+                    {!isPublicMode && Boolean((node as any).flowchartEnabled) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenSectionMenuId(null);
+                          router.push(`/projects/${projectId}/sections/${node.id}/diagramas`);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-50 flex items-center gap-2"
+                      >
+                        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                        </svg>
+                        {t("sectionDetail.flowchart.open")}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -556,6 +571,23 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 ) : (
                   <span>{t("view.emptyContent")}</span>
                 )}
+              </div>
+            )}
+            {!isPublicMode && Boolean((node as any).flowchartEnabled) && (
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/projects/${projectId}/sections/${node.id}/diagramas`)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={1.8} />
+                    <rect x="14" y="3" width="7" height="6" rx="1.2" strokeWidth={1.8} />
+                    <rect x="8" y="15" width="8" height="6" rx="1.2" strokeWidth={1.8} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6.5h4m3.5 2.5v2.5M8.5 15v-2.5m6.5 2.5v-2.5" />
+                  </svg>
+                  {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", node.title)}
+                </button>
               </div>
             )}
             {Array.isArray(node.addons) && node.addons.length > 0 && (

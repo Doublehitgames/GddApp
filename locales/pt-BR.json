@@ -973,6 +973,7 @@
       "statusOff": "Desativado",
       "switchAria": "Ativar ou desativar fluxograma da página",
       "open": "Abrir fluxograma",
+      "openWithTitle": "Abrir fluxograma - {{title}}",
       "disableConfirm": "Ao desativar, todo o progresso do fluxograma desta página será apagado. Deseja continuar?",
       "breadcrumb": "Fluxograma",
       "editor": {

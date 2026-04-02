@@ -973,6 +973,7 @@
       "statusOff": "Desactivado",
       "switchAria": "Activar o desactivar flujograma de la página",
       "open": "Abrir flujograma",
+      "openWithTitle": "Abrir flujograma - {{title}}",
       "disableConfirm": "Al desactivar, se borrará todo el progreso del flujograma de esta página. ¿Deseas continuar?",
       "breadcrumb": "Flujograma",
       "editor": {
