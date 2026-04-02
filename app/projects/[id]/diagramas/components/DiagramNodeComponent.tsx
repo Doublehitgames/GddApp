@@ -24,7 +24,11 @@ function getReadableTextColor(hex: string) {
   return luminance > 0.58 ? "#0f172a" : "#f8fafc";
 }
 
-export default function DiagramNodeComponent({ data, selected }: NodeProps<DiagramNodeData>) {
+type DiagramNodeComponentProps = NodeProps<DiagramNodeData> & {
+  readOnly?: boolean;
+};
+
+export default function DiagramNodeComponent({ data, selected, readOnly = false }: DiagramNodeComponentProps) {
   const label = data?.label || "";
   const theme = DIAGRAM_THEMES[data?.theme || "neon"];
   const blockType = data?.blockType || "retangulo";
@@ -132,7 +136,7 @@ export default function DiagramNodeComponent({ data, selected }: NodeProps<Diagr
   return (
     <div className={outerNodeClass} style={outerSelectedGlowStyle}>
       <NodeResizer
-        isVisible={selected}
+        isVisible={selected && !readOnly}
         minWidth={120}
         minHeight={40}
         keepAspectRatio={blockType === "circulo"}
@@ -144,28 +148,44 @@ export default function DiagramNodeComponent({ data, selected }: NodeProps<Diagr
         id="top"
         type="source"
         position={Position.Top}
-        className={`!z-20 !h-2.5 !w-2.5 !border !opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5 transition-all duration-150 ${theme.handleClass} !bg-orange-300`}
+        className={`!z-20 !h-2.5 !w-2.5 !border transition-all duration-150 ${theme.handleClass} !bg-orange-300 ${
+          readOnly
+            ? "!opacity-0 !pointer-events-none"
+            : "!opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5"
+        }`}
         style={{ top: 0, left: "50%", transform: "translate(-50%, -50%)" }}
       />
       <Handle
         id="right"
         type="source"
         position={Position.Right}
-        className={`!z-20 !h-2.5 !w-2.5 !border !opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5 transition-all duration-150 ${theme.handleClass} !bg-orange-300`}
+        className={`!z-20 !h-2.5 !w-2.5 !border transition-all duration-150 ${theme.handleClass} !bg-orange-300 ${
+          readOnly
+            ? "!opacity-0 !pointer-events-none"
+            : "!opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5"
+        }`}
         style={{ top: "50%", right: 0, transform: "translate(50%, -50%)" }}
       />
       <Handle
         id="bottom"
         type="source"
         position={Position.Bottom}
-        className={`!z-20 !h-2.5 !w-2.5 !border !opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5 transition-all duration-150 ${theme.handleClass} !bg-orange-300`}
+        className={`!z-20 !h-2.5 !w-2.5 !border transition-all duration-150 ${theme.handleClass} !bg-orange-300 ${
+          readOnly
+            ? "!opacity-0 !pointer-events-none"
+            : "!opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5"
+        }`}
         style={{ bottom: 0, left: "50%", transform: "translate(-50%, 50%)" }}
       />
       <Handle
         id="left"
         type="source"
         position={Position.Left}
-        className={`!z-20 !h-2.5 !w-2.5 !border !opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5 transition-all duration-150 ${theme.handleClass} !bg-orange-300`}
+        className={`!z-20 !h-2.5 !w-2.5 !border transition-all duration-150 ${theme.handleClass} !bg-orange-300 ${
+          readOnly
+            ? "!opacity-0 !pointer-events-none"
+            : "!opacity-0 group-hover:!opacity-100 group-hover:!h-3.5 group-hover:!w-3.5"
+        }`}
         style={{ top: "50%", left: 0, transform: "translate(-50%, -50%)" }}
       />
       <div className={`${shapeNodeClass} relative`} style={{ ...mergedNodeStyle, ...(selectedShapeStyle || {}) }} data-shape={blockType}>

@@ -185,7 +185,12 @@ function DiagramasFlow({
     }
   }, []);
 
-  const nodeTypes = useMemo<NodeTypes>(() => ({ diagramNode: DiagramNodeComponent }), []);
+  const nodeTypes = useMemo<NodeTypes>(
+    () => ({
+      diagramNode: (props) => <DiagramNodeComponent {...props} readOnly={isReadOnly} />,
+    }),
+    [isReadOnly]
+  );
 
   const backfillMissingEdgeHandles = useCallback(
     (inputEdges: Edge[], inputNodes: Node<DiagramNodeData>[]): Edge[] => {
@@ -631,7 +636,36 @@ function DiagramasFlow({
   const selectedNodeBlockType = normalizeBlockType(selectedNode?.data.blockType);
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 top-16 md:top-20 text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
+    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-16 md:top-20"} text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
+      {isReadOnly && publicToken && (
+        <div className="absolute top-0 left-0 right-0 z-50 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => router.push(`/s/${encodeURIComponent(publicToken)}?mode=view&focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
+              className="text-gray-400 hover:text-white transition-colors shrink-0"
+            >
+              ← {t("sectionDetail.actions.goToDocument")}
+            </button>
+            <span className="text-gray-500 shrink-0">/</span>
+            <span
+              className="min-w-0 truncate text-emerald-200 font-medium"
+              title={publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}
+            >
+              {publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}
+            </span>
+            {publicProjectTitle ? (
+              <>
+                <span className="text-gray-500 shrink-0">|</span>
+                <span className="min-w-0 truncate text-gray-300" title={publicProjectTitle}>
+                  {publicProjectTitle}
+                </span>
+              </>
+            ) : null}
+          </div>
+          <span className="text-green-300 text-sm shrink-0">🔓 {t("projectDetail.visibility.public", "Public")}</span>
+        </div>
+      )}
       <div
         className="flex-1 relative min-h-0 overflow-hidden"
         onDragOver={isReadOnly ? undefined : (event) => {
@@ -647,26 +681,12 @@ function DiagramasFlow({
           createNode(blockType, position);
         }}
       >
-        {isReadOnly && publicToken && (
-          <div className="absolute top-3 left-3 z-30 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm text-white/90">
-            <button
-              type="button"
-              onClick={() => router.push(`/s/${encodeURIComponent(publicToken)}?mode=view&focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
-              className="hover:underline underline-offset-2"
-            >
-              {t("sectionDetail.actions.goToDocument")}
-            </button>
-            <span className="text-white/50">/</span>
-            <span className="font-semibold">{publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}</span>
-            {publicProjectTitle ? <span className="text-white/70">({publicProjectTitle})</span> : null}
-          </div>
-        )}
         <DiagramToolbar
           shellClass={activeTheme.toolbarShellClass}
           toolbarButtonClass={activeTheme.toolbarButtonClass}
           dangerButtonClass={activeTheme.dangerButtonClass}
           isReadOnly={isReadOnly}
-          topClassName={isReadOnly ? "top-14" : "top-3"}
+          topClassName={isReadOnly ? "top-16" : "top-3"}
           currentTheme={theme}
           themeOptions={themeOptions}
           onCenter={() => fitView({ duration: 300, padding: 0.3 })}
@@ -688,7 +708,7 @@ function DiagramasFlow({
           onNodesChange={isReadOnly ? undefined : onNodesChange}
           onEdgesChange={isReadOnly ? undefined : onEdgesChange}
           onConnect={isReadOnly ? undefined : handleConnect}
-          onNodeClick={isReadOnly ? undefined : (_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
+          onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
           onNodeDragStart={isReadOnly ? undefined : (event, node) => {
             setSelectedNodeId(node.id);
             setSelectedEdgeId(null);
@@ -743,7 +763,7 @@ function DiagramasFlow({
             setSelectedEdgeId(null);
           }}
           onEdgeClick={isReadOnly ? undefined : (_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
-          onPaneClick={isReadOnly ? undefined : () => { setSelectedEdgeId(null); setSelectedNodeId(null); }}
+          onPaneClick={() => { setSelectedEdgeId(null); setSelectedNodeId(null); }}
           onPaneMouseEnter={() => {
             isPointerOverPaneRef.current = true;
           }}
@@ -764,7 +784,7 @@ function DiagramasFlow({
           snapGrid={[snapGridSize, snapGridSize]}
           nodesConnectable={!isReadOnly}
           nodesDraggable={!isReadOnly}
-          elementsSelectable={!isReadOnly}
+          elementsSelectable
           deleteKeyCode={isReadOnly ? null : ["Delete", "Backspace"]}
           onNodesDelete={isReadOnly ? undefined : (deleted) => { if (deleted.some((node) => node.id === selectedNodeId)) setSelectedNodeId(null); }}
           onEdgesDelete={isReadOnly ? undefined : (deleted) => { if (deleted.some((edge) => edge.id === selectedEdgeId)) setSelectedEdgeId(null); }}
