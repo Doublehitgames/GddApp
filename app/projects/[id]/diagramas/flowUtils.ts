@@ -169,6 +169,7 @@ export function toFlowNodes(nodes: DiagramNode[], theme: DiagramThemeKey = "neon
     },
     data: {
       label: node.data.label || "",
+      note: node.data.note || "",
       blockType: normalizeBlockType(node.data.blockType),
       color: normalizeHexColor(node.data.color),
       textColor: normalizeHexColor(node.data.textColor),
@@ -231,6 +232,7 @@ export function serializeNodes(nodes: Node<DiagramNodeData>[]): DiagramNode[] {
     position: node.position,
     data: {
       label: node.data?.label || "",
+      note: node.data?.note || "",
       blockType: normalizeBlockType(node.data?.blockType),
       color: normalizeHexColor(node.data?.color),
       textColor: normalizeHexColor(node.data?.textColor),

@@ -40,6 +40,7 @@ export type DiagramNode = {
   position: { x: number; y: number };
   data: {
     label: string;
+    note?: string;
     blockType?: "retangulo" | "losango" | "pill" | "circulo";
     color?: string;
     textColor?: string;

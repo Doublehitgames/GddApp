@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Handle, NodeProps, NodeResizer, Position } from "reactflow";
 import { DIAGRAM_THEMES } from "../diagramTheme";
 import { DiagramNodeData } from "../diagramTypes";
@@ -30,6 +31,13 @@ type DiagramNodeComponentProps = NodeProps<DiagramNodeData> & {
 
 export default function DiagramNodeComponent({ data, selected, readOnly = false }: DiagramNodeComponentProps) {
   const label = data?.label || "";
+  const rawNote = data?.note || "";
+  const note = rawNote.trim();
+  const hasNote = note.length > 0;
+  const notePreview = note.length > 260 ? `${note.slice(0, 260)}...` : note;
+  const [isNoteCardOpen, setIsNoteCardOpen] = useState(false);
+  const noteCardRef = useRef<HTMLDivElement | null>(null);
+  const noteButtonRef = useRef<HTMLButtonElement | null>(null);
   const theme = DIAGRAM_THEMES[data?.theme || "neon"];
   const blockType = data?.blockType || "retangulo";
   const customColor = data?.color;
@@ -133,8 +141,46 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
     blockType === "losango" ? "!border-0 hover:!border-0 !shadow-none hover:!shadow-none" : ""
   }`;
 
+  useEffect(() => {
+    if (!hasNote) {
+      setIsNoteCardOpen(false);
+    }
+  }, [hasNote]);
+
+  useEffect(() => {
+    if (!isNoteCardOpen) return;
+
+    const handleDocumentMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (noteCardRef.current?.contains(target)) return;
+      if (noteButtonRef.current?.contains(target)) return;
+      setIsNoteCardOpen(false);
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsNoteCardOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown, true);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown, true);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, [isNoteCardOpen]);
+
   return (
-    <div className={outerNodeClass} style={outerSelectedGlowStyle}>
+    <div
+      className={outerNodeClass}
+      style={{
+        ...(outerSelectedGlowStyle || {}),
+        ...(isNoteCardOpen ? { zIndex: 1700 } : {}),
+      }}
+    >
       <NodeResizer
         isVisible={selected && !readOnly}
         minWidth={120}
@@ -188,6 +234,75 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
         }`}
         style={{ top: "50%", left: 0, transform: "translate(-50%, -50%)" }}
       />
+      {hasNote && (
+        <>
+          <button
+            ref={noteButtonRef}
+            type="button"
+            className="absolute right-1 top-1 z-50 inline-flex h-4 w-4 items-center justify-center rounded-full border border-amber-200/70 bg-amber-300/85 text-slate-900 shadow-sm pointer-events-auto transition-transform duration-150 hover:scale-110"
+            aria-label="Abrir nota do bloco"
+            title="Abrir nota"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsNoteCardOpen((prev) => !prev);
+            }}
+          >
+            <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+              <path d="M14 3v6h6" />
+              <path d="M8 13h8" />
+              <path d="M8 17h5" />
+            </svg>
+          </button>
+
+          {!isNoteCardOpen && (
+            <div className="pointer-events-none absolute right-0 top-6 z-[60] w-60 max-w-[82vw] rounded-sm border border-amber-700/45 bg-amber-200 px-3 py-2 text-[11px] leading-snug text-amber-950 whitespace-pre-wrap break-words opacity-0 shadow-[0_8px_20px_rgba(15,23,42,0.35)] translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0">
+              <span
+                aria-hidden="true"
+                className="absolute right-0 top-0 h-3.5 w-3.5 border-b border-l border-amber-700/45 bg-amber-100"
+                style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
+              />
+              {notePreview}
+            </div>
+          )}
+
+          {isNoteCardOpen && (
+            <div
+              ref={noteCardRef}
+              className="absolute right-0 top-6 z-[80] w-72 max-w-[86vw] max-h-72 overflow-y-auto rounded-sm border border-amber-700/45 bg-amber-200 px-3 py-2 text-xs leading-snug text-amber-950 whitespace-pre-wrap break-words shadow-[0_10px_26px_rgba(15,23,42,0.4)]"
+            >
+              <span
+                aria-hidden="true"
+                className="absolute right-0 top-0 h-3.5 w-3.5 border-b border-l border-amber-700/45 bg-amber-100"
+                style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
+              />
+              <div className="mb-2 flex justify-end">
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded border border-amber-800/45 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 hover:bg-amber-50"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsNoteCardOpen(false);
+                  }}
+                >
+                  Fechar
+                </button>
+              </div>
+              {note}
+            </div>
+          )}
+        </>
+      )}
       <div className={`${shapeNodeClass} relative`} style={{ ...mergedNodeStyle, ...(selectedShapeStyle || {}) }} data-shape={blockType}>
         {blockType === "losango" && resolvedBorderWidth > 0 && (
           <svg

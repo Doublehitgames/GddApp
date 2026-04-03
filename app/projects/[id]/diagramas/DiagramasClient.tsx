@@ -634,6 +634,7 @@ function DiagramasFlow({
       ? selectedNode.data.gradientEnabled
       : DEFAULT_GRADIENT_ENABLED;
   const selectedNodeBlockType = normalizeBlockType(selectedNode?.data.blockType);
+  const selectedNodeNote = selectedNode?.data.note || "";
 
   return (
     <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-16 md:top-20"} text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
@@ -792,6 +793,7 @@ function DiagramasFlow({
         >
           <style>{`
             .react-flow__node .diagram-node-card { backdrop-filter: blur(2px); }
+            .react-flow__node:hover { z-index: 1400 !important; }
             .react-flow__edge.selected path {
               stroke: ${activeTheme.edgeSelectedStroke} !important;
               filter: drop-shadow(0 0 6px ${activeTheme.edgeGlow});
@@ -820,6 +822,7 @@ function DiagramasFlow({
         showNode={Boolean(selectedNode)}
         showEdge={Boolean(selectedEdge)}
         nodeLabel={selectedNode?.data.label || ""}
+        nodeNote={selectedNodeNote}
         nodeColor={selectedNodeColor}
         nodeTextColor={selectedNodeTextColor}
         nodeTextAlign={selectedNodeTextAlign}
@@ -842,6 +845,7 @@ function DiagramasFlow({
         startMarker={selectedStartMarker}
         endMarker={selectedEndMarker}
         onNodeLabelChange={(label) => updateSelectedNode({ label })}
+        onNodeNoteChange={(note) => updateSelectedNode({ note })}
         onNodeColorChange={(color) => updateSelectedNode({ color: normalizeHexColor(color) })}
         onNodeTextColorChange={(color) => updateSelectedNode({ textColor: normalizeHexColor(color) })}
         onNodeTextAlignChange={(textAlign) => updateSelectedNode({ textAlign })}

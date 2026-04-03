@@ -17,6 +17,7 @@ type PropertiesSidebarProps = {
   showNode: boolean;
   showEdge: boolean;
   nodeLabel: string;
+  nodeNote: string;
   nodeColor: string;
   nodeTextColor: string;
   nodeTextAlign: DiagramNodeData["textAlign"];
@@ -39,6 +40,7 @@ type PropertiesSidebarProps = {
   startMarker: DiagramMarkerType;
   endMarker: DiagramMarkerType;
   onNodeLabelChange: (label: string) => void;
+  onNodeNoteChange: (note: string) => void;
   onNodeColorChange: (color: string) => void;
   onNodeTextColorChange: (color: string) => void;
   onNodeTextAlignChange: (align: NonNullable<DiagramNodeData["textAlign"]>) => void;
@@ -184,6 +186,7 @@ export default function PropertiesSidebar({
   showNode,
   showEdge,
   nodeLabel,
+  nodeNote,
   nodeColor,
   nodeTextColor,
   nodeTextAlign,
@@ -206,6 +209,7 @@ export default function PropertiesSidebar({
   startMarker,
   endMarker,
   onNodeLabelChange,
+  onNodeNoteChange,
   onNodeColorChange,
   onNodeTextColorChange,
   onNodeTextAlignChange,
@@ -238,7 +242,7 @@ export default function PropertiesSidebar({
     { value: "middle", label: "Meio" },
     { value: "bottom", label: "Baixo" },
   ];
-  const [openSection, setOpenSection] = useState<null | "text" | "border" | "layout">(null);
+  const [openSection, setOpenSection] = useState<null | "text" | "note" | "border" | "layout">(null);
   const blockLibrary: Array<{ type: DiagramBlockType; label: string }> = [
     { type: "retangulo", label: "Retangulo" },
     { type: "losango", label: "Losango" },
@@ -369,6 +373,29 @@ export default function PropertiesSidebar({
                   <p className="mb-1">Cor da fonte</p>
                   <ColorPaletteControl activeColor={nodeTextColor} onChange={onNodeTextColorChange} inputClass={inputClass} />
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+            <button
+              type="button"
+              onClick={() => setOpenSection((prev) => (prev === "note" ? null : "note"))}
+              className="w-full text-left text-sm font-semibold text-slate-100"
+            >
+              Note
+            </button>
+            {openSection === "note" && (
+              <div className="mt-3 space-y-3">
+                <label className="block text-sm text-slate-300">
+                  Nota do bloco (opcional)
+                  <textarea
+                    className={`${inputClass} min-h-[120px]`}
+                    value={nodeNote}
+                    onChange={(e) => onNodeNoteChange(e.target.value)}
+                  />
+                  <span className="mt-1 block text-xs text-slate-400">Nao aparece dentro do bloco.</span>
+                </label>
               </div>
             )}
           </div>

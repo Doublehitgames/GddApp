@@ -36,6 +36,7 @@ export type DiagramTheme = {
 
 export type DiagramNodeData = {
   label: string;
+  note?: string;
   blockType?: DiagramBlockType;
   color?: string;
   textColor?: string;
