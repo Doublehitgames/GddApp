@@ -334,4 +334,149 @@ describe('ProjectStore sync behavior', () => {
     expect(syncedSection.flowchartState).toBeDefined()
     expect(syncedSection.flowchartState.nodes).toHaveLength(1)
   })
+
+  it('keeps remote flowchart section data even when local project wins by project timestamp', async () => {
+    const projectId = 'proj-collab'
+    const sectionId = 'sec-flow'
+
+    const localProject = {
+      id: projectId,
+      title: 'Projeto Local',
+      description: 'Local',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Gameplay',
+          content: 'texto local',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T09:00:00.000Z',
+          order: 0,
+          flowchartEnabled: false,
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T12:00:00.000Z',
+    }
+
+    const remoteProject = {
+      id: projectId,
+      title: 'Projeto Cloud',
+      description: 'Cloud',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Gameplay',
+          content: 'texto cloud',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T11:30:00.000Z',
+          order: 0,
+          flowchartEnabled: true,
+          flowchartState: {
+            version: 1,
+            updatedAt: '2026-03-01T11:30:00.000Z',
+            nodes: [{ id: 'n-remote', position: { x: 40, y: 10 }, data: { label: 'Remoto' } }],
+            edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T11:00:00.000Z',
+    }
+
+    useProjectStore.setState({ projects: [localProject as any], diagramsBySection: {} })
+    storage['gdd_projects_v1'] = JSON.stringify([localProject])
+
+    fetchProjectsMock.mockResolvedValue([remoteProject])
+
+    const result = await useProjectStore.getState().loadFromSupabase()
+    expect(result).toBe('loaded')
+
+    const mergedSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === sectionId)
+    expect(mergedSection?.flowchartEnabled).toBe(true)
+    expect(mergedSection?.flowchartState).toBeDefined()
+    expect(mergedSection?.flowchartState?.nodes).toHaveLength(1)
+    expect(mergedSection?.flowchartState?.nodes?.[0]?.id).toBe('n-remote')
+
+    const diagramKey = `${projectId}:${sectionId}`
+    expect(useProjectStore.getState().diagramsBySection[diagramKey]).toBeDefined()
+    expect(useProjectStore.getState().diagramsBySection[diagramKey]?.nodes?.[0]?.id).toBe('n-remote')
+  })
+
+  it('does not overwrite newer local diagram cache with older remote diagram during load', async () => {
+    const projectId = 'proj-cache'
+    const sectionId = 'sec-cache'
+
+    const localDiagram = {
+      version: 1,
+      updatedAt: '2026-03-01T12:00:00.000Z',
+      nodes: [{ id: 'n-local', position: { x: 0, y: 0 }, data: { label: 'Local Novo' } }],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    }
+
+    const localProject = {
+      id: projectId,
+      title: 'Projeto Local',
+      description: '',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Secao',
+          content: '',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T12:00:00.000Z',
+          order: 0,
+          flowchartEnabled: true,
+          flowchartState: localDiagram,
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T12:00:00.000Z',
+    }
+
+    const remoteProject = {
+      id: projectId,
+      title: 'Projeto Cloud',
+      description: '',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Secao',
+          content: '',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T11:00:00.000Z',
+          order: 0,
+          flowchartEnabled: true,
+          flowchartState: {
+            version: 1,
+            updatedAt: '2026-03-01T11:00:00.000Z',
+            nodes: [{ id: 'n-remote-old', position: { x: 5, y: 5 }, data: { label: 'Remote Antigo' } }],
+            edges: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T11:00:00.000Z',
+    }
+
+    useProjectStore.setState({
+      projects: [localProject as any],
+      diagramsBySection: {
+        [`${projectId}:${sectionId}`]: localDiagram as any,
+      },
+    })
+    storage['gdd_projects_v1'] = JSON.stringify([localProject])
+
+    fetchProjectsMock.mockResolvedValue([remoteProject])
+
+    const result = await useProjectStore.getState().loadFromSupabase()
+    expect(result).toBe('loaded')
+
+    const diagramKey = `${projectId}:${sectionId}`
+    const cachedDiagram = useProjectStore.getState().diagramsBySection[diagramKey]
+    expect(cachedDiagram).toBeDefined()
+    expect(cachedDiagram.nodes[0].id).toBe('n-local')
+  })
 })

@@ -1785,6 +1785,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       // Regra: prefere local se mais recente ou se tiver mais seções (evita perda quando sync falhou).
       // Projetos que só existem localmente (ainda não sincronizados) são MANTIDOS
       // e automaticamente enviados ao cloud.
+      const toTimestampMs = (value?: string | null): number => {
+        if (!value) return 0;
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
       const remoteById = new Map(remote.map((p) => [p.id, p] as const));
       const remoteIds = new Set(remoteById.keys());
       const localOnly = localProjects.filter((p) => !remoteIds.has(p.id));
@@ -1798,6 +1804,36 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         ...remote.map((remoteProject) => {
           const local = localProjects.find((p) => p.id === remoteProject.id);
           if (!local) return remoteProject;
+
+          const localSectionsById = new Map((local.sections || []).map((section) => [section.id, section] as const));
+          const remoteSectionsById = new Map((remoteProject.sections || []).map((section) => [section.id, section] as const));
+
+          const orderedSectionIds: string[] = [];
+          const seenSectionIds = new Set<string>();
+          const pushSectionId = (id: string) => {
+            if (seenSectionIds.has(id)) return;
+            seenSectionIds.add(id);
+            orderedSectionIds.push(id);
+          };
+
+          (local.sections || []).forEach((section) => pushSectionId(section.id));
+          (remoteProject.sections || []).forEach((section) => pushSectionId(section.id));
+
+          const mergedSections = orderedSectionIds
+            .map((sectionId) => {
+              const localSection = localSectionsById.get(sectionId);
+              const remoteSection = remoteSectionsById.get(sectionId);
+              if (!localSection) return remoteSection;
+              if (!remoteSection) return localSection;
+
+              const localSectionUpdated = toTimestampMs(localSection.updated_at || localSection.created_at || null);
+              const remoteSectionUpdated = toTimestampMs(remoteSection.updated_at || remoteSection.created_at || null);
+              const preferLocalSection = localSectionUpdated > remoteSectionUpdated;
+
+              return preferLocalSection ? localSection : remoteSection;
+            })
+            .filter((section): section is Section => Boolean(section));
+
           const localUpdated = new Date(local.updatedAt).getTime();
           const remoteUpdated = new Date(remoteProject.updatedAt).getTime();
           const localSections = (local.sections || []).length;
@@ -1805,17 +1841,20 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
           // Prefere local se for mais recente OU se tiver mais seções (evita perder dados quando sync de seções falhou)
           const preferLocal =
             localUpdated > remoteUpdated || (localUpdated >= remoteUpdated && localSections >= remoteSections);
-          if (preferLocal) return local;
+          const base = preferLocal
+            ? { ...remoteProject, ...local }
+            : { ...local, ...remoteProject };
 
           // Retrocompatibilidade: se a nuvem ainda não tem cover_image_url,
           // mantém a capa local para não "sumir" após refresh/load.
           const localCover = typeof local.coverImageUrl === "string" ? local.coverImageUrl.trim() : "";
           const remoteCover = typeof remoteProject.coverImageUrl === "string" ? remoteProject.coverImageUrl.trim() : "";
-          if (localCover && !remoteCover) {
-            return { ...remoteProject, coverImageUrl: localCover };
-          }
 
-          return remoteProject;
+          return {
+            ...base,
+            sections: mergedSections,
+            coverImageUrl: localCover || remoteCover || undefined,
+          };
         }),
         ...localOnly, // Projetos que só existem localmente
       ];
@@ -1854,7 +1893,30 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         logWarn("[projectStore] Erro ao fazer merge defensivo; mantendo merged.", e);
       }
 
-      set({ projects: toApply });
+      const currentDiagrams = get().diagramsBySection;
+      const nextDiagrams = { ...currentDiagrams };
+      for (const project of toApply) {
+        for (const section of project.sections || []) {
+          const sectionKey = buildSectionDiagramKey(project.id, section.id);
+          const remoteDiagram = section.flowchartState;
+          if (!remoteDiagram) continue;
+
+          const existing = nextDiagrams[sectionKey];
+          if (!existing) {
+            nextDiagrams[sectionKey] = remoteDiagram;
+            continue;
+          }
+
+          const existingUpdated = toTimestampMs(existing.updatedAt || null);
+          const remoteUpdated = toTimestampMs(remoteDiagram.updatedAt || section.updated_at || project.updatedAt || null);
+          if (remoteUpdated > existingUpdated) {
+            nextDiagrams[sectionKey] = remoteDiagram;
+          }
+        }
+      }
+
+      set({ projects: toApply, diagramsBySection: nextDiagrams });
+      persistDiagrams(nextDiagrams);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeProjectsForStorage(toApply)));
       } catch {}
