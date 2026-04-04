@@ -239,7 +239,11 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
           <button
             ref={noteButtonRef}
             type="button"
-            className="absolute right-1 top-1 z-50 inline-flex h-4 w-4 items-center justify-center rounded-full border border-amber-200/70 bg-amber-300/85 text-slate-900 shadow-sm pointer-events-auto transition-transform duration-150 hover:scale-110"
+            className={`absolute right-1 top-1 z-[90] inline-flex items-center justify-center rounded-full border text-slate-900 shadow-sm pointer-events-auto transition-transform duration-150 hover:scale-110 ${
+              readOnly
+                ? "h-5 w-5 border-amber-700/70 bg-amber-200 text-amber-950"
+                : "h-4 w-4 border-amber-200/70 bg-amber-300/85"
+            }`}
             aria-label="Abrir nota do bloco"
             title="Abrir nota"
             onMouseDown={(event) => {
@@ -303,7 +307,12 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
           )}
         </>
       )}
-      <div className={`${shapeNodeClass} relative`} style={{ ...mergedNodeStyle, ...(selectedShapeStyle || {}) }} data-shape={blockType}>
+      <div
+        className={`${shapeNodeClass} relative`}
+        style={{ ...mergedNodeStyle, ...(selectedShapeStyle || {}) }}
+        data-shape={blockType}
+        onClick={readOnly && hasNote ? () => setIsNoteCardOpen(true) : undefined}
+      >
         {blockType === "losango" && resolvedBorderWidth > 0 && (
           <svg
             className="pointer-events-none absolute inset-0 h-full w-full"
