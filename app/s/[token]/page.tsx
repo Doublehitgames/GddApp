@@ -2,6 +2,98 @@ import GDDViewClient from "@/app/projects/[id]/view/GDDViewClient";
 import MindMapClient from "@/app/projects/[id]/mindmap/MindMapClient";
 import DiagramasClient from "@/app/projects/[id]/diagramas/DiagramasClient";
 import { getPublicProjectByToken } from "@/lib/supabase/publicShare";
+import { cache } from "react";
+import type { Metadata } from "next";
+
+const getPublicProjectByTokenCached = cache(async (token: string) => getPublicProjectByToken(token));
+
+const FALLBACK_SITE_URL = "https://gdd-app.vercel.app";
+
+function getSiteUrl(): string {
+  const fromEnv =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+
+  return fromEnv || FALLBACK_SITE_URL;
+}
+
+function toPlainText(input: string): string {
+  return input
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/\$\[[^\]]+\]/g, " ")
+    .replace(/[#*_~>\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncate(input: string, max: number): string {
+  if (input.length <= max) return input;
+  return `${input.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+  const { token } = await params;
+  const project = await getPublicProjectByTokenCached(token);
+  const siteUrl = getSiteUrl();
+  const shareUrl = `${siteUrl}/s/${encodeURIComponent(token)}`;
+
+  if (!project) {
+    const fallbackTitle = "GDD compartilhado | GDD App";
+    const fallbackDescription = "Visualize um Game Design Document compartilhado no GDD App.";
+    const fallbackImage = `${siteUrl}/api/og/public-share?title=${encodeURIComponent("GDD App")}&description=${encodeURIComponent("Game Design Document")}`;
+
+    return {
+      title: fallbackTitle,
+      description: fallbackDescription,
+      openGraph: {
+        title: fallbackTitle,
+        description: fallbackDescription,
+        type: "website",
+        url: shareUrl,
+        images: [{ url: fallbackImage, width: 1200, height: 630, alt: "GDD App" }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: fallbackTitle,
+        description: fallbackDescription,
+        images: [fallbackImage],
+      },
+    };
+  }
+
+  const title = truncate(`${project.title} | GDD App`, 90);
+  const descriptionSource = toPlainText(project.description || "");
+  const description = truncate(
+    descriptionSource || `GDD público com ${(project.sections || []).length} seção(ões).`,
+    180
+  );
+  const version = encodeURIComponent(project.updatedAt || project.createdAt || "v1");
+  const imageUrl = `${siteUrl}/api/og/public-share?title=${encodeURIComponent(project.title)}&description=${encodeURIComponent(description)}&v=${version}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: shareUrl,
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: `${project.title} - GDD App` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
 
 export default async function PublicSharePage({
   params,
@@ -13,7 +105,7 @@ export default async function PublicSharePage({
   const { token } = await params;
   const { mode, sectionId } = await searchParams;
 
-  const project = await getPublicProjectByToken(token);
+  const project = await getPublicProjectByTokenCached(token);
   if (!project) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">
