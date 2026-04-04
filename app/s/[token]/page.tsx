@@ -32,13 +32,20 @@ function getSpotlightTitleIconUrl(project: unknown): string | null {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ v?: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
+  const { v } = await searchParams;
   const project = await getPublicProjectByTokenCached(token);
   const siteUrl = getSiteUrl();
-  const shareUrl = `${siteUrl}/s/${encodeURIComponent(token)}`;
+  const baseShareUrl = `${siteUrl}/s/${encodeURIComponent(token)}`;
+  const cacheBuster = typeof v === "string" && v.trim() ? v.trim() : "";
+  const shareUrl = cacheBuster
+    ? `${baseShareUrl}?v=${encodeURIComponent(cacheBuster)}`
+    : baseShareUrl;
 
   if (!project) {
     const fallbackTitle = "GDD compartilhado | GDD App";
@@ -64,11 +71,11 @@ export async function generateMetadata({
     };
   }
 
-  const title = truncate(`${project.title} | GDD App`, 90);
+  const title = truncate(project.title, 90);
   const description = truncate(`GDD do jogo ${project.title}.`, 180);
   const version = encodeURIComponent(project.updatedAt || project.createdAt || "v1");
   const spotlightTitleIconUrl = getSpotlightTitleIconUrl(project);
-  const imageUrl = `${siteUrl}/api/og/public-share?title=${encodeURIComponent(project.title)}&description=${encodeURIComponent(description)}&url=${encodeURIComponent(shareUrl)}${spotlightTitleIconUrl ? `&icon=${encodeURIComponent(spotlightTitleIconUrl)}` : ""}&v=${version}`;
+  const imageUrl = `${siteUrl}/api/og/public-share?title=${encodeURIComponent(project.title)}&description=${encodeURIComponent(description)}&url=${encodeURIComponent(baseShareUrl)}${spotlightTitleIconUrl ? `&icon=${encodeURIComponent(spotlightTitleIconUrl)}` : ""}&v=${version}`;
 
   return {
     title,
@@ -78,7 +85,7 @@ export async function generateMetadata({
       description,
       type: "website",
       url: shareUrl,
-      images: [{ url: imageUrl, width: 1200, height: 630, alt: `${project.title} - GDD App` }],
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: `${project.title} - GDD` }],
     },
     twitter: {
       card: "summary_large_image",
