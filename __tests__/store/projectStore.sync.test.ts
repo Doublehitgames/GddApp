@@ -214,7 +214,36 @@ describe('ProjectStore sync behavior', () => {
     expect(section?.color).toBe('#ff0000')
   })
 
-  it('discards pending changes by restoring project from cloud', async () => {
+  it('discards pending section changes by restoring project from cloud', async () => {
+    useProjectStore.setState({ userId: 'user-1' })
+    const store = useProjectStore.getState()
+    const projectId = store.addProject('Projeto local', 'Descrição local')
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    store.addSection(projectId, 'Seção local', 'Conteúdo local')
+    expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
+
+    fetchProjectMock.mockResolvedValueOnce({
+      id: projectId,
+      title: 'Projeto local',
+      description: 'Descrição local',
+      sections: [],
+      createdAt: '2026-03-01T10:00:00.000Z',
+      updatedAt: '2026-03-01T11:00:00.000Z',
+    })
+
+    const result = await useProjectStore.getState().discardPendingChangesForProject(projectId)
+
+    expect(result).toEqual({ error: null })
+    expect(fetchProjectMock).toHaveBeenCalledWith(projectId)
+    expect(useProjectStore.getState().getProject(projectId)?.sections).toHaveLength(0)
+    expect(useProjectStore.getState().pendingSyncCount).toBe(0)
+    expect(useProjectStore.getState().getPendingProjectIds()).not.toContain(projectId)
+  })
+
+  it('blocks discard when project metadata is pending locally', async () => {
     useProjectStore.setState({ userId: 'user-1' })
     const store = useProjectStore.getState()
     const projectId = store.addProject('Projeto local', 'Descrição local')
@@ -236,11 +265,10 @@ describe('ProjectStore sync behavior', () => {
 
     const result = await useProjectStore.getState().discardPendingChangesForProject(projectId)
 
-    expect(result).toEqual({ error: null })
-    expect(fetchProjectMock).toHaveBeenCalledWith(projectId)
-    expect(useProjectStore.getState().getProject(projectId)?.title).toBe('Projeto na nuvem')
-    expect(useProjectStore.getState().pendingSyncCount).toBe(0)
-    expect(useProjectStore.getState().getPendingProjectIds()).not.toContain(projectId)
+    expect(result).toEqual({ error: 'project_metadata_pending' })
+    expect(useProjectStore.getState().getProject(projectId)?.title).toBe('Projeto alterado localmente')
+    expect(useProjectStore.getState().pendingSyncCount).toBeGreaterThanOrEqual(1)
+    expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
   })
 
   it('keeps local pending data when discard fails to load cloud snapshot', async () => {
@@ -261,7 +289,7 @@ describe('ProjectStore sync behavior', () => {
     expect(result).toEqual({ error: 'project_not_found_in_cloud' })
     expect(useProjectStore.getState().getProject(projectId)).toEqual(localBeforeDiscard)
     expect(useProjectStore.getState().getPendingProjectIds()).toContain(projectId)
-    expect(useProjectStore.getState().pendingSyncCount).toBe(1)
+    expect(useProjectStore.getState().pendingSyncCount).toBeGreaterThanOrEqual(1)
   })
 
   it('persists changeSummary in sync history when API provides detailed changes', async () => {

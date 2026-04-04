@@ -157,7 +157,9 @@ export default function HomeSyncBar() {
                 className="text-gray-300 hover:text-white underline"
               >
                 {estimatedCreditsToSync !== null
-                  ? t("settings.persistencePage.syncBadge.creditsToSyncAll").replace("{{count}}", String(estimatedCreditsToSync))
+                  ? estimatedCreditsToSync === 0
+                    ? t("settings.persistencePage.syncBadge.pendingNoCredits")
+                    : t("settings.persistencePage.syncBadge.creditsToSyncAll").replace("{{count}}", String(estimatedCreditsToSync))
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
@@ -165,7 +167,9 @@ export default function HomeSyncBar() {
                   <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>
-                  {syncPreviewItems && syncPreviewItems.length > 0 ? (
+                  {syncPreviewItems === null ? (
+                    <div className="p-2 text-[10px] opacity-80">{tr("Calculando…", "Loading…", "Calculando…")}</div>
+                  ) : syncPreviewItems.length > 0 ? (
                     <ul className="p-2 space-y-2 text-[10px]">
                       {syncPreviewItems.map((item) => (
                         <li key={item.projectId} className="space-y-1">
@@ -183,7 +187,7 @@ export default function HomeSyncBar() {
                       ))}
                     </ul>
                   ) : (
-                    <div className="p-2 text-[10px] opacity-80">{tr("Calculando…", "Loading…", "Calculando…")}</div>
+                    <div className="p-2 text-[10px] opacity-80">{t("settings.persistencePage.syncBadge.previewNoSectionChanges")}</div>
                   )}
                 </div>
               )}

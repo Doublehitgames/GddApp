@@ -1359,11 +1359,13 @@
         "lastSyncUnchanged": "Sem mudança",
         "creditsToSyncAll": "~{{count}} créditos para sincronizar tudo",
         "creditsToSyncThis": "~{{count}} créditos para sincronizar este projeto",
+        "pendingNoCredits": "Há pendências sem custo de crédito (descrição/ficha/capa)",
         "previewClickHint": "Clique para ver o que será sincronizado",
         "previewTitle": "Incluso no próximo sync",
         "previewNew": "Novas",
         "previewUpdated": "Alteradas",
         "previewDeleted": "Excluídas",
+        "previewNoSectionChanges": "Não há mudanças de seções. Pode haver alterações na página inicial.",
         "discardButton": "Descartar pendências",
         "discardButtonHint": "Reverter alterações locais pendentes para a versão da nuvem",
         "discardConfirmMessage": "Descartar pendências deste projeto e restaurar o último estado da nuvem? As alterações locais não sincronizadas serão perdidas.",
@@ -1372,6 +1374,7 @@
         "discardErrorUnauthenticated": "Faça login novamente para descartar as pendências.",
         "discardErrorSyncing": "Aguarde o sync atual terminar para descartar as pendências.",
         "discardErrorCloudMissing": "Não foi possível restaurar: projeto não encontrado na nuvem.",
+        "discardErrorProjectMetadataPending": "Este projeto tem alterações pendentes na página inicial (descrição/ficha/capa). Sincronize primeiro para não perder esses dados.",
         "discardErrorGeneric": "Não foi possível descartar as pendências agora."
       },
       "credits": {

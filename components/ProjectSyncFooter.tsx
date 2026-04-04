@@ -25,7 +25,6 @@ export default function ProjectSyncFooter() {
   const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
   const getProject = useProjectStore((s) => s.getProject);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
-  const pendingSyncCount = useProjectStore((s) => s.pendingSyncCount);
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
   const discardPendingChangesForProject = useProjectStore((s) => s.discardPendingChangesForProject);
   const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
@@ -141,6 +140,8 @@ export default function ProjectSyncFooter() {
             ? "settings.persistencePage.syncBadge.discardErrorSyncing"
             : error === "project_not_found_in_cloud"
               ? "settings.persistencePage.syncBadge.discardErrorCloudMissing"
+              : error === "project_metadata_pending"
+                ? "settings.persistencePage.syncBadge.discardErrorProjectMetadataPending"
               : "settings.persistencePage.syncBadge.discardErrorGeneric";
       setDiscardFeedback({ type: "error", message: t(key) });
       setDiscardingChanges(false);
@@ -219,7 +220,9 @@ export default function ProjectSyncFooter() {
                 className="text-gray-300 hover:text-white underline"
               >
                 {estimatedCreditsToSync !== null
-                  ? t("settings.persistencePage.syncBadge.creditsToSyncThis").replace("{{count}}", String(estimatedCreditsToSync))
+                  ? estimatedCreditsToSync === 0
+                    ? t("settings.persistencePage.syncBadge.pendingNoCredits")
+                    : t("settings.persistencePage.syncBadge.creditsToSyncThis").replace("{{count}}", String(estimatedCreditsToSync))
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
@@ -227,7 +230,9 @@ export default function ProjectSyncFooter() {
                   <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>
-                  {syncPreviewItems && syncPreviewItems.length > 0 ? (
+                  {syncPreviewItems === null ? (
+                    <div className="p-2 text-[10px] opacity-80">{tr("Calculando…", "Loading…", "Calculando…")}</div>
+                  ) : syncPreviewItems.length > 0 ? (
                     <ul className="p-2 space-y-2 text-[10px]">
                       {syncPreviewItems.map((item) => (
                         <li key={item.projectId} className="space-y-1">
@@ -245,7 +250,7 @@ export default function ProjectSyncFooter() {
                       ))}
                     </ul>
                   ) : (
-                    <div className="p-2 text-[10px] opacity-80">{tr("Calculando…", "Loading…", "Calculando…")}</div>
+                    <div className="p-2 text-[10px] opacity-80">{t("settings.persistencePage.syncBadge.previewNoSectionChanges")}</div>
                   )}
                 </div>
               )}

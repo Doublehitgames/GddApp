@@ -1359,11 +1359,13 @@
         "lastSyncUnchanged": "Unchanged",
         "creditsToSyncAll": "~{{count}} credits to sync all",
         "creditsToSyncThis": "~{{count}} credits to sync this project",
+        "pendingNoCredits": "There are pending changes with zero credit cost (description/spotlight/cover)",
         "previewClickHint": "Click to see what will be synced",
         "previewTitle": "Included in next sync",
         "previewNew": "New",
         "previewUpdated": "Updated",
         "previewDeleted": "Deleted",
+        "previewNoSectionChanges": "There are no section changes. Home-page changes may still be pending.",
         "discardButton": "Discard pending changes",
         "discardButtonHint": "Revert pending local changes to the cloud version",
         "discardConfirmMessage": "Discard this project's pending changes and restore the latest cloud state? Unsynced local changes will be lost.",
@@ -1372,6 +1374,7 @@
         "discardErrorUnauthenticated": "Please sign in again to discard pending changes.",
         "discardErrorSyncing": "Wait for the current sync to finish before discarding pending changes.",
         "discardErrorCloudMissing": "Could not restore: project not found in cloud.",
+        "discardErrorProjectMetadataPending": "This project has pending home-page changes (description/spotlight/cover). Sync first to avoid losing that data.",
         "discardErrorGeneric": "Could not discard pending changes right now."
       },
       "credits": {

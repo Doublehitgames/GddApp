@@ -708,6 +708,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     return JSON.stringify(payload);
   };
 
+  const buildProjectMetadataHash = (project: Project): string => {
+    const normalized = sanitizeProjectForSync(project);
+    const payload = {
+      id: normalized.id,
+      title: normalized.title,
+      description: normalized.description || "",
+      coverImageUrl: normalized.coverImageUrl || null,
+      mindMapSettings: normalized.mindMapSettings || null,
+    };
+    return JSON.stringify(payload);
+  };
+
   const getBackoffDelayMs = (failureCount: number): number => {
     const raw = Math.min(SYNC_BACKOFF_BASE_MS * Math.pow(2, Math.max(0, failureCount - 1)), SYNC_BACKOFF_MAX_MS);
     const jitter = Math.floor(raw * Math.random() * 0.2);
@@ -1667,7 +1679,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         return { error: "unauthenticated" };
       }
 
-      if (!projects.some((p) => p.id === projectId)) {
+      const localProject = projects.find((p) => p.id === projectId);
+      if (!localProject) {
         return { error: "project_not_found_local" };
       }
 
@@ -1678,6 +1691,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       const remoteProject = await fetchProjectFromSupabase(projectId);
       if (!remoteProject) {
         return { error: "project_not_found_in_cloud" };
+      }
+
+      // Protege alterações locais da página inicial (descrição, ficha técnica, capa e settings)
+      // para não serem perdidas ao descartar pendências de seções.
+      if (buildProjectMetadataHash(localProject) !== buildProjectMetadataHash(remoteProject)) {
+        return { error: "project_metadata_pending" };
       }
 
       wrappedSet((prev) => prev.map((project) => (project.id === projectId ? remoteProject : project)));
