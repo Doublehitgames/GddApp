@@ -7,6 +7,7 @@ export type ProjectDocumentSpotlight = {
   features: string[];
   technicalDetails: string[];
   storeLinks: ProjectStoreLink[];
+  titleIconUrl?: string;
 };
 
 const MAX_TEXT_LENGTH = 160;
@@ -44,6 +45,22 @@ function normalizeStoreLink(value: unknown): ProjectStoreLink | null {
   };
 }
 
+function normalizeOptionalImageUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  try {
+    const parsedUrl = new URL(trimmed);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      return undefined;
+    }
+    return parsedUrl.toString().slice(0, MAX_LINK_URL_LENGTH);
+  } catch {
+    return undefined;
+  }
+}
+
 export function normalizeProjectDocumentSpotlight(value: unknown): ProjectDocumentSpotlight | undefined {
   if (!value || typeof value !== "object") return undefined;
 
@@ -51,6 +68,7 @@ export function normalizeProjectDocumentSpotlight(value: unknown): ProjectDocume
     features?: unknown;
     technicalDetails?: unknown;
     storeLinks?: unknown;
+    titleIconUrl?: unknown;
   };
 
   const features = Array.isArray(raw.features)
@@ -71,7 +89,9 @@ export function normalizeProjectDocumentSpotlight(value: unknown): ProjectDocume
         .filter((item): item is ProjectStoreLink => Boolean(item))
     : [];
 
-  if (features.length === 0 && technicalDetails.length === 0 && storeLinks.length === 0) {
+  const titleIconUrl = normalizeOptionalImageUrl(raw.titleIconUrl);
+
+  if (features.length === 0 && technicalDetails.length === 0 && storeLinks.length === 0 && !titleIconUrl) {
     return undefined;
   }
 
@@ -79,5 +99,6 @@ export function normalizeProjectDocumentSpotlight(value: unknown): ProjectDocume
     features,
     technicalDetails,
     storeLinks,
+    titleIconUrl,
   };
 }

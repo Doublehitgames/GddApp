@@ -180,6 +180,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [featureEnabled, setFeatureEnabled] = useState<Record<string, boolean>>({});
     const [detailState, setDetailState] = useState<Record<string, { enabled: boolean; value: string }>>({});
     const [linkState, setLinkState] = useState<Record<string, { enabled: boolean; url: string }>>({});
+    const [spotlightTitleIconUrl, setSpotlightTitleIconUrl] = useState("");
+    const [isPickingSpotlightIcon, setIsPickingSpotlightIcon] = useState(false);
+    const [spotlightIconError, setSpotlightIconError] = useState("");
+    const [spotlightIconCandidateIndex, setSpotlightIconCandidateIndex] = useState(0);
     const [spotlightError, setSpotlightError] = useState("");
     const [spotlightSaved, setSpotlightSaved] = useState(false);
     const sectionListRef = useRef<HTMLDivElement | null>(null);
@@ -207,10 +211,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
         () => getDriveImageDisplayCandidates(project?.coverImageUrl || ""),
         [project?.coverImageUrl]
     );
+    const spotlightTitleIconCandidates = useMemo(
+        () => getDriveImageDisplayCandidates(spotlightTitleIconUrl),
+        [spotlightTitleIconUrl]
+    );
 
     useEffect(() => {
         setCoverImageCandidateIndex(0);
     }, [project?.coverImageUrl]);
+
+    useEffect(() => {
+        setSpotlightIconCandidateIndex(0);
+    }, [spotlightTitleIconUrl]);
 
     useEffect(() => {
         if (!project) return;
@@ -243,6 +255,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
         setFeatureEnabled(nextFeatureEnabled);
         setDetailState(nextDetailState);
         setLinkState(nextLinkState);
+        setSpotlightTitleIconUrl(spotlight?.titleIconUrl || "");
+        setSpotlightIconError("");
         setSpotlightError("");
         setSpotlightSaved(false);
     }, [project?.id, project?.mindMapSettings?.documentView?.spotlight]);
@@ -285,6 +299,28 @@ export default function ProjectDetailClient({ projectId }: Props) {
             setCoverImageError(t("projectDetail.cover.pickFailed"));
         } finally {
             setIsPickingCoverImage(false);
+        }
+    }
+
+    async function handlePickSpotlightIcon() {
+        if (isPickingSpotlightIcon) return;
+        setSpotlightIconError("");
+        setIsPickingSpotlightIcon(true);
+        try {
+            const googleClientId = await getGoogleClientId();
+            if (!googleClientId) {
+                setSpotlightIconError(t("projectDetail.cover.missingGoogleConfig"));
+                return;
+            }
+            const picked = await openGoogleDriveImagePicker(googleClientId);
+            if (!picked?.id) return;
+            setSpotlightTitleIconUrl(driveFileIdToImageUrl(picked.id));
+            setSpotlightSaved(false);
+            setSpotlightIconCandidateIndex(0);
+        } catch {
+            setSpotlightIconError(t("projectDetail.spotlight.iconPickFailed"));
+        } finally {
+            setIsPickingSpotlightIcon(false);
         }
     }
 
@@ -344,6 +380,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             features,
             technicalDetails,
             storeLinks: links,
+            titleIconUrl: spotlightTitleIconUrl,
         });
 
         const currentSettings = project.mindMapSettings || {};
@@ -670,6 +707,57 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             {showSpotlightEditor && (
                                 <>
                             <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-gray-100 mb-1">{t("projectDetail.spotlight.iconLabel")}</p>
+                                <p className="text-xs text-gray-400 mb-3">{t("projectDetail.spotlight.iconHelp")}</p>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-600 bg-gray-900/80 flex items-center justify-center">
+                                        {spotlightTitleIconUrl && spotlightIconCandidateIndex < spotlightTitleIconCandidates.length ? (
+                                            <img
+                                                src={spotlightTitleIconCandidates[spotlightIconCandidateIndex]}
+                                                alt={t("projectDetail.spotlight.iconAlt")}
+                                                onError={() => setSpotlightIconCandidateIndex((prev) => prev + 1)}
+                                                className="h-full w-full object-cover"
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <span className="text-2xl" aria-hidden>🎮</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void handlePickSpotlightIcon()}
+                                            disabled={isPickingSpotlightIcon}
+                                            className="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm font-medium hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                            {isPickingSpotlightIcon
+                                                ? t("projectDetail.cover.picking")
+                                                : t("projectDetail.spotlight.iconSelect")}
+                                        </button>
+                                        {spotlightTitleIconUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSpotlightTitleIconUrl("");
+                                                    setSpotlightSaved(false);
+                                                    setSpotlightIconError("");
+                                                }}
+                                                className="px-3 py-2 rounded-lg bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-600"
+                                            >
+                                                {t("projectDetail.spotlight.iconRemove")}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {spotlightIconError && (
+                                    <p className="mt-2 text-sm text-rose-300">{spotlightIconError}</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
                                 <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
                                 <div className="grid gap-2 md:grid-cols-2">
                                     {FEATURE_PRESETS.map((feature) => (
@@ -846,6 +934,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                             </a>
                                         ))}
                                     </div>
+                                ) : null}
+
+                                {currentSpotlight?.titleIconUrl ? (
+                                    <p className="mt-3 text-xs text-gray-400">{t("projectDetail.spotlight.iconConfigured")}</p>
                                 ) : null}
                             </div>
                                 </>

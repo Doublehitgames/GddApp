@@ -550,6 +550,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const [openSectionMenuId, setOpenSectionMenuId] = useState<string | null>(null);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [coverImageCandidateIndex, setCoverImageCandidateIndex] = useState(0);
+  const [spotlightTitleIconCandidateIndex, setSpotlightTitleIconCandidateIndex] = useState(0);
   const isPublicMode = Boolean(publicToken);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
   const sectionMenuRef = useRef<HTMLDivElement>(null);
@@ -562,6 +563,10 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const documentSpotlight = useMemo(
     () => normalizeProjectDocumentSpotlight(project?.mindMapSettings?.documentView?.spotlight),
     [project?.mindMapSettings?.documentView?.spotlight]
+  );
+  const spotlightTitleIconCandidates = useMemo(
+    () => getDriveImageDisplayCandidates(documentSpotlight?.titleIconUrl || ""),
+    [documentSpotlight?.titleIconUrl]
   );
   const spotlightDetails = useMemo(
     () => parseSpotlightDetails(documentSpotlight?.technicalDetails || []),
@@ -593,6 +598,10 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   useEffect(() => {
     setCoverImageCandidateIndex(0);
   }, [project?.coverImageUrl]);
+
+  useEffect(() => {
+    setSpotlightTitleIconCandidateIndex(0);
+  }, [documentSpotlight?.titleIconUrl]);
 
   useEffect(() => {
     if (openSectionMenuId === null) return;
@@ -1146,26 +1155,83 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
       )}
       
       {/* Header/Toolbar */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {!isPublicMode ? (
-                <button
-                  onClick={() => router.push("/")}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  🏠 {t("view.home")}
-                </button>
-              ) : (
-                <span className="text-sm text-gray-600">🔓 {t("view.publicView")}</span>
-              )}
+      <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/85 backdrop-blur-md shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
+          <div className="flex items-center gap-2 gdd-doc-searchbar">
+            {!isPublicMode ? (
+              <button
+                onClick={() => router.push("/")}
+                className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-transparent text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <span>🏠</span>
+                <span className="hidden sm:inline">{t("view.home")}</span>
+              </button>
+            ) : (
+              <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
+                <span>🔓</span>
+                <span className="hidden sm:inline">{t("view.publicView")}</span>
+              </span>
+            )}
+
+            <div className="relative flex-1 min-w-0">
+              <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+              </svg>
+              <input
+                type="text"
+                value={documentSearch}
+                onChange={(e) => setDocumentSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    goToSearchMatch(e.shiftKey ? -1 : 1);
+                  }
+                }}
+                placeholder={t("view.searchPlaceholder")}
+                className="h-8 w-full pl-9 pr-3 border border-slate-300 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+              />
             </div>
-            <div className="relative" ref={actionsMenuRef}>
+
+            <button
+              onClick={() => goToSearchMatch(-1)}
+              disabled={matchedSectionIds.length === 0}
+              className="shrink-0 h-8 w-8 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("view.previousResult")}
+            >
+              ↑
+            </button>
+            <button
+              onClick={() => goToSearchMatch(1)}
+              disabled={matchedSectionIds.length === 0}
+              className="shrink-0 h-8 w-8 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={t("view.nextResult")}
+            >
+              ↓
+            </button>
+
+            <span className="hidden md:inline-flex h-8 items-center px-2.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600 whitespace-nowrap">
+              {matchedSectionIds.length > 0
+                ? `${activeMatchIndex + 1}/${matchedSectionIds.length}`
+                : t("view.noResults")}
+            </span>
+
+            {documentSearch && (
+              <button
+                onClick={() => {
+                  setDocumentSearch("");
+                  setActiveMatchIndex(0);
+                }}
+                className="hidden sm:inline-flex h-8 px-3 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-100"
+                title={t("view.clearSearch")}
+              >
+                {t("view.clearSearch")}
+              </button>
+            )}
+
+            <div className="relative shrink-0" ref={actionsMenuRef}>
               <button
                 type="button"
                 onClick={() => setShowActionsMenu((v) => !v)}
-                className="p-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors"
                 title={t("view.actionsMenu")}
                 aria-expanded={showActionsMenu}
                 aria-haspopup="true"
@@ -1186,7 +1252,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                         setShowActionsMenu(false);
                         router.push(`/projects/${projectId}`);
                       }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >
                       ← {t("view.managementMode")}
                     </button>
@@ -1201,7 +1267,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                           : `/projects/${projectId}/mindmap`
                       );
                     }}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     🧠 {t("view.mindMap")}
                   </button>
@@ -1211,61 +1277,13 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                       setShowActionsMenu(false);
                       window.print();
                     }}
-                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                   >
                     🖨️ {t("view.print")}
                   </button>
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2 gdd-doc-searchbar">
-            <input
-              type="text"
-              value={documentSearch}
-              onChange={(e) => setDocumentSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  goToSearchMatch(e.shiftKey ? -1 : 1);
-                }
-              }}
-              placeholder={t("view.searchPlaceholder")}
-              className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={() => goToSearchMatch(-1)}
-              disabled={matchedSectionIds.length === 0}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={t("view.previousResult")}
-            >
-              ↑
-            </button>
-            <button
-              onClick={() => goToSearchMatch(1)}
-              disabled={matchedSectionIds.length === 0}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={t("view.nextResult")}
-            >
-              ↓
-            </button>
-            <span className="text-sm text-gray-600 whitespace-nowrap">
-              {matchedSectionIds.length > 0
-                ? `${activeMatchIndex + 1}/${matchedSectionIds.length}`
-                : t("view.noResults")}
-            </span>
-            {documentSearch && (
-              <button
-                onClick={() => {
-                  setDocumentSearch("");
-                  setActiveMatchIndex(0);
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
-                title={t("view.clearSearch")}
-              >
-                {t("view.clearSearch")}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -1356,9 +1374,21 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 </div>
               )}
               <div className="mb-6">
-                <div className="inline-block p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6">
-                  <span className="text-6xl">🎮</span>
-                </div>
+                {documentSpotlight?.titleIconUrl && spotlightTitleIconCandidateIndex < spotlightTitleIconCandidates.length ? (
+                  <div className="inline-block p-1.5 bg-white rounded-2xl mb-6 border border-gray-200 shadow-sm">
+                    <img
+                      src={spotlightTitleIconCandidates[spotlightTitleIconCandidateIndex]}
+                      alt={t("view.spotlight.titleIconAlt")}
+                      onError={() => setSpotlightTitleIconCandidateIndex((prev) => prev + 1)}
+                      className="h-20 w-20 object-cover rounded-xl"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="inline-block p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-6">
+                    <span className="text-6xl">🎮</span>
+                  </div>
+                )}
               </div>
               <h1 className="text-5xl font-bold text-gray-900 mb-4">
                 {project.title}

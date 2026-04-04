@@ -22,10 +22,24 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   const project = useMemo(() => getProject(projectId), [getProject, projectId, projects]);
 
-  const shouldShowSidebar = useMemo(() => {
-    if (!pathname) return true;
-    return !pathname.endsWith("/mindmap") && !pathname.endsWith("/view") && !pathname.endsWith("/diagramas");
+  const normalizedPathname = useMemo(() => {
+    if (!pathname) return "";
+    return pathname.replace(/\/+$/, "");
   }, [pathname]);
+
+  const shouldShowSidebar = useMemo(() => {
+    if (!normalizedPathname) return true;
+    return (
+      !normalizedPathname.endsWith("/mindmap") &&
+      !normalizedPathname.endsWith("/view") &&
+      !normalizedPathname.endsWith("/diagramas")
+    );
+  }, [normalizedPathname]);
+
+  const isDocumentViewRoute = useMemo(() => {
+    if (!normalizedPathname) return false;
+    return /^\/projects\/[^/]+\/view$/.test(normalizedPathname);
+  }, [normalizedPathname]);
 
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
@@ -77,6 +91,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-900 pb-14">
+      {!isDocumentViewRoute && (
       <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-3">
           <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm text-gray-300">
@@ -146,8 +161,9 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
           )}
         </div>
       </header>
+      )}
 
-      <div className="pt-16 md:pt-20">
+      <div className={isDocumentViewRoute ? undefined : "pt-16 md:pt-20"}>
       {shouldShowSidebar ? (
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8">
           <div
