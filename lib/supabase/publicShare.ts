@@ -1,11 +1,18 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Project } from "@/store/projectStore";
 
+function isMissingCoverImageColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message || "").toLowerCase();
+  return message.includes("cover_image_url") && (message.includes("column") || message.includes("does not exist"));
+}
+
 function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
   return {
     id: projectRow.id,
     title: projectRow.title,
     description: projectRow.description || "",
+    coverImageUrl: projectRow.cover_image_url || undefined,
     createdAt: projectRow.created_at,
     updatedAt: projectRow.updated_at,
     mindMapSettings: projectRow.mindmap_settings || {},
@@ -27,11 +34,25 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
 export async function getPublicProjectByIdAndToken(id: string, token: string): Promise<Project | null> {
   const supabase = createAdminClient();
 
-  const { data: projectRow, error: projectErr } = await supabase
+  const initialProjectResult = await supabase
     .from("projects")
-    .select("id,title,description,created_at,updated_at,mindmap_settings")
+    .select("id,title,description,cover_image_url,created_at,updated_at,mindmap_settings")
     .eq("id", id)
     .single();
+
+  let projectRow: any = initialProjectResult.data;
+  let projectErr: any = initialProjectResult.error;
+
+  if (projectErr && isMissingCoverImageColumn(projectErr)) {
+    const fallback = await supabase
+      .from("projects")
+      .select("id,title,description,created_at,updated_at,mindmap_settings")
+      .eq("id", id)
+      .single();
+
+    projectRow = fallback.data;
+    projectErr = fallback.error;
+  }
 
   if (projectErr || !projectRow) return null;
 
@@ -55,9 +76,20 @@ export async function getPublicProjectByIdAndToken(id: string, token: string): P
 export async function getPublicProjectByToken(token: string): Promise<Project | null> {
   const supabase = createAdminClient();
 
-  const { data: projectRows, error } = await supabase
+  const initialProjectsResult = await supabase
     .from("projects")
-    .select("id,title,description,created_at,updated_at,mindmap_settings");
+    .select("id,title,description,cover_image_url,created_at,updated_at,mindmap_settings");
+
+  let projectRows: any[] | null = initialProjectsResult.data as any[] | null;
+  let error: any = initialProjectsResult.error;
+
+  if (error && isMissingCoverImageColumn(error)) {
+    const fallback = await supabase
+      .from("projects")
+      .select("id,title,description,created_at,updated_at,mindmap_settings");
+    projectRows = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !projectRows) return null;
 
