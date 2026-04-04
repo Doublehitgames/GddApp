@@ -14,6 +14,7 @@ import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
+import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { SectionAddon } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 
@@ -255,6 +256,10 @@ export type MindMapSettings = {
   sharing?: {
     isPublic?: boolean;
     shareToken?: string;
+  };
+  // Documento
+  documentView?: {
+    theme?: DocumentThemeId;
   };
 };
 

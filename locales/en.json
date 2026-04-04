@@ -1129,6 +1129,33 @@
       "defaultLevel1": "Subsections (Level 1)",
       "defaultLevel2": "Sub-subsections (Level 2+)"
     },
+    "documentThemes": {
+      "title": "Document style",
+      "description": "Choose a visual style to highlight top-level section titles in Document mode.",
+      "hint": "Tip: save settings to apply this style to the project document.",
+      "options": {
+        "clean": {
+          "label": "Clean",
+          "description": "Minimal and understated"
+        },
+        "modern": {
+          "label": "Modern",
+          "description": "Fresh cool-contrast look"
+        },
+        "luxury": {
+          "label": "Luxury",
+          "description": "Premium golden finish"
+        },
+        "editorial": {
+          "label": "Editorial",
+          "description": "Classic magazine vibe"
+        },
+        "night": {
+          "label": "Night",
+          "description": "Dark chapter cards with glow"
+        }
+      }
+    },
     "deleteProject": {
       "title": "Delete project",
       "description": "This action cannot be undone. To confirm, type the project name below.",

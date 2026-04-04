@@ -1765,6 +1765,15 @@ function SectionDetailContent({
                   )}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{section.title}</h1>
+                {section?.flowchartEnabled && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-200 shrink-0">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+                    </span>
+                    {t("sectionDetail.flowchart.breadcrumb")}
+                  </span>
+                )}
                 <button
                   onClick={() => setIsEditingTitle(true)}
                   className="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-indigo-300 transition-opacity text-xl shrink-0"
@@ -2062,13 +2071,13 @@ function SectionDetailContent({
               <button
                 type="button"
                 onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}/diagramas`)}
-                className="h-8 px-3 inline-flex items-center justify-center gap-1.5 bg-emerald-600 text-white rounded-lg border border-emerald-400/40 hover:bg-emerald-700 transition-colors text-xs font-medium"
+                className="h-9 px-3.5 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-teal-600 transition-all text-xs font-semibold"
                 title={t("sectionDetail.flowchart.open")}
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
                 </svg>
-                {t("sectionDetail.flowchart.open")}
+                {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", section.title)}
               </button>
             </div>
           )}

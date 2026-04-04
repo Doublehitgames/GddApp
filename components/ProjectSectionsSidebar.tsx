@@ -477,6 +477,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
               resultsFoundMany: t("projectDetail.resultsFoundMany"),
               match: t("projectDetail.match"),
               reorder: t("projectDetail.reorder"),
+              flowchart: t("sectionDetail.flowchart.breadcrumb"),
             }}
           />
         </div>
@@ -546,6 +547,7 @@ function SectionTree({
     resultsFoundMany: string;
     match: string;
     reorder: string;
+    flowchart: string;
   };
 }) {
   const matchesSearch = (section: any): boolean => {
@@ -846,6 +848,7 @@ function SortableRootItem({
   labels: {
     match: string;
     reorder: string;
+    flowchart: string;
   };
 }) {
   const router = useRouter();
@@ -881,6 +884,7 @@ function SortableRootItem({
   const directMatch = matchesDirectly(section);
   const contentSnippet = directMatch && section.content ? getContentSnippet(section.content, searchTerm) : "";
   const isActiveSection = activeSectionId === section.id;
+  const hasFlowchart = Boolean(section?.flowchartEnabled);
   const hasChildren = sections.some((s: any) => s.parentId === section.id);
   const isExpanded =
     expandedSections.has(section.id) ||
@@ -951,7 +955,7 @@ function SortableRootItem({
           isRootLevel
             ? "p-2.5 rounded-xl"
             : "px-2.5 py-2 rounded-lg"
-        } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`} ${dragVisualClass}`}
+        } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : hasFlowchart ? `border-emerald-500/45 bg-emerald-900/15 hover:border-emerald-400/70 ${isTreeDragging ? "" : "hover:-translate-y-px"}` : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`} ${dragVisualClass}`}
         {...attributes}
         {...listeners}
         aria-label={labels.reorder}
@@ -963,6 +967,9 @@ function SortableRootItem({
         onClick={handleCardClick}
       >
         <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
+        {hasFlowchart && (
+          <span className="absolute inset-y-1 left-0 w-1 rounded-r bg-emerald-400/90 pointer-events-none" aria-hidden />
+        )}
         <span className="relative text-gray-400 pointer-events-none select-none" aria-hidden>
           ⋮⋮
         </span>
@@ -999,6 +1006,20 @@ function SortableRootItem({
         >
           {highlightText(section.title, searchTerm)}
         </span>
+        {hasFlowchart && (
+          <span
+            className="relative inline-flex items-center gap-1 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200 pointer-events-none"
+            title={labels.flowchart}
+            aria-label={labels.flowchart}
+          >
+            <svg className="h-2.5 w-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={2} />
+              <rect x="14" y="3" width="7" height="6" rx="1.2" strokeWidth={2} />
+              <rect x="8" y="15" width="8" height="6" rx="1.2" strokeWidth={2} />
+            </svg>
+            {isRootLevel ? labels.flowchart : ""}
+          </span>
+        )}
         {directMatch && searchTerm.trim() && (
           <span className="relative text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">
             ✓ {labels.match}
@@ -1102,6 +1123,7 @@ function SectionChildren({
   labels: {
     match: string;
     reorder: string;
+    flowchart: string;
   };
 }) {
   const matchesSearch = (section: any): boolean => {

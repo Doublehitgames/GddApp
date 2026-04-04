@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
+import { DOCUMENT_THEME_OPTIONS, normalizeDocumentTheme, type DocumentThemeId } from "@/lib/documentThemes";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 interface Props {
@@ -14,6 +15,14 @@ interface Props {
 }
 
 type MemberRow = { userId: string; email: string | null; displayName: string | null; role: string; createdAt: string };
+
+const DOCUMENT_THEME_PREVIEW_BAR: Record<DocumentThemeId, string> = {
+  clean: "from-slate-200 via-slate-300 to-slate-200",
+  modern: "from-sky-300 via-blue-500 to-cyan-300",
+  luxury: "from-amber-100 via-amber-500 to-yellow-200",
+  editorial: "from-zinc-300 via-zinc-700 to-zinc-300",
+  night: "from-cyan-300 via-indigo-500 to-sky-300",
+};
 
 export default function SettingsClient({ projectId }: Props) {
   const router = useRouter();
@@ -507,6 +516,11 @@ export default function SettingsClient({ projectId }: Props) {
   const shareToken = (getValue("sharing.shareToken") || "") as string;
   const isPublicShareEnabled = Boolean(getValue("sharing.isPublic"));
   const publicShareUrl = shareToken ? `${shareBaseUrl}/s/${encodeURIComponent(shareToken)}` : "";
+  const selectedDocumentTheme = normalizeDocumentTheme(getValue("documentView.theme"));
+
+  const setDocumentTheme = (theme: DocumentThemeId) => {
+    setValue("documentView.theme", theme);
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -534,6 +548,34 @@ export default function SettingsClient({ projectId }: Props) {
           <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {t("settings.actions.import", "Import")}</button>
         </div>
         <div className="space-y-8">
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-2">{t("settings.documentThemes.title")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.documentThemes.description")}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+              {DOCUMENT_THEME_OPTIONS.map((theme) => {
+                const isActive = selectedDocumentTheme === theme.id;
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    onClick={() => setDocumentTheme(theme.id)}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      isActive
+                        ? "border-blue-400 bg-blue-900/30 ring-2 ring-blue-500/40"
+                        : "border-gray-700 bg-gray-900/40 hover:border-gray-500 hover:bg-gray-700/40"
+                    }`}
+                    aria-pressed={isActive}
+                  >
+                    <div className={`mb-2 h-1.5 rounded-full bg-gradient-to-r ${DOCUMENT_THEME_PREVIEW_BAR[theme.id]}`} />
+                    <div className="text-sm font-semibold text-white">{t(theme.labelKey)}</div>
+                    <div className="mt-1 text-xs text-gray-400">{t(theme.descriptionKey)}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-3">{t("settings.documentThemes.hint")}</p>
+          </div>
+
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">📏 {t("settings.settingsClient.nodeSizes")}</h2>
             <div className="grid grid-cols-3 gap-4 mb-4">

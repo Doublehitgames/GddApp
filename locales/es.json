@@ -1129,6 +1129,33 @@
       "defaultLevel1": "Subsecciones (Nivel 1)",
       "defaultLevel2": "Sub-subsecciones (Nivel 2+)"
     },
+    "documentThemes": {
+      "title": "Estilo del documento",
+      "description": "Elige un estilo visual para destacar los títulos de secciones padre en modo Documento.",
+      "hint": "Tip: guarda la configuración para aplicar este estilo al documento del proyecto.",
+      "options": {
+        "clean": {
+          "label": "Clean",
+          "description": "Minimalista y discreto"
+        },
+        "modern": {
+          "label": "Moderno",
+          "description": "Contraste fresco y actual"
+        },
+        "luxury": {
+          "label": "Lujo",
+          "description": "Acabado premium dorado"
+        },
+        "editorial": {
+          "label": "Editorial",
+          "description": "Estética clásica de revista"
+        },
+        "night": {
+          "label": "Noche",
+          "description": "Capítulos oscuros con brillo"
+        }
+      }
+    },
     "deleteProject": {
       "title": "Eliminar proyecto",
       "description": "Esta acción no se puede deshacer. Para confirmar, escribe el nombre del proyecto abajo.",
