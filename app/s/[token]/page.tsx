@@ -18,19 +18,16 @@ function getSiteUrl(): string {
   return fromEnv || FALLBACK_SITE_URL;
 }
 
-function toPlainText(input: string): string {
-  return input
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/\$\[[^\]]+\]/g, " ")
-    .replace(/[#*_~>\-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function truncate(input: string, max: number): string {
   if (input.length <= max) return input;
   return `${input.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+function getSpotlightTitleIconUrl(project: unknown): string | null {
+  if (!project || typeof project !== "object") return null;
+  const raw = project as { mindMapSettings?: { documentView?: { spotlight?: { titleIconUrl?: unknown } } } };
+  const maybe = raw.mindMapSettings?.documentView?.spotlight?.titleIconUrl;
+  return typeof maybe === "string" && maybe.trim() ? maybe.trim() : null;
 }
 
 export async function generateMetadata({
@@ -68,13 +65,10 @@ export async function generateMetadata({
   }
 
   const title = truncate(`${project.title} | GDD App`, 90);
-  const descriptionSource = toPlainText(project.description || "");
-  const description = truncate(
-    descriptionSource || `GDD público com ${(project.sections || []).length} seção(ões).`,
-    180
-  );
+  const description = truncate(`GDD do jogo ${project.title}.`, 180);
   const version = encodeURIComponent(project.updatedAt || project.createdAt || "v1");
-  const imageUrl = `${siteUrl}/api/og/public-share?title=${encodeURIComponent(project.title)}&description=${encodeURIComponent(description)}&v=${version}`;
+  const spotlightTitleIconUrl = getSpotlightTitleIconUrl(project);
+  const imageUrl = `${siteUrl}/api/og/public-share?title=${encodeURIComponent(project.title)}&description=${encodeURIComponent(description)}&url=${encodeURIComponent(shareUrl)}${spotlightTitleIconUrl ? `&icon=${encodeURIComponent(spotlightTitleIconUrl)}` : ""}&v=${version}`;
 
   return {
     title,
