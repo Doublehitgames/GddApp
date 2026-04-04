@@ -15,6 +15,9 @@ type DiagramToolbarProps = {
   themeOptions: ThemeOption[];
   onCenter: () => void;
   onClear: () => void;
+  onCopyDiagram: () => void;
+  onPasteDiagram: () => void;
+  canPasteDiagram: boolean;
   snapToGrid: boolean;
   snapGridSize: number;
   onThemeChange: (theme: string) => void;
@@ -32,6 +35,9 @@ export default function DiagramToolbar({
   themeOptions,
   onCenter,
   onClear,
+  onCopyDiagram,
+  onPasteDiagram,
+  canPasteDiagram,
   snapToGrid,
   snapGridSize,
   onThemeChange,
@@ -43,6 +49,14 @@ export default function DiagramToolbar({
       <button onClick={onCenter} className={toolbarButtonClass}>Centralizar</button>
       {!isReadOnly && (
         <>
+          <button onClick={onCopyDiagram} className={toolbarButtonClass}>Copiar quadro</button>
+          <button
+            onClick={onPasteDiagram}
+            className={`${toolbarButtonClass} ${!canPasteDiagram ? "opacity-45 cursor-not-allowed" : ""}`}
+            disabled={!canPasteDiagram}
+          >
+            Colar quadro
+          </button>
           <button onClick={onToggleSnapToGrid} className={toolbarButtonClass}>
             Snap grid: {snapToGrid ? "Ligado" : "Desligado"}
           </button>

@@ -82,6 +82,15 @@ interface DiagramasClientProps {
 const SNAP_GRID_SIZE_OPTIONS = [10, 20, 30] as const;
 const DEFAULT_SNAP_GRID_SIZE = 20;
 const BLOCK_DND_MIME = "application/x-gdd-block-type";
+const DIAGRAM_CLIPBOARD_KEY = "gdd_diagram_clipboard_v1";
+const DIAGRAM_SELECTION_CLIPBOARD_KEY = "gdd_diagram_selection_clipboard_v1";
+
+type CopiedSelectionSnapshot = {
+  nodes: Node<DiagramNodeData>[];
+  edges: Edge[];
+  anchor: { x: number; y: number };
+};
+
 const OPPOSITE_HANDLE: Record<"top" | "right" | "bottom" | "left", "top" | "right" | "bottom" | "left"> = {
   top: "bottom",
   right: "left",
@@ -139,10 +148,12 @@ function DiagramasFlow({
   const [defaultEdgeAnimated, setDefaultEdgeAnimated] = useState<boolean>(false);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(false);
   const [snapGridSize, setSnapGridSize] = useState<number>(DEFAULT_SNAP_GRID_SIZE);
+  const [canPasteDiagram, setCanPasteDiagram] = useState<boolean>(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
   const nodesRef = useRef<Node<DiagramNodeData>[]>([]);
-  const copiedNodeRef = useRef<Node<DiagramNodeData> | null>(null);
+  const edgesRef = useRef<Edge[]>([]);
+  const copiedSelectionRef = useRef<CopiedSelectionSnapshot | null>(null);
   const isPointerOverPaneRef = useRef(false);
   const lastPointerClientRef = useRef<{ x: number; y: number } | null>(null);
   const dragDuplicateRef = useRef<{
@@ -223,6 +234,64 @@ function DiagramasFlow({
     []
   );
 
+  const writeSelectionClipboard = useCallback((snapshot: CopiedSelectionSnapshot) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(DIAGRAM_SELECTION_CLIPBOARD_KEY, JSON.stringify(snapshot));
+    } catch {
+      // Ignore clipboard persistence failures.
+    }
+  }, []);
+
+  const readSelectionClipboard = useCallback((): CopiedSelectionSnapshot | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(DIAGRAM_SELECTION_CLIPBOARD_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as CopiedSelectionSnapshot;
+      if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null;
+      if (!parsed.anchor || !Number.isFinite(parsed.anchor.x) || !Number.isFinite(parsed.anchor.y)) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const refreshClipboardAvailability = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(DIAGRAM_CLIPBOARD_KEY);
+      setCanPasteDiagram(Boolean(raw));
+    } catch {
+      setCanPasteDiagram(false);
+    }
+  }, []);
+
+  const readClipboardDiagram = useCallback((): DiagramState | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(DIAGRAM_CLIPBOARD_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as DiagramState;
+      if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    refreshClipboardAvailability();
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === DIAGRAM_CLIPBOARD_KEY) {
+        refreshClipboardAvailability();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refreshClipboardAvailability]);
+
   useEffect(() => {
     const initial = (isReadOnly ? (initialDiagramState || createEmptyDiagramState()) : getSectionDiagram(projectId, sectionId))
       || createEmptyDiagramState();
@@ -242,6 +311,10 @@ function DiagramasFlow({
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
+
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -535,6 +608,60 @@ function DiagramasFlow({
     setTimeout(() => fitView({ duration: 200, padding: 0.4 }), 0);
   };
 
+  const copyDiagram = useCallback(() => {
+    if (isReadOnly || typeof window === "undefined") return;
+    const snapshot: DiagramState = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      nodes: serializeNodes(nodes),
+      edges: serializeEdges(edges),
+      viewport,
+      settings: {
+        snapToGrid,
+        snapGridSize,
+      },
+    };
+    try {
+      window.localStorage.setItem(DIAGRAM_CLIPBOARD_KEY, JSON.stringify(snapshot));
+      refreshClipboardAvailability();
+    } catch {
+      // Ignore storage write errors to avoid blocking editor interaction.
+    }
+  }, [isReadOnly, nodes, edges, viewport, snapToGrid, snapGridSize, refreshClipboardAvailability]);
+
+  const pasteDiagram = useCallback(() => {
+    if (isReadOnly) return;
+    const snapshot = readClipboardDiagram();
+    if (!snapshot) return;
+
+    const nextViewport = snapshot.viewport || { x: 0, y: 0, zoom: 1 };
+    const nextSnapToGrid = Boolean(snapshot.settings?.snapToGrid);
+    const nextSnapGridSize = normalizeSnapGridSize(snapshot.settings?.snapGridSize);
+    const flowNodes = toFlowNodes(snapshot.nodes || [], theme);
+    const flowEdges = toFlowEdges(snapshot.edges || [], activeTheme);
+
+    setNodes(flowNodes);
+    setEdges(backfillMissingEdgeHandles(flowEdges, flowNodes));
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+    setViewport(nextViewport);
+    setSnapToGrid(nextSnapToGrid);
+    setSnapGridSize(nextSnapGridSize);
+
+    setTimeout(() => {
+      setFlowViewport(nextViewport, { duration: 220 });
+    }, 0);
+  }, [
+    isReadOnly,
+    readClipboardDiagram,
+    theme,
+    activeTheme,
+    setNodes,
+    setEdges,
+    backfillMissingEdgeHandles,
+    setFlowViewport,
+  ]);
+
   const isTypingTarget = (target: EventTarget | null) => {
     const element = target as HTMLElement | null;
     if (!element) return false;
@@ -550,6 +677,102 @@ function DiagramasFlow({
 
   useEffect(() => {
     if (isReadOnly) return;
+
+    const copySelectedBlocks = () => {
+      const selectedNodes = nodesRef.current.filter((node) => Boolean(node.selected));
+      const fallbackSingle = selectedNode ? [selectedNode] : [];
+      const sourceNodes = selectedNodes.length > 0 ? selectedNodes : fallbackSingle;
+      if (sourceNodes.length === 0) return false;
+
+      const selectedIds = new Set(sourceNodes.map((node) => node.id));
+      const selectedEdges = edgesRef.current.filter(
+        (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target)
+      );
+      const minX = Math.min(...sourceNodes.map((node) => node.position.x));
+      const minY = Math.min(...sourceNodes.map((node) => node.position.y));
+
+      const snapshot: CopiedSelectionSnapshot = {
+        nodes: sourceNodes.map((node) => ({
+          ...node,
+          data: { ...node.data },
+          style: { ...(node.style || {}) },
+        })),
+        edges: selectedEdges.map((edge) => ({
+          ...edge,
+          style: edge.style ? { ...edge.style } : edge.style,
+          labelStyle: edge.labelStyle ? { ...edge.labelStyle } : edge.labelStyle,
+          labelBgStyle: edge.labelBgStyle ? { ...edge.labelBgStyle } : edge.labelBgStyle,
+        })),
+        anchor: { x: minX, y: minY },
+      };
+
+      copiedSelectionRef.current = snapshot;
+      writeSelectionClipboard(snapshot);
+
+      return true;
+    };
+
+    const pasteSelectedBlocks = () => {
+      const copied = copiedSelectionRef.current || readSelectionClipboard();
+      if (!copied) return false;
+      copiedSelectionRef.current = copied;
+      if (nodesRef.current.length + copied.nodes.length > MAX_NODES) {
+        window.alert(nodesLimitMessage(MAX_NODES));
+        return true;
+      }
+      if (edgesRef.current.length + copied.edges.length > MAX_EDGES) {
+        window.alert(edgesLimitMessage(MAX_EDGES));
+        return true;
+      }
+
+      const pasteOrigin =
+        isPointerOverPaneRef.current && lastPointerClientRef.current
+          ? screenToFlowPosition(lastPointerClientRef.current)
+          : { x: copied.anchor.x + 24, y: copied.anchor.y + 24 };
+
+      const idMap = new Map<string, string>();
+      const nextNodes = copied.nodes.map((node) => {
+        const nextId = crypto.randomUUID();
+        idMap.set(node.id, nextId);
+        return {
+          ...node,
+          id: nextId,
+          selected: true,
+          position: {
+            x: node.position.x - copied.anchor.x + pasteOrigin.x,
+            y: node.position.y - copied.anchor.y + pasteOrigin.y,
+          },
+          data: { ...node.data },
+          style: { ...(node.style || {}) },
+        };
+      });
+
+      const nextEdges = copied.edges
+        .map((edge) => {
+          const source = idMap.get(edge.source);
+          const target = idMap.get(edge.target);
+          if (!source || !target) return null;
+          return {
+            ...edge,
+            id: crypto.randomUUID(),
+            source,
+            target,
+            selected: false,
+            style: edge.style ? { ...edge.style } : edge.style,
+            labelStyle: edge.labelStyle ? { ...edge.labelStyle } : edge.labelStyle,
+            labelBgStyle: edge.labelBgStyle ? { ...edge.labelBgStyle } : edge.labelBgStyle,
+          } as Edge;
+        })
+        .filter((edge): edge is Edge => Boolean(edge));
+
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+      setNodes((prev) => [...prev.map((node) => ({ ...node, selected: false })), ...nextNodes]);
+      setEdges((prev) => backfillMissingEdgeHandles([...prev, ...nextEdges], [...nodesRef.current, ...nextNodes]));
+
+      return true;
+    };
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (isTypingTarget(event.target)) return;
@@ -569,26 +792,33 @@ function DiagramasFlow({
         return;
       }
 
-      if (key === "c" && selectedNode) {
-        event.preventDefault();
-        copiedNodeRef.current = {
-          ...selectedNode,
-          data: { ...selectedNode.data },
-          style: { ...(selectedNode.style || {}) },
-        };
-        return;
+      if (key === "c") {
+        if (copySelectedBlocks()) {
+          event.preventDefault();
+          return;
+        }
       }
 
-      if (key === "v" && copiedNodeRef.current && isPointerOverPaneRef.current && lastPointerClientRef.current) {
-        event.preventDefault();
-        const flowPosition = screenToFlowPosition(lastPointerClientRef.current);
-        duplicateNode(copiedNodeRef.current, flowPosition);
+      if (key === "v") {
+        if (pasteSelectedBlocks()) {
+          event.preventDefault();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNode, duplicateNode, screenToFlowPosition, isReadOnly]);
+  }, [
+    selectedNode,
+    duplicateNode,
+    screenToFlowPosition,
+    isReadOnly,
+    backfillMissingEdgeHandles,
+    nodesLimitMessage,
+    edgesLimitMessage,
+    readSelectionClipboard,
+    writeSelectionClipboard,
+  ]);
 
   const themeOptions = getThemeOptions();
   const selectedStartMarker: DiagramMarkerType = selectedEdge ? fromEdgeMarker(selectedEdge.markerStart) : "none";
@@ -692,6 +922,9 @@ function DiagramasFlow({
           themeOptions={themeOptions}
           onCenter={() => fitView({ duration: 300, padding: 0.3 })}
           onClear={clearBoard}
+          onCopyDiagram={copyDiagram}
+          onPasteDiagram={pasteDiagram}
+          canPasteDiagram={canPasteDiagram}
           snapToGrid={snapToGrid}
           snapGridSize={snapGridSize}
           onThemeChange={(nextTheme) => {

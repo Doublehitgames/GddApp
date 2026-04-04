@@ -7,6 +7,7 @@ import rehypeRaw from "rehype-raw";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import { resolveProjectSpecialTokens, type ProjectTokenSource } from "@/lib/addons/projectSpecialTokens";
+import { convertYouTubeEditorPlaceholdersToEmbeds } from "@/utils/youtubeEmbeds";
 
 interface MarkdownWithReferencesProps {
   content: string;
@@ -79,6 +80,37 @@ function convertMarkdownLinksInsideHtmlBlocks(content: string): string {
       (_full, label: string, href: string) => `<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`
     );
   });
+}
+
+function normalizeEscapedBlockquotes(content: string): string {
+  if (!content || (!content.includes("&gt;") && !content.includes("&#62;"))) return content;
+
+  let normalized = content
+    .replace(/(^|\n)([ \t]*)&gt;[ \t]?/g, "$1$2> ")
+    .replace(/(^|\n)([ \t]*)&#62;[ \t]?/g, "$1$2> ");
+
+  normalized = normalized.replace(
+    /((?:<p\b[^>]*>\s*(?:&gt;|&#62;)\s*[\s\S]*?<\/p>\s*)+)/gi,
+    (group) => {
+      const matches = Array.from(
+        group.matchAll(/<p\b([^>]*)>\s*(?:&gt;|&#62;)\s*([\s\S]*?)<\/p>/gi)
+      );
+
+      if (matches.length === 0) return group;
+
+      const paragraphs = matches
+        .map((match) => {
+          const attrs = match[1] || "";
+          const inner = match[2] || "";
+          return `<p${attrs}>${inner}</p>`;
+        })
+        .join("");
+
+      return `<blockquote>${paragraphs}</blockquote>`;
+    }
+  );
+
+  return normalized;
 }
 
 function getSectionDepth(section: any, sectionById: Map<string, any>): number {
@@ -166,6 +198,7 @@ export function MarkdownWithReferences({
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
   const { t } = useI18n();
+  const isDocumentMode = referenceLinkMode === "document";
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
   const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
 
@@ -213,7 +246,11 @@ export function MarkdownWithReferences({
       updatedAt: projectTokenSource?.updatedAt,
       sections: projectTokenSource?.sections ?? sections,
     });
-    const normalizedContent = convertMarkdownLinksInsideHtmlBlocks(contentWithResolvedTokens);
+    const normalizedContent = normalizeEscapedBlockquotes(
+      convertYouTubeEditorPlaceholdersToEmbeds(
+        convertMarkdownLinksInsideHtmlBlocks(contentWithResolvedTokens)
+      )
+    );
     const refs = extractRefs(normalizedContent);
     if (refs.length === 0) return normalizedContent;
 
@@ -267,12 +304,28 @@ export function MarkdownWithReferences({
           h4: ({ children }) => (
             <h4 className="text-lg font-semibold mt-4 mb-2 text-white">{children}</h4>
           ),
-          p: ({ children }) => <p className="text-gray-200 leading-7 my-2">{children}</p>,
+          p: ({ children }) => (
+            <p className={`${isDocumentMode ? "text-gray-700" : "text-gray-200"} leading-7 my-2`}>{children}</p>
+          ),
           ul: ({ children }) => <ul className="list-disc pl-6 my-3 text-gray-200">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-6 my-3 text-gray-200">{children}</ol>,
           li: ({ children }) => <li className="my-1">{children}</li>,
           strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
+          blockquote: ({ children }) => (
+            <blockquote
+              className="my-4"
+              style={{
+                padding: "0.65rem 0.9rem",
+                borderLeft: isDocumentMode ? "4px solid #94a3b8" : "4px solid #60a5fa",
+                borderRadius: "0 0.5rem 0.5rem 0",
+                background: isDocumentMode ? "rgba(241, 245, 249, 0.9)" : "rgba(59, 130, 246, 0.1)",
+                color: isDocumentMode ? "#334155" : "#e5e7eb",
+              }}
+            >
+              {children}
+            </blockquote>
+          ),
           img: ({ src, alt }) => {
             const safeSrc = typeof src === "string" ? src.trim() : "";
             if (!safeSrc) return null;
@@ -391,9 +444,19 @@ export function MarkdownWithReferences({
               </h3>
             </div>
             <div className="px-5 py-4">
-              <p className="text-sm leading-6 text-gray-700">
-                {pendingAnchorNavigation.shortDescription || t("view.anchorPreview.noDescription")}
-              </p>
+              {pendingAnchorNavigation.shortDescription ? (
+                <div className="prose prose-sm max-w-none markdown-with-refs text-gray-700">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw as any]}>
+                    {normalizeEscapedBlockquotes(
+                      convertMarkdownLinksInsideHtmlBlocks(pendingAnchorNavigation.shortDescription)
+                    )}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-sm leading-6 text-gray-700">
+                  {t("view.anchorPreview.noDescription")}
+                </p>
+              )}
             </div>
             <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
               <button

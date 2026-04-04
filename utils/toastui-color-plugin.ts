@@ -7,6 +7,7 @@ import {
   getGoogleClientId,
 } from "@/lib/googleDrivePicker";
 import { GDD_EMOJI_CATEGORIES, GDD_EMOJI_PRESETS } from "@/lib/emojiPresets";
+import { extractYouTubeVideoId, buildYouTubeEditorPlaceholder } from "@/utils/youtubeEmbeds";
 
 // Predefined color palette
 export const COLOR_PALETTE = [
@@ -324,6 +325,77 @@ export function addImageUrlButtonToToolbar(editor: ToastEditorLike) {
       firstGroup.appendChild(buttonWrapper);
     }
   }, 120);
+}
+
+/** Adiciona botão para inserir video do YouTube por URL no editor. */
+export function addYouTubeButtonToToolbar(editor: ToastEditorLike) {
+  setTimeout(() => {
+    const editorRoot =
+      editor?.el?.closest?.(".toastui-editor-defaultUI") ||
+      document.querySelector(".toastui-editor-defaultUI");
+
+    const toolbarElement = editorRoot?.querySelector(".toastui-editor-toolbar") as HTMLElement | null;
+    if (!toolbarElement) return;
+    if (toolbarElement.querySelector(".youtube-button-wrapper")) return;
+
+    const buttonWrapper = document.createElement("div");
+    buttonWrapper.className = "youtube-button-wrapper";
+    buttonWrapper.style.cssText = "position: relative; display: inline-block;";
+
+    const ytButton = document.createElement("button");
+    ytButton.type = "button";
+    ytButton.className = "toastui-editor-toolbar-icons youtube";
+    ytButton.style.cssText = `
+      position: relative;
+      padding: 5px 8px;
+      margin: 0 2px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+    `;
+    ytButton.textContent = "▶️";
+    ytButton.title = "Inserir video do YouTube";
+
+    ytButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rawUrl = window.prompt("Cole a URL do video do YouTube:");
+      if (!rawUrl) return;
+
+      const videoId = extractYouTubeVideoId(rawUrl);
+      if (!videoId) {
+        window.alert("URL invalida. Use um link do YouTube (youtube.com ou youtu.be).");
+        return;
+      }
+
+      const placeholder = buildYouTubeEditorPlaceholder(videoId);
+      const insertion = `\n${placeholder}\n`;
+
+      if (typeof editor?.insertText === "function") {
+        editor.insertText(insertion);
+        return;
+      }
+
+      const modeEditor = editor?.getCurrentModeEditor?.();
+      if (typeof modeEditor?.replaceSelection === "function") {
+        modeEditor.replaceSelection(insertion);
+        return;
+      }
+
+      const currentMarkdown = editor?.getMarkdown?.() || "";
+      const separator = currentMarkdown.endsWith("\n") || currentMarkdown.length === 0 ? "" : "\n";
+      editor?.setMarkdown?.(`${currentMarkdown}${separator}${placeholder}\n`);
+    });
+
+    buttonWrapper.appendChild(ytButton);
+
+    const firstGroup = toolbarElement.querySelector(".toastui-editor-toolbar-group");
+    if (firstGroup) {
+      firstGroup.appendChild(buttonWrapper);
+    }
+  }, 140);
 }
 
 export type DriveImageButtonOptions = {

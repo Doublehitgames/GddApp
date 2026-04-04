@@ -19,7 +19,7 @@ interface DocumentAnchorPreview {
   shortDescription: string;
 }
 
-const DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH = 180;
+const DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH = 420;
 
 function SectionThumb({
   src,
@@ -103,17 +103,12 @@ function replaceReferenceTokens(text: string, sections: any[]): string {
   });
 }
 
-function toPlainTextPreview(value: string): string {
+function toAnchorPreviewMarkdown(value: string): string {
   if (!value) return "";
 
   return value
     .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, " ")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/[#>*_~]+/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .trim();
 }
 
@@ -253,11 +248,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           : section?.content || "";
       const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project);
       const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionWithResolvedTokens, projectSections);
-      const plainTextDescription = toPlainTextPreview(descriptionWithResolvedReferences);
+      const markdownDescription = toAnchorPreviewMarkdown(descriptionWithResolvedReferences);
 
       map.set(section.id, {
         title,
-        shortDescription: truncatePreview(plainTextDescription, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
+        shortDescription: truncatePreview(markdownDescription, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
       });
     }
 

@@ -132,6 +132,62 @@ body {
   margin: 0;
 }
 
+/* Embeds (ex.: YouTube) no markdown */
+.markdown-with-refs iframe {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+  border-radius: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+/* Card visivel no editor para embeds de YouTube */
+.gdd-youtube-placeholder {
+  border: 1px solid #374151;
+  background: #111827;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.gdd-youtube-placeholder p {
+  margin: 0.35rem 0;
+}
+
+.gdd-youtube-placeholder strong {
+  color: #f3f4f6;
+}
+
+.gdd-youtube-placeholder a {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.gdd-youtube-placeholder img {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #4b5563;
+}
+
+/* Citações Markdown no modo visualização (seção/projeto/documento) */
+.markdown-with-refs blockquote {
+  margin: 1rem 0;
+  padding: 0.65rem 0.9rem;
+  border-left: 4px solid #60a5fa;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.markdown-with-refs blockquote p,
+.markdown-with-refs blockquote li,
+.markdown-with-refs blockquote span {
+  color: inherit !important;
+}
+
 /* Scrollbar premium (global) */
 :root {
   --scrollbar-track: rgba(17, 24, 39, 0.35);

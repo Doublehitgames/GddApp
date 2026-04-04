@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import { convertReferencesToIds, convertReferencesToNames } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addEmojiButtonToToolbar, addYouTubeButtonToToolbar } from "@/utils/toastui-color-plugin";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useI18n } from "@/lib/i18n/provider";
@@ -13,6 +13,10 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
 import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
+import {
+  convertYouTubeEmbedsToEditorPlaceholders,
+  convertYouTubeEditorPlaceholdersToEmbeds,
+} from "@/utils/youtubeEmbeds";
 
 interface Props {
   projectId: string;
@@ -68,7 +72,7 @@ export default function ProjectEditClient({ projectId }: Props) {
         initialEditType: editorMode,
         previewStyle: "vertical",
         height: editorHeight,
-        initialValue: description || "",
+        initialValue: convertYouTubeEmbedsToEditorPlaceholders(description || ""),
         usageStatistics: false,
         customHTMLRenderer: {
           htmlInline: {
@@ -97,6 +101,7 @@ export default function ProjectEditClient({ projectId }: Props) {
 
       // Adiciona botão de imagem por URL
       addImageUrlButtonToToolbar(instance);
+      addYouTubeButtonToToolbar(instance);
       addEmojiButtonToToolbar(instance);
     }
     mountEditor();
@@ -129,7 +134,8 @@ export default function ProjectEditClient({ projectId }: Props) {
   function handleSave() {
     if (!notFound && projectId) {
       const md = editorRef.current?.getMarkdown?.() || description;
-      const normalizedMd = normalizeSpecialTokenSyntax(md);
+      const restoredMd = convertYouTubeEditorPlaceholdersToEmbeds(md);
+      const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
       const project = getProject(projectId);
       const sections = project?.sections || [];
       const convertedMd = convertReferencesToIds(normalizedMd, sections);

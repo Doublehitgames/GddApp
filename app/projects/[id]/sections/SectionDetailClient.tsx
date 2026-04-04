@@ -10,7 +10,7 @@ import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar } from "@/utils/toastui-color-plugin";
+import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar, addYouTubeButtonToToolbar } from "@/utils/toastui-color-plugin";
 import {
   driveFileIdToImageUrl,
   getDriveImageDisplayCandidates,
@@ -45,6 +45,10 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
 import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
+import {
+  convertYouTubeEmbedsToEditorPlaceholders,
+  convertYouTubeEditorPlaceholdersToEmbeds,
+} from "@/utils/youtubeEmbeds";
 
 interface Props {
   projectId: string;
@@ -409,7 +413,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       const project = getProject(projectId);
       const sections = project?.sections || [];
       const contentForEditor = normalizeDriveUrlsInMarkdown(
-        convertReferencesToNames(section?.content || "", sections)
+        convertYouTubeEmbedsToEditorPlaceholders(
+          convertReferencesToNames(section?.content || "", sections)
+        )
       );
       instance = new ToastEditor({
         el: containerEl,
@@ -445,6 +451,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
       // Adiciona botão de imagem por URL
       addImageUrlButtonToToolbar(instance);
+      addYouTubeButtonToToolbar(instance);
       addEmojiButtonToToolbar(instance);
 
       // Adiciona botão de imagem do Google Drive (ao lado do anterior). getCurrentEditor evita referência destruída após o Picker fechar.
@@ -2279,7 +2286,8 @@ function SectionDetailContent({
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors"
               onClick={() => {
                 const md = (editorRef as any).current?.getMarkdown?.() || "";
-                const normalizedMd = normalizeSpecialTokenSyntax(md);
+                const restoredMd = convertYouTubeEditorPlaceholdersToEmbeds(md);
+                const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
                 const sections = project?.sections || [];
                 const convertedMd = convertReferencesToIds(normalizedMd, sections);
                 editSection(projectId, sectionId, section.title, convertedMd, undefined, undefined);
