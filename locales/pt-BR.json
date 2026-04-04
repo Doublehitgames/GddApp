@@ -213,6 +213,25 @@
       "missingGoogleConfig": "Google Drive não configurado. Defina NEXT_PUBLIC_GOOGLE_CLIENT_ID nas variáveis de ambiente.",
       "pickFailed": "Não foi possível selecionar a imagem. Tente novamente."
     },
+    "spotlight": {
+      "title": "Ficha técnica em destaque",
+      "subtitle": "Preencha itens para aparecer em destaque no modo documento.",
+      "featuresLabel": "FEATURES (uma linha por item)",
+      "featuresPlaceholder": "Salvamento manual\nSalvamento automático (beta)\nCarregamento de jogo salvo",
+      "detailsLabel": "DETALHES (uma linha por item)",
+      "detailsPlaceholder": "Estilo: 3D Primeira Pessoa\nPlataformas: Android e iOS\nLançamento Oficial: Q4 2024",
+      "linksLabel": "Links e botões de lojas",
+      "linksPlaceholder": "Press Kit | https://seusite.com/presskit\nGoogle Play | https://play.google.com/...\nSteam | https://store.steampowered.com/...",
+      "linksHelp": "Formato: Nome do botão | URL completa",
+      "invalidLinks": "Revise os links: {{lines}}. Preencha com URL completa (http/https).",
+      "save": "Salvar ficha técnica",
+      "showPanel": "Mostrar ficha",
+      "hidePanel": "Ocultar ficha",
+      "hiddenHint": "A ficha técnica está oculta no gerenciador. Clique em \"Mostrar ficha\" para editar.",
+      "saved": "Ficha técnica salva. Ela já aparece no modo documento.",
+      "previewTitle": "Prévia do destaque",
+      "previewEmpty": "Sem dados ainda. Preencha os campos e salve."
+    },
     "sectionsTitle": "Seções do Projeto",
     "sectionsSubtitle": "Busque, navegue e reordene as seções principais com arrastar e soltar.",
     "showSectionsMenu": "Mostrar menu de seções",
@@ -389,6 +408,20 @@
     "noSectionsTitle": "Nenhuma seção criada ainda",
     "noSectionsHint": "Volte ao modo gerenciamento para adicionar conteúdo ao seu GDD",
     "generatedBy": "Gerado pelo GDD Manager",
+    "spotlight": {
+      "title": "Resumo técnico",
+      "featuresTitle": "Features",
+      "detailsTitle": "Detalhes",
+      "linksTitle": "Links oficiais",
+      "group": {
+        "mobile": "Mobile",
+        "console": "Console",
+        "pc": "PC",
+        "social": "Redes sociais",
+        "site": "Site e press",
+        "other": "Outros"
+      }
+    },
     "anchorPreview": {
       "title": "Prévia da seção",
       "goButton": "Ir para seção",

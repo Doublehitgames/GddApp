@@ -213,6 +213,25 @@
       "missingGoogleConfig": "Google Drive no está configurado. Define NEXT_PUBLIC_GOOGLE_CLIENT_ID en las variables de entorno.",
       "pickFailed": "No fue posible seleccionar la imagen. Inténtalo de nuevo."
     },
+    "spotlight": {
+      "title": "Ficha técnica destacada",
+      "subtitle": "Completa estos datos para mostrarlos con destaque en modo documento.",
+      "featuresLabel": "FEATURES (una línea por ítem)",
+      "featuresPlaceholder": "Guardado manual\nGuardado automático (beta)\nCarga de partida guardada",
+      "detailsLabel": "DETALLES (una línea por ítem)",
+      "detailsPlaceholder": "Estilo: 3D en primera persona\nPlataformas: Android e iOS\nLanzamiento oficial: Q4 2024",
+      "linksLabel": "Enlaces y botones de tiendas",
+      "linksPlaceholder": "Press Kit | https://tu-sitio.com/presskit\nGoogle Play | https://play.google.com/...\nSteam | https://store.steampowered.com/...",
+      "linksHelp": "Formato: Nombre del botón | URL completa",
+      "invalidLinks": "Revisa estos enlaces: {{lines}}. Completa con una URL completa (http/https).",
+      "save": "Guardar ficha técnica",
+      "showPanel": "Mostrar ficha",
+      "hidePanel": "Ocultar ficha",
+      "hiddenHint": "La ficha técnica está oculta en modo gestor. Haz clic en \"Mostrar ficha\" para editar.",
+      "saved": "Ficha técnica guardada. Ya está visible en modo documento.",
+      "previewTitle": "Vista previa del destaque",
+      "previewEmpty": "Sin datos todavía. Completa los campos y guarda."
+    },
     "sectionsTitle": "Secciones del proyecto",
     "sectionsSubtitle": "Busca, navega y reordena las secciones principales con arrastrar y soltar.",
     "showSectionsMenu": "Mostrar menú de secciones",
@@ -389,6 +408,20 @@
     "noSectionsTitle": "Aún no hay secciones creadas",
     "noSectionsHint": "Vuelve al modo de gestión para agregar contenido a tu GDD",
     "generatedBy": "Generado por GDD Manager",
+    "spotlight": {
+      "title": "Resumen técnico",
+      "featuresTitle": "Features",
+      "detailsTitle": "Detalles",
+      "linksTitle": "Enlaces oficiales",
+      "group": {
+        "mobile": "Mobile",
+        "console": "Consola",
+        "pc": "PC",
+        "social": "Redes sociales",
+        "site": "Sitio y press",
+        "other": "Otros"
+      }
+    },
     "anchorPreview": {
       "title": "Vista previa de la sección",
       "goButton": "Ir a la sección",

@@ -17,6 +17,7 @@ import {
 import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { SectionAddon } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
+import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 
 export type UUID = string;
 
@@ -260,6 +261,7 @@ export type MindMapSettings = {
   // Documento
   documentView?: {
     theme?: DocumentThemeId;
+    spotlight?: ProjectDocumentSpotlight;
   };
 };
 

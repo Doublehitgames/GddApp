@@ -9,6 +9,7 @@ import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { resolveProjectSpecialTokensForProject } from "@/lib/addons/projectSpecialTokens";
 import { normalizeDocumentTheme } from "@/lib/documentThemes";
+import { normalizeProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 
 interface Props {
   projectId: string;
@@ -118,6 +119,419 @@ function truncatePreview(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function parseSpotlightDetails(lines: string[]): Array<{ label: string; value: string }> {
+  return lines.map((line) => {
+    const idx = line.indexOf(":");
+    if (idx === -1) {
+      return { label: line.trim(), value: "" };
+    }
+    return {
+      label: line.slice(0, idx).trim(),
+      value: line.slice(idx + 1).trim(),
+    };
+  });
+}
+
+type SpotlightLinkKind =
+  | "google-play"
+  | "app-store"
+  | "steam"
+  | "epic"
+  | "gog"
+  | "playstation"
+  | "xbox"
+  | "nintendo"
+  | "itch"
+  | "youtube"
+  | "instagram"
+  | "tiktok"
+  | "facebook"
+  | "discord"
+  | "reddit"
+  | "twitch"
+  | "x"
+  | "press"
+  | "web"
+  | "link";
+
+type SpotlightLinkGroup = "mobile" | "console" | "pc" | "social" | "site" | "other";
+type SpotlightInfoKind =
+  | "save"
+  | "cloud"
+  | "multiplayer"
+  | "controller"
+  | "audio"
+  | "shield"
+  | "tags"
+  | "style"
+  | "platform"
+  | "calendar"
+  | "storage"
+  | "money"
+  | "expansion"
+  | "age"
+  | "language"
+  | "network"
+  | "engine"
+  | "version"
+  | "generic";
+
+function getSpotlightLinkKind(label: string, url: string): SpotlightLinkKind {
+  const normalized = `${label} ${url}`.toLowerCase();
+  if (normalized.includes("google play")) return "google-play";
+  if (normalized.includes("app store") || normalized.includes("apple")) return "app-store";
+  if (normalized.includes("steam")) return "steam";
+  if (normalized.includes("epic")) return "epic";
+  if (normalized.includes("gog")) return "gog";
+  if (normalized.includes("playstation")) return "playstation";
+  if (normalized.includes("xbox")) return "xbox";
+  if (normalized.includes("nintendo")) return "nintendo";
+  if (normalized.includes("itch")) return "itch";
+  if (normalized.includes("youtube")) return "youtube";
+  if (normalized.includes("instagram")) return "instagram";
+  if (normalized.includes("tiktok")) return "tiktok";
+  if (normalized.includes("facebook")) return "facebook";
+  if (normalized.includes("discord")) return "discord";
+  if (normalized.includes("reddit")) return "reddit";
+  if (normalized.includes("twitch")) return "twitch";
+  if (normalized.includes("x.com") || normalized.includes("twitter") || normalized.includes(" x ")) return "x";
+  if (normalized.includes("press")) return "press";
+  if (normalized.includes("site") || normalized.includes("http")) return "web";
+  return "link";
+}
+
+function getSpotlightLinkGroup(kind: SpotlightLinkKind): SpotlightLinkGroup {
+  if (kind === "google-play" || kind === "app-store") return "mobile";
+  if (kind === "playstation" || kind === "xbox" || kind === "nintendo") return "console";
+  if (kind === "steam" || kind === "epic" || kind === "gog" || kind === "itch") return "pc";
+  if (
+    kind === "youtube" ||
+    kind === "instagram" ||
+    kind === "tiktok" ||
+    kind === "facebook" ||
+    kind === "discord" ||
+    kind === "reddit" ||
+    kind === "twitch" ||
+    kind === "x"
+  ) {
+    return "social";
+  }
+  if (kind === "web" || kind === "press") return "site";
+  return "other";
+}
+
+function getFeatureInfoKind(feature: string): SpotlightInfoKind {
+  const normalized = feature.toLowerCase();
+  if (normalized.includes("nuvem") || normalized.includes("cloud")) return "cloud";
+  if (normalized.includes("multi") || normalized.includes("coop") || normalized.includes("pvp") || normalized.includes("cross")) return "multiplayer";
+  if (normalized.includes("controle") || normalized.includes("controller")) return "controller";
+  if (normalized.includes("dubl") || normalized.includes("audio") || normalized.includes("legenda")) return "audio";
+  if (normalized.includes("offline") || normalized.includes("acess") || normalized.includes("anti") || normalized.includes("safe")) return "shield";
+  if (normalized.includes("save") || normalized.includes("salv")) return "save";
+  return "generic";
+}
+
+function getDetailInfoKind(label: string): SpotlightInfoKind {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("tag")) return "tags";
+  if (normalized.includes("estilo") || normalized.includes("style")) return "style";
+  if (normalized.includes("plataforma") || normalized.includes("platform")) return "platform";
+  if (normalized.includes("lançamento") || normalized.includes("release") || normalized.includes("calendar")) return "calendar";
+  if (normalized.includes("disco") || normalized.includes("storage")) return "storage";
+  if (normalized.includes("negócio") || normalized.includes("business") || normalized.includes("ads") || normalized.includes("money")) return "money";
+  if (normalized.includes("expans") || normalized.includes("dlc")) return "expansion";
+  if (normalized.includes("idade") || normalized.includes("age")) return "age";
+  if (normalized.includes("idioma") || normalized.includes("language")) return "language";
+  if (normalized.includes("internet") || normalized.includes("network")) return "network";
+  if (normalized.includes("engine")) return "engine";
+  if (normalized.includes("versão") || normalized.includes("version")) return "version";
+  return "generic";
+}
+
+function SpotlightInfoIcon({ kind }: { kind: SpotlightInfoKind }) {
+  if (kind === "save") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 4h10l2 2v14H6z"/><path d="M9 4v5h6V4M9 18h6" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "cloud") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 18h9a4 4 0 001-7.9A5.5 5.5 0 006.7 8.7 3.5 3.5 0 007 18z"/></svg>;
+  }
+  if (kind === "multiplayer") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="8" cy="10" r="2.2"/><circle cx="16" cy="10" r="2.2"/><path d="M4.5 17a3.5 3.5 0 017 0m1 0a3.5 3.5 0 017 0" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "controller") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 10h10a3 3 0 013 3l-1 3a2 2 0 01-3 1l-2-1H10l-2 1a2 2 0 01-3-1l-1-3a3 3 0 013-3z"/><path d="M9 12v2m-1-1h2m5-1h2" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "audio") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 14h3l4 3V7L8 10H5z"/><path d="M16 9a4 4 0 010 6m2-8a7 7 0 010 10" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "shield") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z"/></svg>;
+  }
+  if (kind === "calendar") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M8 4v4m8-4v4M4 10h16" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "platform") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M8 19h8" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "storage") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v7c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6"/></svg>;
+  }
+  if (kind === "money") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="7" width="16" height="10" rx="2"/><circle cx="12" cy="12" r="2.2"/></svg>;
+  }
+  if (kind === "expansion") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 4v16M4 12h16" strokeLinecap="round"/><rect x="6" y="6" width="12" height="12" rx="2"/></svg>;
+  }
+  if (kind === "age") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3"/><path d="M6 20a6 6 0 0112 0"/></svg>;
+  }
+  if (kind === "language") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 8h8M8 5v3c0 4-2 6-4 8m8 0l3-8 3 8m-5-2h4" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "network") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 9a10 10 0 0114 0M8 12a6 6 0 018 0M11 15a2 2 0 012 0" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "engine") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v3m0 10v3M4 12h3m10 0h3M6.3 6.3l2.1 2.1m7.2 7.2l2.1 2.1m0-11.4l-2.1 2.1m-7.2 7.2l-2.1 2.1" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "version") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 7h10v10H7z"/><path d="M9.5 12h5" strokeLinecap="round"/></svg>;
+  }
+  if (kind === "tags") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 12l8-8h7v7l-8 8z"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/></svg>;
+  }
+  if (kind === "style") {
+    return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 18h10M9 6h6M8 12h8" strokeLinecap="round"/></svg>;
+  }
+  return <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v4m0 4h.01" strokeLinecap="round"/></svg>;
+}
+
+function SpotlightLinkIcon({ kind }: { kind: SpotlightLinkKind }) {
+  const boxClass = "inline-flex min-w-6 h-6 items-center justify-center rounded-md border gdd-spotlight-link-icon";
+
+  if (kind === "google-play") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
+          <polygon points="5,3 19,12 5,21" fill="currentColor" />
+          <polygon points="9,7 14,12 9,17" fill="white" opacity="0.7" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "app-store") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M7 17h10M9 14l5-9M6 14l5-9M11 14l5 7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "steam") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <circle cx="7" cy="16" r="2.2" />
+          <circle cx="16" cy="8" r="3" />
+          <path d="M9 15l4-4" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "youtube") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden>
+          <rect x="3" y="6" width="18" height="12" rx="3" fill="currentColor" />
+          <polygon points="11,10 16,12 11,14" fill="white" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "instagram") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <rect x="5" y="5" width="14" height="14" rx="4" />
+          <circle cx="12" cy="12" r="3" />
+          <circle cx="16.5" cy="7.5" r="0.8" fill="currentColor" stroke="none" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "discord") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M7 8c3-1 7-1 10 0l1 7c-3 2-9 2-12 0z" />
+          <circle cx="10" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="14" cy="12" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "facebook") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
+          <path d="M14 8h2V4h-2a5 5 0 00-5 5v2H7v3h2v6h3v-6h2.3l.5-3H12V9a1 1 0 011-1z" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "tiktok") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M14 6c1.2 1.6 2.4 2.3 4 2.5v2.5c-1.8-.1-3.1-.6-4-1.4V15a4 4 0 11-4-4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "reddit") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <circle cx="12" cy="13" r="5" />
+          <circle cx="10" cy="13" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="14" cy="13" r="0.9" fill="currentColor" stroke="none" />
+          <path d="M10 15c.7.5 1.3.7 2 .7s1.3-.2 2-.7" strokeLinecap="round" />
+          <path d="M15.8 8.6l1.7.4" strokeLinecap="round" />
+          <circle cx="18.5" cy="9.5" r="1" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "twitch") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M5 4h14v9l-4 4h-4l-2 2H7v-2H5z" strokeLinejoin="round" />
+          <path d="M10 8v4M14 8v4" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "x") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "playstation") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M9 18V6c2.3 0 4 1.3 4 3.5S11.3 13 9 13" strokeLinecap="round" />
+          <path d="M12 16.5l6-2.2M12 12.8l6-2.2M12 20l6-2.2" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "xbox") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M8.5 8.5L12 12m3.5-3.5L12 12m0 0l-3.5 3.5m3.5-3.5l3.5 3.5" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "nintendo") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <rect x="3" y="7" width="18" height="10" rx="5" />
+          <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "epic") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M6 4h12v10l-6 6-6-6z" />
+          <path d="M9 9h6M10 12h4" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "gog") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <circle cx="12" cy="12" r="7" />
+          <path d="M12 8a4 4 0 100 8h2v-3h-2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "itch") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M6 10l2-3h8l2 3v6H6z" strokeLinejoin="round" />
+          <path d="M9 10v2M15 10v2" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "press") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <rect x="4" y="5" width="16" height="14" rx="2" />
+          <path d="M8 9h8M8 12h8M8 15h5" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  if (kind === "web") {
+    return (
+      <span className={boxClass}>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M4 12h16M12 4a14 14 0 010 16M12 4a14 14 0 000 16" strokeLinecap="round" />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <span className={boxClass}>
+      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden>
+        <path d="M10 14l4-4" strokeLinecap="round" />
+        <path d="M8.5 16H7a3 3 0 010-6h1.5M15.5 8H17a3 3 0 010 6h-1.5" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 export default function GDDViewClient({ projectId, publicToken }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -145,6 +559,32 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     () => getDriveImageDisplayCandidates(project?.coverImageUrl || ""),
     [project?.coverImageUrl]
   );
+  const documentSpotlight = useMemo(
+    () => normalizeProjectDocumentSpotlight(project?.mindMapSettings?.documentView?.spotlight),
+    [project?.mindMapSettings?.documentView?.spotlight]
+  );
+  const spotlightDetails = useMemo(
+    () => parseSpotlightDetails(documentSpotlight?.technicalDetails || []),
+    [documentSpotlight?.technicalDetails]
+  );
+  const spotlightGroupedLinks = useMemo(() => {
+    const groups: Record<SpotlightLinkGroup, Array<{ label: string; url: string; kind: SpotlightLinkKind }>> = {
+      mobile: [],
+      console: [],
+      pc: [],
+      social: [],
+      site: [],
+      other: [],
+    };
+
+    (documentSpotlight?.storeLinks || []).forEach((link) => {
+      const kind = getSpotlightLinkKind(link.label, link.url);
+      const group = getSpotlightLinkGroup(kind);
+      groups[group].push({ label: link.label, url: link.url, kind });
+    });
+
+    return groups;
+  }, [documentSpotlight?.storeLinks]);
 
   useEffect(() => {
     setMounted(true);
@@ -939,6 +1379,97 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   />
                 </div>
               )}
+
+              {documentSpotlight && (
+                <div className="gdd-spotlight-wrap mt-8 w-full text-left">
+                  <div className="gdd-spotlight px-4 py-5 sm:px-6">
+                    <div className="gdd-spotlight-head">
+                      <span className="gdd-spotlight-head-icon" aria-hidden>
+                        <SpotlightInfoIcon kind="generic" />
+                      </span>
+                      <h2 className="gdd-spotlight-title text-lg md:text-xl font-extrabold tracking-tight">
+                        {t("view.spotlight.title")}
+                      </h2>
+                    </div>
+
+                    <div className="gdd-spotlight-grid grid gap-4 lg:grid-cols-2">
+                      {documentSpotlight.features.length > 0 && (
+                        <div className="gdd-spotlight-panel p-4">
+                          <h3 className="gdd-spotlight-panel-title text-xs font-bold uppercase tracking-wide mb-2">
+                            {t("view.spotlight.featuresTitle")}
+                          </h3>
+                          <ul className="space-y-1.5 text-sm gdd-spotlight-text">
+                            {documentSpotlight.features.map((feature) => (
+                              <li key={feature} className="flex items-start gap-2 gdd-spotlight-feature-item">
+                                <span className="gdd-spotlight-item-icon" aria-hidden>
+                                  <SpotlightInfoIcon kind={getFeatureInfoKind(feature)} />
+                                </span>
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {spotlightDetails.length > 0 && (
+                        <div className="gdd-spotlight-panel p-4">
+                          <h3 className="gdd-spotlight-panel-title text-xs font-bold uppercase tracking-wide mb-2">
+                            {t("view.spotlight.detailsTitle")}
+                          </h3>
+                          <div className="space-y-1.5 text-sm gdd-spotlight-text">
+                            {spotlightDetails.map((item) => (
+                              <div key={`${item.label}-${item.value}`} className="grid grid-cols-[auto_1fr] gap-x-2 gdd-spotlight-detail-item">
+                                <span className="gdd-spotlight-item-icon" aria-hidden>
+                                  <SpotlightInfoIcon kind={getDetailInfoKind(item.label)} />
+                                </span>
+                                <span>
+                                  <span className="gdd-spotlight-detail-label">{item.label}{item.value ? ":" : ""}</span>{" "}
+                                  <span>{item.value}</span>
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {documentSpotlight.storeLinks.length > 0 && (
+                      <div className="gdd-spotlight-panel gdd-spotlight-links mt-4 p-4">
+                        <h3 className="gdd-spotlight-panel-title text-xs font-bold uppercase tracking-wide mb-3">
+                          {t("view.spotlight.linksTitle")}
+                        </h3>
+                        <div className="space-y-3">
+                          {(["mobile", "console", "pc", "social", "site", "other"] as SpotlightLinkGroup[])
+                            .filter((group) => spotlightGroupedLinks[group].length > 0)
+                            .map((group) => (
+                              <div key={group} className="gdd-spotlight-link-group p-2.5">
+                                <p className="gdd-spotlight-group-label text-[11px] font-semibold uppercase tracking-wide mb-2">
+                                  {t(`view.spotlight.group.${group}`)}
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {spotlightGroupedLinks[group].map((link) => (
+                                    <a
+                                      key={`${group}-${link.label}-${link.url}`}
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="gdd-spotlight-link inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                                    >
+                                      <SpotlightLinkIcon kind={link.kind} />
+                                      <span>{link.label}</span>
+                                      <span className="gdd-spotlight-link-arrow" aria-hidden>↗</span>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-8 space-y-1 text-sm text-gray-600">
                 <div>
                   <strong>{t("view.createdAtLabel")}</strong> {project.createdAt ? new Date(project.createdAt).toLocaleDateString(locale, {
@@ -1080,6 +1611,20 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           --gdd-root-badge-color: #8a6226;
           --gdd-root-badge-shadow: inset 0 1px 0 #fffdf8, 0 2px 5px rgba(111, 79, 31, 0.15);
           --gdd-root-title-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
+
+          --gdd-spotlight-bg: linear-gradient(180deg, #ffffff 0%, #fdfcf9 100%);
+          --gdd-spotlight-border: #ddd4c5;
+          --gdd-spotlight-panel-bg: rgba(255, 255, 255, 0.9);
+          --gdd-spotlight-panel-border: #e5dfd2;
+          --gdd-spotlight-title: #2f2619;
+          --gdd-spotlight-text: #4b3f2f;
+          --gdd-spotlight-muted: #75644b;
+          --gdd-spotlight-icon-bg: #f8f3e8;
+          --gdd-spotlight-icon-border: #ddd4c5;
+          --gdd-spotlight-link-bg: #ffffff;
+          --gdd-spotlight-link-border: #d8cdb9;
+          --gdd-spotlight-link-hover: #f7efe0;
+          --gdd-spotlight-link-arrow: #8a6e44;
         }
 
         .gdd-doc-paper.gdd-doc-theme-clean {
@@ -1097,6 +1642,20 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           --gdd-root-badge-color: #475569;
           --gdd-root-badge-shadow: inset 0 1px 0 #ffffff, 0 1px 3px rgba(15, 23, 42, 0.12);
           --gdd-root-title-shadow: none;
+
+          --gdd-spotlight-bg: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          --gdd-spotlight-border: #d7dce3;
+          --gdd-spotlight-panel-bg: #ffffff;
+          --gdd-spotlight-panel-border: #dfe5ed;
+          --gdd-spotlight-title: #1f2937;
+          --gdd-spotlight-text: #475569;
+          --gdd-spotlight-muted: #64748b;
+          --gdd-spotlight-icon-bg: #f1f5f9;
+          --gdd-spotlight-icon-border: #d7dce3;
+          --gdd-spotlight-link-bg: #ffffff;
+          --gdd-spotlight-link-border: #d5dde7;
+          --gdd-spotlight-link-hover: #f8fafc;
+          --gdd-spotlight-link-arrow: #64748b;
         }
 
         .gdd-doc-paper.gdd-doc-theme-modern {
@@ -1114,6 +1673,20 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           --gdd-root-badge-color: #1d4ed8;
           --gdd-root-badge-shadow: inset 0 1px 0 #ffffff, 0 2px 6px rgba(37, 99, 235, 0.18);
           --gdd-root-title-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+
+          --gdd-spotlight-bg: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+          --gdd-spotlight-border: #c8d8ea;
+          --gdd-spotlight-panel-bg: #ffffff;
+          --gdd-spotlight-panel-border: #d3e1f0;
+          --gdd-spotlight-title: #123252;
+          --gdd-spotlight-text: #2e4a66;
+          --gdd-spotlight-muted: #5b7a99;
+          --gdd-spotlight-icon-bg: #ecf4fc;
+          --gdd-spotlight-icon-border: #c8d8ea;
+          --gdd-spotlight-link-bg: #ffffff;
+          --gdd-spotlight-link-border: #c4d8ef;
+          --gdd-spotlight-link-hover: #eef6ff;
+          --gdd-spotlight-link-arrow: #4f76a0;
         }
 
         .gdd-doc-paper.gdd-doc-theme-editorial {
@@ -1131,6 +1704,20 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           --gdd-root-badge-color: #6b4f2c;
           --gdd-root-badge-shadow: inset 0 1px 0 #fffaf1, 0 2px 5px rgba(55, 48, 35, 0.14);
           --gdd-root-title-shadow: none;
+
+          --gdd-spotlight-bg: linear-gradient(180deg, #fffdf9 0%, #f8f2e8 100%);
+          --gdd-spotlight-border: #d7ccbc;
+          --gdd-spotlight-panel-bg: #fffdfa;
+          --gdd-spotlight-panel-border: #e3d9c8;
+          --gdd-spotlight-title: #302719;
+          --gdd-spotlight-text: #4e4335;
+          --gdd-spotlight-muted: #7a6a54;
+          --gdd-spotlight-icon-bg: #f4ecde;
+          --gdd-spotlight-icon-border: #d7ccbc;
+          --gdd-spotlight-link-bg: #fffdfa;
+          --gdd-spotlight-link-border: #d8cdbd;
+          --gdd-spotlight-link-hover: #f5ecdf;
+          --gdd-spotlight-link-arrow: #7b6241;
         }
 
         .gdd-doc-paper.gdd-doc-theme-night {
@@ -1148,6 +1735,108 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           --gdd-root-badge-color: #bae6fd;
           --gdd-root-badge-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(14, 165, 233, 0.22);
           --gdd-root-title-shadow: none;
+
+          --gdd-spotlight-bg: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+          --gdd-spotlight-border: #334155;
+          --gdd-spotlight-panel-bg: rgba(15, 23, 42, 0.72);
+          --gdd-spotlight-panel-border: #334155;
+          --gdd-spotlight-title: #e2e8f0;
+          --gdd-spotlight-text: #cbd5e1;
+          --gdd-spotlight-muted: #94a3b8;
+          --gdd-spotlight-icon-bg: rgba(30, 41, 59, 0.95);
+          --gdd-spotlight-icon-border: #334155;
+          --gdd-spotlight-link-bg: #0f172a;
+          --gdd-spotlight-link-border: #334155;
+          --gdd-spotlight-link-hover: #1e293b;
+          --gdd-spotlight-link-arrow: #93c5fd;
+        }
+
+        .gdd-spotlight {
+          border: 1px solid var(--gdd-spotlight-border);
+          border-radius: 0.9rem;
+          background: var(--gdd-spotlight-bg);
+          box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+        }
+
+        .gdd-spotlight-head {
+          display: flex;
+          align-items: center;
+          gap: 0.55rem;
+          margin-bottom: 0.95rem;
+          padding-bottom: 0.8rem;
+          border-bottom: 1px solid var(--gdd-spotlight-panel-border);
+        }
+
+        .gdd-spotlight-title {
+          color: var(--gdd-spotlight-title);
+        }
+
+        .gdd-spotlight-head-icon,
+        .gdd-spotlight-item-icon,
+        .gdd-spotlight-link-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 1.4rem;
+          width: 1.4rem;
+          height: 1.4rem;
+          border-radius: 0.45rem;
+          border: 1px solid var(--gdd-spotlight-icon-border);
+          background: var(--gdd-spotlight-icon-bg);
+          color: var(--gdd-spotlight-muted);
+        }
+
+        .gdd-spotlight-panel {
+          border: 1px solid var(--gdd-spotlight-panel-border);
+          border-radius: 0.75rem;
+          background: var(--gdd-spotlight-panel-bg);
+        }
+
+        .gdd-spotlight-panel-title {
+          color: var(--gdd-spotlight-muted);
+        }
+
+        .gdd-spotlight-text,
+        .gdd-spotlight-detail-item {
+          color: var(--gdd-spotlight-text);
+        }
+
+        .gdd-spotlight-detail-item {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          align-items: start;
+          gap: 0.45rem;
+        }
+
+        .gdd-spotlight-detail-label {
+          font-weight: 700;
+          color: var(--gdd-spotlight-title);
+        }
+
+        .gdd-spotlight-link-group {
+          border: 1px solid var(--gdd-spotlight-panel-border);
+          border-radius: 0.65rem;
+          background: var(--gdd-spotlight-panel-bg);
+        }
+
+        .gdd-spotlight-group-label {
+          color: var(--gdd-spotlight-muted);
+        }
+
+        .gdd-spotlight-link {
+          color: var(--gdd-spotlight-text);
+          border-color: var(--gdd-spotlight-link-border);
+          background: var(--gdd-spotlight-link-bg);
+          transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+        }
+
+        .gdd-spotlight-link:hover {
+          background: var(--gdd-spotlight-link-hover);
+          transform: translateY(-1px);
+        }
+
+        .gdd-spotlight-link-arrow {
+          color: var(--gdd-spotlight-link-arrow);
         }
 
         .gdd-root-section {

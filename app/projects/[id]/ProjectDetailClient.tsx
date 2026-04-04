@@ -27,6 +27,10 @@ import { useI18n } from "@/lib/i18n/provider";
 import AIChat from "@/components/AIChat";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
+    normalizeProjectDocumentSpotlight,
+    type ProjectStoreLink,
+} from "@/lib/projectSpotlight";
+import {
     driveFileIdToImageUrl,
     getDriveImageDisplayCandidates,
     getGoogleClientId,
@@ -35,6 +39,110 @@ import {
 
 interface Props {
     projectId: string;
+}
+
+type DetailPreset = {
+    id: string;
+    label: string;
+    placeholder: string;
+};
+
+type LinkPreset = {
+    id: string;
+    label: string;
+    category: "mobile" | "console" | "pc" | "social" | "site";
+    placeholder: string;
+};
+
+const FEATURE_PRESETS: string[] = [
+    "Salvamento Manual",
+    "Salvamento Automático",
+    "Salvamento na Nuvem",
+    "Multiplayer Online",
+    "Cooperativo (Co-op)",
+    "PvP",
+    "Crossplay",
+    "Leaderboard Global",
+    "Conquistas / Achievements",
+    "Suporte a Controle",
+    "Modo Offline",
+    "Chat de Voz",
+    "Chat de Texto",
+    "Suporte a Mods",
+    "Cross-save",
+    "Acessibilidade (dublagem/legenda)",
+];
+
+const DETAIL_PRESETS: DetailPreset[] = [
+    { id: "tags", label: "Tags", placeholder: "Escape Room, Aventura, Mistérios" },
+    { id: "style", label: "Estilo", placeholder: "3D Primeira Pessoa" },
+    { id: "platforms", label: "Plataformas", placeholder: "Android, iOS, PC" },
+    { id: "release", label: "Lançamento Oficial", placeholder: "Q4 2026" },
+    { id: "disk", label: "Espaço em Disco", placeholder: "500 MB" },
+    { id: "business", label: "Modelo de Negócio", placeholder: "Free to Play com Ads" },
+    { id: "expansions", label: "Conteúdos de Expansão", placeholder: "DLC pago" },
+    { id: "minimumAge", label: "Idade Mínima", placeholder: "10 anos" },
+    { id: "languages", label: "Idiomas", placeholder: "PT-BR, EN, ES" },
+    { id: "internet", label: "Internet Obrigatória", placeholder: "Não" },
+    { id: "engine", label: "Engine", placeholder: "Unity / Unreal" },
+    { id: "version", label: "Versão Atual", placeholder: "1.0.0" },
+];
+
+const LINK_PRESETS: LinkPreset[] = [
+    { id: "googlePlay", label: "Google Play", category: "mobile", placeholder: "https://play.google.com/..." },
+    { id: "appStore", label: "Apple App Store", category: "mobile", placeholder: "https://apps.apple.com/..." },
+    { id: "appleGameCenter", label: "Apple Game Center", category: "mobile", placeholder: "https://apps.apple.com/..." },
+    { id: "galaxyStore", label: "Samsung Galaxy Store", category: "mobile", placeholder: "https://galaxystore.samsung.com/..." },
+
+    { id: "playstationStore", label: "PlayStation Store", category: "console", placeholder: "https://store.playstation.com/..." },
+    { id: "xboxStore", label: "Xbox Store", category: "console", placeholder: "https://www.xbox.com/games/store/..." },
+    { id: "nintendoEshop", label: "Nintendo eShop", category: "console", placeholder: "https://www.nintendo.com/store/products/..." },
+
+    { id: "steam", label: "Steam", category: "pc", placeholder: "https://store.steampowered.com/app/..." },
+    { id: "epic", label: "Epic Games Store", category: "pc", placeholder: "https://store.epicgames.com/..." },
+    { id: "gog", label: "GOG", category: "pc", placeholder: "https://www.gog.com/..." },
+    { id: "microsoftStore", label: "Microsoft Store", category: "pc", placeholder: "https://www.microsoft.com/store/..." },
+    { id: "itchio", label: "itch.io", category: "pc", placeholder: "https://seu-jogo.itch.io/..." },
+
+    { id: "website", label: "Site Oficial", category: "site", placeholder: "https://seu-jogo.com" },
+    { id: "pressKit", label: "Press Kit", category: "site", placeholder: "https://seu-jogo.com/presskit" },
+
+    { id: "discord", label: "Discord", category: "social", placeholder: "https://discord.gg/..." },
+    { id: "x", label: "X / Twitter", category: "social", placeholder: "https://x.com/..." },
+    { id: "youtube", label: "YouTube", category: "social", placeholder: "https://youtube.com/..." },
+    { id: "instagram", label: "Instagram", category: "social", placeholder: "https://instagram.com/..." },
+    { id: "tiktok", label: "TikTok", category: "social", placeholder: "https://tiktok.com/@..." },
+    { id: "facebook", label: "Facebook", category: "social", placeholder: "https://facebook.com/..." },
+    { id: "reddit", label: "Reddit", category: "social", placeholder: "https://reddit.com/r/..." },
+    { id: "twitch", label: "Twitch", category: "social", placeholder: "https://twitch.tv/..." },
+];
+
+const LINK_CATEGORY_LABEL: Record<LinkPreset["category"], string> = {
+    mobile: "Lojas Mobile",
+    console: "Lojas Console",
+    pc: "Lojas PC",
+    site: "Site & Press",
+    social: "Redes Sociais",
+};
+
+function readDetailValue(details: string[], label: string): string | null {
+    const lowerLabel = label.toLowerCase();
+    for (const line of details) {
+        const trimmed = line.trim();
+        const lower = trimmed.toLowerCase();
+        if (lower === lowerLabel) return "";
+        const prefix = `${lowerLabel}:`;
+        if (lower.startsWith(prefix)) {
+            return trimmed.slice(trimmed.indexOf(":") + 1).trim();
+        }
+    }
+    return null;
+}
+
+function readLinkUrl(links: ProjectStoreLink[], label: string): string | null {
+    const lowerLabel = label.toLowerCase();
+    const found = links.find((item) => item.label.trim().toLowerCase() === lowerLabel);
+    return found?.url || null;
 }
 
 export default function ProjectDetailClient({ projectId }: Props) {
@@ -49,6 +157,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
     const reorderSections = useProjectStore((s) => s.reorderSections);
     const setProjectCoverImage = useProjectStore((s) => s.setProjectCoverImage);
+    const updateProjectSettings = useProjectStore((s) => s.updateProjectSettings);
     const projects = useProjectStore((s) => s.projects);
 
     const [mounted, setMounted] = useState(false);
@@ -67,6 +176,12 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [selectedAddonFilters, setSelectedAddonFilters] = useState<string[]>([]);
     const [tagFilterMenuOpen, setTagFilterMenuOpen] = useState(false);
     const [addonFilterMenuOpen, setAddonFilterMenuOpen] = useState(false);
+    const [showSpotlightEditor, setShowSpotlightEditor] = useState(false);
+    const [featureEnabled, setFeatureEnabled] = useState<Record<string, boolean>>({});
+    const [detailState, setDetailState] = useState<Record<string, { enabled: boolean; value: string }>>({});
+    const [linkState, setLinkState] = useState<Record<string, { enabled: boolean; url: string }>>({});
+    const [spotlightError, setSpotlightError] = useState("");
+    const [spotlightSaved, setSpotlightSaved] = useState(false);
     const sectionListRef = useRef<HTMLDivElement | null>(null);
     const tagFilterMenuRef = useRef<HTMLDivElement | null>(null);
     const addonFilterMenuRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +211,45 @@ export default function ProjectDetailClient({ projectId }: Props) {
     useEffect(() => {
         setCoverImageCandidateIndex(0);
     }, [project?.coverImageUrl]);
+
+    useEffect(() => {
+        if (!project) return;
+        const spotlight = normalizeProjectDocumentSpotlight(project?.mindMapSettings?.documentView?.spotlight);
+
+        const nextFeatureEnabled: Record<string, boolean> = {};
+        const selectedFeatures = new Set(spotlight?.features || []);
+        FEATURE_PRESETS.forEach((feature) => {
+            nextFeatureEnabled[feature] = selectedFeatures.has(feature);
+        });
+
+        const nextDetailState: Record<string, { enabled: boolean; value: string }> = {};
+        DETAIL_PRESETS.forEach((preset) => {
+            const value = readDetailValue(spotlight?.technicalDetails || [], preset.label);
+            nextDetailState[preset.id] = {
+                enabled: value !== null,
+                value: value ?? "",
+            };
+        });
+
+        const nextLinkState: Record<string, { enabled: boolean; url: string }> = {};
+        LINK_PRESETS.forEach((preset) => {
+            const url = readLinkUrl(spotlight?.storeLinks || [], preset.label);
+            nextLinkState[preset.id] = {
+                enabled: Boolean(url),
+                url: url ?? "",
+            };
+        });
+
+        setFeatureEnabled(nextFeatureEnabled);
+        setDetailState(nextDetailState);
+        setLinkState(nextLinkState);
+        setSpotlightError("");
+        setSpotlightSaved(false);
+    }, [project?.id, project?.mindMapSettings?.documentView?.spotlight]);
+
+    useEffect(() => {
+        setShowSpotlightEditor(false);
+    }, [projectId]);
 
     function handleAddSection() {
         if (!sectionTitle.trim() || nameError) return;
@@ -132,6 +286,84 @@ export default function ProjectDetailClient({ projectId }: Props) {
         } finally {
             setIsPickingCoverImage(false);
         }
+    }
+
+    const currentSpotlight = normalizeProjectDocumentSpotlight(project?.mindMapSettings?.documentView?.spotlight);
+    const groupedLinkPresets = useMemo(() => {
+        return {
+            mobile: LINK_PRESETS.filter((preset) => preset.category === "mobile"),
+            console: LINK_PRESETS.filter((preset) => preset.category === "console"),
+            pc: LINK_PRESETS.filter((preset) => preset.category === "pc"),
+            site: LINK_PRESETS.filter((preset) => preset.category === "site"),
+            social: LINK_PRESETS.filter((preset) => preset.category === "social"),
+        };
+    }, []);
+
+    function handleSaveSpotlight() {
+        if (!project) return;
+
+        const features = FEATURE_PRESETS.filter((feature) => Boolean(featureEnabled[feature]));
+        const technicalDetails = DETAIL_PRESETS.flatMap((preset) => {
+            const state = detailState[preset.id];
+            if (!state?.enabled) return [];
+            const value = state.value.trim();
+            if (!value) return [];
+            return [`${preset.label}: ${value}`];
+        });
+
+        const links: ProjectStoreLink[] = [];
+        const invalidLinks: string[] = [];
+        LINK_PRESETS.forEach((preset) => {
+            const state = linkState[preset.id];
+            if (!state?.enabled) return;
+            const raw = state.url.trim();
+            if (!raw) {
+                invalidLinks.push(preset.label);
+                return;
+            }
+            try {
+                const parsed = new URL(raw);
+                if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+                    invalidLinks.push(preset.label);
+                    return;
+                }
+                links.push({ label: preset.label, url: parsed.toString() });
+            } catch {
+                invalidLinks.push(preset.label);
+            }
+        });
+
+        if (invalidLinks.length > 0) {
+            setSpotlightSaved(false);
+            const template = t("projectDetail.spotlight.invalidLinks");
+            setSpotlightError(template.replace("{{lines}}", invalidLinks.join(", ")));
+            return;
+        }
+
+        const nextSpotlight = normalizeProjectDocumentSpotlight({
+            features,
+            technicalDetails,
+            storeLinks: links,
+        });
+
+        const currentSettings = project.mindMapSettings || {};
+        const currentDocumentView = currentSettings.documentView || {};
+        const nextDocumentView = {
+            ...currentDocumentView,
+            ...(nextSpotlight ? { spotlight: nextSpotlight } : {}),
+        } as typeof currentDocumentView;
+
+        if (!nextSpotlight && "spotlight" in nextDocumentView) {
+            delete (nextDocumentView as { spotlight?: unknown }).spotlight;
+        }
+
+        updateProjectSettings(projectId, {
+            ...currentSettings,
+            documentView: nextDocumentView,
+        });
+
+        setSpotlightError("");
+        setSpotlightSaved(true);
     }
 
     const projectContext = project ? {
@@ -401,6 +633,223 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     <p className="text-gray-400 italic">{t("projectDetail.noDescription")}</p>
                                 )}
                             </div>
+                        </section>
+
+                        <section className="ui-card-premium">
+                            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                                <div>
+                                    <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.spotlight.title")}</h2>
+                                    <p className="text-sm text-gray-400 mt-1">{t("projectDetail.spotlight.subtitle")}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowSpotlightEditor((prev) => !prev)}
+                                        className="px-4 py-2 rounded-lg bg-gray-700 text-white font-semibold hover:bg-gray-600 transition-colors"
+                                    >
+                                        {showSpotlightEditor
+                                            ? t("projectDetail.spotlight.hidePanel")
+                                            : t("projectDetail.spotlight.showPanel")}
+                                    </button>
+                                    {showSpotlightEditor && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveSpotlight}
+                                            className="px-4 py-2 rounded-lg bg-emerald-500 text-black font-semibold hover:bg-emerald-400 transition-colors"
+                                        >
+                                            {t("projectDetail.spotlight.save")}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {!showSpotlightEditor && (
+                                <p className="text-sm text-gray-400 italic">{t("projectDetail.spotlight.hiddenHint")}</p>
+                            )}
+
+                            {showSpotlightEditor && (
+                                <>
+                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
+                                <div className="grid gap-2 md:grid-cols-2">
+                                    {FEATURE_PRESETS.map((feature) => (
+                                        <label key={feature} className="flex items-center gap-2 text-sm text-gray-200">
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(featureEnabled[feature])}
+                                                onChange={(event) => {
+                                                    setFeatureEnabled((prev) => ({ ...prev, [feature]: event.target.checked }));
+                                                    setSpotlightSaved(false);
+                                                    if (spotlightError) setSpotlightError("");
+                                                }}
+                                                className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-emerald-400 focus:ring-emerald-400"
+                                            />
+                                            <span>{feature}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.detailsLabel", "Detalhes")}</p>
+                                <div className="grid gap-3">
+                                    {DETAIL_PRESETS.map((preset) => {
+                                        const state = detailState[preset.id] || { enabled: false, value: "" };
+                                        return (
+                                            <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
+                                                <label className="flex items-center gap-2 text-sm text-gray-200">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={state.enabled}
+                                                        onChange={(event) => {
+                                                            const checked = event.target.checked;
+                                                            setDetailState((prev) => ({
+                                                                ...prev,
+                                                                [preset.id]: {
+                                                                    enabled: checked,
+                                                                    value: checked ? (prev[preset.id]?.value || "") : "",
+                                                                },
+                                                            }));
+                                                            setSpotlightSaved(false);
+                                                        }}
+                                                        className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-sky-400 focus:ring-sky-400"
+                                                    />
+                                                    <span>{preset.label}</span>
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    disabled={!state.enabled}
+                                                    value={state.value}
+                                                    onChange={(event) => {
+                                                        const value = event.target.value;
+                                                        setDetailState((prev) => ({
+                                                            ...prev,
+                                                            [preset.id]: { enabled: true, value },
+                                                        }));
+                                                        setSpotlightSaved(false);
+                                                    }}
+                                                    placeholder={preset.placeholder}
+                                                    className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4">
+                                <p className="text-sm font-semibold text-gray-100 mb-1">{t("projectDetail.spotlight.linksLabel", "Links e botões")}</p>
+                                <p className="text-xs text-gray-400 mb-3">{t("projectDetail.spotlight.linksHelp", "Ative e preencha a URL completa para cada botão")}</p>
+
+                                {(Object.keys(groupedLinkPresets) as Array<keyof typeof groupedLinkPresets>).map((category) => (
+                                    <div key={category} className="mb-4 last:mb-0">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300 mb-2">
+                                            {LINK_CATEGORY_LABEL[category]}
+                                        </p>
+                                        <div className="grid gap-2">
+                                            {groupedLinkPresets[category].map((preset) => {
+                                                const state = linkState[preset.id] || { enabled: false, url: "" };
+                                                return (
+                                                    <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
+                                                        <label className="flex items-center gap-2 text-sm text-gray-200">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={state.enabled}
+                                                                onChange={(event) => {
+                                                                    const checked = event.target.checked;
+                                                                    setLinkState((prev) => ({
+                                                                        ...prev,
+                                                                        [preset.id]: {
+                                                                            enabled: checked,
+                                                                            url: checked ? (prev[preset.id]?.url || "") : "",
+                                                                        },
+                                                                    }));
+                                                                    setSpotlightSaved(false);
+                                                                }}
+                                                                className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-400 focus:ring-indigo-400"
+                                                            />
+                                                            <span>{preset.label}</span>
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            disabled={!state.enabled}
+                                                            value={state.url}
+                                                            onChange={(event) => {
+                                                                const url = event.target.value;
+                                                                setLinkState((prev) => ({
+                                                                    ...prev,
+                                                                    [preset.id]: { enabled: true, url },
+                                                                }));
+                                                                setSpotlightSaved(false);
+                                                                if (spotlightError) setSpotlightError("");
+                                                            }}
+                                                            placeholder={preset.placeholder}
+                                                            className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {spotlightError && (
+                                <p className="mt-3 text-sm text-rose-300">{spotlightError}</p>
+                            )}
+                            {spotlightSaved && !spotlightError && (
+                                <p className="mt-3 text-sm text-emerald-300">{t("projectDetail.spotlight.saved")}</p>
+                            )}
+
+                            <div className="mt-5 rounded-xl border border-gray-700 bg-gray-950/60 p-4">
+                                <h3 className="text-sm uppercase tracking-wide text-gray-300 mb-3">
+                                    {t("projectDetail.spotlight.previewTitle")}
+                                </h3>
+
+                                {!currentSpotlight && (
+                                    <p className="text-sm text-gray-400 italic">{t("projectDetail.spotlight.previewEmpty")}</p>
+                                )}
+
+                                {currentSpotlight?.features?.length ? (
+                                    <div className="mb-3">
+                                        <p className="text-xs font-semibold text-emerald-300 mb-1">{t("view.spotlight.featuresTitle")}</p>
+                                        <ul className="space-y-1 text-sm text-gray-200 list-disc pl-5">
+                                            {currentSpotlight.features.map((item) => (
+                                                <li key={item}>{item}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : null}
+
+                                {currentSpotlight?.technicalDetails?.length ? (
+                                    <div className="mb-3">
+                                        <p className="text-xs font-semibold text-sky-300 mb-1">{t("view.spotlight.detailsTitle")}</p>
+                                        <ul className="space-y-1 text-sm text-gray-200 list-disc pl-5">
+                                            {currentSpotlight.technicalDetails.map((item) => (
+                                                <li key={item}>{item}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : null}
+
+                                {currentSpotlight?.storeLinks?.length ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {currentSpotlight.storeLinks.map((link) => (
+                                            <a
+                                                key={`${link.label}-${link.url}`}
+                                                href={link.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center rounded-full border border-indigo-400/70 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20"
+                                            >
+                                                {link.label}
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </div>
+                                </>
+                            )}
                         </section>
 
                         <section className="ui-card-premium">
