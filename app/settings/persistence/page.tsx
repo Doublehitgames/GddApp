@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
@@ -21,8 +21,18 @@ export default function PersistenceSettingsPage() {
   const lastSyncError = useProjectStore((s) => s.lastSyncError);
   const lastSyncFailureReason = useProjectStore((s) => s.lastSyncFailureReason);
   const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
+  const [nowMs, setNowMs] = useState(0);
+
+  useEffect(() => {
+    if (!cloudSyncPausedUntil) return;
+    const pauseEndsAt = new Date(cloudSyncPausedUntil).getTime();
+    const remaining = pauseEndsAt - Date.now();
+    const timer = window.setTimeout(() => setNowMs(Date.now()), Math.max(0, remaining) + 50);
+    return () => window.clearTimeout(timer);
+  }, [cloudSyncPausedUntil]);
+
   const cloudSyncPaused = Boolean(
-    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
+    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > nowMs
   );
   const noCreditsLeft = Boolean(lastQuotaStatus && lastQuotaStatus.remainingInWindow === 0);
   const syncDisabled = cloudSyncPaused || noCreditsLeft;
@@ -86,8 +96,8 @@ export default function PersistenceSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
           <div>
             <button
               onClick={() => router.push("/")}
@@ -95,7 +105,7 @@ export default function PersistenceSettingsPage() {
             >
               ← {t("common.back")}
             </button>
-            <h1 className="text-3xl font-bold">{t("settings.persistencePage.title")}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{t("settings.persistencePage.title")}</h1>
             <p className="text-gray-400 mt-2">
               {t("settings.persistencePage.subtitle")}
             </p>
@@ -103,7 +113,7 @@ export default function PersistenceSettingsPage() {
         </div>
 
         <div className="p-4 rounded-lg mb-6 bg-gray-800 border border-gray-700">
-          <div className="flex flex-wrap gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
             <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
               {t("settings.persistencePage.statusLabel")}: {syncStatus === "syncing" ? t("settings.persistencePage.status.syncing") : syncStatus === "synced" ? t("settings.persistencePage.status.synced") : syncStatus === "error" ? t("settings.persistencePage.status.error") : t("settings.persistencePage.status.idle")}
             </span>
@@ -160,7 +170,7 @@ export default function PersistenceSettingsPage() {
           </div>
         )}
 
-        <div className="bg-gray-800 rounded-lg p-6 space-y-6 border border-gray-700">
+        <div className="bg-gray-800 rounded-lg p-4 sm:p-5 md:p-6 space-y-6 border border-gray-700">
           <div className="flex items-start gap-3">
             <label className="flex items-center gap-3 cursor-pointer">
               <ToggleSwitch
@@ -203,10 +213,10 @@ export default function PersistenceSettingsPage() {
             </>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
             <button
               onClick={handleSave}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors"
+              className="w-full sm:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors"
             >
               {saving ? t("settings.persistencePage.actions.saved") : t("settings.persistencePage.actions.save")}
             </button>
@@ -220,7 +230,7 @@ export default function PersistenceSettingsPage() {
                     ? t("settings.persistencePage.syncBadge.pausedQuota")
                     : undefined
               }
-              className={`px-5 py-2.5 rounded-lg font-semibold transition-colors ${
+              className={`w-full sm:w-auto px-5 py-2.5 rounded-lg font-semibold transition-colors ${
                 syncDisabled
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-90"
                   : "bg-green-600 hover:bg-green-700 text-white"
@@ -253,9 +263,9 @@ export default function PersistenceSettingsPage() {
                   return (
                     <div
                       key={`${entry.projectId}-${entry.syncedAt}`}
-                      className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex flex-wrap items-center justify-between gap-2"
+                      className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2"
                     >
-                      <span className="text-gray-300 truncate">
+                      <span className="w-full sm:w-auto text-gray-300 truncate">
                         {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
                         {(entry.syncedByUserId ?? entry.syncedByDisplayName) && (
                           <span className="text-gray-500 ml-1">
@@ -263,10 +273,10 @@ export default function PersistenceSettingsPage() {
                           </span>
                         )}
                       </span>
-                      <span className="text-gray-400 shrink-0">
+                      <span className="w-full sm:w-auto text-gray-400">
                         {t("settings.persistencePage.syncBadge.lastSyncCreated")}: {entry.sectionsUpserted} · {t("settings.persistencePage.syncBadge.lastSyncDeleted")}: {entry.sectionsDeleted} · {t("settings.persistencePage.syncBadge.lastSyncUnchanged")}: {entry.sectionsUnchanged}
                       </span>
-                      <span className="text-gray-500 shrink-0">
+                      <span className="w-full sm:w-auto text-gray-500">
                         {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
                       </span>
                       {changeSummaryText && (

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Project } from "@/store/projectStore";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
@@ -28,7 +27,6 @@ export default function ProjectSyncFooter() {
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
   const discardPendingChangesForProject = useProjectStore((s) => s.discardPendingChangesForProject);
   const refreshQuotaStatus = useProjectStore((s) => s.refreshQuotaStatus);
-  const projects = useProjectStore((s) => s.projects);
   const diagramsBySection = useProjectStore((s) => s.diagramsBySection);
 
   const [estimatedCreditsToSync, setEstimatedCreditsToSync] = useState<number | null>(null);
@@ -36,6 +34,7 @@ export default function ProjectSyncFooter() {
   const [showPreviewPopover, setShowPreviewPopover] = useState(false);
   const [discardingChanges, setDiscardingChanges] = useState(false);
   const [discardFeedback, setDiscardFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [nowMs, setNowMs] = useState(0);
   const previewPopoverRef = useRef<HTMLDivElement>(null);
 
   const project = projectId ? getProject(projectId as import("@/store/projectStore").UUID) : null;
@@ -47,14 +46,22 @@ export default function ProjectSyncFooter() {
       .map(([, state]) => state?.updatedAt || "")
       .join(",");
     return `${projectId}:${(project.sections ?? []).length}:${project.updatedAt}:${diagramStamp}`;
-  }, [projectId, project, projects, diagramsBySection]);
+  }, [projectId, project, diagramsBySection]);
 
   const cloudSyncPaused = Boolean(
-    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > Date.now()
+    cloudSyncPausedUntil && new Date(cloudSyncPausedUntil).getTime() > nowMs
   );
   const noCreditsLeft = Boolean(lastQuotaStatus && lastQuotaStatus.remainingInWindow === 0);
   const isSyncing = syncStatus === "syncing";
   const syncDisabled = isSyncing || cloudSyncPaused || noCreditsLeft || discardingChanges;
+
+  useEffect(() => {
+    if (!cloudSyncPausedUntil) return;
+    const pauseEndsAt = new Date(cloudSyncPausedUntil).getTime();
+    const remaining = pauseEndsAt - Date.now();
+    const timer = window.setTimeout(() => setNowMs(Date.now()), Math.max(0, remaining) + 50);
+    return () => window.clearTimeout(timer);
+  }, [cloudSyncPausedUntil]);
 
   const refreshEstimatedCredits = useCallback(() => {
     if (!projectId || !project) {
@@ -87,15 +94,15 @@ export default function ProjectSyncFooter() {
   }, [projectId, refreshQuotaStatus]);
 
   useEffect(() => {
-    if (!isDirty || !project) {
-      setEstimatedCreditsToSync(null);
-      setSyncPreviewItems(null);
-      setShowPreviewPopover(false);
-      return;
-    }
-    setEstimatedCreditsToSync(null);
-    setSyncPreviewItems(null);
-    const timer = setTimeout(refreshEstimatedCredits, 600);
+    const timer = setTimeout(() => {
+      if (!isDirty || !project) {
+        setEstimatedCreditsToSync(null);
+        setSyncPreviewItems(null);
+        setShowPreviewPopover(false);
+        return;
+      }
+      refreshEstimatedCredits();
+    }, !isDirty || !project ? 0 : 600);
     return () => clearTimeout(timer);
   }, [isDirty, project, pendingSignature, refreshEstimatedCredits]);
 
@@ -166,18 +173,18 @@ export default function ProjectSyncFooter() {
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-40 w-screen border-t border-gray-700 bg-gray-900/95 px-4 py-2 backdrop-blur"
+      className="fixed bottom-0 left-0 right-0 z-40 w-screen border-t border-gray-700 bg-gray-900/95 px-3 sm:px-4 py-2 backdrop-blur"
     >
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+      <div className="max-w-6xl mx-auto flex flex-col items-stretch gap-2 text-[11px] sm:text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span className="text-gray-400">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
             <span className="font-medium text-gray-200">
               {lastQuotaStatus ? `${lastQuotaStatus.usedInWindow}/${lastQuotaStatus.limitPerHour}` : "—"}
             </span>
           </div>
           {lastQuotaStatus && (
-            <div className="w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
+            <div className="w-16 sm:w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
               <div
                 className={`h-full transition-colors ${
                   quotaPercent !== null && quotaPercent >= 75
@@ -205,9 +212,9 @@ export default function ProjectSyncFooter() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
           {discardFeedback && (
-            <span className={discardFeedback.type === "error" ? "text-red-300" : "text-emerald-300"}>
+            <span className={`w-full sm:w-auto ${discardFeedback.type === "error" ? "text-red-300" : "text-emerald-300"}`}>
               {discardFeedback.message}
             </span>
           )}
@@ -226,7 +233,7 @@ export default function ProjectSyncFooter() {
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
-                <div className="absolute bottom-full left-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
                   <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>
@@ -262,7 +269,7 @@ export default function ProjectSyncFooter() {
               onClick={() => void handleDiscardPendingChanges()}
               disabled={discardingChanges || isSyncing}
               title={t("settings.persistencePage.syncBadge.discardButtonHint")}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
                 discardingChanges || isSyncing
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-600 text-white"
@@ -285,7 +292,7 @@ export default function ProjectSyncFooter() {
                     ? t("settings.persistencePage.syncBadge.pausedQuota")
                     : undefined
             }
-            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
               syncDisabled
                 ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-500 text-white"

@@ -99,8 +99,9 @@ body {
 
 /* Tabelas no modo visualização de markdown */
 .markdown-with-refs table {
-  width: 100%;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   margin: 1rem 0;
 }
@@ -123,6 +124,70 @@ body {
 
 .markdown-with-refs td {
   color: #e5e7eb;
+}
+
+@media (max-width: 640px) {
+  .markdown-with-refs table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+    border: 0;
+    margin: 0.8rem 0;
+  }
+
+  .markdown-with-refs thead {
+    display: none;
+  }
+
+  .markdown-with-refs tbody,
+  .markdown-with-refs tr {
+    display: block;
+    width: 100%;
+  }
+
+  .markdown-with-refs tr {
+    border: 1px solid rgba(100, 116, 139, 0.5);
+    border-radius: 0.85rem;
+    margin-bottom: 0.7rem;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.08);
+  }
+
+  .markdown-with-refs td {
+    display: grid;
+    grid-template-columns: minmax(5rem, 36%) 1fr;
+    gap: 0.6rem;
+    align-items: start;
+    border: 0;
+    border-bottom: 1px solid rgba(100, 116, 139, 0.32);
+    min-width: 0;
+    padding: 0.62rem 0.72rem;
+    background: transparent;
+  }
+
+  .markdown-with-refs td:last-child {
+    border-bottom: 0;
+  }
+
+  .markdown-with-refs td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .markdown-with-refs td > * {
+    min-width: 0;
+  }
+
+  .markdown-with-refs td p,
+  .markdown-with-refs td li {
+    line-height: 1.5;
+  }
 }
 
 .markdown-with-refs td p,

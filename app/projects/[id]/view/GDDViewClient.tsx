@@ -897,15 +897,15 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     const base = "flex items-center gap-2 flex-wrap";
     switch (depth) {
       case 0:
-        return `${base} text-3xl font-extrabold text-slate-900 mb-6`;
+        return `${base} text-lg sm:text-xl md:text-2xl font-bold text-slate-900 mb-3 md:mb-5`;
       case 1:
-        return `${base} text-2xl font-semibold text-gray-800 mb-4`;
+        return `${base} text-xl md:text-2xl font-semibold text-gray-800 mb-3 md:mb-4`;
       case 2:
-        return `${base} text-xl font-semibold text-gray-800 mb-3`;
+        return `${base} text-lg md:text-xl font-semibold text-gray-800 mb-2.5 md:mb-3`;
       case 3:
-        return `${base} text-lg font-medium text-gray-700 mb-3`;
+        return `${base} text-base md:text-lg font-medium text-gray-700 mb-2.5 md:mb-3`;
       case 4:
-        return `${base} text-base font-medium text-gray-700 mb-2`;
+        return `${base} text-sm md:text-base font-medium text-gray-700 mb-2`;
       default:
         return `${base} text-sm font-medium text-gray-600 mb-2`;
     }
@@ -913,9 +913,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
   const getSectionIndentClass = (depth: number) => {
     if (depth === 0) return "";
-    if (depth === 1) return "ml-4";   // 1rem
-    if (depth === 2) return "ml-8";   // 2rem
-    return "ml-10";                   // 2.5rem (cap)
+    if (depth === 1) return "ml-2 md:ml-4";
+    if (depth === 2) return "ml-3 md:ml-8";
+    return "ml-4 md:ml-10";
   };
 
   const renderSectionNodes = (nodes: any[], depth = 0) => {
@@ -933,15 +933,15 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         .join(" ");
       const headingClassName = isRootSection ? `${headingClass} gdd-root-heading` : headingClass;
       const headingButtonClass = isRootSection
-        ? "gdd-root-heading-button text-left rounded-xl px-3 py-2 -mx-1 transition-colors inline-flex items-center gap-3"
-        : "text-left rounded-md hover:bg-gray-100 px-1 -mx-1 transition-colors inline-flex items-center gap-2";
+        ? "gdd-root-heading-button text-left rounded-lg md:rounded-xl px-2.5 py-1.5 md:px-3 md:py-2 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-2 md:gap-3"
+        : "text-left rounded-md hover:bg-gray-100 px-0.5 md:px-1 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-1.5 md:gap-2";
 
       return (
         <div key={node.id} className={sectionShellClass}>
           <div
             id={`section-${node.id}`}
             data-section-anchor={node.id}
-            className={`scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(node.id) ? "gdd-search-match" : ""} ${activeMatchId === node.id ? "gdd-search-active" : ""}`}
+            className={`scroll-mt-28 md:scroll-mt-44 section-anchor-target ${matchedSectionIdSet.has(node.id) ? "gdd-search-match" : ""} ${activeMatchId === node.id ? "gdd-search-active" : ""}`}
           >
             <HeadingTag className={headingClassName}>
               <div
@@ -1026,7 +1026,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             </HeadingTag>
 
             {node.content && node.content.trim() ? (
-              <div className={depth === 0 ? "prose prose-lg max-w-none mb-8" : depth === 1 ? "prose max-w-none mb-6" : "prose prose-sm max-w-none mb-4"}>
+              <div className={depth === 0 ? "gdd-reading-prose prose prose-sm sm:prose-base md:prose-lg max-w-none mb-6 md:mb-8" : depth === 1 ? "gdd-reading-prose prose prose-sm sm:prose-base max-w-none mb-5 md:mb-6" : "gdd-reading-prose prose prose-sm max-w-none mb-4"}>
                 <MarkdownWithReferences
                   content={node.content}
                   projectId={projectId}
@@ -1038,7 +1038,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 />
               </div>
             ) : (
-              <div className={depth <= 1 ? "text-gray-500 italic py-4 px-6 bg-gray-50 rounded-lg border border-gray-200 mb-6" : "text-gray-500 italic py-3 px-4 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-4"}>
+              <div className={depth <= 1 ? "text-gray-500 italic py-3 px-3 sm:px-4 md:px-6 bg-gray-50 rounded-lg border border-gray-200 mb-4 md:mb-6" : "text-gray-500 italic py-3 px-3 sm:px-4 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-4"}>
                 {!isPublicMode ? (
                   <button
                     onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
@@ -1056,7 +1056,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 <button
                   type="button"
                   onClick={() => router.push(getFlowchartUrl(node.id))}
-                  className="gdd-flowchart-cta inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+                  className="gdd-flowchart-cta inline-flex items-center gap-1.5 md:gap-2 rounded-lg border px-2.5 md:px-3 py-1.5 md:py-2 text-xs md:text-sm font-semibold"
                 >
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={1.8} />
@@ -1091,7 +1091,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           </div>
 
           {node.subsections?.length > 0 && (
-            <div className="space-y-8 mt-8">
+            <div className="space-y-6 mt-6 md:space-y-8 md:mt-8">
               {renderSectionNodes(node.subsections, depth + 1)}
             </div>
           )}
@@ -1289,7 +1289,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
       </div>
 
       {/* Document Content */}
-      <div className="w-full px-4 py-8 lg:px-8 xl:px-10">
+      <div className="w-full px-2 py-4 sm:px-3 sm:py-6 md:px-4 md:py-8 lg:px-8 xl:px-10">
         <div
           className={`xl:grid xl:gap-3 ${
             sectionsWithHierarchy.length > 0
@@ -1355,9 +1355,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
             {/* Document Paper Style */}
             <div className={`gdd-doc-paper gdd-doc-theme-${documentTheme} bg-white shadow-2xl rounded-lg overflow-hidden`}>
-              <div className="p-12">
+              <div className="px-3 py-6 sm:px-5 sm:py-8 md:px-8 md:py-10 lg:px-10 xl:p-12">
             {/* Cover Page */}
-            <div className="text-center mb-16 pb-12 border-b-2 border-gray-200">
+            <div className="text-center mb-10 pb-8 border-b-2 border-gray-200 md:mb-16 md:pb-12">
               {project.coverImageUrl && (
                 <div className="mb-8">
                   {coverImageCandidateIndex < coverImageCandidates.length ? (
@@ -1390,14 +1390,14 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   </div>
                 )}
               </div>
-              <h1 className="text-5xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
                 {project.title}
               </h1>
-              <p className="text-xl text-gray-700 font-semibold mb-8">
+              <p className="text-base sm:text-lg md:text-xl text-gray-700 font-semibold mb-6 md:mb-8">
                 {t("view.documentTitle")}
               </p>
               {project.description && (
-                <div className="max-w-2xl mx-auto prose prose-lg">
+                <div className="gdd-reading-prose max-w-2xl mx-auto prose prose-sm sm:prose-base md:prose-lg">
                   <MarkdownWithReferences 
                     content={project.description}
                     projectId={projectId}
@@ -1523,7 +1523,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             </div>
 
             {/* Sections Content */}
-            <div className="space-y-12">
+            <div className="space-y-10 md:space-y-12">
               {sectionsWithHierarchy.length === 0 ? (
                 <div className="text-center py-16 text-gray-600">
                   <p className="text-lg mb-2 font-medium">📝 {t("view.noSectionsTitle")}</p>
@@ -1558,10 +1558,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         }
         .prose p {
           color: #374151 !important; /* gray-700 */
-          line-height: 1.8;
+          line-height: 1.75;
         }
         .prose li {
           color: #374151 !important; /* gray-700 */
+          line-height: 1.7;
         }
         .prose strong {
           color: #111827 !important; /* gray-900 */
@@ -1599,6 +1600,16 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           transform: none !important;
           box-shadow: none !important;
           text-decoration: underline;
+        }
+
+        .gdd-reading-prose {
+          font-size: 0.92rem;
+        }
+
+        @media (min-width: 768px) {
+          .gdd-reading-prose {
+            font-size: 1rem;
+          }
         }
 
         .section-anchor-target {
@@ -1914,10 +1925,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
         .gdd-root-heading-button {
           color: var(--gdd-root-title-color);
-          font-weight: 800;
+          font-weight: 700;
           letter-spacing: -0.01em;
           font-family: var(--gdd-root-title-font);
           text-shadow: var(--gdd-root-title-shadow);
+          text-wrap: pretty;
         }
 
         .gdd-root-heading-button:hover {
@@ -2054,12 +2066,48 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
         @media (max-width: 1024px) {
           .gdd-root-section {
-            padding: 1rem 0.85rem 0.15rem;
+            margin-bottom: 2.1rem;
+            padding: 0.9rem 0.78rem 0.1rem;
           }
 
           .gdd-root-section::before {
-            left: 0.85rem;
-            right: 0.85rem;
+            left: 0.78rem;
+            right: 0.78rem;
+          }
+
+          .gdd-root-heading {
+            margin-bottom: 0.75rem;
+            padding-top: 0.35rem;
+            padding-bottom: 0.5rem;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .gdd-reading-prose {
+            max-width: min(100%, 36rem) !important;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 0.84rem;
+          }
+
+          .prose p,
+          .prose li {
+            line-height: 1.62;
+          }
+
+          .gdd-root-section-badge {
+            min-width: 1.65rem;
+            height: 1.65rem;
+            font-size: 0.72rem;
+          }
+
+          .gdd-flowchart-chip {
+            padding: 0.1rem 0.38rem;
+            font-size: 0.66rem;
+          }
+
+          .gdd-has-flowchart > .section-anchor-target {
+            padding-left: 0.5rem;
           }
         }
 

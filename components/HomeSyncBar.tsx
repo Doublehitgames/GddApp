@@ -66,15 +66,15 @@ export default function HomeSyncBar() {
   }, [getPendingProjectIds, getProject]);
 
   useEffect(() => {
-    if (pendingSyncCount === 0) {
-      setEstimatedCreditsToSync(null);
-      setSyncPreviewItems(null);
-      setShowPreviewPopover(false);
-      return;
-    }
-    setEstimatedCreditsToSync(null);
-    setSyncPreviewItems(null);
-    const timer = setTimeout(refreshEstimatedCredits, 600);
+    const timer = setTimeout(() => {
+      if (pendingSyncCount === 0) {
+        setEstimatedCreditsToSync(null);
+        setSyncPreviewItems(null);
+        setShowPreviewPopover(false);
+        return;
+      }
+      refreshEstimatedCredits();
+    }, pendingSyncCount === 0 ? 0 : 600);
     return () => clearTimeout(timer);
   }, [pendingSyncCount, pendingSignature, refreshEstimatedCredits]);
 
@@ -108,17 +108,17 @@ export default function HomeSyncBar() {
   if (!user) return null;
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur py-2 px-4">
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur py-2 px-3 sm:px-4">
+      <div className="max-w-6xl mx-auto flex flex-col items-stretch gap-2 text-[11px] sm:text-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <span className="text-gray-400">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
             {lastQuotaStatus ? (
               <>
                 <span className="font-medium text-gray-200">
                   {lastQuotaStatus.usedInWindow}/{lastQuotaStatus.limitPerHour}
                 </span>
-                <div className="w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
+                <div className="w-16 sm:w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
                   <div
                     className={`h-full transition-colors ${
                       quotaPercent !== null && quotaPercent >= 75
@@ -140,14 +140,14 @@ export default function HomeSyncBar() {
               </span>
             )}
           </div>
-          <span className="text-gray-500">
+          <span className="text-gray-500 truncate">
             {lastSyncedAt
               ? `${tr("Último sync", "Last sync", "Último sync")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`
               : tr("Ainda sem sync", "No sync yet", "Sin sincronización aún")}
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           {pendingSyncCount > 0 && (
             <div className="relative" ref={previewPopoverRef}>
               <button
@@ -163,7 +163,7 @@ export default function HomeSyncBar() {
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
-                <div className="absolute bottom-full left-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
                   <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>

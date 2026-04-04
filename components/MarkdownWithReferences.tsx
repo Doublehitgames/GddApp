@@ -201,6 +201,7 @@ export function MarkdownWithReferences({
   const isDocumentMode = referenceLinkMode === "document";
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
   const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
+  const markdownRootRef = useRef<HTMLDivElement>(null);
 
   const navigateToDocumentAnchor = (href: string, targetId: string, rawSectionId: string) => {
     const targetElement =
@@ -286,8 +287,44 @@ export function MarkdownWithReferences({
 
   const renderedContent = buildMarkdownWithReferenceLinks();
 
+  useEffect(() => {
+    const root = markdownRootRef.current;
+    if (!root) return;
+
+    const tables = root.querySelectorAll("table");
+
+    tables.forEach((table) => {
+      const headerCells = table.querySelectorAll("thead th");
+      const headersFromThead = Array.from(headerCells).map((cell) => cell.textContent?.trim() || "");
+
+      const fallbackHeaderCells = headersFromThead.length
+        ? []
+        : Array.from(table.querySelectorAll("tr:first-child th")).map((cell) => cell.textContent?.trim() || "");
+
+      const headers = (headersFromThead.length ? headersFromThead : fallbackHeaderCells).map((label, index) => {
+        const text = label.trim();
+        return text || `${t("common.column", "Coluna")} ${index + 1}`;
+      });
+
+      const bodyRows = table.querySelectorAll("tbody tr");
+      const rows = bodyRows.length ? bodyRows : table.querySelectorAll("tr");
+
+      rows.forEach((row, rowIndex) => {
+        if (!bodyRows.length && rowIndex === 0 && row.querySelectorAll("th").length > 0) {
+          return;
+        }
+
+        const cells = row.querySelectorAll("td");
+        cells.forEach((cell, cellIndex) => {
+          const label = headers[cellIndex] || `${t("common.column", "Coluna")} ${cellIndex + 1}`;
+          cell.setAttribute("data-label", label);
+        });
+      });
+    });
+  }, [renderedContent, t]);
+
   return (
-    <div className="prose max-w-none markdown-with-refs overflow-x-auto">
+    <div ref={markdownRootRef} className="prose max-w-none markdown-with-refs overflow-x-auto">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw as any]}

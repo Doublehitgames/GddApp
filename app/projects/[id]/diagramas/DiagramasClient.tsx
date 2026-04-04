@@ -10,7 +10,9 @@ import ReactFlow, {
   Connection,
   Controls,
   Edge,
+  EdgeChange,
   Node,
+  NodeChange,
   NodeTypes,
   ReactFlowProvider,
   useEdgesState,
@@ -84,11 +86,18 @@ const DEFAULT_SNAP_GRID_SIZE = 20;
 const BLOCK_DND_MIME = "application/x-gdd-block-type";
 const DIAGRAM_CLIPBOARD_KEY = "gdd_diagram_clipboard_v1";
 const DIAGRAM_SELECTION_CLIPBOARD_KEY = "gdd_diagram_selection_clipboard_v1";
+const DIAGRAM_HISTORY_LIMIT = 120;
 
 type CopiedSelectionSnapshot = {
   nodes: Node<DiagramNodeData>[];
   edges: Edge[];
   anchor: { x: number; y: number };
+};
+
+type DiagramHistorySnapshot = {
+  nodes: DiagramState["nodes"];
+  edges: DiagramState["edges"];
+  signature: string;
 };
 
 const OPPOSITE_HANDLE: Record<"top" | "right" | "bottom" | "left", "top" | "right" | "bottom" | "left"> = {
@@ -149,6 +158,7 @@ function DiagramasFlow({
   const [snapToGrid, setSnapToGrid] = useState<boolean>(false);
   const [snapGridSize, setSnapGridSize] = useState<number>(DEFAULT_SNAP_GRID_SIZE);
   const [canPasteDiagram, setCanPasteDiagram] = useState<boolean>(false);
+  const [historyAvailability, setHistoryAvailability] = useState({ canUndo: false, canRedo: false });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
   const nodesRef = useRef<Node<DiagramNodeData>[]>([]);
@@ -156,6 +166,12 @@ function DiagramasFlow({
   const copiedSelectionRef = useRef<CopiedSelectionSnapshot | null>(null);
   const isPointerOverPaneRef = useRef(false);
   const lastPointerClientRef = useRef<{ x: number; y: number } | null>(null);
+  const historyPastRef = useRef<DiagramHistorySnapshot[]>([]);
+  const historyFutureRef = useRef<DiagramHistorySnapshot[]>([]);
+  const historyPresentRef = useRef<DiagramHistorySnapshot | null>(null);
+  const historyCapturePendingRef = useRef(false);
+  const isApplyingHistoryRef = useRef(false);
+  const isNodeDragInProgressRef = useRef(false);
   const dragDuplicateRef = useRef<{
     sourceId: string;
     cloneId: string;
@@ -280,6 +296,106 @@ function DiagramasFlow({
     }
   }, []);
 
+  const createHistorySnapshot = useCallback(
+    (inputNodes: Node<DiagramNodeData>[], inputEdges: Edge[]): DiagramHistorySnapshot => {
+      const serializedNodes = serializeNodes(inputNodes);
+      const serializedEdges = serializeEdges(inputEdges);
+      return {
+        nodes: serializedNodes,
+        edges: serializedEdges,
+        signature: JSON.stringify({ nodes: serializedNodes, edges: serializedEdges }),
+      };
+    },
+    []
+  );
+
+  const syncHistoryAvailability = useCallback(() => {
+    setHistoryAvailability({
+      canUndo: historyPastRef.current.length > 0,
+      canRedo: historyFutureRef.current.length > 0,
+    });
+  }, []);
+
+  const markHistoryCheckpoint = useCallback(() => {
+    if (isReadOnly) return;
+    historyCapturePendingRef.current = true;
+  }, [isReadOnly]);
+
+  const applyHistorySnapshot = useCallback(
+    (snapshot: DiagramHistorySnapshot) => {
+      isApplyingHistoryRef.current = true;
+      const flowNodes = toFlowNodes(snapshot.nodes || [], theme);
+      const flowEdges = toFlowEdges(snapshot.edges || [], activeTheme);
+      setNodes(flowNodes);
+      setEdges(backfillMissingEdgeHandles(flowEdges, flowNodes));
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+    },
+    [theme, activeTheme, setNodes, setEdges, backfillMissingEdgeHandles]
+  );
+
+  const undoDiagram = useCallback(() => {
+    if (isReadOnly) return;
+    const current = historyPresentRef.current;
+    const previous = historyPastRef.current[historyPastRef.current.length - 1];
+    if (!current || !previous) return;
+
+    historyPastRef.current = historyPastRef.current.slice(0, -1);
+    historyFutureRef.current = [current, ...historyFutureRef.current].slice(0, DIAGRAM_HISTORY_LIMIT);
+    historyPresentRef.current = previous;
+    historyCapturePendingRef.current = false;
+    syncHistoryAvailability();
+    applyHistorySnapshot(previous);
+  }, [isReadOnly, applyHistorySnapshot, syncHistoryAvailability]);
+
+  const redoDiagram = useCallback(() => {
+    if (isReadOnly) return;
+    const current = historyPresentRef.current;
+    const [next, ...restFuture] = historyFutureRef.current;
+    if (!current || !next) return;
+
+    historyFutureRef.current = restFuture;
+    historyPastRef.current = [...historyPastRef.current, current].slice(-DIAGRAM_HISTORY_LIMIT);
+    historyPresentRef.current = next;
+    historyCapturePendingRef.current = false;
+    syncHistoryAvailability();
+    applyHistorySnapshot(next);
+  }, [isReadOnly, applyHistorySnapshot, syncHistoryAvailability]);
+
+  const onNodesChangeWithHistory = useCallback(
+    (changes: NodeChange[]) => {
+      if (!isReadOnly) {
+        const hasMeaningfulChange = changes.some((change) => {
+          if (change.type === "add" || change.type === "remove" || change.type === "dimensions") return true;
+          if (change.type === "position") {
+            return "dragging" in change ? change.dragging === false : true;
+          }
+          return false;
+        });
+        if (hasMeaningfulChange && !isNodeDragInProgressRef.current) {
+          markHistoryCheckpoint();
+        }
+      }
+      onNodesChange(changes);
+    },
+    [isReadOnly, markHistoryCheckpoint, onNodesChange]
+  );
+
+  const onEdgesChangeWithHistory = useCallback(
+    (changes: EdgeChange[]) => {
+      if (!isReadOnly) {
+        const hasMeaningfulChange = changes.some(
+          (change) => change.type === "add" || change.type === "remove" || change.type === "reset"
+        );
+        if (hasMeaningfulChange) {
+          markHistoryCheckpoint();
+        }
+      }
+      onEdgesChange(changes);
+    },
+    [isReadOnly, markHistoryCheckpoint, onEdgesChange]
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     refreshClipboardAvailability();
@@ -297,16 +413,24 @@ function DiagramasFlow({
       || createEmptyDiagramState();
     const flowNodes = toFlowNodes(initial.nodes || [], theme);
     const flowEdges = toFlowEdges(initial.edges || [], activeTheme);
+    const hydratedEdges = backfillMissingEdgeHandles(flowEdges, flowNodes);
     setNodes(flowNodes);
-    setEdges(backfillMissingEdgeHandles(flowEdges, flowNodes));
+    setEdges(hydratedEdges);
     setViewport(initial.viewport || { x: 0, y: 0, zoom: 1 });
     setSnapToGrid(Boolean(initial.settings?.snapToGrid));
     setSnapGridSize(normalizeSnapGridSize(initial.settings?.snapGridSize));
+    historyPastRef.current = [];
+    historyFutureRef.current = [];
+    historyCapturePendingRef.current = false;
+    isApplyingHistoryRef.current = false;
+    isNodeDragInProgressRef.current = false;
+    historyPresentRef.current = createHistorySnapshot(flowNodes, hydratedEdges);
+    syncHistoryAvailability();
     setTimeout(() => {
       setFlowViewport(initial.viewport || { x: 0, y: 0, zoom: 1 }, { duration: 250 });
     }, 0);
     hydratedRef.current = true;
-  }, [projectId, sectionId, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles, isReadOnly, initialDiagramState]);
+  }, [projectId, sectionId, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles, isReadOnly, initialDiagramState, createHistorySnapshot, syncHistoryAvailability]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -315,6 +439,47 @@ function DiagramasFlow({
   useEffect(() => {
     edgesRef.current = edges;
   }, [edges]);
+
+  useEffect(() => {
+    if (isReadOnly) return;
+    if (!hydratedRef.current) return;
+
+    const snapshot = createHistorySnapshot(nodes, edges);
+    const current = historyPresentRef.current;
+
+    if (!current) {
+      historyPresentRef.current = snapshot;
+      historyCapturePendingRef.current = false;
+      syncHistoryAvailability();
+      return;
+    }
+
+    if (snapshot.signature === current.signature) {
+      if (isApplyingHistoryRef.current) {
+        isApplyingHistoryRef.current = false;
+      }
+      return;
+    }
+
+    if (isApplyingHistoryRef.current) {
+      historyPresentRef.current = snapshot;
+      historyCapturePendingRef.current = false;
+      isApplyingHistoryRef.current = false;
+      return;
+    }
+
+    if (historyCapturePendingRef.current) {
+      historyPastRef.current.push(current);
+      if (historyPastRef.current.length > DIAGRAM_HISTORY_LIMIT) {
+        historyPastRef.current = historyPastRef.current.slice(-DIAGRAM_HISTORY_LIMIT);
+      }
+      historyFutureRef.current = [];
+      historyCapturePendingRef.current = false;
+      syncHistoryAvailability();
+    }
+
+    historyPresentRef.current = snapshot;
+  }, [nodes, edges, isReadOnly, createHistorySnapshot, syncHistoryAvailability]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -442,12 +607,13 @@ function DiagramasFlow({
           theme,
         },
       };
+      markHistoryCheckpoint();
       setNodes((prev) => [...prev, nextNode]);
       setSelectedNodeId(id);
       setSelectedEdgeId(null);
       setDefaultBlockType(normalizedBlockType);
     },
-    [nodes.length, setNodes, theme, t, nodesLimitMessage]
+    [nodes.length, setNodes, theme, t, nodesLimitMessage, markHistoryCheckpoint]
   );
 
   const buildClonedNode = useCallback(
@@ -479,12 +645,13 @@ function DiagramasFlow({
         return null;
       }
       const clone = buildClonedNode(source, targetPosition);
+      markHistoryCheckpoint();
       setNodes((prev) => [...prev, clone]);
       setSelectedNodeId(clone.id);
       setSelectedEdgeId(null);
       return clone;
     },
-    [nodes.length, buildClonedNode, setNodes, t, nodesLimitMessage]
+    [nodes.length, buildClonedNode, setNodes, t, nodesLimitMessage, markHistoryCheckpoint]
   );
 
   const handleCreateNode = useCallback(() => {
@@ -524,6 +691,7 @@ function DiagramasFlow({
       labelBgPadding: [8, 4],
       labelBgBorderRadius: 999,
     };
+    markHistoryCheckpoint();
     setEdges((prev) => addEdge(edge, prev));
     setSelectedNodeId(null);
   }, [
@@ -538,10 +706,12 @@ function DiagramasFlow({
     defaultEdgeDashGap,
     t,
     edgesLimitMessage,
+    markHistoryCheckpoint,
   ]);
 
   const updateSelectedNode = (patch: Partial<DiagramNodeData>) => {
     if (!selectedNodeId) return;
+    markHistoryCheckpoint();
     setNodes((prev) =>
       prev.map((node) => (node.id === selectedNodeId ? { ...node, data: { ...node.data, ...patch } } : node))
     );
@@ -549,6 +719,7 @@ function DiagramasFlow({
 
   const updateSelectedNodeSize = (partial: { width?: number; height?: number }) => {
     if (!selectedNodeId) return;
+    markHistoryCheckpoint();
     setNodes((prev) =>
       prev.map((node) => {
         if (node.id !== selectedNodeId) return node;
@@ -578,6 +749,7 @@ function DiagramasFlow({
 
   const updateSelectedEdge = (patch: Partial<Edge>) => {
     if (!selectedEdgeId) return;
+    markHistoryCheckpoint();
     setEdges((prev) =>
       prev.map((edge) => (edge.id === selectedEdgeId ? { ...edge, ...patch } : edge))
     );
@@ -585,12 +757,14 @@ function DiagramasFlow({
 
   const deleteSelection = () => {
     if (selectedNodeId) {
+      markHistoryCheckpoint();
       setNodes((prev) => prev.filter((node) => node.id !== selectedNodeId));
       setEdges((prev) => prev.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId));
       setSelectedNodeId(null);
       return;
     }
     if (selectedEdgeId) {
+      markHistoryCheckpoint();
       setEdges((prev) => prev.filter((edge) => edge.id !== selectedEdgeId));
       setSelectedEdgeId(null);
     }
@@ -599,6 +773,7 @@ function DiagramasFlow({
   const clearBoard = () => {
     if (isReadOnly) return;
     if (!window.confirm(t("sectionDetail.flowchart.editor.clearConfirm", "Deseja limpar todo o quadro de diagramas?"))) return;
+    markHistoryCheckpoint();
     setNodes([]);
     setEdges([]);
     setSelectedNodeId(null);
@@ -640,6 +815,7 @@ function DiagramasFlow({
     const flowNodes = toFlowNodes(snapshot.nodes || [], theme);
     const flowEdges = toFlowEdges(snapshot.edges || [], activeTheme);
 
+    markHistoryCheckpoint();
     setNodes(flowNodes);
     setEdges(backfillMissingEdgeHandles(flowEdges, flowNodes));
     setSelectedNodeId(null);
@@ -660,6 +836,7 @@ function DiagramasFlow({
     setEdges,
     backfillMissingEdgeHandles,
     setFlowViewport,
+    markHistoryCheckpoint,
   ]);
 
   const isTypingTarget = (target: EventTarget | null) => {
@@ -765,6 +942,7 @@ function DiagramasFlow({
         })
         .filter((edge): edge is Edge => Boolean(edge));
 
+      markHistoryCheckpoint();
       setSelectedNodeId(null);
       setSelectedEdgeId(null);
       setNodes((prev) => [...prev.map((node) => ({ ...node, selected: false })), ...nextNodes]);
@@ -785,6 +963,18 @@ function DiagramasFlow({
       if (isTypingTarget(event.target)) return;
 
       const key = event.key.toLowerCase();
+
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undoDiagram();
+        return;
+      }
+
+      if (key === "y" || (key === "z" && event.shiftKey)) {
+        event.preventDefault();
+        redoDiagram();
+        return;
+      }
 
       if (key === "d" && selectedNode) {
         event.preventDefault();
@@ -818,6 +1008,9 @@ function DiagramasFlow({
     edgesLimitMessage,
     readSelectionClipboard,
     writeSelectionClipboard,
+    markHistoryCheckpoint,
+    undoDiagram,
+    redoDiagram,
   ]);
 
   const themeOptions = getThemeOptions();
@@ -921,6 +1114,10 @@ function DiagramasFlow({
           currentTheme={theme}
           themeOptions={themeOptions}
           onCenter={() => fitView({ duration: 300, padding: 0.3 })}
+          onUndo={undoDiagram}
+          onRedo={redoDiagram}
+          canUndo={historyAvailability.canUndo}
+          canRedo={historyAvailability.canRedo}
           onClear={clearBoard}
           onCopyDiagram={copyDiagram}
           onPasteDiagram={pasteDiagram}
@@ -939,11 +1136,13 @@ function DiagramasFlow({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={isReadOnly ? undefined : onNodesChange}
-          onEdgesChange={isReadOnly ? undefined : onEdgesChange}
+          onNodesChange={isReadOnly ? undefined : onNodesChangeWithHistory}
+          onEdgesChange={isReadOnly ? undefined : onEdgesChangeWithHistory}
           onConnect={isReadOnly ? undefined : handleConnect}
           onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
           onNodeDragStart={isReadOnly ? undefined : (event, node) => {
+            isNodeDragInProgressRef.current = true;
+            markHistoryCheckpoint();
             setSelectedNodeId(node.id);
             setSelectedEdgeId(null);
             if (!(event.ctrlKey || event.altKey)) return;
@@ -978,6 +1177,7 @@ function DiagramasFlow({
             );
           }}
           onNodeDragStop={isReadOnly ? undefined : (_, node) => {
+            isNodeDragInProgressRef.current = false;
             const dragDuplicate = dragDuplicateRef.current;
             if (!dragDuplicate || dragDuplicate.sourceId !== node.id) {
               setSelectedNodeId(node.id);
