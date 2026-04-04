@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import AIChat from "@/components/AIChat";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
     normalizeProjectDocumentSpotlight,
@@ -45,6 +46,12 @@ type DetailPreset = {
     id: string;
     label: string;
     placeholder: string;
+};
+
+type DetailQuickPreset = {
+    mode: "single" | "multi";
+    hint: string;
+    options: string[];
 };
 
 type LinkPreset = {
@@ -87,6 +94,105 @@ const DETAIL_PRESETS: DetailPreset[] = [
     { id: "engine", label: "Engine", placeholder: "Unity / Unreal" },
     { id: "version", label: "Versão Atual", placeholder: "1.0.0" },
 ];
+
+const STORE_TAG_PRESETS: string[] = [
+    "Action",
+    "Adventure",
+    "RPG",
+    "Strategy",
+    "Simulation",
+    "Puzzle",
+    "Casual",
+    "Arcade",
+    "Racing",
+    "Sports",
+    "Fighting",
+    "Shooter",
+    "Platformer",
+    "Survival",
+    "Horror",
+    "Sandbox",
+    "Open World",
+    "Story Rich",
+    "Indie",
+    "Single Player",
+    "Multiplayer",
+    "Online PvP",
+    "Co-op",
+    "Cross-Platform",
+    "Controller Support",
+    "Achievements",
+    "Leaderboards",
+    "Cloud Save",
+    "Offline",
+    "Family Friendly",
+    "Educational",
+    "Card",
+    "Board",
+    "Roguelike",
+    "Turn-Based",
+    "Real-Time Strategy",
+    "Tactical",
+    "MMO",
+    "Battle Royale",
+    "2D",
+    "3D",
+];
+
+const DETAIL_VALUE_PRESETS: Record<string, DetailQuickPreset> = {
+    tags: {
+        mode: "multi",
+        hint: "Tags populares de lojas (Google Play, App Store, Steam, Xbox): clique para selecionar.",
+        options: STORE_TAG_PRESETS,
+    },
+    platforms: {
+        mode: "multi",
+        hint: "Plataformas mais comuns de publicação.",
+        options: [
+            "Android",
+            "iOS",
+            "PC (Windows)",
+            "macOS",
+            "Linux",
+            "Steam Deck",
+            "Xbox Series X|S",
+            "Xbox One",
+            "PlayStation 5",
+            "PlayStation 4",
+            "Nintendo Switch",
+            "Web",
+        ],
+    },
+    business: {
+        mode: "single",
+        hint: "Modelos de negócio comuns em lojas digitais.",
+        options: [
+            "Free to Play",
+            "Free to Play com Ads",
+            "Free to Play com IAP",
+            "Premium (Pago)",
+            "Premium + DLC",
+            "Assinatura",
+            "Demo + Upgrade",
+            "Episódico",
+        ],
+    },
+    minimumAge: {
+        mode: "single",
+        hint: "Classificação etária padrão por faixa.",
+        options: ["Livre", "7+", "10+", "12+", "14+", "16+", "18+"],
+    },
+    languages: {
+        mode: "multi",
+        hint: "Idiomas mais frequentes em lançamento global.",
+        options: ["PT-BR", "EN", "ES", "FR", "DE", "IT", "JA", "ZH", "KO", "RU"],
+    },
+    internet: {
+        mode: "single",
+        hint: "Defina rapidamente o requisito de conexão.",
+        options: ["Não", "Sim (apenas recursos online)", "Sim (obrigatória)"],
+    },
+};
 
 const LINK_PRESETS: LinkPreset[] = [
     { id: "googlePlay", label: "Google Play", category: "mobile", placeholder: "https://play.google.com/..." },
@@ -143,6 +249,38 @@ function readLinkUrl(links: ProjectStoreLink[], label: string): string | null {
     const lowerLabel = label.toLowerCase();
     const found = links.find((item) => item.label.trim().toLowerCase() === lowerLabel);
     return found?.url || null;
+}
+
+function normalizeTagList(tags: string[]): string[] {
+    const seen = new Set<string>();
+    const normalized: string[] = [];
+    tags.forEach((tag) => {
+        const clean = tag.trim();
+        if (!clean) return;
+        const key = clean.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        normalized.push(clean);
+    });
+    return normalized;
+}
+
+function parseTagValue(value: string): string[] {
+    return normalizeTagList(value.split(","));
+}
+
+function formatTagValue(tags: string[]): string {
+    return normalizeTagList(tags).join(", ");
+}
+
+function hasValue(values: string[], candidate: string): boolean {
+    const key = candidate.trim().toLowerCase();
+    return values.some((value) => value.trim().toLowerCase() === key);
+}
+
+function removeValue(values: string[], candidate: string): string[] {
+    const key = candidate.trim().toLowerCase();
+    return values.filter((value) => value.trim().toLowerCase() !== key);
 }
 
 export default function ProjectDetailClient({ projectId }: Props) {
@@ -761,19 +899,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
                                 <div className="grid gap-2 md:grid-cols-2">
                                     {FEATURE_PRESETS.map((feature) => (
-                                        <label key={feature} className="flex items-center gap-2 text-sm text-gray-200">
-                                            <input
-                                                type="checkbox"
+                                        <div key={feature} className="flex items-center gap-2 text-sm text-gray-200">
+                                            <ToggleSwitch
                                                 checked={Boolean(featureEnabled[feature])}
-                                                onChange={(event) => {
-                                                    setFeatureEnabled((prev) => ({ ...prev, [feature]: event.target.checked }));
+                                                onChange={(next) => {
+                                                    setFeatureEnabled((prev) => ({ ...prev, [feature]: next }));
                                                     setSpotlightSaved(false);
                                                     if (spotlightError) setSpotlightError("");
                                                 }}
-                                                className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-emerald-400 focus:ring-emerald-400"
+                                                ariaLabel={feature}
                                             />
                                             <span>{feature}</span>
-                                        </label>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -783,14 +920,21 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 <div className="grid gap-3">
                                     {DETAIL_PRESETS.map((preset) => {
                                         const state = detailState[preset.id] || { enabled: false, value: "" };
+                                        const quickPreset = DETAIL_VALUE_PRESETS[preset.id];
+                                        const selectedPresetValues = quickPreset?.mode === "multi"
+                                            ? parseTagValue(state.value)
+                                            : state.value.trim()
+                                                ? [state.value.trim()]
+                                                : [];
+                                        const quickOptions = quickPreset
+                                            ? normalizeTagList([...quickPreset.options, ...selectedPresetValues])
+                                            : [];
                                         return (
                                             <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                <label className="flex items-center gap-2 text-sm text-gray-200">
-                                                    <input
-                                                        type="checkbox"
+                                                <div className="flex items-center gap-2 text-sm text-gray-200">
+                                                    <ToggleSwitch
                                                         checked={state.enabled}
-                                                        onChange={(event) => {
-                                                            const checked = event.target.checked;
+                                                        onChange={(checked) => {
                                                             setDetailState((prev) => ({
                                                                 ...prev,
                                                                 [preset.id]: {
@@ -800,25 +944,81 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                             }));
                                                             setSpotlightSaved(false);
                                                         }}
-                                                        className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-sky-400 focus:ring-sky-400"
+                                                        ariaLabel={preset.label}
                                                     />
                                                     <span>{preset.label}</span>
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    disabled={!state.enabled}
-                                                    value={state.value}
-                                                    onChange={(event) => {
-                                                        const value = event.target.value;
-                                                        setDetailState((prev) => ({
-                                                            ...prev,
-                                                            [preset.id]: { enabled: true, value },
-                                                        }));
-                                                        setSpotlightSaved(false);
-                                                    }}
-                                                    placeholder={preset.placeholder}
-                                                    className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                />
+                                                </div>
+                                                {quickPreset ? (
+                                                    <div className="space-y-2">
+                                                        <p className="text-xs text-gray-400">{quickPreset.hint}</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {quickOptions.map((option) => {
+                                                                const isSelected = hasValue(selectedPresetValues, option);
+                                                                return (
+                                                                    <button
+                                                                        key={option}
+                                                                        type="button"
+                                                                        disabled={!state.enabled}
+                                                                        onClick={() => {
+                                                                            const nextValue = quickPreset.mode === "multi"
+                                                                                ? formatTagValue(
+                                                                                    isSelected
+                                                                                        ? removeValue(selectedPresetValues, option)
+                                                                                        : [...selectedPresetValues, option]
+                                                                                )
+                                                                                : (isSelected ? "" : option);
+                                                                            setDetailState((prev) => ({
+                                                                                ...prev,
+                                                                                [preset.id]: {
+                                                                                    enabled: true,
+                                                                                    value: nextValue,
+                                                                                },
+                                                                            }));
+                                                                            setSpotlightSaved(false);
+                                                                        }}
+                                                                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
+                                                                            ? "border-sky-300 bg-sky-500/20 text-sky-100"
+                                                                            : "border-gray-600 bg-gray-900/70 text-gray-200 hover:border-sky-400 hover:text-white"
+                                                                            }`}
+                                                                    >
+                                                                        {option}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            disabled={!state.enabled}
+                                                            value={state.value}
+                                                            onChange={(event) => {
+                                                                const value = event.target.value;
+                                                                setDetailState((prev) => ({
+                                                                    ...prev,
+                                                                    [preset.id]: { enabled: true, value },
+                                                                }));
+                                                                setSpotlightSaved(false);
+                                                            }}
+                                                            placeholder={preset.placeholder}
+                                                            className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        disabled={!state.enabled}
+                                                        value={state.value}
+                                                        onChange={(event) => {
+                                                            const value = event.target.value;
+                                                            setDetailState((prev) => ({
+                                                                ...prev,
+                                                                [preset.id]: { enabled: true, value },
+                                                            }));
+                                                            setSpotlightSaved(false);
+                                                        }}
+                                                        placeholder={preset.placeholder}
+                                                        className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    />
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -839,12 +1039,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 const state = linkState[preset.id] || { enabled: false, url: "" };
                                                 return (
                                                     <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                        <label className="flex items-center gap-2 text-sm text-gray-200">
-                                                            <input
-                                                                type="checkbox"
+                                                        <div className="flex items-center gap-2 text-sm text-gray-200">
+                                                            <ToggleSwitch
                                                                 checked={state.enabled}
-                                                                onChange={(event) => {
-                                                                    const checked = event.target.checked;
+                                                                onChange={(checked) => {
                                                                     setLinkState((prev) => ({
                                                                         ...prev,
                                                                         [preset.id]: {
@@ -854,10 +1052,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                     }));
                                                                     setSpotlightSaved(false);
                                                                 }}
-                                                                className="h-4 w-4 rounded border-gray-500 bg-gray-800 text-indigo-400 focus:ring-indigo-400"
+                                                                ariaLabel={preset.label}
                                                             />
                                                             <span>{preset.label}</span>
-                                                        </label>
+                                                        </div>
                                                         <input
                                                             type="url"
                                                             disabled={!state.enabled}
