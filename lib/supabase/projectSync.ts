@@ -48,7 +48,7 @@ export type CloudSyncQuotaStatus = {
 };
 
 type TimeoutResult<T> =
-  | { timedOut: true; value: null }
+  | { timedOut: true; value: null; error?: unknown }
   | { timedOut: false; value: T };
 
 async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promise<TimeoutResult<T>> {
@@ -59,11 +59,11 @@ async function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number): Promi
 
     const wrappedPromise = Promise.resolve(promise)
       .then((value) => ({ timedOut: false as const, value }))
-      .catch(() => ({ timedOut: true as const, value: null }));
+      .catch((err) => ({ timedOut: true as const, value: null, error: err }));
 
     return await Promise.race([wrappedPromise, timeoutPromise]);
-  } catch {
-    return { timedOut: true, value: null };
+  } catch (err) {
+    return { timedOut: true, value: null, error: err };
   }
 }
 

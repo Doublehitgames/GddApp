@@ -21,8 +21,23 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 type RateLimitEntry = { count: number; windowStartMs: number };
 const syncRequestCountByUser = new Map<string, RateLimitEntry>();
 
+/** Purge stale rate-limit entries every 5 minutes to prevent unbounded memory growth. */
+const RATE_LIMIT_GC_INTERVAL_MS = 5 * 60 * 1000;
+let lastRateLimitGc = Date.now();
+
+function gcRateLimitEntries(now: number) {
+  if (now - lastRateLimitGc < RATE_LIMIT_GC_INTERVAL_MS) return;
+  lastRateLimitGc = now;
+  for (const [uid, entry] of syncRequestCountByUser) {
+    if (now - entry.windowStartMs >= RATE_LIMIT_WINDOW_MS) {
+      syncRequestCountByUser.delete(uid);
+    }
+  }
+}
+
 function checkSyncRateLimit(userId: string): { allowed: boolean } {
   const now = Date.now();
+  gcRateLimitEntries(now);
   const entry = syncRequestCountByUser.get(userId);
   if (!entry) {
     syncRequestCountByUser.set(userId, { count: 1, windowStartMs: now });

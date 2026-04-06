@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useProjectStore } from "@/store/projectStore";
+import { useProjectStore, type Project } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import {
@@ -301,7 +301,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const projects = useProjectStore((s) => s.projects);
 
     const [mounted, setMounted] = useState(false);
-    const [project, setProject] = useState<any>(null);
+    const [project, setProject] = useState<Project | null>(null);
     const [chatOpen, setChatOpen] = useState(false);
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
@@ -343,7 +343,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     useEffect(() => {
         if (mounted) {
             const p = getProject(projectId);
-            setProject(p);
+            setProject(p ?? null);
         }
     }, [mounted, projectId, projects]);
 
@@ -547,13 +547,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
         projectId: project.id,
         projectTitle: project.title,
         projectDescription: project.description,
-        sections: (project.sections || []).map((s: any) => ({
+        sections: (project.sections || []).map((s) => ({
             id: s.id,
             title: s.title,
             content: s.content,
             parentId: s.parentId,
             domainTags: s.domainTags,
-            addonTypes: Array.from(new Set((s.addons || []).map((addon: any) => addon.type))).filter(Boolean),
+            addonTypes: Array.from(new Set((s.addons || []).map((addon) => addon.type))).filter(Boolean) as string[],
         })),
     } : undefined;
 

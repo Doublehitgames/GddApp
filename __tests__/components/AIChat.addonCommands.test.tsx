@@ -120,7 +120,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       expect(section?.addons?.length).toBe(1);
       expect(section?.addons?.[0]?.type).toBe("currency");
       expect(section?.addons?.[0]?.name).toBe("Moeda Base");
@@ -216,7 +216,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.title === "Diamante");
+      const section = project?.sections?.find((item) => item.title === "Diamante");
       expect(section).toBeDefined();
       expect(section?.parentId).toBe("sec-moedas");
       expect(section?.addons?.some((addon) => addon.type === "currency")).toBe(true);
@@ -425,7 +425,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       expect(section?.addons?.some((addon) => addon.type === "inventory")).toBe(true);
       const inventoryAddon = section?.addons?.find((addon) => addon.type === "inventory");
       expect(inventoryAddon?.name).toBe("Poção de Vida");
@@ -477,7 +477,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "economyLink");
       expect(addon).toBeDefined();
       expect(addon?.data.buyCurrencyRef).toBeUndefined();
@@ -579,7 +579,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "production");
       expect(addon).toBeDefined();
       expect(addon?.data.outputRef).toBeUndefined();
@@ -631,7 +631,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "dataSchema");
       expect(addon).toBeDefined();
       expect(addon?.name).toBe("Schema da Semente");
@@ -727,12 +727,13 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.id === existingAddonId);
       expect(addon).toBeDefined();
       expect(addon?.name).toBe("Atributos da Semente V2");
-      expect(addon?.data.entries?.[0]?.value).toBe(12);
-      expect(addon?.data.entries?.[1]?.value).toBe(240);
+      const addonData = addon?.data as { entries?: Array<{ value: number }> };
+      expect(addonData?.entries?.[0]?.value).toBe(12);
+      expect(addonData?.entries?.[1]?.value).toBe(240);
     });
   });
 
@@ -777,7 +778,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "attributeDefinitions");
       expect(addon).toBeDefined();
       expect(addon?.name).toBe("Atributos de Combate");
@@ -827,7 +828,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "attributeProfile");
       expect(addon).toBeDefined();
       expect(addon?.name).toBe("Perfil do Guerreiro");
@@ -877,7 +878,7 @@ describe("AIChat addon commands", () => {
 
     await waitFor(() => {
       const project = useProjectStore.getState().getProject(projectId);
-      const section = project?.sections.find((item) => item.id === "sec-1");
+      const section = project?.sections?.find((item) => item.id === "sec-1");
       const addon = section?.addons?.find((item) => item.type === "attributeModifiers");
       expect(addon).toBeDefined();
       expect(addon?.name).toBe("Buff da Armadura");

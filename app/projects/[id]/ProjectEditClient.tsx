@@ -112,7 +112,7 @@ export default function ProjectEditClient({ projectId }: Props) {
       }
       editorRef.current = null;
     };
-  }, [containerEl, loaded, editorMode, projectId, description, editorHeight]);
+  }, [containerEl, loaded, editorMode, projectId, editorHeight]); // description removed: it caused the editor to remount on every keystroke (memory leak)
 
   useEffect(() => {
     if (editorRef.current) {
