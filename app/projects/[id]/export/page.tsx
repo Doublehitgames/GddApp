@@ -3,9 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project, Section } from '@/store/projectStore';
-import { jsPDF } from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
-import { saveAs } from 'file-saver';
 import { useI18n } from '@/lib/i18n/provider';
 import { buildUnityExport } from '@/lib/balance/unityExport';
 import { ToggleSwitch } from '@/components/ToggleSwitch';
@@ -64,7 +61,8 @@ export default function ExportPage() {
   };
 
   // Exportar como Markdown
-  const exportMarkdown = () => {
+  const exportMarkdown = async () => {
+    const { saveAs } = await import(/* webpackChunkName: "file-saver" */ 'file-saver');
     const hierarchy = getSectionsHierarchy();
     let markdown = `# ${project.title}\n\n`;
     
@@ -102,7 +100,8 @@ export default function ExportPage() {
   };
 
   // Exportar como PDF
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    const { jsPDF } = await import(/* webpackChunkName: "jspdf" */ 'jspdf');
     const doc = new jsPDF();
     let yPosition = 20;
     const lineHeight = 7;
@@ -180,6 +179,8 @@ export default function ExportPage() {
 
   // Exportar como Word
   const exportWord = async () => {
+    const { Document, Packer, Paragraph, HeadingLevel, AlignmentType } = await import(/* webpackChunkName: "docx" */ 'docx');
+    const { saveAs } = await import(/* webpackChunkName: "file-saver" */ 'file-saver');
     const hierarchy = getSectionsHierarchy();
     const children: any[] = [];
 
@@ -258,7 +259,8 @@ export default function ExportPage() {
     saveAs(blob, `${project.title}.docx`);
   };
 
-  const exportUnityJson = () => {
+  const exportUnityJson = async () => {
+    const { saveAs } = await import(/* webpackChunkName: "file-saver" */ 'file-saver');
     const payload = buildUnityExport(project);
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     saveAs(blob, `${project.title}.unity-export.v1.json`);
@@ -269,16 +271,16 @@ export default function ExportPage() {
     try {
       switch (selectedFormat) {
         case 'markdown':
-          exportMarkdown();
+          await exportMarkdown();
           break;
         case 'pdf':
-          exportPDF();
+          await exportPDF();
           break;
         case 'word':
           await exportWord();
           break;
         case 'unityJson':
-          exportUnityJson();
+          await exportUnityJson();
           break;
       }
       

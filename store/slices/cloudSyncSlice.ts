@@ -108,7 +108,11 @@ export function createCloudSyncSlice(set: StoreSet, get: StoreGet, engine: SyncE
         })
       );
 
-      if (engine.dirtyProjectIds.size === 0) {
+      // Check if all flushed projects were successfully synced.
+      // New edits during the flush may have added fresh dirty IDs — those are
+      // expected and should NOT prevent the status from reflecting the flush result.
+      const stillDirty = pendingIds.filter((id) => engine.dirtyProjectIds.has(id));
+      if (stillDirty.length === 0) {
         set({ syncStatus: "synced", lastSyncedAt: new Date().toISOString() });
       }
     },
