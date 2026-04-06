@@ -87,6 +87,8 @@ const DETAIL_PRESETS: DetailPreset[] = [
     { id: "release", label: "Lançamento Oficial", placeholder: "Q4 2026" },
     { id: "disk", label: "Espaço em Disco", placeholder: "500 MB" },
     { id: "business", label: "Modelo de Negócio", placeholder: "Free to Play com Ads" },
+    { id: "producedBy", label: "Produzido por", placeholder: "Estúdio Exemplo" },
+    { id: "publishedBy", label: "Publicado por", placeholder: "Publisher Exemplo" },
     { id: "expansions", label: "Conteúdos de Expansão", placeholder: "DLC pago" },
     { id: "minimumAge", label: "Idade Mínima", placeholder: "10 anos" },
     { id: "languages", label: "Idiomas", placeholder: "PT-BR, EN, ES" },
