@@ -215,6 +215,35 @@ export type AttributeModifiersAddonDraft = {
   modifiers: AttributeModifierEntry[];
 };
 
+// ── Export Schema addon ──────────────────────────────────────────────
+
+export type ExportSchemaArraySource = {
+  type: "progressionTable";
+  addonId: string;
+};
+
+export type ExportSchemaBinding =
+  | { source: "manual"; value: string | number | boolean; valueType: "string" | "number" | "boolean" }
+  | { source: "dataSchema"; addonId: string; entryKey: string }
+  | { source: "rowLevel" }
+  | { source: "rowColumn"; columnId: string };
+
+export type ExportSchemaNode = {
+  id: string;
+  key: string;
+  nodeType: "object" | "array" | "value";
+  children?: ExportSchemaNode[];
+  arraySource?: ExportSchemaArraySource;
+  itemTemplate?: ExportSchemaNode[];
+  binding?: ExportSchemaBinding;
+};
+
+export type ExportSchemaAddonDraft = {
+  id: string;
+  name: string;
+  nodes: ExportSchemaNode[];
+};
+
 // Legacy aliases: keep old type names to avoid broad refactors.
 export type GenericStatValueType = DataSchemaValueType;
 export type GenericStatEntry = DataSchemaEntry;
@@ -232,6 +261,7 @@ export type SectionAddonType =
   | "attributeDefinitions"
   | "attributeProfile"
   | "attributeModifiers"
+  | "exportSchema"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -313,6 +343,13 @@ export type AttributeModifiersSectionAddon = {
   data: AttributeModifiersAddonDraft;
 };
 
+export type ExportSchemaSectionAddon = {
+  id: string;
+  type: "exportSchema";
+  name: string;
+  data: ExportSchemaAddonDraft;
+};
+
 // Legacy addon shape kept for compatibility in normalize/migration flows.
 export type GenericStatsSectionAddon = {
   id: string;
@@ -333,6 +370,7 @@ export type SectionAddon =
   | AttributeDefinitionsSectionAddon
   | AttributeProfileSectionAddon
   | AttributeModifiersSectionAddon
+  | ExportSchemaSectionAddon
   | GenericStatsSectionAddon;
 
 function createDefaultRows(
@@ -548,6 +586,19 @@ export function createDefaultAttributeModifiersAddon(addonId: string): Attribute
       id: addonId,
       name: "Modificadores de Atributos",
       modifiers: [],
+    },
+  };
+}
+
+export function createDefaultExportSchemaAddon(addonId: string): ExportSchemaSectionAddon {
+  return {
+    id: addonId,
+    type: "exportSchema",
+    name: "Export Schema",
+    data: {
+      id: addonId,
+      name: "Export Schema",
+      nodes: [],
     },
   };
 }

@@ -8,6 +8,7 @@ import {
   createDefaultCurrencyAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
+  createDefaultExportSchemaAddon,
   createDefaultGlobalVariableAddon,
   createDefaultInventoryAddon,
   createDefaultProductionAddon,
@@ -30,6 +31,8 @@ import { DataSchemaAddonPanel } from "@/components/DataSchemaAddonPanel";
 import { DataSchemaAddonReadOnly } from "@/components/DataSchemaAddonReadOnly";
 import { GlobalVariableAddonPanel } from "@/components/GlobalVariableAddonPanel";
 import { GlobalVariableAddonReadOnly } from "@/components/GlobalVariableAddonReadOnly";
+import { ExportSchemaAddonPanel } from "@/components/ExportSchemaAddonPanel";
+import { ExportSchemaAddonReadOnly } from "@/components/ExportSchemaAddonReadOnly";
 import { InventoryAddonPanel } from "@/components/InventoryAddonPanel";
 import { InventoryAddonReadOnly } from "@/components/InventoryAddonReadOnly";
 import { ProductionAddonPanel } from "@/components/ProductionAddonPanel";
@@ -307,6 +310,29 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "inventory") return null;
       return React.createElement(InventoryAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
+    type: "exportSchema",
+    label: "Export Schema",
+    createDefault: () => {
+      const addonId = `export-schema-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultExportSchemaAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "exportSchema") return null;
+      return React.createElement(ExportSchemaAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "exportSchema") return null;
+      return React.createElement(ExportSchemaAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
       });

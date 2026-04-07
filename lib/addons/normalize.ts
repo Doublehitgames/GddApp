@@ -6,6 +6,9 @@ import type {
   CurrencyAddonDraft,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
+  ExportSchemaAddonDraft,
+  ExportSchemaBinding,
+  ExportSchemaNode,
   GlobalVariableAddonDraft,
   InventoryAddonDraft,
   LegacySectionAddonType,
@@ -601,6 +604,72 @@ function buildProductionFromEconomy(draft: EconomyLinkAddonDraft): ProductionAdd
   };
 }
 
+function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undefined {
+  if (!isObject(raw)) return undefined;
+  const source = raw.source;
+  if (source === "manual") {
+    const valueType = raw.valueType === "string" || raw.valueType === "number" || raw.valueType === "boolean"
+      ? raw.valueType : "string";
+    let value: string | number | boolean = "";
+    if (valueType === "number") value = asFiniteNumber(raw.value) ?? 0;
+    else if (valueType === "boolean") value = asBooleanLoose(raw.value);
+    else value = typeof raw.value === "string" ? raw.value : String(raw.value ?? "");
+    return { source: "manual", value, valueType };
+  }
+  if (source === "dataSchema") {
+    const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
+    const entryKey = typeof raw.entryKey === "string" ? raw.entryKey.trim() : "";
+    if (!addonId || !entryKey) return undefined;
+    return { source: "dataSchema", addonId, entryKey };
+  }
+  if (source === "rowLevel") return { source: "rowLevel" };
+  if (source === "rowColumn") {
+    const columnId = typeof raw.columnId === "string" ? raw.columnId.trim() : "";
+    if (!columnId) return undefined;
+    return { source: "rowColumn", columnId };
+  }
+  return undefined;
+}
+
+function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
+  const nodes: ExportSchemaNode[] = [];
+  for (const rawNode of rawNodes) {
+    if (!isObject(rawNode)) continue;
+    const id = typeof rawNode.id === "string" && rawNode.id.trim() ? rawNode.id.trim() : `node_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const key = typeof rawNode.key === "string" ? rawNode.key.trim() : "";
+    if (!key) continue;
+    const nodeType = rawNode.nodeType === "object" || rawNode.nodeType === "array" || rawNode.nodeType === "value"
+      ? rawNode.nodeType : "value";
+    const node: ExportSchemaNode = { id, key, nodeType };
+    if (nodeType === "object") {
+      node.children = Array.isArray(rawNode.children) ? normalizeExportSchemaNodes(rawNode.children) : [];
+    }
+    if (nodeType === "array") {
+      if (isObject(rawNode.arraySource) && rawNode.arraySource.type === "progressionTable" && typeof rawNode.arraySource.addonId === "string") {
+        node.arraySource = { type: "progressionTable", addonId: rawNode.arraySource.addonId.trim() };
+      }
+      node.itemTemplate = Array.isArray(rawNode.itemTemplate) ? normalizeExportSchemaNodes(rawNode.itemTemplate) : [];
+    }
+    if (nodeType === "value") {
+      node.binding = normalizeExportSchemaBinding(rawNode.binding);
+    }
+    nodes.push(node);
+  }
+  return nodes;
+}
+
+function normalizeExportSchemaDraft(value: unknown): ExportSchemaAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const rawNodes = Array.isArray(value.nodes) ? value.nodes : [];
+  return {
+    id: value.id,
+    name: value.name,
+    nodes: normalizeExportSchemaNodes(rawNodes),
+  };
+}
+
 function asSectionAddon(value: unknown): SectionAddon | null {
   if (!isObject(value)) return null;
   if (typeof value.id !== "string") return null;
@@ -617,6 +686,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "attributeDefinitions" &&
     value.type !== "attributeProfile" &&
     value.type !== "attributeModifiers" &&
+    value.type !== "exportSchema" &&
     value.type !== "genericStats"
   ) {
     return null;
@@ -811,6 +881,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "attributeModifiers") {
         const draft = normalizeAttributeModifiersDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "exportSchema") {
+        const draft = normalizeExportSchemaDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,
