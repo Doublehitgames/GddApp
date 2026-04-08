@@ -1585,6 +1585,8 @@ function SectionDetailContent({
   // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
   const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
   const [activeAddonId, setActiveAddonId] = useState<string | null>(null);
+  const [isEditingDataId, setIsEditingDataId] = useState(false);
+  const [dataIdDraft, setDataIdDraft] = useState("");
   const [confirmRemoveAddon, setConfirmRemoveAddon] = useState<{ id: string; label: string } | null>(null);
   const prevAddonCountRef = useRef(addons.length);
   useEffect(() => {
@@ -1936,20 +1938,53 @@ function SectionDetailContent({
             )}
           </div>
 
-          {/* DataID */}
-          {!isEditingTitle && (
-            <div className="flex items-center gap-2 -mt-1 mb-1">
+          {/* DataID - toggle + inline edit */}
+          {!isEditingTitle && !isEditingDataId && section?.dataId && (
+            <button
+              type="button"
+              onClick={() => { setDataIdDraft(section.dataId ?? ""); setIsEditingDataId(true); }}
+              className="text-[10px] font-mono text-gray-500 hover:text-gray-300 bg-gray-800/50 rounded px-2 py-0.5 border border-gray-700/50 transition-colors"
+              title="Editar DataID"
+            >
+              ID: {section.dataId}
+            </button>
+          )}
+          {!isEditingTitle && !section?.dataId && !isEditingDataId && (
+            <button
+              type="button"
+              onClick={() => { setDataIdDraft(""); setIsEditingDataId(true); }}
+              className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+              title="Adicionar DataID"
+            >
+              + DataID
+            </button>
+          )}
+          {isEditingDataId && (
+            <div className="flex items-center gap-1.5">
               <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
               <input
+                autoFocus
                 type="text"
-                value={section?.dataId ?? ""}
-                onChange={(e) => {
-                  const nextDataId = e.target.value || undefined;
-                  editSection(projectId, sectionId, section.title, section.content, undefined, section.color, undefined, undefined, undefined, nextDataId);
+                value={dataIdDraft}
+                onChange={(e) => setDataIdDraft(e.target.value)}
+                onBlur={() => {
+                  editSection(projectId, sectionId, section.title, section.content, undefined, section.color, undefined, undefined, undefined, dataIdDraft || undefined);
+                  setIsEditingDataId(false);
                 }}
-                className="bg-transparent border-b border-gray-700 text-xs font-mono text-gray-300 outline-none focus:border-indigo-500 px-1 py-0.5 w-48 placeholder-gray-600"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  else if (e.key === "Escape") setIsEditingDataId(false);
+                }}
+                className="bg-transparent border-b border-indigo-500 text-xs font-mono text-gray-200 outline-none px-1 py-0.5 w-48 placeholder-gray-600"
                 placeholder="ex: FARM_ANIMAL_CHICKEN"
               />
+              <button
+                type="button"
+                onClick={() => setIsEditingDataId(false)}
+                className="text-gray-500 hover:text-gray-300 text-xs"
+              >
+                ✕
+              </button>
             </div>
           )}
 
