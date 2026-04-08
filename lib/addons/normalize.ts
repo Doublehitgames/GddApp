@@ -13,6 +13,7 @@ import type {
   InventoryAddonDraft,
   LegacySectionAddonType,
   ProductionAddonDraft,
+  ProductionFieldKey,
   ProgressionTableAddonDraft,
   ProgressionTableColumn,
   ProgressionTableRow,
@@ -427,6 +428,16 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
     const max = asFiniteNumber(rawEntry.max) ?? undefined;
     const unit = typeof rawEntry.unit === "string" && rawEntry.unit.trim() ? rawEntry.unit.trim() : undefined;
     const unitXpRef = typeof rawEntry.unitXpRef === "string" && rawEntry.unitXpRef.trim() ? rawEntry.unitXpRef.trim() : undefined;
+    const economyLinkRef = typeof rawEntry.economyLinkRef === "string" && rawEntry.economyLinkRef.trim() ? rawEntry.economyLinkRef.trim() : undefined;
+    const rawEconomyField = typeof rawEntry.economyLinkField === "string" ? rawEntry.economyLinkField : undefined;
+    const economyLinkField =
+      rawEconomyField === "buyValue" || rawEconomyField === "minBuyValue" || rawEconomyField === "sellValue" || rawEconomyField === "maxSellValue" || rawEconomyField === "unlockValue"
+        ? rawEconomyField
+        : undefined;
+    const productionRef = typeof rawEntry.productionRef === "string" && rawEntry.productionRef.trim() ? rawEntry.productionRef.trim() : undefined;
+    const rawProductionField = typeof rawEntry.productionField === "string" ? rawEntry.productionField : undefined;
+    const validProductionFields = new Set(["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"]);
+    const productionField: ProductionFieldKey | undefined = rawProductionField && validProductionFields.has(rawProductionField) ? (rawProductionField as ProductionFieldKey) : undefined;
     const notes = typeof rawEntry.notes === "string" && rawEntry.notes.trim() ? rawEntry.notes : undefined;
     let normalizedValue: number | boolean | string = 0;
     if (valueType === "boolean") {
@@ -450,6 +461,10 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
       max: valueType === "boolean" || valueType === "string" ? undefined : max,
       unit,
       unitXpRef,
+      economyLinkRef,
+      economyLinkField: economyLinkRef ? economyLinkField : undefined,
+      productionRef,
+      productionField: productionRef ? productionField : undefined,
       notes,
     });
   }
@@ -618,9 +633,11 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
   }
   if (source === "dataSchema") {
     const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
+    const addonName = typeof raw.addonName === "string" && raw.addonName.trim() ? raw.addonName.trim() : undefined;
     const entryKey = typeof raw.entryKey === "string" ? raw.entryKey.trim() : "";
-    if (!addonId || !entryKey) return undefined;
-    return { source: "dataSchema", addonId, entryKey };
+    const entryId = typeof raw.entryId === "string" && raw.entryId.trim() ? raw.entryId.trim() : undefined;
+    if ((!addonId && !addonName) || !entryKey) return undefined;
+    return { source: "dataSchema", addonId, addonName, entryKey, entryId };
   }
   if (source === "rowLevel") return { source: "rowLevel" };
   if (source === "rowColumn") {
@@ -646,7 +663,8 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
     }
     if (nodeType === "array") {
       if (isObject(rawNode.arraySource) && rawNode.arraySource.type === "progressionTable" && typeof rawNode.arraySource.addonId === "string") {
-        node.arraySource = { type: "progressionTable", addonId: rawNode.arraySource.addonId.trim() };
+        const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
+        node.arraySource = { type: "progressionTable", addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
       }
       node.itemTemplate = Array.isArray(rawNode.itemTemplate) ? normalizeExportSchemaNodes(rawNode.itemTemplate) : [];
     }
@@ -663,11 +681,12 @@ function normalizeExportSchemaDraft(value: unknown): ExportSchemaAddonDraft | nu
   if (typeof value.id !== "string") return null;
   if (typeof value.name !== "string") return null;
   const rawNodes = Array.isArray(value.nodes) ? value.nodes : [];
-  return {
+  const result: ExportSchemaAddonDraft = {
     id: value.id,
     name: value.name,
     nodes: normalizeExportSchemaNodes(rawNodes),
   };
+  return result;
 }
 
 function asSectionAddon(value: unknown): SectionAddon | null {

@@ -14,7 +14,7 @@ export type ProgressionColumnGenerator =
   | { mode: "manual" }
   | { mode: "linear"; base: number; step: number }
   | { mode: "exponential"; base: number; growth: number }
-  | { mode: "formula"; baseColumnId: string; expression: string };
+  | { mode: "formula"; baseColumnId: string; baseManualValue?: number; expression: string };
 
 export type ProgressionTableRow = {
   level: number;
@@ -148,6 +148,25 @@ export type ProductionAddonDraft = {
 
 export type DataSchemaValueType = "int" | "float" | "seconds" | "percent" | "boolean" | "string";
 
+export type EconomyLinkFieldKey =
+  | "buyValue"
+  | "minBuyValue"
+  | "sellValue"
+  | "maxSellValue"
+  | "unlockValue";
+
+export type ProductionFieldKey =
+  | "minOutput"
+  | "maxOutput"
+  | "intervalSeconds"
+  | "craftTimeSeconds"
+  | "capacity"
+  | "outputBuyEffective"
+  | "outputMinBuyValue"
+  | "outputSellEffective"
+  | "outputMaxSellValue"
+  | "outputUnlockValue";
+
 export type DataSchemaEntry = {
   id: string;
   key: string;
@@ -158,6 +177,14 @@ export type DataSchemaEntry = {
   max?: number;
   unit?: string;
   unitXpRef?: string;
+  /** Reference to an Economy Link addon (section ID that contains it). */
+  economyLinkRef?: string;
+  /** Which field from the Economy Link addon to pull. */
+  economyLinkField?: EconomyLinkFieldKey;
+  /** Reference to a Production addon (addon ID in the same section). */
+  productionRef?: string;
+  /** Which field from the Production addon to pull. */
+  productionField?: ProductionFieldKey;
   notes?: string;
 };
 
@@ -220,11 +247,12 @@ export type AttributeModifiersAddonDraft = {
 export type ExportSchemaArraySource = {
   type: "progressionTable";
   addonId: string;
+  addonName?: string;
 };
 
 export type ExportSchemaBinding =
   | { source: "manual"; value: string | number | boolean; valueType: "string" | "number" | "boolean" }
-  | { source: "dataSchema"; addonId: string; entryKey: string }
+  | { source: "dataSchema"; addonId: string; addonName?: string; entryKey: string; entryId?: string }
   | { source: "rowLevel" }
   | { source: "rowColumn"; columnId: string };
 
@@ -594,10 +622,10 @@ export function createDefaultExportSchemaAddon(addonId: string): ExportSchemaSec
   return {
     id: addonId,
     type: "exportSchema",
-    name: "Export Schema",
+    name: "Remote Config",
     data: {
       id: addonId,
-      name: "Export Schema",
+      name: "Remote Config",
       nodes: [],
     },
   };

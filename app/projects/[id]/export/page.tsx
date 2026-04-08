@@ -15,13 +15,13 @@ export default function ExportPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
-  
+
   const getProject = useProjectStore((s) => s.getProject);
   const [project, setProject] = useState<Project | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [includeEmptySections, setIncludeEmptySections] = useState(false);
-  
+
   useEffect(() => {
     const proj = getProject(projectId);
     if (proj) {
@@ -47,7 +47,7 @@ export default function ExportPage() {
   const getSectionsHierarchy = () => {
     const sections = project.sections || [];
     const rootSections = sections.filter(s => !s.parentId);
-    
+
     const buildHierarchy = (parentId?: string): Section[] => {
       return sections
         .filter(s => s.parentId === parentId)
@@ -65,7 +65,7 @@ export default function ExportPage() {
     const { saveAs } = await import(/* webpackChunkName: "file-saver" */ 'file-saver');
     const hierarchy = getSectionsHierarchy();
     let markdown = `# ${project.title}\n\n`;
-    
+
     if (project.description) {
       markdown += `${resolveExportContent(project.description)}\n\n---\n\n`;
     }
@@ -77,7 +77,7 @@ export default function ExportPage() {
       let md = '';
       const headerPrefix = '#'.repeat(level + 1);
       md += `${headerPrefix} ${section.title}\n\n`;
-      
+
       if (section.content) {
         md += `${resolveExportContent(section.content)}\n\n`;
       }
@@ -115,13 +115,13 @@ export default function ExportPage() {
       }
     };
 
-    // Título
+    // Titulo
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
     doc.text(project.title, margin, yPosition);
     yPosition += 15;
 
-    // Descrição
+    // Descricao
     if (project.description) {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
@@ -139,7 +139,7 @@ export default function ExportPage() {
 
       checkPageBreak(15);
 
-      // Título da seção
+      // Titulo da secao
       const fontSize = level === 1 ? 16 : level === 2 ? 14 : 12;
       doc.setFontSize(fontSize);
       doc.setFont('helvetica', 'bold');
@@ -147,22 +147,22 @@ export default function ExportPage() {
       doc.text(section.title, indent, yPosition);
       yPosition += 10;
 
-      // Conteúdo
+      // Conteudo
       if (section.content) {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
         const contentLines = doc.splitTextToSize(resolveExportContent(section.content), 170 - (level - 1) * 10);
-        
+
         contentLines.forEach((line: string) => {
           checkPageBreak(lineHeight);
           doc.text(line, indent, yPosition);
           yPosition += lineHeight;
         });
-        
+
         yPosition += 5;
       }
 
-      // Subseções
+      // Subsecoes
       if (section.subsections) {
         section.subsections.forEach(sub => {
           renderSection(sub, level + 1);
@@ -184,7 +184,7 @@ export default function ExportPage() {
     const hierarchy = getSectionsHierarchy();
     const children: any[] = [];
 
-    // Título
+    // Titulo
     children.push(
       new Paragraph({
         text: project.title,
@@ -194,7 +194,7 @@ export default function ExportPage() {
       })
     );
 
-    // Descrição
+    // Descricao
     if (project.description) {
       children.push(
         new Paragraph({
@@ -208,9 +208,9 @@ export default function ExportPage() {
       const isEmpty = !section.content || section.content.trim().length === 0;
       if (isEmpty && !includeEmptySections) return;
 
-      // Título da seção
-      const headingLevel = level === 1 ? HeadingLevel.HEADING_1 : 
-                          level === 2 ? HeadingLevel.HEADING_2 : 
+      // Titulo da secao
+      const headingLevel = level === 1 ? HeadingLevel.HEADING_1 :
+                          level === 2 ? HeadingLevel.HEADING_2 :
                           HeadingLevel.HEADING_3;
 
       children.push(
@@ -221,7 +221,7 @@ export default function ExportPage() {
         })
       );
 
-      // Conteúdo
+      // Conteudo
       if (section.content) {
         const paragraphs = resolveExportContent(section.content).split('\n\n');
         paragraphs.forEach(para => {
@@ -236,7 +236,7 @@ export default function ExportPage() {
         });
       }
 
-      // Subseções
+      // Subsecoes
       if (section.subsections) {
         section.subsections.forEach(sub => {
           renderSection(sub, level + 1);
@@ -283,8 +283,8 @@ export default function ExportPage() {
           await exportUnityJson();
           break;
       }
-      
-      // Aguardar um pouco para o download começar
+
+      // Aguardar um pouco para o download comecar
       setTimeout(() => {
         router.push(`/projects/${projectId}`);
       }, 1000);
@@ -327,7 +327,7 @@ export default function ExportPage() {
         {/* Format Selection */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('projectExport.selectFormat')}</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             {/* Markdown */}
             <button

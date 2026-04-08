@@ -11,16 +11,25 @@ interface ExportSchemaAddonReadOnlyProps {
   theme?: "dark" | "light";
 }
 
-export function ExportSchemaAddonReadOnly({ addon, sectionAddons: externalAddons, theme = "dark" }: ExportSchemaAddonReadOnlyProps) {
+export function ExportSchemaAddonReadOnly({
+  addon,
+  sectionAddons: externalAddons,
+  theme = "dark",
+}: ExportSchemaAddonReadOnlyProps) {
   const [copied, setCopied] = useState(false);
 
   const projects = useProjectStore((s) => s.projects);
+
+  // Resolve section addons from the store if not provided externally
   const sectionAddons = useMemo(() => {
     if (externalAddons) return externalAddons;
+
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
         const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
-        if (found) return (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id);
+        if (found) {
+          return (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id);
+        }
       }
     }
     return [];
@@ -28,12 +37,12 @@ export function ExportSchemaAddonReadOnly({ addon, sectionAddons: externalAddons
 
   const resolved = useMemo(
     () => resolveExportSchema(addon.nodes, sectionAddons),
-    [addon.nodes, sectionAddons]
+    [addon.nodes, sectionAddons],
   );
 
   const jsonString = useMemo(
     () => JSON.stringify(resolved, null, 4),
-    [resolved]
+    [resolved],
   );
 
   const handleCopy = async () => {
@@ -56,7 +65,7 @@ export function ExportSchemaAddonReadOnly({ addon, sectionAddons: externalAddons
     <div>
       <div className="flex items-center gap-2 mb-2">
         <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-          Export Schema: {addon.name}
+          Remote Config: {addon.name}
         </span>
         <button
           type="button"

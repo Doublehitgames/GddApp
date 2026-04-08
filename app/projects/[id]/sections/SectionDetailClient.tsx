@@ -1386,6 +1386,8 @@ function SectionDetailContent({
         return t("sectionDetail.history.addonType.attributeProfile");
       case "attributeModifiers":
         return t("sectionDetail.history.addonType.attributeModifiers");
+      case "exportSchema":
+        return "Remote Config";
       default:
         return t("sectionDetail.history.addonType.generic");
     }
@@ -1618,6 +1620,9 @@ function SectionDetailContent({
     }
     if (type === "attributeModifiers") {
       return t("attributeModifiersAddon.addonTypeLabel", "Modificadores de Atributos");
+    }
+    if (type === "exportSchema") {
+      return t("exportSchemaAddon.addonTypeLabel", "Remote Config");
     }
     return t("sectionDetail.history.addonType.generic");
   };

@@ -317,7 +317,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   },
   {
     type: "exportSchema",
-    label: "Export Schema",
+    label: "Remote Config",
     createDefault: () => {
       const addonId = `export-schema-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultExportSchemaAddon(addonId);

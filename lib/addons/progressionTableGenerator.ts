@@ -240,7 +240,12 @@ function computeGeneratedValue(params: {
     return generator.base * Math.pow(generator.growth, deltaLevel);
   }
   if (generator.mode === "formula") {
-    const baseValue = Number(row.values[generator.baseColumnId]);
+    let baseValue: number;
+    if (generator.baseColumnId === "__manual__" || !generator.baseColumnId) {
+      baseValue = generator.baseManualValue ?? 0;
+    } else {
+      baseValue = Number(row.values[generator.baseColumnId]);
+    }
     const normalizedBaseValue = Number.isFinite(baseValue) ? baseValue : 0;
     return evaluateFormulaExpression(generator.expression, {
       base: normalizedBaseValue,

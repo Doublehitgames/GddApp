@@ -204,6 +204,8 @@ function getColumnWarnings(
 
     if (!generator.baseColumnId) {
       warnings.push(t("progressionTableAddon.warnings.selectBaseColumn", "Selecione a coluna base para a formula."));
+    } else if (generator.baseColumnId === "__manual__") {
+      // Manual base is always valid
     } else if (generator.baseColumnId === column.id) {
       warnings.push(t("progressionTableAddon.warnings.baseCannotBeSelf", "A coluna base nao pode ser a propria coluna."));
     } else {
@@ -405,12 +407,14 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
         }
         case "formula": {
           const formulaPatch = patch.mode === "formula" || patch.mode == null ? patch : {};
+          const fp = formulaPatch as { baseColumnId?: string; baseManualValue?: number; expression?: string };
           return {
             ...column,
             generator: {
               mode: "formula",
-              baseColumnId: (formulaPatch as { baseColumnId?: string }).baseColumnId ?? currentGenerator.baseColumnId,
-              expression: (formulaPatch as { expression?: string }).expression ?? currentGenerator.expression,
+              baseColumnId: fp.baseColumnId ?? currentGenerator.baseColumnId,
+              baseManualValue: fp.baseManualValue !== undefined ? fp.baseManualValue : currentGenerator.baseManualValue,
+              expression: fp.expression ?? currentGenerator.expression,
             },
           };
         }
@@ -954,6 +958,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 className={INPUT_CLASS}
                               >
                                 <option value="">{t("progressionTableAddon.selectPlaceholder", "Selecione...")}</option>
+                                <option value="__manual__">Valor manual</option>
                                 {columns
                                   .filter((item) => item.id !== column.id)
                                   .map((item) => (
@@ -962,6 +967,23 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                     </option>
                                   ))}
                               </select>
+                              {column.generator?.mode === "formula" && column.generator.baseColumnId === "__manual__" && (
+                                <label className="block mt-2">
+                                  <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                    Valor base (manual)
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={column.generator.baseManualValue ?? 0}
+                                    onChange={(e) =>
+                                      updateColumnGeneratorParams(column.id, {
+                                        baseManualValue: Number(e.target.value.replace(",", ".")) || 0,
+                                      })
+                                    }
+                                    className={INPUT_CLASS}
+                                  />
+                                </label>
+                              )}
                             </label>
                             <label className="block">
                               <span className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">

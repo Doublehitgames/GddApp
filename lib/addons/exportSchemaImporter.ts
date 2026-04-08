@@ -7,7 +7,6 @@ import type {
   ProgressionTableSectionAddon,
   ProgressionTableColumn,
   ProgressionTableRow,
-  ExportSchemaSectionAddon,
 } from "@/lib/addons/types";
 
 function uid(prefix: string): string {
@@ -175,11 +174,13 @@ export function importJsonToAddons(json: Record<string, unknown>): ImportResult 
     newAddons.push(addon);
 
     for (const { key } of topLevelPrimitives) {
+      const normalizedKey = normalizeKey(key);
+      const matchingEntry = entries.find((e) => e.key === normalizedKey);
       exportSchemaNodes.push({
         id: uid("n"),
         key,
         nodeType: "value",
-        binding: { source: "dataSchema", addonId: dsAddonId, entryKey: normalizeKey(key) },
+        binding: { source: "dataSchema", addonId: dsAddonId, addonName: "Base Properties", entryKey: normalizedKey, entryId: matchingEntry?.id },
       });
     }
   }
@@ -197,8 +198,9 @@ function buildDataSchemaFromObject(
 
   for (const [key, value] of Object.entries(obj)) {
     const normalizedKey = normalizeKey(key);
+    const entryId = uid("stat");
     entries.push({
-      id: uid("stat"),
+      id: entryId,
       key: normalizedKey,
       label: key,
       valueType: inferDataSchemaValueType(value),
@@ -208,7 +210,7 @@ function buildDataSchemaFromObject(
       id: uid("n"),
       key,
       nodeType: "value",
-      binding: { source: "dataSchema", addonId: dsAddonId, entryKey: normalizedKey },
+      binding: { source: "dataSchema", addonId: dsAddonId, addonName: groupName, entryKey: normalizedKey, entryId },
     });
   }
 
@@ -304,9 +306,10 @@ function buildProgressionTableFromArray(
     id: uid("n"),
     key: arrayKey,
     nodeType: "array",
-    arraySource: { type: "progressionTable" as const, addonId: ptAddonId },
+    arraySource: { type: "progressionTable" as const, addonId: ptAddonId, addonName: arrayKey },
     itemTemplate,
   };
 
   return { addon, schemaNode };
 }
+

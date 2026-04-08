@@ -14,11 +14,21 @@ type ResolveContext = {
 
 function findDataSchemaAddon(
   addons: SectionAddon[],
-  addonId: string
+  addonId: string,
+  addonName?: string
 ): DataSchemaAddonDraft | undefined {
+  // Try by ID first
   for (const addon of addons) {
     if ((addon.type === "dataSchema" || addon.type === "genericStats") && addon.id === addonId) {
       return addon.data as DataSchemaAddonDraft;
+    }
+  }
+  // Fallback: match by name (for templates)
+  if (addonName) {
+    for (const addon of addons) {
+      if ((addon.type === "dataSchema" || addon.type === "genericStats") && addon.name === addonName) {
+        return addon.data as DataSchemaAddonDraft;
+      }
     }
   }
   return undefined;
@@ -26,14 +36,38 @@ function findDataSchemaAddon(
 
 function findProgressionTableAddon(
   addons: SectionAddon[],
-  addonId: string
+  addonId: string,
+  addonName?: string
 ): ProgressionTableAddonDraft | undefined {
+  // Try by ID first
   for (const addon of addons) {
     if (addon.type === "progressionTable" && addon.id === addonId) {
       return addon.data as ProgressionTableAddonDraft;
     }
   }
+  // Fallback: match by name (for templates)
+  if (addonName) {
+    for (const addon of addons) {
+      if (addon.type === "progressionTable" && addon.name === addonName) {
+        return addon.data as ProgressionTableAddonDraft;
+      }
+    }
+  }
   return undefined;
+}
+
+function findDataSchemaEntry(
+  addons: SectionAddon[],
+  binding: Extract<ExportSchemaBinding, { source: "dataSchema" }>
+) {
+  const schema = findDataSchemaAddon(addons, binding.addonId, binding.addonName);
+  if (!schema) return undefined;
+  // Prefer lookup by entryId (stable), fallback to entryKey
+  if (binding.entryId) {
+    const byId = schema.entries.find((e) => e.id === binding.entryId);
+    if (byId) return byId;
+  }
+  return schema.entries.find((e) => e.key === binding.entryKey);
 }
 
 function resolveBinding(
@@ -45,9 +79,7 @@ function resolveBinding(
       return binding.value;
 
     case "dataSchema": {
-      const schema = findDataSchemaAddon(ctx.sectionAddons, binding.addonId);
-      if (!schema) return null;
-      const entry = schema.entries.find((e) => e.key === binding.entryKey);
+      const entry = findDataSchemaEntry(ctx.sectionAddons, binding);
       return entry ? entry.value : null;
     }
 
@@ -63,6 +95,18 @@ function resolveBinding(
   }
 }
 
+/**
+ * Resolves the effective JSON property key for a node.
+ * For bound nodes, the key comes live from the source data.
+ */
+function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
+  if (node.binding?.source === "dataSchema") {
+    const entry = findDataSchemaEntry(ctx.sectionAddons, node.binding);
+    if (entry) return entry.key;
+  }
+  return node.key;
+}
+
 function resolveNode(
   node: ExportSchemaNode,
   ctx: ResolveContext
@@ -71,7 +115,7 @@ function resolveNode(
     case "object": {
       const obj: Record<string, unknown> = {};
       for (const child of node.children ?? []) {
-        obj[child.key] = resolveNode(child, ctx);
+        obj[resolveNodeKey(child, ctx)] = resolveNode(child, ctx);
       }
       return obj;
     }
@@ -80,13 +124,15 @@ function resolveNode(
       if (!node.arraySource || !node.itemTemplate) return [];
       const table = findProgressionTableAddon(
         ctx.sectionAddons,
-        node.arraySource.addonId
+        node.arraySource.addonId,
+        node.arraySource.addonName
       );
       if (!table) return [];
       return table.rows.map((row) => {
+        const rowCtx = { ...ctx, row };
         const itemObj: Record<string, unknown> = {};
         for (const tmpl of node.itemTemplate!) {
-          itemObj[tmpl.key] = resolveNode(tmpl, { ...ctx, row });
+          itemObj[resolveNodeKey(tmpl, rowCtx)] = resolveNode(tmpl, rowCtx);
         }
         return itemObj;
       });
@@ -109,7 +155,8 @@ export function resolveExportSchema(
   const ctx: ResolveContext = { sectionAddons };
   const result: Record<string, unknown> = {};
   for (const node of nodes) {
-    result[node.key] = resolveNode(node, ctx);
+    result[resolveNodeKey(node, ctx)] = resolveNode(node, ctx);
   }
   return result;
 }
+

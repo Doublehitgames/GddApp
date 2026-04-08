@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType } from "@/lib/addons/types";
+import type { DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, EconomyLinkAddonDraft, EconomyLinkFieldKey, GlobalVariableAddonDraft, ProductionAddonDraft, ProductionFieldKey } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
@@ -116,6 +116,184 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     }
     return out;
   }, [projects]);
+
+  const ECONOMY_LINK_FIELDS: Array<{ key: EconomyLinkFieldKey; label: string }> = [
+    { key: "buyValue", label: "Valor de Compra" },
+    { key: "minBuyValue", label: "Valor de Compra Min" },
+    { key: "sellValue", label: "Valor de Venda" },
+    { key: "maxSellValue", label: "Valor de Venda Max" },
+    { key: "unlockValue", label: "Nível de Desbloqueio" },
+  ];
+
+  // Only show Economy Link addons from the same section as this Data Schema
+  const economyLinkRefOptions = useMemo(() => {
+    const out: Array<{ refId: string; addonId: string; label: string; data: EconomyLinkAddonDraft }> = [];
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        // Find the section that contains THIS Data Schema addon
+        const hasThisAddon = (section.addons || []).some((a) => a.id === addon.id);
+        if (!hasThisAddon) continue;
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "economyLink") continue;
+          const addonName = sectionAddon.name?.trim() || "Economy Link";
+          out.push({
+            refId: sectionAddon.id,
+            addonId: sectionAddon.id,
+            label: addonName,
+            data: sectionAddon.data as EconomyLinkAddonDraft,
+          });
+        }
+        return out; // Found the section, no need to keep searching
+      }
+    }
+    return out;
+  }, [projects, addon.id]);
+
+  const getEconomyLinkValue = (refId: string, field: EconomyLinkFieldKey): number | undefined => {
+    const found = economyLinkRefOptions.find((opt) => opt.refId === refId);
+    if (!found) return undefined;
+    return found.data[field] as number | undefined;
+  };
+
+  const PRODUCTION_FIELDS_BASE: Array<{ key: ProductionFieldKey; label: string; requiresOutput?: "buy" | "sell" | "unlock" }> = [
+    { key: "minOutput", label: "Qtd Minima" },
+    { key: "maxOutput", label: "Qtd Maxima" },
+    { key: "intervalSeconds", label: "Tempo (passivo)" },
+    { key: "craftTimeSeconds", label: "Tempo (receita)" },
+    { key: "capacity", label: "Capacidade maxima" },
+    { key: "outputBuyEffective", label: "Compra do item (efetivo)", requiresOutput: "buy" },
+    { key: "outputMinBuyValue", label: "Compra min do item", requiresOutput: "buy" },
+    { key: "outputSellEffective", label: "Venda do item (efetivo)", requiresOutput: "sell" },
+    { key: "outputMaxSellValue", label: "Venda max do item", requiresOutput: "sell" },
+    { key: "outputUnlockValue", label: "Lv desbloqueio do item", requiresOutput: "unlock" },
+  ];
+
+  // Only show Production addons from the same section
+  const productionRefOptions = useMemo(() => {
+    const out: Array<{ refId: string; label: string; data: ProductionAddonDraft }> = [];
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        const hasThisAddon = (section.addons || []).some((a) => a.id === addon.id);
+        if (!hasThisAddon) continue;
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "production") continue;
+          const addonName = sectionAddon.name?.trim() || "Production";
+          out.push({
+            refId: sectionAddon.id,
+            label: addonName,
+            data: sectionAddon.data as ProductionAddonDraft,
+          });
+        }
+        return out;
+      }
+    }
+    return out;
+  }, [projects, addon.id]);
+
+  // Build global variable map for computing effective values (same as EconomyLinkAddonPanel)
+  const globalVariableByRefId = useMemo(() => {
+    const map = new Map<string, { valueType: string; defaultValue: number | boolean }>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "globalVariable") continue;
+          if (map.has(section.id)) continue;
+          const data = sectionAddon.data as GlobalVariableAddonDraft;
+          map.set(section.id, { valueType: data.valueType, defaultValue: data.defaultValue });
+        }
+      }
+    }
+    return map;
+  }, [projects]);
+
+  /** Applies modifiers (global variables) to a base value - same logic as EconomyLinkAddonPanel */
+  const computeEffective = (base: number | undefined, modifiers: Array<{ refId: string }>, bounds?: { min?: number; max?: number }): number | undefined => {
+    if (base == null || !Number.isFinite(base)) return undefined;
+    if (!modifiers.length) {
+      if (bounds?.min != null || bounds?.max != null) {
+        let v = base;
+        if (bounds.min != null) v = Math.max(bounds.min, v);
+        if (bounds.max != null) v = Math.min(bounds.max, v);
+        return Math.round(v);
+      }
+      return undefined;
+    }
+    let next = base;
+    let applied = 0;
+    for (const mod of modifiers) {
+      const meta = globalVariableByRefId.get(mod.refId);
+      if (!meta || typeof meta.defaultValue !== "number" || !Number.isFinite(meta.defaultValue)) continue;
+      if (meta.valueType === "percent") { next += (next * meta.defaultValue) / 100; applied++; }
+      else if (meta.valueType === "multiplier") { next *= meta.defaultValue; applied++; }
+      else if (meta.valueType === "flat") { next += meta.defaultValue; applied++; }
+    }
+    if (applied === 0 && !bounds?.min && !bounds?.max) return undefined;
+    let v = Math.max(0, next);
+    if (bounds?.min != null) v = Math.max(bounds.min, v);
+    if (bounds?.max != null) v = Math.min(bounds.max, v);
+    return Math.round(v);
+  };
+
+  /** Find the Economy Link data of the item produced by a Production addon */
+  const findOutputEconomyLink = (productionRefId: string): EconomyLinkAddonDraft | undefined => {
+    const found = productionRefOptions.find((opt) => opt.refId === productionRefId);
+    const outputRef = found?.data.outputRef;
+    if (!outputRef) return undefined;
+    for (const project of projects) {
+      const targetSection = (project.sections || []).find((s) => s.id === outputRef);
+      if (!targetSection) continue;
+      for (const sAddon of targetSection.addons || []) {
+        if (sAddon.type === "economyLink") return sAddon.data as EconomyLinkAddonDraft;
+      }
+    }
+    return undefined;
+  };
+
+  const getProductionValue = (refId: string, field: ProductionFieldKey): number | undefined => {
+    const found = productionRefOptions.find((opt) => opt.refId === refId);
+    if (!found) return undefined;
+
+    // Direct production fields
+    const directFields: Record<string, keyof ProductionAddonDraft> = {
+      minOutput: "minOutput", maxOutput: "maxOutput",
+      intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
+    };
+    if (field in directFields) return found.data[directFields[field]] as number | undefined;
+
+    // Output item economy fields (with effective values)
+    const el = findOutputEconomyLink(refId);
+    if (!el) return undefined;
+
+    switch (field) {
+      case "outputBuyEffective":
+        return computeEffective(el.buyValue, el.buyModifiers || [], { min: el.minBuyValue }) ?? el.buyValue;
+      case "outputMinBuyValue":
+        return el.minBuyValue;
+      case "outputSellEffective":
+        return computeEffective(el.sellValue, el.sellModifiers || [], { max: el.maxSellValue }) ?? el.sellValue;
+      case "outputMaxSellValue":
+        return el.maxSellValue;
+      case "outputUnlockValue":
+        return el.unlockValue;
+      default:
+        return undefined;
+    }
+  };
+
+  // Filter production fields: only show output options if the production item has the config active
+  const getAvailableProductionFields = (productionRefId: string): Array<{ key: ProductionFieldKey; label: string }> => {
+    const el = findOutputEconomyLink(productionRefId);
+    const hasBuy = el?.hasBuyConfig ?? false;
+    const hasSell = el?.hasSellConfig ?? false;
+    const hasUnlock = el?.hasUnlockConfig ?? false;
+    return PRODUCTION_FIELDS_BASE.filter((f) => {
+      if (!f.requiresOutput) return true;
+      if (f.requiresOutput === "buy") return hasBuy;
+      if (f.requiresOutput === "sell") return hasSell;
+      if (f.requiresOutput === "unlock") return hasUnlock;
+      return true;
+    });
+  };
 
   useEffect(() => {
     setCollapsedEntries((prev) => {
@@ -251,12 +429,15 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                     : null;
                 const linkedXpMeta = entry.unitXpRef ? xpRefOptions.find((item) => item.refId === entry.unitXpRef) : undefined;
                 const isLinkedToXp = Boolean(linkedXpMeta);
+                const isLinkedToEconomy = Boolean(entry.economyLinkRef && entry.economyLinkField);
+                const isLinkedToProduction = Boolean(entry.productionRef && entry.productionField);
+                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction;
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
                     ? "float"
                     : "int"
                   : null;
-                const effectiveValueType = linkedValueType || entry.valueType;
+                const effectiveValueType = isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
                 const supportsBoundsByType = effectiveValueType !== "boolean" && effectiveValueType !== "string";
                 const useBounds = supportsBoundsByType && (entry.min != null || entry.max != null);
                 const title =
@@ -332,63 +513,229 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               </label>
                             </div>
                           </div>
+                          {/* Binding type selector */}
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                             <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
-                              {t("dataSchemaAddon.unitXpRefLabel", "Vínculo com página de XP (opcional)")}
+                              Vinculo (opcional)
                             </p>
-                            <label className="block">
-                              <select
-                                value={
-                                  entry.unitXpRef
-                                    ? unitRefSelectedKnown
-                                      ? entry.unitXpRef
-                                      : "__invalid__"
-                                    : ""
-                                }
-                                onChange={(event) => {
-                                  const next = event.target.value;
-                                  if (next === "__invalid__") return;
-                                  const nextRef = next || undefined;
-                                  const nextLinkedXp = nextRef ? xpRefOptions.find((item) => item.refId === nextRef) : undefined;
-                                  const forcedType: DataSchemaValueType | undefined = nextLinkedXp
-                                    ? nextLinkedXp.decimals > 0
-                                      ? "float"
-                                      : "int"
-                                    : undefined;
-                                  let nextValue = entry.value;
-                                  if (nextLinkedXp) {
-                                    const parsed =
-                                      typeof entry.value === "number"
-                                        ? entry.value
-                                        : Number(String(entry.value ?? "").replace(",", "."));
-                                    const safeNumeric = Number.isFinite(parsed) ? parsed : 0;
-                                    nextValue = roundToDecimals(safeNumeric, nextLinkedXp.decimals);
-                                  }
-                                  updateEntry(entry.id, {
-                                    unitXpRef: nextRef,
-                                    ...(forcedType ? { valueType: forcedType, value: nextValue } : {}),
-                                  });
-                                }}
-                                className={INPUT_CLASS}
-                              >
-                                <option value="">{t("dataSchemaAddon.selectNone", "Sem vínculo")}</option>
-                                {entry.unitXpRef && !unitRefSelectedKnown && (
-                                  <option value="__invalid__">
-                                    {t("dataSchemaAddon.invalidUnitXpRef", "Vínculo inválido (página de XP não encontrada)")}
-                                  </option>
-                                )}
-                                {xpRefOptions.map((option) => (
-                                  <option key={option.refId} value={option.refId}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                            <div className="flex flex-wrap items-start gap-2">
+                              <label className="min-w-[130px]">
+                                <span className="mb-1 block text-xs text-gray-400">Tipo</span>
+                                <select
+                                  value={entry.productionRef ? "production" : entry.economyLinkRef ? "economy" : entry.unitXpRef ? "xp" : "none"}
+                                  onChange={(event) => {
+                                    const next = event.target.value;
+                                    const clearAll = { unitXpRef: undefined, economyLinkRef: undefined, economyLinkField: undefined, productionRef: undefined, productionField: undefined };
+                                    if (next === "none") {
+                                      updateEntry(entry.id, clearAll);
+                                    } else if (next === "xp") {
+                                      const first = xpRefOptions[0];
+                                      const forcedType: DataSchemaValueType | undefined = first ? (first.decimals > 0 ? "float" : "int") : undefined;
+                                      updateEntry(entry.id, {
+                                        ...clearAll,
+                                        unitXpRef: first?.refId,
+                                        ...(forcedType ? { valueType: forcedType } : {}),
+                                      });
+                                    } else if (next === "economy") {
+                                      const first = economyLinkRefOptions[0];
+                                      const defaultField: EconomyLinkFieldKey = "buyValue";
+                                      const linkedValue = first ? getEconomyLinkValue(first.refId, defaultField) : 0;
+                                      updateEntry(entry.id, {
+                                        ...clearAll,
+                                        economyLinkRef: first?.refId,
+                                        economyLinkField: defaultField,
+                                        valueType: "int",
+                                        value: linkedValue ?? 0,
+                                      });
+                                    } else if (next === "production") {
+                                      const first = productionRefOptions[0];
+                                      const defaultField: ProductionFieldKey = "minOutput";
+                                      const linkedValue = first ? getProductionValue(first.refId, defaultField) : 0;
+                                      updateEntry(entry.id, {
+                                        ...clearAll,
+                                        productionRef: first?.refId,
+                                        productionField: defaultField,
+                                        valueType: "int",
+                                        value: linkedValue ?? 0,
+                                      });
+                                    }
+                                  }}
+                                  className={INPUT_CLASS}
+                                >
+                                  <option value="none">Sem vinculo</option>
+                                  <option value="xp">Pagina de XP</option>
+                                  {economyLinkRefOptions.length > 0 && <option value="economy">Economia vinculada</option>}
+                                  {productionRefOptions.length > 0 && <option value="production">Producao</option>}
+                                </select>
+                              </label>
+
+                              {/* XP ref selector */}
+                              {entry.unitXpRef !== undefined && !entry.economyLinkRef && !entry.productionRef && (
+                                <label className="min-w-[200px]">
+                                  <span className="mb-1 block text-xs text-gray-400">Pagina</span>
+                                  <select
+                                    value={
+                                      entry.unitXpRef
+                                        ? unitRefSelectedKnown
+                                          ? entry.unitXpRef
+                                          : "__invalid__"
+                                        : ""
+                                    }
+                                    onChange={(event) => {
+                                      const next = event.target.value;
+                                      if (next === "__invalid__") return;
+                                      const nextRef = next || undefined;
+                                      const nextLinkedXp = nextRef ? xpRefOptions.find((item) => item.refId === nextRef) : undefined;
+                                      const forcedType: DataSchemaValueType | undefined = nextLinkedXp
+                                        ? nextLinkedXp.decimals > 0
+                                          ? "float"
+                                          : "int"
+                                        : undefined;
+                                      let nextValue = entry.value;
+                                      if (nextLinkedXp) {
+                                        const parsed =
+                                          typeof entry.value === "number"
+                                            ? entry.value
+                                            : Number(String(entry.value ?? "").replace(",", "."));
+                                        const safeNumeric = Number.isFinite(parsed) ? parsed : 0;
+                                        nextValue = roundToDecimals(safeNumeric, nextLinkedXp.decimals);
+                                      }
+                                      updateEntry(entry.id, {
+                                        unitXpRef: nextRef,
+                                        ...(forcedType ? { valueType: forcedType, value: nextValue } : {}),
+                                      });
+                                    }}
+                                    className={INPUT_CLASS}
+                                  >
+                                    <option value="">{t("dataSchemaAddon.selectNone", "Sem vínculo")}</option>
+                                    {entry.unitXpRef && !unitRefSelectedKnown && (
+                                      <option value="__invalid__">
+                                        {t("dataSchemaAddon.invalidUnitXpRef", "Vínculo inválido")}
+                                      </option>
+                                    )}
+                                    {xpRefOptions.map((option) => (
+                                      <option key={option.refId} value={option.refId}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              )}
+
+                              {/* Economy Link ref + field selectors */}
+                              {entry.economyLinkRef && (
+                                <>
+                                  <label className="min-w-[200px]">
+                                    <span className="mb-1 block text-xs text-gray-400">Addon</span>
+                                    <select
+                                      value={entry.economyLinkRef}
+                                      onChange={(event) => {
+                                        const nextRef = event.target.value;
+                                        const field = entry.economyLinkField ?? "buyValue";
+                                        const linkedValue = getEconomyLinkValue(nextRef, field);
+                                        updateEntry(entry.id, {
+                                          economyLinkRef: nextRef,
+                                          value: linkedValue ?? 0,
+                                        });
+                                      }}
+                                      className={INPUT_CLASS}
+                                    >
+                                      {economyLinkRefOptions.map((option) => (
+                                        <option key={option.refId} value={option.refId}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label className="min-w-[160px]">
+                                    <span className="mb-1 block text-xs text-gray-400">Campo</span>
+                                    <select
+                                      value={entry.economyLinkField ?? "buyValue"}
+                                      onChange={(event) => {
+                                        const field = event.target.value as EconomyLinkFieldKey;
+                                        const linkedValue = getEconomyLinkValue(entry.economyLinkRef!, field);
+                                        updateEntry(entry.id, {
+                                          economyLinkField: field,
+                                          value: linkedValue ?? 0,
+                                        });
+                                      }}
+                                      className={INPUT_CLASS}
+                                    >
+                                      {ECONOMY_LINK_FIELDS.map((f) => (
+                                        <option key={f.key} value={f.key}>{f.label}</option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </>
+                              )}
+
+                              {/* Production ref + field selectors */}
+                              {entry.productionRef && (
+                                <>
+                                  <label className="min-w-[200px]">
+                                    <span className="mb-1 block text-xs text-gray-400">Addon</span>
+                                    <select
+                                      value={entry.productionRef}
+                                      onChange={(event) => {
+                                        const nextRef = event.target.value;
+                                        const field = entry.productionField ?? "minOutput";
+                                        const linkedValue = getProductionValue(nextRef, field);
+                                        updateEntry(entry.id, {
+                                          productionRef: nextRef,
+                                          value: linkedValue ?? 0,
+                                        });
+                                      }}
+                                      className={INPUT_CLASS}
+                                    >
+                                      {productionRefOptions.map((option) => (
+                                        <option key={option.refId} value={option.refId}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label className="min-w-[160px]">
+                                    <span className="mb-1 block text-xs text-gray-400">Campo</span>
+                                    <select
+                                      value={entry.productionField ?? "minOutput"}
+                                      onChange={(event) => {
+                                        const field = event.target.value as ProductionFieldKey;
+                                        const linkedValue = getProductionValue(entry.productionRef!, field);
+                                        updateEntry(entry.id, {
+                                          productionField: field,
+                                          value: linkedValue ?? 0,
+                                        });
+                                      }}
+                                      className={INPUT_CLASS}
+                                    >
+                                      {getAvailableProductionFields(entry.productionRef!).map((f) => (
+                                        <option key={f.key} value={f.key}>{f.label}</option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </>
+                              )}
+                            </div>
                           </div>
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                             <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
                               {t("dataSchemaAddon.valueLabel", "Valor")}
                             </p>
+                            {isReadOnlyValue ? (
+                              <div className="flex items-center gap-3 py-1">
+                                <span className="text-xs text-gray-400">Tipo:</span>
+                                <span className="text-xs font-mono text-gray-300">int</span>
+                                <span className="text-xs text-gray-400">Valor:</span>
+                                <span className="text-sm font-mono font-medium text-indigo-300">
+                                  {isLinkedToEconomy
+                                    ? (getEconomyLinkValue(entry.economyLinkRef!, entry.economyLinkField!) ?? "N/A")
+                                    : (getProductionValue(entry.productionRef!, entry.productionField!) ?? "N/A")}
+                                </span>
+                                <span className="text-[10px] text-gray-500 italic">
+                                  (vinculado - somente leitura)
+                                </span>
+                              </div>
+                            ) : (
                             <div className="mt-2 flex flex-wrap items-end gap-2">
                               {!isLinkedToXp && (
                                 <label className="min-w-[130px]">
@@ -488,6 +835,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                 </label>
                               )}
                             </div>
+                            )}
                           </div>
 
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
