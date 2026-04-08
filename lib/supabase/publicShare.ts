@@ -26,6 +26,7 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       parentId: row.parent_id || undefined,
       order: (row.sort_order ?? row.order) ?? 0,
       color: row.color || undefined,
+      dataId: row.data_id || undefined,
       domainTags: Array.isArray(row.domain_tags) && row.domain_tags.length > 0 ? row.domain_tags : undefined,
     })),
   };

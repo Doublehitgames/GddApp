@@ -346,6 +346,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_at: (row.updated_at as string) || undefined,
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
+    dataId: (row.data_id as string) || undefined,
     domainTags,
     addons: addons as Section["addons"],
   };
