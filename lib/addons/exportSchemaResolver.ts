@@ -3,6 +3,9 @@ import type {
   ExportSchemaBinding,
   SectionAddon,
   DataSchemaAddonDraft,
+  DataSchemaEntry,
+  EconomyLinkAddonDraft,
+  ProductionAddonDraft,
   ProgressionTableAddonDraft,
   ProgressionTableRow,
 } from "@/lib/addons/types";
@@ -70,6 +73,58 @@ function findDataSchemaEntry(
   return schema.entries.find((e) => e.key === binding.entryKey);
 }
 
+/**
+ * Resolves the effective value of a Data Schema entry.
+ * If the entry has an active binding (economyLinkRef or productionRef),
+ * the value is computed live from the source addon instead of using the stored entry.value.
+ */
+function resolveEntryEffectiveValue(
+  entry: DataSchemaEntry,
+  allAddons: SectionAddon[]
+): string | number | boolean {
+  // Economy Link binding
+  if (entry.economyLinkRef && entry.economyLinkField) {
+    const elAddon = allAddons.find((a) => a.type === "economyLink" && a.id === entry.economyLinkRef);
+    if (elAddon) {
+      const el = elAddon.data as EconomyLinkAddonDraft;
+      const directValue = el[entry.economyLinkField as keyof EconomyLinkAddonDraft];
+      if (typeof directValue === "number") return directValue;
+    }
+  }
+
+  // Production binding
+  if (entry.productionRef && entry.productionField) {
+    const prodAddon = allAddons.find((a) => a.type === "production" && a.id === entry.productionRef);
+    if (prodAddon) {
+      const prod = prodAddon.data as ProductionAddonDraft;
+      const field = entry.productionField;
+
+      // Direct production fields
+      const directFields: Record<string, keyof ProductionAddonDraft> = {
+        minOutput: "minOutput", maxOutput: "maxOutput",
+        intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
+      };
+      if (field in directFields) {
+        const v = prod[directFields[field]];
+        if (typeof v === "number") return v;
+        return 0;
+      }
+
+      // Output item economy fields: follow Production.outputRef → section → Economy Link
+      if (field.startsWith("output") && prod.outputRef) {
+        // Find the Economy Link on the produced item's section
+        // We need to search all projects, but we only have addons from the current section
+        // The outputRef is a section ID, so we can't resolve cross-section here directly.
+        // However, the DataSchemaAddonPanel already computes and stores the value in entry.value
+        // for these cross-section lookups. So we fall back to entry.value for output* fields.
+        return entry.value;
+      }
+    }
+  }
+
+  return entry.value;
+}
+
 function resolveBinding(
   binding: ExportSchemaBinding,
   ctx: ResolveContext
@@ -80,7 +135,8 @@ function resolveBinding(
 
     case "dataSchema": {
       const entry = findDataSchemaEntry(ctx.sectionAddons, binding);
-      return entry ? entry.value : null;
+      if (!entry) return null;
+      return resolveEntryEffectiveValue(entry, ctx.sectionAddons);
     }
 
     case "rowLevel":
