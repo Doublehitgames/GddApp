@@ -185,6 +185,8 @@ export type DataSchemaEntry = {
   productionRef?: string;
   /** Which field from the Production addon to pull. */
   productionField?: ProductionFieldKey;
+  /** When true, the value comes from the section's dataId field. */
+  usePageDataId?: boolean;
   notes?: string;
 };
 

@@ -20,24 +20,24 @@ export function ExportSchemaAddonReadOnly({
 
   const projects = useProjectStore((s) => s.projects);
 
-  // Resolve section addons from the store if not provided externally
-  const sectionAddons = useMemo(() => {
-    if (externalAddons) return externalAddons;
+  // Resolve section addons and dataId from the store if not provided externally
+  const sectionContext = useMemo(() => {
+    if (externalAddons) return { addons: externalAddons, dataId: undefined as string | undefined };
 
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
         const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
         if (found) {
-          return (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id);
+          return { addons: (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id), dataId: sec.dataId };
         }
       }
     }
-    return [];
+    return { addons: [] as SectionAddon[], dataId: undefined as string | undefined };
   }, [externalAddons, projects, addon.id]);
 
   const resolved = useMemo(
-    () => resolveExportSchema(addon.nodes, sectionAddons),
-    [addon.nodes, sectionAddons],
+    () => resolveExportSchema(addon.nodes, sectionContext.addons, sectionContext.dataId),
+    [addon.nodes, sectionContext],
   );
 
   const jsonString = useMemo(

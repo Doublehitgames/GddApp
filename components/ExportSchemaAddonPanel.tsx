@@ -46,7 +46,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
         const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
-        if (found) return { projectId: proj.id, sectionId: sec.id, addons: sec.addons ?? [] };
+        if (found) return { projectId: proj.id, sectionId: sec.id, addons: sec.addons ?? [], dataId: sec.dataId };
       }
     }
     return null;
@@ -80,7 +80,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   };
 
   const resolved = useMemo(
-    () => (showPreview ? resolveExportSchema(addon.nodes, sectionAddons) : null),
+    () => (showPreview ? resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId) : null),
     [showPreview, addon.nodes, sectionAddons]
   );
 
@@ -90,14 +90,14 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   );
 
   const handleCopy = async () => {
-    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons), null, 4);
+    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId), null, 4);
     await navigator.clipboard.writeText(json);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons), null, 4);
+    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId), null, 4);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

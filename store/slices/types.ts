@@ -259,6 +259,8 @@ export type SectionAuditBy = { userId: string; displayName: string | null };
 export type Section = {
   id: UUID;
   title: string;
+  /** User-defined data identifier (e.g. "FARM_ANIMAL_CHICKEN"). Used for game data binding, not internal references. */
+  dataId?: string;
   thumbImageUrl?: string;
   flowchartEnabled?: boolean;
   flowchartState?: DiagramState;
@@ -351,7 +353,8 @@ export interface ProjectStore {
     color?: string,
     updatedBy?: SectionAuditBy,
     domainTags?: string[],
-    addons?: SectionAddon[]
+    addons?: SectionAddon[],
+    dataId?: string
   ) => void;
   setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;
   addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;

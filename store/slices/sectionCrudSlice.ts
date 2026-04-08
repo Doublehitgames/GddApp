@@ -98,7 +98,8 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       color?: string,
       updatedBy?: SectionAuditBy,
       domainTags?: string[],
-      addons?: SectionAddon[]
+      addons?: SectionAddon[],
+      dataId?: string
     ) => {
       const now = new Date().toISOString();
       const audit: Partial<Section> = { updated_at: now };
@@ -130,6 +131,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                       else if (resolvedColor === undefined) delete updated.color;
                       if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
                       if (addons !== undefined) updated.addons = addons.length ? addons : undefined;
+                      if (dataId !== undefined) updated.dataId = dataId || undefined;
                       return updated;
                     }
                     return s;

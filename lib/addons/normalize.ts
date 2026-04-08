@@ -465,6 +465,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
       economyLinkField: economyLinkRef ? economyLinkField : undefined,
       productionRef,
       productionField: productionRef ? productionField : undefined,
+      usePageDataId: asBooleanLoose(rawEntry.usePageDataId) || undefined,
       notes,
     });
   }

@@ -89,6 +89,16 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const entries = addon.entries || [];
+
+  // Find the section that contains this Data Schema addon (for DataID binding)
+  const section = useMemo(() => {
+    for (const project of projects) {
+      for (const sec of project.sections || []) {
+        if ((sec.addons || []).some((a) => a.id === addon.id)) return sec;
+      }
+    }
+    return null;
+  }, [projects, addon.id]);
   const [collapsedEntries, setCollapsedEntries] = useState<Record<string, boolean>>({});
   const entryIdSignature = useMemo(() => entries.map((entry) => entry.id).join("|"), [entries]);
   const xpRefOptions = useMemo(() => {
@@ -431,13 +441,14 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                 const isLinkedToXp = Boolean(linkedXpMeta);
                 const isLinkedToEconomy = Boolean(entry.economyLinkRef && entry.economyLinkField);
                 const isLinkedToProduction = Boolean(entry.productionRef && entry.productionField);
-                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction;
+                const isLinkedToPageDataId = Boolean(entry.usePageDataId);
+                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToPageDataId;
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
                     ? "float"
                     : "int"
                   : null;
-                const effectiveValueType = isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
+                const effectiveValueType = isLinkedToPageDataId ? "string" : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
                 const supportsBoundsByType = effectiveValueType !== "boolean" && effectiveValueType !== "string";
                 const useBounds = supportsBoundsByType && (entry.min != null || entry.max != null);
                 const title =
@@ -522,12 +533,19 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               <label className="min-w-[130px]">
                                 <span className="mb-1 block text-xs text-gray-400">Tipo</span>
                                 <select
-                                  value={entry.productionRef ? "production" : entry.economyLinkRef ? "economy" : entry.unitXpRef ? "xp" : "none"}
+                                  value={entry.usePageDataId ? "pageDataId" : entry.productionRef ? "production" : entry.economyLinkRef ? "economy" : entry.unitXpRef ? "xp" : "none"}
                                   onChange={(event) => {
                                     const next = event.target.value;
-                                    const clearAll = { unitXpRef: undefined, economyLinkRef: undefined, economyLinkField: undefined, productionRef: undefined, productionField: undefined };
+                                    const clearAll = { unitXpRef: undefined, economyLinkRef: undefined, economyLinkField: undefined, productionRef: undefined, productionField: undefined, usePageDataId: undefined };
                                     if (next === "none") {
                                       updateEntry(entry.id, clearAll);
+                                    } else if (next === "pageDataId") {
+                                      updateEntry(entry.id, {
+                                        ...clearAll,
+                                        usePageDataId: true,
+                                        valueType: "string",
+                                        value: section?.dataId ?? "",
+                                      });
                                     } else if (next === "xp") {
                                       const first = xpRefOptions[0];
                                       const forcedType: DataSchemaValueType | undefined = first ? (first.decimals > 0 ? "float" : "int") : undefined;
@@ -563,6 +581,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                   className={INPUT_CLASS}
                                 >
                                   <option value="none">Sem vinculo</option>
+                                  <option value="pageDataId">DataID da pagina</option>
                                   <option value="xp">Pagina de XP</option>
                                   {economyLinkRefOptions.length > 0 && <option value="economy">Economia vinculada</option>}
                                   {productionRefOptions.length > 0 && <option value="production">Producao</option>}
@@ -724,12 +743,14 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             {isReadOnlyValue ? (
                               <div className="flex items-center gap-3 py-1">
                                 <span className="text-xs text-gray-400">Tipo:</span>
-                                <span className="text-xs font-mono text-gray-300">int</span>
+                                <span className="text-xs font-mono text-gray-300">{isLinkedToPageDataId ? "string" : "int"}</span>
                                 <span className="text-xs text-gray-400">Valor:</span>
                                 <span className="text-sm font-mono font-medium text-indigo-300">
-                                  {isLinkedToEconomy
-                                    ? (getEconomyLinkValue(entry.economyLinkRef!, entry.economyLinkField!) ?? "N/A")
-                                    : (getProductionValue(entry.productionRef!, entry.productionField!) ?? "N/A")}
+                                  {isLinkedToPageDataId
+                                    ? (section?.dataId || "N/A")
+                                    : isLinkedToEconomy
+                                      ? (getEconomyLinkValue(entry.economyLinkRef!, entry.economyLinkField!) ?? "N/A")
+                                      : (getProductionValue(entry.productionRef!, entry.productionField!) ?? "N/A")}
                                 </span>
                                 <span className="text-[10px] text-gray-500 italic">
                                   (vinculado - somente leitura)

@@ -1936,6 +1936,23 @@ function SectionDetailContent({
             )}
           </div>
 
+          {/* DataID */}
+          {!isEditingTitle && (
+            <div className="flex items-center gap-2 -mt-1 mb-1">
+              <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
+              <input
+                type="text"
+                value={section?.dataId ?? ""}
+                onChange={(e) => {
+                  const nextDataId = e.target.value || undefined;
+                  editSection(projectId, sectionId, section.title, section.content, undefined, section.color, undefined, undefined, undefined, nextDataId);
+                }}
+                className="bg-transparent border-b border-gray-700 text-xs font-mono text-gray-300 outline-none focus:border-indigo-500 px-1 py-0.5 w-48 placeholder-gray-600"
+                placeholder="ex: FARM_ANIMAL_CHICKEN"
+              />
+            </div>
+          )}
+
           {/* Direita: ações (IA, mapa mental, documento, mover, excluir) */}
           <div className="relative flex items-center gap-2 shrink-0">
             {!inlineEdit && !isEditingTitle && (

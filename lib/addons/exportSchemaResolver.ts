@@ -12,6 +12,7 @@ import type {
 
 type ResolveContext = {
   sectionAddons: SectionAddon[];
+  sectionDataId?: string;
   row?: ProgressionTableRow;
 };
 
@@ -80,8 +81,14 @@ function findDataSchemaEntry(
  */
 function resolveEntryEffectiveValue(
   entry: DataSchemaEntry,
-  allAddons: SectionAddon[]
+  allAddons: SectionAddon[],
+  sectionDataId?: string
 ): string | number | boolean {
+  // Page DataID binding
+  if (entry.usePageDataId) {
+    return sectionDataId ?? "";
+  }
+
   // Economy Link binding
   if (entry.economyLinkRef && entry.economyLinkField) {
     const elAddon = allAddons.find((a) => a.type === "economyLink" && a.id === entry.economyLinkRef);
@@ -136,7 +143,7 @@ function resolveBinding(
     case "dataSchema": {
       const entry = findDataSchemaEntry(ctx.sectionAddons, binding);
       if (!entry) return null;
-      return resolveEntryEffectiveValue(entry, ctx.sectionAddons);
+      return resolveEntryEffectiveValue(entry, ctx.sectionAddons, ctx.sectionDataId);
     }
 
     case "rowLevel":
@@ -206,9 +213,10 @@ function resolveNode(
 
 export function resolveExportSchema(
   nodes: ExportSchemaNode[],
-  sectionAddons: SectionAddon[]
+  sectionAddons: SectionAddon[],
+  sectionDataId?: string
 ): Record<string, unknown> {
-  const ctx: ResolveContext = { sectionAddons };
+  const ctx: ResolveContext = { sectionAddons, sectionDataId };
   const result: Record<string, unknown> = {};
   for (const node of nodes) {
     result[resolveNodeKey(node, ctx)] = resolveNode(node, ctx);
