@@ -392,11 +392,6 @@ export function AttributeDefinitionsAddonPanel({ addon, onChange, onRemove }: At
         </DndContext>
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onRemove} className={BUTTON_DANGER_CLASS}>
-          {t("attributeDefinitionsAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

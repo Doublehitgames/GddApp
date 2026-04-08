@@ -1075,17 +1075,6 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
             >
               Exportar Lv-&gt;XP (JSON)
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm(t("balanceAddon.removeConfirm", "Tem certeza que deseja remover este addon de balanceamento?"))) {
-                  onRemove();
-                }
-              }}
-              className={BUTTON_DANGER_CLASS}
-            >
-              {t("balanceAddon.removeButton", "Remover addon")}
-            </button>
           </div>
         </>
       )}

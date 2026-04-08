@@ -32,6 +32,7 @@ interface ExportSchemaAddonPanelProps {
 
 export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddons: externalAddons }: ExportSchemaAddonPanelProps) {
   const [showPreview, setShowPreview] = useState(false);
+  const [showTree, setShowTree] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -147,49 +148,43 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
 
   return (
     <div className={SHELL}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-200">Remote Config</span>
-          <input
-            className={INPUT + " !w-48 !py-1 !text-xs"}
-            value={addon.name}
-            onChange={(e) => onChange({ ...addon, name: e.target.value })}
-            placeholder="Nome do schema"
-          />
-        </div>
-        <button type="button" className={BTN_DANGER} onClick={onRemove}>
-          Remover
-        </button>
-      </div>
-
-      {/* Schema Tree Editor */}
+      {/* Schema Tree Editor (collapsible) */}
       <div className={BLOCK + " mb-3"}>
-        <div className="text-xs text-gray-400 mb-2 font-medium">
-          Estrutura JSON
-        </div>
-        {addon.nodes.length === 0 && (
-          <p className="text-xs text-gray-500 italic mb-2">
-            Nenhuma propriedade definida. Clique em &quot;+ Propriedade&quot; para comecar.
-          </p>
-        )}
-        {addon.nodes.map((node) => (
-          <SchemaNodeEditor
-            key={node.id}
-            node={node}
-            onUpdate={(updated) =>
-              commit(addon.nodes.map((n) => (n.id === updated.id ? updated : n)))
-            }
-            onRemove={() => commit(addon.nodes.filter((n) => n.id !== node.id))}
-            onAddChild={handleAddChild}
-            sectionAddons={sectionAddons}
-            depth={0}
-            insideArray={false}
-            readOnly={false}
-          />
-        ))}
-        <button type="button" className={BTN + " mt-2"} onClick={addRootNode}>
-          + Propriedade
+        <button
+          type="button"
+          className="w-full flex items-center justify-between text-xs text-gray-400 font-medium"
+          onClick={() => setShowTree(!showTree)}
+        >
+          <span>Estrutura JSON ({addon.nodes.length} propriedade{addon.nodes.length !== 1 ? "s" : ""})</span>
+          <span className="transition-transform duration-200" style={{ transform: showTree ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
         </button>
+        {showTree && (
+          <div className="mt-2">
+            {addon.nodes.length === 0 && (
+              <p className="text-xs text-gray-500 italic mb-2">
+                Nenhuma propriedade definida. Clique em &quot;+ Propriedade&quot; para comecar.
+              </p>
+            )}
+            {addon.nodes.map((node) => (
+              <SchemaNodeEditor
+                key={node.id}
+                node={node}
+                onUpdate={(updated) =>
+                  commit(addon.nodes.map((n) => (n.id === updated.id ? updated : n)))
+                }
+                onRemove={() => commit(addon.nodes.filter((n) => n.id !== node.id))}
+                onAddChild={handleAddChild}
+                sectionAddons={sectionAddons}
+                depth={0}
+                insideArray={false}
+                readOnly={false}
+              />
+            ))}
+            <button type="button" className={BTN + " mt-2"} onClick={addRootNode}>
+              + Propriedade
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

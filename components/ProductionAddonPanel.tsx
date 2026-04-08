@@ -770,11 +770,6 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
         )}
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onRemove} className={BUTTON_DANGER_CLASS}>
-          {t("productionAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

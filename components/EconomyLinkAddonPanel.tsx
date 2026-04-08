@@ -677,15 +677,6 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
-        <button
-          type="button"
-          onClick={onRemove}
-          className={BUTTON_DANGER_CLASS}
-        >
-          {t("economyLinkAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

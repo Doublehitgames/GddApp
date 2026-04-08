@@ -33,6 +33,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
+  horizontalListSortingStrategy,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -1195,6 +1196,139 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
   );
 }
 
+function SortableAddonTab({
+  addon,
+  isActive,
+  onClick,
+  onRemove,
+  onRename,
+  label,
+  typeLabel,
+}: {
+  addon: SectionAddon;
+  isActive: boolean;
+  onClick: () => void;
+  onRemove: () => void;
+  onRename: (name: string) => void;
+  label: string;
+  typeLabel: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: addon.id });
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftName, setDraftName] = useState(addon.name || "");
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const commitName = () => {
+    const trimmed = draftName.trim();
+    if (trimmed !== addon.name) {
+      onRename(trimmed);
+    }
+    setIsEditing(false);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-t-lg cursor-pointer select-none whitespace-nowrap transition-colors ${
+        isActive
+          ? "bg-gray-800 border border-gray-600 border-b-transparent text-white"
+          : "bg-gray-900/50 border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+      }`}
+      onClick={onClick}
+    >
+      <span
+        className="text-gray-500 cursor-grab active:cursor-grabbing text-[10px] leading-none"
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+      >
+        ⋮⋮
+      </span>
+      <div className="min-w-0">
+        {isEditing ? (
+          <input
+            autoFocus
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+              else if (e.key === "Escape") { setDraftName(addon.name || ""); setIsEditing(false); }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-transparent border-b border-gray-500 text-xs font-medium text-white outline-none w-24 py-0"
+            placeholder={typeLabel}
+          />
+        ) : (
+          <div
+            className="text-xs font-medium truncate max-w-[120px]"
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setDraftName(addon.name || "");
+              setIsEditing(true);
+            }}
+            title="Duplo clique para renomear"
+          >
+            {label}
+          </div>
+        )}
+        {!isEditing && (
+          <div className="text-[10px] text-gray-500 truncate max-w-[120px]">{typeLabel}</div>
+        )}
+      </div>
+      <button
+        type="button"
+        className="ml-1 text-gray-500 hover:text-rose-400 text-[10px] leading-none shrink-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmRemove(true);
+        }}
+        title="Remover addon"
+      >
+        ✕
+      </button>
+      {confirmRemove && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={(e) => { e.stopPropagation(); setConfirmRemove(false); }} />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[260px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-gray-200 mb-1">
+              Remover <strong className="text-white">{label}</strong>?
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              Esta acao nao pode ser desfeita. Todos os dados deste addon serao perdidos.
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                onClick={() => setConfirmRemove(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
+                onClick={() => { setConfirmRemove(false); onRemove(); }}
+              >
+                Remover
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SortableAddonItem({
   addon,
   addonKey,
@@ -1450,6 +1584,16 @@ function SectionDetailContent({
   };
   // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
   const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
+  const [activeAddonId, setActiveAddonId] = useState<string | null>(null);
+  const [confirmRemoveAddon, setConfirmRemoveAddon] = useState<{ id: string; label: string } | null>(null);
+  const prevAddonCountRef = useRef(addons.length);
+  useEffect(() => {
+    // Auto-select the last addon when a new one is added
+    if (addons.length > prevAddonCountRef.current && addons.length > 0) {
+      setActiveAddonId(addons[addons.length - 1].id);
+    }
+    prevAddonCountRef.current = addons.length;
+  }, [addons.length]);
   const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
     ? getUnresolvedRefsFromContent(previewContent, sections || [], project?.title || "")
     : { unresolvedNames: [] as string[], hasProjectTitleRef: false };
@@ -2088,33 +2232,98 @@ function SectionDetailContent({
           )}
         </div>
       )}
-      {!inlineEdit && addons.length > 0 && (
-        <DndContext sensors={addonSensors} collisionDetection={closestCenter} onDragEnd={handleAddonDragEnd}>
-          <SortableContext items={addons.map((addon: SectionAddon) => addon.id)} strategy={verticalListSortingStrategy}>
-            <div className="max-w-6xl mx-auto mb-4 space-y-3">
-              {addons.map((addon: SectionAddon) => {
-                const addonKey = `${addon.type}:${addon.id}`;
-                const isCollapsed = collapsedAddonKeys[addonKey] ?? true;
-                const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
-                return (
-                  <SortableAddonItem
-                    key={addon.id}
-                    addon={addon}
-                    addonKey={addonKey}
-                    isCollapsed={isCollapsed}
-                    toggleAddonCollapsed={toggleAddonCollapsed}
-                    getAddonTypeLabel={getAddonTypeLabel}
-                    t={t}
-                    entry={entry}
-                    onUpdateAddon={onUpdateAddon}
-                    onRemoveAddon={onRemoveAddon}
-                  />
-                );
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+      {!inlineEdit && addons.length > 0 && (() => {
+        const effectiveActiveId = addons.some((a: SectionAddon) => a.id === activeAddonId) ? activeAddonId : addons[0]?.id ?? null;
+        const activeAddon = effectiveActiveId ? addons.find((a: SectionAddon) => a.id === effectiveActiveId) : null;
+        const activeEntry = activeAddon ? ADDON_REGISTRY.find((item) => item.type === activeAddon.type) : null;
+        return (
+          <div className="max-w-6xl mx-auto mb-4">
+            {/* Tab bar */}
+            <DndContext sensors={addonSensors} collisionDetection={closestCenter} onDragEnd={handleAddonDragEnd}>
+              <SortableContext items={addons.map((addon: SectionAddon) => addon.id)} strategy={horizontalListSortingStrategy}>
+                <div className="flex items-end gap-1 overflow-x-auto pb-0 px-[30px] scrollbar-thin scrollbar-thumb-gray-700">
+                  {addons.map((addon: SectionAddon) => (
+                    <SortableAddonTab
+                      key={addon.id}
+                      addon={addon}
+                      isActive={addon.id === effectiveActiveId}
+                      onClick={() => setActiveAddonId(addon.id)}
+                      onRemove={() => {
+                        onRemoveAddon(addon.id);
+                        if (addon.id === effectiveActiveId) {
+                          const idx = addons.findIndex((a: SectionAddon) => a.id === addon.id);
+                          const next = addons[idx + 1] ?? addons[idx - 1];
+                          setActiveAddonId(next?.id ?? null);
+                        }
+                      }}
+                      onRename={(name) => {
+                        onUpdateAddon(addon.id, {
+                          ...addon,
+                          name,
+                          data: addon.data && typeof addon.data === "object" ? { ...addon.data, name } : addon.data,
+                        });
+                      }}
+                      label={addon.name || getAddonTypeLabel(addon.type)}
+                      typeLabel={getAddonTypeLabel(addon.type)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+            {/* Active addon content */}
+            {activeAddon && activeEntry && (
+              activeEntry.renderEditor(
+                activeAddon,
+                (nextAddon: SectionAddon) => onUpdateAddon(activeAddon.id, nextAddon),
+                () => setConfirmRemoveAddon({
+                  id: activeAddon.id,
+                  label: activeAddon.name || getAddonTypeLabel(activeAddon.type),
+                })
+              )
+            )}
+            {/* Confirm remove modal (from addon internal button) */}
+            {confirmRemoveAddon && (
+              <>
+                <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setConfirmRemoveAddon(null)} />
+                <div
+                  className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[260px]"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-sm text-gray-200 mb-1">
+                    Remover <strong className="text-white">{confirmRemoveAddon.label}</strong>?
+                  </p>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Esta acao nao pode ser desfeita. Todos os dados deste addon serao perdidos.
+                  </p>
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                      onClick={() => setConfirmRemoveAddon(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
+                      onClick={() => {
+                        const id = confirmRemoveAddon.id;
+                        const idx = addons.findIndex((a: SectionAddon) => a.id === id);
+                        const next = addons[idx + 1] ?? addons[idx - 1];
+                        setActiveAddonId(next?.id ?? null);
+                        onRemoveAddon(id);
+                        setConfirmRemoveAddon(null);
+                      }}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Histórico de versões (colapsável) */}
       <div className="max-w-6xl mx-auto mb-4 ui-card-premium overflow-hidden">

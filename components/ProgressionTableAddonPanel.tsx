@@ -284,7 +284,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     setCollapsedColumns((prev) => {
       const next: Record<string, boolean> = {};
       for (const column of columns) {
-        next[column.id] = prev[column.id] ?? false;
+        next[column.id] = prev[column.id] ?? true;
       }
       const prevKeys = Object.keys(prev);
       const nextKeys = Object.keys(next);
@@ -1121,15 +1121,6 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
         </SortableContext>
       </DndContext>
 
-      <div className="mt-3 flex justify-end">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50"
-        >
-          {t("progressionTableAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

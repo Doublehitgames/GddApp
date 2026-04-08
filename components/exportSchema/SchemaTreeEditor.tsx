@@ -281,7 +281,7 @@ export function SchemaNodeEditor({
   readOnly?: boolean;
 }) {
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleTypeChange = (newType: "object" | "array" | "value") => {
     if (readOnly) return;

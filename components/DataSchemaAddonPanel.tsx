@@ -915,11 +915,6 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
         </DndContext>
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onRemove} className={BUTTON_DANGER_CLASS}>
-          {t("dataSchemaAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

@@ -139,11 +139,6 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onRemove} className={BUTTON_DANGER_CLASS}>
-          {t("currencyAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }

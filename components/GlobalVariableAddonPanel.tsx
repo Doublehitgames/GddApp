@@ -263,11 +263,6 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onRemove} className={BUTTON_DANGER_CLASS}>
-          {t("globalVariableAddon.removeAddonButton", "Remover addon")}
-        </button>
-      </div>
     </section>
   );
 }
