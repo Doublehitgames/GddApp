@@ -356,6 +356,7 @@ export interface ProjectStore {
     addons?: SectionAddon[],
     dataId?: string
   ) => void;
+  setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
   setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;
   addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;
   updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => void;

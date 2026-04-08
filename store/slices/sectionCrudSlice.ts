@@ -143,6 +143,24 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       );
     },
 
+    setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => {
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: new Date().toISOString(),
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId ? { ...s, dataId: dataId || undefined, updated_at: new Date().toISOString() } : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
     removeSection: (projectId: UUID, sectionId: UUID) => {
       engine.wrappedSetWithSync(
         (prev) =>
