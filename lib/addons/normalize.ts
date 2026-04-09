@@ -671,6 +671,9 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
     }
     if (nodeType === "value") {
       node.binding = normalizeExportSchemaBinding(rawNode.binding);
+      if (rawNode.abs === true) node.abs = true;
+      const rawMult = typeof rawNode.multiplier === "number" && Number.isFinite(rawNode.multiplier) ? rawNode.multiplier : undefined;
+      if (rawMult != null) node.multiplier = rawMult;
     }
     nodes.push(node);
   }

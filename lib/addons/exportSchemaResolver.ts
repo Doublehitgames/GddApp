@@ -203,7 +203,12 @@ function resolveNode(
 
     case "value": {
       if (!node.binding) return null;
-      return resolveBinding(node.binding, ctx);
+      let val = resolveBinding(node.binding, ctx);
+      if (typeof val === "number") {
+        if (node.abs) val = Math.abs(val);
+        if (node.multiplier != null && Number.isFinite(node.multiplier)) val = val * node.multiplier;
+      }
+      return val;
     }
 
     default:

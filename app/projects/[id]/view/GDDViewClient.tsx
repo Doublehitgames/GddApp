@@ -1070,7 +1070,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             )}
             {Array.isArray(node.addons) && node.addons.length > 0 && (
               <div className="mb-6">
-                {node.addons.map((addon: any) => {
+                {node.addons.filter((addon: any) => addon.type !== "dataSchema" && addon.type !== "genericStats").map((addon: any) => {
                   const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
                   if (!entry) return null;
                   return (

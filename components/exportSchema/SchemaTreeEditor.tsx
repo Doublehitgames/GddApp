@@ -379,29 +379,58 @@ export function SchemaNodeEditor({
         )}
 
         {node.nodeType === "value" && (
-          <BindingEditor
-            binding={node.binding}
-            onChange={(b) => {
-              if (readOnly) return;
-              const updated = { ...node, binding: b };
-              // Auto-fill key from binding
-              const prevBinding = node.binding;
-              const prevKey = prevBinding?.source === "dataSchema" ? prevBinding.entryKey
-                : prevBinding?.source === "rowColumn" ? prevBinding.columnId
-                : prevBinding?.source === "rowLevel" ? "level" : "";
-              const shouldAutoFill = !node.key || node.key === "newProperty" || node.key === prevKey;
-              if (shouldAutoFill) {
-                if (b.source === "dataSchema") updated.key = b.entryKey;
-                else if (b.source === "rowColumn") updated.key = b.columnId;
-                else if (b.source === "rowLevel") updated.key = "level";
-              }
-              onUpdate(updated);
-            }}
-            sectionAddons={sectionAddons}
-            insideArray={insideArray}
-            arraySourceAddonId={arraySourceAddonId}
-            readOnly={readOnly}
-          />
+          <>
+            <BindingEditor
+              binding={node.binding}
+              onChange={(b) => {
+                if (readOnly) return;
+                const updated = { ...node, binding: b };
+                const prevBinding = node.binding;
+                const prevKey = prevBinding?.source === "dataSchema" ? prevBinding.entryKey
+                  : prevBinding?.source === "rowColumn" ? prevBinding.columnId
+                  : prevBinding?.source === "rowLevel" ? "level" : "";
+                const shouldAutoFill = !node.key || node.key === "newProperty" || node.key === prevKey;
+                if (shouldAutoFill) {
+                  if (b.source === "dataSchema") updated.key = b.entryKey;
+                  else if (b.source === "rowColumn") updated.key = b.columnId;
+                  else if (b.source === "rowLevel") updated.key = "level";
+                }
+                onUpdate(updated);
+              }}
+              sectionAddons={sectionAddons}
+              insideArray={insideArray}
+              arraySourceAddonId={arraySourceAddonId}
+              readOnly={readOnly}
+            />
+            {/* Value modifiers */}
+            {!readOnly && (
+              <div className="flex items-center gap-1.5">
+                <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer" title="Valor absoluto (remove negativos)">
+                  <input
+                    type="checkbox"
+                    checked={node.abs ?? false}
+                    onChange={(e) => onUpdate({ ...node, abs: e.target.checked || undefined })}
+                    className="accent-indigo-500 w-3 h-3"
+                  />
+                  abs
+                </label>
+                <label className="flex items-center gap-1 text-[10px] text-gray-500" title="Multiplicador aplicado ao valor">
+                  <span>*</span>
+                  <input
+                    type="number"
+                    value={node.multiplier ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value ? Number(e.target.value.replace(",", ".")) : undefined;
+                      onUpdate({ ...node, multiplier: v != null && Number.isFinite(v) ? v : undefined });
+                    }}
+                    className="w-14 bg-transparent border-b border-gray-700 text-[10px] font-mono text-gray-400 outline-none focus:border-indigo-500 px-0.5 py-0 text-center"
+                    placeholder="1"
+                    step="any"
+                  />
+                </label>
+              </div>
+            )}
+          </>
         )}
 
         {!readOnly && (

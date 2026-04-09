@@ -62,11 +62,15 @@ export function ExportSchemaAddonReadOnly({
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-          Remote Config: {addon.name}
-        </span>
+    <div
+      className={`mt-3 rounded-xl p-3 ${
+        isDark ? "border border-gray-700 bg-gray-900/40" : "border border-gray-300 bg-white"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h5 className={`text-sm font-semibold ${isDark ? "text-gray-200" : "text-gray-900"}`}>
+          {addon.name || "Remote Config"}
+        </h5>
         <button
           type="button"
           className={`rounded-lg border px-2.5 py-1 text-xs ${
@@ -81,7 +85,7 @@ export function ExportSchemaAddonReadOnly({
       </div>
       <pre
         className={`text-xs font-mono whitespace-pre overflow-x-auto max-h-64 overflow-y-auto rounded-lg p-3 ${
-          isDark ? "bg-gray-900/70 text-green-300" : "bg-gray-50 text-green-700"
+          isDark ? "bg-gray-950/60 text-green-300" : "bg-gray-50 text-green-700"
         }`}
       >
         {jsonString}

@@ -266,6 +266,10 @@ export type ExportSchemaNode = {
   arraySource?: ExportSchemaArraySource;
   itemTemplate?: ExportSchemaNode[];
   binding?: ExportSchemaBinding;
+  /** Apply Math.abs to the resolved value (value nodes only). */
+  abs?: boolean;
+  /** Multiply the resolved value by this factor (value nodes only). */
+  multiplier?: number;
 };
 
 export type ExportSchemaAddonDraft = {
