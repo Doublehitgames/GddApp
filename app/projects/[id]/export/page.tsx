@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project, Section } from '@/store/projectStore';
 import { useI18n } from '@/lib/i18n/provider';

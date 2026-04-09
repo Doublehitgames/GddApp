@@ -136,15 +136,19 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   ];
 
   // Only show Economy Link addons from the same section as this Data Schema
+  // group is on the SectionAddon wrapper, not the draft - find it via section lookup
+  const myAddonWrapper = section?.addons?.find((a: any) => a.id === addon.id);
+  const myGroup = (myAddonWrapper as any)?.group || "A";
+
   const economyLinkRefOptions = useMemo(() => {
     const out: Array<{ refId: string; addonId: string; label: string; data: EconomyLinkAddonDraft }> = [];
     for (const project of projects) {
       for (const section of project.sections || []) {
-        // Find the section that contains THIS Data Schema addon
         const hasThisAddon = (section.addons || []).some((a) => a.id === addon.id);
         if (!hasThisAddon) continue;
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "economyLink") continue;
+          if (((sectionAddon as any).group || "A") !== myGroup) continue;
           const addonName = sectionAddon.name?.trim() || "Economy Link";
           out.push({
             refId: sectionAddon.id,
@@ -153,11 +157,11 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
             data: sectionAddon.data as EconomyLinkAddonDraft,
           });
         }
-        return out; // Found the section, no need to keep searching
+        return out;
       }
     }
     return out;
-  }, [projects, addon.id]);
+  }, [projects, addon.id, myGroup]);
 
   const getEconomyLinkValue = (refId: string, field: EconomyLinkFieldKey): number | undefined => {
     const found = economyLinkRefOptions.find((opt) => opt.refId === refId);
@@ -178,7 +182,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     { key: "outputUnlockValue", label: "Lv desbloqueio do item", requiresOutput: "unlock" },
   ];
 
-  // Only show Production addons from the same section
+  // Only show Production addons from the same section and group
   const productionRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; data: ProductionAddonDraft }> = [];
     for (const project of projects) {
@@ -187,6 +191,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
         if (!hasThisAddon) continue;
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "production") continue;
+          if (((sectionAddon as any).group || "A") !== myGroup) continue;
           const addonName = sectionAddon.name?.trim() || "Production";
           out.push({
             refId: sectionAddon.id,
@@ -198,7 +203,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       }
     }
     return out;
-  }, [projects, addon.id]);
+  }, [projects, addon.id, myGroup]);
 
   // Build global variable map for computing effective values (same as EconomyLinkAddonPanel)
   const globalVariableByRefId = useMemo(() => {

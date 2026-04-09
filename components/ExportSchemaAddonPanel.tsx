@@ -52,7 +52,10 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     return null;
   }, [projects, addon.id]);
 
-  const sectionAddons = externalAddons ?? (sectionContext?.addons.filter((a: SectionAddon) => a.id !== addon.id) ?? []);
+  // group is on the SectionAddon wrapper, not the draft
+  const myAddonWrapper = sectionContext?.addons.find((a: SectionAddon) => a.id === addon.id);
+  const myGroup = (myAddonWrapper as any)?.group || "A";
+  const sectionAddons = externalAddons ?? (sectionContext?.addons.filter((a: SectionAddon) => a.id !== addon.id && ((a as any).group || "A") === myGroup) ?? []);
 
   const commit = useCallback(
     (nodes: ExportSchemaNode[]) => onChange({ ...addon, nodes }),
@@ -125,16 +128,30 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
 
     // Add new addons to the section via the store, then update the export schema
     if (sectionContext && newAddons.length > 0) {
-      const currentAddons = sectionContext.addons;
+      // Assign the same group as this Remote Config addon to imported addons
+      const groupedNewAddons: SectionAddon[] = myGroup !== "A"
+        ? newAddons.map((a) => ({ ...a, group: myGroup } as SectionAddon))
+        : newAddons;
+      const allSectionAddons = sectionContext.addons;
+      // Find the full addons list (all groups) from the section
+      const fullAddons = (() => {
+        for (const proj of projects) {
+          for (const sec of proj.sections ?? []) {
+            if (sec.id === sectionContext.sectionId) return sec.addons ?? [];
+          }
+        }
+        return allSectionAddons;
+      })();
       const updatedExportSchemaAddon: SectionAddon = {
         id: addon.id,
         type: "exportSchema",
         name: addon.name,
+        group: myGroup !== "A" ? myGroup : undefined,
         data: { ...addon, nodes: exportSchemaNodes },
       };
       const mergedAddons: SectionAddon[] = [
-        ...newAddons,
-        ...currentAddons.map((a) => (a.id === addon.id ? updatedExportSchemaAddon : a)),
+        ...groupedNewAddons,
+        ...fullAddons.map((a) => (a.id === addon.id ? updatedExportSchemaAddon : a)),
       ];
       setSectionAddons(sectionContext.projectId, sectionContext.sectionId, mergedAddons);
     } else {

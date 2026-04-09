@@ -304,6 +304,7 @@ export type XpBalanceSectionAddon = {
   id: string;
   type: "xpBalance";
   name: string;
+  group?: string;
   data: BalanceAddonDraft;
 };
 
@@ -311,6 +312,7 @@ export type ProgressionTableSectionAddon = {
   id: string;
   type: "progressionTable";
   name: string;
+  group?: string;
   data: ProgressionTableAddonDraft;
 };
 
@@ -318,6 +320,7 @@ export type EconomyLinkSectionAddon = {
   id: string;
   type: "economyLink";
   name: string;
+  group?: string;
   data: EconomyLinkAddonDraft;
 };
 
@@ -325,6 +328,7 @@ export type CurrencySectionAddon = {
   id: string;
   type: "currency";
   name: string;
+  group?: string;
   data: CurrencyAddonDraft;
 };
 
@@ -332,6 +336,7 @@ export type GlobalVariableSectionAddon = {
   id: string;
   type: "globalVariable";
   name: string;
+  group?: string;
   data: GlobalVariableAddonDraft;
 };
 
@@ -339,6 +344,7 @@ export type InventorySectionAddon = {
   id: string;
   type: "inventory";
   name: string;
+  group?: string;
   data: InventoryAddonDraft;
 };
 
@@ -346,6 +352,7 @@ export type ProductionSectionAddon = {
   id: string;
   type: "production";
   name: string;
+  group?: string;
   data: ProductionAddonDraft;
 };
 
@@ -353,6 +360,7 @@ export type DataSchemaSectionAddon = {
   id: string;
   type: "dataSchema";
   name: string;
+  group?: string;
   data: DataSchemaAddonDraft;
 };
 
@@ -360,6 +368,7 @@ export type AttributeDefinitionsSectionAddon = {
   id: string;
   type: "attributeDefinitions";
   name: string;
+  group?: string;
   data: AttributeDefinitionsAddonDraft;
 };
 
@@ -367,6 +376,7 @@ export type AttributeProfileSectionAddon = {
   id: string;
   type: "attributeProfile";
   name: string;
+  group?: string;
   data: AttributeProfileAddonDraft;
 };
 
@@ -374,6 +384,7 @@ export type AttributeModifiersSectionAddon = {
   id: string;
   type: "attributeModifiers";
   name: string;
+  group?: string;
   data: AttributeModifiersAddonDraft;
 };
 
@@ -381,6 +392,7 @@ export type ExportSchemaSectionAddon = {
   id: string;
   type: "exportSchema";
   name: string;
+  group?: string;
   data: ExportSchemaAddonDraft;
 };
 
@@ -389,6 +401,7 @@ export type GenericStatsSectionAddon = {
   id: string;
   type: "genericStats";
   name: string;
+  group?: string;
   data: DataSchemaAddonDraft;
 };
 

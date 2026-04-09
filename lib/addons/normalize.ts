@@ -930,12 +930,15 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
     }
     const legacyAddon = asLegacySectionAddon(item);
     if (legacyAddon) {
-      out.push(legacyAddon);
+      const rawGroup = isObject(item) && typeof item.group === "string" ? item.group : undefined;
+      out.push(rawGroup ? { ...legacyAddon, group: rawGroup } : legacyAddon);
       continue;
     }
     const maybeLegacyDraft = asBalanceDraft(item);
     if (maybeLegacyDraft) {
-      out.push(balanceDraftToSectionAddon(maybeLegacyDraft));
+      const converted = balanceDraftToSectionAddon(maybeLegacyDraft);
+      const rawGroup = isObject(item) && typeof item.group === "string" ? item.group : undefined;
+      out.push(rawGroup ? { ...converted, group: rawGroup } : converted);
     }
   }
   if (out.length === 0) return undefined;

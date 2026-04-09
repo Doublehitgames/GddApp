@@ -28,7 +28,9 @@ export function ExportSchemaAddonReadOnly({
       for (const sec of proj.sections ?? []) {
         const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
         if (found) {
-          return { addons: (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id), dataId: sec.dataId };
+          const wrapper = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
+          const myGroup = (wrapper as any)?.group || "A";
+          return { addons: (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id && ((a as any).group || "A") === myGroup), dataId: sec.dataId };
         }
       }
     }

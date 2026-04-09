@@ -556,6 +556,18 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const sectionMenuRef = useRef<HTMLDivElement>(null);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const showChartInDoc = true;
+  const [activeDocGroup, setActiveDocGroup] = useState<string>("A");
+
+  // Collect all unique addon groups across all sections
+  const allDocGroups = useMemo(() => {
+    const groups = new Set<string>();
+    for (const sec of project?.sections || []) {
+      for (const addon of sec.addons || []) {
+        groups.add((addon as any).group || "A");
+      }
+    }
+    return Array.from(groups).sort();
+  }, [project?.sections]);
   const coverImageCandidates = useMemo(
     () => getDriveImageDisplayCandidates(project?.coverImageUrl || ""),
     [project?.coverImageUrl]
@@ -1068,26 +1080,72 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 </button>
               </div>
             )}
-            {Array.isArray(node.addons) && node.addons.length > 0 && (
-              <div className="mb-6">
-                {node.addons.filter((addon: any) => addon.type !== "dataSchema" && addon.type !== "genericStats").map((addon: any) => {
-                  const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
-                  if (!entry) return null;
-                  return (
-                    <div key={addon.id}>
-                      {entry.renderReadOnly(addon, {
-                        showChart: showChartInDoc,
-                        maxRows: 100,
-                        theme: "light",
-                        layout: "sideBySide",
-                        showSummary: true,
-                        showTable: false,
-                      })}
-                    </div>
-                  );
-                })}
+            {Array.isArray(node.addons) && node.addons.length > 0 && (() => {
+              const sectionGroups = Array.from(new Set((node.addons as any[]).map((a: any) => (a as any).group || "A"))).sort();
+              const hasMultipleGroups = sectionGroups.length > 1;
+              return (
+              <div className="mb-6" data-section-groups={node.id}>
+                {hasMultipleGroups && (
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <span className="text-xs text-slate-500 mr-1">Grupo:</span>
+                    {sectionGroups.map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        data-group-btn={g}
+                        data-section-group-id={node.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Toggle visibility via DOM to avoid React re-render scroll
+                          const sectionEl = e.currentTarget.closest("[data-section-groups]");
+                          if (!sectionEl) return;
+                          sectionEl.querySelectorAll<HTMLElement>("[data-addon-group]").forEach((el) => {
+                            el.style.display = el.dataset.addonGroup === g ? "block" : "none";
+                          });
+                          sectionEl.querySelectorAll<HTMLElement>("[data-group-btn]").forEach((btn) => {
+                            if (btn.dataset.groupBtn === g) {
+                              btn.className = "px-2.5 py-1 rounded-md text-xs font-medium transition-colors bg-indigo-600 text-white shadow-sm";
+                            } else {
+                              btn.className = "px-2.5 py-1 rounded-md text-xs font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200";
+                            }
+                          });
+                        }}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                          g === "A"
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Render ALL groups, hide inactive via CSS */}
+                {sectionGroups.map((g) => (
+                  <div key={g} data-addon-group={g} style={{ display: g === "A" ? "block" : "none" }}>
+                    {(node.addons as any[]).filter((addon: any) => addon.type !== "dataSchema" && addon.type !== "genericStats" && ((addon as any).group || "A") === g).map((addon: any) => {
+                      const entry = ADDON_REGISTRY.find((item) => item.type === addon.type);
+                      if (!entry) return null;
+                      return (
+                        <div key={addon.id}>
+                          {entry.renderReadOnly(addon, {
+                            showChart: showChartInDoc,
+                            maxRows: 100,
+                            theme: "light",
+                            layout: "sideBySide",
+                            showSummary: true,
+                            showTable: false,
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            )}
+              );
+            })()}
           </div>
 
           {node.subsections?.length > 0 && (

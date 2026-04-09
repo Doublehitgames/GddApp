@@ -58,12 +58,14 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
     }
     return map;
   }, [projects]);
-  // Find the section containing this addon (for resolving bindings)
+  // Find the section containing this addon (for resolving bindings, filtered by group)
   const sectionContext = useMemo(() => {
     for (const project of projects) {
       for (const sec of project.sections || []) {
-        if ((sec.addons || []).some((a) => a.id === addon.id)) {
-          return { section: sec, addons: sec.addons || [] };
+        const wrapper = (sec.addons || []).find((a) => a.id === addon.id);
+        if (wrapper) {
+          const myGroup = (wrapper as any).group || "A";
+          return { section: sec, addons: (sec.addons || []).filter((a: SectionAddon) => ((a as any).group || "A") === myGroup) };
         }
       }
     }
