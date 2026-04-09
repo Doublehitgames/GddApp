@@ -41,7 +41,7 @@ export function AttributeModifiersAddonReadOnly({ addon, theme = "dark" }: Attri
 
   return (
     <div
-      className={`mt-3 rounded-xl p-3 ${
+      className={`rounded-xl p-3 ${
         isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
       }`}
     >

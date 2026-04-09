@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { DataSchemaAddonDraft } from "@/lib/addons/types";
+import type { DataSchemaAddonDraft, DataSchemaEntry, EconomyLinkAddonDraft, ProductionAddonDraft, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -58,6 +58,51 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
     }
     return map;
   }, [projects]);
+  // Find the section containing this addon (for resolving bindings)
+  const sectionContext = useMemo(() => {
+    for (const project of projects) {
+      for (const sec of project.sections || []) {
+        if ((sec.addons || []).some((a) => a.id === addon.id)) {
+          return { section: sec, addons: sec.addons || [] };
+        }
+      }
+    }
+    return null;
+  }, [projects, addon.id]);
+
+  /** Resolve the effective value of an entry, considering active bindings */
+  const resolveEntryValue = (entry: DataSchemaEntry): string | number | boolean => {
+    if (entry.usePageDataId && sectionContext) {
+      return sectionContext.section.dataId ?? "";
+    }
+    if (entry.economyLinkRef && entry.economyLinkField) {
+      const elAddon = (sectionContext?.addons ?? []).find(
+        (a: SectionAddon) => a.type === "economyLink" && a.id === entry.economyLinkRef
+      );
+      if (elAddon) {
+        const val = (elAddon.data as EconomyLinkAddonDraft)[entry.economyLinkField as keyof EconomyLinkAddonDraft];
+        if (typeof val === "number") return val;
+      }
+    }
+    if (entry.productionRef && entry.productionField) {
+      const prodAddon = (sectionContext?.addons ?? []).find(
+        (a: SectionAddon) => a.type === "production" && a.id === entry.productionRef
+      );
+      if (prodAddon) {
+        const directFields: Record<string, string> = {
+          minOutput: "minOutput", maxOutput: "maxOutput",
+          intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
+        };
+        const field = entry.productionField;
+        if (field in directFields) {
+          const val = (prodAddon.data as ProductionAddonDraft)[directFields[field] as keyof ProductionAddonDraft];
+          if (typeof val === "number") return val;
+        }
+      }
+    }
+    return entry.value;
+  };
+
   const xpRefLabelBySectionId = useMemo(() => {
     const map = new Map<string, string>();
     for (const project of projects) {
@@ -95,7 +140,11 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
     const targetElement =
       (document.getElementById(targetId) as HTMLElement | null) ||
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
-    if (!targetElement) return;
+    if (!targetElement) {
+      const match = window.location.pathname.match(/\/projects\/([^/]+)/);
+      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      return;
+    }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     window.history.replaceState(null, "", `#${targetId}`);
@@ -130,7 +179,7 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
 
   return (
     <div
-      className={`mt-3 rounded-xl p-3 ${
+      className={`rounded-xl p-3 ${
         isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
       }`}
     >
@@ -149,7 +198,7 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
             const linkedXpName = entry.unitXpRef ? xpRefLabelBySectionId.get(entry.unitXpRef) : undefined;
             return (
               <p key={entry.id} className="text-sm">
-                {lineLabel}: {formatValue(entry.value)}
+                {lineLabel}: {formatValue(resolveEntryValue(entry))}
                 {linkedXpName && entry.unitXpRef ? (
                   <>
                     {" "}

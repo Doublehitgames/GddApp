@@ -68,7 +68,7 @@ export function BalanceAddonReadOnly({
 
   return (
     <div
-      className={`mt-3 rounded-xl p-3 ${
+      className={`rounded-xl p-3 ${
         isLight ? "border border-gray-300 bg-white" : "border border-cyan-700/40 bg-cyan-950/10"
       }`}
     >

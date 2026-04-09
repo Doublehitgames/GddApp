@@ -397,47 +397,38 @@ export function MarkdownWithReferences({
               );
             }
 
-            if (href.startsWith("/projects/")) {
-              return (
-                <a
-                  href={href}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    router.push(href);
-                  }}
-                  className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium"
-                  title="Ir para seção"
-                >
-                  {children}
-                </a>
-              );
-            }
+            // Detect section reference links in both formats:
+            // Document mode: #section-{id}
+            // Manager mode: /projects/{projectId}/sections/{id}
+            const sectionHashMatch = href.startsWith("#section-") ? href.slice("#section-".length) : null;
+            const sectionPathMatch = href.match(/\/projects\/[^/]+\/sections\/([^/]+)$/)?.[1] ?? null;
+            const refSectionId = sectionHashMatch || sectionPathMatch;
 
-            if (href.startsWith("#section-")) {
+            if (refSectionId) {
               return (
                 <a
                   href={href}
                   onClick={(event) => {
                     event.preventDefault();
-                    const targetId = href.slice(1);
-                    const rawSectionId = targetId.replace(/^section-/, "");
-                    const anchorPreview =
-                      referenceLinkMode === "document"
-                        ? resolveDocumentAnchorPreview?.(rawSectionId) || null
-                        : null;
+                    const anchorPreview = resolveDocumentAnchorPreview?.(refSectionId) || null;
 
                     if (anchorPreview) {
                       setPendingAnchorNavigation({
                         href,
-                        targetId,
-                        rawSectionId,
+                        targetId: `section-${refSectionId}`,
+                        rawSectionId: refSectionId,
                         title: anchorPreview.title,
                         shortDescription: anchorPreview.shortDescription,
                       });
                       return;
                     }
 
-                    navigateToDocumentAnchor(href, targetId, rawSectionId);
+                    // Fallback: direct navigation
+                    if (referenceLinkMode === "manager") {
+                      router.push(`/projects/${projectId}/sections/${refSectionId}`);
+                    } else {
+                      navigateToDocumentAnchor(href, `section-${refSectionId}`, refSectionId);
+                    }
                   }}
                   className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
                   title={t("view.anchorPreview.goToSection")}
@@ -507,11 +498,15 @@ export function MarkdownWithReferences({
                 type="button"
                 autoFocus
                 onClick={() => {
-                  navigateToDocumentAnchor(
-                    pendingAnchorNavigation.href,
-                    pendingAnchorNavigation.targetId,
-                    pendingAnchorNavigation.rawSectionId
-                  );
+                  if (referenceLinkMode === "manager") {
+                    router.push(`/projects/${projectId}/sections/${pendingAnchorNavigation.rawSectionId}`);
+                  } else {
+                    navigateToDocumentAnchor(
+                      pendingAnchorNavigation.href,
+                      pendingAnchorNavigation.targetId,
+                      pendingAnchorNavigation.rawSectionId
+                    );
+                  }
                   setPendingAnchorNavigation(null);
                 }}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"

@@ -1585,6 +1585,7 @@ function SectionDetailContent({
   // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
   const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
   const [activeAddonId, setActiveAddonId] = useState<string | null>(null);
+  const [isEditingActiveAddon, setIsEditingActiveAddon] = useState(false);
   const [isEditingDataId, setIsEditingDataId] = useState(false);
   const [dataIdDraft, setDataIdDraft] = useState("");
   const setSectionDataId = useProjectStore((s) => s.setSectionDataId);
@@ -1594,6 +1595,7 @@ function SectionDetailContent({
     // Auto-select the last addon when a new one is added
     if (addons.length > prevAddonCountRef.current && addons.length > 0) {
       setActiveAddonId(addons[addons.length - 1].id);
+      setIsEditingActiveAddon(true);
     }
     prevAddonCountRef.current = addons.length;
   }, [addons.length]);
@@ -2201,11 +2203,17 @@ function SectionDetailContent({
           onDoubleClick={() => setInlineEdit(true)}
         >
           {section.content ? (
-            <MarkdownWithReferences 
-              content={section.content} 
-              projectId={projectId} 
-              sections={project?.sections || []} 
+            <MarkdownWithReferences
+              content={section.content}
+              projectId={projectId}
+              sections={project?.sections || []}
               projectTokenSource={project}
+              resolveDocumentAnchorPreview={(sectionId) => {
+                const sec = (project?.sections || []).find((s: any) => s.id === sectionId);
+                if (!sec) return null;
+                const plain = (sec.content || "").replace(/[#>*`~_\-![\]()]/g, "").replace(/\s+/g, " ").trim();
+                return { title: sec.title || sectionId, shortDescription: plain.length > 160 ? plain.slice(0, 157) + "..." : plain };
+              }}
             />
           ) : (
             <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
@@ -2309,7 +2317,7 @@ function SectionDetailContent({
                       key={addon.id}
                       addon={addon}
                       isActive={addon.id === effectiveActiveId}
-                      onClick={() => setActiveAddonId(addon.id)}
+                      onClick={() => { setActiveAddonId(addon.id); setIsEditingActiveAddon(false); }}
                       onRemove={() => {
                         onRemoveAddon(addon.id);
                         if (addon.id === effectiveActiveId) {
@@ -2334,14 +2342,38 @@ function SectionDetailContent({
             </DndContext>
             {/* Active addon content */}
             {activeAddon && activeEntry && (
-              activeEntry.renderEditor(
-                activeAddon,
-                (nextAddon: SectionAddon) => onUpdateAddon(activeAddon.id, nextAddon),
-                () => setConfirmRemoveAddon({
-                  id: activeAddon.id,
-                  label: activeAddon.name || getAddonTypeLabel(activeAddon.type),
-                })
-              )
+              <div>
+                {isEditingActiveAddon
+                  ? activeEntry.renderEditor(
+                      activeAddon,
+                      (nextAddon: SectionAddon) => onUpdateAddon(activeAddon.id, nextAddon),
+                      () => setConfirmRemoveAddon({
+                        id: activeAddon.id,
+                        label: activeAddon.name || getAddonTypeLabel(activeAddon.type),
+                      })
+                    )
+                  : activeEntry.renderReadOnly(activeAddon, {
+                      theme: "dark",
+                      showChart: true,
+                      maxRows: 100,
+                      showSummary: true,
+                      showTable: true,
+                    })
+                }
+                <div className="flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingActiveAddon(!isEditingActiveAddon)}
+                    className={`rounded-lg border px-3 py-1 text-xs transition-colors ${
+                      isEditingActiveAddon
+                        ? "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
+                        : "border-indigo-600 bg-indigo-700 text-white hover:bg-indigo-600"
+                    }`}
+                  >
+                    {isEditingActiveAddon ? "Fechar edicao" : "Editar"}
+                  </button>
+                </div>
+              </div>
             )}
             {/* Confirm remove modal (from addon internal button) */}
             {confirmRemoveAddon && (

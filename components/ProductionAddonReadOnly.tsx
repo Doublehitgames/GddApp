@@ -212,7 +212,11 @@ export function ProductionAddonReadOnly({ addon, theme = "dark" }: ProductionAdd
     const targetElement =
       (document.getElementById(targetId) as HTMLElement | null) ||
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
-    if (!targetElement) return;
+    if (!targetElement) {
+      const match = window.location.pathname.match(/\/projects\/([^/]+)/);
+      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      return;
+    }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
     window.history.replaceState(null, "", `#${targetId}`);
@@ -277,7 +281,7 @@ export function ProductionAddonReadOnly({ addon, theme = "dark" }: ProductionAdd
 
   return (
     <div
-      className={`mt-3 rounded-xl p-3 ${
+      className={`rounded-xl p-3 ${
         isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
       }`}
     >

@@ -63,7 +63,7 @@ export function ExportSchemaAddonReadOnly({
 
   return (
     <div
-      className={`mt-3 rounded-xl p-3 ${
+      className={`rounded-xl p-3 ${
         isDark ? "border border-gray-700 bg-gray-900/40" : "border border-gray-300 bg-white"
       }`}
     >
