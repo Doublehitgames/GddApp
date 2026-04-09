@@ -1618,9 +1618,27 @@ function SectionDetailContent({
 
   const groupAddons = addons.filter((a: any) => ((a as any).group || "A") === activeGroup);
 
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [editingGroupName, setEditingGroupName] = useState<string | null>(null);
+  const [editingGroupDraft, setEditingGroupDraft] = useState("");
+
+  const handleRenameGroup = (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName) { setEditingGroupName(null); return; }
+    if (addonGroups.includes(trimmed)) { setEditingGroupName(null); return; } // duplicate name
+    const updated = addons.map((a: any) => ((a as any).group || "A") === oldName ? { ...a, group: trimmed } : a);
+    onReorderAddons(updated);
+    if (activeGroup === oldName) setActiveGroup(trimmed);
+    setEditingGroupName(null);
+  };
+
   const handleCreateGroup = () => {
-    const nextLetter = String.fromCharCode(65 + addonGroups.length); // B, C, D...
+    const groupName = newGroupName.trim();
+    if (!groupName || addonGroups.includes(groupName)) { setIsCreatingGroup(false); setNewGroupName(""); return; }
     const currentGroupAddons = addons.filter((a: any) => ((a as any).group || "A") === activeGroup);
+    setIsCreatingGroup(false);
+    setNewGroupName("");
 
     // Build old ID → new ID mapping (same ID for wrapper and data)
     const idMap = new Map<string, string>();
@@ -1675,12 +1693,12 @@ function SectionDetailContent({
       const newId = idMap.get(addon.id)!;
       const newData = remapAddonData(addon.data, addon.type);
       newData.id = newId; // Same ID as wrapper so panels can find it
-      return { ...addon, id: newId, group: nextLetter, data: newData };
+      return { ...addon, id: newId, group: groupName, data: newData };
     });
 
     const allAddons = [...addons, ...duplicated];
     onReorderAddons(allAddons);
-    setActiveGroup(nextLetter);
+    setActiveGroup(groupName);
   };
 
   const handleRemoveGroup = () => {
@@ -2457,35 +2475,67 @@ function SectionDetailContent({
                 }
                 <div className="flex items-center mt-2 flex-wrap gap-2">
                   {/* Group buttons */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {addonGroups.map((g: string) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => { setActiveGroup(g); setActiveAddonId(null); setIsEditingActiveAddon(false); }}
-                        className={`rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                          g === activeGroup
-                            ? "border-indigo-500 bg-indigo-600 text-white"
-                            : "border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
-                        }`}
-                      >
-                        Grupo {g}
-                      </button>
+                      editingGroupName === g ? (
+                        <input
+                          key={g}
+                          autoFocus
+                          value={editingGroupDraft}
+                          onChange={(e) => setEditingGroupDraft(e.target.value)}
+                          onBlur={() => handleRenameGroup(g, editingGroupDraft)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.currentTarget.blur();
+                            else if (e.key === "Escape") setEditingGroupName(null);
+                          }}
+                          className="rounded-lg border border-indigo-500 bg-gray-900 px-2.5 py-1 text-[10px] font-medium text-white outline-none w-24"
+                        />
+                      ) : (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => { setActiveGroup(g); setActiveAddonId(null); setIsEditingActiveAddon(false); }}
+                          onDoubleClick={(e) => { e.stopPropagation(); setEditingGroupName(g); setEditingGroupDraft(g); }}
+                          title="Duplo clique para renomear"
+                          className={`rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                            g === activeGroup
+                              ? "border-indigo-500 bg-indigo-600 text-white"
+                              : "border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      )
                     ))}
-                    <button
-                      type="button"
-                      onClick={handleCreateGroup}
-                      className="rounded-lg border border-dashed border-gray-600 bg-gray-800/50 px-2.5 py-1 text-[10px] text-gray-500 hover:border-gray-500 hover:text-gray-300 transition-colors"
-                    >
-                      +
-                    </button>
+                    {isCreatingGroup ? (
+                      <input
+                        autoFocus
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        onBlur={() => { if (newGroupName.trim()) handleCreateGroup(); else setIsCreatingGroup(false); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { if (newGroupName.trim()) handleCreateGroup(); else setIsCreatingGroup(false); }
+                          else if (e.key === "Escape") { setIsCreatingGroup(false); setNewGroupName(""); }
+                        }}
+                        className="rounded-lg border border-dashed border-indigo-500 bg-gray-900 px-2.5 py-1 text-[10px] text-white outline-none w-24"
+                        placeholder="Nome do grupo"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsCreatingGroup(true)}
+                        className="rounded-lg border border-dashed border-gray-600 bg-gray-800/50 px-2.5 py-1 text-[10px] text-gray-500 hover:border-gray-500 hover:text-gray-300 transition-colors"
+                      >
+                        +
+                      </button>
+                    )}
                     {activeGroup !== "A" && (
                       <button
                         type="button"
                         onClick={() => setConfirmRemoveGroup(true)}
                         className="rounded-lg border border-rose-700/40 bg-rose-900/20 px-2.5 py-1 text-[10px] text-rose-400 hover:bg-rose-900/40 transition-colors"
                       >
-                        Remover {activeGroup}
+                        Remover
                       </button>
                     )}
                   </div>
