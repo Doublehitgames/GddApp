@@ -8,6 +8,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { GroupDiffModal } from "@/components/GroupDiffModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar, addYouTubeButtonToToolbar } from "@/utils/toastui-color-plugin";
@@ -1596,6 +1597,7 @@ function SectionDetailContent({
   const [confirmRemoveAddon, setConfirmRemoveAddon] = useState<{ id: string; label: string } | null>(null);
   const [activeGroup, setActiveGroup] = useState<string>("A");
   const [confirmRemoveGroup, setConfirmRemoveGroup] = useState(false);
+  const [showGroupDiff, setShowGroupDiff] = useState(false);
   const prevAddonCountRef = useRef(addons.length);
   useEffect(() => {
     // Auto-select the last addon when a new one is added
@@ -2539,8 +2541,17 @@ function SectionDetailContent({
                       </button>
                     )}
                   </div>
-                  {/* Edit button */}
-                  <div className="ml-auto">
+                  {/* Compare + Edit buttons */}
+                  <div className="ml-auto flex items-center gap-2">
+                    {addonGroups.length >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowGroupDiff(true)}
+                        className="rounded-lg border border-amber-600/50 bg-amber-900/20 px-3 py-1 text-xs text-amber-300 hover:bg-amber-900/40 transition-colors"
+                      >
+                        Comparar
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setIsEditingActiveAddon(!isEditingActiveAddon)}
@@ -2632,6 +2643,16 @@ function SectionDetailContent({
           </div>
         );
       })()}
+
+      {/* Group diff modal */}
+      {showGroupDiff && (
+        <GroupDiffModal
+          addons={addons}
+          groups={addonGroups}
+          sectionDataId={section?.dataId}
+          onClose={() => setShowGroupDiff(false)}
+        />
+      )}
 
       {/* Histórico de versões (colapsável) */}
       <div className="max-w-6xl mx-auto mb-4 ui-card-premium overflow-hidden">
