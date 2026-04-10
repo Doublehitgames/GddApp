@@ -1917,52 +1917,61 @@ function SectionDetailContent({
       
 
       {!(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 mb-3 group ui-card-premium relative">
-          <span className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" aria-hidden />
-          {/* Esquerda: cor, título (ou edição) e lápis de editar */}
-          <div className="relative flex items-center gap-2 flex-1 min-w-0">
-            <div className="relative shrink-0">
+        <div className="max-w-6xl mx-auto flex items-center gap-4 mb-3">
+          {/* Thumbnail fora do card, lateral esquerda */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={handlePickSectionThumb}
+              disabled={isPickingSectionThumb}
+              className={`h-24 w-24 md:h-28 md:w-28 rounded-xl overflow-hidden flex items-center justify-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                section?.thumbImageUrl && sectionThumbCandidateIndex < sectionThumbCandidates.length
+                  ? "hover:ring-2 hover:ring-indigo-400/70"
+                  : "border-2 border-dashed border-gray-600 bg-gray-900/40 hover:border-indigo-400"
+              }`}
+              title={t("sectionDetail.thumbnail.pickTooltip")}
+              aria-label={t("sectionDetail.thumbnail.pickTooltip")}
+            >
+              {section?.thumbImageUrl && sectionThumbCandidateIndex < sectionThumbCandidates.length ? (
+                <img
+                  src={sectionThumbCandidates[sectionThumbCandidateIndex]}
+                  alt={t("sectionDetail.thumbnail.alt")}
+                  className="h-full w-full object-contain"
+                  loading="lazy"
+                  onError={() => {
+                    setSectionThumbCandidateIndex((idx: number) => idx + 1);
+                  }}
+                />
+              ) : (
+                <span className="text-[11px] text-gray-400 px-1 text-center leading-tight">
+                  {isPickingSectionThumb ? t("sectionDetail.thumbnail.picking") : t("sectionDetail.thumbnail.empty")}
+                </span>
+              )}
+            </button>
+            {section?.thumbImageUrl && (
               <button
                 type="button"
-                onClick={handlePickSectionThumb}
-                disabled={isPickingSectionThumb}
-                className="h-14 w-14 rounded-xl border border-gray-600 bg-gray-900/80 overflow-hidden flex items-center justify-center hover:border-indigo-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                title={t("sectionDetail.thumbnail.pickTooltip")}
-                aria-label={t("sectionDetail.thumbnail.pickTooltip")}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSectionThumbImage(projectId, sectionId, undefined);
+                  setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: undefined } : prev));
+                  setSectionThumbCandidateIndex(0);
+                }}
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-600 text-white text-sm hover:bg-red-700 transition-colors flex items-center justify-center shadow-lg"
+                title={t("sectionDetail.thumbnail.removeTooltip")}
+                aria-label={t("sectionDetail.thumbnail.removeTooltip")}
               >
-                {section?.thumbImageUrl && sectionThumbCandidateIndex < sectionThumbCandidates.length ? (
-                  <img
-                    src={sectionThumbCandidates[sectionThumbCandidateIndex]}
-                    alt={t("sectionDetail.thumbnail.alt")}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    onError={() => {
-                      setSectionThumbCandidateIndex((idx: number) => idx + 1);
-                    }}
-                  />
-                ) : (
-                  <span className="text-[11px] text-gray-400 px-1 text-center leading-tight">
-                    {isPickingSectionThumb ? t("sectionDetail.thumbnail.picking") : t("sectionDetail.thumbnail.empty")}
-                  </span>
-                )}
+                ×
               </button>
-              {section?.thumbImageUrl && (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSectionThumbImage(projectId, sectionId, undefined);
-                    setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: undefined } : prev));
-                    setSectionThumbCandidateIndex(0);
-                  }}
-                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white text-xs hover:bg-red-700 transition-colors"
-                  title={t("sectionDetail.thumbnail.removeTooltip")}
-                  aria-label={t("sectionDetail.thumbnail.removeTooltip")}
-                >
-                  ×
-                </button>
-              )}
-            </div>
+            )}
+          </div>
+
+          {/* Header card à direita da imagem */}
+          <div className="flex items-center justify-between gap-4 group ui-card-premium relative flex-1 min-w-0">
+            <span className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" aria-hidden />
+            {/* Esquerda: cor, título (ou edição), lápis de editar e DataID abaixo */}
+            <div className="relative flex flex-col gap-1 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
             {isEditingTitle ? (
               <>
                 <input
@@ -2059,6 +2068,64 @@ function SectionDetailContent({
                 </button>
               </>
             )}
+              </div>
+              {/* DataID - abaixo do título, dentro do card */}
+              {!isEditingTitle && (
+                <div className="pl-10">
+                  {!isEditingDataId && section?.dataId && (
+                    <button
+                      type="button"
+                      onClick={() => { setDataIdDraft(section.dataId ?? ""); setIsEditingDataId(true); }}
+                      className="text-[10px] font-mono text-gray-500 hover:text-gray-300 bg-gray-800/50 rounded px-2 py-0.5 border border-gray-700/50 transition-colors"
+                      title="Editar DataID"
+                    >
+                      ID: {section.dataId}
+                    </button>
+                  )}
+                  {!isEditingDataId && !section?.dataId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const suggested = "DATA_" + (section.title || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+                        setDataIdDraft(suggested);
+                        setIsEditingDataId(true);
+                      }}
+                      className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+                      title="Adicionar DataID"
+                    >
+                      + DataID
+                    </button>
+                  )}
+                  {isEditingDataId && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
+                      <input
+                        autoFocus
+                        type="text"
+                        value={dataIdDraft}
+                        onChange={(e) => setDataIdDraft(e.target.value)}
+                        onBlur={() => {
+                          setSectionDataId(projectId, sectionId, dataIdDraft || undefined);
+                          setIsEditingDataId(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                          else if (e.key === "Escape") setIsEditingDataId(false);
+                        }}
+                        className="bg-transparent border-b border-indigo-500 text-xs font-mono text-gray-200 outline-none px-1 py-0.5 w-48 placeholder-gray-600"
+                        placeholder="ex: FARM_ANIMAL_CHICKEN"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingDataId(false)}
+                        className="text-gray-500 hover:text-gray-300 text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
 
           {/* Direita: ações (IA, mapa mental, documento, mover, excluir) */}
@@ -2179,64 +2246,7 @@ function SectionDetailContent({
               </button>
             )}
           </div>
-        </div>
-      )}
-
-      {/* DataID - below header */}
-      {!isEditingTitle && (
-        <div className="max-w-6xl mx-auto mt-1 mb-2 px-1">
-          {!isEditingDataId && section?.dataId && (
-            <button
-              type="button"
-              onClick={() => { setDataIdDraft(section.dataId ?? ""); setIsEditingDataId(true); }}
-              className="text-[10px] font-mono text-gray-500 hover:text-gray-300 bg-gray-800/50 rounded px-2 py-0.5 border border-gray-700/50 transition-colors"
-              title="Editar DataID"
-            >
-              ID: {section.dataId}
-            </button>
-          )}
-          {!isEditingDataId && !section?.dataId && (
-            <button
-              type="button"
-              onClick={() => {
-                const suggested = "DATA_" + (section.title || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
-                setDataIdDraft(suggested);
-                setIsEditingDataId(true);
-              }}
-              className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
-              title="Adicionar DataID"
-            >
-              + DataID
-            </button>
-          )}
-          {isEditingDataId && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
-              <input
-                autoFocus
-                type="text"
-                value={dataIdDraft}
-                onChange={(e) => setDataIdDraft(e.target.value)}
-                onBlur={() => {
-                  setSectionDataId(projectId, sectionId, dataIdDraft || undefined);
-                  setIsEditingDataId(false);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                  else if (e.key === "Escape") setIsEditingDataId(false);
-                }}
-                className="bg-transparent border-b border-indigo-500 text-xs font-mono text-gray-200 outline-none px-1 py-0.5 w-48 placeholder-gray-600"
-                placeholder="ex: FARM_ANIMAL_CHICKEN"
-              />
-              <button
-                type="button"
-                onClick={() => setIsEditingDataId(false)}
-                className="text-gray-500 hover:text-gray-300 text-xs"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       )}
 
