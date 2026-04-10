@@ -361,5 +361,74 @@ describe("projectSpecialTokens", () => {
     const normalized = normalizeSpecialTokenSyntax("Valor: @[currency\\_count]");
     expect(normalized).toBe("Valor: @[currency_count]");
   });
+
+  it("resolves page-scoped production time tokens for the current section", () => {
+    const project = createProject([
+      createSection("sec-passive", [
+        {
+          id: "prod-passive",
+          type: "production",
+          name: "Passive Production",
+          data: {
+            id: "prod-passive",
+            name: "Passive Production",
+            mode: "passive",
+            outputRef: "sec-other",
+            minOutput: 1,
+            maxOutput: 1,
+            intervalSeconds: 45,
+            ingredients: [],
+            outputs: [],
+          },
+        },
+      ]),
+      createSection("sec-recipe", [
+        {
+          id: "prod-recipe",
+          type: "production",
+          name: "Recipe Production",
+          data: {
+            id: "prod-recipe",
+            name: "Recipe Production",
+            mode: "recipe",
+            ingredients: [{ itemRef: "sec-other", quantity: 1 }],
+            outputs: [{ itemRef: "sec-other", quantity: 1 }],
+            craftTimeSeconds: 180,
+          },
+        },
+      ]),
+      createSection("sec-no-prod", []),
+    ]);
+
+    // Same content resolves to different values depending on the section context.
+    const passiveOutput = resolveProjectSpecialTokens(
+      "Interval: @[production_interval_seconds]s",
+      project,
+      "sec-passive"
+    );
+    expect(passiveOutput).toBe("Interval: 45s");
+
+    const recipeOutput = resolveProjectSpecialTokens(
+      "Craft: @[production_craft_time_seconds]s",
+      project,
+      "sec-recipe"
+    );
+    expect(recipeOutput).toBe("Craft: 180s");
+
+    // Without a section context the token is left untouched.
+    const noContextOutput = resolveProjectSpecialTokens(
+      "Interval: @[production_interval_seconds]",
+      project
+    );
+    expect(noContextOutput).toContain("@[production_interval_seconds]");
+
+    // Section without a production addon: token is left untouched.
+    const noProdOutput = resolveProjectSpecialTokens(
+      "Interval: @[production_interval_seconds]",
+      project,
+      "sec-no-prod"
+    );
+    expect(noProdOutput).toContain("@[production_interval_seconds]");
+  });
 });
 

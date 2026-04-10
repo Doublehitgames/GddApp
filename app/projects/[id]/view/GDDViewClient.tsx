@@ -708,7 +708,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         typeof section?.description === "string" && section.description.trim()
           ? section.description
           : section?.content || "";
-      const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project);
+      const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project, section.id);
       const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionWithResolvedTokens, projectSections);
       const markdownDescription = toAnchorPreviewMarkdown(descriptionWithResolvedReferences);
 
@@ -1044,6 +1044,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   projectId={projectId}
                   sections={project.sections || []}
                   projectTokenSource={project}
+                  currentSectionId={node.id}
                   referenceLinkMode="document"
                   documentAnchorOffset={180}
                   resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}

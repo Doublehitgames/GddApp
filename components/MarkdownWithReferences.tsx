@@ -14,6 +14,8 @@ interface MarkdownWithReferencesProps {
   projectId: string;
   sections: any[];
   projectTokenSource?: ProjectTokenSource;
+  /** Section whose content is being rendered — enables page-scoped tokens (e.g. production_interval_seconds). */
+  currentSectionId?: string;
   referenceLinkMode?: "manager" | "document";
   documentAnchorOffset?: number;
   resolveDocumentAnchorPreview?: (
@@ -192,6 +194,7 @@ export function MarkdownWithReferences({
   projectId,
   sections,
   projectTokenSource,
+  currentSectionId,
   referenceLinkMode = "manager",
   documentAnchorOffset = 180,
   resolveDocumentAnchorPreview,
@@ -243,10 +246,14 @@ export function MarkdownWithReferences({
   }, [pendingAnchorNavigation]);
 
   const buildMarkdownWithReferenceLinks = () => {
-    const contentWithResolvedTokens = resolveProjectSpecialTokens(content, {
-      updatedAt: projectTokenSource?.updatedAt,
-      sections: projectTokenSource?.sections ?? sections,
-    });
+    const contentWithResolvedTokens = resolveProjectSpecialTokens(
+      content,
+      {
+        updatedAt: projectTokenSource?.updatedAt,
+        sections: projectTokenSource?.sections ?? sections,
+      },
+      currentSectionId
+    );
     const normalizedContent = normalizeEscapedBlockquotes(
       convertYouTubeEditorPlaceholdersToEmbeds(
         convertMarkdownLinksInsideHtmlBlocks(contentWithResolvedTokens)

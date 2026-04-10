@@ -2338,6 +2338,7 @@ function SectionDetailContent({
               projectId={projectId}
               sections={project?.sections || []}
               projectTokenSource={project}
+              currentSectionId={sectionId}
               resolveDocumentAnchorPreview={(sectionId) => {
                 const sec = (project?.sections || []).find((s: any) => s.id === sectionId);
                 if (!sec) return null;
@@ -2984,11 +2985,12 @@ function SectionDetailContent({
               )}
 
               <div className="prose prose-sm prose-invert max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
-                <MarkdownWithReferences 
-                  content={previewContent} 
-                  projectId={projectId} 
-                  sections={project?.sections || []} 
+                <MarkdownWithReferences
+                  content={previewContent}
+                  projectId={projectId}
+                  sections={project?.sections || []}
                   projectTokenSource={project}
+                  currentSectionId={sectionId}
                 />
               </div>
 

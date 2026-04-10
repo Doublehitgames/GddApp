@@ -39,9 +39,9 @@ export default function ExportPage() {
     );
   }
 
-  const resolveExportContent = (value?: string) => {
+  const resolveExportContent = (value?: string, sectionId?: string) => {
     if (!value) return "";
-    return resolveProjectSpecialTokensForProject(value, project);
+    return resolveProjectSpecialTokensForProject(value, project, sectionId);
   };
 
   const getSectionsHierarchy = () => {
@@ -79,7 +79,7 @@ export default function ExportPage() {
       md += `${headerPrefix} ${section.title}\n\n`;
 
       if (section.content) {
-        md += `${resolveExportContent(section.content)}\n\n`;
+        md += `${resolveExportContent(section.content, section.id)}\n\n`;
       }
 
       if (section.subsections) {
@@ -151,7 +151,7 @@ export default function ExportPage() {
       if (section.content) {
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        const contentLines = doc.splitTextToSize(resolveExportContent(section.content), 170 - (level - 1) * 10);
+        const contentLines = doc.splitTextToSize(resolveExportContent(section.content, section.id), 170 - (level - 1) * 10);
 
         contentLines.forEach((line: string) => {
           checkPageBreak(lineHeight);
@@ -223,7 +223,7 @@ export default function ExportPage() {
 
       // Conteudo
       if (section.content) {
-        const paragraphs = resolveExportContent(section.content).split('\n\n');
+        const paragraphs = resolveExportContent(section.content, section.id).split('\n\n');
         paragraphs.forEach(para => {
           if (para.trim()) {
             children.push(

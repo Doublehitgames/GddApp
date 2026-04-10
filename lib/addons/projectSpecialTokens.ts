@@ -34,6 +34,16 @@ export const SPECIAL_TOKEN_HELP_ITEMS: SpecialTokenHelpItem[] = [
     description: "Filtra por categoria do inventário.",
   },
   { label: "Produções passivas", token: "@[production_count(mode=passive)]", description: "Filtra produção por modo." },
+  {
+    label: "Tempo de produção (passive)",
+    token: "@[production_interval_seconds]",
+    description: "Intervalo em segundos do addon de Produção (passive) desta página.",
+  },
+  {
+    label: "Tempo de craft (recipe)",
+    token: "@[production_craft_time_seconds]",
+    description: "Craft time em segundos do addon de Produção (recipe) desta página.",
+  },
   { label: "Economy com compra", token: "@[economy_link_count(config=buy)]", description: "Filtra por tipo de config." },
   { label: "Nível máximo XP", token: "@[xp_max_level]", description: "Maior endLevel entre addons de XP." },
 ];
@@ -262,6 +272,7 @@ type TokenContext = {
   stats: AddonStats;
   allAddons: SectionAddon[];
   baseTokenMap: TokenMap;
+  currentSection: Section | null;
 };
 
 type CurrencyAddon = Extract<SectionAddon, { type: "currency" }>;
@@ -270,18 +281,36 @@ type InventoryAddon = Extract<SectionAddon, { type: "inventory" }>;
 type ProductionAddon = Extract<SectionAddon, { type: "production" }>;
 type EconomyLinkAddon = Extract<SectionAddon, { type: "economyLink" }>;
 
-function createTokenContext(project: ProjectTokenSource | null | undefined): TokenContext {
+function createTokenContext(
+  project: ProjectTokenSource | null | undefined,
+  sectionId?: string | null
+): TokenContext {
   const sections = Array.isArray(project?.sections) ? project.sections : [];
   const allAddons = sections.flatMap((section) => getSectionAddons(section));
+  const currentSection = sectionId ? sections.find((s) => s.id === sectionId) ?? null : null;
   return {
     stats: buildProjectAddonStats(project),
     allAddons,
     baseTokenMap: buildProjectSpecialTokenMap(project),
+    currentSection,
   };
 }
 
 function resolveTokenValue(token: string, params: TokenParams, context: TokenContext): TokenValue | null {
-  const { stats, allAddons, baseTokenMap } = context;
+  const { stats, allAddons, baseTokenMap, currentSection } = context;
+
+  if (token === "production_interval_seconds" || token === "production_craft_time_seconds") {
+    if (!currentSection) return null;
+    const productionAddons = getSectionAddons(currentSection).filter(
+      (addon): addon is ProductionAddon => addon.type === "production"
+    );
+    if (productionAddons.length === 0) return null;
+    const field = token === "production_interval_seconds" ? "intervalSeconds" : "craftTimeSeconds";
+    const match = productionAddons.find((addon) => toNumberOrNull(addon.data[field]) != null);
+    const value = match ? toNumberOrNull(match.data[field]) : null;
+    return value == null ? null : value;
+  }
+
   if (Object.prototype.hasOwnProperty.call(baseTokenMap, token) && Object.keys(params).length === 0) {
     return baseTokenMap[token];
   }
@@ -346,10 +375,14 @@ function resolveTokenValue(token: string, params: TokenParams, context: TokenCon
   return null;
 }
 
-export function resolveProjectSpecialTokens(content: string, project: ProjectTokenSource | null | undefined): string {
+export function resolveProjectSpecialTokens(
+  content: string,
+  project: ProjectTokenSource | null | undefined,
+  sectionId?: string | null
+): string {
   if (!content || !content.includes("@[")) return content;
   const normalizedContent = normalizeSpecialTokenSyntax(content);
-  const context = createTokenContext(project);
+  const context = createTokenContext(project, sectionId);
   return normalizedContent.replace(/@\[([^\]]+)\]/gi, (fullMatch: string, rawExpression: string) => {
     const parsed = parseTokenExpression(rawExpression);
     if (!parsed) return fullMatch;
@@ -359,8 +392,12 @@ export function resolveProjectSpecialTokens(content: string, project: ProjectTok
   });
 }
 
-export function resolveProjectSpecialTokensForProject(content: string, project: Project | null | undefined): string {
-  return resolveProjectSpecialTokens(content, project ?? null);
+export function resolveProjectSpecialTokensForProject(
+  content: string,
+  project: Project | null | undefined,
+  sectionId?: string | null
+): string {
+  return resolveProjectSpecialTokens(content, project ?? null, sectionId);
 }
 
 export function normalizeSpecialTokenSyntax(content: string): string {
