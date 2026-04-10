@@ -1598,6 +1598,10 @@ function SectionDetailContent({
   const [activeGroup, setActiveGroup] = useState<string>("A");
   const [confirmRemoveGroup, setConfirmRemoveGroup] = useState(false);
   const [showGroupDiff, setShowGroupDiff] = useState(false);
+  const [showGroupNotes, setShowGroupNotes] = useState(false);
+  const [groupNotesDraft, setGroupNotesDraft] = useState("");
+  const setSectionAddonGroupNote = useProjectStore((s) => s.setSectionAddonGroupNote);
+  const renameSectionAddonGroup = useProjectStore((s) => s.renameSectionAddonGroup);
   const prevAddonCountRef = useRef(addons.length);
   useEffect(() => {
     // Auto-select the last addon when a new one is added
@@ -1631,6 +1635,7 @@ function SectionDetailContent({
     if (addonGroups.includes(trimmed)) { setEditingGroupName(null); return; } // duplicate name
     const updated = addons.map((a: any) => ((a as any).group || "A") === oldName ? { ...a, group: trimmed } : a);
     onReorderAddons(updated);
+    renameSectionAddonGroup(projectId, sectionId, oldName, trimmed);
     if (activeGroup === oldName) setActiveGroup(trimmed);
     setEditingGroupName(null);
   };
@@ -2540,6 +2545,21 @@ function SectionDetailContent({
                         Remover
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGroupNotesDraft(section?.addonGroupNotes?.[activeGroup] ?? "");
+                        setShowGroupNotes(true);
+                      }}
+                      className={`rounded-lg border px-2.5 py-1 text-[10px] transition-colors ${
+                        section?.addonGroupNotes?.[activeGroup]
+                          ? "border-sky-600/50 bg-sky-900/20 text-sky-300 hover:bg-sky-900/40"
+                          : "border-gray-700 bg-gray-800/50 text-gray-500 hover:text-gray-300"
+                      }`}
+                      title="Notas do grupo"
+                    >
+                      {section?.addonGroupNotes?.[activeGroup] ? "📝 Notas" : "+ Notas"}
+                    </button>
                   </div>
                   {/* Compare + Edit buttons */}
                   <div className="ml-auto flex items-center gap-2">
@@ -2652,6 +2672,57 @@ function SectionDetailContent({
           sectionDataId={section?.dataId}
           onClose={() => setShowGroupDiff(false)}
         />
+      )}
+
+      {/* Group notes modal */}
+      {showGroupNotes && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowGroupNotes(false)} />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-xl border border-gray-700 bg-gray-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-200">
+                Notas do grupo <span className="text-indigo-400">{activeGroup}</span>
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Documente a hipotese ou contexto deste grupo (ex: &quot;Testando producao mais alta para melhorar retencao D1&quot;).
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              <textarea
+                autoFocus
+                value={groupNotesDraft}
+                onChange={(e) => setGroupNotesDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setShowGroupNotes(false);
+                }}
+                className="w-full h-32 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:border-indigo-500 resize-none"
+                placeholder="Escreva suas notas aqui..."
+              />
+            </div>
+            <div className="px-5 py-3 border-t border-gray-700 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowGroupNotes(false)}
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSectionAddonGroupNote(projectId, sectionId, activeGroup, groupNotesDraft);
+                  setShowGroupNotes(false);
+                }}
+                className="rounded-lg border border-indigo-600 bg-indigo-700 px-4 py-1.5 text-xs text-white hover:bg-indigo-600"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Histórico de versões (colapsável) */}

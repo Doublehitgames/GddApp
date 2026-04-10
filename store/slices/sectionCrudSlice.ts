@@ -161,6 +161,60 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       );
     },
 
+    setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => {
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: new Date().toISOString(),
+                  sections: (p.sections || []).map((s) => {
+                    if (s.id !== sectionId) return s;
+                    const currentNotes = { ...(s.addonGroupNotes || {}) };
+                    const trimmed = note.trim();
+                    if (trimmed) {
+                      currentNotes[group] = trimmed;
+                    } else {
+                      delete currentNotes[group];
+                    }
+                    return {
+                      ...s,
+                      addonGroupNotes: Object.keys(currentNotes).length > 0 ? currentNotes : undefined,
+                      updated_at: new Date().toISOString(),
+                    };
+                  }),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
+    renameSectionAddonGroup: (projectId: UUID, sectionId: UUID, oldGroup: string, newGroup: string) => {
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: new Date().toISOString(),
+                  sections: (p.sections || []).map((s) => {
+                    if (s.id !== sectionId) return s;
+                    const notes = s.addonGroupNotes;
+                    if (!notes || !notes[oldGroup]) return s;
+                    const newNotes = { ...notes };
+                    newNotes[newGroup] = newNotes[oldGroup];
+                    delete newNotes[oldGroup];
+                    return { ...s, addonGroupNotes: newNotes, updated_at: new Date().toISOString() };
+                  }),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
     removeSection: (projectId: UUID, sectionId: UUID) => {
       engine.wrappedSetWithSync(
         (prev) =>

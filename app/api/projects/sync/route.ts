@@ -811,6 +811,7 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         data_id: s.dataId != null ? String(s.dataId) : null,
+        addon_group_notes: s.addonGroupNotes && Object.keys(s.addonGroupNotes).length > 0 ? s.addonGroupNotes : null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         balance_addons: normalizeSectionAddons(s.addons) || [],
         flowchart_state: s.flowchartState ?? null,

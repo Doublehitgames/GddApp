@@ -273,6 +273,8 @@ export type Section = {
   domainTags?: string[];
   /** Addons genéricos vinculados a esta seção. */
   addons?: SectionAddon[];
+  /** Notas por grupo de addons (ex.: hipotese do teste A/B). Chave = nome do grupo. */
+  addonGroupNotes?: Record<string, string>;
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
@@ -357,6 +359,8 @@ export interface ProjectStore {
     dataId?: string
   ) => void;
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
+  setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => void;
+  renameSectionAddonGroup: (projectId: UUID, sectionId: UUID, oldGroup: string, newGroup: string) => void;
   setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;
   addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;
   updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => void;
