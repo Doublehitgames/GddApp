@@ -67,6 +67,33 @@ function SectionThumb({
   );
 }
 
+/**
+ * Large thumbnail rendered at the top-left of a section description, with
+ * `float: left` so the markdown text wraps around it. Used in document view.
+ */
+function SectionHeroThumb({ src, alt }: { src?: string; alt: string }) {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const candidates = useMemo(() => getDriveImageDisplayCandidates(src || ""), [src]);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [src]);
+
+  if (!src) return null;
+  if (candidateIndex >= candidates.length) return null;
+
+  return (
+    <img
+      src={candidates[candidateIndex]}
+      alt={alt}
+      loading="lazy"
+      onError={() => setCandidateIndex((prev) => prev + 1)}
+      className="gdd-section-hero-thumb w-32 sm:w-40 md:w-48 rounded-lg border border-gray-200 bg-gray-100 object-cover shadow-sm"
+      style={{ float: "left", marginTop: 0, marginBottom: "0.5rem", marginRight: "1rem" }}
+    />
+  );
+}
+
 function normalizeReferenceText(value: string): string {
   return value
     .normalize("NFD")
@@ -974,11 +1001,6 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                       {index + 1}
                     </span>
                   )}
-                  <SectionThumb
-                    src={node.thumbImageUrl}
-                    alt={t("sectionDetail.thumbnail.alt")}
-                    depth={depth}
-                  />
                   {highlightSearchTerm(node.title)}
                   {hasFlowchart && (
                     <span className="gdd-flowchart-chip" title={t("sectionDetail.flowchart.open")}>
@@ -1039,6 +1061,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
             {node.content && node.content.trim() ? (
               <div className={depth === 0 ? "gdd-reading-prose prose prose-sm sm:prose-base md:prose-lg max-w-none mb-6 md:mb-8" : depth === 1 ? "gdd-reading-prose prose prose-sm sm:prose-base max-w-none mb-5 md:mb-6" : "gdd-reading-prose prose prose-sm max-w-none mb-4"}>
+                <SectionHeroThumb src={node.thumbImageUrl} alt={t("sectionDetail.thumbnail.alt")} />
                 <MarkdownWithReferences
                   content={node.content}
                   projectId={projectId}
@@ -1049,9 +1072,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   documentAnchorOffset={180}
                   resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
                 />
+                <div className="clear-both" />
               </div>
             ) : (
               <div className={depth <= 1 ? "text-gray-500 italic py-3 px-3 sm:px-4 md:px-6 bg-gray-50 rounded-lg border border-gray-200 mb-4 md:mb-6" : "text-gray-500 italic py-3 px-3 sm:px-4 bg-gray-50 rounded-lg text-sm border border-gray-200 mb-4"}>
+                <SectionHeroThumb src={node.thumbImageUrl} alt={t("sectionDetail.thumbnail.alt")} />
                 {!isPublicMode ? (
                   <button
                     onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
@@ -1062,6 +1087,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 ) : (
                   <span>{t("view.emptyContent")}</span>
                 )}
+                <div className="clear-both" />
               </div>
             )}
             {Boolean((node as any).flowchartEnabled) && (
