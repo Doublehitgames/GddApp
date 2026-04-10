@@ -46,7 +46,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
         const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
-        if (found) return { projectId: proj.id, sectionId: sec.id, addons: sec.addons ?? [], dataId: sec.dataId };
+        if (found) return { projectId: proj.id, sectionId: sec.id, addons: sec.addons ?? [], dataId: sec.dataId, sectionTitle: sec.title || "section" };
       }
     }
     return null;
@@ -108,6 +108,52 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     a.download = `${addon.name || "export"}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // Collect all groups in this section that have a Remote Config addon
+  const sectionGroups = useMemo(() => {
+    if (!sectionContext) return [] as string[];
+    const groups = new Set<string>();
+    for (const a of sectionContext.addons) {
+      if (a.type === "exportSchema") groups.add((a as any).group || "A");
+    }
+    return Array.from(groups).sort();
+  }, [sectionContext]);
+
+  const [downloadingAll, setDownloadingAll] = useState(false);
+
+  const sanitizeFilename = (name: string) => name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").replace(/\s+/g, "_").trim().slice(0, 80);
+
+  const handleDownloadAll = async () => {
+    if (!sectionContext) return;
+    setDownloadingAll(true);
+    try {
+      const JSZip = (await import(/* webpackChunkName: "jszip" */ "jszip")).default;
+      const zip = new JSZip();
+      const sectionName = sanitizeFilename(sectionContext.sectionTitle);
+
+      for (const group of sectionGroups) {
+        // Find the Remote Config addon in this group
+        const rcAddon = sectionContext.addons.find((a) => a.type === "exportSchema" && ((a as any).group || "A") === group);
+        if (!rcAddon) continue;
+        // Get sibling addons from the same group (excluding the RC itself)
+        const siblings = sectionContext.addons.filter((a) => a.id !== rcAddon.id && ((a as any).group || "A") === group);
+        const nodes = (rcAddon.data as ExportSchemaAddonDraft).nodes;
+        const json = resolveExportSchema(nodes, siblings, sectionContext.dataId);
+        const filename = `${sectionName}_${sanitizeFilename(group)}.json`;
+        zip.file(filename, JSON.stringify(json, null, 4));
+      }
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${sectionName}_grupos.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingAll(false);
+    }
   };
 
   const handleImport = () => {
@@ -218,6 +264,17 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         <button type="button" className={BTN} onClick={handleDownload}>
           Download JSON
         </button>
+        {sectionGroups.length >= 2 && (
+          <button
+            type="button"
+            className={BTN}
+            onClick={handleDownloadAll}
+            disabled={downloadingAll}
+            title="Baixa um .zip com um JSON por grupo"
+          >
+            {downloadingAll ? "Gerando..." : `Download Todos os Grupos (${sectionGroups.length})`}
+          </button>
+        )}
       </div>
 
       {/* Import Modal */}
