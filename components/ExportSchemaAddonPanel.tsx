@@ -172,7 +172,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
       return;
     }
 
-    const { newAddons, exportSchemaNodes } = importJsonToAddons(parsed);
+    const { newAddons, exportSchemaNodes, arrayFormat } = importJsonToAddons(parsed);
 
     // Add new addons to the section via the store, then update the export schema
     if (sectionContext && newAddons.length > 0) {
@@ -195,7 +195,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         type: "exportSchema",
         name: addon.name,
         group: myGroup !== "A" ? myGroup : undefined,
-        data: { ...addon, nodes: exportSchemaNodes },
+        data: { ...addon, nodes: exportSchemaNodes, arrayFormat },
       };
       const mergedAddons: SectionAddon[] = [
         ...groupedNewAddons,
@@ -204,7 +204,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
       setSectionAddons(sectionContext.projectId, sectionContext.sectionId, mergedAddons);
     } else {
       // No store context, just update the schema nodes
-      onChange({ ...addon, nodes: exportSchemaNodes });
+      onChange({ ...addon, nodes: exportSchemaNodes, arrayFormat });
     }
 
     setShowImport(false);
