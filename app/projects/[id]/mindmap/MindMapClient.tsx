@@ -22,6 +22,12 @@ import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
+import { SectionHeroThumb } from "@/components/SectionHeroThumb";
+import {
+  DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
+  normalizeDocumentHeroThumbWidth,
+} from "@/lib/documentThemes";
+import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
@@ -747,14 +753,18 @@ function ProjectNode({ data }: { data: any }) {
 }
 
 // Componente para renderizar markdown com referências clicáveis no mapa mental
-function MarkdownWithMapReferences({ 
-  content, 
-  sections, 
-  onSectionClick 
-}: { 
-  content: string; 
+function MarkdownWithMapReferences({
+  content,
+  sections,
+  onSectionClick,
+  heroThumbUrl,
+  heroThumbWidth,
+}: {
+  content: string;
   sections: Section[];
   onSectionClick: (sectionId: string) => void;
+  heroThumbUrl?: string | null;
+  heroThumbWidth?: number;
 }) {
   const normalizeContentForMapMarkdown = (input: string): string => {
     const normalized = input.replace(/\r\n/g, "\n");
@@ -824,6 +834,9 @@ function MarkdownWithMapReferences({
 
   return (
     <div className="prose prose-invert prose-sm max-w-none markdown-with-refs overflow-x-auto">
+      {heroThumbUrl && heroThumbWidth ? (
+        <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
+      ) : null}
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw as any]}
@@ -979,14 +992,28 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [dragActivated] = useState<Map<string, boolean>>(new Map());
   const DRAG_THRESHOLD = 5; // pixels mínimos de movimento para considerar drag
   
-  // Estados de busca
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  // Busca — termo vem do contexto compartilhado (input renderizado no breadcrumbs pelo layout
+  // no modo privado, ou no header interno no modo público).
+  const {
+    searchTerm,
+    setSearchTerm,
+    setResults: setContextResults,
+    activeResultId,
+    resultCount,
+    activeIndex,
+    navigate: navigateSearchResult,
+  } = useMindMapSearch();
   const [searchResults, setSearchResults] = useState<Set<string>>(new Set());
   const flowWrapperRef = useRef<HTMLDivElement>(null);
   const panelContentScaleRaw = Number((config as any)?.sidebar?.contentScale ?? 0.85);
   const panelContentScale = Number.isFinite(panelContentScaleRaw)
     ? Math.min(1.2, Math.max(0.5, panelContentScaleRaw))
     : 0.85;
+  const heroThumbWidthRaw = project?.mindMapSettings?.documentView?.heroThumbWidth;
+  const heroThumbWidth =
+    heroThumbWidthRaw == null
+      ? DEFAULT_DOCUMENT_HERO_THUMB_WIDTH
+      : normalizeDocumentHeroThumbWidth(heroThumbWidthRaw);
 
   // Impedir que o scroll do mouse role a página quando estiver sobre o mapa (zoom do ReactFlow deve consumir o wheel)
   useEffect(() => {
@@ -1001,29 +1028,53 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const performSearch = useCallback((term: string) => {
     if (!term.trim() || !project) {
       setSearchResults(new Set());
+      setContextResults([]);
       return;
     }
-    
+
     const lowerTerm = term.toLowerCase();
-    const results = new Set<string>();
-    
-    // Buscar em todas as seções
-    (project.sections || []).forEach((section: Section) => {
+    const orderedIds: string[] = [];
+
+    // Buscar em todas as seções; o título tem prioridade sobre matches só por conteúdo,
+    // então iteramos em duas passadas para que o primeiro resultado cicle por títulos primeiro.
+    const sections = project.sections || [];
+    const titleMatches: string[] = [];
+    const contentOnlyMatches: string[] = [];
+    sections.forEach((section: Section) => {
       const titleMatch = section.title.toLowerCase().includes(lowerTerm);
-      const contentMatch = section.content?.toLowerCase().includes(lowerTerm);
-      
-      if (titleMatch || contentMatch) {
-        results.add(section.id);
+      const contentMatch = section.content?.toLowerCase().includes(lowerTerm) ?? false;
+      if (titleMatch) {
+        titleMatches.push(section.id);
+      } else if (contentMatch) {
+        contentOnlyMatches.push(section.id);
       }
     });
-    
-    setSearchResults(results);
-  }, [project]);
+    orderedIds.push(...titleMatches, ...contentOnlyMatches);
+
+    setSearchResults(new Set(orderedIds));
+    setContextResults(orderedIds);
+  }, [project, setContextResults]);
 
   // Effect para realizar busca quando searchTerm muda
   useEffect(() => {
     performSearch(searchTerm);
   }, [searchTerm, performSearch]);
+
+  // Centralizar a viewport no resultado ativo quando o usuário navega pelos resultados (↑/↓/Enter).
+  useEffect(() => {
+    if (!activeResultId || nodes.length === 0) return;
+    const node = nodes.find((n) => n.id === activeResultId);
+    if (!node) return;
+    const targetSize = (config as any).zoom?.onClickTargetSize || 200;
+    let nodeSize = 100;
+    if (node.data?.calculatedSize) {
+      nodeSize = node.data.calculatedSize;
+    } else if (node.data?.level !== undefined) {
+      nodeSize = getNodeSize(node.data.level, config);
+    }
+    const zoomLevel = targetSize / nodeSize;
+    setCenter(node.position.x, node.position.y, { zoom: zoomLevel, duration: 600 });
+  }, [activeResultId, nodes, setCenter, config]);
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
@@ -1464,6 +1515,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       }
     }
 
+    // Se um nó referenciado (ou que nos referencia) já faz parte do parentesco
+    // (pais/avós/filhos diretos), não criamos edge de referência para ele:
+    // a edge normal de parentesco já representa a conexão, mostrar as duas
+    // gera linhas duplicadas apontando para o mesmo destino.
+    nodesInPath.forEach((id) => {
+      referencedNodeIds.delete(id);
+      backlinksNodeIds.delete(id);
+    });
+
     // Atualizar edges de referência (só se necessário)
     const totalRefsCount = referencedNodeIds.size + backlinksNodeIds.size;
     if (totalRefsCount > 0) {
@@ -1848,35 +1908,56 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         `}
       </style>
       <div className="fixed inset-0 overflow-hidden bg-gray-900">
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-10 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push(
-                isPublicMode
-                  ? `/s/${encodeURIComponent(publicToken || "")}?mode=view`
-                  : `/projects/${projectId}`
-              )}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              ← {isPublicMode ? tr("Documento", "Document", "Documento") : tr("Voltar", "Back", "Volver")}
-            </button>
-            <h1 className="text-xl font-bold text-white">🧠 {tr("Mapa Mental", "Mind Map", "Mapa mental")}</h1>
-            <span className="text-gray-400">|</span>
-            <span className="text-gray-300">{project.title}</span>
-            {isPublicMode && <span className="text-green-300 text-sm">🔓 {tr("Público", "Public", "Público")}</span>}
-            
-            {/* Busca */}
-            <div className="flex items-center gap-2 ml-6">
+        {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
+        {isPublicMode && (
+          <div className="absolute top-0 left-0 right-0 z-30 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <button
+                onClick={() => router.push(`/s/${encodeURIComponent(publicToken || "")}?mode=view`)}
+                className="text-gray-400 hover:text-white transition-colors shrink-0"
+              >
+                ← {tr("Documento", "Document", "Documento")}
+              </button>
+              <h1 className="text-xl font-bold text-white shrink-0 hidden sm:block">🧠 {tr("Mapa Mental", "Mind Map", "Mapa mental")}</h1>
+              <span className="text-gray-400 shrink-0 hidden md:inline">|</span>
+              <span className="text-gray-300 truncate hidden md:inline min-w-0">{project.title}</span>
+              <span className="text-green-300 text-sm shrink-0 hidden lg:inline">🔓 {tr("Público", "Public", "Público")}</span>
+            </div>
+
+            {/* Busca inline (apenas em modo público, onde o breadcrumbs não renderiza o input) */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <div className="relative">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (resultCount > 0) navigateSearchResult(e.shiftKey ? -1 : 1);
+                    } else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      if (resultCount > 0) navigateSearchResult(1);
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      if (resultCount > 0) navigateSearchResult(-1);
+                    } else if (e.key === "Escape" && searchTerm) {
+                      e.preventDefault();
+                      setSearchTerm("");
+                    }
+                  }}
                   placeholder={tr("Buscar seções...", "Search sections...", "Buscar secciones...")}
-                  className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-8 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-64"
+                  className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                {searchTerm.trim().length > 0 && (
+                  <span
+                    className="pointer-events-none absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 tabular-nums"
+                    aria-live="polite"
+                  >
+                    {resultCount > 0 ? `${activeIndex + 1}/${resultCount}` : "0/0"}
+                  </span>
+                )}
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
@@ -1886,29 +1967,32 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   </button>
                 )}
               </div>
-              {searchResults.size > 0 && (
-                <span className="text-sm text-gray-400 bg-gray-700 px-3 py-1.5 rounded-lg">
-                  {searchResults.size} {tr(`resultado${searchResults.size !== 1 ? "s" : ""}`, `result${searchResults.size !== 1 ? "s" : ""}`, `resultado${searchResults.size !== 1 ? "s" : ""}`)}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => navigateSearchResult(-1)}
+                disabled={resultCount === 0}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={tr("Anterior", "Previous", "Anterior")}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateSearchResult(1)}
+                disabled={resultCount === 0}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={tr("Próximo", "Next", "Siguiente")}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-              <span>{tr("Seção", "Section", "Sección")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-              <span>{tr("Subseção", "Subsection", "Subsección")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-0.5 bg-purple-500" style={{ backgroundImage: 'repeating-linear-gradient(to right, #8b5cf6 0, #8b5cf6 5px, transparent 5px, transparent 10px)' }}></div>
-              <span>{tr("Referência", "Reference", "Referencia")}</span>
-            </div>
-          </div>
-        </div>
+        )}
+
 
         {/* React Flow - overflow-hidden evita barras de rolagem; onWheel evita scroll da página ao zoomar */}
         <div className="h-full pt-16 overflow-hidden" ref={flowWrapperRef}>
@@ -1993,9 +2077,23 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   content={selectedNode.content}
                   sections={project.sections || []}
                   onSectionClick={handleReferenceClick}
+                  heroThumbUrl={
+                    selectedNode.id !== "project" ? (selectedNode as Section).thumbImageUrl : undefined
+                  }
+                  heroThumbWidth={heroThumbWidth}
                 />
               ) : (
-                <p className="text-gray-500 italic">{tr("Sem conteúdo", "No content", "Sin contenido")}</p>
+                <>
+                  {selectedNode.id !== "project" && (
+                    <SectionHeroThumb
+                      src={(selectedNode as Section).thumbImageUrl}
+                      alt={t("sectionDetail.thumbnail.alt")}
+                      width={heroThumbWidth}
+                    />
+                  )}
+                  <p className="text-gray-500 italic">{tr("Sem conteúdo", "No content", "Sin contenido")}</p>
+                  <div style={{ clear: "both" }} />
+                </>
               )}
             </div>
             {selectedNode.id !== "project" && Array.isArray((selectedNode as Section).addons) && (selectedNode as Section).addons!.length > 0 && (
@@ -2093,11 +2191,20 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   );
 }
 
-// Componente wrapper que fornece o contexto do ReactFlow
+// Componente wrapper que fornece o contexto do ReactFlow.
+// Em modo público não temos o ProjectLayoutShell como pai, então aplicamos
+// aqui o MindMapSearchProvider como fallback (no modo privado ele é um
+// no-op aninhado — o `useMindMapSearch` resolve pelo provider mais interno,
+// mas no privado o componente usa `setSearchTerm` só localmente dentro do
+// wrapper público, então não há conflito).
 export default function MindMapClient({ projectId, publicToken }: MindMapClientProps) {
-  return (
+  const content = (
     <ReactFlowProvider>
       <FlowContent projectId={projectId} publicToken={publicToken} />
     </ReactFlowProvider>
   );
+  if (publicToken) {
+    return <MindMapSearchProvider>{content}</MindMapSearchProvider>;
+  }
+  return content;
 }

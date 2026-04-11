@@ -6,10 +6,105 @@ import { usePathname } from "next/navigation";
 import ProjectSectionsSidebar from "@/components/ProjectSectionsSidebar";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
 
 interface Props {
   children: React.ReactNode;
   projectId: string;
+}
+
+function BreadcrumbsMindMapSearch() {
+  const { t } = useI18n();
+  const { searchTerm, setSearchTerm, resultCount, activeIndex, navigate } = useMindMapSearch();
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (resultCount === 0) return;
+      navigate(event.shiftKey ? -1 : 1);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (resultCount === 0) return;
+      navigate(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (resultCount === 0) return;
+      navigate(-1);
+    } else if (event.key === "Escape") {
+      if (searchTerm) {
+        event.preventDefault();
+        setSearchTerm("");
+      }
+    }
+  };
+
+  const hasQuery = searchTerm.trim().length > 0;
+
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      <div className="relative w-44 sm:w-56 md:w-64">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={t("mindmap.searchPlaceholder", "Buscar seções...")}
+          className="w-full bg-gray-800/80 text-gray-100 placeholder:text-gray-500 border border-gray-600/80 rounded-md pl-8 pr-16 py-1.5 text-xs sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+        />
+        <svg
+          className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+        </svg>
+        {hasQuery && (
+          <span
+            className="pointer-events-none absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 tabular-nums"
+            aria-live="polite"
+          >
+            {resultCount > 0 ? `${activeIndex + 1}/${resultCount}` : t("view.noResults", "0/0")}
+          </span>
+        )}
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+            aria-label={t("common.clear", "Clear")}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        disabled={resultCount === 0}
+        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-600/80 text-gray-300 hover:text-white hover:bg-gray-800/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        title={t("view.previousResult", "Previous result")}
+        aria-label={t("view.previousResult", "Previous result")}
+      >
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate(1)}
+        disabled={resultCount === 0}
+        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-600/80 text-gray-300 hover:text-white hover:bg-gray-800/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        title={t("view.nextResult", "Next result")}
+        aria-label={t("view.nextResult", "Next result")}
+      >
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 export default function ProjectLayoutShell({ children, projectId }: Props) {
@@ -34,6 +129,11 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       !normalizedPathname.endsWith("/view") &&
       !normalizedPathname.endsWith("/diagramas")
     );
+  }, [normalizedPathname]);
+
+  const isMindMapRoute = useMemo(() => {
+    if (!normalizedPathname) return false;
+    return normalizedPathname.endsWith("/mindmap");
   }, [normalizedPathname]);
 
   const isDocumentViewRoute = useMemo(() => {
@@ -90,11 +190,12 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
   }, [sidebarOpen, shouldShowSidebar]);
 
   return (
+    <MindMapSearchProvider>
     <div className="min-h-screen bg-gray-900 pb-14">
       {!isDocumentViewRoute && (
       <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+          <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm text-gray-300 flex-1">
             <Link
               href="/"
               className="shrink-0 rounded-md px-1.5 py-1 text-gray-300 hover:text-white hover:bg-gray-800/90 transition-colors"
@@ -137,6 +238,8 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
               </span>
             )}
           </div>
+
+          {isMindMapRoute && <BreadcrumbsMindMapSearch />}
 
           {shouldShowSidebar && (
             <button
@@ -202,5 +305,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       )}
       </div>
     </div>
+    </MindMapSearchProvider>
   );
 }
