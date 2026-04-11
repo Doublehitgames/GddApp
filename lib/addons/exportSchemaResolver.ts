@@ -1,6 +1,7 @@
 import type {
   ExportSchemaNode,
   ExportSchemaBinding,
+  ExportSchemaArrayFormat,
   SectionAddon,
   DataSchemaAddonDraft,
   DataSchemaEntry,
@@ -14,6 +15,7 @@ type ResolveContext = {
   sectionAddons: SectionAddon[];
   sectionDataId?: string;
   row?: ProgressionTableRow;
+  arrayFormat?: ExportSchemaArrayFormat;
 };
 
 function findDataSchemaAddon(
@@ -170,6 +172,92 @@ function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
   return node.key;
 }
 
+/**
+ * Row-major: array of objects, one per level.
+ * [{ level: 1, priceA: 10, priceB: 20 }, { level: 2, ... }]
+ */
+function buildRowMajor(
+  table: ProgressionTableAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  return table.rows.map((row) => {
+    const rowCtx = { ...ctx, row };
+    const itemObj: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      itemObj[resolveNodeKey(tmpl, rowCtx)] = resolveNode(tmpl, rowCtx);
+    }
+    return itemObj;
+  });
+}
+
+/**
+ * Column-major: object of arrays, one array per template node.
+ * { level: [1, 2, 3], priceA: [10, 20, 30], priceB: [...] }
+ */
+function buildColumnMajor(
+  table: ProgressionTableAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+  const firstRow = table.rows[0];
+  for (const tmpl of itemTemplate) {
+    const key = firstRow
+      ? resolveNodeKey(tmpl, { ...ctx, row: firstRow })
+      : tmpl.key;
+    const values: unknown[] = [];
+    for (const row of table.rows) {
+      values.push(resolveNode(tmpl, { ...ctx, row }));
+    }
+    obj[key] = values;
+  }
+  return obj;
+}
+
+/**
+ * Keyed by level: object indexed by row.level. The rowLevel binding is used
+ * as the outer key and removed from each item body.
+ * { "1": { priceA: 10, priceB: 20 }, "2": {...} }
+ */
+function buildKeyedByLevel(
+  table: ProgressionTableAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): Record<string, unknown> {
+  const obj: Record<string, unknown> = {};
+  for (const row of table.rows) {
+    const rowCtx = { ...ctx, row };
+    const item: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      if (tmpl.binding?.source === "rowLevel") continue;
+      item[resolveNodeKey(tmpl, rowCtx)] = resolveNode(tmpl, rowCtx);
+    }
+    obj[String(row.level)] = item;
+  }
+  return obj;
+}
+
+/**
+ * Matrix: { headers: [...], rows: [[...], [...]] }.
+ * Respects itemTemplate order for both headers and row cells.
+ */
+function buildMatrix(
+  table: ProgressionTableAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): { headers: string[]; rows: unknown[][] } {
+  const firstRow = table.rows[0];
+  const headers = itemTemplate.map((tmpl) =>
+    firstRow ? resolveNodeKey(tmpl, { ...ctx, row: firstRow }) : tmpl.key
+  );
+  const rows: unknown[][] = table.rows.map((row) => {
+    const rowCtx = { ...ctx, row };
+    return itemTemplate.map((tmpl) => resolveNode(tmpl, rowCtx));
+  });
+  return { headers, rows };
+}
+
 function resolveNode(
   node: ExportSchemaNode,
   ctx: ResolveContext
@@ -191,14 +279,18 @@ function resolveNode(
         node.arraySource.addonName
       );
       if (!table) return [];
-      return table.rows.map((row) => {
-        const rowCtx = { ...ctx, row };
-        const itemObj: Record<string, unknown> = {};
-        for (const tmpl of node.itemTemplate!) {
-          itemObj[resolveNodeKey(tmpl, rowCtx)] = resolveNode(tmpl, rowCtx);
-        }
-        return itemObj;
-      });
+      const format = ctx.arrayFormat ?? "rowMajor";
+      switch (format) {
+        case "columnMajor":
+          return buildColumnMajor(table, node.itemTemplate, ctx);
+        case "keyedByLevel":
+          return buildKeyedByLevel(table, node.itemTemplate, ctx);
+        case "matrix":
+          return buildMatrix(table, node.itemTemplate, ctx);
+        case "rowMajor":
+        default:
+          return buildRowMajor(table, node.itemTemplate, ctx);
+      }
     }
 
     case "value": {
@@ -219,13 +311,74 @@ function resolveNode(
 export function resolveExportSchema(
   nodes: ExportSchemaNode[],
   sectionAddons: SectionAddon[],
-  sectionDataId?: string
+  sectionDataId?: string,
+  arrayFormat: ExportSchemaArrayFormat = "rowMajor"
 ): Record<string, unknown> {
-  const ctx: ResolveContext = { sectionAddons, sectionDataId };
+  const ctx: ResolveContext = { sectionAddons, sectionDataId, arrayFormat };
   const result: Record<string, unknown> = {};
   for (const node of nodes) {
     result[resolveNodeKey(node, ctx)] = resolveNode(node, ctx);
   }
   return result;
+}
+
+// ── Pretty-printer ─────────────────────────────────────────────────
+// Like JSON.stringify(v, null, indent), but collapses arrays whose elements
+// are all primitives onto a single line. Keeps column-major, matrix row
+// cells, and "headers" tidy:
+//
+//   "level": [1, 2, 3, 4]
+//   "headers": ["level", "coinUpgradePrice"]
+//   "rows": [
+//       [1, 500, 42],
+//       [2, 694, 58]
+//   ]
+
+function isJsonPrimitive(v: unknown): boolean {
+  return (
+    v === null ||
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean"
+  );
+}
+
+function formatJsonValue(value: unknown, depth: number, indent: number): string {
+  // Treat undefined like JSON.stringify does inside arrays (→ null).
+  if (value === undefined || value === null) return "null";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return JSON.stringify(value);
+  }
+
+  const pad = " ".repeat(indent * depth);
+  const childPad = " ".repeat(indent * (depth + 1));
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    if (value.every(isJsonPrimitive)) {
+      return "[" + value.map((v) => JSON.stringify(v ?? null)).join(", ") + "]";
+    }
+    const parts = value.map((v) => childPad + formatJsonValue(v, depth + 1, indent));
+    return "[\n" + parts.join(",\n") + "\n" + pad + "]";
+  }
+
+  // Plain object
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    ([, v]) => v !== undefined
+  );
+  if (entries.length === 0) return "{}";
+  const parts = entries.map(
+    ([k, v]) => childPad + JSON.stringify(k) + ": " + formatJsonValue(v, depth + 1, indent)
+  );
+  return "{\n" + parts.join(",\n") + "\n" + pad + "}";
+}
+
+/**
+ * Pretty-print the resolved Remote Config output. Arrays of primitives are
+ * collapsed onto a single line; everything else is indented like
+ * JSON.stringify(v, null, indent).
+ */
+export function stringifyExportJson(value: unknown, indent: number = 4): string {
+  return formatJsonValue(value, 0, indent);
 }
 

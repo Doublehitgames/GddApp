@@ -690,6 +690,14 @@ function normalizeExportSchemaDraft(value: unknown): ExportSchemaAddonDraft | nu
     name: value.name,
     nodes: normalizeExportSchemaNodes(rawNodes),
   };
+  if (
+    value.arrayFormat === "rowMajor" ||
+    value.arrayFormat === "columnMajor" ||
+    value.arrayFormat === "keyedByLevel" ||
+    value.arrayFormat === "matrix"
+  ) {
+    result.arrayFormat = value.arrayFormat;
+  }
   return result;
 }
 

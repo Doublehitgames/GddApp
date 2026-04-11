@@ -272,10 +272,18 @@ export type ExportSchemaNode = {
   multiplier?: number;
 };
 
+export type ExportSchemaArrayFormat =
+  | "rowMajor"
+  | "columnMajor"
+  | "keyedByLevel"
+  | "matrix";
+
 export type ExportSchemaAddonDraft = {
   id: string;
   name: string;
   nodes: ExportSchemaNode[];
+  /** Formato de saída para nós `array`. Default: "rowMajor". */
+  arrayFormat?: ExportSchemaArrayFormat;
 };
 
 // Legacy aliases: keep old type names to avoid broad refactors.

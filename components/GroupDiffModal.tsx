@@ -34,9 +34,9 @@ export function GroupDiffModal({ addons, groups, sectionDataId, onClose }: Group
     const gAddons = addons.filter((a) => ((a as any).group || "A") === group);
     const exportAddon = gAddons.find((a) => a.type === "exportSchema");
     if (!exportAddon) return null;
-    const nodes = (exportAddon.data as ExportSchemaAddonDraft).nodes;
+    const draft = exportAddon.data as ExportSchemaAddonDraft;
     const siblings = gAddons.filter((a) => a.id !== exportAddon.id);
-    return resolveExportSchema(nodes, siblings, sectionDataId);
+    return resolveExportSchema(draft.nodes, siblings, sectionDataId, draft.arrayFormat);
   };
 
   const jsonA = useMemo(() => resolveGroupJson(groupA), [addons, groupA, sectionDataId]);

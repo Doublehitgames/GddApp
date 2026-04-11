@@ -3,16 +3,18 @@
 import { useCallback, useMemo, useState } from "react";
 import type {
   ExportSchemaAddonDraft,
+  ExportSchemaArrayFormat,
   ExportSchemaNode,
   SectionAddon,
 } from "@/lib/addons/types";
-import { resolveExportSchema } from "@/lib/addons/exportSchemaResolver";
+import { resolveExportSchema, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
 import { importJsonToAddons } from "@/lib/addons/exportSchemaImporter";
 import { useProjectStore } from "@/store/projectStore";
 import {
   SHELL,
   BLOCK,
   INPUT,
+  SELECT,
   BTN,
   BTN_DANGER,
   BTN_PRIMARY,
@@ -83,24 +85,24 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   };
 
   const resolved = useMemo(
-    () => (showPreview ? resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId) : null),
-    [showPreview, addon.nodes, sectionAddons]
+    () => (showPreview ? resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat) : null),
+    [showPreview, addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat]
   );
 
   const jsonString = useMemo(
-    () => (resolved ? JSON.stringify(resolved, null, 4) : ""),
+    () => (resolved ? stringifyExportJson(resolved) : ""),
     [resolved]
   );
 
   const handleCopy = async () => {
-    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId), null, 4);
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat));
     await navigator.clipboard.writeText(json);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const json = JSON.stringify(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId), null, 4);
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat));
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -138,10 +140,10 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         if (!rcAddon) continue;
         // Get sibling addons from the same group (excluding the RC itself)
         const siblings = sectionContext.addons.filter((a) => a.id !== rcAddon.id && ((a as any).group || "A") === group);
-        const nodes = (rcAddon.data as ExportSchemaAddonDraft).nodes;
-        const json = resolveExportSchema(nodes, siblings, sectionContext.dataId);
+        const rcDraft = rcAddon.data as ExportSchemaAddonDraft;
+        const json = resolveExportSchema(rcDraft.nodes, siblings, sectionContext.dataId, rcDraft.arrayFormat);
         const filename = `${sectionName}_${sanitizeFilename(group)}.json`;
-        zip.file(filename, JSON.stringify(json, null, 4));
+        zip.file(filename, stringifyExportJson(json));
       }
 
       const blob = await zip.generateAsync({ type: "blob" });
@@ -252,6 +254,21 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
 
       {/* Actions */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <label className="flex items-center gap-1.5 text-xs text-gray-400" title="Formato do JSON para nós array (tabelas de balanceamento)">
+          Formato:
+          <select
+            className={SELECT + " !text-xs"}
+            value={addon.arrayFormat ?? "rowMajor"}
+            onChange={(e) =>
+              onChange({ ...addon, arrayFormat: e.target.value as ExportSchemaArrayFormat })
+            }
+          >
+            <option value="rowMajor">Row-major (array de objetos)</option>
+            <option value="columnMajor">Column-major (objeto de arrays)</option>
+            <option value="keyedByLevel">Keyed by level (índice por nível)</option>
+            <option value="matrix">Matrix (headers + rows)</option>
+          </select>
+        </label>
         <button type="button" className={BTN_PRIMARY} onClick={() => setShowImport(!showImport)}>
           Importar JSON
         </button>
