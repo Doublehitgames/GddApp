@@ -249,6 +249,8 @@ export type MindMapSettings = {
   documentView?: {
     theme?: DocumentThemeId;
     spotlight?: ProjectDocumentSpotlight;
+    /** Pixel width of the section hero thumbnail shown in document view. */
+    heroThumbWidth?: number;
   };
 };
 

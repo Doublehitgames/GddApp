@@ -50,3 +50,18 @@ export function normalizeDocumentTheme(value: unknown): DocumentThemeId {
     ? (value as DocumentThemeId)
     : DEFAULT_DOCUMENT_THEME;
 }
+
+/** Default pixel width of the section hero thumbnail in the document view. */
+export const DEFAULT_DOCUMENT_HERO_THUMB_WIDTH = 150;
+/** Allowed range for the hero thumb width so users can't break the layout. */
+export const MIN_DOCUMENT_HERO_THUMB_WIDTH = 64;
+export const MAX_DOCUMENT_HERO_THUMB_WIDTH = 480;
+
+export function normalizeDocumentHeroThumbWidth(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_DOCUMENT_HERO_THUMB_WIDTH;
+  return Math.min(
+    MAX_DOCUMENT_HERO_THUMB_WIDTH,
+    Math.max(MIN_DOCUMENT_HERO_THUMB_WIDTH, Math.round(parsed))
+  );
+}

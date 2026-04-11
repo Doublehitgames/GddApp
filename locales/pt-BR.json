@@ -1195,6 +1195,10 @@
           "label": "Noite",
           "description": "Capítulos escuros com brilho"
         }
+      },
+      "heroThumbWidth": {
+        "label": "Largura da imagem lateral na descrição",
+        "description": "Controla em quantos pixels a thumb da página aparece no modo documento, com o texto fluindo ao redor."
       }
     },
     "deleteProject": {

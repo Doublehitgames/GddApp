@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import { resolveProjectSpecialTokens, type ProjectTokenSource } from "@/lib/addons/projectSpecialTokens";
 import { convertYouTubeEditorPlaceholdersToEmbeds } from "@/utils/youtubeEmbeds";
+import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 
 interface MarkdownWithReferencesProps {
   content: string;
@@ -16,6 +17,10 @@ interface MarkdownWithReferencesProps {
   projectTokenSource?: ProjectTokenSource;
   /** Section whose content is being rendered — enables page-scoped tokens (e.g. production_interval_seconds). */
   currentSectionId?: string;
+  /** Optional hero thumbnail rendered floated left so the text wraps around it. */
+  heroThumbUrl?: string | null;
+  /** Pixel width for the hero thumbnail. Ignored when `heroThumbUrl` is empty. */
+  heroThumbWidth?: number;
   referenceLinkMode?: "manager" | "document";
   documentAnchorOffset?: number;
   resolveDocumentAnchorPreview?: (
@@ -195,6 +200,8 @@ export function MarkdownWithReferences({
   sections,
   projectTokenSource,
   currentSectionId,
+  heroThumbUrl,
+  heroThumbWidth,
   referenceLinkMode = "manager",
   documentAnchorOffset = 180,
   resolveDocumentAnchorPreview,
@@ -332,6 +339,9 @@ export function MarkdownWithReferences({
 
   return (
     <div ref={markdownRootRef} className="prose max-w-none markdown-with-refs overflow-x-auto">
+      {heroThumbUrl && heroThumbWidth ? (
+        <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
+      ) : null}
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw as any]}

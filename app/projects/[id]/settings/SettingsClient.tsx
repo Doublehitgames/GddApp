@@ -7,7 +7,15 @@ import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
-import { DOCUMENT_THEME_OPTIONS, normalizeDocumentTheme, type DocumentThemeId } from "@/lib/documentThemes";
+import {
+  DOCUMENT_THEME_OPTIONS,
+  normalizeDocumentTheme,
+  type DocumentThemeId,
+  DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
+  MIN_DOCUMENT_HERO_THUMB_WIDTH,
+  MAX_DOCUMENT_HERO_THUMB_WIDTH,
+  normalizeDocumentHeroThumbWidth,
+} from "@/lib/documentThemes";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 interface Props {
@@ -61,6 +69,8 @@ export default function SettingsClient({ projectId }: Props) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
   const [deleteBackupChecked, setDeleteBackupChecked] = useState(false);
+  /** Draft string so the user can freely type multi-digit values without instant clamping. */
+  const [heroThumbWidthDraft, setHeroThumbWidthDraft] = useState<string | null>(null);
 
   const fetchMembers = useCallback(async () => {
     if (!projectId) return;
@@ -519,9 +529,18 @@ export default function SettingsClient({ projectId }: Props) {
   const publicShareVersion = encodeURIComponent(project.updatedAt || project.createdAt || "v1");
   const publicShareUrlForSocial = publicShareUrl ? `${publicShareUrl}?v=${publicShareVersion}` : "";
   const selectedDocumentTheme = normalizeDocumentTheme(getValue("documentView.theme"));
+  const heroThumbWidthRaw = getValue("documentView.heroThumbWidth");
+  const heroThumbWidth =
+    heroThumbWidthRaw == null
+      ? DEFAULT_DOCUMENT_HERO_THUMB_WIDTH
+      : normalizeDocumentHeroThumbWidth(heroThumbWidthRaw);
 
   const setDocumentTheme = (theme: DocumentThemeId) => {
     setValue("documentView.theme", theme);
+  };
+
+  const setHeroThumbWidth = (value: number) => {
+    setValue("documentView.heroThumbWidth", normalizeDocumentHeroThumbWidth(value));
   };
 
   return (
@@ -576,6 +595,74 @@ export default function SettingsClient({ projectId }: Props) {
               })}
             </div>
             <p className="text-xs text-gray-500 mt-3">{t("settings.documentThemes.hint")}</p>
+
+            <div className="mt-5 border-t border-gray-700 pt-4">
+              <label htmlFor="hero-thumb-width" className="block text-sm font-semibold text-white mb-1">
+                {t("settings.documentThemes.heroThumbWidth.label", "Largura da imagem lateral na descrição")}
+              </label>
+              <p className="text-xs text-gray-400 mb-3">
+                {t(
+                  "settings.documentThemes.heroThumbWidth.description",
+                  "Controla em quantos pixels a thumb da página aparece no modo documento, com o texto fluindo ao redor."
+                )}
+              </p>
+              <div className="flex items-center gap-3 max-w-md">
+                <input
+                  id="hero-thumb-width"
+                  type="range"
+                  min={MIN_DOCUMENT_HERO_THUMB_WIDTH}
+                  max={MAX_DOCUMENT_HERO_THUMB_WIDTH}
+                  step={8}
+                  value={heroThumbWidth}
+                  onChange={(e) => {
+                    setHeroThumbWidth(Number(e.target.value));
+                    setHeroThumbWidthDraft(null);
+                  }}
+                  className="flex-1 accent-blue-500"
+                />
+                <input
+                  type="number"
+                  min={MIN_DOCUMENT_HERO_THUMB_WIDTH}
+                  max={MAX_DOCUMENT_HERO_THUMB_WIDTH}
+                  value={heroThumbWidthDraft ?? String(heroThumbWidth)}
+                  onChange={(e) => setHeroThumbWidthDraft(e.target.value)}
+                  onBlur={() => {
+                    if (heroThumbWidthDraft == null) return;
+                    const trimmed = heroThumbWidthDraft.trim();
+                    if (trimmed === "") {
+                      setHeroThumbWidth(DEFAULT_DOCUMENT_HERO_THUMB_WIDTH);
+                    } else {
+                      const parsed = Number(trimmed);
+                      if (Number.isFinite(parsed)) {
+                        setHeroThumbWidth(parsed);
+                      }
+                    }
+                    setHeroThumbWidthDraft(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    } else if (e.key === "Escape") {
+                      setHeroThumbWidthDraft(null);
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="w-20 bg-gray-700 rounded px-2 py-1 text-sm text-right"
+                />
+                <span className="text-xs text-gray-400">px</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeroThumbWidth(DEFAULT_DOCUMENT_HERO_THUMB_WIDTH);
+                    setHeroThumbWidthDraft(null);
+                  }}
+                  className="text-xs text-gray-400 hover:text-gray-200 underline-offset-2 hover:underline"
+                  title={`${t("common.reset", "Reset")} (${DEFAULT_DOCUMENT_HERO_THUMB_WIDTH}px)`}
+                >
+                  {t("common.reset", "Reset")}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="bg-gray-800 rounded-lg p-6">

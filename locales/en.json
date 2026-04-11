@@ -1195,6 +1195,10 @@
           "label": "Night",
           "description": "Dark chapter cards with glow"
         }
+      },
+      "heroThumbWidth": {
+        "label": "Side image width in the description",
+        "description": "Controls the pixel width of the page thumbnail in document mode, with text flowing around it."
       }
     },
     "deleteProject": {

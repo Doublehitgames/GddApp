@@ -1195,6 +1195,10 @@
           "label": "Noche",
           "description": "Capítulos oscuros con brillo"
         }
+      },
+      "heroThumbWidth": {
+        "label": "Ancho de la imagen lateral en la descripción",
+        "description": "Controla el ancho en píxeles de la miniatura de la página en modo documento, con el texto fluyendo alrededor."
       }
     },
     "deleteProject": {
