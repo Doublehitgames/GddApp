@@ -68,6 +68,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       title: z.string().optional().describe("New title"),
       description: z.string().optional().describe("New description"),
       coverImageUrl: z.string().optional().describe("Cover image URL"),
+      aiInstructions: z.string().optional().describe("AI instructions — conventions for how AI should structure data in this project"),
     },
     async ({ projectId, ...fields }) => {
       try { return json(await client.updateProject(projectId, fields)); }

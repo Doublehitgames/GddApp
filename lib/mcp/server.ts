@@ -33,7 +33,7 @@ function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async (params) => { try { return json(await api.createProject(params)); } catch (e) { return err(e); } });
 
   server.tool("update_project", "Update project metadata",
-    { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional() },
+    { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional(), aiInstructions: z.string().optional().describe("AI instructions for this project") },
     async ({ projectId, ...f }) => { try { return json(await api.updateProject(projectId, f)); } catch (e) { return err(e); } });
 
   server.tool("delete_project", "Delete a project (owner only, irreversible)",
