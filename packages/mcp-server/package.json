@@ -1,0 +1,31 @@
+{
+  "name": "@doublehitgames/gdd-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for GDD Manager — lets AI assistants read and write game design documents",
+  "type": "module",
+  "bin": {
+    "gdd-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "gdd",
+    "game-design",
+    "claude",
+    "ai"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
