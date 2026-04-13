@@ -269,7 +269,7 @@ export default function ApiKeysSettingsPage() {
                       : "bg-gray-700 text-gray-400"
                 }`}
               >
-                {setupStep > s ? "\u2713" : s}.{" "}
+                {setupStep > s ? "✓" : s}.{" "}
                 {s === 1 ? "Gerar chave" : s === 2 ? "Configurar" : "Testar"}
               </button>
             ))}
@@ -280,13 +280,13 @@ export default function ApiKeysSettingsPage() {
             <div>
               <p className="text-xs text-gray-300 mb-3">
                 {activeKeys.length > 0
-                  ? <>Voc\u00ea j\u00e1 tem {activeKeys.length} chave(s) ativa(s). Se quiser usar uma existente, pule para o pr\u00f3ximo passo.</>
-                  : "Crie uma chave acima para come\u00e7ar. D\u00ea um nome como \"Claude\" para identificar."
+                  ? <>Você já tem {activeKeys.length} chave(s) ativa(s). Se quiser usar uma existente, pule para o próximo passo.</>
+                  : "Crie uma chave acima para começar. Dê um nome como \"Claude\" para identificar."
                 }
               </p>
               {createdKey && (
                 <div className="rounded-lg bg-emerald-900/20 border border-emerald-700/40 p-3 mb-3">
-                  <p className="text-xs text-emerald-300 mb-1">Chave pronta! Copie e guarde — ela n\u00e3o ser\u00e1 exibida novamente:</p>
+                  <p className="text-xs text-emerald-300 mb-1">Chave pronta! Copie e guarde — ela não será exibida novamente:</p>
                   <code className="text-xs font-mono text-emerald-200 break-all">{createdKey}</code>
                 </div>
               )}
@@ -294,7 +294,7 @@ export default function ApiKeysSettingsPage() {
                 onClick={() => setSetupStep(2)}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500"
               >
-                {activeKeys.length > 0 || createdKey ? "Pr\u00f3ximo \u2192" : "Gere uma chave acima primeiro"}
+                {activeKeys.length > 0 || createdKey ? "Próximo →" : "Gere uma chave acima primeiro"}
               </button>
             </div>
           )}
@@ -303,7 +303,7 @@ export default function ApiKeysSettingsPage() {
           {setupStep === 2 && (
             <div>
               <p className="text-xs text-gray-300 mb-2">
-                Abra o arquivo de configura\u00e7\u00e3o do Claude no seu computador:
+                Abra o arquivo de configuração do Claude no seu computador:
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex items-start gap-2">
@@ -322,8 +322,8 @@ export default function ApiKeysSettingsPage() {
 
               <p className="text-xs text-gray-300 mb-2">
                 {createdKey
-                  ? "Copie a configura\u00e7\u00e3o abaixo (j\u00e1 com a sua chave):"
-                  : <>Copie a configura\u00e7\u00e3o abaixo e substitua <code className="text-yellow-300">&lt;cole sua chave aqui&gt;</code> pela sua API key:</>
+                  ? "Copie a configuração abaixo (já com a sua chave):"
+                  : <>Copie a configuração abaixo e substitua <code className="text-yellow-300">&lt;cole sua chave aqui&gt;</code> pela sua API key:</>
                 }
               </p>
 
@@ -341,8 +341,8 @@ export default function ApiKeysSettingsPage() {
 
               <div className="rounded-lg bg-yellow-900/20 border border-yellow-700/30 p-3 mt-3 mb-4">
                 <p className="text-xs text-yellow-300/90">
-                  <strong>Importante:</strong> Se o arquivo j\u00e1 existir, adicione apenas a parte {'"'}gdd-manager{'"'} dentro de {'"'}mcpServers{'"'}.
-                  N\u00e3o substitua o arquivo inteiro se j\u00e1 tiver outros servidores configurados.
+                  <strong>Importante:</strong> Se o arquivo já existir, adicione apenas a parte {'"'}gdd-manager{'"'} dentro de {'"'}mcpServers{'"'}.
+                  Não substitua o arquivo inteiro se já tiver outros servidores configurados.
                 </p>
               </div>
 
@@ -352,7 +352,7 @@ export default function ApiKeysSettingsPage() {
 
               <div className="flex gap-2">
                 <button onClick={() => setSetupStep(1)} className="rounded-lg bg-gray-700 px-3 py-2 text-xs text-gray-300 hover:bg-gray-600">&larr; Voltar</button>
-                <button onClick={() => setSetupStep(3)} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500">Pr\u00f3ximo \u2192</button>
+                <button onClick={() => setSetupStep(3)} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500">Próximo →</button>
               </div>
             </div>
           )}
@@ -366,8 +366,8 @@ export default function ApiKeysSettingsPage() {
               <div className="space-y-2 mb-4">
                 {[
                   "Lista meus projetos do GDD",
-                  "Mostra as se\u00e7\u00f5es do projeto <nome>",
-                  "Cria uma se\u00e7\u00e3o de Economia no meu projeto",
+                  "Mostra as seções do projeto <nome>",
+                  "Cria uma seção de Economia no meu projeto",
                   "Analisa meu GDD e sugere melhorias",
                 ].map((cmd) => (
                   <div key={cmd} className="flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2">
@@ -378,14 +378,14 @@ export default function ApiKeysSettingsPage() {
               </div>
 
               <p className="text-xs text-gray-300 mb-3">
-                Se funcionar, o Claude vai listar seus projetos ou criar conte\u00fado direto no GDD Manager.
+                Se funcionar, o Claude vai listar seus projetos ou criar conteúdo direto no GDD Manager.
               </p>
 
               <div className="rounded-lg bg-gray-900/60 border border-gray-700 p-3 mb-4">
-                <p className="text-xs text-gray-400 mb-1"><strong>N\u00e3o funcionou?</strong></p>
+                <p className="text-xs text-gray-400 mb-1"><strong>Não funcionou?</strong></p>
                 <ul className="text-xs text-gray-500 space-y-1 list-disc ml-4">
-                  <li>Verifique se o Node.js est\u00e1 instalado: <code className="text-gray-400">node --version</code></li>
-                  <li>Confira se a chave est\u00e1 correta no arquivo de config</li>
+                  <li>Verifique se o Node.js está instalado: <code className="text-gray-400">node --version</code></li>
+                  <li>Confira se a chave está correta no arquivo de config</li>
                   <li>Verifique se reiniciou o Claude depois de salvar o arquivo</li>
                   <li>Teste a chave: <code className="text-gray-400">curl -H &quot;Authorization: Bearer SUA_KEY&quot; https://gdd-app.vercel.app/api/v1/me</code></li>
                 </ul>
