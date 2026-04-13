@@ -30,6 +30,7 @@ export default function ProjectEditClient({ projectId }: Props) {
 
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const [aiInstructions, setAiInstructions] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
@@ -51,6 +52,7 @@ export default function ProjectEditClient({ projectId }: Props) {
       const sections = p.sections || [];
       const editableDescription = convertReferencesToNames(p.description || "", sections);
       setDescription(editableDescription);
+      setAiInstructions(p.aiInstructions || "");
       setNotFound(false);
     } else {
       setNotFound(true);
@@ -139,7 +141,7 @@ export default function ProjectEditClient({ projectId }: Props) {
       const project = getProject(projectId);
       const sections = project?.sections || [];
       const convertedMd = convertReferencesToIds(normalizedMd, sections);
-      editProject(projectId, name, convertedMd);
+      editProject(projectId, name, convertedMd, aiInstructions);
       router.push(`/projects/${projectId}`);
     }
   }
@@ -236,6 +238,24 @@ export default function ProjectEditClient({ projectId }: Props) {
               onInsertToken={insertSpecialToken}
             />
           </div>
+        </div>
+
+        {/* AI Instructions */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">
+            Instruções para IA
+            <span className="text-xs text-gray-400 font-normal ml-2">(opcional)</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-2">
+            Ensine o Claude como estruturar os dados deste projeto. Ex: quais addons usar para cada tipo de entidade, convenções de colunas em tabelas de progressão, etc.
+          </p>
+          <textarea
+            value={aiInstructions}
+            onChange={(e) => setAiInstructions(e.target.value)}
+            rows={6}
+            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            placeholder={"Ex:\n- Animais usam Data Schema com: unlock_level (int), base_production (int), production_time (int)\n- Progression Tables têm colunas: cost, extra_production, speed_percent\n- O dataId da seção deve ser o remote config key (ex: DONKEY_V2)"}
+          />
         </div>
 
         <div className="flex gap-2 items-center">

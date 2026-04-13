@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   requireAuth,
   requireProject,
+  selectProjects,
   selectSections,
   apiJson,
   apiError,
@@ -71,19 +72,20 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
   if (parsed.data.coverImageUrl !== undefined) updates.cover_image_url = parsed.data.coverImageUrl;
   if (parsed.data.mindmapSettings !== undefined) updates.mindmap_settings = parsed.data.mindmapSettings;
+  if (parsed.data.aiInstructions !== undefined) updates.ai_instructions = parsed.data.aiInstructions;
 
-  const { data: updated, error } = await auth.supabase
+  const { error } = await auth.supabase
     .from("projects")
     .update(updates)
-    .eq("id", id)
-    .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
-    .single();
+    .eq("id", id);
 
-  if (error || !updated) {
-    return apiError("Failed to update project", 500, "db_error");
-  }
+  if (error) return apiError("Failed to update project", 500, "db_error");
 
-  return apiJson(projectToApi(updated));
+  // Re-read with fallback
+  const { data: rows } = await selectProjects(auth.supabase, { eq: ["id", id] });
+  if (!rows || rows.length === 0) return apiError("Project not found after update", 500, "db_error");
+
+  return apiJson(projectToApi(rows[0]));
 }
 
 /**

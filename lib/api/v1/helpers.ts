@@ -56,9 +56,43 @@ export type ProjectRow = {
   description: string;
   cover_image_url: string | null;
   mindmap_settings: Record<string, unknown> | null;
+  ai_instructions: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, created_at, updated_at";
+export const PROJECT_COLUMNS_SAFE = "id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at";
+
+/** Select projects with fallback if ai_instructions column doesn't exist. */
+export async function selectProjects(
+  supabase: SupabaseClient,
+  query: { eq?: [string, string]; in?: [string, string[]]; or?: string; limit?: number; order?: string },
+) {
+  let q = supabase.from("projects").select(PROJECT_COLUMNS_FULL);
+  if (query.eq) q = q.eq(query.eq[0], query.eq[1]);
+  if (query.in) q = q.in(query.in[0], query.in[1]);
+  if (query.or) q = q.or(query.or);
+  if (query.order) q = q.order(query.order, { ascending: false });
+  if (query.limit) q = q.limit(query.limit);
+
+  const result = await q;
+  if (result.error) {
+    let fb = supabase.from("projects").select(PROJECT_COLUMNS_SAFE);
+    if (query.eq) fb = fb.eq(query.eq[0], query.eq[1]);
+    if (query.in) fb = fb.in(query.in[0], query.in[1]);
+    if (query.or) fb = fb.or(query.or);
+    if (query.order) fb = fb.order(query.order, { ascending: false });
+    if (query.limit) fb = fb.limit(query.limit);
+    const fbResult = await fb;
+    if (fbResult.error) return { data: null, error: fbResult.error };
+    const rows = (fbResult.data ?? []).map((r: Record<string, unknown>) => ({
+      ...r, ai_instructions: null,
+    })) as unknown as ProjectRow[];
+    return { data: rows, error: null };
+  }
+  return { data: result.data as unknown as ProjectRow[], error: null };
+}
 
 /**
  * Load a project and verify the caller has access.
@@ -74,11 +108,24 @@ export async function requireProject(
   | { project: ProjectRow; isOwner: boolean }
   | { response: NextResponse }
 > {
-  const { data: project, error } = await supabase
+  let { data: project, error } = await supabase
     .from("projects")
-    .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
+    .select(PROJECT_COLUMNS_FULL)
     .eq("id", projectId)
     .maybeSingle();
+
+  // Fallback if ai_instructions column doesn't exist yet
+  if (error && !project) {
+    const fb = await supabase
+      .from("projects")
+      .select(PROJECT_COLUMNS_SAFE)
+      .eq("id", projectId)
+      .maybeSingle();
+    if (fb.data) {
+      project = { ...fb.data, ai_instructions: null } as unknown as typeof project;
+      error = null;
+    }
+  }
 
   if (error || !project) {
     return { response: apiError("Project not found", 404, "not_found") };
@@ -233,6 +280,7 @@ export function projectToApi(p: ProjectRow) {
     description: p.description,
     coverImageUrl: p.cover_image_url,
     mindmapSettings: p.mindmap_settings,
+    aiInstructions: p.ai_instructions ?? "",
     createdAt: p.created_at,
     updatedAt: p.updated_at,
   };

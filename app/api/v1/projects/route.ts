@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   requireAuth,
+  selectProjects,
   apiJson,
   apiError,
   projectToApi,
@@ -18,11 +19,10 @@ export async function GET(request: NextRequest) {
   if ("response" in result) return result.response;
   const { auth } = result;
 
-  const { data: owned, error: e1 } = await auth.supabase
-    .from("projects")
-    .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
-    .eq("owner_id", auth.userId)
-    .order("updated_at", { ascending: false });
+  const { data: owned, error: e1 } = await selectProjects(auth.supabase, {
+    eq: ["owner_id", auth.userId],
+    order: "updated_at",
+  });
 
   if (e1) return apiError("Failed to fetch projects", 500, "db_error");
 
@@ -39,11 +39,10 @@ export async function GET(request: NextRequest) {
       .filter((id) => !owned?.some((p) => p.id === id));
 
     if (memberIds.length > 0) {
-      const { data: mp } = await auth.supabase
-        .from("projects")
-        .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
-        .in("id", memberIds)
-        .order("updated_at", { ascending: false });
+      const { data: mp } = await selectProjects(auth.supabase, {
+        in: ["id", memberIds],
+        order: "updated_at",
+      });
       memberProjects = mp ?? [];
     }
   }
@@ -99,12 +98,14 @@ export async function POST(request: NextRequest) {
       created_at: now,
       updated_at: now,
     })
-    .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
+    .select("id")
     .single();
 
   if (error || !project) {
     return apiError("Failed to create project", 500, "db_error");
   }
 
-  return apiJson(projectToApi(project), 201);
+  // Re-read with fallback
+  const { data: created } = await selectProjects(auth.supabase, { eq: ["id", project.id] });
+  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, cover_image_url: null, mindmap_settings: null, ai_instructions: null, created_at: now, updated_at: now }), 201);
 }

@@ -317,6 +317,7 @@ function dbProjectToStore(
     updatedAt: row.updated_at as string,
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
     ownerId: (row.owner_id as string) || undefined,
+    aiInstructions: (row.ai_instructions as string) || undefined,
     sections: sections
       .filter((s) => s.project_id === row.id)
       .map(dbSectionToStore),

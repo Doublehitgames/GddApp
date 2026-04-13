@@ -729,6 +729,7 @@ export async function POST(request: NextRequest) {
         description: project.description || "",
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: mergedMindmapSettings,
+        ai_instructions: project.aiInstructions || "",
         updated_at: project.updatedAt,
       };
       let { error: pErr } = await supabase
@@ -752,6 +753,7 @@ export async function POST(request: NextRequest) {
         description: project.description || "",
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: project.mindMapSettings || {},
+        ai_instructions: project.aiInstructions || "",
         created_at: project.createdAt,
         updated_at: project.updatedAt,
       };

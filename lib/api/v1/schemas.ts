@@ -16,6 +16,7 @@ export const updateProjectSchema = z.object({
   description: z.string().max(5000).optional(),
   coverImageUrl: z.string().url().nullable().optional(),
   mindmapSettings: z.record(z.string(), z.unknown()).optional(),
+  aiInstructions: z.string().max(20000).nullable().optional(),
 });
 
 // ── Sections ──────────────────────────────────────────────────────────

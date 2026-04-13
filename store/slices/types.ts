@@ -298,6 +298,8 @@ export type Project = {
   mindMapSettings?: MindMapSettings; // Configurações personalizadas do mapa mental
   /** Dono do projeto (id do usuário). Preenchido ao carregar do Supabase; em projetos só locais pode ser userId ao criar. */
   ownerId?: string | null;
+  /** Instruções específicas do projeto para a IA (convenções de addons, estrutura de dados, etc). */
+  aiInstructions?: string;
 };
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -345,7 +347,7 @@ export interface ProjectStore {
   removeProject: (id: UUID) => void;
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;
-  editProject: (id: UUID, name: string, description: string) => void;
+  editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;
   editSection: (

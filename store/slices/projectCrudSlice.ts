@@ -32,12 +32,12 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return get().projects.find((p) => p.id === id);
     },
 
-    editProject: (id: UUID, name: string, description: string) => {
+    editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => {
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
             p.id === id
-              ? { ...p, title: name, description, updatedAt: new Date().toISOString() }
+              ? { ...p, title: name, description, ...(aiInstructions !== undefined ? { aiInstructions } : {}), updatedAt: new Date().toISOString() }
               : p
           ),
         id

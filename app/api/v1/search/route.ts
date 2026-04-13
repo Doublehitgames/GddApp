@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import {
   requireAuth,
+  selectProjects,
   apiJson,
   apiError,
   projectToApi,
@@ -63,12 +64,11 @@ export async function GET(request: NextRequest) {
   };
 
   if (type === "all" || type === "projects") {
-    const { data: projects } = await auth.supabase
-      .from("projects")
-      .select("id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at")
-      .in("id", ids)
-      .or(`title.ilike.${pattern},description.ilike.${pattern}`)
-      .limit(limit);
+    const { data: projects } = await selectProjects(auth.supabase, {
+      in: ["id", ids],
+      or: `title.ilike.${pattern},description.ilike.${pattern}`,
+      limit,
+    });
 
     results.projects = (projects ?? []).map(projectToApi);
   }
