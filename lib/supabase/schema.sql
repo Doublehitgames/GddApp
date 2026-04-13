@@ -235,3 +235,28 @@ create trigger projects_updated_at
 create trigger sections_updated_at
   before update on public.sections
   for each row execute function public.set_updated_at();
+
+-- ============================================================
+-- TABELA: user_api_keys (API keys para acesso programático)
+-- ============================================================
+create table public.user_api_keys (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  name text not null default 'Default',
+  key_prefix text not null,       -- "gdd_sk_a1b2...7890" para display
+  key_hash text not null unique,  -- SHA-256 hex do valor completo
+  last_used_at timestamptz,
+  revoked_at timestamptz,         -- soft-delete (null = active)
+  created_at timestamptz default now() not null
+);
+
+create index user_api_keys_user_id_idx on public.user_api_keys(user_id);
+create index user_api_keys_key_hash_idx on public.user_api_keys(key_hash);
+
+alter table public.user_api_keys enable row level security;
+
+-- Usuário gerencia suas próprias keys (via browser com session cookie)
+create policy "Usuário gerencia suas API keys"
+  on public.user_api_keys for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

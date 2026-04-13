@@ -98,6 +98,14 @@ export default function UserMenu() {
                   <span>💾</span>
                   <span>{tr("Persistência", "Persistence", "Persistencia")}</span>
                 </Link>
+                <Link
+                  href="/settings/api-keys"
+                  onClick={() => setOpen(false)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <span>🔑</span>
+                  <span>{tr("Chaves de API", "API Keys", "Claves de API")}</span>
+                </Link>
               </div>
 
               <div className="px-3 py-2">
