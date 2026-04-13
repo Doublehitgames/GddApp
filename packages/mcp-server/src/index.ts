@@ -18,6 +18,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { GddApiClient } from "./client.js";
 import { registerTools } from "./tools.js";
 import { registerAddonTools } from "./addon-tools.js";
+import { registerPrompts } from "./prompts.js";
 
 async function main() {
   if (!process.env.GDD_API_KEY) {
@@ -35,6 +36,7 @@ async function main() {
 
   registerTools(server, client);
   registerAddonTools(server, client);
+  registerPrompts(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
