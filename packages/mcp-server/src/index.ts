@@ -17,6 +17,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { GddApiClient } from "./client.js";
 import { registerTools } from "./tools.js";
+import { registerAddonTools } from "./addon-tools.js";
 
 async function main() {
   if (!process.env.GDD_API_KEY) {
@@ -33,6 +34,7 @@ async function main() {
   });
 
   registerTools(server, client);
+  registerAddonTools(server, client);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "gdd-manager": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:\\Users\\neone\\OneDrive\\Documentos\\GDDApp\\gdd_project\\packages\\mcp-server\\dist\\index.js"
+      ],
+      "env": {
+        "GDD_API_KEY": "gdd_sk_89e3b80cf6d0944e082bfca75427bb6147d23d442d19b4a84471eb4a131ee432"
+      }
+    }
+  }
+}
