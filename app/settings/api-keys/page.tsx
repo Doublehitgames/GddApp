@@ -83,32 +83,21 @@ export default function ApiKeysSettingsPage() {
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const revokedKeys = keys.filter((k) => k.revoked_at);
 
+  const [setupStep, setSetupStep] = useState(1);
+
+  const keyPlaceholder = createdKey ?? "<cole sua chave aqui>";
+
   const mcpConfigLocal = `{
   "mcpServers": {
     "gdd-manager": {
       "command": "npx",
       "args": ["-y", "@doublehitgames/gdd-mcp"],
       "env": {
-        "GDD_API_KEY": "<cole sua chave aqui>"
+        "GDD_API_KEY": "${keyPlaceholder}"
       }
     }
   }
 }`;
-
-  const mcpConfigRemote = `{
-  "mcpServers": {
-    "gdd-manager": {
-      "type": "streamableHttp",
-      "url": "https://gdd-app.vercel.app/api/mcp",
-      "headers": {
-        "Authorization": "Bearer <cole sua chave aqui>"
-      }
-    }
-  }
-}`;
-
-  const [mcpTab, setMcpTab] = useState<"remote" | "local">("remote");
-  const mcpConfig = mcpTab === "remote" ? mcpConfigRemote : mcpConfigLocal;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -260,54 +249,151 @@ export default function ApiKeysSettingsPage() {
           </div>
         )}
 
-        {/* How to use */}
+        {/* Setup Guide */}
         <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-5">
-          <h2 className="text-sm font-semibold text-gray-200 mb-3">
-            Como usar com Claude
+          <h2 className="text-sm font-semibold text-gray-200 mb-4">
+            Conectar ao Claude — Passo a Passo
           </h2>
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => setMcpTab("remote")}
-              className={`rounded-lg px-3 py-1 text-xs font-medium ${mcpTab === "remote" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
-            >
-              Remoto (recomendado)
-            </button>
-            <button
-              onClick={() => setMcpTab("local")}
-              className={`rounded-lg px-3 py-1 text-xs font-medium ${mcpTab === "local" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
-            >
-              Local (npx)
-            </button>
+
+          {/* Steps indicator */}
+          <div className="flex items-center gap-2 mb-5">
+            {[1, 2, 3].map((s) => (
+              <button
+                key={s}
+                onClick={() => setSetupStep(s)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  setupStep === s
+                    ? "bg-blue-600 text-white"
+                    : setupStep > s
+                      ? "bg-emerald-800/40 text-emerald-300 border border-emerald-700/50"
+                      : "bg-gray-700 text-gray-400"
+                }`}
+              >
+                {setupStep > s ? "\u2713" : s}.{" "}
+                {s === 1 ? "Gerar chave" : s === 2 ? "Configurar" : "Testar"}
+              </button>
+            ))}
           </div>
-          <p className="text-xs text-gray-400 mb-3">
-            {mcpTab === "remote"
-              ? "Adicione a configuração abaixo no Claude Desktop ou Claude Code — sem instalar nada:"
-              : <>Adicione a configuração abaixo no arquivo{" "}
-                <code className="bg-gray-900 px-1.5 py-0.5 rounded text-gray-300">.mcp.json</code>
-                {" "}na raiz do seu projeto (requer Node.js):</>
-            }
-          </p>
-          <div className="relative">
-            <pre className="rounded-lg bg-gray-950 p-4 text-xs font-mono text-gray-300 overflow-x-auto">
-              {mcpConfig}
-            </pre>
-            <button
-              onClick={() => handleCopy(mcpConfig)}
-              className="absolute top-2 right-2 rounded-lg border border-gray-600 bg-gray-800 px-2 py-1 text-[10px] text-gray-300 hover:bg-gray-700"
-            >
-              Copiar
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Substitua <code className="text-gray-400">&lt;cole sua chave aqui&gt;</code>{" "}
-            pelo valor real da sua API key. Depois reinicie o Claude Code.
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Para testar, rode no terminal:{" "}
-            <code className="bg-gray-900 px-1.5 py-0.5 rounded text-gray-400">
-              curl -H &quot;Authorization: Bearer SUA_KEY&quot; https://gdd-app.vercel.app/api/v1/me
-            </code>
-          </p>
+
+          {/* Step 1 */}
+          {setupStep === 1 && (
+            <div>
+              <p className="text-xs text-gray-300 mb-3">
+                {activeKeys.length > 0
+                  ? <>Voc\u00ea j\u00e1 tem {activeKeys.length} chave(s) ativa(s). Se quiser usar uma existente, pule para o pr\u00f3ximo passo.</>
+                  : "Crie uma chave acima para come\u00e7ar. D\u00ea um nome como \"Claude\" para identificar."
+                }
+              </p>
+              {createdKey && (
+                <div className="rounded-lg bg-emerald-900/20 border border-emerald-700/40 p-3 mb-3">
+                  <p className="text-xs text-emerald-300 mb-1">Chave pronta! Copie e guarde — ela n\u00e3o ser\u00e1 exibida novamente:</p>
+                  <code className="text-xs font-mono text-emerald-200 break-all">{createdKey}</code>
+                </div>
+              )}
+              <button
+                onClick={() => setSetupStep(2)}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500"
+              >
+                {activeKeys.length > 0 || createdKey ? "Pr\u00f3ximo \u2192" : "Gere uma chave acima primeiro"}
+              </button>
+            </div>
+          )}
+
+          {/* Step 2 */}
+          {setupStep === 2 && (
+            <div>
+              <p className="text-xs text-gray-300 mb-2">
+                Abra o arquivo de configura\u00e7\u00e3o do Claude no seu computador:
+              </p>
+              <div className="space-y-2 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-gray-500 mt-0.5">Windows:</span>
+                  <code className="text-xs font-mono text-blue-300 bg-gray-900 px-2 py-1 rounded break-all">
+                    %APPDATA%\Claude\claude_desktop_config.json
+                  </code>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-gray-500 mt-0.5">Mac:</span>
+                  <code className="text-xs font-mono text-blue-300 bg-gray-900 px-2 py-1 rounded break-all">
+                    ~/Library/Application Support/Claude/claude_desktop_config.json
+                  </code>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-300 mb-2">
+                {createdKey
+                  ? "Copie a configura\u00e7\u00e3o abaixo (j\u00e1 com a sua chave):"
+                  : <>Copie a configura\u00e7\u00e3o abaixo e substitua <code className="text-yellow-300">&lt;cole sua chave aqui&gt;</code> pela sua API key:</>
+                }
+              </p>
+
+              <div className="relative">
+                <pre className="rounded-lg bg-gray-950 p-4 text-xs font-mono text-gray-300 overflow-x-auto">
+                  {mcpConfigLocal}
+                </pre>
+                <button
+                  onClick={() => handleCopy(mcpConfigLocal)}
+                  className="absolute top-2 right-2 rounded-lg border border-gray-600 bg-gray-800 px-2 py-1 text-[10px] text-gray-300 hover:bg-gray-700"
+                >
+                  {copied ? "Copiado!" : "Copiar config"}
+                </button>
+              </div>
+
+              <div className="rounded-lg bg-yellow-900/20 border border-yellow-700/30 p-3 mt-3 mb-4">
+                <p className="text-xs text-yellow-300/90">
+                  <strong>Importante:</strong> Se o arquivo j\u00e1 existir, adicione apenas a parte {'"'}gdd-manager{'"'} dentro de {'"'}mcpServers{'"'}.
+                  N\u00e3o substitua o arquivo inteiro se j\u00e1 tiver outros servidores configurados.
+                </p>
+              </div>
+
+              <p className="text-xs text-gray-400 mb-3">
+                Requer <a href="https://nodejs.org" target="_blank" rel="noopener" className="text-blue-400 hover:underline">Node.js 18+</a> instalado.
+              </p>
+
+              <div className="flex gap-2">
+                <button onClick={() => setSetupStep(1)} className="rounded-lg bg-gray-700 px-3 py-2 text-xs text-gray-300 hover:bg-gray-600">&larr; Voltar</button>
+                <button onClick={() => setSetupStep(3)} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500">Pr\u00f3ximo \u2192</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3 */}
+          {setupStep === 3 && (
+            <div>
+              <p className="text-xs text-gray-300 mb-3">
+                <strong>Reinicie o Claude</strong> (feche e abra o app). Depois, em um novo chat, experimente:
+              </p>
+              <div className="space-y-2 mb-4">
+                {[
+                  "Lista meus projetos do GDD",
+                  "Mostra as se\u00e7\u00f5es do projeto <nome>",
+                  "Cria uma se\u00e7\u00e3o de Economia no meu projeto",
+                  "Analisa meu GDD e sugere melhorias",
+                ].map((cmd) => (
+                  <div key={cmd} className="flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-2">
+                    <span className="text-blue-400 text-xs">&#128172;</span>
+                    <span className="text-xs text-gray-300">{cmd}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-300 mb-3">
+                Se funcionar, o Claude vai listar seus projetos ou criar conte\u00fado direto no GDD Manager.
+              </p>
+
+              <div className="rounded-lg bg-gray-900/60 border border-gray-700 p-3 mb-4">
+                <p className="text-xs text-gray-400 mb-1"><strong>N\u00e3o funcionou?</strong></p>
+                <ul className="text-xs text-gray-500 space-y-1 list-disc ml-4">
+                  <li>Verifique se o Node.js est\u00e1 instalado: <code className="text-gray-400">node --version</code></li>
+                  <li>Confira se a chave est\u00e1 correta no arquivo de config</li>
+                  <li>Verifique se reiniciou o Claude depois de salvar o arquivo</li>
+                  <li>Teste a chave: <code className="text-gray-400">curl -H &quot;Authorization: Bearer SUA_KEY&quot; https://gdd-app.vercel.app/api/v1/me</code></li>
+                </ul>
+              </div>
+
+              <button onClick={() => setSetupStep(2)} className="rounded-lg bg-gray-700 px-3 py-2 text-xs text-gray-300 hover:bg-gray-600">&larr; Voltar</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
