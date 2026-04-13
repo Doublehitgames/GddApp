@@ -83,17 +83,32 @@ export default function ApiKeysSettingsPage() {
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const revokedKeys = keys.filter((k) => k.revoked_at);
 
-  const mcpConfig = `{
+  const mcpConfigLocal = `{
   "mcpServers": {
     "gdd-manager": {
       "command": "npx",
-      "args": ["@doublehitgames/gdd-mcp"],
+      "args": ["-y", "@doublehitgames/gdd-mcp"],
       "env": {
         "GDD_API_KEY": "<cole sua chave aqui>"
       }
     }
   }
 }`;
+
+  const mcpConfigRemote = `{
+  "mcpServers": {
+    "gdd-manager": {
+      "type": "streamableHttp",
+      "url": "https://gdd-app.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <cole sua chave aqui>"
+      }
+    }
+  }
+}`;
+
+  const [mcpTab, setMcpTab] = useState<"remote" | "local">("remote");
+  const mcpConfig = mcpTab === "remote" ? mcpConfigRemote : mcpConfigLocal;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -248,14 +263,29 @@ export default function ApiKeysSettingsPage() {
         {/* How to use */}
         <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-5">
           <h2 className="text-sm font-semibold text-gray-200 mb-3">
-            Como usar com Claude Code
+            Como usar com Claude
           </h2>
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => setMcpTab("remote")}
+              className={`rounded-lg px-3 py-1 text-xs font-medium ${mcpTab === "remote" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
+            >
+              Remoto (recomendado)
+            </button>
+            <button
+              onClick={() => setMcpTab("local")}
+              className={`rounded-lg px-3 py-1 text-xs font-medium ${mcpTab === "local" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"}`}
+            >
+              Local (npx)
+            </button>
+          </div>
           <p className="text-xs text-gray-400 mb-3">
-            Adicione a configuração abaixo no arquivo{" "}
-            <code className="bg-gray-900 px-1.5 py-0.5 rounded text-gray-300">
-              .mcp.json
-            </code>{" "}
-            na raiz do seu projeto:
+            {mcpTab === "remote"
+              ? "Adicione a configuração abaixo no Claude Desktop ou Claude Code — sem instalar nada:"
+              : <>Adicione a configuração abaixo no arquivo{" "}
+                <code className="bg-gray-900 px-1.5 py-0.5 rounded text-gray-300">.mcp.json</code>
+                {" "}na raiz do seu projeto (requer Node.js):</>
+            }
           </p>
           <div className="relative">
             <pre className="rounded-lg bg-gray-950 p-4 text-xs font-mono text-gray-300 overflow-x-auto">
