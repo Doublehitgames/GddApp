@@ -23,6 +23,40 @@ import {
   SchemaNodeEditor,
 } from "./exportSchema/SchemaTreeEditor";
 
+/** Recursively patch addonId references in export schema nodes to use reused IDs */
+function patchNodeAddonIds(
+  node: ExportSchemaNode,
+  idMap: Map<string, string> // newId → existingId
+): ExportSchemaNode {
+  let patched = node;
+
+  // Patch binding addonId (only dataSchema bindings have addonId)
+  if (node.binding && "addonId" in node.binding && idMap.has(node.binding.addonId)) {
+    patched = {
+      ...patched,
+      binding: { ...node.binding, addonId: idMap.get(node.binding.addonId)! },
+    };
+  }
+
+  // Patch arraySource addonId
+  if (node.arraySource?.addonId && idMap.has(node.arraySource.addonId)) {
+    patched = {
+      ...patched,
+      arraySource: { ...node.arraySource, addonId: idMap.get(node.arraySource.addonId)! },
+    };
+  }
+
+  // Recurse into children and itemTemplate
+  if (node.children) {
+    patched = { ...patched, children: node.children.map((c) => patchNodeAddonIds(c, idMap)) };
+  }
+  if (node.itemTemplate) {
+    patched = { ...patched, itemTemplate: node.itemTemplate.map((c) => patchNodeAddonIds(c, idMap)) };
+  }
+
+  return patched;
+}
+
 interface ExportSchemaAddonPanelProps {
   addon: ExportSchemaAddonDraft;
   onChange: (next: ExportSchemaAddonDraft) => void;
@@ -176,10 +210,6 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
 
     // Add new addons to the section via the store, then update the export schema
     if (sectionContext && newAddons.length > 0) {
-      // Assign the same group as this Remote Config addon to imported addons
-      const groupedNewAddons: SectionAddon[] = myGroup !== "A"
-        ? newAddons.map((a) => ({ ...a, group: myGroup } as SectionAddon))
-        : newAddons;
       const allSectionAddons = sectionContext.addons;
       // Find the full addons list (all groups) from the section
       const fullAddons = (() => {
@@ -190,16 +220,62 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         }
         return allSectionAddons;
       })();
+
+      // Existing addons in the same group (excluding the RC itself)
+      const groupAddons = fullAddons.filter(
+        (a) => a.id !== addon.id && ((a as any).group || "A") === myGroup
+      );
+
+      // Reuse existing addons by type+name instead of always creating new ones
+      const reusedIds = new Map<string, string>(); // newId → existingId
+      const trulyNewAddons: SectionAddon[] = [];
+      for (const imported of newAddons) {
+        const existing = groupAddons.find(
+          (a) => a.type === imported.type && a.name === imported.name
+        );
+        if (existing) {
+          // Reuse existing addon id, replace data
+          reusedIds.set(imported.id, existing.id);
+        } else {
+          trulyNewAddons.push(imported);
+        }
+      }
+
+      // Assign the same group as this Remote Config addon
+      const groupedNewAddons: SectionAddon[] = myGroup !== "A"
+        ? trulyNewAddons.map((a) => ({ ...a, group: myGroup } as SectionAddon))
+        : trulyNewAddons;
+
+      // Patch exportSchemaNodes bindings to reference reused addon ids
+      const patchedNodes = reusedIds.size > 0
+        ? exportSchemaNodes.map((node) => patchNodeAddonIds(node, reusedIds))
+        : exportSchemaNodes;
+
       const updatedExportSchemaAddon: SectionAddon = {
         id: addon.id,
         type: "exportSchema",
         name: addon.name,
         group: myGroup !== "A" ? myGroup : undefined,
-        data: { ...addon, nodes: exportSchemaNodes, arrayFormat },
+        data: { ...addon, nodes: patchedNodes, arrayFormat },
       };
+
+      // Build merged list: update reused addons in-place, append truly new ones
       const mergedAddons: SectionAddon[] = [
         ...groupedNewAddons,
-        ...fullAddons.map((a) => (a.id === addon.id ? updatedExportSchemaAddon : a)),
+        ...fullAddons.map((a) => {
+          if (a.id === addon.id) return updatedExportSchemaAddon;
+          // Check if this existing addon should be replaced with imported data
+          const importedMatch = newAddons.find(
+            (imp) => reusedIds.get(imp.id) === a.id
+          );
+          if (importedMatch) {
+            return {
+              ...a,
+              data: { ...importedMatch.data, id: a.id },
+            } as SectionAddon;
+          }
+          return a;
+        }),
       ];
       setSectionAddons(sectionContext.projectId, sectionContext.sectionId, mergedAddons);
     } else {

@@ -26,6 +26,7 @@ import {
   clampValueWithBounds,
 } from "@/lib/addons/progressionTableGenerator";
 import { buildProgressionTableComputedExport } from "@/lib/addons/progressionTableExport";
+import { suggestGeneratorMode, analyzeSegments, type SuggestionResult, type CurveSegment } from "@/lib/addons/curveFitting";
 import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
@@ -272,6 +273,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [clampSummaryByColumnId, setClampSummaryByColumnId] = useState<Record<string, number>>({});
   const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
   const [exportFeedback, setExportFeedback] = useState<"idle" | "success" | "error">("idle");
+  const [pasteByColumnId, setPasteByColumnId] = useState<Record<string, string>>({});
+  const [curveSuggestion, setCurveSuggestion] = useState<Record<string, SuggestionResult>>({});
   const [columnNameDrafts, setColumnNameDrafts] = useState<Record<string, string>>({});
   const [formulaDrafts, setFormulaDrafts] = useState<Record<string, string>>({});
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
@@ -619,6 +622,76 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       ...prev,
       [columnId]: 0,
     }));
+  };
+
+  const pasteColumnValues = (columnId: string, rawText: string) => {
+    const column = columns.find((c) => c.id === columnId);
+    const bounds = normalizeBounds(column?.min, column?.max);
+    const parts = rawText.includes("\n")
+      ? rawText.split("\n")
+      : rawText.split(",");
+    const values = parts.map((s) => s.trim()).filter(Boolean).map(parseNumber);
+    if (values.length === 0) return;
+
+    const nextRows = rows.map((row, i) => {
+      if (i >= values.length) return row;
+      return {
+        ...row,
+        values: {
+          ...row.values,
+          [columnId]: clampValueWithBounds(values[i], bounds.min, bounds.max),
+        },
+      };
+    });
+    commit({ rows: nextRows, columns, startLevel, endLevel });
+    setLastGeneratedColumnId(null);
+    setPasteByColumnId((prev) => ({ ...prev, [columnId]: undefined as any }));
+
+    // Run curve fitting on the pasted values
+    const suggestion = suggestGeneratorMode(values);
+    setCurveSuggestion((prev) => ({ ...prev, [columnId]: suggestion }));
+  };
+
+  const acceptCurveSuggestion = (columnId: string) => {
+    const result = curveSuggestion[columnId];
+    if (!result || !result.suggested) return;
+    const { fit } = result;
+
+    // Switch column to the suggested mode with fitted params
+    const nextColumns = columns.map((col) => {
+      if (col.id !== columnId) return col;
+      if (fit.mode === "linear") {
+        return { ...col, generator: { mode: "linear" as const, base: fit.base, step: fit.step } };
+      }
+      if (fit.mode === "exponential") {
+        return { ...col, generator: { mode: "exponential" as const, base: fit.base, growth: fit.growth } };
+      }
+      // formula (polynomial)
+      return { ...col, generator: { mode: "formula" as const, baseColumnId: "__manual__", baseManualValue: 0, expression: fit.expression } };
+    });
+
+    // Generate values with the new params
+    const remapped = remapRows(rows, nextColumns, startLevel, endLevel);
+    const generated = generateProgressionColumnValues({
+      rows: remapped,
+      columnId,
+      startLevel,
+      generator: nextColumns.find((c) => c.id === columnId)!.generator!,
+      decimals: nextColumns.find((c) => c.id === columnId)!.decimals,
+    });
+    const bounds = normalizeBounds(
+      nextColumns.find((c) => c.id === columnId)!.min,
+      nextColumns.find((c) => c.id === columnId)!.max,
+    );
+    const clamped = applyColumnClamp({ rows: generated, columnId, min: bounds.min, max: bounds.max });
+
+    commit({ rows: clamped, columns: nextColumns, startLevel, endLevel });
+    setLastGeneratedColumnId(columnId);
+    setCurveSuggestion((prev) => ({ ...prev, [columnId]: { suggested: false } }));
+  };
+
+  const dismissCurveSuggestion = (columnId: string) => {
+    setCurveSuggestion((prev) => ({ ...prev, [columnId]: { suggested: false } }));
   };
 
   const toggleColumnCollapsed = (columnId: string) => {
@@ -1050,14 +1123,27 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               ? t("progressionTableAddon.generatedNow", "Gerado agora")
                               : t("progressionTableAddon.overwritesColumn", "Sobrescreve toda a coluna")}
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => generateColumn(column.id)}
-                            disabled={(column.generator?.mode ?? "manual") === "manual"}
-                            className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-[11px] text-gray-100 hover:bg-gray-700 disabled:opacity-40"
-                          >
-                            {t("progressionTableAddon.generateButton", "Gerar")}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {(column.generator?.mode ?? "manual") === "manual" && (
+                              <button
+                                type="button"
+                                onClick={() => setPasteByColumnId((prev) => ({ ...prev, [column.id]: prev[column.id] != null ? undefined as any : "" }))}
+                                className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-[11px] text-gray-100 hover:bg-gray-700"
+                              >
+                                {pasteByColumnId[column.id] != null
+                                  ? t("progressionTableAddon.cancelPaste", "Cancelar")
+                                  : t("progressionTableAddon.pasteButton", "Colar valores")}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => generateColumn(column.id)}
+                              disabled={(column.generator?.mode ?? "manual") === "manual"}
+                              className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-[11px] text-gray-100 hover:bg-gray-700 disabled:opacity-40"
+                            >
+                              {t("progressionTableAddon.generateButton", "Gerar")}
+                            </button>
+                          </div>
                         </div>
                         {Number(clampSummaryByColumnId[column.id]) > 0 && (
                           <p className="text-[10px] text-amber-300">
@@ -1075,6 +1161,82 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </div>
                         )}
                       </div>
+
+                      {pasteByColumnId[column.id] != null && (
+                        <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-2 space-y-1.5">
+                          <textarea
+                            rows={4}
+                            value={pasteByColumnId[column.id] ?? ""}
+                            onChange={(e) => setPasteByColumnId((prev) => ({ ...prev, [column.id]: e.target.value }))}
+                            placeholder={t("progressionTableAddon.pastePlaceholder", "Cole valores separados por quebra de linha ou virgula\nEx: 100\n200\n300\nou: 100,200,300")}
+                            className={`${INPUT_CLASS} resize-y min-h-[60px] font-mono text-[11px]`}
+                          />
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-gray-500">
+                              {(() => {
+                                const raw = pasteByColumnId[column.id] ?? "";
+                                const parts = raw.includes("\n") ? raw.split("\n") : raw.split(",");
+                                const count = parts.map((s) => s.trim()).filter(Boolean).length;
+                                return count > 0
+                                  ? t("progressionTableAddon.pasteCount", "{count} valor(es) — {rows} linha(s)")
+                                      .replace("{count}", String(count))
+                                      .replace("{rows}", String(rows.length))
+                                  : "";
+                              })()}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => pasteColumnValues(column.id, pasteByColumnId[column.id] ?? "")}
+                              disabled={!(pasteByColumnId[column.id] ?? "").trim()}
+                              className="rounded-lg border border-blue-600 bg-blue-700 px-2.5 py-1 text-[11px] text-white hover:bg-blue-600 disabled:opacity-40"
+                            >
+                              {t("progressionTableAddon.applyPaste", "Aplicar")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {curveSuggestion[column.id]?.suggested && (() => {
+                        const result = curveSuggestion[column.id] as { suggested: true; fit: { mode: string; r2: number; [k: string]: unknown } };
+                        const { fit } = result;
+                        const pct = Math.round(fit.r2 * 100);
+                        const desc = fit.mode === "linear"
+                          ? `Linear (base=${fit.base}, step=${fit.step})`
+                          : fit.mode === "exponential"
+                            ? `Exponencial (base=${fit.base}, growth=${fit.growth})`
+                            : `Formula: ${fit.expression}`;
+                        const modeLabel = fit.mode === "linear"
+                          ? t("progressionTableAddon.useLinear", "Usar Linear")
+                          : fit.mode === "exponential"
+                            ? t("progressionTableAddon.useExponential", "Usar Exponencial")
+                            : t("progressionTableAddon.useFormula", "Usar Formula");
+                        return (
+                          <div className="rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-3 py-2 text-[11px] text-emerald-200">
+                            <p>
+                              {t(
+                                "progressionTableAddon.curveSuggestion",
+                                "Estes valores seguem um padrao {desc} com {pct}% de precisao."
+                              ).replace("{desc}", desc).replace("{pct}", String(pct))}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => acceptCurveSuggestion(column.id)}
+                                className="rounded-lg border border-emerald-600 bg-emerald-700 px-2.5 py-1 text-[11px] text-white hover:bg-emerald-600"
+                              >
+                                {modeLabel}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => dismissCurveSuggestion(column.id)}
+                                className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-[11px] text-gray-300 hover:bg-gray-700"
+                              >
+                                {t("progressionTableAddon.keepManual", "Manter Manual")}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       <div className="max-h-[380px] overflow-auto rounded-lg border border-gray-700">
                         <table className="w-full text-left text-xs">
@@ -1110,6 +1272,41 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </tbody>
                         </table>
                       </div>
+
+                      {rows.length >= 3 && (() => {
+                        const colValues = rows.map((r) => Number(r.values[column.id] ?? 0));
+                        const segments = analyzeSegments(colValues, startLevel);
+                        if (segments.length < 2) return null;
+                        return (
+                          <details className="group">
+                            <summary className="cursor-pointer text-[10px] text-gray-500 hover:text-gray-300 select-none">
+                              {t("progressionTableAddon.curveAnalysis", "Analise da curva")} ({segments.length} {t("progressionTableAddon.segments", "segmentos")})
+                            </summary>
+                            <div className="mt-1 space-y-0.5 text-[10px] text-gray-400">
+                              {segments.map((seg, idx) => (
+                                <p key={idx}>
+                                  <span className="text-gray-300">Lv {seg.fromLevel}{"\u2192"}{seg.toLevel}:</span>{" "}
+                                  {seg.trend === "flat"
+                                    ? t("progressionTableAddon.segFlat", "constante em ~{val}")
+                                        .replace("{val}", formatSummaryValue(seg.fromValue))
+                                    : seg.trend === "down"
+                                      ? t("progressionTableAddon.segDown", "cai ~{delta}/nv ({from} {arrow} {to})")
+                                          .replace("{delta}", formatSummaryValue(Math.abs(seg.avgDelta)))
+                                          .replace("{from}", formatSummaryValue(seg.fromValue))
+                                          .replace("{arrow}", "\u2192")
+                                          .replace("{to}", formatSummaryValue(seg.toValue))
+                                      : t("progressionTableAddon.segUp", "cresce ~{delta}/nv ({from} {arrow} {to})")
+                                          .replace("{delta}", formatSummaryValue(seg.avgDelta))
+                                          .replace("{from}", formatSummaryValue(seg.fromValue))
+                                          .replace("{arrow}", "\u2192")
+                                          .replace("{to}", formatSummaryValue(seg.toValue))
+                                  }
+                                </p>
+                              ))}
+                            </div>
+                          </details>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>

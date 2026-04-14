@@ -264,13 +264,13 @@ function detectProgressionArray(
   if (!levelKey) return null;
 
   const columns = keys.filter((k) => k !== levelKey);
-  // All columns should be numeric in at least the first row
-  const hasNumericColumns = columns.length > 0 && columns.every((col) => {
+  // All columns should be numeric or string primitives in at least the first row
+  const hasValidColumns = columns.length > 0 && columns.every((col) => {
     const val = first[col];
-    return typeof val === "number";
+    return typeof val === "number" || typeof val === "string";
   });
 
-  if (!hasNumericColumns) return null;
+  if (!hasValidColumns) return null;
 
   return { levelKey, columns };
 }
@@ -568,14 +568,14 @@ function buildProgressionTableFromArray(
   detection: { levelKey: string; columns: string[] }
 ): { addon: ProgressionTableSectionAddon; schemaNode: ExportSchemaNode } {
   const { levelKey, columns: colKeys } = detection;
-  const items = arr as Array<Record<string, number>>;
+  const items = arr as Array<Record<string, number | string>>;
 
   const rowsData: ProgressionTableRow[] = items.map((item) => {
     const values: Record<string, number | string> = {};
     for (const colKey of colKeys) {
       values[colKey] = item[colKey] ?? 0;
     }
-    return { level: item[levelKey], values };
+    return { level: Number(item[levelKey]), values };
   });
 
   return buildPTAndSchemaNode(arrayKey, levelKey, colKeys, rowsData);
