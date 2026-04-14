@@ -27,6 +27,7 @@ import {
 } from "@/lib/addons/progressionTableGenerator";
 import { buildProgressionTableComputedExport } from "@/lib/addons/progressionTableExport";
 import { suggestGeneratorMode, analyzeSegments, type SuggestionResult, type CurveSegment } from "@/lib/addons/curveFitting";
+import { MiniLineChart } from "@/components/MiniLineChart";
 import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
@@ -274,6 +275,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
   const [exportFeedback, setExportFeedback] = useState<"idle" | "success" | "error">("idle");
   const [pasteByColumnId, setPasteByColumnId] = useState<Record<string, string>>({});
+  const [copiedColumnId, setCopiedColumnId] = useState<string | null>(null);
   const [curveSuggestion, setCurveSuggestion] = useState<Record<string, SuggestionResult>>({});
   const [columnNameDrafts, setColumnNameDrafts] = useState<Record<string, string>>({});
   const [formulaDrafts, setFormulaDrafts] = useState<Record<string, string>>({});
@@ -650,6 +652,30 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     // Run curve fitting on the pasted values
     const suggestion = suggestGeneratorMode(values);
     setCurveSuggestion((prev) => ({ ...prev, [columnId]: suggestion }));
+  };
+
+  const copyColumnValues = async (columnId: string) => {
+    const text = rows.map((r) => String(r.values[columnId] ?? 0)).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedColumnId(columnId);
+      setTimeout(() => setCopiedColumnId((curr) => (curr === columnId ? null : curr)), 1500);
+    } catch {
+      // Clipboard API not available (e.g. insecure context) — fallback to textarea trick
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopiedColumnId(columnId);
+        setTimeout(() => setCopiedColumnId((curr) => (curr === columnId ? null : curr)), 1500);
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
   };
 
   const acceptCurveSuggestion = (columnId: string) => {
@@ -1124,6 +1150,15 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               : t("progressionTableAddon.overwritesColumn", "Sobrescreve toda a coluna")}
                           </p>
                           <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => copyColumnValues(column.id)}
+                              className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-[11px] text-gray-100 hover:bg-gray-700"
+                            >
+                              {copiedColumnId === column.id
+                                ? t("progressionTableAddon.copiedFeedback", "Copiado!")
+                                : t("progressionTableAddon.copyButton", "Copiar valores")}
+                            </button>
                             {(column.generator?.mode ?? "manual") === "manual" && (
                               <button
                                 type="button"
@@ -1238,39 +1273,50 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                         );
                       })()}
 
-                      <div className="max-h-[380px] overflow-auto rounded-lg border border-gray-700">
-                        <table className="w-full text-left text-xs">
-                          <thead className="sticky top-0 bg-gray-900 text-gray-300">
-                            <tr>
-                              <th className="px-3 py-2">{t("progressionTableAddon.levelHeader", "Level")}</th>
-                              <th className="px-3 py-2">{column.name || t("progressionTableAddon.columnFallback", "Coluna")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rows.map((row) => (
-                              <tr key={`${column.id}-${row.level}`} className="border-t border-gray-800 text-gray-200">
-                                <td className="px-3 py-1.5 font-medium">
-                                  {t("progressionTableAddon.levelPrefix", "Lv")} {row.level}
-                                </td>
-                                <td className="px-3 py-1.5">
-                                  <div className="relative">
-                                    <input
-                                      type="number"
-                                      value={Number(row.values[column.id] ?? 0)}
-                                      onChange={(e) => updateCell(row.level, column.id, e.target.value)}
-                                      className={`${INPUT_CLASS} ${column.isPercentage ? "pr-6" : ""}`}
-                                    />
-                                    {column.isPercentage && (
-                                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
-                                        %
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
+                      <div className="flex gap-3 items-start">
+                        <div className="max-h-[380px] overflow-auto rounded-lg border border-gray-700 shrink-0">
+                          <table className="text-left text-xs">
+                            <thead className="sticky top-0 bg-gray-900 text-gray-300">
+                              <tr>
+                                <th className="px-3 py-2">{t("progressionTableAddon.levelHeader", "Level")}</th>
+                                <th className="px-3 py-2">{column.name || t("progressionTableAddon.columnFallback", "Coluna")}</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {rows.map((row) => (
+                                <tr key={`${column.id}-${row.level}`} className="border-t border-gray-800 text-gray-200">
+                                  <td className="px-3 py-1.5 font-medium whitespace-nowrap">
+                                    {t("progressionTableAddon.levelPrefix", "Lv")} {row.level}
+                                  </td>
+                                  <td className="px-3 py-1.5">
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        value={Number(row.values[column.id] ?? 0)}
+                                        onChange={(e) => updateCell(row.level, column.id, e.target.value)}
+                                        className={`${INPUT_CLASS} w-64 ${column.isPercentage ? "pr-6" : ""}`}
+                                      />
+                                      {column.isPercentage && (
+                                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
+                                          %
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {rows.length >= 2 && (() => {
+                          const colValues = rows.map((r) => Number(r.values[column.id] ?? 0));
+                          return (
+                            <div className="flex-1 min-w-0 sticky top-0 h-[380px]">
+                              <MiniLineChart values={colValues} startLevel={startLevel} />
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {rows.length >= 3 && (() => {
@@ -1283,26 +1329,48 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               {t("progressionTableAddon.curveAnalysis", "Analise da curva")} ({segments.length} {t("progressionTableAddon.segments", "segmentos")})
                             </summary>
                             <div className="mt-1 space-y-0.5 text-[10px] text-gray-400">
-                              {segments.map((seg, idx) => (
-                                <p key={idx}>
-                                  <span className="text-gray-300">Lv {seg.fromLevel}{"\u2192"}{seg.toLevel}:</span>{" "}
-                                  {seg.trend === "flat"
-                                    ? t("progressionTableAddon.segFlat", "constante em ~{val}")
-                                        .replace("{val}", formatSummaryValue(seg.fromValue))
-                                    : seg.trend === "down"
-                                      ? t("progressionTableAddon.segDown", "cai ~{delta}/nv ({from} {arrow} {to})")
-                                          .replace("{delta}", formatSummaryValue(Math.abs(seg.avgDelta)))
-                                          .replace("{from}", formatSummaryValue(seg.fromValue))
-                                          .replace("{arrow}", "\u2192")
-                                          .replace("{to}", formatSummaryValue(seg.toValue))
-                                      : t("progressionTableAddon.segUp", "cresce ~{delta}/nv ({from} {arrow} {to})")
-                                          .replace("{delta}", formatSummaryValue(seg.avgDelta))
-                                          .replace("{from}", formatSummaryValue(seg.fromValue))
-                                          .replace("{arrow}", "\u2192")
-                                          .replace("{to}", formatSummaryValue(seg.toValue))
-                                  }
-                                </p>
-                              ))}
+                              {segments.map((seg, idx) => {
+                                // When both values are negative, describe by magnitude
+                                const bothNegative = seg.fromValue < 0 && seg.toValue < 0;
+                                const magnitudeGrowing = bothNegative && Math.abs(seg.toValue) > Math.abs(seg.fromValue);
+                                const magnitudeShrinking = bothNegative && Math.abs(seg.toValue) < Math.abs(seg.fromValue);
+
+                                let text: string;
+                                if (seg.trend === "flat") {
+                                  text = t("progressionTableAddon.segFlat", "constante em ~{val}")
+                                    .replace("{val}", formatSummaryValue(seg.fromValue));
+                                } else if (magnitudeGrowing) {
+                                  text = t("progressionTableAddon.segMagUp", "magnitude cresce ~{delta}/nv ({from} {arrow} {to})")
+                                    .replace("{delta}", formatSummaryValue(Math.abs(seg.avgDelta)))
+                                    .replace("{from}", formatSummaryValue(seg.fromValue))
+                                    .replace("{arrow}", "\u2192")
+                                    .replace("{to}", formatSummaryValue(seg.toValue));
+                                } else if (magnitudeShrinking) {
+                                  text = t("progressionTableAddon.segMagDown", "magnitude reduz ~{delta}/nv ({from} {arrow} {to})")
+                                    .replace("{delta}", formatSummaryValue(Math.abs(seg.avgDelta)))
+                                    .replace("{from}", formatSummaryValue(seg.fromValue))
+                                    .replace("{arrow}", "\u2192")
+                                    .replace("{to}", formatSummaryValue(seg.toValue));
+                                } else if (seg.trend === "down") {
+                                  text = t("progressionTableAddon.segDown", "cai ~{delta}/nv ({from} {arrow} {to})")
+                                    .replace("{delta}", formatSummaryValue(Math.abs(seg.avgDelta)))
+                                    .replace("{from}", formatSummaryValue(seg.fromValue))
+                                    .replace("{arrow}", "\u2192")
+                                    .replace("{to}", formatSummaryValue(seg.toValue));
+                                } else {
+                                  text = t("progressionTableAddon.segUp", "cresce ~{delta}/nv ({from} {arrow} {to})")
+                                    .replace("{delta}", formatSummaryValue(seg.avgDelta))
+                                    .replace("{from}", formatSummaryValue(seg.fromValue))
+                                    .replace("{arrow}", "\u2192")
+                                    .replace("{to}", formatSummaryValue(seg.toValue));
+                                }
+                                return (
+                                  <p key={idx}>
+                                    <span className="text-gray-300">Lv {seg.fromLevel}{"\u2192"}{seg.toLevel}:</span>{" "}
+                                    {text}
+                                  </p>
+                                );
+                              })}
                             </div>
                           </details>
                         );

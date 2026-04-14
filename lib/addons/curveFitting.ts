@@ -315,7 +315,7 @@ export function analyzeSegments(values: number[], startLevel: number): CurveSegm
         toLevel: startLevel + toIdx,
         fromValue: values[fromIdx],
         toValue: values[toIdx],
-        avgDelta: Math.round(avgDelta),
+        avgDelta: Math.abs(avgDelta) >= 1 ? Math.round(avgDelta) : Math.round(avgDelta * 100) / 100,
         trend,
       });
 
