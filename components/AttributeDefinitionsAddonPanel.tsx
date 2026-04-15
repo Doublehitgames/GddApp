@@ -31,8 +31,7 @@ const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30
 function normalizeKey(raw: string): string {
   return raw
     .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[^a-zA-Z0-9_\s-]/g, "")
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_");
 }

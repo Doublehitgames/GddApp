@@ -481,8 +481,7 @@ function normalizeAttributeKey(raw: unknown): string {
   if (typeof raw !== "string") return "";
   return raw
     .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[^a-zA-Z0-9_\s-]/g, "")
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_");
 }
