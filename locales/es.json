@@ -605,6 +605,13 @@
     "baseLabel": "Base",
     "stepLabel": "Step",
     "growthLabel": "Growth",
+    "biasLabel": "Curvatura",
+    "growthHintWithBias": "Con curvatura != 1, Growth es la tasa efectiva entre los extremos. La tasa por nivel varia a lo largo de la curva.",
+    "biasHelpAria": "Ayuda sobre el parametro de curvatura",
+    "biasHelpTitle": "Forma de la curva",
+    "biasHelpBody": "Mantiene Base y el valor final fijos pero cambia la forma entre ellos. 1.0 = exponencial pura. Mayor que 1 = crece despacio al inicio y rapido al final (grind tardio). Menor que 1 = crece rapido al inicio y se aplana al final.",
+    "biasHelpBodyLinear": "Mantiene Base y el valor final fijos pero cambia la forma entre ellos. 1.0 = lineal pura. Mayor que 1 = crece despacio al inicio y rapido al final. Menor que 1 = crece rapido al inicio y se aplana al final.",
+    "stepHintWithBias": "Con curvatura != 1, Step es el incremento medio entre los extremos. La diferencia por nivel varia a lo largo de la curva.",
     "baseColumnLabel": "Columna base",
     "selectPlaceholder": "Selecciona...",
     "expressionLabel": "Expresion",
@@ -624,6 +631,13 @@
     "showValuesButton": "Mostrar valores",
     "hideValuesButton": "Ocultar valores",
     "showingRows": "Mostrando {shown} de {total} niveles.",
+    "autoIntervalButton": "Auto",
+    "autoIntervalAriaLabel": "Auto-generar base y step/growth desde el intervalo",
+    "autoIntervalTitle": "Rellenar intervalo",
+    "autoIntervalFromLabel": "Valor en Lv {level}",
+    "autoIntervalToLabel": "Valor en Lv {level}",
+    "autoIntervalApply": "Aplicar",
+    "autoIntervalCancel": "Cancelar",
     "warnings": {
       "invalidLinearParams": "Parametros de formula lineal invalidos.",
       "invalidExponentialParams": "Parametros de formula exponencial invalidos.",
@@ -637,7 +651,11 @@
       "minGreaterThanMax": "El minimo es mayor que el maximo. Los limites se ajustaran automaticamente.",
       "outOfBounds": "{count} valor(es) fuera de los limites definidos para esta columna.",
       "hasNonNumeric": "Hay valores no numericos (NaN) en esta columna.",
-      "hasNegative": "Hay valores negativos en esta columna."
+      "hasNegative": "Hay valores negativos en esta columna.",
+      "invalidBias": "Curvatura debe ser mayor que cero. Usando 1.0 como fallback.",
+      "autoIntervalExpNeedsPositive": "Exponencial requiere ambos valores con el mismo signo y diferentes de cero.",
+      "autoIntervalRangeTooSmall": "El nivel final debe ser mayor que el inicial.",
+      "autoIntervalInvalidValues": "Valores invalidos."
     }
   },
   "economyLinkAddon": {

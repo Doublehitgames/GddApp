@@ -228,16 +228,38 @@ function evaluateFormulaExpression(
 function computeGeneratedValue(params: {
   row: ProgressionTableRow;
   startLevel: number;
+  endLevel?: number;
   generator: ProgressionColumnGenerator;
 }): number {
-  const { row, startLevel, generator } = params;
+  const { row, startLevel, endLevel, generator } = params;
   const level = row.level;
   const deltaLevel = Math.max(0, level - startLevel);
   if (generator.mode === "linear") {
-    return generator.base + generator.step * deltaLevel;
+    const bias = Number.isFinite(generator.bias) ? Number(generator.bias) : 1;
+    if (bias === 1 || bias <= 0 || !Number.isFinite(bias)) {
+      return generator.base + generator.step * deltaLevel;
+    }
+    const span = (endLevel ?? level) - startLevel;
+    if (span <= 0 || deltaLevel === 0) {
+      return generator.base;
+    }
+    const t = deltaLevel / span;
+    const deltaBiased = Math.pow(t, bias) * span;
+    return generator.base + generator.step * deltaBiased;
   }
   if (generator.mode === "exponential") {
-    return generator.base * Math.pow(generator.growth, deltaLevel);
+    const bias = Number.isFinite(generator.bias) ? Number(generator.bias) : 1;
+    // When bias is ~1 or invalid, fall back to plain geometric growth to preserve legacy behavior exactly.
+    if (bias === 1 || bias <= 0 || !Number.isFinite(bias)) {
+      return generator.base * Math.pow(generator.growth, deltaLevel);
+    }
+    const span = (endLevel ?? level) - startLevel;
+    if (span <= 0 || deltaLevel === 0) {
+      return generator.base;
+    }
+    const t = deltaLevel / span;
+    const deltaBiased = Math.pow(t, bias) * span;
+    return generator.base * Math.pow(generator.growth, deltaBiased);
   }
   if (generator.mode === "formula") {
     let baseValue: number;
@@ -260,6 +282,7 @@ export function generateProgressionColumnValues(params: {
   rows: ProgressionTableRow[];
   columnId: string;
   startLevel: number;
+  endLevel?: number;
   generator: ProgressionColumnGenerator;
   decimals?: number;
   min?: number;
@@ -267,6 +290,8 @@ export function generateProgressionColumnValues(params: {
 }): ProgressionTableRow[] {
   const { rows, columnId, startLevel, generator, decimals, min, max } = params;
   if (generator.mode === "manual") return rows;
+  const derivedEndLevel =
+    params.endLevel ?? (rows.length > 0 ? rows[rows.length - 1].level : startLevel);
   return rows.map((row) => ({
     ...row,
     values: {
@@ -276,6 +301,7 @@ export function generateProgressionColumnValues(params: {
           computeGeneratedValue({
             row,
             startLevel,
+            endLevel: derivedEndLevel,
             generator,
           }),
           decimals
@@ -332,8 +358,9 @@ export function generateAllProgressionColumnValues(params: {
   rows: ProgressionTableRow[];
   columns: ProgressionTableColumn[];
   startLevel: number;
+  endLevel?: number;
 }): ProgressionTableRow[] {
-  const { rows, columns, startLevel } = params;
+  const { rows, columns, startLevel, endLevel } = params;
   let nextRows = rows;
   for (const column of columns) {
     const generator = column.generator ?? { mode: "manual" as const };
@@ -341,6 +368,7 @@ export function generateAllProgressionColumnValues(params: {
       rows: nextRows,
       columnId: column.id,
       startLevel,
+      endLevel,
       generator,
       decimals: column.decimals,
       min: column.min,

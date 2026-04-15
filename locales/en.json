@@ -605,6 +605,13 @@
     "baseLabel": "Base",
     "stepLabel": "Step",
     "growthLabel": "Growth",
+    "biasLabel": "Curve bias",
+    "growthHintWithBias": "With bias != 1, Growth is the effective rate between the endpoints. The per-level rate varies along the curve.",
+    "biasHelpAria": "Help about the curve bias parameter",
+    "biasHelpTitle": "Curve shape",
+    "biasHelpBody": "Keeps Base and the final value fixed but reshapes the curve between them. 1.0 = pure exponential. Greater than 1 = slow early growth, fast late (late-game grind). Less than 1 = fast early growth, flat late.",
+    "biasHelpBodyLinear": "Keeps Base and the final value fixed but reshapes the curve between them. 1.0 = pure linear. Greater than 1 = slow early growth, fast late. Less than 1 = fast early growth, flat late.",
+    "stepHintWithBias": "With bias != 1, Step is the average increment between the endpoints. The per-level delta varies along the curve.",
     "baseColumnLabel": "Base column",
     "selectPlaceholder": "Select...",
     "expressionLabel": "Expression",
@@ -624,6 +631,13 @@
     "showValuesButton": "Show values",
     "hideValuesButton": "Hide values",
     "showingRows": "Showing {shown} of {total} levels.",
+    "autoIntervalButton": "Auto",
+    "autoIntervalAriaLabel": "Auto-generate base and step/growth from interval",
+    "autoIntervalTitle": "Fill interval",
+    "autoIntervalFromLabel": "Value at Lv {level}",
+    "autoIntervalToLabel": "Value at Lv {level}",
+    "autoIntervalApply": "Apply",
+    "autoIntervalCancel": "Cancel",
     "warnings": {
       "invalidLinearParams": "Invalid linear formula parameters.",
       "invalidExponentialParams": "Invalid exponential formula parameters.",
@@ -637,7 +651,11 @@
       "minGreaterThanMax": "Minimum is greater than maximum. Bounds will be swapped automatically.",
       "outOfBounds": "{count} value(s) are outside configured bounds in this column.",
       "hasNonNumeric": "There are non-numeric values (NaN) in this column.",
-      "hasNegative": "There are negative values in this column."
+      "hasNegative": "There are negative values in this column.",
+      "invalidBias": "Curve bias must be greater than zero. Falling back to 1.0.",
+      "autoIntervalExpNeedsPositive": "Exponential requires both values to share the same sign and be different from zero.",
+      "autoIntervalRangeTooSmall": "End level must be greater than start level.",
+      "autoIntervalInvalidValues": "Invalid values."
     }
   },
   "economyLinkAddon": {

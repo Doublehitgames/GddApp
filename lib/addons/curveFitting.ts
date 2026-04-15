@@ -9,6 +9,7 @@ export type LinearFitResult = {
   mode: "linear";
   base: number;
   step: number;
+  bias?: number;
   r2: number;
 };
 
@@ -16,6 +17,7 @@ export type ExponentialFitResult = {
   mode: "exponential";
   base: number;
   growth: number;
+  bias?: number;
   r2: number;
 };
 
@@ -101,6 +103,136 @@ export function fitExponential(values: number[]): ExponentialFitResult | null {
   if (!Number.isFinite(base) || !Number.isFinite(growth)) return null;
 
   return { mode: "exponential", base: round4(base), growth: round6(growth), r2 };
+}
+
+/**
+ * Fit bias for endpoint-preserving curves.
+ *
+ * Given a function y_i = t_i^bias (where t_i is normalized 0..1 and y_i is the
+ * normalized value), solves for bias using OLS with zero intercept in log-space:
+ *   ln(y_i) = bias * ln(t_i)
+ * so bias = sum(ln(t) * ln(y)) / sum(ln(t)^2)
+ *
+ * Used by both the linear and exponential bias fitters — they only differ in how
+ * values are normalized into y_i ∈ (0, 1).
+ */
+function fitBias(
+  values: number[],
+  normalize: (v: number, base: number, finalVal: number) => number | null
+): number | null {
+  const n = values.length - 1;
+  if (n < 2) return null; // need at least 3 points to have 1+ intermediate
+  const base = values[0];
+  const finalVal = values[n];
+  if (!Number.isFinite(base) || !Number.isFinite(finalVal)) return null;
+  if (base === finalVal) return null;
+
+  let sumLogTSq = 0;
+  let sumLogTLogY = 0;
+  let count = 0;
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    const y = normalize(values[i], base, finalVal);
+    if (y == null || !Number.isFinite(y) || y <= 0 || y >= 1) continue;
+    if (t <= 0 || t >= 1) continue;
+    const logT = Math.log(t);
+    const logY = Math.log(y);
+    sumLogTSq += logT * logT;
+    sumLogTLogY += logT * logY;
+    count += 1;
+  }
+  if (count < 2 || sumLogTSq < 1e-12) return null;
+
+  const bias = sumLogTLogY / sumLogTSq;
+  if (!Number.isFinite(bias) || bias <= 0) return null;
+  return bias;
+}
+
+/**
+ * Fit values to: value = base + step * (t^bias * N),
+ * where t = delta / N and N = values.length - 1.
+ * Endpoints are fixed at values[0] and values[N]; bias is fit to minimize error
+ * on intermediate points.
+ */
+export function fitLinearWithBias(values: number[]): LinearFitResult | null {
+  if (values.length < 4) return null; // need intermediates for bias to be meaningful
+  const n = values.length - 1;
+  const base = values[0];
+  const finalVal = values[n];
+  if (!Number.isFinite(base) || !Number.isFinite(finalVal) || base === finalVal) return null;
+
+  const bias = fitBias(values, (v, b, f) => (v - b) / (f - b));
+  if (bias == null) return null;
+
+  const step = (finalVal - base) / n;
+
+  // Compute R² in original space against biased prediction
+  const meanY = values.reduce((s, v) => s + v, 0) / values.length;
+  let ssTot = 0;
+  let ssRes = 0;
+  for (let i = 0; i < values.length; i++) {
+    const t = i / n;
+    const predicted = base + step * Math.pow(t, bias) * n;
+    ssRes += (values[i] - predicted) ** 2;
+    ssTot += (values[i] - meanY) ** 2;
+  }
+  const r2 = ssTot < 1e-12 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+
+  return {
+    mode: "linear",
+    base: round4(base),
+    step: round4(step),
+    bias: round4(bias),
+    r2,
+  };
+}
+
+/**
+ * Fit values to: value = base * growth^(t^bias * N),
+ * where t = delta / N and N = values.length - 1.
+ * Endpoints are fixed at values[0] and values[N]; bias is fit to minimize error
+ * on intermediate points. Requires all values > 0 (log-space fit).
+ */
+export function fitExponentialWithBias(values: number[]): ExponentialFitResult | null {
+  if (values.length < 4) return null;
+  if (values.some((v) => v <= 0)) return null;
+
+  const n = values.length - 1;
+  const base = values[0];
+  const finalVal = values[n];
+  if (!Number.isFinite(base) || !Number.isFinite(finalVal) || base === finalVal) return null;
+  if (base <= 0 || finalVal <= 0) return null;
+  const ratio = finalVal / base;
+  if (ratio <= 0) return null;
+
+  const bias = fitBias(values, (v, b, f) => {
+    const ratioLog = Math.log(f / b);
+    if (!Number.isFinite(ratioLog) || Math.abs(ratioLog) < 1e-12) return null;
+    return Math.log(v / b) / ratioLog;
+  });
+  if (bias == null) return null;
+
+  const growth = Math.pow(ratio, 1 / n);
+  if (!Number.isFinite(growth) || growth <= 0) return null;
+
+  const meanY = values.reduce((s, v) => s + v, 0) / values.length;
+  let ssTot = 0;
+  let ssRes = 0;
+  for (let i = 0; i < values.length; i++) {
+    const t = i / n;
+    const predicted = base * Math.pow(growth, Math.pow(t, bias) * n);
+    ssRes += (values[i] - predicted) ** 2;
+    ssTot += (values[i] - meanY) ** 2;
+  }
+  const r2 = ssTot < 1e-12 ? 1 : Math.max(0, 1 - ssRes / ssTot);
+
+  return {
+    mode: "exponential",
+    base: round4(base),
+    growth: round6(growth),
+    bias: round4(bias),
+    r2,
+  };
 }
 
 /**
@@ -233,16 +365,23 @@ export function suggestGeneratorMode(values: number[]): SuggestionResult {
   const linear = fitLinear(values);
   const exponential = fitExponential(values);
   const polynomial = fitPolynomial(values);
+  const linearBiased = fitLinearWithBias(values);
+  const expBiased = fitExponentialWithBias(values);
 
-  const linearOk = linear.r2 >= R2_THRESHOLD;
-  const expOk = exponential != null && exponential.r2 >= R2_THRESHOLD;
+  // Within each mode, prefer the simpler fit (no bias) unless the biased version
+  // meaningfully improves the fit AND the fitted bias is actually non-trivial.
+  const bestLinear = pickBestWithinMode(linear, linearBiased);
+  const bestExponential = pickBestWithinMode(exponential, expBiased);
+
+  const linearOk = bestLinear != null && bestLinear.r2 >= R2_THRESHOLD;
+  const expOk = bestExponential != null && bestExponential.r2 >= R2_THRESHOLD;
   const polyOk = polynomial != null && polynomial.r2 >= R2_THRESHOLD;
 
   // Collect valid candidates, pick best R² with priority tiebreak
   type Candidate = { fit: LinearFitResult | ExponentialFitResult | FormulaFitResult; priority: number };
   const candidates: Candidate[] = [];
-  if (linearOk) candidates.push({ fit: linear, priority: 0 });
-  if (expOk) candidates.push({ fit: exponential!, priority: 1 });
+  if (linearOk) candidates.push({ fit: bestLinear!, priority: 0 });
+  if (expOk) candidates.push({ fit: bestExponential!, priority: 1 });
   if (polyOk) candidates.push({ fit: polynomial!, priority: 2 });
 
   if (candidates.length === 0) return { suggested: false };
@@ -255,6 +394,29 @@ export function suggestGeneratorMode(values: number[]): SuggestionResult {
   });
 
   return { suggested: true, fit: candidates[0].fit };
+}
+
+/**
+ * Pick between a plain fit and its biased counterpart, preferring the plain one
+ * unless the biased version meaningfully improves R² AND the fitted bias is not
+ * trivially close to 1.
+ */
+function pickBestWithinMode<T extends LinearFitResult | ExponentialFitResult>(
+  plain: T | null,
+  biased: T | null
+): T | null {
+  if (!plain && !biased) return null;
+  if (!plain) return biased;
+  if (!biased || biased.bias == null) return plain;
+
+  // If bias is ~1, the biased fit is just a noisy version of the plain one
+  if (Math.abs(biased.bias - 1) < 0.1) return plain;
+
+  // Require a meaningful R² gain over the plain fit to justify the extra parameter
+  const R2_GAIN_THRESHOLD = 0.02;
+  if (biased.r2 - plain.r2 < R2_GAIN_THRESHOLD) return plain;
+
+  return biased;
 }
 
 // ── Segment analysis ──────────────────────────────────────────────────

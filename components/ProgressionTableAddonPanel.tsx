@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -110,6 +110,54 @@ function clampDecimals(value: number): number {
   return Math.max(0, Math.min(6, Math.floor(value)));
 }
 
+type AutoIntervalResult =
+  | { ok: true; patch: { base: number; step: number } | { base: number; growth: number } }
+  | { ok: false; errorKey: string };
+
+function computeAutoInterval(
+  mode: "linear" | "exponential",
+  fromValue: number,
+  toValue: number,
+  startLevel: number,
+  endLevel: number
+): AutoIntervalResult {
+  const steps = endLevel - startLevel;
+  if (steps <= 0) {
+    return { ok: false, errorKey: "progressionTableAddon.warnings.autoIntervalRangeTooSmall" };
+  }
+  if (!Number.isFinite(fromValue) || !Number.isFinite(toValue)) {
+    return { ok: false, errorKey: "progressionTableAddon.warnings.autoIntervalInvalidValues" };
+  }
+  if (mode === "linear") {
+    return {
+      ok: true,
+      patch: {
+        base: fromValue,
+        step: (toValue - fromValue) / steps,
+      },
+    };
+  }
+  // exponential
+  if (fromValue === 0 || toValue === 0) {
+    return { ok: false, errorKey: "progressionTableAddon.warnings.autoIntervalExpNeedsPositive" };
+  }
+  if (Math.sign(fromValue) !== Math.sign(toValue)) {
+    return { ok: false, errorKey: "progressionTableAddon.warnings.autoIntervalExpNeedsPositive" };
+  }
+  const growth = Math.pow(toValue / fromValue, 1 / steps);
+  if (!Number.isFinite(growth) || growth <= 0) {
+    return { ok: false, errorKey: "progressionTableAddon.warnings.autoIntervalExpNeedsPositive" };
+  }
+  const roundedGrowth = Math.round(growth * 1_000_000) / 1_000_000;
+  return {
+    ok: true,
+    patch: {
+      base: fromValue,
+      growth: roundedGrowth,
+    },
+  };
+}
+
 function normalizeBounds(min?: number, max?: number): { min?: number; max?: number } {
   const safeMin = Number.isFinite(min) ? Number(min) : undefined;
   const safeMax = Number.isFinite(max) ? Number(max) : undefined;
@@ -142,8 +190,8 @@ function defaultGeneratorForMode(
   columnId: string,
   columns: ProgressionTableColumn[]
 ): ProgressionColumnGenerator {
-  if (mode === "linear") return { mode: "linear", base: 0, step: 1 };
-  if (mode === "exponential") return { mode: "exponential", base: 1, growth: 1.1 };
+  if (mode === "linear") return { mode: "linear", base: 0, step: 1, bias: 1 };
+  if (mode === "exponential") return { mode: "exponential", base: 1, growth: 1.1, bias: 1 };
   if (mode === "formula") {
     const fallbackBaseColumnId = columns.find((column) => column.id !== columnId)?.id ?? "";
     return {
@@ -184,12 +232,28 @@ function getColumnWarnings(
     if (!Number.isFinite(generator.base) || !Number.isFinite(generator.step)) {
       warnings.push(t("progressionTableAddon.warnings.invalidLinearParams", "Parametros da formula linear invalidos."));
     }
+    if (generator.bias != null && (!Number.isFinite(generator.bias) || generator.bias <= 0)) {
+      warnings.push(
+        t(
+          "progressionTableAddon.warnings.invalidBias",
+          "Curvatura deve ser maior que zero. Usando 1.0 como fallback."
+        )
+      );
+    }
   }
   if (generator.mode === "exponential") {
     if (!Number.isFinite(generator.base) || !Number.isFinite(generator.growth)) {
       warnings.push(t("progressionTableAddon.warnings.invalidExponentialParams", "Parametros da formula exponencial invalidos."));
     } else if (generator.growth <= 0) {
       warnings.push(t("progressionTableAddon.warnings.growthMustBePositive", "Growth deve ser maior que zero."));
+    }
+    if (generator.bias != null && (!Number.isFinite(generator.bias) || generator.bias <= 0)) {
+      warnings.push(
+        t(
+          "progressionTableAddon.warnings.invalidBias",
+          "Curvatura deve ser maior que zero. Usando 1.0 como fallback."
+        )
+      );
     }
   }
   if (generator.mode === "formula") {
@@ -279,6 +343,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [curveSuggestion, setCurveSuggestion] = useState<Record<string, SuggestionResult>>({});
   const [columnNameDrafts, setColumnNameDrafts] = useState<Record<string, string>>({});
   const [formulaDrafts, setFormulaDrafts] = useState<Record<string, string>>({});
+  const [autoIntervalOpenColumnId, setAutoIntervalOpenColumnId] = useState<string | null>(null);
+  const [autoIntervalDrafts, setAutoIntervalDrafts] = useState<Record<string, { from: string; to: string }>>({});
+  const autoIntervalPopoverRef = useRef<HTMLDivElement | null>(null);
+  const autoIntervalButtonRef = useRef<HTMLButtonElement | null>(null);
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
   const startLevel = Math.max(1, Math.floor(addon.startLevel || 1));
   const endLevel = Math.max(startLevel, Math.floor(addon.endLevel || startLevel));
@@ -311,6 +379,42 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     setColumnNameDrafts(nextDrafts);
     setFormulaDrafts(nextFormulas);
   }, [columnIdSignature, columns]);
+
+  // Auto-close the auto-interval popover when its column's mode leaves linear/exponential
+  useEffect(() => {
+    if (!autoIntervalOpenColumnId) return;
+    const column = columns.find((item) => item.id === autoIntervalOpenColumnId);
+    const mode = column?.generator?.mode;
+    if (mode !== "linear" && mode !== "exponential") {
+      setAutoIntervalOpenColumnId(null);
+    }
+  }, [autoIntervalOpenColumnId, columns]);
+
+  // Close auto-interval popover on Escape key
+  useEffect(() => {
+    if (!autoIntervalOpenColumnId) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAutoIntervalOpenColumnId(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [autoIntervalOpenColumnId]);
+
+  // Close auto-interval popover on click outside
+  useEffect(() => {
+    if (!autoIntervalOpenColumnId) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (autoIntervalPopoverRef.current?.contains(target)) return;
+      if (autoIntervalButtonRef.current?.contains(target)) return;
+      setAutoIntervalOpenColumnId(null);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [autoIntervalOpenColumnId]);
 
   const commit = (next: Partial<ProgressionTableAddonDraft>) => {
     onChange({
@@ -372,6 +476,35 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     });
     setLastGeneratedColumnId(null);
     setClampSummaryByColumnId({});
+    if (autoIntervalOpenColumnId === columnId) {
+      setAutoIntervalOpenColumnId(null);
+    }
+  };
+
+  const applyAutoInterval = (columnId: string) => {
+    const column = columns.find((item) => item.id === columnId);
+    if (!column) return;
+    const mode = column.generator?.mode;
+    if (mode !== "linear" && mode !== "exponential") return;
+    const draft = autoIntervalDrafts[columnId] ?? { from: "", to: "" };
+    const fromValue = parseNumber(draft.from);
+    const toValue = parseNumber(draft.to);
+    const result = computeAutoInterval(mode, fromValue, toValue, startLevel, endLevel);
+    if (!result.ok) return;
+    updateColumnGeneratorParams(columnId, result.patch);
+    setAutoIntervalOpenColumnId(null);
+    setAutoIntervalDrafts((prev) => ({ ...prev, [columnId]: { from: "", to: "" } }));
+  };
+
+  const toggleAutoIntervalPopover = (columnId: string) => {
+    setAutoIntervalOpenColumnId((prev) => (prev === columnId ? null : columnId));
+  };
+
+  const updateAutoIntervalDraft = (columnId: string, patch: Partial<{ from: string; to: string }>) => {
+    setAutoIntervalDrafts((prev) => {
+      const current = prev[columnId] ?? { from: "", to: "" };
+      return { ...prev, [columnId]: { ...current, ...patch } };
+    });
   };
 
   const updateColumnGeneratorParams = (columnId: string, patch: Partial<ProgressionColumnGenerator>) => {
@@ -382,6 +515,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       switch (currentGenerator.mode) {
         case "linear": {
           const linearPatch = patch.mode === "linear" || patch.mode == null ? patch : {};
+          const patchBias = (linearPatch as { bias?: number }).bias;
           return {
             ...column,
             generator: {
@@ -392,11 +526,15 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
               step: Number.isFinite((linearPatch as { step?: number }).step)
                 ? Number((linearPatch as { step?: number }).step)
                 : currentGenerator.step,
+              bias: Number.isFinite(patchBias)
+                ? Number(patchBias)
+                : currentGenerator.bias ?? 1,
             },
           };
         }
         case "exponential": {
           const exponentialPatch = patch.mode === "exponential" || patch.mode == null ? patch : {};
+          const patchBias = (exponentialPatch as { bias?: number }).bias;
           return {
             ...column,
             generator: {
@@ -407,6 +545,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
               growth: Number.isFinite((exponentialPatch as { growth?: number }).growth)
                 ? Number((exponentialPatch as { growth?: number }).growth)
                 : currentGenerator.growth,
+              bias: Number.isFinite(patchBias)
+                ? Number(patchBias)
+                : currentGenerator.bias ?? 1,
             },
           };
         }
@@ -504,6 +645,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       rows,
       columnId,
       startLevel,
+      endLevel,
       generator,
       decimals: column.decimals,
     });
@@ -532,11 +674,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       rows,
       columns: columns.map((column) => ({ ...column, min: undefined, max: undefined })),
       startLevel,
+      endLevel,
     });
     const nextRows = generateAllProgressionColumnValues({
       rows,
       columns,
       startLevel,
+      endLevel,
     });
     const summary: Record<string, number> = {};
     for (const column of columns) {
@@ -687,10 +831,26 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     const nextColumns = columns.map((col) => {
       if (col.id !== columnId) return col;
       if (fit.mode === "linear") {
-        return { ...col, generator: { mode: "linear" as const, base: fit.base, step: fit.step } };
+        return {
+          ...col,
+          generator: {
+            mode: "linear" as const,
+            base: fit.base,
+            step: fit.step,
+            bias: fit.bias ?? 1,
+          },
+        };
       }
       if (fit.mode === "exponential") {
-        return { ...col, generator: { mode: "exponential" as const, base: fit.base, growth: fit.growth } };
+        return {
+          ...col,
+          generator: {
+            mode: "exponential" as const,
+            base: fit.base,
+            growth: fit.growth,
+            bias: fit.bias ?? 1,
+          },
+        };
       }
       // formula (polynomial)
       return { ...col, generator: { mode: "formula" as const, baseColumnId: "__manual__", baseManualValue: 0, expression: fit.expression } };
@@ -702,6 +862,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       rows: remapped,
       columnId,
       startLevel,
+      endLevel,
       generator: nextColumns.find((c) => c.id === columnId)!.generator!,
       decimals: nextColumns.find((c) => c.id === columnId)!.decimals,
     });
@@ -896,26 +1057,152 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </button>
                         </div>
 
-                        <label className="block">
+                        <div>
                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                             {t("progressionTableAddon.modeLabel", "Modo")}
                           </span>
-                          <select
-                            value={column.generator?.mode ?? "manual"}
-                            onChange={(e) =>
-                              updateColumnGeneratorMode(
-                                column.id,
-                                e.target.value as ProgressionColumnGenerator["mode"]
-                              )
-                            }
-                            className={INPUT_CLASS}
-                          >
-                            <option value="manual">{t("progressionTableAddon.mode.manual", "Manual")}</option>
-                            <option value="linear">{t("progressionTableAddon.mode.linear", "Linear")}</option>
-                            <option value="exponential">{t("progressionTableAddon.mode.exponential", "Exponencial")}</option>
-                            <option value="formula">{t("progressionTableAddon.mode.formula", "Formula")}</option>
-                          </select>
-                        </label>
+                          <div className="relative flex items-stretch gap-1.5">
+                            <select
+                              value={column.generator?.mode ?? "manual"}
+                              onChange={(e) =>
+                                updateColumnGeneratorMode(
+                                  column.id,
+                                  e.target.value as ProgressionColumnGenerator["mode"]
+                                )
+                              }
+                              className={`${INPUT_CLASS} flex-1`}
+                            >
+                              <option value="manual">{t("progressionTableAddon.mode.manual", "Manual")}</option>
+                              <option value="linear">{t("progressionTableAddon.mode.linear", "Linear")}</option>
+                              <option value="exponential">{t("progressionTableAddon.mode.exponential", "Exponencial")}</option>
+                              <option value="formula">{t("progressionTableAddon.mode.formula", "Formula")}</option>
+                            </select>
+                            {(column.generator?.mode === "linear" || column.generator?.mode === "exponential") && (() => {
+                              const mode = column.generator.mode;
+                              const isOpen = autoIntervalOpenColumnId === column.id;
+                              const draft = autoIntervalDrafts[column.id] ?? { from: "", to: "" };
+                              const hasBothValues = draft.from.trim().length > 0 && draft.to.trim().length > 0;
+                              const result = hasBothValues
+                                ? computeAutoInterval(
+                                    mode,
+                                    parseNumber(draft.from),
+                                    parseNumber(draft.to),
+                                    startLevel,
+                                    endLevel
+                                  )
+                                : null;
+                              const errorMessage =
+                                result && !result.ok
+                                  ? t(
+                                      result.errorKey,
+                                      result.errorKey === "progressionTableAddon.warnings.autoIntervalExpNeedsPositive"
+                                        ? "Exponencial requer ambos os valores com o mesmo sinal e diferentes de zero."
+                                        : result.errorKey === "progressionTableAddon.warnings.autoIntervalRangeTooSmall"
+                                        ? "O level final deve ser maior que o inicial."
+                                        : "Valores invalidos."
+                                    )
+                                  : null;
+                              const canApply = Boolean(result && result.ok);
+                              return (
+                                <>
+                                  <button
+                                    ref={isOpen ? autoIntervalButtonRef : undefined}
+                                    type="button"
+                                    onClick={() => toggleAutoIntervalPopover(column.id)}
+                                    aria-label={t(
+                                      "progressionTableAddon.autoIntervalAriaLabel",
+                                      "Auto-gerar base e step/growth a partir do intervalo"
+                                    )}
+                                    aria-expanded={isOpen}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1.5 text-xs text-gray-100 hover:bg-gray-700 focus-visible:border-gray-500"
+                                  >
+                                    <span aria-hidden>✨</span>
+                                    <span>{t("progressionTableAddon.autoIntervalButton", "Auto")}</span>
+                                  </button>
+                                  {isOpen && (
+                                    <div
+                                      ref={autoIntervalPopoverRef}
+                                      role="dialog"
+                                      aria-label={t("progressionTableAddon.autoIntervalTitle", "Preencher intervalo")}
+                                      className="absolute right-0 top-full z-20 mt-1.5 w-64 rounded-md border border-gray-700 bg-gray-950/95 p-3 text-xs text-gray-200 shadow-xl"
+                                    >
+                                      <p className="mb-2 text-[11px] font-semibold text-gray-100">
+                                        {t("progressionTableAddon.autoIntervalTitle", "Preencher intervalo")}
+                                      </p>
+                                      <div className="space-y-2">
+                                        <label className="block">
+                                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                            {t("progressionTableAddon.autoIntervalFromLabel", "Valor no Lv {level}").replace(
+                                              "{level}",
+                                              String(startLevel)
+                                            )}
+                                          </span>
+                                          <input
+                                            type="number"
+                                            autoFocus
+                                            value={draft.from}
+                                            onChange={(e) =>
+                                              updateAutoIntervalDraft(column.id, { from: e.target.value })
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter" && canApply) {
+                                                e.preventDefault();
+                                                applyAutoInterval(column.id);
+                                              }
+                                            }}
+                                            className={INPUT_CLASS}
+                                          />
+                                        </label>
+                                        <label className="block">
+                                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                            {t("progressionTableAddon.autoIntervalToLabel", "Valor no Lv {level}").replace(
+                                              "{level}",
+                                              String(endLevel)
+                                            )}
+                                          </span>
+                                          <input
+                                            type="number"
+                                            value={draft.to}
+                                            onChange={(e) =>
+                                              updateAutoIntervalDraft(column.id, { to: e.target.value })
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter" && canApply) {
+                                                e.preventDefault();
+                                                applyAutoInterval(column.id);
+                                              }
+                                            }}
+                                            className={INPUT_CLASS}
+                                          />
+                                        </label>
+                                      </div>
+                                      {errorMessage && (
+                                        <p className="mt-2 text-[10px] text-rose-300">{errorMessage}</p>
+                                      )}
+                                      <div className="mt-3 flex items-center justify-end gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => setAutoIntervalOpenColumnId(null)}
+                                          className={BUTTON_SECONDARY_CLASS}
+                                        >
+                                          {t("progressionTableAddon.autoIntervalCancel", "Cancelar")}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => applyAutoInterval(column.id)}
+                                          disabled={!canApply}
+                                          className={`${BUTTON_PRIMARY_CLASS} disabled:opacity-40`}
+                                        >
+                                          {t("progressionTableAddon.autoIntervalApply", "Aplicar")}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-2">
                           <label className="block">
@@ -971,73 +1258,253 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                         </div>
 
                         {(column.generator?.mode ?? "manual") === "linear" && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="block">
-                              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-                                {t("progressionTableAddon.baseLabel", "Base")}
-                              </span>
-                              <input
-                                type="number"
-                                value={column.generator?.mode === "linear" ? column.generator.base : 0}
-                                onChange={(e) =>
-                                  updateColumnGeneratorParams(column.id, {
-                                    base: parseNumber(e.target.value),
-                                  })
-                                }
-                                className={INPUT_CLASS}
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-                                {t("progressionTableAddon.stepLabel", "Step")}
-                              </span>
-                              <input
-                                type="number"
-                                value={column.generator?.mode === "linear" ? column.generator.step : 1}
-                                onChange={(e) =>
-                                  updateColumnGeneratorParams(column.id, {
-                                    step: parseNumber(e.target.value),
-                                  })
-                                }
-                                className={INPUT_CLASS}
-                              />
-                            </label>
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.baseLabel", "Base")}
+                                </span>
+                                <input
+                                  type="number"
+                                  value={column.generator?.mode === "linear" ? column.generator.base : 0}
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      base: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.stepLabel", "Step")}
+                                </span>
+                                <input
+                                  type="number"
+                                  value={column.generator?.mode === "linear" ? column.generator.step : 1}
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      step: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.biasLabel", "Curvatura")}
+                                  <span className="group relative inline-flex">
+                                    <button
+                                      type="button"
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 bg-gray-800 text-[10px] font-semibold text-gray-300 outline-none transition-colors hover:border-gray-500 hover:text-gray-100 focus-visible:border-gray-500 focus-visible:text-gray-100"
+                                      aria-label={t(
+                                        "progressionTableAddon.biasHelpAria",
+                                        "Ajuda sobre o parametro de curvatura"
+                                      )}
+                                    >
+                                      ?
+                                    </button>
+                                    <div className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+6px)] z-20 w-64 -translate-x-1/2 rounded-md border border-gray-700 bg-gray-950/95 p-2.5 text-[10px] normal-case tracking-normal text-gray-200 opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                                      <p className="font-semibold text-gray-100">
+                                        {t("progressionTableAddon.biasHelpTitle", "Forma da curva")}
+                                      </p>
+                                      <p className="mt-1 text-gray-300">
+                                        {t(
+                                          "progressionTableAddon.biasHelpBodyLinear",
+                                          "Mantem Base e o valor final fixos, mas muda a forma entre eles. 1.0 = linear pura. Maior que 1 = cresce devagar no inicio e rapido no fim. Menor que 1 = cresce rapido no inicio e alisa no fim."
+                                        )}
+                                      </p>
+                                    </div>
+                                  </span>
+                                </span>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  value={
+                                    column.generator?.mode === "linear"
+                                      ? column.generator.bias ?? 1
+                                      : 1
+                                  }
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      bias: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                                {(() => {
+                                  const currentBias =
+                                    column.generator?.mode === "linear"
+                                      ? column.generator.bias ?? 1
+                                      : 1;
+                                  const presets = [0.5, 1, 2];
+                                  return (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      {presets.map((preset) => {
+                                        const isActive = Math.abs(currentBias - preset) < 0.001;
+                                        return (
+                                          <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() =>
+                                              updateColumnGeneratorParams(column.id, { bias: preset })
+                                            }
+                                            className={`rounded-md border px-1.5 py-0.5 text-[10px] transition-colors ${
+                                              isActive
+                                                ? "border-sky-600/60 bg-sky-900/30 text-sky-200"
+                                                : "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            aria-pressed={isActive}
+                                          >
+                                            {preset === 1 ? "1.0" : String(preset)}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+                              </label>
+                            </div>
+                            {column.generator?.mode === "linear" &&
+                              column.generator.bias != null &&
+                              Number.isFinite(column.generator.bias) &&
+                              column.generator.bias > 0 &&
+                              column.generator.bias !== 1 && (
+                                <p className="text-[10px] text-amber-200/70">
+                                  {t(
+                                    "progressionTableAddon.stepHintWithBias",
+                                    "Com curvatura != 1, Step e o incremento medio entre os extremos. A diferenca por level varia ao longo da curva."
+                                  )}
+                                </p>
+                              )}
                           </div>
                         )}
 
                         {(column.generator?.mode ?? "manual") === "exponential" && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <label className="block">
-                              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-                                {t("progressionTableAddon.baseLabel", "Base")}
-                              </span>
-                              <input
-                                type="number"
-                                value={column.generator?.mode === "exponential" ? column.generator.base : 1}
-                                onChange={(e) =>
-                                  updateColumnGeneratorParams(column.id, {
-                                    base: parseNumber(e.target.value),
-                                  })
-                                }
-                                className={INPUT_CLASS}
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-                                {t("progressionTableAddon.growthLabel", "Growth")}
-                              </span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={column.generator?.mode === "exponential" ? column.generator.growth : 1.1}
-                                onChange={(e) =>
-                                  updateColumnGeneratorParams(column.id, {
-                                    growth: parseNumber(e.target.value),
-                                  })
-                                }
-                                className={INPUT_CLASS}
-                              />
-                            </label>
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-3 gap-2">
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.baseLabel", "Base")}
+                                </span>
+                                <input
+                                  type="number"
+                                  value={column.generator?.mode === "exponential" ? column.generator.base : 1}
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      base: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.growthLabel", "Growth")}
+                                </span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={column.generator?.mode === "exponential" ? column.generator.growth : 1.1}
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      growth: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wide text-gray-400">
+                                  {t("progressionTableAddon.biasLabel", "Curvatura")}
+                                  <span className="group relative inline-flex">
+                                    <button
+                                      type="button"
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-600 bg-gray-800 text-[10px] font-semibold text-gray-300 outline-none transition-colors hover:border-gray-500 hover:text-gray-100 focus-visible:border-gray-500 focus-visible:text-gray-100"
+                                      aria-label={t(
+                                        "progressionTableAddon.biasHelpAria",
+                                        "Ajuda sobre o parametro de curvatura"
+                                      )}
+                                    >
+                                      ?
+                                    </button>
+                                    <div className="pointer-events-none invisible absolute left-1/2 top-[calc(100%+6px)] z-20 w-64 -translate-x-1/2 rounded-md border border-gray-700 bg-gray-950/95 p-2.5 text-[10px] normal-case tracking-normal text-gray-200 opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                                      <p className="font-semibold text-gray-100">
+                                        {t("progressionTableAddon.biasHelpTitle", "Forma da curva")}
+                                      </p>
+                                      <p className="mt-1 text-gray-300">
+                                        {t(
+                                          "progressionTableAddon.biasHelpBody",
+                                          "Mantem Base e o valor final fixos, mas muda a forma entre eles. 1.0 = exponencial pura. Maior que 1 = cresce devagar no inicio e rapido no fim (grind tardio). Menor que 1 = cresce rapido no inicio e alisa no fim."
+                                        )}
+                                      </p>
+                                    </div>
+                                  </span>
+                                </span>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  value={
+                                    column.generator?.mode === "exponential"
+                                      ? column.generator.bias ?? 1
+                                      : 1
+                                  }
+                                  onChange={(e) =>
+                                    updateColumnGeneratorParams(column.id, {
+                                      bias: parseNumber(e.target.value),
+                                    })
+                                  }
+                                  className={INPUT_CLASS}
+                                />
+                                {(() => {
+                                  const currentBias =
+                                    column.generator?.mode === "exponential"
+                                      ? column.generator.bias ?? 1
+                                      : 1;
+                                  const presets = [0.5, 1, 2];
+                                  return (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      {presets.map((preset) => {
+                                        const isActive = Math.abs(currentBias - preset) < 0.001;
+                                        return (
+                                          <button
+                                            key={preset}
+                                            type="button"
+                                            onClick={() =>
+                                              updateColumnGeneratorParams(column.id, { bias: preset })
+                                            }
+                                            className={`rounded-md border px-1.5 py-0.5 text-[10px] transition-colors ${
+                                              isActive
+                                                ? "border-sky-600/60 bg-sky-900/30 text-sky-200"
+                                                : "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                            }`}
+                                            aria-pressed={isActive}
+                                          >
+                                            {preset === 1 ? "1.0" : String(preset)}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+                              </label>
+                            </div>
+                            {column.generator?.mode === "exponential" &&
+                              column.generator.bias != null &&
+                              Number.isFinite(column.generator.bias) &&
+                              column.generator.bias > 0 &&
+                              column.generator.bias !== 1 && (
+                                <p className="text-[10px] text-amber-200/70">
+                                  {t(
+                                    "progressionTableAddon.growthHintWithBias",
+                                    "Com curvatura != 1, Growth e a taxa efetiva entre os extremos. A taxa por level varia ao longo da curva."
+                                  )}
+                                </p>
+                              )}
                           </div>
                         )}
 
@@ -1235,10 +1702,17 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                         const result = curveSuggestion[column.id] as { suggested: true; fit: { mode: string; r2: number; [k: string]: unknown } };
                         const { fit } = result;
                         const pct = Math.round(fit.r2 * 100);
+                        const biasSuffix =
+                          (fit.mode === "linear" || fit.mode === "exponential") &&
+                          typeof fit.bias === "number" &&
+                          Number.isFinite(fit.bias) &&
+                          Math.abs(fit.bias - 1) >= 0.05
+                            ? `, curvatura=${fit.bias}`
+                            : "";
                         const desc = fit.mode === "linear"
-                          ? `Linear (base=${fit.base}, step=${fit.step})`
+                          ? `Linear (base=${fit.base}, step=${fit.step}${biasSuffix})`
                           : fit.mode === "exponential"
-                            ? `Exponencial (base=${fit.base}, growth=${fit.growth})`
+                            ? `Exponencial (base=${fit.base}, growth=${fit.growth}${biasSuffix})`
                             : `Formula: ${fit.expression}`;
                         const modeLabel = fit.mode === "linear"
                           ? t("progressionTableAddon.useLinear", "Usar Linear")

@@ -168,6 +168,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       base: z.number().optional(),
       step: z.number().optional(),
       growth: z.number().optional(),
+      bias: z.number().optional().describe("Linear and exponential only — curve shape. 1.0 = pure linear/exponential, >1 slow early/fast late, <1 fast early/flat late. Endpoints are always preserved."),
       expression: z.string().optional(),
       baseColumnId: z.string().optional(),
     }).optional().describe("Auto-generation config"),

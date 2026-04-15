@@ -12,8 +12,8 @@ export type ProgressionTableColumn = {
 
 export type ProgressionColumnGenerator =
   | { mode: "manual" }
-  | { mode: "linear"; base: number; step: number }
-  | { mode: "exponential"; base: number; growth: number }
+  | { mode: "linear"; base: number; step: number; bias?: number }
+  | { mode: "exponential"; base: number; growth: number; bias?: number }
   | { mode: "formula"; baseColumnId: string; baseManualValue?: number; expression: string };
 
 export type ProgressionTableRow = {
