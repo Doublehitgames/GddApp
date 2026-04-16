@@ -638,6 +638,15 @@
     "autoIntervalToLabel": "Value at Lv {level}",
     "autoIntervalApply": "Apply",
     "autoIntervalCancel": "Cancel",
+    "linkAttributeButton": "Link attribute",
+    "linkAttributeAriaLabel": "Link to attribute",
+    "unlinkAttributeAriaLabel": "Unlink attribute",
+    "attributePickerTitle": "Select attribute",
+    "autoIntervalLinkedHint": "Value from attribute profile",
+    "overrideCount": "{count} manual",
+    "resetOverrideAriaLabel": "Reset to generated value",
+    "resetAllOverridesButton": "↺ Reset",
+    "resetAllOverridesAriaLabel": "Reset all manual values in this column",
     "warnings": {
       "invalidLinearParams": "Invalid linear formula parameters.",
       "invalidExponentialParams": "Invalid exponential formula parameters.",
@@ -653,6 +662,7 @@
       "hasNonNumeric": "There are non-numeric values (NaN) in this column.",
       "hasNegative": "There are negative values in this column.",
       "invalidBias": "Curve bias must be greater than zero. Falling back to 1.0.",
+      "brokenAttributeRef": "The linked attribute was not found. Using the last saved name as fallback.",
       "autoIntervalExpNeedsPositive": "Exponential requires both values to share the same sign and be different from zero.",
       "autoIntervalRangeTooSmall": "End level must be greater than start level.",
       "autoIntervalInvalidValues": "Invalid values."

@@ -638,6 +638,15 @@
     "autoIntervalToLabel": "Valor no Lv {level}",
     "autoIntervalApply": "Aplicar",
     "autoIntervalCancel": "Cancelar",
+    "linkAttributeButton": "Vincular atributo",
+    "linkAttributeAriaLabel": "Vincular a atributo",
+    "unlinkAttributeAriaLabel": "Desvincular atributo",
+    "attributePickerTitle": "Selecionar atributo",
+    "autoIntervalLinkedHint": "Valor do perfil de atributos",
+    "overrideCount": "{count} manual(is)",
+    "resetOverrideAriaLabel": "Resetar ao valor gerado",
+    "resetAllOverridesButton": "↺ Resetar",
+    "resetAllOverridesAriaLabel": "Resetar todos os valores manuais desta coluna",
     "warnings": {
       "invalidLinearParams": "Parametros da formula linear invalidos.",
       "invalidExponentialParams": "Parametros da formula exponencial invalidos.",
@@ -653,6 +662,7 @@
       "hasNonNumeric": "Ha valores nao numericos (NaN) nesta coluna.",
       "hasNegative": "Ha valores negativos nesta coluna.",
       "invalidBias": "Curvatura deve ser maior que zero. Usando 1.0 como fallback.",
+      "brokenAttributeRef": "O atributo vinculado nao foi encontrado. Usando o ultimo nome salvo como fallback.",
       "autoIntervalExpNeedsPositive": "Exponencial requer ambos os valores com o mesmo sinal e diferentes de zero.",
       "autoIntervalRangeTooSmall": "O level final deve ser maior que o inicial.",
       "autoIntervalInvalidValues": "Valores invalidos."

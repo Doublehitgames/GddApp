@@ -3,6 +3,10 @@ import type { BalanceAddonDraft } from "@/lib/balance/types";
 export type ProgressionTableColumn = {
   id: string;
   name: string;
+  attributeRef?: {
+    definitionsRef: string;
+    attributeKey: string;
+  };
   generator?: ProgressionColumnGenerator;
   decimals?: number;
   isPercentage?: boolean;
@@ -28,6 +32,8 @@ export type ProgressionTableAddonDraft = {
   endLevel: number;
   columns: ProgressionTableColumn[];
   rows: ProgressionTableRow[];
+  /** Manual cell overrides: overrides[String(level)][columnId] = value */
+  overrides?: Record<string, Record<string, number>>;
 };
 
 export type EconomyModifierRef = {

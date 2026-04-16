@@ -64,9 +64,24 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
       typeof rawColumn.isPercentage === "boolean"
         ? rawColumn.isPercentage
         : String(rawColumn.isPercentage ?? "").trim().toLowerCase() === "true";
+    // Preserve attributeRef if valid
+    let attributeRef: ProgressionTableColumn["attributeRef"];
+    if (
+      isObject(rawColumn.attributeRef) &&
+      typeof (rawColumn.attributeRef as { definitionsRef?: unknown }).definitionsRef === "string" &&
+      typeof (rawColumn.attributeRef as { attributeKey?: unknown }).attributeKey === "string"
+    ) {
+      const defRef = ((rawColumn.attributeRef as { definitionsRef: string }).definitionsRef || "").trim();
+      const attrKey = ((rawColumn.attributeRef as { attributeKey: string }).attributeKey || "").trim();
+      if (defRef && attrKey) {
+        attributeRef = { definitionsRef: defRef, attributeKey: attrKey };
+      }
+    }
+
     const column: ProgressionTableColumn = {
       id,
       name,
+      ...(attributeRef ? { attributeRef } : {}),
       generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" },
       decimals: decimalsValue == null ? 0 : Math.max(0, Math.min(6, Math.floor(decimalsValue))),
       isPercentage,
@@ -768,6 +783,22 @@ function normalizeProgressionTableDraft(value: unknown): ProgressionTableAddonDr
       }, {}),
     };
   });
+  // Preserve overrides (Record<string, Record<string, number>>)
+  let overrides: Record<string, Record<string, number>> | undefined;
+  if (isObject(value.overrides)) {
+    const validOverrides: Record<string, Record<string, number>> = {};
+    for (const [levelKey, colMap] of Object.entries(value.overrides as Record<string, unknown>)) {
+      if (!isObject(colMap)) continue;
+      const validCols: Record<string, number> = {};
+      for (const [colId, val] of Object.entries(colMap as Record<string, unknown>)) {
+        const num = asFiniteNumber(val);
+        if (num != null) validCols[colId] = num;
+      }
+      if (Object.keys(validCols).length > 0) validOverrides[levelKey] = validCols;
+    }
+    if (Object.keys(validOverrides).length > 0) overrides = validOverrides;
+  }
+
   return {
     id: value.id,
     name: value.name,
@@ -775,6 +806,7 @@ function normalizeProgressionTableDraft(value: unknown): ProgressionTableAddonDr
     endLevel,
     columns,
     rows,
+    ...(overrides ? { overrides } : {}),
   };
 }
 

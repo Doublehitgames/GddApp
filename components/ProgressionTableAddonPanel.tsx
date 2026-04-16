@@ -31,6 +31,7 @@ import { MiniLineChart } from "@/components/MiniLineChart";
 import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { useProjectStore } from "@/store/projectStore";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 const FORMULA_ALLOWED_VARIABLES = new Set(["base", "level", "delta"]);
@@ -51,6 +52,61 @@ const FORMULA_CHEATSHEET_EXAMPLES = [
   { label: "Suavização de pico", expression: "max(10, base - abs(delta - 5))" },
   { label: "Ajuste por nível", expression: "base + level * 0.5" },
 ];
+
+type AvailableAttribute = {
+  definitionsRef: string;
+  key: string;
+  label: string;
+  profileLabel: string;
+  valueType: "int" | "float" | "percent" | "boolean";
+  defaultValue: number | boolean;
+  profileValue?: number | boolean; // value set in the profile (overrides defaultValue for base)
+  min?: number;
+  max?: number;
+  unit?: string;
+};
+
+type AttributeOverrides = {
+  min?: number;
+  max?: number;
+  decimals: number;
+  isPercentage: boolean;
+  base?: number;
+};
+
+function resolveColumnDisplayName(
+  column: ProgressionTableColumn,
+  availableAttributes: AvailableAttribute[]
+): string {
+  if (!column.attributeRef) return column.name;
+  const match = availableAttributes.find(
+    (attr) =>
+      attr.definitionsRef === column.attributeRef!.definitionsRef &&
+      attr.key === column.attributeRef!.attributeKey
+  );
+  return match?.label ?? column.name;
+}
+
+function resolveAttributeOverrides(
+  column: ProgressionTableColumn,
+  availableAttributes: AvailableAttribute[]
+): AttributeOverrides | null {
+  if (!column.attributeRef) return null;
+  const match = availableAttributes.find(
+    (attr) =>
+      attr.definitionsRef === column.attributeRef!.definitionsRef &&
+      attr.key === column.attributeRef!.attributeKey
+  );
+  if (!match) return null;
+  const baseValue = match.profileValue ?? match.defaultValue;
+  return {
+    min: match.min,
+    max: match.max,
+    decimals: match.valueType === "int" ? 0 : 2,
+    isPercentage: match.valueType === "percent",
+    base: typeof baseValue === "number" ? baseValue : undefined,
+  };
+}
 
 interface ProgressionTableAddonPanelProps {
   addon: ProgressionTableAddonDraft;
@@ -224,9 +280,28 @@ function getColumnWarnings(
   column: ProgressionTableColumn,
   rows: ProgressionTableRow[],
   columns: ProgressionTableColumn[],
-  t: (key: string, fallback?: string) => string
+  t: (key: string, fallback?: string) => string,
+  availableAttributes?: AvailableAttribute[]
 ): string[] {
   const warnings: string[] = [];
+
+  // Broken attribute reference
+  if (column.attributeRef && availableAttributes) {
+    const found = availableAttributes.some(
+      (attr) =>
+        attr.definitionsRef === column.attributeRef!.definitionsRef &&
+        attr.key === column.attributeRef!.attributeKey
+    );
+    if (!found) {
+      warnings.push(
+        t(
+          "progressionTableAddon.warnings.brokenAttributeRef",
+          "O atributo vinculado nao foi encontrado. Usando o ultimo nome salvo como fallback."
+        )
+      );
+    }
+  }
+
   const generator = column.generator ?? { mode: "manual" as const };
   if (generator.mode === "linear") {
     if (!Number.isFinite(generator.base) || !Number.isFinite(generator.step)) {
@@ -347,7 +422,99 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [autoIntervalDrafts, setAutoIntervalDrafts] = useState<Record<string, { from: string; to: string }>>({});
   const autoIntervalPopoverRef = useRef<HTMLDivElement | null>(null);
   const autoIntervalButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [attrPickerOpenColumnId, setAttrPickerOpenColumnId] = useState<string | null>(null);
+  const attrPickerRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Attribute linking: resolve profiles from the current section ──
+  const projects = useProjectStore((state) => state.projects);
+  const availableAttributes = useMemo<AvailableAttribute[]>(() => {
+    // 1. Find the section that owns this addon
+    let currentSectionAddons: Array<{ type: string; name: string; data: Record<string, unknown> }> = [];
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sectionAddon of (section as { addons?: Array<{ id: string; type: string; name: string; data: Record<string, unknown> }> }).addons || []) {
+          if (sectionAddon.id === addon.id || sectionAddon.data?.id === addon.id) {
+            currentSectionAddons = (section as { addons?: Array<{ type: string; name: string; data: Record<string, unknown> }> }).addons || [];
+          }
+        }
+      }
+    }
+    // 2. Collect attribute profiles from this section (including their stored values)
+    type ProfileRef = {
+      profileLabel: string;
+      definitionsRef: string;
+      values: Array<{ attributeKey: string; value: number | boolean }>;
+    };
+    const profileRefs: ProfileRef[] = [];
+    for (const sa of currentSectionAddons) {
+      if (sa.type !== "attributeProfile") continue;
+      const defRef = (sa.data as { definitionsRef?: string }).definitionsRef;
+      if (!defRef) continue;
+      const values = (sa.data as { values?: Array<{ attributeKey: string; value: number | boolean }> }).values || [];
+      profileRefs.push({
+        profileLabel: sa.name || (sa.data as { name?: string }).name || "Profile",
+        definitionsRef: defRef,
+        values,
+      });
+    }
+    if (profileRefs.length === 0) return [];
+    // 3. Resolve definitions for each profile's definitionsRef
+    const attrs: AvailableAttribute[] = [];
+    for (const { profileLabel, definitionsRef, values: profileValues } of profileRefs) {
+      for (const project of projects) {
+        for (const section of project.sections || []) {
+          if (section.id !== definitionsRef) continue;
+          for (const sectionAddon of (section as { addons?: Array<{ type: string; data: Record<string, unknown> }> }).addons || []) {
+            if (sectionAddon.type !== "attributeDefinitions") continue;
+            const definitions = (sectionAddon.data as { attributes?: Array<{ key: string; label: string; valueType?: string; defaultValue?: number | boolean; min?: number; max?: number; unit?: string }> }).attributes || [];
+            for (const def of definitions) {
+              const profileEntry = profileValues.find((v) => v.attributeKey === def.key);
+              attrs.push({
+                definitionsRef,
+                key: def.key,
+                label: def.label || def.key,
+                profileLabel,
+                valueType: (def.valueType as AvailableAttribute["valueType"]) || "int",
+                defaultValue: def.defaultValue ?? 0,
+                profileValue: profileEntry?.value,
+                min: def.min,
+                max: def.max,
+                unit: def.unit,
+              });
+            }
+          }
+        }
+      }
+    }
+    return attrs;
+  }, [projects, addon.id]);
+
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
+  // resolvedColumns applies live attribute overrides (min, max, decimals, isPercentage, base)
+  const resolvedColumns = useMemo(
+    () =>
+      columns.map((col) => {
+        const overrides = resolveAttributeOverrides(col, availableAttributes);
+        if (!overrides) return col;
+        let generator = col.generator;
+        if (
+          overrides.base != null &&
+          generator &&
+          (generator.mode === "linear" || generator.mode === "exponential")
+        ) {
+          generator = { ...generator, base: overrides.base };
+        }
+        return {
+          ...col,
+          min: overrides.min,
+          max: overrides.max,
+          decimals: overrides.decimals,
+          isPercentage: overrides.isPercentage,
+          generator,
+        };
+      }),
+    [columns, availableAttributes]
+  );
   const startLevel = Math.max(1, Math.floor(addon.startLevel || 1));
   const endLevel = Math.max(startLevel, Math.floor(addon.endLevel || startLevel));
   const rows = remapRows(addon.rows || [], columns, startLevel, endLevel);
@@ -454,6 +621,52 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     }
   };
 
+  const linkColumnToAttribute = (columnId: string, attr: AvailableAttribute) => {
+    const nextColumns = columns.map((column) =>
+      column.id === columnId
+        ? {
+            ...column,
+            name: attr.label,
+            attributeRef: { definitionsRef: attr.definitionsRef, attributeKey: attr.key },
+          }
+        : column
+    );
+    commit({ columns: nextColumns, rows: remapRows(rows, nextColumns, startLevel, endLevel) });
+    setColumnNameDrafts((prev) => ({ ...prev, [columnId]: attr.label }));
+    setAttrPickerOpenColumnId(null);
+  };
+
+  const unlinkColumnFromAttribute = (columnId: string) => {
+    const column = columns.find((c) => c.id === columnId);
+    if (!column) return;
+    const displayName = resolveColumnDisplayName(column, availableAttributes);
+    const nextColumns = columns.map((col) =>
+      col.id === columnId ? { ...col, name: displayName, attributeRef: undefined } : col
+    );
+    commit({ columns: nextColumns, rows: remapRows(rows, nextColumns, startLevel, endLevel) });
+    setColumnNameDrafts((prev) => ({ ...prev, [columnId]: displayName }));
+  };
+
+  // Close attribute picker on click outside or Escape
+  useEffect(() => {
+    if (!attrPickerOpenColumnId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAttrPickerOpenColumnId(null);
+    };
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (attrPickerRef.current?.contains(target)) return;
+      setAttrPickerOpenColumnId(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [attrPickerOpenColumnId]);
+
   const commitFormulaExpression = (columnId: string) => {
     const column = columns.find((item) => item.id === columnId);
     if (!column || column.generator?.mode !== "formula") return;
@@ -470,9 +683,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     const nextColumns = columns.map((column) =>
       column.id === columnId ? { ...column, generator: defaultGeneratorForMode(mode, columnId, columns) } : column
     );
+    // Clear overrides for this column when switching to manual
+    const nextOverrides = mode === "manual" ? removeColumnOverrides(columnId) : currentOverrides;
     commit({
       columns: nextColumns,
       rows: remapRows(rows, nextColumns, startLevel, endLevel),
+      overrides: nextOverrides,
     });
     setLastGeneratedColumnId(null);
     setClampSummaryByColumnId({});
@@ -636,18 +852,18 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   };
 
   const generateColumn = (columnId: string) => {
-    const column = columns.find((item) => item.id === columnId);
-    if (!column) return;
-    const generator = column.generator ?? { mode: "manual" as const };
+    const rc = resolvedColumns.find((item) => item.id === columnId);
+    if (!rc) return;
+    const generator = rc.generator ?? { mode: "manual" as const };
     if (generator.mode === "manual") return;
-    const bounds = normalizeBounds(column.min, column.max);
+    const bounds = normalizeBounds(rc.min, rc.max);
     const rawRows = generateProgressionColumnValues({
       rows,
       columnId,
       startLevel,
       endLevel,
       generator,
-      decimals: column.decimals,
+      decimals: rc.decimals,
     });
     const nextRows = applyColumnClamp({
       rows: rawRows,
@@ -656,8 +872,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       max: bounds.max,
     });
     const clampedValues = countColumnValueChanges(rawRows, nextRows, columnId);
+    // Apply manual overrides on top of generated values
+    const finalRows = applyOverridesToRows(nextRows, columnId, currentOverrides);
     commit({
-      rows: nextRows,
+      rows: finalRows,
       columns,
       startLevel,
       endLevel,
@@ -672,18 +890,24 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const generateAllColumns = () => {
     const rawRows = generateAllProgressionColumnValues({
       rows,
-      columns: columns.map((column) => ({ ...column, min: undefined, max: undefined })),
+      columns: resolvedColumns.map((column) => ({ ...column, min: undefined, max: undefined })),
       startLevel,
       endLevel,
     });
-    const nextRows = generateAllProgressionColumnValues({
+    let nextRows = generateAllProgressionColumnValues({
       rows,
-      columns,
+      columns: resolvedColumns,
       startLevel,
       endLevel,
     });
+    // Apply manual overrides for all non-manual columns
+    for (const column of resolvedColumns) {
+      if ((column.generator?.mode ?? "manual") !== "manual") {
+        nextRows = applyOverridesToRows(nextRows, column.id, currentOverrides);
+      }
+    }
     const summary: Record<string, number> = {};
-    for (const column of columns) {
+    for (const column of resolvedColumns) {
       summary[column.id] = countColumnValueChanges(rawRows, nextRows, column.id);
     }
     commit({
@@ -742,32 +966,145 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     });
   };
 
+  // ── Override helpers ─────────────────────────────────────────────
+  const currentOverrides = addon.overrides ?? {};
+
+  const setOverride = (level: number, columnId: string, value: number): Record<string, Record<string, number>> => {
+    const key = String(level);
+    const prev = currentOverrides[key] ?? {};
+    return { ...currentOverrides, [key]: { ...prev, [columnId]: value } };
+  };
+
+  const removeOverride = (level: number, columnId: string): Record<string, Record<string, number>> => {
+    const key = String(level);
+    const prev = currentOverrides[key];
+    if (!prev || !(columnId in prev)) return currentOverrides;
+    const { [columnId]: _, ...rest } = prev;
+    const next = { ...currentOverrides, [key]: rest };
+    if (Object.keys(rest).length === 0) {
+      const { [key]: __, ...withoutLevel } = next;
+      return withoutLevel;
+    }
+    return next;
+  };
+
+  const removeColumnOverrides = (columnId: string): Record<string, Record<string, number>> => {
+    const next: Record<string, Record<string, number>> = {};
+    for (const [key, colMap] of Object.entries(currentOverrides)) {
+      const { [columnId]: _, ...rest } = colMap;
+      if (Object.keys(rest).length > 0) next[key] = rest;
+    }
+    return next;
+  };
+
+  const hasOverride = (level: number, columnId: string): boolean => {
+    return currentOverrides[String(level)]?.[columnId] != null;
+  };
+
+  const getOverrideCount = (columnId: string): number => {
+    let count = 0;
+    for (const colMap of Object.values(currentOverrides)) {
+      if (colMap[columnId] != null) count += 1;
+    }
+    return count;
+  };
+
+  const applyOverridesToRows = (
+    generatedRows: ProgressionTableRow[],
+    columnId: string,
+    ovr: Record<string, Record<string, number>>
+  ): ProgressionTableRow[] => {
+    return generatedRows.map((row) => {
+      const overrideValue = ovr[String(row.level)]?.[columnId];
+      if (overrideValue == null) return row;
+      return { ...row, values: { ...row.values, [columnId]: overrideValue } };
+    });
+  };
+
   const updateCell = (level: number, columnId: string, rawValue: string) => {
+    const rc = resolvedColumns.find((item) => item.id === columnId);
     const column = columns.find((item) => item.id === columnId);
-    const bounds = normalizeBounds(column?.min, column?.max);
+    const bounds = normalizeBounds(rc?.min, rc?.max);
     const parsedValue = parseNumber(rawValue);
     const clampedValue = clampValueWithBounds(parsedValue, bounds.min, bounds.max);
     const nextRows = rows.map((row) => {
       if (row.level !== level) return row;
       return {
         ...row,
-        values: {
-          ...row.values,
-          [columnId]: clampedValue,
-        },
+        values: { ...row.values, [columnId]: clampedValue },
       };
     });
+    const mode = column?.generator?.mode ?? "manual";
+    const nextOverrides = mode !== "manual"
+      ? setOverride(level, columnId, clampedValue)
+      : currentOverrides;
     commit({
       rows: nextRows,
       columns,
       startLevel,
       endLevel,
+      overrides: nextOverrides,
     });
     setLastGeneratedColumnId(null);
-    setClampSummaryByColumnId((prev) => ({
-      ...prev,
-      [columnId]: 0,
-    }));
+    setClampSummaryByColumnId((prev) => ({ ...prev, [columnId]: 0 }));
+  };
+
+  const resetCellOverride = (level: number, columnId: string) => {
+    const rc = resolvedColumns.find((c) => c.id === columnId);
+    if (!rc) return;
+    const generator = rc.generator ?? { mode: "manual" as const };
+    const nextOverrides = removeOverride(level, columnId);
+    // Recompute the generated value for this specific cell
+    if (generator.mode !== "manual") {
+      const singleRow: ProgressionTableRow[] = [{ level, values: {} }];
+      const generated = generateProgressionColumnValues({
+        rows: singleRow,
+        columnId,
+        startLevel,
+        endLevel,
+        generator,
+        decimals: rc.decimals,
+        min: rc.min,
+        max: rc.max,
+      });
+      const newValue = generated[0]?.values[columnId] ?? 0;
+      const nextRows = rows.map((row) =>
+        row.level === level ? { ...row, values: { ...row.values, [columnId]: newValue } } : row
+      );
+      commit({ rows: nextRows, columns, startLevel, endLevel, overrides: nextOverrides });
+    } else {
+      commit({ overrides: nextOverrides });
+    }
+  };
+
+  const resetColumnOverrides = (columnId: string) => {
+    const nextOverrides = removeColumnOverrides(columnId);
+    // Regenerate the entire column without overrides
+    const rc = resolvedColumns.find((item) => item.id === columnId);
+    if (!rc) return;
+    const generator = rc.generator ?? { mode: "manual" as const };
+    if (generator.mode === "manual") {
+      commit({ overrides: nextOverrides });
+      return;
+    }
+    const bounds = normalizeBounds(rc.min, rc.max);
+    const rawRows = generateProgressionColumnValues({
+      rows,
+      columnId,
+      startLevel,
+      endLevel,
+      generator,
+      decimals: rc.decimals,
+    });
+    const nextRows = applyColumnClamp({
+      rows: rawRows,
+      columnId,
+      min: bounds.min,
+      max: bounds.max,
+    });
+    commit({ rows: nextRows, columns, startLevel, endLevel, overrides: nextOverrides });
+    setLastGeneratedColumnId(columnId);
+    setClampSummaryByColumnId((prev) => ({ ...prev, [columnId]: 0 }));
   };
 
   const pasteColumnValues = (columnId: string, rawText: string) => {
@@ -858,17 +1195,19 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
 
     // Generate values with the new params
     const remapped = remapRows(rows, nextColumns, startLevel, endLevel);
+    const targetCol = nextColumns.find((c) => c.id === columnId)!;
+    const effOverrides = resolveAttributeOverrides(targetCol, availableAttributes);
     const generated = generateProgressionColumnValues({
       rows: remapped,
       columnId,
       startLevel,
       endLevel,
-      generator: nextColumns.find((c) => c.id === columnId)!.generator!,
-      decimals: nextColumns.find((c) => c.id === columnId)!.decimals,
+      generator: targetCol.generator!,
+      decimals: effOverrides?.decimals ?? targetCol.decimals,
     });
     const bounds = normalizeBounds(
-      nextColumns.find((c) => c.id === columnId)!.min,
-      nextColumns.find((c) => c.id === columnId)!.max,
+      effOverrides?.min ?? targetCol.min,
+      effOverrides?.max ?? targetCol.max,
     );
     const clamped = applyColumnClamp({ rows: generated, columnId, min: bounds.min, max: bounds.max });
 
@@ -987,7 +1326,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
             {columns.map((column) => (
               <SortableColumnBlock key={column.id} id={column.id}>
                 {(() => {
-                  const warnings = getColumnWarnings(column, rows, columns, t);
+                  const warnings = getColumnWarnings(column, rows, columns, t, availableAttributes);
+                  const rc = resolvedColumns.find((c) => c.id === column.id) ?? column;
+                  const attrOverrides = resolveAttributeOverrides(column, availableAttributes);
+                  const isLinked = Boolean(attrOverrides);
                   const startRow = rows.find((row) => row.level === startLevel);
                   const endRow = rows.find((row) => row.level === endLevel);
                   const startValue = startRow?.values[column.id];
@@ -1016,7 +1358,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <circle cx="12" cy="15" r="1.5" />
                         </svg>
                       </span>
-                      {column.name || t("progressionTableAddon.columnFallback", "Coluna")}
+                      {resolveColumnDisplayName(column, availableAttributes) || t("progressionTableAddon.columnFallback", "Coluna")}
+                      {column.attributeRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
                     </span>
                     <span className="text-[10px] text-gray-400">
                       {t("progressionTableAddon.levelPrefix", "Lv")} {startLevel} {"->"} {t("progressionTableAddon.levelPrefix", "Lv")}{" "}
@@ -1034,19 +1377,86 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                     <div className="space-y-3">
                       <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={columnNameDrafts[column.id] ?? column.name}
-                            onChange={(e) =>
-                              setColumnNameDrafts((prev) => ({
-                                ...prev,
-                                [column.id]: e.target.value,
-                              }))
-                            }
-                            onBlur={() => commitColumnName(column.id)}
-                            onKeyDown={blurOnEnterKey}
-                            className={INPUT_CLASS}
-                          />
+                          {column.attributeRef ? (
+                            <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
+                              <span aria-hidden className="text-[10px]">📎</span>
+                              <span className="flex-1 truncate">
+                                {resolveColumnDisplayName(column, availableAttributes)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => unlinkColumnFromAttribute(column.id)}
+                                className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
+                                aria-label={t("progressionTableAddon.unlinkAttributeAriaLabel", "Desvincular atributo")}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="relative flex flex-1 items-center gap-1">
+                              <input
+                                type="text"
+                                value={columnNameDrafts[column.id] ?? column.name}
+                                onChange={(e) =>
+                                  setColumnNameDrafts((prev) => ({
+                                    ...prev,
+                                    [column.id]: e.target.value,
+                                  }))
+                                }
+                                onBlur={() => commitColumnName(column.id)}
+                                onKeyDown={blurOnEnterKey}
+                                className={`${INPUT_CLASS} flex-1`}
+                              />
+                              {availableAttributes.length > 0 && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setAttrPickerOpenColumnId((prev) =>
+                                        prev === column.id ? null : column.id
+                                      )
+                                    }
+                                    aria-label={t(
+                                      "progressionTableAddon.linkAttributeAriaLabel",
+                                      "Vincular a atributo"
+                                    )}
+                                    aria-expanded={attrPickerOpenColumnId === column.id}
+                                    className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+                                    title={t("progressionTableAddon.linkAttributeButton", "Vincular atributo")}
+                                  >
+                                    🔗
+                                  </button>
+                                  {attrPickerOpenColumnId === column.id && (
+                                    <div
+                                      ref={attrPickerRef}
+                                      role="listbox"
+                                      aria-label={t(
+                                        "progressionTableAddon.attributePickerTitle",
+                                        "Selecionar atributo"
+                                      )}
+                                      className="absolute right-0 top-full z-20 mt-1 w-64 max-h-52 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl"
+                                    >
+                                      <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                        {t("progressionTableAddon.attributePickerTitle", "Selecionar atributo")}
+                                      </p>
+                                      {availableAttributes.map((attr) => (
+                                        <button
+                                          key={`${attr.definitionsRef}:${attr.key}`}
+                                          type="button"
+                                          role="option"
+                                          onClick={() => linkColumnToAttribute(column.id, attr)}
+                                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
+                                        >
+                                          <span className="flex-1 truncate">{attr.label}</span>
+                                          <span className="shrink-0 text-[10px] text-gray-500">{attr.key}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => removeColumn(column.id)}
@@ -1081,11 +1491,14 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               const mode = column.generator.mode;
                               const isOpen = autoIntervalOpenColumnId === column.id;
                               const draft = autoIntervalDrafts[column.id] ?? { from: "", to: "" };
-                              const hasBothValues = draft.from.trim().length > 0 && draft.to.trim().length > 0;
+                              // When linked, Lv1 value comes from the profile (locked)
+                              const linkedBase = attrOverrides?.base;
+                              const fromStr = linkedBase != null ? String(linkedBase) : draft.from;
+                              const hasBothValues = fromStr.trim().length > 0 && draft.to.trim().length > 0;
                               const result = hasBothValues
                                 ? computeAutoInterval(
                                     mode,
-                                    parseNumber(draft.from),
+                                    parseNumber(fromStr),
                                     parseNumber(draft.to),
                                     startLevel,
                                     endLevel
@@ -1138,20 +1551,29 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                             )}
                                           </span>
                                           <input
-                                            type="number"
-                                            autoFocus
-                                            value={draft.from}
+                                            type="text"
+                                            inputMode="decimal"
+                                            autoFocus={linkedBase == null}
+                                            value={linkedBase != null ? String(linkedBase) : draft.from}
                                             onChange={(e) =>
-                                              updateAutoIntervalDraft(column.id, { from: e.target.value })
+                                              linkedBase == null
+                                                ? updateAutoIntervalDraft(column.id, { from: e.target.value })
+                                                : undefined
                                             }
+                                            disabled={linkedBase != null}
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter" && canApply) {
                                                 e.preventDefault();
                                                 applyAutoInterval(column.id);
                                               }
                                             }}
-                                            className={INPUT_CLASS}
+                                            className={`${INPUT_CLASS} ${linkedBase != null ? "opacity-60" : ""}`}
                                           />
+                                          {linkedBase != null && (
+                                            <p className="mt-0.5 text-[10px] text-sky-300/70">
+                                              📎 {t("progressionTableAddon.autoIntervalLinkedHint", "Valor do perfil de atributos")}
+                                            </p>
+                                          )}
                                         </label>
                                         <label className="block">
                                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
@@ -1161,7 +1583,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                             )}
                                           </span>
                                           <input
-                                            type="number"
+                                            type="text"
+                                            inputMode="decimal"
                                             value={draft.to}
                                             onChange={(e) =>
                                               updateAutoIntervalDraft(column.id, { to: e.target.value })
@@ -1208,24 +1631,28 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.decimalsLabel", "Casas decimais")}
+                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <input
                               type="number"
                               min={0}
                               max={6}
                               step={1}
-                              value={column.decimals ?? 0}
+                              value={rc.decimals ?? 0}
                               onChange={(e) => updateColumnDecimals(column.id, e.target.value)}
-                              className={INPUT_CLASS}
+                              disabled={isLinked}
+                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
                             />
                           </label>
                           <div className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.percentageLabel", "Percentual (%)")}
+                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <ToggleSwitch
-                              checked={Boolean(column.isPercentage)}
+                              checked={Boolean(rc.isPercentage)}
                               onChange={(next) => updateColumnPercentage(column.id, next)}
+                              disabled={isLinked}
                               ariaLabel={t("progressionTableAddon.percentageLabel", "Percentual (%)")}
                             />
                           </div>
@@ -1234,25 +1661,29 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.minLabel", "Minimo")}
+                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <input
                               type="number"
-                              value={column.min ?? ""}
+                              value={rc.min ?? ""}
                               onChange={(e) => updateColumnBounds(column.id, "min", e.target.value)}
+                              disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
-                              className={INPUT_CLASS}
+                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
                             />
                           </label>
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.maxLabel", "Maximo")}
+                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <input
                               type="number"
-                              value={column.max ?? ""}
+                              value={rc.max ?? ""}
                               onChange={(e) => updateColumnBounds(column.id, "max", e.target.value)}
+                              disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
-                              className={INPUT_CLASS}
+                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
                             />
                           </label>
                         </div>
@@ -1263,16 +1694,18 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.baseLabel", "Base")}
+                                  {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
                                 <input
                                   type="number"
-                                  value={column.generator?.mode === "linear" ? column.generator.base : 0}
+                                  value={rc.generator?.mode === "linear" ? rc.generator.base : 0}
                                   onChange={(e) =>
                                     updateColumnGeneratorParams(column.id, {
                                       base: parseNumber(e.target.value),
                                     })
                                   }
-                                  className={INPUT_CLASS}
+                                  disabled={isLinked && attrOverrides?.base != null}
+                                  className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
                                 />
                               </label>
                               <label className="block">
@@ -1388,16 +1821,18 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.baseLabel", "Base")}
+                                  {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
                                 <input
                                   type="number"
-                                  value={column.generator?.mode === "exponential" ? column.generator.base : 1}
+                                  value={rc.generator?.mode === "exponential" ? rc.generator.base : 1}
                                   onChange={(e) =>
                                     updateColumnGeneratorParams(column.id, {
                                       base: parseNumber(e.target.value),
                                     })
                                   }
-                                  className={INPUT_CLASS}
+                                  disabled={isLinked && attrOverrides?.base != null}
+                                  className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
                                 />
                               </label>
                               <label className="block">
@@ -1753,32 +2188,88 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                             <thead className="sticky top-0 bg-gray-900 text-gray-300">
                               <tr>
                                 <th className="px-3 py-2">{t("progressionTableAddon.levelHeader", "Level")}</th>
-                                <th className="px-3 py-2">{column.name || t("progressionTableAddon.columnFallback", "Coluna")}</th>
+                                <th className="px-3 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <span>{resolveColumnDisplayName(column, availableAttributes) || t("progressionTableAddon.columnFallback", "Coluna")}</span>
+                                    {(() => {
+                                      const count = getOverrideCount(column.id);
+                                      if (count === 0 || (column.generator?.mode ?? "manual") === "manual") return null;
+                                      return (
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="rounded-full bg-amber-900/40 px-1.5 py-0.5 text-[10px] text-amber-200">
+                                            {t("progressionTableAddon.overrideCount", "{count} manual(is)").replace("{count}", String(count))}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => resetColumnOverrides(column.id)}
+                                            className="rounded-md px-1.5 py-0.5 text-[10px] text-amber-300 hover:bg-amber-900/30 hover:text-amber-100"
+                                            aria-label={t(
+                                              "progressionTableAddon.resetAllOverridesAriaLabel",
+                                              "Resetar todos os valores manuais desta coluna"
+                                            )}
+                                          >
+                                            {t("progressionTableAddon.resetAllOverridesButton", "↺ Resetar")}
+                                          </button>
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
-                              {rows.map((row) => (
+                              {rows.map((row) => {
+                                const cellHasOverride =
+                                  (column.generator?.mode ?? "manual") !== "manual" &&
+                                  hasOverride(row.level, column.id);
+                                return (
                                 <tr key={`${column.id}-${row.level}`} className="border-t border-gray-800 text-gray-200">
                                   <td className="px-3 py-1.5 font-medium whitespace-nowrap">
                                     {t("progressionTableAddon.levelPrefix", "Lv")} {row.level}
                                   </td>
                                   <td className="px-3 py-1.5">
-                                    <div className="relative">
-                                      <input
-                                        type="number"
-                                        value={Number(row.values[column.id] ?? 0)}
-                                        onChange={(e) => updateCell(row.level, column.id, e.target.value)}
-                                        className={`${INPUT_CLASS} w-64 ${column.isPercentage ? "pr-6" : ""}`}
-                                      />
-                                      {column.isPercentage && (
-                                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
-                                          %
-                                        </span>
+                                    <div className="flex items-center gap-1">
+                                      <div className="relative flex-1">
+                                        <input
+                                          type="number"
+                                          value={Number(row.values[column.id] ?? 0)}
+                                          onChange={(e) => updateCell(row.level, column.id, e.target.value)}
+                                          className={`${INPUT_CLASS} w-64 ${
+                                            column.isPercentage ? "pr-6" : ""
+                                          } ${
+                                            cellHasOverride
+                                              ? "border-amber-600/40 bg-amber-900/10"
+                                              : ""
+                                          }`}
+                                        />
+                                        {column.isPercentage && (
+                                          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
+                                            %
+                                          </span>
+                                        )}
+                                      </div>
+                                      {cellHasOverride && (
+                                        <button
+                                          type="button"
+                                          onClick={() => resetCellOverride(row.level, column.id)}
+                                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[11px] text-amber-300 hover:bg-amber-900/30 hover:text-amber-100"
+                                          aria-label={t(
+                                            "progressionTableAddon.resetOverrideAriaLabel",
+                                            "Resetar ao valor gerado"
+                                          )}
+                                          title={t(
+                                            "progressionTableAddon.resetOverrideAriaLabel",
+                                            "Resetar ao valor gerado"
+                                          )}
+                                        >
+                                          ↺
+                                        </button>
                                       )}
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

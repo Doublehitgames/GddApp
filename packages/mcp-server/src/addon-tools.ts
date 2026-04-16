@@ -163,6 +163,10 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     isPercentage: z.boolean().optional(),
     min: z.number().optional(),
     max: z.number().optional(),
+    attributeRef: z.object({
+      definitionsRef: z.string().describe("Section ID of the attribute definitions addon"),
+      attributeKey: z.string().describe("Attribute key from the definitions"),
+    }).optional().describe("Links column name to an attribute from an Attribute Profile. The column name auto-syncs with the attribute label."),
     generator: z.object({
       mode: z.enum(["manual", "linear", "exponential", "formula"]),
       base: z.number().optional(),
@@ -184,6 +188,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     endLevel: z.number().default(20).describe("Last level"),
     columns: z.array(progressionColumnSchema).describe("Table columns"),
     rows: z.array(progressionRowSchema).optional().describe("Row data (auto-generated if omitted)"),
+    overrides: z.record(z.record(z.number())).optional().describe("Manual cell overrides: overrides[levelString][columnId] = value. Cells with overrides are preserved when regenerating."),
   };
   pair("progression_table", "progressionTable", "progression/balance table", progressionTableFields, optional(progressionTableFields));
 
