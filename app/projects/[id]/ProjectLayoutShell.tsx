@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ProjectSectionsSidebar from "@/components/ProjectSectionsSidebar";
+import { GlobalPagePicker } from "@/components/GlobalPagePicker";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
@@ -191,6 +192,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   return (
     <MindMapSearchProvider>
+    <GlobalPagePicker projectId={projectId} />
     <div className="min-h-screen bg-gray-900 pb-14">
       {!isDocumentViewRoute && (
       <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">

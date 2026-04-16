@@ -226,6 +226,36 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
   );
 
+  server.tool(
+    "copy_addon",
+    "Copy an addon from one section to another. Generates a new addon ID, deep-clones the data, and clears intra-section refs (productionRef, progression links, exportSchema addonIds). Cross-section refs are preserved. Returns the newly inserted addon.",
+    {
+      projectId: z.string().describe("Project UUID"),
+      sectionId: z.string().describe("Section UUID where the source addon lives"),
+      addonId: z.string().describe("Addon UUID to copy"),
+      toSectionId: z.string().describe("Destination section UUID"),
+    },
+    async ({ projectId, sectionId, addonId, toSectionId }) => {
+      try { return json(await client.copyAddon(projectId, sectionId, addonId, toSectionId)); }
+      catch (e) { return err(e); }
+    },
+  );
+
+  server.tool(
+    "move_addon",
+    "Move an addon from one section to another, keeping its ID. Clears intra-section refs in the moved addon, and when the source section is left without another addon of the same type, rewrites reverse-refs across the project to point at the destination. Returns { addon, reverseRefsUpdated }.",
+    {
+      projectId: z.string().describe("Project UUID"),
+      sectionId: z.string().describe("Section UUID where the source addon lives"),
+      addonId: z.string().describe("Addon UUID to move"),
+      toSectionId: z.string().describe("Destination section UUID (must differ from origin)"),
+    },
+    async ({ projectId, sectionId, addonId, toSectionId }) => {
+      try { return json(await client.moveAddon(projectId, sectionId, addonId, toSectionId)); }
+      catch (e) { return err(e); }
+    },
+  );
+
   // ── Search ──────────────────────────────────────────────────────
 
   server.tool(

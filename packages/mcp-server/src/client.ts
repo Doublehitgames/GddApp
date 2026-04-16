@@ -117,6 +117,22 @@ export class GddApiClient {
     return this.request("DELETE", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`);
   }
 
+  async copyAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string) {
+    return this.request(
+      "POST",
+      `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/copy`,
+      { toSectionId },
+    );
+  }
+
+  async moveAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string) {
+    return this.request(
+      "POST",
+      `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`,
+      { toSectionId },
+    );
+  }
+
   // ── Search ────────────────────────────────────────────────────────
 
   async search(q: string, type?: string, limit?: number) {

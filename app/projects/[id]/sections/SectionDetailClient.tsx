@@ -8,6 +8,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
+import { collectIntraSectionDeps } from "@/lib/addons/refs";
 import { GroupDiffModal } from "@/components/GroupDiffModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
@@ -89,6 +91,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
   const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
   const setSectionAddons = useProjectStore((s) => s.setSectionAddons);
+  const copyAddonToSection = useProjectStore((s) => s.copyAddonToSection);
+  const moveAddonToSection = useProjectStore((s) => s.moveAddonToSection);
+  const moveAddonsToSection = useProjectStore((s) => s.moveAddonsToSection);
   const projects = useProjectStore((s) => s.projects);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
@@ -117,7 +122,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [modificationRequest, setModificationRequest] = useState("");
   const [sectionColor, setSectionColor] = useState("#3b82f6");
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [selectedNewParent, setSelectedNewParent] = useState<string | null>(null);
   const [sectionVersions, setSectionVersions] = useState<SectionVersionEntry[]>([]);
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
@@ -275,32 +279,19 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     await handleImproveWithAI(modificationRequest.trim());
   }
 
-  // Função auxiliar para pegar todos os descendentes de uma seção
-  function getAllDescendants(sectionId: string, allSections: any[]): string[] {
-    const descendants: string[] = [];
-    const children = allSections.filter(s => s.parentId === sectionId);
-    
-    for (const child of children) {
-      descendants.push(child.id);
-      descendants.push(...getAllDescendants(child.id, allSections));
-    }
-    
-    return descendants;
-  }
 
   // Função para mover a seção
-  function handleMoveSection() {
+  function handleMoveSection(target: string) {
     if (!section || !project) return;
-    
-    // Se selecionou "Raiz", selectedNewParent será null
-    const newParentId = selectedNewParent === 'root' ? null : selectedNewParent;
-    
+
+    const newParentId = target === SECTION_PICKER_ROOT ? null : target;
+
     // Validações
     if (newParentId === sectionId) {
       alert(t('sectionDetail.move.cannotBeOwnParent'));
       return;
     }
-    
+
     if (newParentId) {
       // Verificar se o novo pai é um descendente da seção atual
       const descendants = getAllDescendants(sectionId, sections);
@@ -309,13 +300,12 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
         return;
       }
     }
-    
+
     // Atualizar o parentId (não mexe em title, content e color)
     editSection(projectId, sectionId, section.title, section.content, newParentId, section.color, sectionAuditBy);
-    
-    // Fechar modal e resetar
+
+    // Fechar modal
     setShowMoveModal(false);
-    setSelectedNewParent(null);
   }
 
   async function handlePickSectionThumb() {
@@ -706,6 +696,18 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSectionAddons(projectId, sectionId, nextAddons, sectionAuditBy);
   };
 
+  const copyAddonToSectionHandler = (toSectionId: string, addonId: string) => {
+    copyAddonToSection(projectId, sectionId, toSectionId, addonId, sectionAuditBy);
+  };
+
+  const moveAddonToSectionHandler = (toSectionId: string, addonId: string): { reverseRefsUpdated: number } => {
+    return moveAddonToSection(projectId, sectionId, toSectionId, addonId, sectionAuditBy);
+  };
+
+  const moveAddonsToSectionHandler = (toSectionId: string, addonIds: string[]): { reverseRefsUpdated: number } => {
+    return moveAddonsToSection(projectId, sectionId, toSectionId, addonIds, sectionAuditBy);
+  };
+
   return (
     <>
       <SectionDetailContent 
@@ -764,8 +766,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     hasValidConfig={hasValidConfig}
     showMoveModal={showMoveModal}
     setShowMoveModal={setShowMoveModal}
-    selectedNewParent={selectedNewParent}
-    setSelectedNewParent={setSelectedNewParent}
     handleMoveSection={handleMoveSection}
     sections={project?.sections || []}
     setSection={setSection}
@@ -792,10 +792,24 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     onUpdateAddon={updateAddon}
     onRemoveAddon={removeAddon}
     onReorderAddons={reorderAddons}
+    onCopyAddonToSection={copyAddonToSectionHandler}
+    onMoveAddonToSection={moveAddonToSectionHandler}
+    onMoveAddonsToSection={moveAddonsToSectionHandler}
       />
       <AutocompleteDropdown />
     </>
   );
+}
+
+/** Retorna todos os IDs descendentes de uma seção (filhos, netos, etc.) */
+function getAllDescendants(sectionId: string, allSections: any[]): string[] {
+  const descendants: string[] = [];
+  const children = allSections.filter((s) => s.parentId === sectionId);
+  for (const child of children) {
+    descendants.push(child.id);
+    descendants.push(...getAllDescendants(child.id, allSections));
+  }
+  return descendants;
 }
 
 /** Retorna referências $[Nome] do conteúdo que não existem como seção e se o projeto foi referenciado como seção */
@@ -1204,16 +1218,24 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
 function SortableAddonTab({
   addon,
   isActive,
+  isSelected,
   onClick,
+  onSelectionClick,
   onRemove,
+  onCopy,
+  onMove,
   onRename,
   label,
   typeLabel,
 }: {
   addon: SectionAddon;
   isActive: boolean;
+  isSelected?: boolean;
   onClick: () => void;
+  onSelectionClick?: (modifiers: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void;
   onRemove: () => void;
+  onCopy?: () => void;
+  onMove?: () => void;
   onRename: (name: string) => void;
   label: string;
   typeLabel: string;
@@ -1241,11 +1263,21 @@ function SortableAddonTab({
       ref={setNodeRef}
       style={style}
       className={`relative flex items-center gap-1.5 px-3 py-2 rounded-t-lg cursor-pointer select-none whitespace-nowrap transition-colors ${
-        isActive
-          ? "bg-gray-800 border border-gray-600 border-b-transparent text-white"
-          : "bg-gray-900/50 border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+        isSelected
+          ? "bg-emerald-900/30 border border-emerald-500/60 text-white"
+          : isActive
+            ? "bg-gray-800 border border-gray-600 border-b-transparent text-white"
+            : "bg-gray-900/50 border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
       }`}
-      onClick={onClick}
+      onClick={(e) => {
+        if ((e.ctrlKey || e.metaKey || e.shiftKey) && onSelectionClick) {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelectionClick({ ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
+          return;
+        }
+        onClick();
+      }}
     >
       <span
         className="text-gray-500 cursor-grab active:cursor-grabbing text-[10px] leading-none"
@@ -1287,6 +1319,38 @@ function SortableAddonTab({
           <div className="text-[10px] text-gray-500 truncate max-w-[120px]">{typeLabel}</div>
         )}
       </div>
+      {onCopy && (
+        <button
+          type="button"
+          className="ml-1 text-gray-500 hover:text-sky-400 shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy();
+          }}
+          title="Copiar para outra pagina"
+          aria-label="Copiar para outra pagina"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+      )}
+      {onMove && (
+        <button
+          type="button"
+          className="ml-1 text-gray-500 hover:text-emerald-400 shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMove();
+          }}
+          title="Mover para outra pagina"
+          aria-label="Mover para outra pagina"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M20 12H4" />
+          </svg>
+        </button>
+      )}
       <button
         type="button"
         className="ml-1 text-gray-500 hover:text-rose-400 text-[10px] leading-none shrink-0"
@@ -1468,7 +1532,6 @@ function SectionDetailContent({
   handleConfirmImprovement, handleCancelImprovement, handleRequestModification,
   sectionColor, setSectionColor, hasValidConfig,
   showMoveModal, setShowMoveModal,
-  selectedNewParent, setSelectedNewParent,
   handleMoveSection,
   sections,
   setSection,
@@ -1495,10 +1558,25 @@ function SectionDetailContent({
   onUpdateAddon,
   onRemoveAddon,
   onReorderAddons,
+  onCopyAddonToSection,
+  onMoveAddonToSection,
+  onMoveAddonsToSection,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
+  const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
+  const [moveAddonCascade, setMoveAddonCascade] = useState<Record<string, boolean>>({});
+  const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(() => new Set());
+  const [lastClickedAddonId, setLastClickedAddonId] = useState<string | null>(null);
+  const [bulkConfirmRemove, setBulkConfirmRemove] = useState(false);
+  const [copyAddonToast, setCopyAddonToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!copyAddonToast) return;
+    const handle = setTimeout(() => setCopyAddonToast(null), 3000);
+    return () => clearTimeout(handle);
+  }, [copyAddonToast]);
   const getAddonTypeFallbackLabel = (type: string): string => {
     switch (type) {
       case "xpBalance":
@@ -2439,6 +2517,78 @@ function SectionDetailContent({
         const activeEntry = activeAddon ? ADDON_REGISTRY.find((item) => item.type === activeAddon.type) : null;
         return (
           <div className="max-w-6xl mx-auto mb-4">
+            {/* Bulk action bar */}
+            {selectedAddonIds.size > 0 && (
+              <div className="mx-[30px] mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-500/40 text-sm">
+                <span className="text-emerald-200 font-medium">
+                  {t('sectionDetail.bulk.selected', '{n} selecionados').replace('{n}', String(selectedAddonIds.size))}
+                </span>
+                <span className="text-[10px] text-gray-500">
+                  {t('sectionDetail.bulk.hint', '(Ctrl/Cmd+clique adiciona, Shift+clique range)')}
+                </span>
+                <div className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = Array.from(selectedAddonIds);
+                    const first = groupAddons.find((a: SectionAddon) => a.id === ids[0]);
+                    setMoveAddonModal({
+                      addonId: ids[0],
+                      addonLabel: ids.length > 1
+                        ? t('sectionDetail.bulk.nAddons', '{n} addons').replace('{n}', String(ids.length))
+                        : (first?.name || (first ? getAddonTypeLabel(first.type) : '')),
+                      bulkIds: ids.length > 1 ? ids : undefined,
+                    });
+                    // Bulk skips cascade detection.
+                    setMoveAddonCascade({});
+                  }}
+                  className="px-2 py-1 text-xs rounded border border-emerald-600 text-emerald-100 hover:bg-emerald-900/50 flex items-center gap-1"
+                  title={t('sectionDetail.moveAddon.confirm', 'Mover')}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M20 12H4" />
+                  </svg>
+                  {t('sectionDetail.moveAddon.confirm', 'Mover')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = Array.from(selectedAddonIds);
+                    const first = groupAddons.find((a: SectionAddon) => a.id === ids[0]);
+                    setCopyAddonModal({
+                      addonId: ids[0],
+                      addonLabel: ids.length > 1
+                        ? t('sectionDetail.bulk.nAddons', '{n} addons').replace('{n}', String(ids.length))
+                        : (first?.name || (first ? getAddonTypeLabel(first.type) : '')),
+                      bulkIds: ids.length > 1 ? ids : undefined,
+                    });
+                  }}
+                  className="px-2 py-1 text-xs rounded border border-sky-600 text-sky-100 hover:bg-sky-900/50 flex items-center gap-1"
+                  title={t('sectionDetail.copy.confirm', 'Copiar')}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  {t('sectionDetail.copy.confirm', 'Copiar')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkConfirmRemove(true)}
+                  className="px-2 py-1 text-xs rounded border border-rose-700 text-rose-200 hover:bg-rose-900/40"
+                  title="Remover"
+                >
+                  {t('sectionDetail.bulk.remove', 'Remover')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedAddonIds(new Set()); setLastClickedAddonId(null); }}
+                  className="px-2 py-1 text-xs rounded text-gray-400 hover:text-white"
+                  title={t('sectionDetail.bulk.clear', 'Limpar selecao')}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             {/* Tab bar */}
             <DndContext sensors={addonSensors} collisionDetection={closestCenter} onDragEnd={handleAddonDragEnd}>
               <SortableContext items={groupAddons.map((addon: SectionAddon) => addon.id)} strategy={horizontalListSortingStrategy}>
@@ -2448,7 +2598,28 @@ function SectionDetailContent({
                       key={addon.id}
                       addon={addon}
                       isActive={addon.id === effectiveActiveId}
-                      onClick={() => { setActiveAddonId(addon.id); setIsEditingActiveAddon(false); }}
+                      isSelected={selectedAddonIds.has(addon.id)}
+                      onClick={() => { setActiveAddonId(addon.id); setIsEditingActiveAddon(false); setLastClickedAddonId(addon.id); }}
+                      onSelectionClick={({ shiftKey }) => {
+                        setSelectedAddonIds((prev) => {
+                          const next = new Set(prev);
+                          if (shiftKey && lastClickedAddonId) {
+                            const startIdx = groupAddons.findIndex((a: SectionAddon) => a.id === lastClickedAddonId);
+                            const endIdx = groupAddons.findIndex((a: SectionAddon) => a.id === addon.id);
+                            if (startIdx >= 0 && endIdx >= 0) {
+                              const [lo, hi] = startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+                              for (let i = lo; i <= hi; i += 1) next.add(groupAddons[i].id);
+                            } else {
+                              next.add(addon.id);
+                            }
+                          } else {
+                            if (next.has(addon.id)) next.delete(addon.id);
+                            else next.add(addon.id);
+                          }
+                          return next;
+                        });
+                        setLastClickedAddonId(addon.id);
+                      }}
                       onRemove={() => {
                         onRemoveAddon(addon.id);
                         if (addon.id === effectiveActiveId) {
@@ -2457,6 +2628,22 @@ function SectionDetailContent({
                           setActiveAddonId(next?.id ?? null);
                         }
                       }}
+                      onCopy={onCopyAddonToSection ? () => {
+                        setCopyAddonModal({
+                          addonId: addon.id,
+                          addonLabel: addon.name || getAddonTypeLabel(addon.type),
+                        });
+                      } : undefined}
+                      onMove={onMoveAddonToSection ? () => {
+                        setMoveAddonModal({
+                          addonId: addon.id,
+                          addonLabel: addon.name || getAddonTypeLabel(addon.type),
+                        });
+                        const deps = collectIntraSectionDeps(addon);
+                        const initial: Record<string, boolean> = {};
+                        for (const id of deps) initial[id] = true;
+                        setMoveAddonCascade(initial);
+                      } : undefined}
                       onRename={(name) => {
                         onUpdateAddon(addon.id, {
                           ...addon,
@@ -3086,194 +3273,207 @@ function SectionDetailContent({
         </div>
       )}
 
-      {/* Modal: Mover Seção */}
-      {showMoveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-gray-900 border border-gray-700 text-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
+      {/* Modal: Mover pagina */}
+      <SectionPickerModal
+        open={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        onConfirm={handleMoveSection}
+        title={t('sectionDetail.move.title', 'Mover pagina')}
+        description={section ? (<>Mover <strong className="text-gray-100">{section.title}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
+        confirmLabel={t('sectionDetail.move.move')}
+        confirmVariant="blue"
+        sections={sections}
+        allowRoot
+        rootLabel={t('sectionDetail.move.rootLabel', '📁 Raiz do projeto')}
+        rootDescription={t('sectionDetail.move.makeRoot')}
+        disabledSectionIds={[sectionId, ...getAllDescendants(sectionId, sections)]}
+        disabledReason={(id) =>
+          id === sectionId
+            ? t('sectionDetail.picker.disabledCurrent', 'atual')
+            : t('sectionDetail.picker.disabledDescendant', 'descendente')
+        }
+      />
+
+      {/* Modal: Mover Addon para outra pagina */}
+      {(() => {
+        const currentAddons: SectionAddon[] = addons || [];
+        const isBulk = !!moveAddonModal?.bulkIds && moveAddonModal.bulkIds.length > 1;
+        const mainAddon = moveAddonModal && !isBulk
+          ? currentAddons.find((a) => a.id === moveAddonModal.addonId) || null
+          : null;
+        const depEntries = mainAddon
+          ? collectIntraSectionDeps(mainAddon)
+              .map((id) => currentAddons.find((a) => a.id === id))
+              .filter((a): a is SectionAddon => Boolean(a))
+          : [];
+        const selectedDepCount = depEntries.filter((d) => moveAddonCascade[d.id]).length;
+        const totalToMove = isBulk ? (moveAddonModal?.bulkIds?.length ?? 0) : 1 + selectedDepCount;
+        return (
+          <SectionPickerModal
+            open={!!moveAddonModal}
+            onClose={() => { setMoveAddonModal(null); setMoveAddonCascade({}); }}
+            onConfirm={(target) => {
+              if (!moveAddonModal) return;
+              const targetSection = sections.find((s: any) => s.id === target);
+              const addonIds = isBulk
+                ? moveAddonModal.bulkIds!
+                : [
+                    moveAddonModal.addonId,
+                    ...depEntries.filter((d) => moveAddonCascade[d.id]).map((d) => d.id),
+                  ];
+              const result = onMoveAddonsToSection?.(target, addonIds)
+                ?? onMoveAddonToSection?.(target, moveAddonModal.addonId);
+              const targetTitle = targetSection?.title || '';
+              const count = result?.reverseRefsUpdated ?? 0;
+              const movedCount = addonIds.length;
+              const baseKey = movedCount > 1 ? 'sectionDetail.moveAddon.successBatch' : 'sectionDetail.moveAddon.success';
+              const baseFallback = movedCount > 1
+                ? '{count} addons movidos para "{section}"'
+                : 'Movido para "{section}"';
+              let msg = t(baseKey, baseFallback)
+                .replace('{section}', targetTitle)
+                .replace('{count}', String(movedCount));
+              if (count > 0) {
+                const suffix = t('sectionDetail.moveAddon.refsSuffix', ' {n} referencias atualizadas.')
+                  .replace('{n}', String(count));
+                msg += suffix;
+              }
+              setCopyAddonToast(msg);
+              setMoveAddonModal(null);
+              setMoveAddonCascade({});
+              setSelectedAddonIds(new Set());
+              setLastClickedAddonId(null);
+            }}
+            title={t('sectionDetail.moveAddon.title', 'Mover addon para...')}
+            description={moveAddonModal ? (<>{t('sectionDetail.copy.description', 'Mover')} <strong className="text-gray-100">{moveAddonModal.addonLabel}</strong> {!isBulk && totalToMove > 1 ? ` +${selectedDepCount} ` : ' '}{t('sectionDetail.moveAddon.descriptionTo', 'para outra pagina')}</>) : null}
+            confirmLabel={t('sectionDetail.moveAddon.confirm', 'Mover')}
+            confirmVariant="emerald"
+            sections={sections}
+            disabledSectionIds={[sectionId]}
+            disabledReason={() => t('sectionDetail.picker.disabledCurrent', 'atual')}
+            prelude={!isBulk && depEntries.length > 0 ? (
+              <div className="rounded-lg border border-emerald-700/40 bg-emerald-950/30 p-3">
+                <div className="text-xs font-semibold text-emerald-300 mb-2 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                   </svg>
-                  Mover Seção
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowMoveModal(false);
-                    setSelectedNewParent(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-200 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-              <p className="text-sm text-gray-300 mt-2">
-                Mover "<strong>{section?.title}</strong>" para outro local
-              </p>
-            </div>
-
-            {/* Body - Árvore de seções */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <div className="space-y-1">
-                {/* Opção: Raiz (sem pai) */}
-                <label
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedNewParent === 'root'
-                      ? 'bg-blue-900/40 border-2 border-blue-500'
-                      : 'bg-gray-800 hover:bg-gray-700 border-2 border-transparent'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="newParent"
-                    value="root"
-                    checked={selectedNewParent === 'root'}
-                    onChange={() => setSelectedNewParent('root')}
-                    className="w-4 h-4"
-                  />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-100">📁 Raiz do Projeto</div>
-                    <div className="text-xs text-gray-400">{t('sectionDetail.move.makeRoot')}</div>
-                  </div>
-                </label>
-
-                {/* Renderizar árvore de seções */}
-                {sections
-                  .filter((s: any) => !s.parentId && s.id !== sectionId) // Seções raiz, exceto a atual
-                  .map((s: any) => (
-                    <SectionTreeItem
-                      key={s.id}
-                      section={s}
-                      allSections={sections}
-                      currentSectionId={sectionId}
-                      selectedParent={selectedNewParent}
-                      onSelect={setSelectedNewParent}
-                      level={0}
-                    />
+                  {t('sectionDetail.moveAddon.depsTitle', 'Este addon depende de addons desta pagina:')}
+                </div>
+                <div className="space-y-1">
+                  {depEntries.map((dep) => (
+                    <label key={dep.id} className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={!!moveAddonCascade[dep.id]}
+                        onChange={(e) => setMoveAddonCascade((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
+                        className="accent-emerald-500"
+                      />
+                      <span className="flex-1 truncate">{dep.name || getAddonTypeLabel(dep.type)}</span>
+                      <span className="text-[10px] text-gray-500 shrink-0">{getAddonTypeLabel(dep.type)}</span>
+                    </label>
                   ))}
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">
+                  {t('sectionDetail.moveAddon.depsHint', 'Marque para mover junto. Desmarcados ficam na pagina atual (as referencias serao limpas).')}
+                </p>
               </div>
-            </div>
+            ) : undefined}
+          />
+        );
+      })()}
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-700 flex gap-3">
+      {/* Modal: Copiar Addon para outra pagina */}
+      <SectionPickerModal
+        open={!!copyAddonModal}
+        onClose={() => setCopyAddonModal(null)}
+        onConfirm={(target) => {
+          if (!copyAddonModal) return;
+          const targetSection = sections.find((s: any) => s.id === target);
+          const ids = copyAddonModal.bulkIds && copyAddonModal.bulkIds.length > 1
+            ? copyAddonModal.bulkIds
+            : [copyAddonModal.addonId];
+          for (const id of ids) {
+            onCopyAddonToSection?.(target, id);
+          }
+          const targetTitle = targetSection?.title || '';
+          const msg = ids.length > 1
+            ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
+                .replace('{count}', String(ids.length))
+                .replace('{section}', targetTitle)
+            : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle);
+          setCopyAddonToast(msg);
+          setCopyAddonModal(null);
+          setSelectedAddonIds(new Set());
+          setLastClickedAddonId(null);
+        }}
+        title={t('sectionDetail.copy.title', 'Copiar addon para...')}
+        description={copyAddonModal ? (<>{t('sectionDetail.copy.description', 'Copiar')} <strong className="text-gray-100">{copyAddonModal.addonLabel}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
+        confirmLabel={t('sectionDetail.copy.confirm', 'Copiar')}
+        confirmVariant="sky"
+        sections={sections}
+      />
+
+      {/* Bulk remove confirmation */}
+      {bulkConfirmRemove && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setBulkConfirmRemove(false)} />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[300px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-gray-200 mb-1">
+              {t('sectionDetail.bulk.removeConfirm', 'Remover {n} addons?').replace('{n}', String(selectedAddonIds.size))}
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              {t('sectionDetail.bulk.removeWarning', 'Esta acao nao pode ser desfeita.')}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
               <button
-                onClick={() => {
-                  setShowMoveModal(false);
-                  setSelectedNewParent(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors"
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                onClick={() => setBulkConfirmRemove(false)}
               >
-                {t('common.cancel')}
+                {t('common.cancel', 'Cancelar')}
               </button>
               <button
-                onClick={handleMoveSection}
-                disabled={!selectedNewParent}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
+                onClick={() => {
+                  const ids = Array.from(selectedAddonIds);
+                  for (const id of ids) {
+                    onRemoveAddon(id);
+                  }
+                  setBulkConfirmRemove(false);
+                  setSelectedAddonIds(new Set());
+                  setLastClickedAddonId(null);
+                }}
               >
-                {t('sectionDetail.move.move')}
+                {t('sectionDetail.bulk.remove', 'Remover')}
               </button>
             </div>
+          </div>
+        </>
+      )}
+
+      {/* Toast: feedback de Copiar Addon */}
+      {copyAddonToast && (
+        <div className="fixed bottom-6 right-6 z-[80] pointer-events-none">
+          <div className="pointer-events-auto bg-emerald-700/95 border border-emerald-500/60 text-white text-sm px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 min-w-[220px]">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="flex-1">{copyAddonToast}</span>
+            <button
+              type="button"
+              onClick={() => setCopyAddonToast(null)}
+              className="text-white/80 hover:text-white text-xs"
+              aria-label="Fechar"
+            >
+              X
+            </button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Componente para renderizar item da árvore de seções no modal
-function SectionTreeItem({ 
-  section, 
-  allSections, 
-  currentSectionId, 
-  selectedParent, 
-  onSelect, 
-  level 
-}: { 
-  section: any; 
-  allSections: any[]; 
-  currentSectionId: string; 
-  selectedParent: string | null; 
-  onSelect: (id: string) => void; 
-  level: number;
-}) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  
-  // Pegar filhos
-  const children = allSections.filter(s => s.parentId === section.id);
-  
-  // Verificar se esta seção é descendente da seção atual (não pode ser selecionada)
-  function isDescendantOf(childId: string, ancestorId: string, sections: any[]): boolean {
-    const child = sections.find(s => s.id === childId);
-    if (!child || !child.parentId) return false;
-    if (child.parentId === ancestorId) return true;
-    return isDescendantOf(child.parentId, ancestorId, sections);
-  }
-  
-  const isDisabled = section.id === currentSectionId || isDescendantOf(section.id, currentSectionId, allSections);
-  const hasChildren = children.length > 0;
-  const indent = level * 24; // 24px por nível
-  
-  return (
-    <div>
-      <label
-        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
-          isDisabled
-            ? 'opacity-40 cursor-not-allowed'
-            : selectedParent === section.id
-              ? 'bg-blue-900/40 border-2 border-blue-500 cursor-pointer'
-              : 'bg-gray-800 hover:bg-gray-700 border-2 border-transparent cursor-pointer'
-        }`}
-        style={{ marginLeft: `${indent}px` }}
-      >
-        {hasChildren && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              setIsExpanded(!isExpanded);
-            }}
-            className="text-gray-300 hover:text-white font-bold w-4 text-sm"
-          >
-            {isExpanded ? '−' : '+'}
-          </button>
-        )}
-        {!hasChildren && <span className="w-4"></span>}
-        
-        <input
-          type="radio"
-          name="newParent"
-          value={section.id}
-          checked={selectedParent === section.id}
-          onChange={() => !isDisabled && onSelect(section.id)}
-          disabled={isDisabled}
-          className="w-4 h-4"
-        />
-        <div className="flex-1">
-          <div className={`text-sm ${isDisabled ? 'text-gray-500' : 'text-gray-100 font-medium'}`}>
-            {section.title}
-            {isDisabled && section.id === currentSectionId && (
-              <span className="ml-2 text-xs text-amber-400">(seção atual)</span>
-            )}
-            {isDisabled && section.id !== currentSectionId && (
-              <span className="ml-2 text-xs text-amber-400">(descendente)</span>
-            )}
-          </div>
-        </div>
-      </label>
-      
-      {/* Renderizar filhos se expandido */}
-      {hasChildren && isExpanded && children.map(child => (
-        <SectionTreeItem
-          key={child.id}
-          section={child}
-          allSections={allSections}
-          currentSectionId={currentSectionId}
-          selectedParent={selectedParent}
-          onSelect={onSelect}
-          level={level + 1}
-        />
-      ))}
     </div>
   );
 }

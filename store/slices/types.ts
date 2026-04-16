@@ -369,6 +369,27 @@ export interface ProjectStore {
   addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;
   updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => void;
   removeSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, updatedBy?: SectionAuditBy) => void;
+  copyAddonToSection: (
+    projectId: UUID,
+    fromSectionId: UUID,
+    toSectionId: UUID,
+    addonId: string,
+    updatedBy?: SectionAuditBy
+  ) => void;
+  moveAddonToSection: (
+    projectId: UUID,
+    fromSectionId: UUID,
+    toSectionId: UUID,
+    addonId: string,
+    updatedBy?: SectionAuditBy
+  ) => { reverseRefsUpdated: number };
+  moveAddonsToSection: (
+    projectId: UUID,
+    fromSectionId: UUID,
+    toSectionId: UUID,
+    addonIds: string[],
+    updatedBy?: SectionAuditBy
+  ) => { reverseRefsUpdated: number };
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;

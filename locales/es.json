@@ -3,6 +3,11 @@
     "languageName": "Español",
     "locale": "es"
   },
+  "globalPicker": {
+    "title": "Ir a página",
+    "description": "Busca una página para abrir",
+    "confirm": "Abrir"
+  },
   "common": {
     "appName": "GDD Manager",
     "save": "Guardar",
@@ -1121,10 +1126,50 @@
       "removeProjectRef": "Quitar referencia"
     },
     "move": {
+      "title": "Mover página",
+      "rootLabel": "📁 Raíz del proyecto",
       "cannotBeOwnParent": "Una sección no puede ser su propio padre.",
       "cannotMoveToDescendant": "No puedes mover una sección dentro de uno de sus descendientes.",
       "makeRoot": "Convertir en sección principal (sin padre)",
       "move": "Mover"
+    },
+    "copy": {
+      "title": "Copiar addon a...",
+      "description": "Copiar",
+      "descriptionTo": "a otra página",
+      "confirm": "Copiar",
+      "success": "Copiado a \"{section}\"",
+      "successBatch": "{count} addons copiados a \"{section}\"",
+      "noSections": "Ninguna página disponible."
+    },
+    "bulk": {
+      "selected": "{n} seleccionados",
+      "hint": "(Ctrl/Cmd+clic añade, Shift+clic rango)",
+      "nAddons": "{n} addons",
+      "remove": "Eliminar",
+      "removeConfirm": "¿Eliminar {n} addons?",
+      "removeWarning": "Esta acción no se puede deshacer.",
+      "clear": "Limpiar selección"
+    },
+    "moveAddon": {
+      "title": "Mover addon a...",
+      "confirm": "Mover",
+      "descriptionTo": "a otra página",
+      "success": "Movido a \"{section}\"",
+      "successBatch": "{count} addons movidos a \"{section}\"",
+      "successWithRefs": "Movido a \"{section}\". {n} referencias actualizadas.",
+      "refsSuffix": " {n} referencias actualizadas.",
+      "depsTitle": "Este addon depende de addons de esta página:",
+      "depsHint": "Marca para mover juntos. Los no marcados se quedan en la página actual (las referencias se limpiarán)."
+    },
+    "picker": {
+      "search": "Buscar página...",
+      "noMatch": "No se encontraron páginas para \"{term}\"",
+      "pageCount": "{count} páginas",
+      "destination": "Destino:",
+      "selectDestination": "Selecciona un destino",
+      "disabledCurrent": "actual",
+      "disabledDescendant": "descendiente"
     },
     "audit": {
       "createdBy": "Creado por {{name}} el {{date}}",

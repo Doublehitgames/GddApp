@@ -3,6 +3,11 @@
     "languageName": "English",
     "locale": "en"
   },
+  "globalPicker": {
+    "title": "Go to page",
+    "description": "Search for a page to open",
+    "confirm": "Open"
+  },
   "common": {
     "appName": "GDD Manager",
     "save": "Save",
@@ -1121,10 +1126,50 @@
       "removeProjectRef": "Remove reference"
     },
     "move": {
+      "title": "Move page",
+      "rootLabel": "📁 Project root",
       "cannotBeOwnParent": "A section cannot be its own parent.",
       "cannotMoveToDescendant": "You cannot move a section into one of its descendants.",
       "makeRoot": "Make it a top-level section (no parent)",
       "move": "Move"
+    },
+    "copy": {
+      "title": "Copy addon to...",
+      "description": "Copy",
+      "descriptionTo": "to another page",
+      "confirm": "Copy",
+      "success": "Copied to \"{section}\"",
+      "successBatch": "{count} addons copied to \"{section}\"",
+      "noSections": "No pages available."
+    },
+    "bulk": {
+      "selected": "{n} selected",
+      "hint": "(Ctrl/Cmd+click adds, Shift+click range)",
+      "nAddons": "{n} addons",
+      "remove": "Remove",
+      "removeConfirm": "Remove {n} addons?",
+      "removeWarning": "This action cannot be undone.",
+      "clear": "Clear selection"
+    },
+    "moveAddon": {
+      "title": "Move addon to...",
+      "confirm": "Move",
+      "descriptionTo": "to another page",
+      "success": "Moved to \"{section}\"",
+      "successBatch": "{count} addons moved to \"{section}\"",
+      "successWithRefs": "Moved to \"{section}\". {n} references updated.",
+      "refsSuffix": " {n} references updated.",
+      "depsTitle": "This addon depends on addons in this page:",
+      "depsHint": "Check to move together. Unchecked stay in the current page (refs will be cleared)."
+    },
+    "picker": {
+      "search": "Search pages...",
+      "noMatch": "No pages found for \"{term}\"",
+      "pageCount": "{count} pages",
+      "destination": "Destination:",
+      "selectDestination": "Select a destination",
+      "disabledCurrent": "current",
+      "disabledDescendant": "descendant"
     },
     "audit": {
       "createdBy": "Created by {{name}} on {{date}}",

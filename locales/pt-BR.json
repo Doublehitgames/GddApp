@@ -3,6 +3,11 @@
     "languageName": "Português (Brasil)",
     "locale": "pt-BR"
   },
+  "globalPicker": {
+    "title": "Ir para página",
+    "description": "Busque uma página para abrir",
+    "confirm": "Abrir"
+  },
   "common": {
     "appName": "GDD Manager",
     "save": "Salvar",
@@ -1121,10 +1126,50 @@
       "removeProjectRef": "Remover referência"
     },
     "move": {
+      "title": "Mover página",
+      "rootLabel": "📁 Raiz do projeto",
       "cannotBeOwnParent": "A seção não pode ser pai de si mesma.",
       "cannotMoveToDescendant": "Não é possível mover uma seção para dentro de seus próprios descendentes.",
       "makeRoot": "Tornar seção principal (sem pai)",
       "move": "Mover"
+    },
+    "copy": {
+      "title": "Copiar addon para...",
+      "description": "Copiar",
+      "descriptionTo": "para outra página",
+      "confirm": "Copiar",
+      "success": "Copiado para \"{section}\"",
+      "successBatch": "{count} addons copiados para \"{section}\"",
+      "noSections": "Nenhuma página disponível."
+    },
+    "bulk": {
+      "selected": "{n} selecionados",
+      "hint": "(Ctrl/Cmd+clique adiciona, Shift+clique range)",
+      "nAddons": "{n} addons",
+      "remove": "Remover",
+      "removeConfirm": "Remover {n} addons?",
+      "removeWarning": "Esta ação não pode ser desfeita.",
+      "clear": "Limpar seleção"
+    },
+    "moveAddon": {
+      "title": "Mover addon para...",
+      "confirm": "Mover",
+      "descriptionTo": "para outra página",
+      "success": "Movido para \"{section}\"",
+      "successBatch": "{count} addons movidos para \"{section}\"",
+      "successWithRefs": "Movido para \"{section}\". {n} referências atualizadas.",
+      "refsSuffix": " {n} referências atualizadas.",
+      "depsTitle": "Este addon depende de addons desta página:",
+      "depsHint": "Marque para mover junto. Desmarcados ficam na página atual (as referências serão limpas)."
+    },
+    "picker": {
+      "search": "Buscar página...",
+      "noMatch": "Nenhuma página encontrada para \"{term}\"",
+      "pageCount": "{count} páginas",
+      "destination": "Destino:",
+      "selectDestination": "Selecione um destino",
+      "disabledCurrent": "atual",
+      "disabledDescendant": "descendente"
     },
     "audit": {
       "createdBy": "Criado por {{name}} em {{date}}",
