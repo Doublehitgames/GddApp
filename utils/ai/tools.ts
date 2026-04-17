@@ -159,6 +159,8 @@ REMOVER: id-da-secao
 - attributeDefinitions
 - attributeProfile
 - attributeModifiers
+- fieldLibrary
+- exportSchema
 
 **JSON esperado (resumo):**
 - ADDON_CRIAR currency: {"name":"Moeda Base","code":"GOLD","displayName":"Ouro","kind":"soft","decimals":0}
@@ -172,6 +174,7 @@ REMOVER: id-da-secao
 - ADDON_CRIAR attributeDefinitions: {"name":"Atributos Base","attributes":[{"key":"strength","label":"Força","valueType":"int","defaultValue":0,"min":0},{"key":"stamina","label":"Stamina","valueType":"float","defaultValue":100}]}
 - ADDON_CRIAR attributeProfile: {"name":"Perfil do Personagem","definitionsRef":"section-id-definicoes","values":[{"attributeKey":"strength","value":12},{"attributeKey":"stamina","value":95}]}
 - ADDON_CRIAR attributeModifiers: {"name":"Buff da Espada","definitionsRef":"section-id-definicoes","modifiers":[{"attributeKey":"strength","mode":"add","value":5},{"attributeKey":"stamina","mode":"mult","value":1.1}]}
+- ADDON_CRIAR fieldLibrary: {"name":"Biblioteca de Campos","entries":[{"key":"sell_price","label":"Preço de Venda","description":"Preço pelo qual o item é vendido ao NPC"},{"key":"buy_price","label":"Preço de Compra"}]}
 - ADDON_EDITAR: envie apenas campos que precisam mudar no jsonPatch
 - ADDON_REMOVER: remove pelo addonId
 
