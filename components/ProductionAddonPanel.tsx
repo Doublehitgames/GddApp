@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import type { ProductionAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
-import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
 
 interface ProductionAddonPanelProps {
   addon: ProductionAddonDraft;
@@ -31,20 +31,6 @@ type ProgressionColumnOption = {
   endLevel: number;
   rowsByLevel: Map<number, number | string>;
 };
-
-function toPositiveInt(raw: string, fallback = 1): number {
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(1, Math.floor(parsed));
-}
-
-function toNonNegativeIntOrUndefined(raw: string): number | undefined {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) return undefined;
-  return Math.max(0, Math.floor(parsed));
-}
 
 function toSecondsLabel(value: unknown): string {
   const parsed = Number(value);
@@ -365,13 +351,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                       ))}
                     </div>
                   ) : null}
-                  <input
-                    type="number"
+                  <CommitOptionalNumberInput
+                    value={addon.minOutput}
+                    onCommit={(next) => commit({ minOutput: next })}
                     min={0}
                     step={1}
-                    value={addon.minOutput ?? ""}
-                    onChange={(event) => commit({ minOutput: toNonNegativeIntOrUndefined(event.target.value) })}
-                    onKeyDown={blurOnEnterKey}
+                    integer
                     className={INPUT_CLASS}
                   />
                   {minOutputLevelBadges ? (
@@ -442,13 +427,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                       ))}
                     </div>
                   ) : null}
-                  <input
-                    type="number"
+                  <CommitOptionalNumberInput
+                    value={addon.maxOutput}
+                    onCommit={(next) => commit({ maxOutput: next })}
                     min={0}
                     step={1}
-                    value={addon.maxOutput ?? ""}
-                    onChange={(event) => commit({ maxOutput: toNonNegativeIntOrUndefined(event.target.value) })}
-                    onKeyDown={blurOnEnterKey}
+                    integer
                     className={INPUT_CLASS}
                   />
                   {maxOutputLevelBadges ? (
@@ -520,13 +504,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     ))}
                   </div>
                 ) : null}
-                <input
-                  type="number"
+                <CommitOptionalNumberInput
+                  value={addon.intervalSeconds}
+                  onCommit={(next) => commit({ intervalSeconds: next })}
                   min={0}
                   step={1}
-                  value={addon.intervalSeconds ?? ""}
-                  onChange={(event) => commit({ intervalSeconds: toNonNegativeIntOrUndefined(event.target.value) })}
-                  onKeyDown={blurOnEnterKey}
+                  integer
                   className={INPUT_CLASS}
                 />
                 {intervalLevelBadges ? (
@@ -554,13 +537,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 </div>
                 <label className="block rounded-lg border border-gray-700 bg-gray-900/40 p-2">
                   <span className="mb-1 block text-xs text-gray-400">{t("productionAddon.capacityLabel", "Capacidade maxima")}</span>
-                  <input
-                    type="number"
+                  <CommitOptionalNumberInput
+                    value={addon.capacity}
+                    onCommit={(next) => commit({ capacity: next })}
                     min={0}
                     step={1}
-                    value={addon.capacity ?? ""}
-                    onChange={(event) => commit({ capacity: toNonNegativeIntOrUndefined(event.target.value) })}
-                    onKeyDown={blurOnEnterKey}
+                    integer
                     className={INPUT_CLASS}
                   />
                 </label>
@@ -610,12 +592,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                           </a>
                         ) : null}
                       </div>
-                      <input
-                        type="number"
+                      <CommitNumberInput
+                        value={ingredient.quantity}
+                        onCommit={(next) => updateIngredient(index, { quantity: next })}
                         min={1}
                         step={1}
-                        value={ingredient.quantity}
-                        onChange={(event) => updateIngredient(index, { quantity: toPositiveInt(event.target.value, 1) })}
+                        integer
                         className={INPUT_CLASS}
                       />
                       <button
@@ -668,12 +650,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                           </a>
                         ) : null}
                       </div>
-                      <input
-                        type="number"
+                      <CommitNumberInput
+                        value={output.quantity}
+                        onCommit={(next) => updateOutput(index, { quantity: next })}
                         min={1}
                         step={1}
-                        value={output.quantity}
-                        onChange={(event) => updateOutput(index, { quantity: toPositiveInt(event.target.value, 1) })}
+                        integer
                         className={INPUT_CLASS}
                       />
                       <button
@@ -743,13 +725,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     ))}
                   </div>
                 ) : null}
-                <input
-                  type="number"
+                <CommitOptionalNumberInput
+                  value={addon.craftTimeSeconds}
+                  onCommit={(next) => commit({ craftTimeSeconds: next })}
                   min={0}
                   step={1}
-                  value={addon.craftTimeSeconds ?? ""}
-                  onChange={(event) => commit({ craftTimeSeconds: toNonNegativeIntOrUndefined(event.target.value) })}
-                  onKeyDown={blurOnEnterKey}
+                  integer
                   className={INPUT_CLASS}
                 />
                 {craftLevelBadges ? (

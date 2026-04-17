@@ -14,6 +14,11 @@ import { CSS } from "@dnd-kit/utilities";
 import type { AttributeDefinitionEntry, AttributeDefinitionsAddonDraft, AttributeValueType } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import {
+  CommitNumberInput,
+  CommitOptionalNumberInput,
+  CommitTextInput,
+} from "@/components/common/CommitInput";
 
 interface AttributeDefinitionsAddonPanelProps {
   addon: AttributeDefinitionsAddonDraft;
@@ -34,13 +39,6 @@ function normalizeKey(raw: string): string {
     .replace(/[^a-zA-Z0-9_\s-]/g, "")
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_");
-}
-
-function toNumberOrUndefined(raw: string): number | undefined {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  const value = Number(trimmed.replace(",", "."));
-  return Number.isFinite(value) ? value : undefined;
 }
 
 function normalizeBounds(min?: number, max?: number): { min?: number; max?: number } {
@@ -229,19 +227,18 @@ export function AttributeDefinitionsAddonPanel({ addon, onChange, onRemove }: At
                             <div className="grid gap-2 sm:grid-cols-2">
                               <label>
                                 <span className="mb-1 block text-xs text-gray-400">{t("attributeDefinitionsAddon.labelLabel", "Nome")}</span>
-                                <input
-                                  type="text"
+                                <CommitTextInput
                                   value={entry.label}
-                                  onChange={(event) => updateAttribute(entry.id, { label: event.target.value })}
+                                  onCommit={(next) => updateAttribute(entry.id, { label: next })}
                                   className={INPUT_CLASS}
                                 />
                               </label>
                               <label>
                                 <span className="mb-1 block text-xs text-gray-400">{t("attributeDefinitionsAddon.keyLabel", "Chave")}</span>
-                                <input
-                                  type="text"
+                                <CommitTextInput
                                   value={entry.key}
-                                  onChange={(event) => updateAttribute(entry.id, { key: normalizeKey(event.target.value) })}
+                                  onCommit={(next) => updateAttribute(entry.id, { key: next })}
+                                  transform={normalizeKey}
                                   className={INPUT_CLASS}
                                 />
                               </label>
@@ -289,17 +286,13 @@ export function AttributeDefinitionsAddonPanel({ addon, onChange, onRemove }: At
                                   <span className="mb-1 block text-xs text-gray-400">
                                     {t("attributeDefinitionsAddon.defaultValueLabel", "Valor padrão")}
                                   </span>
-                                  <input
-                                    type="number"
+                                  <CommitNumberInput
+                                    value={typeof entry.defaultValue === "number" ? entry.defaultValue : 0}
+                                    onCommit={(next) => updateAttribute(entry.id, { defaultValue: next })}
                                     step={entry.valueType === "float" || entry.valueType === "percent" ? "0.01" : "1"}
                                     min={entry.min}
                                     max={entry.max}
-                                    value={typeof entry.defaultValue === "number" ? entry.defaultValue : 0}
-                                    onChange={(event) =>
-                                      updateAttribute(entry.id, {
-                                        defaultValue: Number(event.target.value.replace(",", ".")) || 0,
-                                      })
-                                    }
+                                    integer={entry.valueType === "int"}
                                     className={INPUT_CLASS}
                                   />
                                 </label>
@@ -309,10 +302,9 @@ export function AttributeDefinitionsAddonPanel({ addon, onChange, onRemove }: At
                                 <span className="mb-1 block text-xs text-gray-400">
                                   {t("attributeDefinitionsAddon.unitLabel", "Unidade (opcional)")}
                                 </span>
-                                <input
-                                  type="text"
+                                <CommitTextInput
                                   value={entry.unit ?? ""}
-                                  onChange={(event) => updateAttribute(entry.id, { unit: event.target.value || undefined })}
+                                  onCommit={(next) => updateAttribute(entry.id, { unit: next || undefined })}
                                   className={INPUT_CLASS}
                                 />
                               </label>
@@ -355,19 +347,17 @@ export function AttributeDefinitionsAddonPanel({ addon, onChange, onRemove }: At
                               <div className="flex flex-wrap items-end gap-2">
                                 <label className="min-w-[120px]">
                                   <span className="mb-1 block text-xs text-gray-400">{t("attributeDefinitionsAddon.minLabel", "Mínimo")}</span>
-                                  <input
-                                    type="number"
-                                    value={entry.min ?? ""}
-                                    onChange={(event) => updateAttribute(entry.id, { min: toNumberOrUndefined(event.target.value) })}
+                                  <CommitOptionalNumberInput
+                                    value={entry.min}
+                                    onCommit={(next) => updateAttribute(entry.id, { min: next })}
                                     className={INPUT_CLASS}
                                   />
                                 </label>
                                 <label className="min-w-[120px]">
                                   <span className="mb-1 block text-xs text-gray-400">{t("attributeDefinitionsAddon.maxLabel", "Máximo")}</span>
-                                  <input
-                                    type="number"
-                                    value={entry.max ?? ""}
-                                    onChange={(event) => updateAttribute(entry.id, { max: toNumberOrUndefined(event.target.value) })}
+                                  <CommitOptionalNumberInput
+                                    value={entry.max}
+                                    onCommit={(next) => updateAttribute(entry.id, { max: next })}
                                     className={INPUT_CLASS}
                                   />
                                 </label>

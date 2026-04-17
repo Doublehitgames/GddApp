@@ -200,11 +200,13 @@ describe("EconomyLinkAddonPanel integration", () => {
     expect(unlockInput.min).toBe("5");
     expect(unlockInput.max).toBe("40");
 
-    fireEvent.blur(unlockInput, { target: { value: "999" } });
+    fireEvent.change(unlockInput, { target: { value: "999" } });
+    fireEvent.blur(unlockInput);
     let calls = onChange.mock.calls as Array<[EconomyLinkAddonDraft]>;
     expect(calls[calls.length - 1][0].unlockValue).toBe(40);
 
-    fireEvent.blur(unlockInput, { target: { value: "1" } });
+    fireEvent.change(unlockInput, { target: { value: "1" } });
+    fireEvent.blur(unlockInput);
     calls = onChange.mock.calls as Array<[EconomyLinkAddonDraft]>;
     expect(calls[calls.length - 1][0].unlockValue).toBe(5);
   });

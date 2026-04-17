@@ -13,6 +13,10 @@ import { BalanceComparisonPanel } from "@/components/BalanceComparisonPanel";
 import { calculateSensitivity, compareCurves } from "@/lib/balance/simulationEngine";
 import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey, useBlurCommitText } from "@/hooks/useBlurCommitText";
+import {
+  CommitNumberInput,
+  CommitOptionalNumberInput,
+} from "@/components/common/CommitInput";
 
 interface BalanceAddonPanelProps {
   addon: BalanceAddonDraft;
@@ -1167,19 +1171,19 @@ function NumberInput({
           </span>
         )}
       </span>
-      <input
-        type="number"
-        value={value ?? ""}
-        onChange={(e) => {
-          if (allowEmpty && e.target.value.trim() === "") {
-            onChange(Number.NaN);
-            return;
-          }
-          const parsed = Number(e.target.value);
-          onChange(Number.isFinite(parsed) ? parsed : 0);
-        }}
-        className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500"
-      />
+      {allowEmpty ? (
+        <CommitOptionalNumberInput
+          value={Number.isFinite(value) ? value : undefined}
+          onCommit={(next) => onChange(next == null ? Number.NaN : next)}
+          className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500"
+        />
+      ) : (
+        <CommitNumberInput
+          value={Number.isFinite(value) ? (value as number) : 0}
+          onCommit={(next) => onChange(next)}
+          className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500"
+        />
+      )}
       {expected && <span className="mt-1 block text-[11px] text-gray-500">{expected}</span>}
     </label>
   );

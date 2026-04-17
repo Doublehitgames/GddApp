@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import type { InventoryAddonDraft, InventoryBindType } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
-import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 
 interface InventoryAddonPanelProps {
   addon: InventoryAddonDraft;
@@ -17,45 +17,6 @@ const PANEL_SHELL_CLASS = "rounded-2xl border border-gray-700/80 bg-gray-900/70 
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
-
-function toNonNegativeNumber(raw: string): number {
-  const parsed = Number(raw.replace(",", "."));
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, parsed);
-}
-
-function toPositiveInt(raw: string, fallback = 1): number {
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(1, Math.floor(parsed));
-}
-
-function CommitTextInput({
-  resetKey,
-  value,
-  onCommit,
-  placeholder,
-}: {
-  resetKey: string;
-  value: string;
-  onCommit: (next: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      key={resetKey}
-      type="text"
-      defaultValue={value}
-      onBlur={(event) => {
-        const next = event.currentTarget.value;
-        if (next !== value) onCommit(next);
-      }}
-      onKeyDown={blurOnEnterKey}
-      placeholder={placeholder}
-      className={INPUT_CLASS}
-    />
-  );
-}
 
 export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddonPanelProps) {
   const { t } = useI18n();
@@ -154,10 +115,10 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
             {t("inventoryAddon.categoryLabel", "Categoria de inventario")}
           </span>
           <CommitTextInput
-            resetKey={`${addon.id}-category-${addon.inventoryCategory}`}
             value={addon.inventoryCategory}
             onCommit={(next) => commit({ inventoryCategory: next })}
             placeholder={t("inventoryAddon.categoryPlaceholder", "Ex.: Consumivel")}
+            className={INPUT_CLASS}
           />
         </label>
 
@@ -179,12 +140,12 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
               <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                 {t("inventoryAddon.maxStackLabel", "Maximo por pilha")}
               </span>
-              <input
-                type="number"
+              <CommitNumberInput
+                value={addon.maxStack}
+                onCommit={(next) => commit({ maxStack: next })}
                 min={1}
                 step={1}
-                value={addon.maxStack}
-                onChange={(event) => commit({ maxStack: toPositiveInt(event.target.value, 1) })}
+                integer
                 className={INPUT_CLASS}
               />
             </label>
@@ -210,12 +171,11 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                   {t("inventoryAddon.durabilityLabel", "Durabilidade inicial")}
                 </span>
-                <input
-                  type="number"
+                <CommitNumberInput
+                  value={addon.durability}
+                  onCommit={(next) => commit({ durability: next })}
                   min={0}
                   step={1}
-                  value={addon.durability}
-                  onChange={(event) => commit({ durability: toNonNegativeNumber(event.target.value) })}
                   className={INPUT_CLASS}
                 />
               </label>
@@ -224,12 +184,11 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                   {t("inventoryAddon.maxDurabilityLabel", "Durabilidade maxima")}
                 </span>
-                <input
-                  type="number"
+                <CommitNumberInput
+                  value={addon.maxDurability ?? 0}
+                  onCommit={(next) => commit({ maxDurability: next })}
                   min={0}
                   step={1}
-                  value={addon.maxDurability ?? 0}
-                  onChange={(event) => commit({ maxDurability: toNonNegativeNumber(event.target.value) })}
                   className={INPUT_CLASS}
                 />
               </label>
@@ -256,12 +215,11 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                   {t("inventoryAddon.weightLabel", "Peso")}
                 </span>
-                <input
-                  type="number"
+                <CommitNumberInput
+                  value={addon.weight}
+                  onCommit={(next) => commit({ weight: next })}
                   min={0}
                   step="0.01"
-                  value={addon.weight}
-                  onChange={(event) => commit({ weight: toNonNegativeNumber(event.target.value) })}
                   className={INPUT_CLASS}
                 />
               </label>
@@ -270,12 +228,11 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                   {t("inventoryAddon.slotSizeLabel", "Espaco no inventario (slots)")}
                 </span>
-                <input
-                  type="number"
+                <CommitNumberInput
+                  value={addon.slotSize}
+                  onCommit={(next) => commit({ slotSize: next })}
                   min={0}
                   step="0.1"
-                  value={addon.slotSize}
-                  onChange={(event) => commit({ slotSize: toNonNegativeNumber(event.target.value) })}
                   className={INPUT_CLASS}
                 />
               </label>
@@ -284,12 +241,11 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
                   {t("inventoryAddon.volumeLabel", "Volume ocupado")}
                 </span>
-                <input
-                  type="number"
+                <CommitNumberInput
+                  value={addon.volume ?? 0}
+                  onCommit={(next) => commit({ volume: next })}
                   min={0}
                   step="0.01"
-                  value={addon.volume ?? 0}
-                  onChange={(event) => commit({ volume: toNonNegativeNumber(event.target.value) })}
                   className={INPUT_CLASS}
                 />
               </label>
@@ -320,10 +276,10 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
           {t("inventoryAddon.notesLabel", "Observacoes")}
         </span>
         <CommitTextInput
-          resetKey={`${addon.id}-notes-${addon.notes || ""}`}
           value={addon.notes || ""}
           onCommit={(next) => commit({ notes: next || undefined })}
           placeholder={t("inventoryAddon.notesPlaceholder", "Informacoes adicionais de inventario")}
+          className={INPUT_CLASS}
         />
       </label>
 

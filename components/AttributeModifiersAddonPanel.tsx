@@ -15,6 +15,7 @@ import type { AttributeModifiersAddonDraft, AttributeModifierMode } from "@/lib/
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { CommitNumberInput } from "@/components/common/CommitInput";
 
 interface AttributeModifiersAddonPanelProps {
   addon: AttributeModifiersAddonDraft;
@@ -28,11 +29,6 @@ const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
 const BUTTON_CLASS = "rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-xs text-gray-100 hover:bg-gray-700";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
-
-function toNumberOrZero(raw: string): number {
-  const value = Number(raw.replace(",", "."));
-  return Number.isFinite(value) ? value : 0;
-}
 
 export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: AttributeModifiersAddonPanelProps) {
   const { t } = useI18n();
@@ -286,11 +282,11 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                                     />
                                   </div>
                                 ) : (
-                                  <input
-                                    type="number"
-                                    step={meta?.valueType === "float" || meta?.valueType === "percent" ? "0.01" : "1"}
+                                  <CommitNumberInput
                                     value={typeof row.value === "number" ? row.value : 0}
-                                    onChange={(event) => updateRow(row.id, { value: toNumberOrZero(event.target.value) })}
+                                    onCommit={(next) => updateRow(row.id, { value: next })}
+                                    step={meta?.valueType === "float" || meta?.valueType === "percent" ? "0.01" : "1"}
+                                    integer={meta?.valueType === "int"}
                                     className={INPUT_CLASS}
                                   />
                                 )}

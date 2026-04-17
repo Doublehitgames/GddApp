@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import type { EconomyLinkAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
-import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { useProjectStore } from "@/store/projectStore";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { CommitOptionalNumberInput } from "@/components/common/CommitInput";
 
 interface EconomyLinkAddonPanelProps {
   addon: EconomyLinkAddonDraft;
@@ -18,14 +18,6 @@ const PANEL_BLOCK_CLASS = "rounded-xl border border-gray-700/80 bg-gray-800/70 p
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
-
-function toIntegerOrUndefined(raw: string): number | undefined {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed.replace(",", "."));
-  if (!Number.isFinite(parsed)) return undefined;
-  return Math.max(0, Math.floor(parsed));
-}
 
 function clampInteger(value: number, min?: number, max?: number): number {
   let next = Math.floor(value);
@@ -118,40 +110,6 @@ function formatModifierPreview(meta: GlobalVariableCalcMeta): string | null {
     return meta.defaultValue > 0 ? `+${valueText}` : valueText;
   }
   return null;
-}
-
-function CommitNumberInput({
-  resetKey,
-  value,
-  onCommit,
-  placeholder,
-  min = 0,
-  max,
-}: {
-  resetKey: string;
-  value: number | undefined;
-  onCommit: (next: number | undefined) => void;
-  placeholder?: string;
-  min?: number;
-  max?: number;
-}) {
-  return (
-    <input
-      key={resetKey}
-      type="number"
-      min={min}
-      max={max}
-      step={1}
-      defaultValue={value == null ? "" : String(value)}
-      onBlur={(event) => {
-        const next = toIntegerOrUndefined(event.currentTarget.value);
-        if (next !== value) onCommit(next);
-      }}
-      onKeyDown={blurOnEnterKey}
-      placeholder={placeholder}
-      className={INPUT_CLASS}
-    />
-  );
 }
 
 export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLinkAddonPanelProps) {
@@ -395,22 +353,28 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         ? `${t("economyLinkAddon.buyValue", "Valor de compra")}: ${formatDisplayNumber(buyEffectiveValue)}`
                         : t("economyLinkAddon.buyValue", "Valor de compra")}
                     </span>
-                    <CommitNumberInput
-                      resetKey={`${addon.id}-buyValue-${addon.buyValue ?? ""}`}
+                    <CommitOptionalNumberInput
                       value={addon.buyValue}
                       onCommit={(next) => commit({ buyValue: next })}
                       placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
                     />
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs text-gray-400">
                       {t("economyLinkAddon.minBuyValue", "Minimo de compra")}
                     </span>
-                    <CommitNumberInput
-                      resetKey={`${addon.id}-minBuyValue-${addon.minBuyValue ?? ""}`}
+                    <CommitOptionalNumberInput
                       value={addon.minBuyValue}
                       onCommit={(next) => commit({ minBuyValue: next })}
                       placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
                     />
                   </label>
                 </div>
@@ -518,22 +482,28 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         </span>
                       )}
                     </span>
-                    <CommitNumberInput
-                      resetKey={`${addon.id}-sellValue-${addon.sellValue ?? ""}`}
+                    <CommitOptionalNumberInput
                       value={addon.sellValue}
                       onCommit={(next) => commit({ sellValue: next })}
                       placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
                     />
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-xs text-gray-400">
                       {t("economyLinkAddon.maxSellValue", "Maximo de venda")}
                     </span>
-                    <CommitNumberInput
-                      resetKey={`${addon.id}-maxSellValue-${addon.maxSellValue ?? ""}`}
+                    <CommitOptionalNumberInput
                       value={addon.maxSellValue}
                       onCommit={(next) => commit({ maxSellValue: next })}
                       placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
                     />
                   </label>
                 </div>
@@ -648,8 +618,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         </span>
                       )}
                     </span>
-                    <CommitNumberInput
-                      resetKey={`${addon.id}-unlockValue-${addon.unlockValue ?? ""}`}
+                    <CommitOptionalNumberInput
                       value={addon.unlockValue}
                       onCommit={(next) =>
                         commit({
@@ -660,6 +629,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                       placeholder="0"
                       min={unlockBounds.min ?? 0}
                       max={unlockBounds.max}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
                     />
                   </label>
                 </div>

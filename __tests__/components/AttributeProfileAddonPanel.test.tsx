@@ -90,13 +90,17 @@ describe("AttributeProfileAddonPanel", () => {
 
     const toggleButtons = screen.getAllByRole("button", { name: /Força/i });
     fireEvent.click(toggleButtons[toggleButtons.length - 1]);
-    const valueInput = screen.getByDisplayValue("10");
-    fireEvent.change(valueInput, { target: { value: "3" } });
-    let lastCall = onChange.mock.calls.at(-1)?.[0];
-    expect(lastCall?.values?.[0]?.value).toBe(10);
+    const valueInput = screen.getByDisplayValue("10") as HTMLInputElement;
 
+    // Value below min clamps back to 10 (current committed value) — no onChange fired
+    fireEvent.change(valueInput, { target: { value: "3" } });
+    fireEvent.blur(valueInput);
+    expect(valueInput.value).toBe("10");
+
+    // Value above max (20) clamps to 20 — onChange fires with clamped value
     fireEvent.change(valueInput, { target: { value: "25" } });
-    lastCall = onChange.mock.calls.at(-1)?.[0];
+    fireEvent.blur(valueInput);
+    const lastCall = onChange.mock.calls.at(-1)?.[0];
     expect(lastCall?.values?.[0]?.value).toBe(20);
   });
 });

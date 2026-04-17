@@ -2,7 +2,7 @@
 
 import type { CurrencyAddonDraft, CurrencyKind } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
-import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
+import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 
 interface CurrencyAddonPanelProps {
   addon: CurrencyAddonDraft;
@@ -14,39 +14,6 @@ const PANEL_SHELL_CLASS = "rounded-2xl border border-gray-700/80 bg-gray-900/70 
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
-
-function toNonNegativeInt(value: string): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.floor(parsed));
-}
-
-function CommitTextInput({
-  resetKey,
-  value,
-  onCommit,
-  placeholder,
-}: {
-  resetKey: string;
-  value: string;
-  onCommit: (next: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      key={resetKey}
-      type="text"
-      defaultValue={value}
-      onBlur={(event) => {
-        const next = event.currentTarget.value;
-        if (next !== value) onCommit(next);
-      }}
-      onKeyDown={blurOnEnterKey}
-      placeholder={placeholder}
-      className={INPUT_CLASS}
-    />
-  );
-}
 
 export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonPanelProps) {
   const { t } = useI18n();
@@ -69,10 +36,11 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
               {t("currencyAddon.codeLabel", "Codigo")}
             </span>
             <CommitTextInput
-              resetKey={`${addon.id}-code-${addon.code}`}
               value={addon.code}
-              onCommit={(next) => commit({ code: next.trim().toUpperCase() })}
+              onCommit={(next) => commit({ code: next })}
+              transform={(raw) => raw.trim().toUpperCase()}
               placeholder={t("currencyAddon.codePlaceholder", "Ex.: COINS")}
+              className={INPUT_CLASS}
             />
           </label>
           <label className="block">
@@ -80,10 +48,10 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
               {t("currencyAddon.displayNameLabel", "Nome exibido")}
             </span>
             <CommitTextInput
-              resetKey={`${addon.id}-displayName-${addon.displayName}`}
               value={addon.displayName}
               onCommit={(next) => commit({ displayName: next })}
               placeholder={t("currencyAddon.displayNamePlaceholder", "Ex.: Moedas")}
+              className={INPUT_CLASS}
             />
           </label>
         </div>
@@ -109,12 +77,12 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
               {t("currencyAddon.decimalsLabel", "Casas decimais")}
             </span>
-            <input
-              type="number"
+            <CommitNumberInput
+              value={addon.decimals}
+              onCommit={(next) => commit({ decimals: next })}
               min={0}
               step={1}
-              value={addon.decimals}
-              onChange={(event) => commit({ decimals: toNonNegativeInt(event.target.value) })}
+              integer
               className={INPUT_CLASS}
             />
           </label>
@@ -125,10 +93,10 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
             {t("currencyAddon.notesLabel", "Observacoes")}
           </span>
           <CommitTextInput
-            resetKey={`${addon.id}-notes-${addon.notes || ""}`}
             value={addon.notes || ""}
             onCommit={(next) => commit({ notes: next || undefined })}
             placeholder={t("currencyAddon.notesPlaceholder", "Informacoes complementares desta moeda")}
+            className={INPUT_CLASS}
           />
         </label>
       </div>

@@ -8,6 +8,11 @@ import type {
   DataSchemaAddonDraft,
   ProgressionTableAddonDraft,
 } from "@/lib/addons/types";
+import {
+  CommitNumberInput,
+  CommitOptionalNumberInput,
+  CommitTextInput,
+} from "@/components/common/CommitInput";
 
 // ── CSS constant strings ───────────────────────────────────────────
 
@@ -155,16 +160,24 @@ export function BindingEditor({
               <option value="true">true</option>
               <option value="false">false</option>
             </select>
-          ) : (
-            <input
+          ) : binding.valueType === "number" ? (
+            <CommitNumberInput
               className={INPUT + " !w-32"}
-              type={binding.valueType === "number" ? "number" : "text"}
-              value={String(binding.value)}
-              readOnly={readOnly}
-              onChange={(e) => {
+              value={typeof binding.value === "number" ? binding.value : Number(binding.value) || 0}
+              disabled={readOnly}
+              onCommit={(next) => {
                 if (readOnly) return;
-                const v = binding.valueType === "number" ? Number(e.target.value.replace(",", ".")) || 0 : e.target.value;
-                onChange({ ...binding, value: v });
+                onChange({ ...binding, value: next });
+              }}
+            />
+          ) : (
+            <CommitTextInput
+              className={INPUT + " !w-32"}
+              value={String(binding.value ?? "")}
+              disabled={readOnly}
+              onCommit={(next) => {
+                if (readOnly) return;
+                onChange({ ...binding, value: next });
               }}
             />
           )}
@@ -333,14 +346,14 @@ export function SchemaNodeEditor({
         ) ? (
           <ResolvedKeyLabel binding={node.binding} sectionAddons={sectionAddons} />
         ) : (
-          <input
+          <CommitTextInput
             className={INPUT + " !w-36 !py-1 !text-xs font-mono"}
             value={node.key}
             placeholder="key"
-            readOnly={readOnly}
-            onChange={(e) => {
+            disabled={readOnly}
+            onCommit={(next) => {
               if (readOnly) return;
-              onUpdate({ ...node, key: e.target.value });
+              onUpdate({ ...node, key: next });
             }}
           />
         )}
@@ -416,13 +429,9 @@ export function SchemaNodeEditor({
                 </label>
                 <label className="flex items-center gap-1 text-[10px] text-gray-500" title="Multiplicador aplicado ao valor">
                   <span>*</span>
-                  <input
-                    type="number"
-                    value={node.multiplier ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value ? Number(e.target.value.replace(",", ".")) : undefined;
-                      onUpdate({ ...node, multiplier: v != null && Number.isFinite(v) ? v : undefined });
-                    }}
+                  <CommitOptionalNumberInput
+                    value={node.multiplier}
+                    onCommit={(next) => onUpdate({ ...node, multiplier: next })}
                     className="w-14 bg-transparent border-b border-gray-700 text-[10px] font-mono text-gray-400 outline-none focus:border-indigo-500 px-0.5 py-0 text-center"
                     placeholder="1"
                     step="any"

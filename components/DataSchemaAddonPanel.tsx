@@ -15,6 +15,11 @@ import type { DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, Econom
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import {
+  CommitNumberInput,
+  CommitOptionalNumberInput,
+  CommitTextInput,
+} from "@/components/common/CommitInput";
 
 interface DataSchemaAddonPanelProps {
   addon: DataSchemaAddonDraft;
@@ -36,13 +41,6 @@ function normalizeKey(raw: string): string {
     .replace(/[^a-z0-9_\s-]/g, "")
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_");
-}
-
-function toOptionalNumber(raw: string): number | undefined {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function normalizeBounds(min?: number, max?: number): { min?: number; max?: number } {
@@ -509,20 +507,19 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             <div className="grid gap-2 sm:grid-cols-2">
                               <label className="block">
                                 <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.labelLabel", "Nome")}</span>
-                                <input
-                                  type="text"
+                                <CommitTextInput
                                   value={entry.label}
-                                  onChange={(event) => updateEntry(entry.id, { label: event.target.value })}
+                                  onCommit={(next) => updateEntry(entry.id, { label: next })}
                                   className={INPUT_CLASS}
                                   placeholder={t("dataSchemaAddon.labelPlaceholder", "XP de colheita")}
                                 />
                               </label>
                               <label className="block">
                                 <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.keyLabel", "Chave")}</span>
-                                <input
-                                  type="text"
+                                <CommitTextInput
                                   value={entry.key}
-                                  onChange={(event) => updateEntry(entry.id, { key: normalizeKey(event.target.value) })}
+                                  onCommit={(next) => updateEntry(entry.id, { key: next })}
+                                  transform={normalizeKey}
                                   className={INPUT_CLASS}
                                   placeholder={t("dataSchemaAddon.keyPlaceholder", "harvest_xp")}
                                 />
@@ -804,44 +801,35 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               ) : (
                                 <label className="min-w-[130px]">
                                   <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.valueLabel", "Valor")}</span>
-                                  {(() => {
+                                  {effectiveValueType === "string" ? (
+                                    <CommitTextInput
+                                      value={String(entry.value ?? "")}
+                                      onCommit={(next) => updateEntry(entry.id, { value: next })}
+                                      className={INPUT_CLASS}
+                                    />
+                                  ) : (() => {
                                     const numericDisplayValue =
                                       typeof entry.value === "number"
                                         ? entry.value
                                         : Number(String(entry.value ?? "").replace(",", "."));
-                                    const displayValue =
-                                      effectiveValueType === "string"
-                                        ? String(entry.value ?? "")
-                                        : Number.isFinite(numericDisplayValue)
-                                          ? String(numericDisplayValue)
-                                          : "0";
+                                    const safeNumeric = Number.isFinite(numericDisplayValue) ? numericDisplayValue : 0;
                                     return (
-                                  <input
-                                    type={effectiveValueType === "string" ? "text" : "number"}
-                                    value={displayValue}
-                                    onChange={(event) => {
-                                      if (effectiveValueType === "string") {
-                                        updateEntry(entry.id, { value: event.target.value });
-                                        return;
-                                      }
-                                      const parsed = Number(event.target.value.replace(",", "."));
-                                      if (!Number.isFinite(parsed)) {
-                                        updateEntry(entry.id, { value: 0 });
-                                        return;
-                                      }
-                                      if (isLinkedToXp && linkedXpMeta) {
-                                        updateEntry(entry.id, {
-                                          valueType: linkedXpMeta.decimals > 0 ? "float" : "int",
-                                          value: roundToDecimals(parsed, linkedXpMeta.decimals),
-                                        });
-                                        return;
-                                      }
-                                      const nextValue = coerceValueByType(effectiveValueType, event.target.value);
-                                      updateEntry(entry.id, { value: nextValue });
-                                    }}
-                                    className={INPUT_CLASS}
-                                    step={isLinkedToXp && linkedXpMeta ? stepFromDecimals(linkedXpMeta.decimals) : undefined}
-                                  />
+                                      <CommitNumberInput
+                                        value={safeNumeric}
+                                        onCommit={(next) => {
+                                          if (isLinkedToXp && linkedXpMeta) {
+                                            updateEntry(entry.id, {
+                                              valueType: linkedXpMeta.decimals > 0 ? "float" : "int",
+                                              value: roundToDecimals(next, linkedXpMeta.decimals),
+                                            });
+                                            return;
+                                          }
+                                          const coerced = coerceValueByType(effectiveValueType, next);
+                                          updateEntry(entry.id, { value: coerced });
+                                        }}
+                                        step={isLinkedToXp && linkedXpMeta ? stepFromDecimals(linkedXpMeta.decimals) : undefined}
+                                        className={INPUT_CLASS}
+                                      />
                                     );
                                   })()}
                                 </label>
@@ -851,10 +839,9 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                   <span className="mb-1 block text-xs text-gray-400">
                                     {t("dataSchemaAddon.unitLabel", "Unidade (opcional)")}
                                   </span>
-                                  <input
-                                    type="text"
+                                  <CommitTextInput
                                     value={entry.unit ?? ""}
-                                    onChange={(event) => updateEntry(entry.id, { unit: event.target.value || undefined })}
+                                    onCommit={(next) => updateEntry(entry.id, { unit: next || undefined })}
                                     className={INPUT_CLASS}
                                     placeholder={t("dataSchemaAddon.unitPlaceholder", "s, kg, pts")}
                                   />
@@ -899,19 +886,17 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               <div className="flex flex-wrap items-end gap-2">
                                 <label className="min-w-[120px]">
                                   <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.minLabel", "Mínimo")}</span>
-                                  <input
-                                    type="number"
-                                    value={entry.min ?? ""}
-                                    onChange={(event) => updateEntry(entry.id, { min: toOptionalNumber(event.target.value) })}
+                                  <CommitOptionalNumberInput
+                                    value={entry.min}
+                                    onCommit={(next) => updateEntry(entry.id, { min: next })}
                                     className={INPUT_CLASS}
                                   />
                                 </label>
                                 <label className="min-w-[120px]">
                                   <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.maxLabel", "Máximo")}</span>
-                                  <input
-                                    type="number"
-                                    value={entry.max ?? ""}
-                                    onChange={(event) => updateEntry(entry.id, { max: toOptionalNumber(event.target.value) })}
+                                  <CommitOptionalNumberInput
+                                    value={entry.max}
+                                    onCommit={(next) => updateEntry(entry.id, { max: next })}
                                     className={INPUT_CLASS}
                                   />
                                 </label>

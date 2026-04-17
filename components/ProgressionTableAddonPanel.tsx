@@ -32,6 +32,10 @@ import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import {
+  CommitNumberInput,
+  CommitOptionalNumberInput,
+} from "@/components/common/CommitInput";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 const FORMULA_ALLOWED_VARIABLES = new Set(["base", "level", "delta"]);
@@ -1265,10 +1269,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
               {t("progressionTableAddon.startLevelLabel", "Level inicial")}
             </span>
-            <input
-              type="number"
+            <CommitNumberInput
               value={startLevel}
-              onChange={(e) => updateRange(parseNumber(e.target.value), endLevel)}
+              onCommit={(next) => updateRange(next, endLevel)}
+              integer
               className={INPUT_CLASS_LG}
             />
           </label>
@@ -1276,10 +1280,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
               {t("progressionTableAddon.endLevelLabel", "Level final")}
             </span>
-            <input
-              type="number"
+            <CommitNumberInput
               value={endLevel}
-              onChange={(e) => updateRange(startLevel, parseNumber(e.target.value))}
+              onCommit={(next) => updateRange(startLevel, next)}
+              integer
               className={INPUT_CLASS_LG}
             />
           </label>
@@ -1633,13 +1637,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               {t("progressionTableAddon.decimalsLabel", "Casas decimais")}
                               {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
-                            <input
-                              type="number"
+                            <CommitNumberInput
+                              value={rc.decimals ?? 0}
+                              onCommit={(next) => updateColumnDecimals(column.id, String(next))}
                               min={0}
                               max={6}
                               step={1}
-                              value={rc.decimals ?? 0}
-                              onChange={(e) => updateColumnDecimals(column.id, e.target.value)}
+                              integer
                               disabled={isLinked}
                               className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
                             />
@@ -1663,10 +1667,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               {t("progressionTableAddon.minLabel", "Minimo")}
                               {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
-                            <input
-                              type="number"
-                              value={rc.min ?? ""}
-                              onChange={(e) => updateColumnBounds(column.id, "min", e.target.value)}
+                            <CommitOptionalNumberInput
+                              value={rc.min}
+                              onCommit={(next) => updateColumnBounds(column.id, "min", next == null ? "" : String(next))}
                               disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
                               className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
@@ -1677,10 +1680,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               {t("progressionTableAddon.maxLabel", "Maximo")}
                               {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
-                            <input
-                              type="number"
-                              value={rc.max ?? ""}
-                              onChange={(e) => updateColumnBounds(column.id, "max", e.target.value)}
+                            <CommitOptionalNumberInput
+                              value={rc.max}
+                              onCommit={(next) => updateColumnBounds(column.id, "max", next == null ? "" : String(next))}
                               disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
                               className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
@@ -1696,13 +1698,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   {t("progressionTableAddon.baseLabel", "Base")}
                                   {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
-                                <input
-                                  type="number"
+                                <CommitNumberInput
                                   value={rc.generator?.mode === "linear" ? rc.generator.base : 0}
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      base: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { base: next })
                                   }
                                   disabled={isLinked && attrOverrides?.base != null}
                                   className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
@@ -1712,13 +1711,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.stepLabel", "Step")}
                                 </span>
-                                <input
-                                  type="number"
+                                <CommitNumberInput
                                   value={column.generator?.mode === "linear" ? column.generator.step : 1}
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      step: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { step: next })
                                   }
                                   className={INPUT_CLASS}
                                 />
@@ -1751,20 +1747,17 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                     </div>
                                   </span>
                                 </span>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
+                                <CommitNumberInput
                                   value={
                                     column.generator?.mode === "linear"
                                       ? column.generator.bias ?? 1
                                       : 1
                                   }
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      bias: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { bias: next })
                                   }
+                                  step="0.1"
+                                  min={0.1}
                                   className={INPUT_CLASS}
                                 />
                                 {(() => {
@@ -1823,13 +1816,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   {t("progressionTableAddon.baseLabel", "Base")}
                                   {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
-                                <input
-                                  type="number"
+                                <CommitNumberInput
                                   value={rc.generator?.mode === "exponential" ? rc.generator.base : 1}
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      base: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { base: next })
                                   }
                                   disabled={isLinked && attrOverrides?.base != null}
                                   className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
@@ -1839,15 +1829,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.growthLabel", "Growth")}
                                 </span>
-                                <input
-                                  type="number"
-                                  step="0.01"
+                                <CommitNumberInput
                                   value={column.generator?.mode === "exponential" ? column.generator.growth : 1.1}
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      growth: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { growth: next })
                                   }
+                                  step="0.01"
                                   className={INPUT_CLASS}
                                 />
                               </label>
@@ -1879,20 +1866,17 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                     </div>
                                   </span>
                                 </span>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  min="0.1"
+                                <CommitNumberInput
                                   value={
                                     column.generator?.mode === "exponential"
                                       ? column.generator.bias ?? 1
                                       : 1
                                   }
-                                  onChange={(e) =>
-                                    updateColumnGeneratorParams(column.id, {
-                                      bias: parseNumber(e.target.value),
-                                    })
+                                  onCommit={(next) =>
+                                    updateColumnGeneratorParams(column.id, { bias: next })
                                   }
+                                  step="0.1"
+                                  min={0.1}
                                   className={INPUT_CLASS}
                                 />
                                 {(() => {
@@ -1973,13 +1957,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                     Valor base (manual)
                                   </span>
-                                  <input
-                                    type="number"
+                                  <CommitNumberInput
                                     value={column.generator.baseManualValue ?? 0}
-                                    onChange={(e) =>
-                                      updateColumnGeneratorParams(column.id, {
-                                        baseManualValue: Number(e.target.value.replace(",", ".")) || 0,
-                                      })
+                                    onCommit={(next) =>
+                                      updateColumnGeneratorParams(column.id, { baseManualValue: next })
                                     }
                                     className={INPUT_CLASS}
                                   />
@@ -2230,10 +2211,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   <td className="px-3 py-1.5">
                                     <div className="flex items-center gap-1">
                                       <div className="relative flex-1">
-                                        <input
-                                          type="number"
+                                        <CommitNumberInput
                                           value={Number(row.values[column.id] ?? 0)}
-                                          onChange={(e) => updateCell(row.level, column.id, e.target.value)}
+                                          onCommit={(next) => updateCell(row.level, column.id, String(next))}
                                           className={`${INPUT_CLASS} w-64 ${
                                             column.isPercentage ? "pr-6" : ""
                                           } ${

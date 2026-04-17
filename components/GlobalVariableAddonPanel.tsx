@@ -7,7 +7,7 @@ import type {
   GlobalVariableValueType,
 } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
-import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
+import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -30,37 +30,6 @@ function toSlugKey(raw: string): string {
     .replace(/\s+/g, "_");
 }
 
-function toNumberOrZero(raw: string): number {
-  const parsed = Number(raw.replace(",", "."));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function CommitTextInput({
-  resetKey,
-  value,
-  onCommit,
-  placeholder,
-}: {
-  resetKey: string;
-  value: string;
-  onCommit: (next: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <input
-      key={resetKey}
-      type="text"
-      defaultValue={value}
-      onBlur={(event) => {
-        const next = event.currentTarget.value;
-        if (next !== value) onCommit(next);
-      }}
-      onKeyDown={blurOnEnterKey}
-      placeholder={placeholder}
-      className={INPUT_CLASS}
-    />
-  );
-}
 
 export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVariableAddonPanelProps) {
   const { t } = useI18n();
@@ -127,10 +96,11 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
               {t("globalVariableAddon.keyLabel", "Chave")}
             </span>
             <CommitTextInput
-              resetKey={`${addon.id}-key-${addon.key}`}
               value={addon.key}
-              onCommit={(next) => commit({ key: toSlugKey(next) })}
+              onCommit={(next) => commit({ key: next })}
+              transform={toSlugKey}
               placeholder={t("globalVariableAddon.keyPlaceholder", "Ex.: sell_bonus_pct")}
+              className={INPUT_CLASS}
             />
           </label>
           <label className="block">
@@ -138,10 +108,10 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
               {t("globalVariableAddon.displayNameLabel", "Nome exibido")}
             </span>
             <CommitTextInput
-              resetKey={`${addon.id}-displayName-${addon.displayName}`}
               value={addon.displayName}
               onCommit={(next) => commit({ displayName: next })}
               placeholder={t("globalVariableAddon.displayNamePlaceholder", "Ex.: Vende mais caro")}
+              className={INPUT_CLASS}
             />
           </label>
         </div>
@@ -203,11 +173,10 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
               />
             </div>
           ) : (
-            <input
-              type="number"
-              step="0.01"
+            <CommitNumberInput
               value={typeof addon.defaultValue === "number" ? addon.defaultValue : 0}
-              onChange={(event) => commit({ defaultValue: toNumberOrZero(event.target.value) })}
+              onCommit={(next) => commit({ defaultValue: next })}
+              step="0.01"
               className={INPUT_CLASS}
             />
           )}
@@ -218,10 +187,10 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
             {t("globalVariableAddon.notesLabel", "Observacoes")}
           </span>
           <CommitTextInput
-            resetKey={`${addon.id}-notes-${addon.notes || ""}`}
             value={addon.notes || ""}
             onCommit={(next) => commit({ notes: next || undefined })}
             placeholder={t("globalVariableAddon.notesPlaceholder", "Informacoes complementares desta variavel")}
+            className={INPUT_CLASS}
           />
         </label>
       </div>
