@@ -18,6 +18,7 @@ const ID_PREFIX: Record<SectionAddonType, string> = {
   attributeDefinitions: "attr-defs",
   attributeProfile: "attr-profile",
   attributeModifiers: "attr-modifiers",
+  fieldLibrary: "field-library",
   exportSchema: "export-schema",
   genericStats: "data-schema",
 };

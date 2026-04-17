@@ -5,6 +5,7 @@ import {
   createDefaultAttributeDefinitionsAddon,
   createDefaultAttributeModifiersAddon,
   createDefaultAttributeProfileAddon,
+  createDefaultFieldLibraryAddon,
   createDefaultCurrencyAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
@@ -21,6 +22,8 @@ import { AttributeModifiersAddonPanel } from "@/components/AttributeModifiersAdd
 import { AttributeModifiersAddonReadOnly } from "@/components/AttributeModifiersAddonReadOnly";
 import { AttributeProfileAddonPanel } from "@/components/AttributeProfileAddonPanel";
 import { AttributeProfileAddonReadOnly } from "@/components/AttributeProfileAddonReadOnly";
+import { FieldLibraryAddonPanel } from "@/components/FieldLibraryAddonPanel";
+import { FieldLibraryAddonReadOnly } from "@/components/FieldLibraryAddonReadOnly";
 import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
 import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
 import { CurrencyAddonPanel } from "@/components/CurrencyAddonPanel";
@@ -310,6 +313,29 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "inventory") return null;
       return React.createElement(InventoryAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+      });
+    },
+  },
+  {
+    type: "fieldLibrary",
+    label: "Biblioteca de Campos",
+    createDefault: () => {
+      const addonId = `field-library-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultFieldLibraryAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "fieldLibrary") return null;
+      return React.createElement(FieldLibraryAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "fieldLibrary") return null;
+      return React.createElement(FieldLibraryAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
       });

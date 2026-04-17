@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { DataSchemaAddonDraft, DataSchemaEntry, EconomyLinkAddonDraft, ProductionAddonDraft, SectionAddon } from "@/lib/addons/types";
+import type { DataSchemaAddonDraft, DataSchemaEntry, EconomyLinkAddonDraft, FieldLibraryAddonDraft, ProductionAddonDraft, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -105,6 +105,29 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
     return entry.value;
   };
 
+  const libraryEntriesById = useMemo(() => {
+    // Map: `${libraryAddonId}:${entryId}` → { key, label }
+    const map = new Map<string, { key: string; label: string }>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sa of section.addons || []) {
+          if (sa.type !== "fieldLibrary") continue;
+          const data = sa.data as FieldLibraryAddonDraft;
+          for (const e of data.entries || []) {
+            map.set(`${sa.id}:${e.id}`, { key: e.key, label: e.label || e.key });
+          }
+        }
+      }
+    }
+    return map;
+  }, [projects]);
+
+  const resolveEntryLabel = (entry: DataSchemaEntry): string => {
+    if (!entry.libraryRef) return entry.label || entry.key || "-";
+    const match = libraryEntriesById.get(`${entry.libraryRef.libraryAddonId}:${entry.libraryRef.entryId}`);
+    return match?.label || entry.label || entry.key || "-";
+  };
+
   const xpRefLabelBySectionId = useMemo(() => {
     const map = new Map<string, string>();
     for (const project of projects) {
@@ -196,7 +219,7 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
       ) : (
         <div className={`mt-2 space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
           {rows.map((entry) => {
-            const lineLabel = entry.label || entry.key || "-";
+            const lineLabel = resolveEntryLabel(entry);
             const linkedXpName = entry.unitXpRef ? xpRefLabelBySectionId.get(entry.unitXpRef) : undefined;
             return (
               <p key={entry.id} className="text-sm">

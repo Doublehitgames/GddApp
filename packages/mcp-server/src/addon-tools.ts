@@ -367,7 +367,21 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   };
   pair("attribute_modifiers", "attributeModifiers", "attribute modifiers (+10 STR, x1.5 DEX)", attrModsFields, optional(attrModsFields));
 
-  // ── 12. Export Schema ───────────────────────────────────────────
+  // ── 12. Field Library ───────────────────────────────────────────
+
+  const fieldLibraryEntrySchema = z.object({
+    id: z.string().optional().describe("Entry ID (auto-generated if omitted)"),
+    key: z.string().describe("Field key (e.g. sell_price). Used in the exported JSON."),
+    label: z.string().describe("Display name for the field"),
+    description: z.string().optional().describe("Optional description of what this field means"),
+  });
+
+  const fieldLibraryFields = {
+    entries: z.array(fieldLibraryEntrySchema).describe("Reusable field definitions"),
+  };
+  pair("field_library", "fieldLibrary", "field library (reusable field definitions for progression tables and data schemas)", fieldLibraryFields, optional(fieldLibraryFields));
+
+  // ── 13. Export Schema ───────────────────────────────────────────
 
   const exportSchemaNodeSchema: z.ZodTypeAny = z.lazy(() =>
     z.object({

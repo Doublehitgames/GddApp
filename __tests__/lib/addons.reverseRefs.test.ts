@@ -93,43 +93,6 @@ describe("collectReverseRefUpdates", () => {
       expect((bAddons[1].data as { definitionsRef: string }).definitionsRef).toBe("C");
     });
 
-    it("updates definitionsRef on progressionTable columns", () => {
-      const progTable: SectionAddon = {
-        id: "pt-1",
-        type: "progressionTable",
-        name: "T",
-        data: {
-          id: "pt-1",
-          name: "T",
-          startLevel: 1,
-          endLevel: 3,
-          columns: [
-            {
-              id: "c1",
-              name: "STR",
-              attributeRef: { definitionsRef: "A", attributeKey: "str" },
-            },
-          ],
-          rows: [],
-        },
-      };
-      const sections: Section[] = [
-        { id: "A", addons: [] },
-        { id: "B", addons: [progTable] },
-      ];
-      const { updatedSections, count } = collectReverseRefUpdates(
-        sections,
-        "attributeDefinitions",
-        "A",
-        "C"
-      );
-      expect(count).toBe(1);
-      const next = updatedSections.find((s) => s.id === "B")!.addons![0];
-      expect(next.type).toBe("progressionTable");
-      if (next.type === "progressionTable") {
-        expect(next.data.columns[0].attributeRef?.definitionsRef).toBe("C");
-      }
-    });
   });
 
   describe("currency", () => {

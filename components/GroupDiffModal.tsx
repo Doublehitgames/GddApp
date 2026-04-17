@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { SectionAddon, ExportSchemaAddonDraft } from "@/lib/addons/types";
 import { resolveExportSchema } from "@/lib/addons/exportSchemaResolver";
 import { diffJson, type DiffEntry } from "@/lib/addons/groupDiff";
+import { useProjectStore } from "@/store/projectStore";
 
 interface GroupDiffModalProps {
   addons: SectionAddon[];
@@ -30,13 +31,31 @@ export function GroupDiffModal({ addons, groups, sectionDataId, onClose }: Group
   const [groupA, setGroupA] = useState(groups[0] ?? "A");
   const [groupB, setGroupB] = useState(groups[1] ?? groups[0] ?? "A");
 
+  const projects = useProjectStore((s) => s.projects);
+  const globalFieldLibraries = useMemo<SectionAddon[]>(() => {
+    const out: SectionAddon[] = [];
+    const seen = new Set<string>();
+    for (const proj of projects) {
+      for (const sec of proj.sections ?? []) {
+        for (const sa of sec.addons ?? []) {
+          if (sa.type !== "fieldLibrary") continue;
+          if (seen.has(sa.id)) continue;
+          seen.add(sa.id);
+          out.push(sa);
+        }
+      }
+    }
+    return out;
+  }, [projects]);
+
   const resolveGroupJson = (group: string): Record<string, unknown> | null => {
     const gAddons = addons.filter((a) => ((a as any).group || "A") === group);
     const exportAddon = gAddons.find((a) => a.type === "exportSchema");
     if (!exportAddon) return null;
     const draft = exportAddon.data as ExportSchemaAddonDraft;
     const siblings = gAddons.filter((a) => a.id !== exportAddon.id);
-    return resolveExportSchema(draft.nodes, siblings, sectionDataId, draft.arrayFormat);
+    const pool = [...siblings, ...globalFieldLibraries.filter((lib) => !siblings.some((s) => s.id === lib.id))];
+    return resolveExportSchema(draft.nodes, pool, sectionDataId, draft.arrayFormat);
   };
 
   const jsonA = useMemo(() => resolveGroupJson(groupA), [addons, groupA, sectionDataId]);

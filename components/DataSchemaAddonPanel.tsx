@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -83,6 +83,32 @@ function stepFromDecimals(decimals: number): string {
   return `0.${"0".repeat(Math.max(0, safeDecimals - 1))}1`;
 }
 
+type LibraryFieldOption = {
+  libraryAddonId: string;
+  libraryName: string;
+  sectionTitle: string;
+  entryId: string;
+  key: string;
+  label: string;
+  description?: string;
+};
+
+function resolveEntryLabel(entry: DataSchemaEntry, options: LibraryFieldOption[]): string {
+  if (!entry.libraryRef) return entry.label;
+  const match = options.find(
+    (opt) => opt.libraryAddonId === entry.libraryRef!.libraryAddonId && opt.entryId === entry.libraryRef!.entryId
+  );
+  return match?.label ?? entry.label;
+}
+
+function resolveEntryKey(entry: DataSchemaEntry, options: LibraryFieldOption[]): string {
+  if (!entry.libraryRef) return entry.key;
+  const match = options.find(
+    (opt) => opt.libraryAddonId === entry.libraryRef!.libraryAddonId && opt.entryId === entry.libraryRef!.entryId
+  );
+  return match?.key ?? entry.key;
+}
+
 export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAddonPanelProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
@@ -98,7 +124,60 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     return null;
   }, [projects, addon.id]);
   const [collapsedEntries, setCollapsedEntries] = useState<Record<string, boolean>>({});
+  const [libraryPickerOpenEntryId, setLibraryPickerOpenEntryId] = useState<string | null>(null);
+  const libraryPickerRef = useRef<HTMLDivElement | null>(null);
   const entryIdSignature = useMemo(() => entries.map((entry) => entry.id).join("|"), [entries]);
+
+  const availableLibraryFields = useMemo<LibraryFieldOption[]>(() => {
+    const out: LibraryFieldOption[] = [];
+    const seenLibraryIds = new Set<string>();
+    for (const project of projects) {
+      for (const sec of project.sections || []) {
+        const sectionTitle = (sec as { title?: string; id: string }).title?.trim() || (sec as { id: string }).id;
+        for (const sectionAddon of (sec as { addons?: Array<{ id: string; type: string; name: string; data: Record<string, unknown> }> }).addons || []) {
+          if (sectionAddon.type !== "fieldLibrary") continue;
+          if (seenLibraryIds.has(sectionAddon.id)) continue;
+          seenLibraryIds.add(sectionAddon.id);
+          const libraryName = sectionAddon.name || (sectionAddon.data as { name?: string }).name || "Biblioteca";
+          const libEntries =
+            (sectionAddon.data as {
+              entries?: Array<{ id: string; key: string; label: string; description?: string }>;
+            }).entries || [];
+          for (const entry of libEntries) {
+            out.push({
+              libraryAddonId: sectionAddon.id,
+              libraryName,
+              sectionTitle,
+              entryId: entry.id,
+              key: entry.key,
+              label: entry.label || entry.key,
+              description: entry.description,
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }, [projects]);
+
+  useEffect(() => {
+    if (!libraryPickerOpenEntryId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLibraryPickerOpenEntryId(null);
+    };
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (libraryPickerRef.current?.contains(target)) return;
+      setLibraryPickerOpenEntryId(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [libraryPickerOpenEntryId]);
   const xpRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; decimals: number }> = [];
     const seen = new Set<string>();
@@ -393,6 +472,19 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     commit(entries.filter((entry) => entry.id !== entryId));
   };
 
+  const linkEntryToLibrary = (entryId: string, option: LibraryFieldOption) => {
+    updateEntry(entryId, {
+      libraryRef: { libraryAddonId: option.libraryAddonId, entryId: option.entryId },
+      key: option.key,
+      label: option.label,
+    });
+    setLibraryPickerOpenEntryId(null);
+  };
+
+  const unlinkEntryFromLibrary = (entryId: string) => {
+    updateEntry(entryId, { libraryRef: undefined });
+  };
+
   const toggleEntryCollapsed = (entryId: string) => {
     setCollapsedEntries((prev) => ({
       ...prev,
@@ -454,9 +546,11 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                 const effectiveValueType = isLinkedToPageDataId ? "string" : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
                 const supportsBoundsByType = effectiveValueType !== "boolean" && effectiveValueType !== "string";
                 const useBounds = supportsBoundsByType && (entry.min != null || entry.max != null);
+                const effectiveLabel = resolveEntryLabel(entry, availableLibraryFields);
+                const effectiveKey = resolveEntryKey(entry, availableLibraryFields);
                 const title =
-                  entry.label?.trim() ||
-                  entry.key?.trim() ||
+                  effectiveLabel?.trim() ||
+                  effectiveKey?.trim() ||
                   t("dataSchemaAddon.fallbackTitle", "Campo");
                 const unitRefSelectedKnown = entry.unitXpRef
                   ? xpRefOptions.some((item) => item.refId === entry.unitXpRef)
@@ -488,8 +582,9 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             </svg>
                           </span>
                           {title}
+                          {entry.libraryRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
                         </span>
-                        <span className="text-[10px] text-gray-400">{entry.key || "key"}</span>
+                        <span className="text-[10px] text-gray-400">{effectiveKey || "key"}</span>
                         <span
                           className="text-[11px] text-gray-300 transition-transform duration-200"
                           style={{ transform: collapsedEntries[entry.id] ? "rotate(0deg)" : "rotate(180deg)" }}
@@ -504,27 +599,121 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
                               {t("dataSchemaAddon.mainBlockLabel", "Identificação e valor")}
                             </p>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <label className="block">
-                                <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.labelLabel", "Nome")}</span>
-                                <CommitTextInput
-                                  value={entry.label}
-                                  onCommit={(next) => updateEntry(entry.id, { label: next })}
-                                  className={INPUT_CLASS}
-                                  placeholder={t("dataSchemaAddon.labelPlaceholder", "XP de colheita")}
-                                />
-                              </label>
-                              <label className="block">
-                                <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.keyLabel", "Chave")}</span>
-                                <CommitTextInput
-                                  value={entry.key}
-                                  onCommit={(next) => updateEntry(entry.id, { key: next })}
-                                  transform={normalizeKey}
-                                  className={INPUT_CLASS}
-                                  placeholder={t("dataSchemaAddon.keyPlaceholder", "harvest_xp")}
-                                />
-                              </label>
-                            </div>
+                            {entry.libraryRef ? (
+                              <div className="flex items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
+                                <span aria-hidden className="text-[10px]">📎</span>
+                                <span className="flex-1 truncate">
+                                  {resolveEntryLabel(entry, availableLibraryFields)}
+                                  <span className="ml-1 text-[10px] text-sky-400/80">
+                                    ({resolveEntryKey(entry, availableLibraryFields)})
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => unlinkEntryFromLibrary(entry.id)}
+                                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
+                                  aria-label={t("dataSchemaAddon.unlinkLibraryAriaLabel", "Desvincular da Biblioteca")}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <label className="block">
+                                  <span className="mb-1 block text-xs text-gray-400">{t("dataSchemaAddon.labelLabel", "Nome")}</span>
+                                  <CommitTextInput
+                                    value={entry.label}
+                                    onCommit={(next) => updateEntry(entry.id, { label: next })}
+                                    className={INPUT_CLASS}
+                                    placeholder={t("dataSchemaAddon.labelPlaceholder", "XP de colheita")}
+                                  />
+                                </label>
+                                <label className="block">
+                                  <span className="mb-1 flex items-center justify-between text-xs text-gray-400">
+                                    <span>{t("dataSchemaAddon.keyLabel", "Chave")}</span>
+                                    {availableLibraryFields.length > 0 && (
+                                      <div className="relative">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setLibraryPickerOpenEntryId((prev) => (prev === entry.id ? null : entry.id))
+                                          }
+                                          aria-label={t(
+                                            "dataSchemaAddon.linkLibraryAriaLabel",
+                                            "Vincular a Biblioteca de Campos"
+                                          )}
+                                          aria-expanded={libraryPickerOpenEntryId === entry.id}
+                                          title={t("dataSchemaAddon.linkLibraryButton", "Vincular à Biblioteca de Campos")}
+                                          className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-gray-600 bg-gray-800 text-[11px] text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+                                        >
+                                          📚
+                                        </button>
+                                        {libraryPickerOpenEntryId === entry.id && (
+                                          <div
+                                            ref={libraryPickerRef}
+                                            role="listbox"
+                                            aria-label={t(
+                                              "dataSchemaAddon.libraryPickerTitle",
+                                              "Selecionar campo da Biblioteca"
+                                            )}
+                                            className="absolute right-0 top-full z-20 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl normal-case"
+                                          >
+                                            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                              {t("dataSchemaAddon.libraryPickerTitle", "Selecionar campo da Biblioteca")}
+                                            </p>
+                                            {(() => {
+                                              const byLibrary = new Map<
+                                                string,
+                                                { libraryName: string; sectionTitle: string; entries: LibraryFieldOption[] }
+                                              >();
+                                              for (const opt of availableLibraryFields) {
+                                                const bucket = byLibrary.get(opt.libraryAddonId);
+                                                if (bucket) bucket.entries.push(opt);
+                                                else
+                                                  byLibrary.set(opt.libraryAddonId, {
+                                                    libraryName: opt.libraryName,
+                                                    sectionTitle: opt.sectionTitle,
+                                                    entries: [opt],
+                                                  });
+                                              }
+                                              return Array.from(byLibrary.entries()).map(([libId, group]) => (
+                                                <div key={libId} className="mb-1">
+                                                  <p className="px-2 py-1 text-[10px] font-semibold text-sky-300/80">
+                                                    <span className="text-gray-400">{group.sectionTitle}</span>
+                                                    <span className="mx-1 text-gray-500">→</span>
+                                                    <span>{group.libraryName}</span>
+                                                  </p>
+                                                  {group.entries.map((opt) => (
+                                                    <button
+                                                      key={`${opt.libraryAddonId}:${opt.entryId}`}
+                                                      type="button"
+                                                      role="option"
+                                                      onClick={() => linkEntryToLibrary(entry.id, opt)}
+                                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
+                                                      title={opt.description || undefined}
+                                                    >
+                                                      <span className="flex-1 truncate">{opt.label}</span>
+                                                      <span className="shrink-0 text-[10px] text-gray-500">{opt.key}</span>
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              ));
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </span>
+                                  <CommitTextInput
+                                    value={entry.key}
+                                    onCommit={(next) => updateEntry(entry.id, { key: next })}
+                                    transform={normalizeKey}
+                                    className={INPUT_CLASS}
+                                    placeholder={t("dataSchemaAddon.keyPlaceholder", "harvest_xp")}
+                                  />
+                                </label>
+                              </div>
+                            )}
                           </div>
                           {/* Binding type selector */}
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">

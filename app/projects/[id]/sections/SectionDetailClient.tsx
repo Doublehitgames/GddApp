@@ -1968,6 +1968,9 @@ function SectionDetailContent({
     if (type === "attributeModifiers") {
       return t("attributeModifiersAddon.addonTypeLabel", "Modificadores de Atributos");
     }
+    if (type === "fieldLibrary") {
+      return t("fieldLibraryAddon.addonTypeLabel", "Biblioteca de Campos");
+    }
     if (type === "exportSchema") {
       return t("exportSchemaAddon.addonTypeLabel", "Remote Config");
     }

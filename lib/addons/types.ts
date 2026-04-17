@@ -3,15 +3,28 @@ import type { BalanceAddonDraft } from "@/lib/balance/types";
 export type ProgressionTableColumn = {
   id: string;
   name: string;
-  attributeRef?: {
-    definitionsRef: string;
-    attributeKey: string;
+  libraryRef?: {
+    libraryAddonId: string;
+    entryId: string;
   };
   generator?: ProgressionColumnGenerator;
   decimals?: number;
   isPercentage?: boolean;
   min?: number;
   max?: number;
+};
+
+export type FieldLibraryEntry = {
+  id: string;
+  key: string;
+  label: string;
+  description?: string;
+};
+
+export type FieldLibraryAddonDraft = {
+  id: string;
+  name: string;
+  entries: FieldLibraryEntry[];
 };
 
 export type ProgressionColumnGenerator =
@@ -177,6 +190,11 @@ export type DataSchemaEntry = {
   id: string;
   key: string;
   label: string;
+  /** When linked, `key` and `label` are derived from the Field Library entry. */
+  libraryRef?: {
+    libraryAddonId: string;
+    entryId: string;
+  };
   valueType: DataSchemaValueType;
   value: number | boolean | string;
   min?: number;
@@ -309,6 +327,7 @@ export type SectionAddonType =
   | "attributeDefinitions"
   | "attributeProfile"
   | "attributeModifiers"
+  | "fieldLibrary"
   | "exportSchema"
   // legacy type kept for compatibility/migration
   | "genericStats";
@@ -402,6 +421,14 @@ export type AttributeModifiersSectionAddon = {
   data: AttributeModifiersAddonDraft;
 };
 
+export type FieldLibrarySectionAddon = {
+  id: string;
+  type: "fieldLibrary";
+  name: string;
+  group?: string;
+  data: FieldLibraryAddonDraft;
+};
+
 export type ExportSchemaSectionAddon = {
   id: string;
   type: "exportSchema";
@@ -431,6 +458,7 @@ export type SectionAddon =
   | AttributeDefinitionsSectionAddon
   | AttributeProfileSectionAddon
   | AttributeModifiersSectionAddon
+  | FieldLibrarySectionAddon
   | ExportSchemaSectionAddon
   | GenericStatsSectionAddon;
 
@@ -647,6 +675,27 @@ export function createDefaultAttributeModifiersAddon(addonId: string): Attribute
       id: addonId,
       name: "Modificadores de Atributos",
       modifiers: [],
+    },
+  };
+}
+
+export function createDefaultFieldLibraryAddon(addonId: string): FieldLibrarySectionAddon {
+  const now = Date.now();
+  return {
+    id: addonId,
+    type: "fieldLibrary",
+    name: "Biblioteca de Campos",
+    data: {
+      id: addonId,
+      name: "Biblioteca de Campos",
+      entries: [
+        {
+          id: `field-${now}-a`,
+          key: "field_key",
+          label: "Campo",
+          description: "",
+        },
+      ],
     },
   };
 }

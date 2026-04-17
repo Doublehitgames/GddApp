@@ -1,4 +1,5 @@
 import type {
+  FieldLibraryAddonDraft,
   ExportSchemaNode,
   ExportSchemaBinding,
   ExportSchemaArrayFormat,
@@ -16,7 +17,28 @@ type ResolveContext = {
   sectionDataId?: string;
   row?: ProgressionTableRow;
   arrayFormat?: ExportSchemaArrayFormat;
+  currentTable?: ProgressionTableAddonDraft;
 };
+
+function resolveColumnExportKey(
+  columnId: string,
+  table: ProgressionTableAddonDraft,
+  sectionAddons: SectionAddon[]
+): string | undefined {
+  const column = table.columns.find((c) => c.id === columnId);
+  if (!column) return undefined;
+  if (column.libraryRef) {
+    const lib = sectionAddons.find(
+      (a) => a.type === "fieldLibrary" && a.id === column.libraryRef!.libraryAddonId
+    );
+    if (lib) {
+      const data = lib.data as FieldLibraryAddonDraft;
+      const entry = data.entries.find((e) => e.id === column.libraryRef!.entryId);
+      if (entry?.key) return entry.key;
+    }
+  }
+  return undefined;
+}
 
 function findDataSchemaAddon(
   addons: SectionAddon[],
@@ -167,7 +189,24 @@ function resolveBinding(
 function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
   if (node.binding?.source === "dataSchema") {
     const entry = findDataSchemaEntry(ctx.sectionAddons, node.binding);
-    if (entry) return entry.key;
+    if (entry) {
+      // If entry is linked to a field library, use the library entry's key.
+      if (entry.libraryRef) {
+        const lib = ctx.sectionAddons.find(
+          (a) => a.type === "fieldLibrary" && a.id === entry.libraryRef!.libraryAddonId
+        );
+        if (lib) {
+          const libData = lib.data as FieldLibraryAddonDraft;
+          const libEntry = libData.entries.find((e) => e.id === entry.libraryRef!.entryId);
+          if (libEntry?.key) return libEntry.key;
+        }
+      }
+      return entry.key;
+    }
+  }
+  if (node.binding?.source === "rowColumn" && ctx.currentTable) {
+    const libKey = resolveColumnExportKey(node.binding.columnId, ctx.currentTable, ctx.sectionAddons);
+    if (libKey) return libKey;
   }
   return node.key;
 }
@@ -279,17 +318,18 @@ function resolveNode(
         node.arraySource.addonName
       );
       if (!table) return [];
+      const tableCtx = { ...ctx, currentTable: table };
       const format = ctx.arrayFormat ?? "rowMajor";
       switch (format) {
         case "columnMajor":
-          return buildColumnMajor(table, node.itemTemplate, ctx);
+          return buildColumnMajor(table, node.itemTemplate, tableCtx);
         case "keyedByLevel":
-          return buildKeyedByLevel(table, node.itemTemplate, ctx);
+          return buildKeyedByLevel(table, node.itemTemplate, tableCtx);
         case "matrix":
-          return buildMatrix(table, node.itemTemplate, ctx);
+          return buildMatrix(table, node.itemTemplate, tableCtx);
         case "rowMajor":
         default:
-          return buildRowMajor(table, node.itemTemplate, ctx);
+          return buildRowMajor(table, node.itemTemplate, tableCtx);
       }
     }
 

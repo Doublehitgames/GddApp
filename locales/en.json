@@ -643,11 +643,10 @@
     "autoIntervalToLabel": "Value at Lv {level}",
     "autoIntervalApply": "Apply",
     "autoIntervalCancel": "Cancel",
-    "linkAttributeButton": "Link attribute",
-    "linkAttributeAriaLabel": "Link to attribute",
-    "unlinkAttributeAriaLabel": "Unlink attribute",
-    "attributePickerTitle": "Select attribute",
-    "autoIntervalLinkedHint": "Value from attribute profile",
+    "linkLibraryButton": "Link to Field Library",
+    "linkLibraryAriaLabel": "Link to Field Library",
+    "unlinkLibraryAriaLabel": "Unlink from Library",
+    "libraryPickerTitle": "Select field from Library",
     "overrideCount": "{count} manual",
     "resetOverrideAriaLabel": "Reset to generated value",
     "resetAllOverridesButton": "↺ Reset",
@@ -667,7 +666,7 @@
       "hasNonNumeric": "There are non-numeric values (NaN) in this column.",
       "hasNegative": "There are negative values in this column.",
       "invalidBias": "Curve bias must be greater than zero. Falling back to 1.0.",
-      "brokenAttributeRef": "The linked attribute was not found. Using the last saved name as fallback.",
+      "brokenLibraryRef": "The linked library field was not found. Using the last saved name as fallback.",
       "autoIntervalExpNeedsPositive": "Exponential requires both values to share the same sign and be different from zero.",
       "autoIntervalRangeTooSmall": "End level must be greater than start level.",
       "autoIntervalInvalidValues": "Invalid values."
@@ -817,6 +816,28 @@
     "readOnlyLabelKey": "Label / Key",
     "readOnlyValue": "Value",
     "readOnlyTypeUnit": "Type / Unit",
+    "validation": {
+      "keyRequired": "Key is required.",
+      "keyUnique": "Key must be unique."
+    }
+  },
+  "fieldLibraryAddon": {
+    "addonTypeLabel": "Field Library",
+    "defaultName": "Field Library",
+    "addEntryButton": "+ Field",
+    "newEntryLabel": "New field",
+    "emptyState": "No fields defined yet.",
+    "fallbackTitle": "Field",
+    "dragAria": "Drag block",
+    "helpText": "Define reusable fields here. In a Progression Table or Data Schema, link a field to a library entry to inherit its name and key.",
+    "labelLabel": "Name",
+    "labelPlaceholder": "Sell Price",
+    "keyLabel": "Key",
+    "keyPlaceholder": "sell_price",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "What this field means in the game...",
+    "removeEntryButton": "Remove field",
+    "readOnlyEmpty": "No fields defined.",
     "validation": {
       "keyRequired": "Key is required.",
       "keyUnique": "Key must be unique."

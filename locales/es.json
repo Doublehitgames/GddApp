@@ -643,11 +643,10 @@
     "autoIntervalToLabel": "Valor en Lv {level}",
     "autoIntervalApply": "Aplicar",
     "autoIntervalCancel": "Cancelar",
-    "linkAttributeButton": "Vincular atributo",
-    "linkAttributeAriaLabel": "Vincular a atributo",
-    "unlinkAttributeAriaLabel": "Desvincular atributo",
-    "attributePickerTitle": "Seleccionar atributo",
-    "autoIntervalLinkedHint": "Valor del perfil de atributos",
+    "linkLibraryButton": "Vincular a la Biblioteca de Campos",
+    "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
+    "unlinkLibraryAriaLabel": "Desvincular de la Biblioteca",
+    "libraryPickerTitle": "Seleccionar campo de la Biblioteca",
     "overrideCount": "{count} manual(es)",
     "resetOverrideAriaLabel": "Resetear al valor generado",
     "resetAllOverridesButton": "↺ Resetear",
@@ -667,7 +666,7 @@
       "hasNonNumeric": "Hay valores no numericos (NaN) en esta columna.",
       "hasNegative": "Hay valores negativos en esta columna.",
       "invalidBias": "Curvatura debe ser mayor que cero. Usando 1.0 como fallback.",
-      "brokenAttributeRef": "El atributo vinculado no fue encontrado. Usando el ultimo nombre guardado como fallback.",
+      "brokenLibraryRef": "El campo vinculado a la Biblioteca no fue encontrado. Usando el ultimo nombre guardado como fallback.",
       "autoIntervalExpNeedsPositive": "Exponencial requiere ambos valores con el mismo signo y diferentes de cero.",
       "autoIntervalRangeTooSmall": "El nivel final debe ser mayor que el inicial.",
       "autoIntervalInvalidValues": "Valores invalidos."
@@ -817,6 +816,28 @@
     "readOnlyLabelKey": "Nombre / Clave",
     "readOnlyValue": "Valor",
     "readOnlyTypeUnit": "Tipo / Unidad",
+    "validation": {
+      "keyRequired": "La clave es obligatoria.",
+      "keyUnique": "La clave debe ser única."
+    }
+  },
+  "fieldLibraryAddon": {
+    "addonTypeLabel": "Biblioteca de Campos",
+    "defaultName": "Biblioteca de Campos",
+    "addEntryButton": "+ Campo",
+    "newEntryLabel": "Nuevo campo",
+    "emptyState": "Ningún campo definido aún.",
+    "fallbackTitle": "Campo",
+    "dragAria": "Arrastrar bloque",
+    "helpText": "Define campos reutilizables aquí. En una Tabla de Balance o Esquema de Datos, vincula un campo a una entrada de esta biblioteca para heredar nombre y clave.",
+    "labelLabel": "Nombre",
+    "labelPlaceholder": "Precio de Venta",
+    "keyLabel": "Clave",
+    "keyPlaceholder": "sell_price",
+    "descriptionLabel": "Descripción (opcional)",
+    "descriptionPlaceholder": "Para qué sirve este campo en el juego...",
+    "removeEntryButton": "Quitar campo",
+    "readOnlyEmpty": "Ningún campo definido.",
     "validation": {
       "keyRequired": "La clave es obligatoria.",
       "keyUnique": "La clave debe ser única."

@@ -57,59 +57,27 @@ const FORMULA_CHEATSHEET_EXAMPLES = [
   { label: "Ajuste por nível", expression: "base + level * 0.5" },
 ];
 
-type AvailableAttribute = {
-  definitionsRef: string;
+type LibraryColumnOption = {
+  libraryAddonId: string;
+  libraryName: string;
+  sectionTitle: string;
+  entryId: string;
   key: string;
   label: string;
-  profileLabel: string;
-  valueType: "int" | "float" | "percent" | "boolean";
-  defaultValue: number | boolean;
-  profileValue?: number | boolean; // value set in the profile (overrides defaultValue for base)
-  min?: number;
-  max?: number;
-  unit?: string;
-};
-
-type AttributeOverrides = {
-  min?: number;
-  max?: number;
-  decimals: number;
-  isPercentage: boolean;
-  base?: number;
+  description?: string;
 };
 
 function resolveColumnDisplayName(
   column: ProgressionTableColumn,
-  availableAttributes: AvailableAttribute[]
+  availableLibraryColumns: LibraryColumnOption[]
 ): string {
-  if (!column.attributeRef) return column.name;
-  const match = availableAttributes.find(
-    (attr) =>
-      attr.definitionsRef === column.attributeRef!.definitionsRef &&
-      attr.key === column.attributeRef!.attributeKey
+  if (!column.libraryRef) return column.name;
+  const match = availableLibraryColumns.find(
+    (entry) =>
+      entry.libraryAddonId === column.libraryRef!.libraryAddonId &&
+      entry.entryId === column.libraryRef!.entryId
   );
   return match?.label ?? column.name;
-}
-
-function resolveAttributeOverrides(
-  column: ProgressionTableColumn,
-  availableAttributes: AvailableAttribute[]
-): AttributeOverrides | null {
-  if (!column.attributeRef) return null;
-  const match = availableAttributes.find(
-    (attr) =>
-      attr.definitionsRef === column.attributeRef!.definitionsRef &&
-      attr.key === column.attributeRef!.attributeKey
-  );
-  if (!match) return null;
-  const baseValue = match.profileValue ?? match.defaultValue;
-  return {
-    min: match.min,
-    max: match.max,
-    decimals: match.valueType === "int" ? 0 : 2,
-    isPercentage: match.valueType === "percent",
-    base: typeof baseValue === "number" ? baseValue : undefined,
-  };
 }
 
 interface ProgressionTableAddonPanelProps {
@@ -285,22 +253,22 @@ function getColumnWarnings(
   rows: ProgressionTableRow[],
   columns: ProgressionTableColumn[],
   t: (key: string, fallback?: string) => string,
-  availableAttributes?: AvailableAttribute[]
+  availableLibraryColumns?: LibraryColumnOption[]
 ): string[] {
   const warnings: string[] = [];
 
-  // Broken attribute reference
-  if (column.attributeRef && availableAttributes) {
-    const found = availableAttributes.some(
-      (attr) =>
-        attr.definitionsRef === column.attributeRef!.definitionsRef &&
-        attr.key === column.attributeRef!.attributeKey
+  // Broken library reference
+  if (column.libraryRef && availableLibraryColumns) {
+    const found = availableLibraryColumns.some(
+      (entry) =>
+        entry.libraryAddonId === column.libraryRef!.libraryAddonId &&
+        entry.entryId === column.libraryRef!.entryId
     );
     if (!found) {
       warnings.push(
         t(
-          "progressionTableAddon.warnings.brokenAttributeRef",
-          "O atributo vinculado nao foi encontrado. Usando o ultimo nome salvo como fallback."
+          "progressionTableAddon.warnings.brokenLibraryRef",
+          "A coluna vinculada à Biblioteca não foi encontrada. Usando o último nome salvo como fallback."
         )
       );
     }
@@ -426,99 +394,47 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [autoIntervalDrafts, setAutoIntervalDrafts] = useState<Record<string, { from: string; to: string }>>({});
   const autoIntervalPopoverRef = useRef<HTMLDivElement | null>(null);
   const autoIntervalButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [attrPickerOpenColumnId, setAttrPickerOpenColumnId] = useState<string | null>(null);
-  const attrPickerRef = useRef<HTMLDivElement | null>(null);
+  const [libraryPickerOpenColumnId, setLibraryPickerOpenColumnId] = useState<string | null>(null);
+  const libraryPickerRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Attribute linking: resolve profiles from the current section ──
+  // ── Library linking: collect entries from every fieldLibrary addon in the project ──
   const projects = useProjectStore((state) => state.projects);
-  const availableAttributes = useMemo<AvailableAttribute[]>(() => {
-    // 1. Find the section that owns this addon
-    let currentSectionAddons: Array<{ type: string; name: string; data: Record<string, unknown> }> = [];
+  const availableLibraryColumns = useMemo<LibraryColumnOption[]>(() => {
+    const out: LibraryColumnOption[] = [];
+    const seenLibraryIds = new Set<string>();
     for (const project of projects) {
       for (const section of project.sections || []) {
+        const sectionTitle = (section as { title?: string; id: string }).title?.trim() || (section as { id: string }).id;
         for (const sectionAddon of (section as { addons?: Array<{ id: string; type: string; name: string; data: Record<string, unknown> }> }).addons || []) {
-          if (sectionAddon.id === addon.id || sectionAddon.data?.id === addon.id) {
-            currentSectionAddons = (section as { addons?: Array<{ type: string; name: string; data: Record<string, unknown> }> }).addons || [];
+          if (sectionAddon.type !== "fieldLibrary") continue;
+          if (seenLibraryIds.has(sectionAddon.id)) continue;
+          seenLibraryIds.add(sectionAddon.id);
+          const libraryName = sectionAddon.name || (sectionAddon.data as { name?: string }).name || "Biblioteca";
+          const entries =
+            (sectionAddon.data as {
+              entries?: Array<{ id: string; key: string; label: string; description?: string }>;
+            }).entries || [];
+          for (const entry of entries) {
+            out.push({
+              libraryAddonId: sectionAddon.id,
+              libraryName,
+              sectionTitle,
+              entryId: entry.id,
+              key: entry.key,
+              label: entry.label || entry.key,
+              description: entry.description,
+            });
           }
         }
       }
     }
-    // 2. Collect attribute profiles from this section (including their stored values)
-    type ProfileRef = {
-      profileLabel: string;
-      definitionsRef: string;
-      values: Array<{ attributeKey: string; value: number | boolean }>;
-    };
-    const profileRefs: ProfileRef[] = [];
-    for (const sa of currentSectionAddons) {
-      if (sa.type !== "attributeProfile") continue;
-      const defRef = (sa.data as { definitionsRef?: string }).definitionsRef;
-      if (!defRef) continue;
-      const values = (sa.data as { values?: Array<{ attributeKey: string; value: number | boolean }> }).values || [];
-      profileRefs.push({
-        profileLabel: sa.name || (sa.data as { name?: string }).name || "Profile",
-        definitionsRef: defRef,
-        values,
-      });
-    }
-    if (profileRefs.length === 0) return [];
-    // 3. Resolve definitions for each profile's definitionsRef
-    const attrs: AvailableAttribute[] = [];
-    for (const { profileLabel, definitionsRef, values: profileValues } of profileRefs) {
-      for (const project of projects) {
-        for (const section of project.sections || []) {
-          if (section.id !== definitionsRef) continue;
-          for (const sectionAddon of (section as { addons?: Array<{ type: string; data: Record<string, unknown> }> }).addons || []) {
-            if (sectionAddon.type !== "attributeDefinitions") continue;
-            const definitions = (sectionAddon.data as { attributes?: Array<{ key: string; label: string; valueType?: string; defaultValue?: number | boolean; min?: number; max?: number; unit?: string }> }).attributes || [];
-            for (const def of definitions) {
-              const profileEntry = profileValues.find((v) => v.attributeKey === def.key);
-              attrs.push({
-                definitionsRef,
-                key: def.key,
-                label: def.label || def.key,
-                profileLabel,
-                valueType: (def.valueType as AvailableAttribute["valueType"]) || "int",
-                defaultValue: def.defaultValue ?? 0,
-                profileValue: profileEntry?.value,
-                min: def.min,
-                max: def.max,
-                unit: def.unit,
-              });
-            }
-          }
-        }
-      }
-    }
-    return attrs;
-  }, [projects, addon.id]);
+    return out;
+  }, [projects]);
 
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
-  // resolvedColumns applies live attribute overrides (min, max, decimals, isPercentage, base)
-  const resolvedColumns = useMemo(
-    () =>
-      columns.map((col) => {
-        const overrides = resolveAttributeOverrides(col, availableAttributes);
-        if (!overrides) return col;
-        let generator = col.generator;
-        if (
-          overrides.base != null &&
-          generator &&
-          (generator.mode === "linear" || generator.mode === "exponential")
-        ) {
-          generator = { ...generator, base: overrides.base };
-        }
-        return {
-          ...col,
-          min: overrides.min,
-          max: overrides.max,
-          decimals: overrides.decimals,
-          isPercentage: overrides.isPercentage,
-          generator,
-        };
-      }),
-    [columns, availableAttributes]
-  );
+  // No more attribute overrides — `resolvedColumns` is just the raw columns.
+  // Kept as alias to minimize churn at call sites.
+  const resolvedColumns = columns;
   const startLevel = Math.max(1, Math.floor(addon.startLevel || 1));
   const endLevel = Math.max(startLevel, Math.floor(addon.endLevel || startLevel));
   const rows = remapRows(addon.rows || [], columns, startLevel, endLevel);
@@ -625,43 +541,43 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     }
   };
 
-  const linkColumnToAttribute = (columnId: string, attr: AvailableAttribute) => {
+  const linkColumnToLibrary = (columnId: string, entry: LibraryColumnOption) => {
     const nextColumns = columns.map((column) =>
       column.id === columnId
         ? {
             ...column,
-            name: attr.label,
-            attributeRef: { definitionsRef: attr.definitionsRef, attributeKey: attr.key },
+            name: entry.label,
+            libraryRef: { libraryAddonId: entry.libraryAddonId, entryId: entry.entryId },
           }
         : column
     );
     commit({ columns: nextColumns, rows: remapRows(rows, nextColumns, startLevel, endLevel) });
-    setColumnNameDrafts((prev) => ({ ...prev, [columnId]: attr.label }));
-    setAttrPickerOpenColumnId(null);
+    setColumnNameDrafts((prev) => ({ ...prev, [columnId]: entry.label }));
+    setLibraryPickerOpenColumnId(null);
   };
 
-  const unlinkColumnFromAttribute = (columnId: string) => {
+  const unlinkColumnFromLibrary = (columnId: string) => {
     const column = columns.find((c) => c.id === columnId);
     if (!column) return;
-    const displayName = resolveColumnDisplayName(column, availableAttributes);
+    const displayName = resolveColumnDisplayName(column, availableLibraryColumns);
     const nextColumns = columns.map((col) =>
-      col.id === columnId ? { ...col, name: displayName, attributeRef: undefined } : col
+      col.id === columnId ? { ...col, name: displayName, libraryRef: undefined } : col
     );
     commit({ columns: nextColumns, rows: remapRows(rows, nextColumns, startLevel, endLevel) });
     setColumnNameDrafts((prev) => ({ ...prev, [columnId]: displayName }));
   };
 
-  // Close attribute picker on click outside or Escape
+  // Close library picker on click outside or Escape
   useEffect(() => {
-    if (!attrPickerOpenColumnId) return;
+    if (!libraryPickerOpenColumnId) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAttrPickerOpenColumnId(null);
+      if (e.key === "Escape") setLibraryPickerOpenColumnId(null);
     };
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
-      if (attrPickerRef.current?.contains(target)) return;
-      setAttrPickerOpenColumnId(null);
+      if (libraryPickerRef.current?.contains(target)) return;
+      setLibraryPickerOpenColumnId(null);
     };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("pointerdown", handlePointerDown);
@@ -669,7 +585,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [attrPickerOpenColumnId]);
+  }, [libraryPickerOpenColumnId]);
 
   const commitFormulaExpression = (columnId: string) => {
     const column = columns.find((item) => item.id === columnId);
@@ -1200,19 +1116,15 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     // Generate values with the new params
     const remapped = remapRows(rows, nextColumns, startLevel, endLevel);
     const targetCol = nextColumns.find((c) => c.id === columnId)!;
-    const effOverrides = resolveAttributeOverrides(targetCol, availableAttributes);
     const generated = generateProgressionColumnValues({
       rows: remapped,
       columnId,
       startLevel,
       endLevel,
       generator: targetCol.generator!,
-      decimals: effOverrides?.decimals ?? targetCol.decimals,
+      decimals: targetCol.decimals,
     });
-    const bounds = normalizeBounds(
-      effOverrides?.min ?? targetCol.min,
-      effOverrides?.max ?? targetCol.max,
-    );
+    const bounds = normalizeBounds(targetCol.min, targetCol.max);
     const clamped = applyColumnClamp({ rows: generated, columnId, min: bounds.min, max: bounds.max });
 
     commit({ rows: clamped, columns: nextColumns, startLevel, endLevel });
@@ -1330,10 +1242,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
             {columns.map((column) => (
               <SortableColumnBlock key={column.id} id={column.id}>
                 {(() => {
-                  const warnings = getColumnWarnings(column, rows, columns, t, availableAttributes);
+                  const warnings = getColumnWarnings(column, rows, columns, t, availableLibraryColumns);
                   const rc = resolvedColumns.find((c) => c.id === column.id) ?? column;
-                  const attrOverrides = resolveAttributeOverrides(column, availableAttributes);
-                  const isLinked = Boolean(attrOverrides);
+                  // (libraryRef state used inline via column.libraryRef)
                   const startRow = rows.find((row) => row.level === startLevel);
                   const endRow = rows.find((row) => row.level === endLevel);
                   const startValue = startRow?.values[column.id];
@@ -1362,8 +1273,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <circle cx="12" cy="15" r="1.5" />
                         </svg>
                       </span>
-                      {resolveColumnDisplayName(column, availableAttributes) || t("progressionTableAddon.columnFallback", "Coluna")}
-                      {column.attributeRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
+                      {resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")}
+                      {column.libraryRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
                     </span>
                     <span className="text-[10px] text-gray-400">
                       {t("progressionTableAddon.levelPrefix", "Lv")} {startLevel} {"->"} {t("progressionTableAddon.levelPrefix", "Lv")}{" "}
@@ -1381,17 +1292,17 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                     <div className="space-y-3">
                       <div className="space-y-2 rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                         <div className="flex items-center gap-2">
-                          {column.attributeRef ? (
+                          {column.libraryRef ? (
                             <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
                               <span aria-hidden className="text-[10px]">📎</span>
                               <span className="flex-1 truncate">
-                                {resolveColumnDisplayName(column, availableAttributes)}
+                                {resolveColumnDisplayName(column, availableLibraryColumns)}
                               </span>
                               <button
                                 type="button"
-                                onClick={() => unlinkColumnFromAttribute(column.id)}
+                                onClick={() => unlinkColumnFromLibrary(column.id)}
                                 className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
-                                aria-label={t("progressionTableAddon.unlinkAttributeAriaLabel", "Desvincular atributo")}
+                                aria-label={t("progressionTableAddon.unlinkLibraryAriaLabel", "Desvincular da Biblioteca")}
                               >
                                 ✕
                               </button>
@@ -1411,50 +1322,76 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 onKeyDown={blurOnEnterKey}
                                 className={`${INPUT_CLASS} flex-1`}
                               />
-                              {availableAttributes.length > 0 && (
+                              {availableLibraryColumns.length > 0 && (
                                 <>
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      setAttrPickerOpenColumnId((prev) =>
+                                      setLibraryPickerOpenColumnId((prev) =>
                                         prev === column.id ? null : column.id
                                       )
                                     }
                                     aria-label={t(
-                                      "progressionTableAddon.linkAttributeAriaLabel",
-                                      "Vincular a atributo"
+                                      "progressionTableAddon.linkLibraryAriaLabel",
+                                      "Vincular a Biblioteca de Colunas"
                                     )}
-                                    aria-expanded={attrPickerOpenColumnId === column.id}
+                                    aria-expanded={libraryPickerOpenColumnId === column.id}
                                     className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-gray-600 bg-gray-800 text-sm text-gray-300 hover:bg-gray-700 hover:text-gray-100"
-                                    title={t("progressionTableAddon.linkAttributeButton", "Vincular atributo")}
+                                    title={t("progressionTableAddon.linkLibraryButton", "Vincular à Biblioteca de Colunas")}
                                   >
-                                    🔗
+                                    📚
                                   </button>
-                                  {attrPickerOpenColumnId === column.id && (
+                                  {libraryPickerOpenColumnId === column.id && (
                                     <div
-                                      ref={attrPickerRef}
+                                      ref={libraryPickerRef}
                                       role="listbox"
                                       aria-label={t(
-                                        "progressionTableAddon.attributePickerTitle",
-                                        "Selecionar atributo"
+                                        "progressionTableAddon.libraryPickerTitle",
+                                        "Selecionar coluna da Biblioteca"
                                       )}
-                                      className="absolute right-0 top-full z-20 mt-1 w-64 max-h-52 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl"
+                                      className="absolute right-0 top-full z-20 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl"
                                     >
                                       <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                                        {t("progressionTableAddon.attributePickerTitle", "Selecionar atributo")}
+                                        {t("progressionTableAddon.libraryPickerTitle", "Selecionar coluna da Biblioteca")}
                                       </p>
-                                      {availableAttributes.map((attr) => (
-                                        <button
-                                          key={`${attr.definitionsRef}:${attr.key}`}
-                                          type="button"
-                                          role="option"
-                                          onClick={() => linkColumnToAttribute(column.id, attr)}
-                                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
-                                        >
-                                          <span className="flex-1 truncate">{attr.label}</span>
-                                          <span className="shrink-0 text-[10px] text-gray-500">{attr.key}</span>
-                                        </button>
-                                      ))}
+                                      {(() => {
+                                        // Group by library
+                                        const byLibrary = new Map<string, { libraryName: string; sectionTitle: string; entries: LibraryColumnOption[] }>();
+                                        for (const entry of availableLibraryColumns) {
+                                          const bucket = byLibrary.get(entry.libraryAddonId);
+                                          if (bucket) {
+                                            bucket.entries.push(entry);
+                                          } else {
+                                            byLibrary.set(entry.libraryAddonId, {
+                                              libraryName: entry.libraryName,
+                                              sectionTitle: entry.sectionTitle,
+                                              entries: [entry],
+                                            });
+                                          }
+                                        }
+                                        return Array.from(byLibrary.entries()).map(([libId, group]) => (
+                                          <div key={libId} className="mb-1">
+                                            <p className="px-2 py-1 text-[10px] font-semibold text-sky-300/80">
+                                              <span className="text-gray-400">{group.sectionTitle}</span>
+                                              <span className="mx-1 text-gray-500">→</span>
+                                              <span>{group.libraryName}</span>
+                                            </p>
+                                            {group.entries.map((entry) => (
+                                              <button
+                                                key={`${entry.libraryAddonId}:${entry.entryId}`}
+                                                type="button"
+                                                role="option"
+                                                onClick={() => linkColumnToLibrary(column.id, entry)}
+                                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
+                                                title={entry.description || undefined}
+                                              >
+                                                <span className="flex-1 truncate">{entry.label}</span>
+                                                <span className="shrink-0 text-[10px] text-gray-500">{entry.key}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        ));
+                                      })()}
                                     </div>
                                   )}
                                 </>
@@ -1495,9 +1432,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               const mode = column.generator.mode;
                               const isOpen = autoIntervalOpenColumnId === column.id;
                               const draft = autoIntervalDrafts[column.id] ?? { from: "", to: "" };
-                              // When linked, Lv1 value comes from the profile (locked)
-                              const linkedBase = attrOverrides?.base;
-                              const fromStr = linkedBase != null ? String(linkedBase) : draft.from;
+                              const fromStr = draft.from;
                               const hasBothValues = fromStr.trim().length > 0 && draft.to.trim().length > 0;
                               const result = hasBothValues
                                 ? computeAutoInterval(
@@ -1557,27 +1492,19 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                           <input
                                             type="text"
                                             inputMode="decimal"
-                                            autoFocus={linkedBase == null}
-                                            value={linkedBase != null ? String(linkedBase) : draft.from}
+                                            autoFocus
+                                            value={draft.from}
                                             onChange={(e) =>
-                                              linkedBase == null
-                                                ? updateAutoIntervalDraft(column.id, { from: e.target.value })
-                                                : undefined
+                                              updateAutoIntervalDraft(column.id, { from: e.target.value })
                                             }
-                                            disabled={linkedBase != null}
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter" && canApply) {
                                                 e.preventDefault();
                                                 applyAutoInterval(column.id);
                                               }
                                             }}
-                                            className={`${INPUT_CLASS} ${linkedBase != null ? "opacity-60" : ""}`}
+                                            className={INPUT_CLASS}
                                           />
-                                          {linkedBase != null && (
-                                            <p className="mt-0.5 text-[10px] text-sky-300/70">
-                                              📎 {t("progressionTableAddon.autoIntervalLinkedHint", "Valor do perfil de atributos")}
-                                            </p>
-                                          )}
                                         </label>
                                         <label className="block">
                                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
@@ -1635,7 +1562,6 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.decimalsLabel", "Casas decimais")}
-                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <CommitNumberInput
                               value={rc.decimals ?? 0}
@@ -1644,19 +1570,16 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               max={6}
                               step={1}
                               integer
-                              disabled={isLinked}
-                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
+                              className={INPUT_CLASS}
                             />
                           </label>
                           <div className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.percentageLabel", "Percentual (%)")}
-                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <ToggleSwitch
                               checked={Boolean(rc.isPercentage)}
                               onChange={(next) => updateColumnPercentage(column.id, next)}
-                              disabled={isLinked}
                               ariaLabel={t("progressionTableAddon.percentageLabel", "Percentual (%)")}
                             />
                           </div>
@@ -1665,27 +1588,23 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.minLabel", "Minimo")}
-                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <CommitOptionalNumberInput
                               value={rc.min}
                               onCommit={(next) => updateColumnBounds(column.id, "min", next == null ? "" : String(next))}
-                              disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
-                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
+                              className={INPUT_CLASS}
                             />
                           </label>
                           <label className="block">
                             <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                               {t("progressionTableAddon.maxLabel", "Maximo")}
-                              {isLinked && <span className="ml-1 text-sky-400/80">📎</span>}
                             </span>
                             <CommitOptionalNumberInput
                               value={rc.max}
                               onCommit={(next) => updateColumnBounds(column.id, "max", next == null ? "" : String(next))}
-                              disabled={isLinked}
                               placeholder={t("progressionTableAddon.noLimitPlaceholder", "Sem limite")}
-                              className={`${INPUT_CLASS} ${isLinked ? "opacity-60" : ""}`}
+                              className={INPUT_CLASS}
                             />
                           </label>
                         </div>
@@ -1696,15 +1615,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.baseLabel", "Base")}
-                                  {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
                                 <CommitNumberInput
                                   value={rc.generator?.mode === "linear" ? rc.generator.base : 0}
                                   onCommit={(next) =>
                                     updateColumnGeneratorParams(column.id, { base: next })
                                   }
-                                  disabled={isLinked && attrOverrides?.base != null}
-                                  className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
+                                  className={INPUT_CLASS}
                                 />
                               </label>
                               <label className="block">
@@ -1814,15 +1731,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                                   {t("progressionTableAddon.baseLabel", "Base")}
-                                  {isLinked && attrOverrides?.base != null && <span className="ml-1 text-sky-400/80">📎</span>}
                                 </span>
                                 <CommitNumberInput
                                   value={rc.generator?.mode === "exponential" ? rc.generator.base : 1}
                                   onCommit={(next) =>
                                     updateColumnGeneratorParams(column.id, { base: next })
                                   }
-                                  disabled={isLinked && attrOverrides?.base != null}
-                                  className={`${INPUT_CLASS} ${isLinked && attrOverrides?.base != null ? "opacity-60" : ""}`}
+                                  className={INPUT_CLASS}
                                 />
                               </label>
                               <label className="block">
@@ -2171,7 +2086,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 <th className="px-3 py-2">{t("progressionTableAddon.levelHeader", "Level")}</th>
                                 <th className="px-3 py-2">
                                   <div className="flex items-center gap-2">
-                                    <span>{resolveColumnDisplayName(column, availableAttributes) || t("progressionTableAddon.columnFallback", "Coluna")}</span>
+                                    <span>{resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")}</span>
                                     {(() => {
                                       const count = getOverrideCount(column.id);
                                       if (count === 0 || (column.generator?.mode ?? "manual") === "manual") return null;

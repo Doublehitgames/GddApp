@@ -285,24 +285,6 @@ const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = 
       }
       return addon;
     }
-    if (addon.type === "progressionTable") {
-      const columns = addon.data.columns;
-      if (!Array.isArray(columns)) return addon;
-      let changed = false;
-      const nextColumns = columns.map((col) => {
-        if (col.attributeRef?.definitionsRef === from) {
-          changed = true;
-          bump();
-          return {
-            ...col,
-            attributeRef: { ...col.attributeRef, definitionsRef: to },
-          };
-        }
-        return col;
-      });
-      if (!changed) return addon;
-      return { ...addon, data: { ...addon.data, columns: nextColumns } };
-    }
     return addon;
   },
 };

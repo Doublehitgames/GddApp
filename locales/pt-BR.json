@@ -643,11 +643,10 @@
     "autoIntervalToLabel": "Valor no Lv {level}",
     "autoIntervalApply": "Aplicar",
     "autoIntervalCancel": "Cancelar",
-    "linkAttributeButton": "Vincular atributo",
-    "linkAttributeAriaLabel": "Vincular a atributo",
-    "unlinkAttributeAriaLabel": "Desvincular atributo",
-    "attributePickerTitle": "Selecionar atributo",
-    "autoIntervalLinkedHint": "Valor do perfil de atributos",
+    "linkLibraryButton": "Vincular à Biblioteca de Campos",
+    "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
+    "unlinkLibraryAriaLabel": "Desvincular da Biblioteca",
+    "libraryPickerTitle": "Selecionar campo da Biblioteca",
     "overrideCount": "{count} manual(is)",
     "resetOverrideAriaLabel": "Resetar ao valor gerado",
     "resetAllOverridesButton": "↺ Resetar",
@@ -667,7 +666,7 @@
       "hasNonNumeric": "Ha valores nao numericos (NaN) nesta coluna.",
       "hasNegative": "Ha valores negativos nesta coluna.",
       "invalidBias": "Curvatura deve ser maior que zero. Usando 1.0 como fallback.",
-      "brokenAttributeRef": "O atributo vinculado nao foi encontrado. Usando o ultimo nome salvo como fallback.",
+      "brokenLibraryRef": "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback.",
       "autoIntervalExpNeedsPositive": "Exponencial requer ambos os valores com o mesmo sinal e diferentes de zero.",
       "autoIntervalRangeTooSmall": "O level final deve ser maior que o inicial.",
       "autoIntervalInvalidValues": "Valores invalidos."
@@ -817,6 +816,28 @@
     "readOnlyLabelKey": "Nome / Chave",
     "readOnlyValue": "Valor",
     "readOnlyTypeUnit": "Tipo / Unidade",
+    "validation": {
+      "keyRequired": "A chave é obrigatória.",
+      "keyUnique": "A chave deve ser única."
+    }
+  },
+  "fieldLibraryAddon": {
+    "addonTypeLabel": "Biblioteca de Campos",
+    "defaultName": "Biblioteca de Campos",
+    "addEntryButton": "+ Campo",
+    "newEntryLabel": "Novo campo",
+    "emptyState": "Nenhum campo definido ainda.",
+    "fallbackTitle": "Campo",
+    "dragAria": "Arrastar bloco",
+    "helpText": "Defina aqui campos reutilizáveis. Em uma Tabela de Balanceamento ou Schema de Dados, vincule um campo a uma entrada desta biblioteca para herdar nome e chave.",
+    "labelLabel": "Nome",
+    "labelPlaceholder": "Preço de Venda",
+    "keyLabel": "Chave",
+    "keyPlaceholder": "sell_price",
+    "descriptionLabel": "Descrição (opcional)",
+    "descriptionPlaceholder": "Para que serve este campo no jogo...",
+    "removeEntryButton": "Remover campo",
+    "readOnlyEmpty": "Nenhum campo definido.",
     "validation": {
       "keyRequired": "A chave é obrigatória.",
       "keyUnique": "A chave deve ser única."

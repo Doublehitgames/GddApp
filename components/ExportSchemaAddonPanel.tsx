@@ -93,6 +93,28 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   const myGroup = (myAddonWrapper as any)?.group || "A";
   const sectionAddons = externalAddons ?? (sectionContext?.addons.filter((a: SectionAddon) => a.id !== addon.id && ((a as any).group || "A") === myGroup) ?? []);
 
+  // Column libraries are cross-section — collect from the whole project so libraryRef keys resolve.
+  const globalFieldLibraries = useMemo<SectionAddon[]>(() => {
+    const out: SectionAddon[] = [];
+    const seen = new Set<string>();
+    for (const proj of projects) {
+      for (const sec of proj.sections ?? []) {
+        for (const sa of sec.addons ?? []) {
+          if (sa.type !== "fieldLibrary") continue;
+          if (seen.has(sa.id)) continue;
+          seen.add(sa.id);
+          out.push(sa);
+        }
+      }
+    }
+    return out;
+  }, [projects]);
+
+  const resolverAddons = useMemo<SectionAddon[]>(
+    () => [...sectionAddons, ...globalFieldLibraries.filter((a) => !sectionAddons.some((s) => s.id === a.id))],
+    [sectionAddons, globalFieldLibraries]
+  );
+
   const commit = useCallback(
     (nodes: ExportSchemaNode[]) => onChange({ ...addon, nodes }),
     [addon, onChange]
@@ -119,8 +141,8 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   };
 
   const resolved = useMemo(
-    () => (showPreview ? resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat) : null),
-    [showPreview, addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat]
+    () => (showPreview ? resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat) : null),
+    [showPreview, addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat]
   );
 
   const jsonString = useMemo(
@@ -129,14 +151,14 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   );
 
   const handleCopy = async () => {
-    const json = stringifyExportJson(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat));
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat));
     await navigator.clipboard.writeText(json);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const json = stringifyExportJson(resolveExportSchema(addon.nodes, sectionAddons, sectionContext?.dataId, addon.arrayFormat));
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat));
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -172,10 +194,11 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         // Find the Remote Config addon in this group
         const rcAddon = sectionContext.addons.find((a) => a.type === "exportSchema" && ((a as any).group || "A") === group);
         if (!rcAddon) continue;
-        // Get sibling addons from the same group (excluding the RC itself)
+        // Get sibling addons from the same group (excluding the RC itself) + cross-section libraries
         const siblings = sectionContext.addons.filter((a) => a.id !== rcAddon.id && ((a as any).group || "A") === group);
+        const pool = [...siblings, ...globalFieldLibraries.filter((lib) => !siblings.some((s) => s.id === lib.id))];
         const rcDraft = rcAddon.data as ExportSchemaAddonDraft;
-        const json = resolveExportSchema(rcDraft.nodes, siblings, sectionContext.dataId, rcDraft.arrayFormat);
+        const json = resolveExportSchema(rcDraft.nodes, pool, sectionContext.dataId, rcDraft.arrayFormat);
         const filename = `${sectionName}_${sanitizeFilename(group)}.json`;
         zip.file(filename, stringifyExportJson(json));
       }

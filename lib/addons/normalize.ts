@@ -3,6 +3,7 @@ import type {
   AttributeDefinitionsAddonDraft,
   AttributeModifiersAddonDraft,
   AttributeProfileAddonDraft,
+  FieldLibraryAddonDraft,
   CurrencyAddonDraft,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
@@ -64,24 +65,24 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
       typeof rawColumn.isPercentage === "boolean"
         ? rawColumn.isPercentage
         : String(rawColumn.isPercentage ?? "").trim().toLowerCase() === "true";
-    // Preserve attributeRef if valid
-    let attributeRef: ProgressionTableColumn["attributeRef"];
+    // Preserve libraryRef if valid
+    let libraryRef: ProgressionTableColumn["libraryRef"];
     if (
-      isObject(rawColumn.attributeRef) &&
-      typeof (rawColumn.attributeRef as { definitionsRef?: unknown }).definitionsRef === "string" &&
-      typeof (rawColumn.attributeRef as { attributeKey?: unknown }).attributeKey === "string"
+      isObject(rawColumn.libraryRef) &&
+      typeof (rawColumn.libraryRef as { libraryAddonId?: unknown }).libraryAddonId === "string" &&
+      typeof (rawColumn.libraryRef as { entryId?: unknown }).entryId === "string"
     ) {
-      const defRef = ((rawColumn.attributeRef as { definitionsRef: string }).definitionsRef || "").trim();
-      const attrKey = ((rawColumn.attributeRef as { attributeKey: string }).attributeKey || "").trim();
-      if (defRef && attrKey) {
-        attributeRef = { definitionsRef: defRef, attributeKey: attrKey };
+      const libAddonId = ((rawColumn.libraryRef as { libraryAddonId: string }).libraryAddonId || "").trim();
+      const entryId = ((rawColumn.libraryRef as { entryId: string }).entryId || "").trim();
+      if (libAddonId && entryId) {
+        libraryRef = { libraryAddonId: libAddonId, entryId };
       }
     }
 
     const column: ProgressionTableColumn = {
       id,
       name,
-      ...(attributeRef ? { attributeRef } : {}),
+      ...(libraryRef ? { libraryRef } : {}),
       generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" },
       decimals: decimalsValue == null ? 0 : Math.max(0, Math.min(6, Math.floor(decimalsValue))),
       isPercentage,
@@ -454,6 +455,19 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
     const validProductionFields = new Set(["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"]);
     const productionField: ProductionFieldKey | undefined = rawProductionField && validProductionFields.has(rawProductionField) ? (rawProductionField as ProductionFieldKey) : undefined;
     const notes = typeof rawEntry.notes === "string" && rawEntry.notes.trim() ? rawEntry.notes : undefined;
+    // Preserve libraryRef if valid
+    let libraryRef: { libraryAddonId: string; entryId: string } | undefined;
+    if (
+      isObject(rawEntry.libraryRef) &&
+      typeof (rawEntry.libraryRef as { libraryAddonId?: unknown }).libraryAddonId === "string" &&
+      typeof (rawEntry.libraryRef as { entryId?: unknown }).entryId === "string"
+    ) {
+      const libAddonId = ((rawEntry.libraryRef as { libraryAddonId: string }).libraryAddonId || "").trim();
+      const refEntryId = ((rawEntry.libraryRef as { entryId: string }).entryId || "").trim();
+      if (libAddonId && refEntryId) {
+        libraryRef = { libraryAddonId: libAddonId, entryId: refEntryId };
+      }
+    }
     let normalizedValue: number | boolean | string = 0;
     if (valueType === "boolean") {
       normalizedValue = asBooleanLoose(rawEntry.value);
@@ -470,6 +484,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
       id: entryId,
       key,
       label,
+      ...(libraryRef ? { libraryRef } : {}),
       valueType,
       value: normalizedValue,
       min: valueType === "boolean" || valueType === "string" ? undefined : min,
@@ -611,6 +626,38 @@ function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAdd
   };
 }
 
+function normalizeFieldLibraryDraft(value: unknown): FieldLibraryAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const rawEntries = Array.isArray(value.entries) ? value.entries : [];
+  const seenKeys = new Set<string>();
+  const entries: FieldLibraryAddonDraft["entries"] = [];
+  for (let index = 0; index < rawEntries.length; index += 1) {
+    const item = rawEntries[index];
+    if (!isObject(item)) continue;
+    const keyRaw = typeof item.key === "string" ? item.key : "";
+    const key = keyRaw
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_\s-]/g, "")
+      .replace(/[\s-]+/g, "_")
+      .replace(/_+/g, "_");
+    if (!key || seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const entryId = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `field_${index + 1}`;
+    const label = typeof item.label === "string" && item.label.trim() ? item.label : key;
+    const description =
+      typeof item.description === "string" && item.description.trim() ? item.description : undefined;
+    entries.push({ id: entryId, key, label, description });
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    entries,
+  };
+}
+
 function shouldMigrateEconomyProduction(draft: EconomyLinkAddonDraft): boolean {
   return Boolean(
     draft.hasProductionConfig &&
@@ -719,6 +766,10 @@ function asSectionAddon(value: unknown): SectionAddon | null {
   if (!isObject(value)) return null;
   if (typeof value.id !== "string") return null;
   if (typeof value.name !== "string") return null;
+  // Migrate legacy `columnLibrary` type to `fieldLibrary` (rename in 2026-04-17).
+  if (value.type === "columnLibrary") {
+    (value as { type: string }).type = "fieldLibrary";
+  }
   if (
     value.type !== "xpBalance" &&
     value.type !== "progressionTable" &&
@@ -731,6 +782,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "attributeDefinitions" &&
     value.type !== "attributeProfile" &&
     value.type !== "attributeModifiers" &&
+    value.type !== "fieldLibrary" &&
     value.type !== "exportSchema" &&
     value.type !== "genericStats"
   ) {
@@ -943,6 +995,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "attributeModifiers") {
         const draft = normalizeAttributeModifiersDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "fieldLibrary") {
+        const draft = normalizeFieldLibraryDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,

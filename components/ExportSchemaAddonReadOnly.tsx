@@ -53,9 +53,30 @@ export function ExportSchemaAddonReadOnly({
     return { addons: [] as SectionAddon[], dataId: undefined as string | undefined };
   }, [externalAddons, projects, addon.id]);
 
+  const globalFieldLibraries = useMemo<SectionAddon[]>(() => {
+    const out: SectionAddon[] = [];
+    const seen = new Set<string>();
+    for (const proj of projects) {
+      for (const sec of proj.sections ?? []) {
+        for (const sa of sec.addons ?? []) {
+          if (sa.type !== "fieldLibrary") continue;
+          if (seen.has(sa.id)) continue;
+          seen.add(sa.id);
+          out.push(sa);
+        }
+      }
+    }
+    return out;
+  }, [projects]);
+
+  const resolverAddons = useMemo<SectionAddon[]>(
+    () => [...sectionContext.addons, ...globalFieldLibraries.filter((a) => !sectionContext.addons.some((s) => s.id === a.id))],
+    [sectionContext, globalFieldLibraries]
+  );
+
   const resolved = useMemo(
-    () => resolveExportSchema(addon.nodes, sectionContext.addons, sectionContext.dataId, format),
-    [addon.nodes, sectionContext, format],
+    () => resolveExportSchema(addon.nodes, resolverAddons, sectionContext.dataId, format),
+    [addon.nodes, resolverAddons, sectionContext, format],
   );
 
   const jsonString = useMemo(
