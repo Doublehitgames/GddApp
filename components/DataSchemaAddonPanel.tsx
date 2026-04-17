@@ -600,23 +600,43 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               {t("dataSchemaAddon.mainBlockLabel", "Identificação e valor")}
                             </p>
                             {entry.libraryRef ? (
-                              <div className="flex items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
-                                <span aria-hidden className="text-[10px]">📎</span>
-                                <span className="flex-1 truncate">
-                                  {resolveEntryLabel(entry, availableLibraryFields)}
-                                  <span className="ml-1 text-[10px] text-sky-400/80">
-                                    ({resolveEntryKey(entry, availableLibraryFields)})
-                                  </span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => unlinkEntryFromLibrary(entry.id)}
-                                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
-                                  aria-label={t("dataSchemaAddon.unlinkLibraryAriaLabel", "Desvincular da Biblioteca")}
-                                >
-                                  ✕
-                                </button>
-                              </div>
+                              (() => {
+                                const libraryEntryFound = availableLibraryFields.some(
+                                  (opt) =>
+                                    opt.libraryAddonId === entry.libraryRef!.libraryAddonId &&
+                                    opt.entryId === entry.libraryRef!.entryId
+                                );
+                                return (
+                                  <div className="space-y-1.5">
+                                    <div className="flex items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
+                                      <span aria-hidden className="text-[10px]">📎</span>
+                                      <span className="flex-1 truncate">
+                                        {resolveEntryLabel(entry, availableLibraryFields)}
+                                        <span className="ml-1 text-[10px] text-sky-400/80">
+                                          ({resolveEntryKey(entry, availableLibraryFields)})
+                                        </span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => unlinkEntryFromLibrary(entry.id)}
+                                        className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
+                                        aria-label={t("dataSchemaAddon.unlinkLibraryAriaLabel", "Desvincular da Biblioteca")}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                    {!libraryEntryFound && (
+                                      <p className="text-[11px] text-amber-300">
+                                        ⚠️{" "}
+                                        {t(
+                                          "dataSchemaAddon.warnings.brokenLibraryRef",
+                                          "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback."
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()
                             ) : (
                               <div className="grid gap-2 sm:grid-cols-2">
                                 <label className="block">

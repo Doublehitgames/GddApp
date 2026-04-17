@@ -816,9 +816,16 @@
     "readOnlyLabelKey": "Label / Key",
     "readOnlyValue": "Value",
     "readOnlyTypeUnit": "Type / Unit",
+    "linkLibraryButton": "Link to Field Library",
+    "linkLibraryAriaLabel": "Link to Field Library",
+    "unlinkLibraryAriaLabel": "Unlink from Library",
+    "libraryPickerTitle": "Select field from Library",
     "validation": {
       "keyRequired": "Key is required.",
       "keyUnique": "Key must be unique."
+    },
+    "warnings": {
+      "brokenLibraryRef": "The linked library field was not found. Using the last saved name as fallback."
     }
   },
   "fieldLibraryAddon": {

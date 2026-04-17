@@ -816,9 +816,16 @@
     "readOnlyLabelKey": "Nome / Chave",
     "readOnlyValue": "Valor",
     "readOnlyTypeUnit": "Tipo / Unidade",
+    "linkLibraryButton": "Vincular à Biblioteca de Campos",
+    "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
+    "unlinkLibraryAriaLabel": "Desvincular da Biblioteca",
+    "libraryPickerTitle": "Selecionar campo da Biblioteca",
     "validation": {
       "keyRequired": "A chave é obrigatória.",
       "keyUnique": "A chave deve ser única."
+    },
+    "warnings": {
+      "brokenLibraryRef": "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback."
     }
   },
   "fieldLibraryAddon": {

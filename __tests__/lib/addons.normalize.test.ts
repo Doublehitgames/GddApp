@@ -293,3 +293,150 @@ describe("normalizeSectionAddons economyLink", () => {
     }
   });
 });
+
+describe("normalizeSectionAddons fieldLibrary", () => {
+  it("normalizes fieldLibrary entries (trims key, derives label fallback, dedupes keys)", () => {
+    const input = [
+      {
+        id: "lib-1",
+        type: "fieldLibrary",
+        name: "Biblioteca",
+        data: {
+          id: "lib-1",
+          name: "Biblioteca",
+          entries: [
+            { id: "e1", key: "  Sell Price ", label: "Preço de Venda", description: "Valor de venda" },
+            { id: "e2", key: "buy_price", label: "" },
+            { id: "e3", key: "sell_price", label: "Duplicate" },
+            { id: "e4", key: "", label: "Ignored (no key)" },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    expect(normalized?.length).toBe(1);
+    const lib = normalized?.[0];
+    expect(lib?.type).toBe("fieldLibrary");
+    if (lib?.type === "fieldLibrary") {
+      expect(lib.data.entries).toHaveLength(2);
+      expect(lib.data.entries[0]).toEqual({
+        id: "e1",
+        key: "sell_price",
+        label: "Preço de Venda",
+        description: "Valor de venda",
+      });
+      expect(lib.data.entries[1]).toEqual({
+        id: "e2",
+        key: "buy_price",
+        label: "buy_price",
+        description: undefined,
+      });
+    }
+  });
+
+  it("migrates legacy columnLibrary type to fieldLibrary on load", () => {
+    const input = [
+      {
+        id: "lib-legacy",
+        type: "columnLibrary",
+        name: "Old Library",
+        data: {
+          id: "lib-legacy",
+          name: "Old Library",
+          entries: [{ id: "x", key: "damage", label: "Dano" }],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    expect(normalized?.length).toBe(1);
+    expect(normalized?.[0].type).toBe("fieldLibrary");
+    if (normalized?.[0].type === "fieldLibrary") {
+      expect(normalized[0].data.entries).toEqual([{ id: "x", key: "damage", label: "Dano", description: undefined }]);
+    }
+  });
+
+  it("preserves libraryRef on DataSchemaEntry when valid", () => {
+    const input = [
+      {
+        id: "ds-1",
+        type: "dataSchema",
+        name: "Schema",
+        data: {
+          id: "ds-1",
+          name: "Schema",
+          entries: [
+            {
+              id: "entry-1",
+              key: "sell_price",
+              label: "Preço de Venda",
+              libraryRef: { libraryAddonId: "lib-1", entryId: "e1" },
+              valueType: "int",
+              value: 100,
+            },
+            {
+              id: "entry-2",
+              key: "manual_field",
+              label: "Manual",
+              valueType: "int",
+              value: 50,
+            },
+            {
+              id: "entry-3",
+              key: "broken_ref",
+              label: "Broken",
+              libraryRef: { libraryAddonId: "", entryId: "" }, // invalid → dropped
+              valueType: "int",
+              value: 0,
+            },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const ds = normalized?.[0];
+    expect(ds?.type).toBe("dataSchema");
+    if (ds?.type === "dataSchema") {
+      expect(ds.data.entries[0].libraryRef).toEqual({ libraryAddonId: "lib-1", entryId: "e1" });
+      expect(ds.data.entries[1].libraryRef).toBeUndefined();
+      expect(ds.data.entries[2].libraryRef).toBeUndefined();
+    }
+  });
+
+  it("preserves libraryRef on ProgressionTableColumn when valid", () => {
+    const input = [
+      {
+        id: "pt-1",
+        type: "progressionTable",
+        name: "Tabela",
+        data: {
+          id: "pt-1",
+          name: "Tabela",
+          startLevel: 1,
+          endLevel: 2,
+          columns: [
+            {
+              id: "c1",
+              name: "Sell Price",
+              libraryRef: { libraryAddonId: "lib-1", entryId: "e1" },
+              generator: { mode: "manual" },
+            },
+          ],
+          rows: [
+            { level: 1, values: { c1: 0 } },
+            { level: 2, values: { c1: 0 } },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const pt = normalized?.[0];
+    expect(pt?.type).toBe("progressionTable");
+    if (pt?.type === "progressionTable") {
+      expect(pt.data.columns[0].libraryRef).toEqual({ libraryAddonId: "lib-1", entryId: "e1" });
+    }
+  });
+});
