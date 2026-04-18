@@ -44,9 +44,21 @@ import { ProgressionTableAddonPanel } from "@/components/ProgressionTableAddonPa
 import { ProgressionTableAddonReadOnly } from "@/components/ProgressionTableAddonReadOnly";
 import React from "react";
 
+export type AddonCategory =
+  | "progression"
+  | "economy"
+  | "items"
+  | "attributes"
+  | "data"
+  | "export";
+
 export type AddonRegistryEntry = {
   type: SectionAddonType;
   label: string;
+  /** UI grouping in the add-addon picker. */
+  category: AddonCategory;
+  /** Emoji shown in the picker card. */
+  emoji: string;
   createDefault: () => SectionAddon;
   renderEditor: (addon: SectionAddon, onChange: (next: SectionAddon) => void, onRemove: () => void) => React.ReactNode;
   renderReadOnly: (
@@ -55,10 +67,22 @@ export type AddonRegistryEntry = {
   ) => React.ReactNode;
 };
 
+/** Order used when grouping in the picker UI. */
+export const ADDON_CATEGORY_ORDER: AddonCategory[] = [
+  "progression",
+  "economy",
+  "items",
+  "attributes",
+  "data",
+  "export",
+];
+
 export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "xpBalance",
     label: "Balanceamento de XP",
+    category: "progression",
+    emoji: "📈",
     createDefault: () => {
       const addonId = `balance-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return balanceDraftToSectionAddon(createDefaultBalanceAddon(addonId));
@@ -90,6 +114,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "progressionTable",
     label: "Tabela de Balanceamento",
+    category: "progression",
+    emoji: "📊",
     createDefault: () => {
       const addonId = `progression-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultProgressionTableAddon(addonId);
@@ -114,6 +140,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "economyLink",
     label: "Economy Link",
+    category: "economy",
+    emoji: "💰",
     createDefault: () => {
       const addonId = `economy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultEconomyLinkAddon(addonId);
@@ -137,6 +165,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "attributeDefinitions",
     label: "Definições de Atributos",
+    category: "attributes",
+    emoji: "🎯",
     createDefault: () => {
       const addonId = `attr-defs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultAttributeDefinitionsAddon(addonId);
@@ -160,6 +190,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "attributeProfile",
     label: "Perfil de Atributos",
+    category: "attributes",
+    emoji: "👤",
     createDefault: () => {
       const addonId = `attr-profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultAttributeProfileAddon(addonId);
@@ -183,6 +215,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "attributeModifiers",
     label: "Modificadores de Atributos",
+    category: "attributes",
+    emoji: "✨",
     createDefault: () => {
       const addonId = `attr-modifiers-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultAttributeModifiersAddon(addonId);
@@ -206,6 +240,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "currency",
     label: "Currency",
+    category: "economy",
+    emoji: "🪙",
     createDefault: () => {
       const addonId = `currency-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultCurrencyAddon(addonId);
@@ -229,6 +265,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "dataSchema",
     label: "Schema de Dados",
+    category: "data",
+    emoji: "🗂️",
     createDefault: () => {
       const addonId = `data-schema-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultDataSchemaAddon(addonId);
@@ -252,6 +290,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "globalVariable",
     label: "Global Variable",
+    category: "data",
+    emoji: "🌐",
     createDefault: () => {
       const addonId = `gvar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultGlobalVariableAddon(addonId);
@@ -275,6 +315,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "production",
     label: "Production",
+    category: "items",
+    emoji: "⚙️",
     createDefault: () => {
       const addonId = `production-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultProductionAddon(addonId);
@@ -298,6 +340,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "inventory",
     label: "Inventory",
+    category: "items",
+    emoji: "🎒",
     createDefault: () => {
       const addonId = `inventory-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultInventoryAddon(addonId);
@@ -321,6 +365,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "fieldLibrary",
     label: "Biblioteca de Campos",
+    category: "data",
+    emoji: "📚",
     createDefault: () => {
       const addonId = `field-library-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultFieldLibraryAddon(addonId);
@@ -344,6 +390,8 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
   {
     type: "exportSchema",
     label: "Remote Config",
+    category: "export",
+    emoji: "📤",
     createDefault: () => {
       const addonId = `export-schema-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultExportSchemaAddon(addonId);

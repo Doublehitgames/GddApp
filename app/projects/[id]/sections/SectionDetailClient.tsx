@@ -43,6 +43,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
+import { AddonPickerModal } from "@/components/AddonPickerModal";
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
@@ -2226,30 +2227,11 @@ function SectionDetailContent({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </button>
-                {showAddonMenu && (
-                  <>
-                    <div className="ui-menu-pop absolute right-0 top-10 z-50 w-56 rounded-xl border border-gray-600/90 bg-gray-900/95 backdrop-blur-sm shadow-2xl shadow-black/35 py-1.5" role="menu">
-                      {ADDON_REGISTRY.map((entry) => (
-                        <button
-                          key={entry.type}
-                          type="button"
-                          onClick={() => {
-                            onAddAddon(entry.type, activeGroup);
-                            setShowAddonMenu(false);
-                          }}
-                          className="w-full text-left rounded-lg mx-1 px-3 py-2 text-sm text-gray-100 hover:bg-gray-800 flex items-center gap-2"
-                          role="menuitem"
-                        >
-                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
-                          </svg>
-                          {getAddonTypeLabel(entry.type)}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowAddonMenu(false)} aria-hidden />
-                  </>
-                )}
+                <AddonPickerModal
+                  open={showAddonMenu}
+                  onClose={() => setShowAddonMenu(false)}
+                  onPick={(type) => onAddAddon(type, activeGroup)}
+                />
                 <button
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}

@@ -1609,5 +1609,35 @@
       "zoomOnClick": "Zoom on Click",
       "zoomOnClickHelp": "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked"
     }
+  },
+  "addonPicker": {
+    "title": "Add addon",
+    "subtitle": "Pick what you want to configure on this page",
+    "searchPlaceholder": "Search addon...",
+    "emptyResults": "No addon found",
+    "closeAriaLabel": "Close",
+    "category": {
+      "progression": "Progression",
+      "economy": "Economy",
+      "items": "Items & Production",
+      "attributes": "Character Attributes",
+      "data": "Data & Reuse",
+      "export": "Export"
+    }
+  },
+  "addonCatalog": {
+    "xpBalance": { "description": "XP curve per level with presets and formulas" },
+    "progressionTable": { "description": "Values per level in columns (price, damage, etc.)" },
+    "currency": { "description": "Defines a game currency (gold, gem, XP)" },
+    "economyLink": { "description": "Buy, sell and unlock prices for an item" },
+    "inventory": { "description": "Inventory params: stack, weight, category" },
+    "production": { "description": "Passive production or recipe (ingredients → output)" },
+    "globalVariable": { "description": "Global modifier: % sell bonus, x2 XP event" },
+    "dataSchema": { "description": "Free key-value fields attached to the page" },
+    "attributeDefinitions": { "description": "Attributes (Strength, Stamina) used by characters" },
+    "attributeProfile": { "description": "Concrete attribute values for a character/item" },
+    "attributeModifiers": { "description": "Buffs/debuffs that change attributes (+10 STR, x1.5 DEX)" },
+    "fieldLibrary": { "description": "Reusable names/keys shared across pages" },
+    "exportSchema": { "description": "Exports the final JSON consumed by the game" }
   }
 }
