@@ -128,6 +128,43 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
   const [showAddonMenu, setShowAddonMenu] = useState(false);
+
+  // Page-level keyboard shortcuts. Bail when focus is on an editable field so
+  // native keys (italic, etc.) keep working in inputs and the Toast UI editor.
+  //   Ctrl+I         → open addon picker
+  //   Ctrl+M         → open "move section" modal (Ctrl+Shift+M on Mac, to avoid Cmd+M minimize)
+  useEffect(() => {
+    const isMac =
+      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+    const handler = (event: KeyboardEvent) => {
+      const usesMeta = event.ctrlKey || event.metaKey;
+      if (!usesMeta) return;
+      if (event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (target.isContentEditable) return;
+      if (target.closest?.(".toastui-editor, .ProseMirror, .CodeMirror, .cm-editor")) return;
+
+      const key = event.key.toLowerCase();
+      // Ctrl+I → addon picker (plain, no Shift)
+      if (key === "i" && !event.shiftKey) {
+        event.preventDefault();
+        setShowAddonMenu(true);
+        return;
+      }
+      // Ctrl+M (or Ctrl+Shift+M on Mac) → move section modal
+      const wantsShift = isMac;
+      if (key === "m" && event.shiftKey === wantsShift) {
+        event.preventDefault();
+        setShowMoveModal(true);
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const [isPickingSectionThumb, setIsPickingSectionThumb] = useState(false);
   const [sectionThumbError, setSectionThumbError] = useState("");
   const [sectionThumbCandidateIndex, setSectionThumbCandidateIndex] = useState(0);
