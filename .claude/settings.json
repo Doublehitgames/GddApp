@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_eval",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Preview__preview_console_logs",
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_Preview__preview_stop",
+      "mcp__Claude_Preview__preview_fill",
+      "mcp__Claude_Preview__preview_click",
+      "mcp__gdd-manager__search",
+      "mcp__gdd-manager__get_section",
+      "mcp__gdd-manager__get_project",
+      "mcp__gdd-manager__list_sections",
+      "mcp__gdd-manager__list_addons",
+      "mcp__gdd-manager__list_projects",
+      "Bash(npx tsc *)",
+      "Bash(npx jest *)",
+      "Bash(npm test)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npm run -s i18n:check)",
+      "Bash(npm run -s i18n:audit)",
+      "Bash(npm run -s i18n:validate)"
+    ]
+  }
+}
