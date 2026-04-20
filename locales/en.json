@@ -632,6 +632,8 @@
     "clampApplied": "Clamp applied to {count} value(s) in this column.",
     "levelHeader": "Level",
     "levelPrefix": "Lv",
+    "readOnlyShowAll": "Show all {count} levels",
+    "readOnlyShowLess": "Show less",
     "removeAddonButton": "Remove addon",
     "showValuesButton": "Show values",
     "hideValuesButton": "Hide values",
@@ -680,7 +682,7 @@
     "buyTitle": "How much it costs to buy",
     "buySummaryLabel": "Buy",
     "buySummaryStart": "Buy for",
-    "buySummaryModifierPrefix": " with discount from ",
+    "buySummaryModifierPrefix": ", with discount from ",
     "buySummaryMinSuffix": " with final minimum of ",
     "buyShortTitle": "Buy",
     "hasBuyConfig": "Has buy configuration",
@@ -694,7 +696,7 @@
     "sellTitle": "How much it returns when selling",
     "sellSummaryLabel": "Sell",
     "sellSummaryStart": "Sell for",
-    "sellSummaryModifierPrefix": " with bonus from ",
+    "sellSummaryModifierPrefix": ", with bonus from ",
     "sellSummaryMaxSuffix": " with final maximum of ",
     "sellShortTitle": "Sell",
     "hasSellConfig": "Has sell configuration",
@@ -1641,6 +1643,20 @@
       "data": "Data & Reuse",
       "export": "Export"
     }
+  },
+  "addonStackedList": {
+    "empty": "No addons on this page.",
+    "dragHandleAria": "Drag to reorder",
+    "dragHandleTitle": "Drag",
+    "renameTitle": "Double-click to rename",
+    "edit": "Edit",
+    "confirmRemove": {
+      "question": "Remove",
+      "warning": "This action cannot be undone. All addon data will be lost."
+    }
+  },
+  "addonEditorDrawer": {
+    "closeAriaLabel": "Close editor"
   },
   "addonCatalog": {
     "xpBalance": { "description": "XP curve per level with presets and formulas" },

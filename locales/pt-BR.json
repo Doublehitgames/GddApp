@@ -632,6 +632,8 @@
     "clampApplied": "Limite aplicado em {count} valor(es) desta coluna.",
     "levelHeader": "Level",
     "levelPrefix": "Lv",
+    "readOnlyShowAll": "Mostrar todos os {count} níveis",
+    "readOnlyShowLess": "Mostrar menos",
     "removeAddonButton": "Remover addon",
     "showValuesButton": "Mostrar valores",
     "hideValuesButton": "Ocultar valores",
@@ -680,7 +682,7 @@
     "buyTitle": "Quanto custa comprar",
     "buySummaryLabel": "Compra",
     "buySummaryStart": "Compre por",
-    "buySummaryModifierPrefix": " com desconto aplicado de ",
+    "buySummaryModifierPrefix": ", com desconto aplicado de ",
     "buySummaryMinSuffix": " com minimo final de ",
     "buyShortTitle": "Compra",
     "hasBuyConfig": "Tem configuracao de compra",
@@ -694,7 +696,7 @@
     "sellTitle": "Quanto rende vender",
     "sellSummaryLabel": "Venda",
     "sellSummaryStart": "Venda por",
-    "sellSummaryModifierPrefix": " com bonus de ",
+    "sellSummaryModifierPrefix": ", com bonus de ",
     "sellSummaryMaxSuffix": " com maximo final de ",
     "sellShortTitle": "Venda",
     "hasSellConfig": "Tem configuracao de venda",
@@ -1641,6 +1643,20 @@
       "data": "Dados & Reutilização",
       "export": "Exportação"
     }
+  },
+  "addonStackedList": {
+    "empty": "Nenhum addon nesta página.",
+    "dragHandleAria": "Arrastar para reordenar",
+    "dragHandleTitle": "Arrastar",
+    "renameTitle": "Duplo clique para renomear",
+    "edit": "Editar",
+    "confirmRemove": {
+      "question": "Remover",
+      "warning": "Esta ação não pode ser desfeita. Todos os dados deste addon serão perdidos."
+    }
+  },
+  "addonEditorDrawer": {
+    "closeAriaLabel": "Fechar editor"
   },
   "addonCatalog": {
     "xpBalance": { "description": "Curva de XP por nível, com presets e fórmulas" },

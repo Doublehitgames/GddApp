@@ -190,6 +190,14 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     window.localStorage.setItem("gdd_sidebar_open", sidebarOpen ? "1" : "0");
   }, [sidebarOpen, shouldShowSidebar]);
 
+  // Close the sections sidebar when the addon editor drawer opens — both live on
+  // the right side, so we avoid visual conflict by yielding to the drawer.
+  useEffect(() => {
+    const handler = () => setSidebarOpen(false);
+    window.addEventListener("gdd:addon-drawer-open", handler);
+    return () => window.removeEventListener("gdd:addon-drawer-open", handler);
+  }, []);
+
   return (
     <MindMapSearchProvider>
     <GlobalPagePicker projectId={projectId} />

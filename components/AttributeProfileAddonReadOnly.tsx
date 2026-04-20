@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface AttributeProfileAddonReadOnlyProps {
   addon: AttributeProfileAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 function formatValue(value: number | boolean): string {
@@ -16,7 +17,7 @@ function formatValue(value: number | boolean): string {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
-export function AttributeProfileAddonReadOnly({ addon, theme = "dark" }: AttributeProfileAddonReadOnlyProps) {
+export function AttributeProfileAddonReadOnly({ addon, theme = "dark", bare = false }: AttributeProfileAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
@@ -44,16 +45,18 @@ export function AttributeProfileAddonReadOnly({ addon, theme = "dark" }: Attribu
     return null;
   }, [addon.definitionsRef, projects]);
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("attributeProfileAddon.defaultName", "Perfil de Atributos")}
-      </h5>
-      <p className={`mt-1 text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("attributeProfileAddon.defaultName", "Perfil de Atributos")}
+        </h5>
+      )}
+      <p className={`${bare ? "" : "mt-1"} text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
         {t("attributeProfileAddon.definitionsRefLabel", "Referência de definições")}:{" "}
         {definitionsMeta?.label || addon.definitionsRef || t("attributeProfileAddon.selectNone", "Sem referência")}
       </p>
@@ -66,7 +69,7 @@ export function AttributeProfileAddonReadOnly({ addon, theme = "dark" }: Attribu
           {rows.map((entry) => {
             const meta = definitionsMeta?.keys.get(entry.attributeKey);
             return (
-              <p key={entry.id} className="text-sm">
+              <p key={entry.id} className={bare ? "" : "text-sm"}>
                 <strong>{meta?.label || entry.attributeKey}</strong>
                 {entry.attributeKey ? (
                   <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>({entry.attributeKey})</span>

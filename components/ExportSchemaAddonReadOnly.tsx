@@ -13,12 +13,14 @@ interface ExportSchemaAddonReadOnlyProps {
   addon: ExportSchemaAddonDraft;
   sectionAddons?: SectionAddon[];
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 export function ExportSchemaAddonReadOnly({
   addon,
   sectionAddons: externalAddons,
   theme = "dark",
+  bare = false,
 }: ExportSchemaAddonReadOnlyProps) {
   const [copied, setCopied] = useState(false);
   // Local (transient) override so the user can preview/copy/download in any
@@ -121,16 +123,18 @@ export function ExportSchemaAddonReadOnly({
       : "border-gray-300 bg-gray-100 text-gray-700"
   }`;
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isDark ? "border border-gray-700 bg-gray-900/40" : "border border-gray-300 bg-white"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isDark ? "border border-gray-700 bg-gray-900/40" : "border border-gray-300 bg-white"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
-        <h5 className={`text-sm font-semibold ${isDark ? "text-gray-200" : "text-gray-900"}`}>
-          {addon.name || "Remote Config"}
-        </h5>
+    <div className={outerClass}>
+      <div className={`flex items-center ${bare ? "justify-end" : "justify-between mb-2"} gap-2 flex-wrap`}>
+        {!bare && (
+          <h5 className={`text-sm font-semibold ${isDark ? "text-gray-200" : "text-gray-900"}`}>
+            {addon.name || "Remote Config"}
+          </h5>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <label className={`flex items-center gap-1.5 text-xs ${isDark ? "text-gray-400" : "text-gray-600"}`} title="Formato do JSON para nós array (tabelas de balanceamento)">
             Formato:

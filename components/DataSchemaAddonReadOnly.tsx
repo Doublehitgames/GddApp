@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface DataSchemaAddonReadOnlyProps {
   addon: DataSchemaAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type SectionMeta = {
@@ -38,7 +39,7 @@ function toShortDescription(markdownContent: string): string {
   return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
 }
 
-export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAddonReadOnlyProps) {
+export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }: DataSchemaAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const rows = addon.entries || [];
@@ -194,7 +195,7 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
             shortDescription: toShortDescription(sectionMeta.content),
           });
         }}
-        className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+        className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
         title={t("view.anchorPreview.goToSection")}
       >
         {label}
@@ -202,27 +203,29 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark" }: DataSchemaAdd
     );
   };
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("dataSchemaAddon.defaultName", "Schema de Dados")}
-      </h5>
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("dataSchemaAddon.defaultName", "Schema de Dados")}
+        </h5>
+      )}
 
       {rows.length === 0 ? (
-        <p className={`mt-2 text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+        <p className={`${bare ? "" : "mt-2"} text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
           {t("dataSchemaAddon.readOnlyEmpty", "Nenhum campo configurado.")}
         </p>
       ) : (
-        <div className={`mt-2 space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+        <div className={`${bare ? "" : "mt-2"} space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
           {rows.map((entry) => {
             const lineLabel = resolveEntryLabel(entry);
             const linkedXpName = entry.unitXpRef ? xpRefLabelBySectionId.get(entry.unitXpRef) : undefined;
             return (
-              <p key={entry.id} className="text-sm">
+              <p key={entry.id} className={bare ? "" : "text-sm"}>
                 {lineLabel}: {formatValue(resolveEntryValue(entry))}
                 {linkedXpName && entry.unitXpRef ? (
                   <>

@@ -6,9 +6,10 @@ import { useI18n } from "@/lib/i18n/provider";
 interface CurrencyAddonReadOnlyProps {
   addon: CurrencyAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
-export function CurrencyAddonReadOnly({ addon, theme = "dark" }: CurrencyAddonReadOnlyProps) {
+export function CurrencyAddonReadOnly({ addon, theme = "dark", bare = false }: CurrencyAddonReadOnlyProps) {
   const { t } = useI18n();
   const isLight = theme === "light";
 
@@ -22,24 +23,25 @@ export function CurrencyAddonReadOnly({ addon, theme = "dark" }: CurrencyAddonRe
       ? t("currencyAddon.summaryDecimalsNone", "sem casas decimais")
       : `${addon.decimals} ${t("currencyAddon.summaryDecimalsSomeSuffix", "casas decimais")}`;
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("currencyAddon.defaultName", "Currency")}
-      </h5>
-      <div className="mt-2 grid gap-2 text-xs">
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("currencyAddon.defaultName", "Currency")}
+        </h5>
+      )}
+      <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-1`}>
         <p className={labelClass}>
           {t("currencyAddon.summaryStart", "Moeda")} {code} ({displayName}),{" "}
           {t("currencyAddon.summaryTypePrefix", "tipo")} {kindLabel}, {decimalsSummary}.
         </p>
-        <p className={mutedClass}>
-          <strong>{t("currencyAddon.notesLabel", "Observacoes")}:</strong>{" "}
-          {addon.notes || t("currencyAddon.none", "nenhuma")}
-        </p>
+        {addon.notes ? (
+          <p className={mutedClass}>{addon.notes}</p>
+        ) : null}
       </div>
     </div>
   );

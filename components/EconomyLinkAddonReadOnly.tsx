@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface EconomyLinkAddonReadOnlyProps {
   addon: EconomyLinkAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type SectionMeta = {
@@ -106,6 +107,7 @@ function toShortDescription(markdownContent: string): string {
 export function EconomyLinkAddonReadOnly({
   addon,
   theme = "dark",
+  bare = false,
 }: EconomyLinkAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
@@ -219,7 +221,7 @@ export function EconomyLinkAddonReadOnly({
             shortDescription: toShortDescription(meta.content),
           });
         }}
-        className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+        className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
         title={t("view.anchorPreview.goToSection")}
       >
         {meta.title}
@@ -266,104 +268,83 @@ export function EconomyLinkAddonReadOnly({
     </span>
   );
 
-  const renderBuySummary = (): ReactNode => {
+  const renderStruckBase = (value: number): ReactNode => (
+    <span className={isLight ? "line-through text-gray-400" : "line-through text-gray-500"}>
+      ({formatDisplayNumber(value)})
+    </span>
+  );
+
+  /** Builds the "Compre por ..." phrase without trailing period. */
+  const renderBuyPhrase = (): ReactNode | null => {
     const hasBuyValue = addon.buyValue != null;
     const hasBuyCurrency = typeof addon.buyCurrencyRef === "string" && addon.buyCurrencyRef.trim().length > 0;
     const hasBuyModifiers = buyModifiers.length > 0;
-    const hasMinBuyValue = addon.minBuyValue != null;
-    if (!hasBuyValue && !hasBuyCurrency && !hasBuyModifiers && !hasMinBuyValue) {
-      return t("economyLinkAddon.emptyValue", "nao informado");
-    }
+    if (!hasBuyValue && !hasBuyCurrency && !hasBuyModifiers) return null;
+
+    // Effective value differs from base only when at least one modifier applied (non-zero).
+    const showStrike =
+      hasBuyValue &&
+      buyEffectiveValue != null &&
+      buyEffectiveValue !== addon.buyValue;
 
     return (
       <>
         {t("economyLinkAddon.buySummaryStart", "Compre por")}{" "}
-        {hasBuyValue
-          ? renderMaybeValue(addon.buyValue, t("economyLinkAddon.emptyValue", "nao informado"))
-          : t("economyLinkAddon.emptyValue", "nao informado")}
-        {hasBuyCurrency ? (
+        {hasBuyValue ? (
+          showStrike ? (
+            <>
+              {renderStruckBase(addon.buyValue as number)} ${formatDisplayNumber(buyEffectiveValue as number)}
+            </>
+          ) : (
+            String(addon.buyValue)
+          )
+        ) : (
+          t("economyLinkAddon.emptyValue", "nao informado")
+        )}
+        {hasBuyCurrency ? <> {renderRef(addon.buyCurrencyRef)}</> : null}
+        {showStrike && hasBuyModifiers ? (
           <>
-            {" "}
-            {renderRef(addon.buyCurrencyRef)}
-          </>
-        ) : null}
-        {hasBuyModifiers ? (
-          <>
-            {t("economyLinkAddon.buySummaryModifierPrefix", " com desconto aplicado de ")}
+            {t("economyLinkAddon.buySummaryModifierPrefix", ", com desconto aplicado de ")}
             {renderRefList(buyModifiers)}
           </>
         ) : null}
-        {hasMinBuyValue ? (
-          <>
-            {t("economyLinkAddon.buySummaryMinSuffix", " com minimo final de ")}
-            {renderNeutralBadge(
-              t("economyLinkAddon.minBuyValue", "Minimo de compra"),
-              addon.minBuyValue
-            )}
-          </>
-        ) : null}
-        {buyEffectiveValue != null ? (
-          <>
-            {" "}
-            {renderNeutralBadge(
-              t("economyLinkAddon.effectiveValueLabel", "Valor final"),
-              formatDisplayNumber(buyEffectiveValue),
-              hasBuyCurrency ? { prefix: "$ " } : undefined
-            )}
-          </>
-        ) : null}
-        .
       </>
     );
   };
 
-  const renderSellSummary = (): ReactNode => {
+  /** Builds the "Venda por ..." phrase without trailing period. */
+  const renderSellPhrase = (): ReactNode | null => {
     const hasSellValue = addon.sellValue != null;
     const hasSellCurrency = typeof addon.sellCurrencyRef === "string" && addon.sellCurrencyRef.trim().length > 0;
     const hasSellModifiers = sellModifiers.length > 0;
-    const hasMaxSellValue = addon.maxSellValue != null;
-    if (!hasSellValue && !hasSellCurrency && !hasSellModifiers && !hasMaxSellValue) {
-      return t("economyLinkAddon.emptyValue", "nao informado");
-    }
+    if (!hasSellValue && !hasSellCurrency && !hasSellModifiers) return null;
+
+    const showStrike =
+      hasSellValue &&
+      sellEffectiveValue != null &&
+      sellEffectiveValue !== addon.sellValue;
 
     return (
       <>
         {t("economyLinkAddon.sellSummaryStart", "Venda por")}{" "}
-        {hasSellValue
-          ? renderMaybeValue(addon.sellValue, t("economyLinkAddon.emptyValue", "nao informado"))
-          : t("economyLinkAddon.emptyValue", "nao informado")}
-        {hasSellCurrency ? (
+        {hasSellValue ? (
+          showStrike ? (
+            <>
+              {renderStruckBase(addon.sellValue as number)} ${formatDisplayNumber(sellEffectiveValue as number)}
+            </>
+          ) : (
+            String(addon.sellValue)
+          )
+        ) : (
+          t("economyLinkAddon.emptyValue", "nao informado")
+        )}
+        {hasSellCurrency ? <> {renderRef(addon.sellCurrencyRef)}</> : null}
+        {showStrike && hasSellModifiers ? (
           <>
-            {" "}
-            {renderRef(addon.sellCurrencyRef)}
-          </>
-        ) : null}
-        {hasSellModifiers ? (
-          <>
-            {t("economyLinkAddon.sellSummaryModifierPrefix", " com bonus de ")}
+            {t("economyLinkAddon.sellSummaryModifierPrefix", ", com bonus de ")}
             {renderRefList(sellModifiers)}
           </>
         ) : null}
-        {hasMaxSellValue ? (
-          <>
-            {t("economyLinkAddon.sellSummaryMaxSuffix", " com maximo final de ")}
-            {renderNeutralBadge(
-              t("economyLinkAddon.maxSellValue", "Maximo de venda"),
-              addon.maxSellValue
-            )}
-          </>
-        ) : null}
-        {sellEffectiveValue != null ? (
-          <>
-            {" "}
-            {renderNeutralBadge(
-              t("economyLinkAddon.effectiveValueLabel", "Valor final"),
-              formatDisplayNumber(sellEffectiveValue),
-              hasSellCurrency ? { prefix: "$ " } : undefined
-            )}
-          </>
-        ) : null}
-        .
       </>
     );
   };
@@ -415,44 +396,37 @@ export function EconomyLinkAddonReadOnly({
     );
   };
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("economyLinkAddon.defaultName", "Economy Link")}
-      </h5>
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("economyLinkAddon.defaultName", "Economy Link")}
+        </h5>
+      )}
 
-      <div className="mt-2 grid gap-2 text-xs md:grid-cols-2">
-        {hasBuyConfig && (
-        <div className={`rounded-lg p-2 ${isLight ? "border border-gray-300 bg-gray-50" : "border border-gray-700 bg-gray-900/60"}`}>
-          <p className={isLight ? "text-gray-700" : "text-gray-300"}>
-            <strong>{t("economyLinkAddon.buySummaryLabel", "Compra")}:</strong>{" "}
-            {renderBuySummary()}
-          </p>
-        </div>
-        )}
-
-        {hasSellConfig && (
-        <div className={`rounded-lg p-2 ${isLight ? "border border-gray-300 bg-gray-50" : "border border-gray-700 bg-gray-900/60"}`}>
-          <p className={isLight ? "text-gray-700" : "text-gray-300"}>
-            <strong>{t("economyLinkAddon.sellSummaryLabel", "Venda")}:</strong>{" "}
-            {renderSellSummary()}
-          </p>
-        </div>
-        )}
-
-        {hasUnlockConfig && (
-        <div className={`rounded-lg p-2 ${isLight ? "border border-gray-300 bg-gray-50" : "border border-gray-700 bg-gray-900/60"}`}>
-          <p className={isLight ? "text-gray-700" : "text-gray-300"}>
-            <strong>{t("economyLinkAddon.unlockSummaryLabel", "Desbloqueio")}:</strong>{" "}
-            {renderUnlockSummary()}
-          </p>
-        </div>
-        )}
-      </div>
+      {(() => {
+        const buy = hasBuyConfig ? renderBuyPhrase() : null;
+        const sell = hasSellConfig ? renderSellPhrase() : null;
+        const unlock = hasUnlockConfig ? renderUnlockSummary() : null;
+        if (!buy && !sell && !unlock) return null;
+        return (
+          <div className={`${bare ? "" : "mt-2 text-xs"} space-y-1 ${isLight ? "text-gray-700" : "text-gray-300"}`}>
+            {(buy || sell) && (
+              <p>
+                {buy}
+                {buy && sell ? ", " : ""}
+                {sell}
+                {"."}
+              </p>
+            )}
+            {unlock && <p>{unlock}</p>}
+          </div>
+        );
+      })()}
 
       {pendingAnchorNavigation && (
         <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">

@@ -163,7 +163,8 @@ describe("InventoryAddonReadOnly backlinks", () => {
       </I18nProvider>
     );
 
-    expect(screen.getByText(/Conexoes de producao/i)).toBeInTheDocument();
+    // "Conexoes de producao" heading was dropped in favor of a flat layout —
+    // the "Produzido por" / "Ingrediente para" paragraphs now speak for themselves.
     expect(screen.getByText(/Produzido por/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Galinha/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Pato/i })).toBeInTheDocument();

@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface GlobalVariableAddonReadOnlyProps {
   addon: GlobalVariableAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type SectionMeta = {
@@ -45,7 +46,7 @@ function toShortDescription(markdownContent: string): string {
   return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
 }
 
-export function GlobalVariableAddonReadOnly({ addon, theme = "dark" }: GlobalVariableAddonReadOnlyProps) {
+export function GlobalVariableAddonReadOnly({ addon, theme = "dark", bare = false }: GlobalVariableAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
@@ -155,32 +156,27 @@ export function GlobalVariableAddonReadOnly({ addon, theme = "dark" }: GlobalVar
     window.setTimeout(() => targetElement.classList.remove("gdd-anchor-highlight"), 1800);
   };
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("globalVariableAddon.defaultName", "Global Variable")}
-      </h5>
-      <div className="mt-2 grid gap-2 text-xs">
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("globalVariableAddon.defaultName", "Global Variable")}
+        </h5>
+      )}
+      <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-2`}>
         <p className={labelClass}>
           {t("globalVariableAddon.summaryStart", "Variavel")} &quot;{displayName}&quot; ({key}),{" "}
           {t("globalVariableAddon.summaryTypePrefix", "tipo")} {valueType},{" "}
           {t("globalVariableAddon.summaryDefaultPrefix", "valor padrao")} {defaultValueText},{" "}
           {t("globalVariableAddon.summaryScopePrefix", "escopo")} {scope}.
         </p>
-        <p className={mutedClass}>
-          <strong>{t("globalVariableAddon.notesLabel", "Observacoes")}:</strong>{" "}
-          {addon.notes || t("globalVariableAddon.none", "nenhuma")}
-        </p>
+        {addon.notes ? <p className={mutedClass}>{addon.notes}</p> : null}
         {usedBySections.length > 0 && (
-          <div
-            className={`rounded-lg p-2 ${
-              isLight ? "border border-gray-300 bg-gray-50" : "border border-gray-700 bg-gray-900/60"
-            }`}
-          >
+          <div className={bare ? "" : "mt-1"}>
             <p className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${mutedClass}`}>
               {t("globalVariableAddon.usedByTitle", "Usado por")}
             </p>
@@ -197,7 +193,7 @@ export function GlobalVariableAddonReadOnly({ addon, theme = "dark" }: GlobalVar
                       shortDescription: toShortDescription(meta?.content || ""),
                     });
                   }}
-                  className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
                   title={t("view.anchorPreview.goToSection")}
                 >
                   {usage.sectionTitle}

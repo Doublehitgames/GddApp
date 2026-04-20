@@ -29,19 +29,14 @@ describe("EconomyLinkAddonReadOnly", () => {
     );
 
     expect(screen.getByText("Economia da Loja")).toBeInTheDocument();
-    expect(screen.getByText(/^Compra:/i)).toBeInTheDocument();
+    // Buy + Sell flow together in a single sentence: "Compre por ... Venda por ..."
     expect(screen.getByText(/Compre por/i)).toBeInTheDocument();
-    expect(screen.getByText(/desconto aplicado/i)).toBeInTheDocument();
-    expect(screen.getByText(/minimo final de/i)).toBeInTheDocument();
-    expect(screen.getByText(/Minimo de compra:\s*80/i)).toBeInTheDocument();
-    expect(screen.getByText(/^Venda:/i)).toBeInTheDocument();
     expect(screen.getByText(/Venda por/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/bonus/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/maximo final de/i)).toBeInTheDocument();
-    expect(screen.getByText(/Maximo de venda:\s*120/i)).toBeInTheDocument();
-    expect(screen.getByText(/^Desbloqueio:/i)).toBeInTheDocument();
+    // Modifier-related text only shows when modifiers have a real effect
+    // (those refs are not resolved in this test → no "desconto aplicado" / "bonus" appears).
+    // Unlock in its own paragraph
     expect(screen.getByText(/Libera no LV/i)).toBeInTheDocument();
-    expect(screen.getByText(/5 de progression-farm-level/i)).toBeInTheDocument();
+    expect(screen.getByText(/progression-farm-level/i)).toBeInTheDocument();
   });
 
   it("hides blocks when config toggles are disabled", () => {
@@ -61,13 +56,13 @@ describe("EconomyLinkAddonReadOnly", () => {
       </I18nProvider>
     );
 
-    expect(screen.queryByText(/^Compra:/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Venda:/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Desbloqueio:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Compre por/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Venda por/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Libera no LV/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Produz/i)).not.toBeInTheDocument();
   });
 
-  it("shows effective value badges with neutral style text", () => {
+  it("shows effective values inline when modifiers apply (with struck-through base)", () => {
     useProjectStore.setState({
       projects: [
         {
@@ -169,8 +164,12 @@ describe("EconomyLinkAddonReadOnly", () => {
       </I18nProvider>
     );
 
-    expect(screen.getAllByText(/Valor final:/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Valor final:\s*\$\s*90/i)).toBeInTheDocument();
-    expect(screen.getByText(/Valor final:\s*\$\s*120/i)).toBeInTheDocument();
+    // Effective values are rendered inline (no more "Valor final:" label).
+    // Base 100 → buy 90 (clamped by minBuyValue=90) and sell 150 clamped to 120.
+    const struckBases = screen.getAllByText(/\(100\)/);
+    expect(struckBases.length).toBeGreaterThanOrEqual(2);
+    // Effective values present (the currency $ prefix is emitted right before).
+    expect(screen.getByText(/\$\s*90/)).toBeInTheDocument();
+    expect(screen.getByText(/\$\s*120/)).toBeInTheDocument();
   });
 });

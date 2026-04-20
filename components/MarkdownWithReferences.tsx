@@ -447,7 +447,7 @@ export function MarkdownWithReferences({
                       navigateToDocumentAnchor(href, `section-${refSectionId}`, refSectionId);
                     }
                   }}
-                  className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                  className={`gdd-inline-anchor underline cursor-pointer ${isDocumentMode ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
                   title={t("view.anchorPreview.goToSection")}
                 >
                   {children}

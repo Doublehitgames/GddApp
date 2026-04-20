@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface InventoryAddonReadOnlyProps {
   addon: InventoryAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type SectionMeta = {
@@ -37,7 +38,7 @@ function toShortDescription(markdownContent: string): string {
   return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
 }
 
-export function InventoryAddonReadOnly({ addon, theme = "dark" }: InventoryAddonReadOnlyProps) {
+export function InventoryAddonReadOnly({ addon, theme = "dark", bare = false }: InventoryAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
@@ -188,7 +189,7 @@ export function InventoryAddonReadOnly({ addon, theme = "dark" }: InventoryAddon
               shortDescription: toShortDescription(meta.content),
             });
           }}
-          className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+          className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
           title={t("view.anchorPreview.goToSection")}
         >
           {sectionsById.get(meta.id)?.title || meta.id}
@@ -203,16 +204,18 @@ export function InventoryAddonReadOnly({ addon, theme = "dark" }: InventoryAddon
       </span>
     ));
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("inventoryAddon.defaultName", "Inventory")}
-      </h5>
-      <div className="mt-2 grid gap-2 text-xs">
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("inventoryAddon.defaultName", "Inventory")}
+        </h5>
+      )}
+      <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-2`}>
         <p className={labelClass}>
           {t("inventoryAddon.summaryStart", "Item de categoria")} {category}.{" "}
           {t("inventoryAddon.summaryWeightPrefix", "Peso")} {addon.weight}
@@ -233,34 +236,18 @@ export function InventoryAddonReadOnly({ addon, theme = "dark" }: InventoryAddon
           {t("inventoryAddon.summaryDiscardablePrefix", "descartavel")}:{" "}
           {addon.discardable ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}.
         </p>
-        <p className={mutedClass}>
-          <strong>{t("inventoryAddon.notesLabel", "Observacoes")}:</strong>{" "}
-          {addon.notes || t("inventoryAddon.none", "nenhuma")}
-        </p>
-        {(producedBySections.length > 0 || ingredientForSections.length > 0) && (
-          <div
-            className={`rounded-lg p-2 ${
-              isLight ? "border border-gray-300 bg-gray-50" : "border border-gray-700 bg-gray-900/60"
-            }`}
-          >
-            <p className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${mutedClass}`}>
-              {t("inventoryAddon.productionConnectionsTitle", "Conexoes de producao")}
-            </p>
-            {producedBySections.length > 0 && (
-              <p className={labelClass}>
-                <strong>{t("inventoryAddon.producedByLabel", "Produzido por")}:</strong>{" "}
-                {renderSectionLinks(producedBySections)}
-                .
-              </p>
-            )}
-            {ingredientForSections.length > 0 && (
-              <p className={labelClass}>
-                <strong>{t("inventoryAddon.ingredientForLabel", "Ingrediente para")}:</strong>{" "}
-                {renderSectionLinks(ingredientForSections)}
-                .
-              </p>
-            )}
-          </div>
+        {addon.notes ? <p className={mutedClass}>{addon.notes}</p> : null}
+        {producedBySections.length > 0 && (
+          <p className={labelClass}>
+            <strong>{t("inventoryAddon.producedByLabel", "Produzido por")}:</strong>{" "}
+            {renderSectionLinks(producedBySections)}.
+          </p>
+        )}
+        {ingredientForSections.length > 0 && (
+          <p className={labelClass}>
+            <strong>{t("inventoryAddon.ingredientForLabel", "Ingrediente para")}:</strong>{" "}
+            {renderSectionLinks(ingredientForSections)}.
+          </p>
         )}
       </div>
 

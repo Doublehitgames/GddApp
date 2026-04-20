@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface AttributeModifiersAddonReadOnlyProps {
   addon: AttributeModifiersAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 function formatValue(value: number | boolean): string {
@@ -16,7 +17,7 @@ function formatValue(value: number | boolean): string {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
-export function AttributeModifiersAddonReadOnly({ addon, theme = "dark" }: AttributeModifiersAddonReadOnlyProps) {
+export function AttributeModifiersAddonReadOnly({ addon, theme = "dark", bare = false }: AttributeModifiersAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
@@ -39,16 +40,18 @@ export function AttributeModifiersAddonReadOnly({ addon, theme = "dark" }: Attri
     return null;
   }, [addon.definitionsRef, projects]);
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("attributeModifiersAddon.defaultName", "Modificadores de Atributos")}
-      </h5>
-      <p className={`mt-1 text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("attributeModifiersAddon.defaultName", "Modificadores de Atributos")}
+        </h5>
+      )}
+      <p className={`${bare ? "" : "mt-1"} text-xs ${isLight ? "text-gray-600" : "text-gray-400"}`}>
         {t("attributeModifiersAddon.definitionsRefLabel", "Referência de definições")}:{" "}
         {definitionsMeta?.label || addon.definitionsRef || t("attributeModifiersAddon.selectNone", "Sem referência")}
       </p>
@@ -59,7 +62,7 @@ export function AttributeModifiersAddonReadOnly({ addon, theme = "dark" }: Attri
       ) : (
         <div className={`mt-2 space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
           {rows.map((entry) => (
-            <p key={entry.id} className="text-sm">
+            <p key={entry.id} className={bare ? "" : "text-sm"}>
               <strong>{definitionsMeta?.keys.get(entry.attributeKey) || entry.attributeKey}</strong>
               {entry.attributeKey ? (
                 <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>({entry.attributeKey})</span>

@@ -63,7 +63,22 @@ export type AddonRegistryEntry = {
   renderEditor: (addon: SectionAddon, onChange: (next: SectionAddon) => void, onRemove: () => void) => React.ReactNode;
   renderReadOnly: (
     addon: SectionAddon,
-    options?: { compact?: boolean; showChart?: boolean; maxRows?: number; theme?: "dark" | "light"; layout?: "stack" | "sideBySide"; showSummary?: boolean; showTable?: boolean }
+    options?: {
+      compact?: boolean;
+      showChart?: boolean;
+      maxRows?: number;
+      theme?: "dark" | "light";
+      layout?: "stack" | "sideBySide";
+      showSummary?: boolean;
+      showTable?: boolean;
+      /**
+       * When true, renders the addon content without its own outer shell
+       * (no border/background/padding/title) — for embedding inside a
+       * parent card that already provides the chrome (e.g. the manager
+       * page's stacked list).
+       */
+      bare?: boolean;
+    }
   ) => React.ReactNode;
 };
 
@@ -105,6 +120,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
         showChart: options?.showChart,
         maxRows: options?.maxRows,
         theme: options?.theme,
+        bare: options?.bare,
         layout: options?.layout,
         showSummary: options?.showSummary,
         showTable: options?.showTable,
@@ -134,6 +150,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
         addon: addon.data,
         maxRows: options?.maxRows,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -159,6 +176,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(EconomyLinkAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -184,6 +202,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(AttributeDefinitionsAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -209,6 +228,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(AttributeProfileAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -234,6 +254,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(AttributeModifiersAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -259,6 +280,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(CurrencyAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -284,6 +306,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(DataSchemaAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -309,6 +332,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(GlobalVariableAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -334,6 +358,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(ProductionAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -359,6 +384,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(InventoryAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -384,6 +410,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(FieldLibraryAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },
@@ -409,6 +436,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
       return React.createElement(ExportSchemaAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
+        bare: options?.bare,
       });
     },
   },

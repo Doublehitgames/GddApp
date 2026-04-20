@@ -12,6 +12,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface FieldLibraryAddonReadOnlyProps {
   addon: FieldLibraryAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type Usage = {
@@ -44,7 +45,7 @@ function toShortDescription(markdownContent: string): string {
   return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
 }
 
-export function FieldLibraryAddonReadOnly({ addon, theme = "dark" }: FieldLibraryAddonReadOnlyProps) {
+export function FieldLibraryAddonReadOnly({ addon, theme = "dark", bare = false }: FieldLibraryAddonReadOnlyProps) {
   const { t } = useI18n();
   const isLight = theme === "light";
   const entries = addon.entries || [];
@@ -167,7 +168,7 @@ export function FieldLibraryAddonReadOnly({ addon, theme = "dark" }: FieldLibrar
             shortDescription: toShortDescription(sectionMeta.content),
           });
         }}
-        className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+        className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
         title={t("view.anchorPreview.goToSection")}
       >
         {label}
@@ -178,7 +179,9 @@ export function FieldLibraryAddonReadOnly({ addon, theme = "dark" }: FieldLibrar
   const totalCount = entries.length;
   const totalUsages = Array.from(usagesByEntryId.values()).reduce((acc, list) => acc + list.length, 0);
 
-  const shellClass = isLight
+  const shellClass = bare
+    ? ""
+    : isLight
     ? "rounded-xl border border-gray-300 bg-white p-3"
     : "rounded-xl border border-gray-700 bg-gray-900/40 p-3";
   const titleClass = isLight ? "text-gray-900" : "text-gray-200";
@@ -198,34 +201,36 @@ export function FieldLibraryAddonReadOnly({ addon, theme = "dark" }: FieldLibrar
   return (
     <div className={shellClass}>
       {/* Header: title + count summary */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h5 className={`text-sm font-semibold ${titleClass}`}>
-          {addon.name || t("fieldLibraryAddon.defaultName", "Biblioteca de Campos")}
-        </h5>
-        <div className={`text-xs ${mutedClass}`}>
-          {t("fieldLibraryAddon.summaryCount", "{count} campos definidos").replace(
-            "{count}",
-            String(totalCount)
-          )}
-          {totalUsages > 0 && (
-            <span className="ml-1.5">
-              {"· "}
-              {t("fieldLibraryAddon.summaryUsages", "{count} usos no projeto").replace(
-                "{count}",
-                String(totalUsages)
-              )}
-            </span>
-          )}
+      {!bare && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h5 className={`text-sm font-semibold ${titleClass}`}>
+            {addon.name || t("fieldLibraryAddon.defaultName", "Biblioteca de Campos")}
+          </h5>
+          <div className={`text-xs ${mutedClass}`}>
+            {t("fieldLibraryAddon.summaryCount", "{count} campos definidos").replace(
+              "{count}",
+              String(totalCount)
+            )}
+            {totalUsages > 0 && (
+              <span className="ml-1.5">
+                {"· "}
+                {t("fieldLibraryAddon.summaryUsages", "{count} usos no projeto").replace(
+                  "{count}",
+                  String(totalUsages)
+                )}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {totalCount === 0 ? (
-        <p className={`mt-2 text-xs ${subtleClass}`}>
+        <p className={`${bare ? "" : "mt-2"} text-xs ${subtleClass}`}>
           {t("fieldLibraryAddon.readOnlyEmpty", "Nenhum campo definido.")}
         </p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className={`${bare ? "" : "mt-3"} overflow-x-auto`}>
+          <table className={`w-full ${bare ? "" : "text-sm"}`}>
             <thead>
               <tr className={`text-[11px] uppercase tracking-wide ${headerRowClass}`}>
                 <th className="px-2.5 py-1.5 text-left font-semibold">

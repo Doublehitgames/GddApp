@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { calculateCurveMetrics, generateBalanceCurve, simulateProgressionBySession } from "@/lib/balance/formulaEngine";
 import type { BalanceAddonDraft } from "@/lib/balance/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface BalanceAddonReadOnlyProps {
   addon: BalanceAddonDraft;
@@ -13,6 +14,7 @@ interface BalanceAddonReadOnlyProps {
   layout?: "stack" | "sideBySide";
   showSummary?: boolean;
   showTable?: boolean;
+  bare?: boolean;
 }
 
 export function BalanceAddonReadOnly({
@@ -24,6 +26,7 @@ export function BalanceAddonReadOnly({
   layout = "stack",
   showSummary = false,
   showTable = true,
+  bare = false,
 }: BalanceAddonReadOnlyProps) {
   const curveState = useMemo(() => {
     try {
@@ -47,9 +50,29 @@ export function BalanceAddonReadOnly({
     }
   }, [addon]);
 
-  const rows = curveState.points.slice(0, Math.max(1, maxRows));
+  const { t } = useI18n();
+  const [isExpanded, setIsExpanded] = useState(false);
   const isLight = theme === "light";
   const sideBySide = layout === "sideBySide" && showTable;
+  // In bare (manager) mode, start collapsed showing only first/mid/last rows.
+  // Otherwise, respect maxRows as before.
+  const previewPoints = useMemo(() => {
+    if (!bare) return [] as typeof curveState.points;
+    const points = curveState.points;
+    if (points.length === 0) return points;
+    const first = points[0];
+    const last = points[points.length - 1];
+    const mid = points[Math.floor(points.length / 2)];
+    const picked = [first, mid, last].filter(
+      (p, i, arr) => arr.findIndex((q) => q.level === p.level) === i
+    );
+    return picked;
+  }, [bare, curveState.points]);
+  const rows =
+    bare && !isExpanded
+      ? previewPoints
+      : curveState.points.slice(0, Math.max(1, maxRows));
+  const canToggle = bare && curveState.points.length > previewPoints.length;
   const metrics = useMemo(() => calculateCurveMetrics(curveState.points), [curveState.points]);
   const simulationInput = useMemo(
     () =>
@@ -66,31 +89,33 @@ export function BalanceAddonReadOnly({
   );
   const simulation = useMemo(() => simulateProgressionBySession(curveState.points, simulationInput), [curveState.points, simulationInput]);
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-cyan-700/40 bg-cyan-950/10"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-cyan-700/40 bg-cyan-950/10"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-cyan-200"}`}>
-        {addon.name || "Balanceamento XP"}
-      </h5>
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-cyan-200"}`}>
+          {addon.name || "Balanceamento XP"}
+        </h5>
+      )}
       {curveState.error ? (
-        <p className="mt-2 text-xs text-amber-300">{curveState.error}</p>
+        <p className={`${bare ? "" : "mt-2"} text-xs text-amber-300`}>{curveState.error}</p>
       ) : (
         <>
-          <div className={sideBySide ? "mt-2 grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start" : "mt-2 space-y-2"}>
+          <div className={sideBySide ? `${bare ? "" : "mt-2"} grid gap-3 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start` : `${bare ? "" : "mt-2"} space-y-2`}>
             {showTable && (
               <div
                 className={`overflow-auto rounded-lg ${
                   isLight ? "border border-gray-300 bg-white" : "border border-gray-700"
                 }`}
               >
-                <table className="w-full text-left text-xs">
-                  <thead className={isLight ? "bg-gray-100 text-gray-800" : "bg-gray-900 text-gray-300"}>
+                <table className={`w-full text-left ${bare ? "text-[13px]" : "text-xs"}`}>
+                  <thead className={isLight ? "bg-gray-100 text-gray-600" : "bg-gray-900 text-gray-400"}>
                     <tr>
-                      <th className="px-2 py-1.5">LV</th>
-                      <th className="px-2 py-1.5">XP</th>
+                      <th className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>LV</th>
+                      <th className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>XP</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -142,7 +167,24 @@ export function BalanceAddonReadOnly({
               </div>
             )}
           </div>
-          {showTable && curveState.points.length > rows.length && (
+          {showTable && canToggle && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded((prev) => !prev)}
+              aria-expanded={isExpanded}
+              className={`mt-1.5 text-xs font-medium ${
+                isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"
+              }`}
+            >
+              {isExpanded
+                ? t("progressionTableAddon.readOnlyShowLess", "Mostrar menos")
+                : t("progressionTableAddon.readOnlyShowAll", "Mostrar todos os {count} níveis").replace(
+                    "{count}",
+                    String(curveState.points.length)
+                  )}
+            </button>
+          )}
+          {showTable && !bare && curveState.points.length > rows.length && (
             <p className={`mt-1 text-[11px] ${isLight ? "text-gray-600" : "text-gray-400"}`}>
               Mostrando {rows.length} de {curveState.points.length} niveis.
             </p>

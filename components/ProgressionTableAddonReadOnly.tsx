@@ -8,12 +8,14 @@ interface ProgressionTableAddonReadOnlyProps {
   addon: ProgressionTableAddonDraft;
   maxRows?: number;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 export function ProgressionTableAddonReadOnly({
   addon,
   maxRows = 20,
   theme = "dark",
+  bare = false,
 }: ProgressionTableAddonReadOnlyProps) {
   const { t } = useI18n();
   const rows = addon.rows || [];
@@ -30,42 +32,46 @@ export function ProgressionTableAddonReadOnly({
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
     .filter((row, index, arr) => arr.findIndex((item) => item.level === row.level) === index);
   const visibleRows = isExpanded ? rows : previewRows;
+  const canToggle = rows.length > previewRows.length;
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
 
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => setIsExpanded((prev) => !prev)}
-        aria-expanded={isExpanded}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-          {addon.name || t("progressionTableAddon.defaultName", "Tabela de balanceamento")}
-        </h5>
-        <span
-          className={`inline-flex h-6 w-6 items-center justify-center rounded border text-sm font-semibold ${
-            isLight ? "border-gray-300 bg-gray-100 text-gray-700" : "border-gray-600 bg-gray-800 text-gray-200"
-          }`}
-          aria-hidden="true"
+    <div className={outerClass}>
+      {!bare && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          aria-expanded={isExpanded}
+          className="flex w-full items-center justify-between text-left"
         >
-          {isExpanded ? "▾" : "▸"}
-        </span>
-      </button>
+          <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+            {addon.name || t("progressionTableAddon.defaultName", "Tabela de balanceamento")}
+          </h5>
+          <span
+            className={`inline-flex h-6 w-6 items-center justify-center rounded border text-sm font-semibold ${
+              isLight ? "border-gray-300 bg-gray-100 text-gray-700" : "border-gray-600 bg-gray-800 text-gray-200"
+            }`}
+            aria-hidden="true"
+          >
+            {isExpanded ? "▾" : "▸"}
+          </span>
+        </button>
+      )}
       <div
-        className={`mt-2 overflow-auto rounded-lg ${
+        className={`${bare ? "" : "mt-2"} overflow-auto rounded-lg ${
           isLight ? "border border-gray-300 bg-white" : "border border-gray-700"
         }`}
       >
-        <table className="w-full text-left text-xs">
-          <thead className={isLight ? "bg-gray-100 text-gray-800" : "bg-gray-900 text-gray-300"}>
+        <table className={`w-full text-left ${bare ? "text-[13px]" : "text-xs"}`}>
+          <thead className={isLight ? "bg-gray-100 text-gray-600" : "bg-gray-900 text-gray-400"}>
             <tr>
-              <th className="px-2 py-1.5">{t("progressionTableAddon.levelHeader", "Level")}</th>
+              <th className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>
+                {t("progressionTableAddon.levelHeader", "Level")}
+              </th>
               {columns.map((column) => (
-                <th key={column.id} className="px-2 py-1.5">
+                <th key={column.id} className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>
                   {column.name || t("progressionTableAddon.columnFallback", "Coluna")}
                 </th>
               ))}
@@ -91,6 +97,23 @@ export function ProgressionTableAddonReadOnly({
           </tbody>
         </table>
       </div>
+      {canToggle && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          aria-expanded={isExpanded}
+          className={`mt-1.5 text-xs font-medium ${
+            isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"
+          }`}
+        >
+          {isExpanded
+            ? t("progressionTableAddon.readOnlyShowLess", "Mostrar menos")
+            : t("progressionTableAddon.readOnlyShowAll", "Mostrar todos os {count} níveis").replace(
+                "{count}",
+                String(rows.length)
+              )}
+        </button>
+      )}
       {/* maxRows intentionally ignored in expanded mode to show full table */}
     </div>
   );

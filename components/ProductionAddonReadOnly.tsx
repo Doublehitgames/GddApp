@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 interface ProductionAddonReadOnlyProps {
   addon: ProductionAddonDraft;
   theme?: "dark" | "light";
+  bare?: boolean;
 }
 
 type SectionMeta = {
@@ -67,7 +68,7 @@ function computeLinkedTimeSeconds(
   return Math.max(0, Math.floor(next));
 }
 
-export function ProductionAddonReadOnly({ addon, theme = "dark" }: ProductionAddonReadOnlyProps) {
+export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }: ProductionAddonReadOnlyProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
@@ -235,7 +236,7 @@ export function ProductionAddonReadOnly({ addon, theme = "dark" }: ProductionAdd
           shortDescription: toShortDescription(meta.content),
         });
       }}
-      className="gdd-inline-anchor text-blue-600 hover:text-blue-800 underline cursor-pointer"
+      className={`gdd-inline-anchor underline cursor-pointer ${isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200"}`}
       title={t("view.anchorPreview.goToSection")}
     >
       {meta.title}
@@ -279,16 +280,18 @@ export function ProductionAddonReadOnly({ addon, theme = "dark" }: ProductionAdd
     </>
   );
 
+  const outerClass = bare
+    ? ""
+    : `rounded-xl p-3 ${isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"}`;
+
   return (
-    <div
-      className={`rounded-xl p-3 ${
-        isLight ? "border border-gray-300 bg-white" : "border border-gray-700 bg-gray-900/40"
-      }`}
-    >
-      <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
-        {addon.name || t("productionAddon.defaultName", "Production")}
-      </h5>
-      <div className="mt-2 grid gap-2 text-xs">
+    <div className={outerClass}>
+      {!bare && (
+        <h5 className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-200"}`}>
+          {addon.name || t("productionAddon.defaultName", "Production")}
+        </h5>
+      )}
+      <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-2`}>
         <p className={isLight ? "text-gray-700" : "text-gray-300"}>
           {addon.mode === "passive" ? passiveSummary : recipeSummary}
         </p>
