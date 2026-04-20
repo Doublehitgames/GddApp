@@ -381,3 +381,161 @@ body {
   transform-origin: top right;
   animation: premiumMenuIn 140ms ease-out;
 }
+
+/* RichDoc / BlockNote — strip default Mantine chrome so the editor blends
+   into the surrounding card (no nested backgrounds, no extra L/R padding). */
+.rich-doc-editor-host .bn-container,
+.rich-doc-readonly-host .bn-container {
+  background: transparent;
+}
+.rich-doc-editor-host .bn-editor,
+.rich-doc-readonly-host .bn-editor {
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Tables: stretch the wrapper to the full container width and force the
+   table to fill it. Column widths stored by BlockNote (from the resize
+   handles) are honoured proportionally under `table-layout: fixed`, so
+   manual resize still works and the table stays responsive on window
+   resize. The tableWrapper keeps its native padding so the + buttons and
+   drag handles have room to render. */
+.rich-doc-editor-host .bn-block-content[data-content-type="table"],
+.rich-doc-readonly-host .bn-block-content[data-content-type="table"] {
+  width: 100%;
+}
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] .tableWrapper,
+.rich-doc-readonly-host .bn-block-content[data-content-type="table"] .tableWrapper {
+  padding: 0;
+  overflow: visible;
+  max-width: 100%;
+}
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] .tableWrapper-inner,
+.rich-doc-readonly-host .bn-block-content[data-content-type="table"] .tableWrapper-inner {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] table,
+.rich-doc-readonly-host .bn-block-content[data-content-type="table"] table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+/* Table headers (toggled via "Header row / Header column" in the handle
+   menu) need visual contrast. BlockNote emits real <th> elements; default
+   browser styling only bolds them. We split the treatment so the manager
+   editor gets the app's premium indigo→fuchsia gradient while the
+   document view inherits the user's selected paper theme. */
+/* Manager mode (edit panel AND the stacked-list preview, both rendered
+   against the dark chrome with theme="dark"): use the app's premium
+   indigo→fuchsia gradient.
+
+   Shared typography/shadow on every header cell. The gradient itself is
+   applied to the <tr> when the whole row is a header (so it runs left→
+   right unbroken across all columns), and falls back to a per-cell
+   gradient only for header-column cells embedded in mixed rows. */
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] th {
+  color: rgb(245, 245, 255);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(165, 180, 252, 0.55) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: transparent;
+}
+
+/* Header-column cells (single <th> inside a mixed row). For each row we
+   paint a vertical slice of the gradient positioned by row index, using
+   `background-attachment: local` so all slices align into one continuous
+   column band. No hard-coded td mask is used — user-applied cell colors
+   (BlockNote's "Colors" menu) paint over normally. */
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:has(> td) > th {
+  background-image: linear-gradient(180deg, rgba(129, 140, 248, 0.38) 0%, rgba(217, 70, 239, 0.32) 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 800%;
+  background-attachment: local;
+}
+/* Shift the background vertically per row so each <th> shows its slice
+   of the shared gradient. 8 steps cover up to 9 rows of header column;
+   extra rows reuse the last position (still looks like a continuation). */
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(2):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(2):has(> td) > th { background-position-y: 14.28%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(3):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(3):has(> td) > th { background-position-y: 28.57%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(4):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(4):has(> td) > th { background-position-y: 42.86%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(5):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(5):has(> td) > th { background-position-y: 57.14%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(6):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(6):has(> td) > th { background-position-y: 71.43%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(7):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(7):has(> td) > th { background-position-y: 85.71%; }
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:nth-child(n+8):has(> td) > th,
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:nth-child(n+8):has(> td) > th { background-position-y: 100%; }
+
+/* Full-header rows: gradient on the <tr>, cells transparent, continuous
+   left-to-right band. */
+.rich-doc-editor-host .bn-block-content[data-content-type="table"] tr:has(> th):not(:has(> td)),
+.rich-doc-readonly-host[data-theme="dark"] .bn-block-content[data-content-type="table"] tr:has(> th):not(:has(> td)) {
+  background: linear-gradient(90deg, rgba(129, 140, 248, 0.38) 0%, rgba(217, 70, 239, 0.32) 100%);
+}
+
+/* Document view (theme="light", rendered on the paper): derive the
+   header tint from the paper's own text color so it adapts to every
+   document theme (clean/modern/luxury/editorial/night) without
+   hard-coded colors. Same row/cell split so the band runs unbroken. */
+.rich-doc-readonly-host[data-theme="light"] .bn-block-content[data-content-type="table"] th {
+  color: inherit;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border-bottom: 2px solid color-mix(in srgb, currentColor 35%, transparent) !important;
+  background: transparent;
+}
+.rich-doc-readonly-host[data-theme="light"] .bn-block-content[data-content-type="table"] tr:has(> th):not(:has(> td)) {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+.rich-doc-readonly-host[data-theme="light"] .bn-block-content[data-content-type="table"] tr:has(> td) > th {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+/* BlockNote computes its floating-UI z-index as
+   `calc(var(--bn-ui-base-z-index, 0) + 10)`. The addon editor drawer
+   sits at z-[60], hiding all editor chrome (table handles, side menu,
+   formatting toolbar, suggestion menus) behind it. Bumping the base
+   variable on .bn-root pushes the whole portal above the drawer
+   without touching the editor body's stacking. */
+html .bn-root,
+.bn-root.bn-mantine,
+.bn-root.dark,
+.bn-root {
+  --bn-ui-base-z-index: 70 !important;
+}
+
+/* Slash / suggestion menu: Floating UI clamps max-height to the space
+   available between the cursor and the viewport edge, so when the
+   cursor is near the bottom of the editor the menu shrinks to 2-3
+   items with broken scroll. Force a usable height — the portal's
+   z-index is already bumped above the drawer, so overflowing the
+   drawer area is fine. */
+.bn-root .bn-suggestion-menu {
+  max-height: min(70vh, 480px) !important;
+  overflow-y: auto !important;
+}
+
+/* Make table row/column drag-handles visible against the dark editor bg.
+   Default Mantine styling blends into the dark chrome of the app. */
+.bn-root .bn-table-handle {
+  background: rgb(75, 75, 80) !important;
+  color: rgb(220, 220, 220) !important;
+  border: 1px solid rgb(110, 110, 120) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.bn-root .bn-table-handle:hover {
+  background: rgb(99, 102, 241) !important;
+  color: white !important;
+  border-color: rgb(129, 140, 248) !important;
+}
