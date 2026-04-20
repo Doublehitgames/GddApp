@@ -74,12 +74,17 @@ export async function GET(request: NextRequest) {
   }
 
   if (type === "all" || type === "sections") {
-    // Try full columns, fallback to safe set
+    // Try full columns, fallback to safe set.
+    // The OR also matches text inside addons (richDoc blocks, addon names,
+    // etc.) by casting the JSONB column to text — crude but indexed and
+    // good enough for free-text search; the structural keys in the JSON
+    // are unlikely to collide with real user queries. The fallback set
+    // omits balance_addons since the column may not exist yet.
     let { data: sections, error } = await auth.supabase
       .from("sections")
       .select(SECTION_COLS_FULL)
       .in("project_id", ids)
-      .or(`title.ilike.${pattern},content.ilike.${pattern}`)
+      .or(`title.ilike.${pattern},content.ilike.${pattern},balance_addons::text.ilike.${pattern}`)
       .limit(limit);
 
     if (error) {

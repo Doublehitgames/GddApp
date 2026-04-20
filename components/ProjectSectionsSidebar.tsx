@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
+import { getSectionSearchText } from "@/utils/sectionSearchText";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
   Collision,
@@ -553,9 +554,7 @@ function SectionTree({
   const matchesSearch = (section: any): boolean => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
-    const titleMatch = section.title.toLowerCase().includes(term);
-    const contentMatch = section.content?.toLowerCase().includes(term) || false;
-    return titleMatch || contentMatch;
+    return getSectionSearchText(section).toLowerCase().includes(term);
   };
 
   const matchesTags = (section: any): boolean => {
@@ -1129,9 +1128,7 @@ function SectionChildren({
   const matchesSearch = (section: any): boolean => {
     if (!searchTerm || !searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
-    const titleMatch = section.title.toLowerCase().includes(term);
-    const contentMatch = section.content?.toLowerCase().includes(term) || false;
-    return titleMatch || contentMatch;
+    return getSectionSearchText(section).toLowerCase().includes(term);
   };
 
   const matchesTags = (section: any): boolean => {

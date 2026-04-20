@@ -7,6 +7,10 @@ import { useI18n } from '@/lib/i18n/provider';
 import { buildUnityExport } from '@/lib/balance/unityExport';
 import { ToggleSwitch } from '@/components/ToggleSwitch';
 import { resolveProjectSpecialTokensForProject } from '@/lib/addons/projectSpecialTokens';
+import {
+  extractSectionRichDocMarkdown,
+  sectionHasExportableContent,
+} from '@/lib/richDoc/exportSection';
 
 type ExportFormat = 'markdown' | 'pdf' | 'word' | 'unityJson';
 
@@ -71,8 +75,7 @@ export default function ExportPage() {
     }
 
     const renderSection = (section: Section & { subsections?: Section[] }, level: number) => {
-      const isEmpty = !section.content || section.content.trim().length === 0;
-      if (isEmpty && !includeEmptySections) return '';
+      if (!sectionHasExportableContent(section) && !includeEmptySections) return '';
 
       let md = '';
       const headerPrefix = '#'.repeat(level + 1);
@@ -80,6 +83,11 @@ export default function ExportPage() {
 
       if (section.content) {
         md += `${resolveExportContent(section.content, section.id)}\n\n`;
+      }
+
+      const richDocMd = extractSectionRichDocMarkdown(section);
+      if (richDocMd) {
+        md += `${richDocMd}\n\n`;
       }
 
       if (section.subsections) {
@@ -134,8 +142,7 @@ export default function ExportPage() {
     const hierarchy = getSectionsHierarchy();
 
     const renderSection = (section: Section & { subsections?: Section[] }, level: number) => {
-      const isEmpty = !section.content || section.content.trim().length === 0;
-      if (isEmpty && !includeEmptySections) return;
+      if (!sectionHasExportableContent(section) && !includeEmptySections) return;
 
       checkPageBreak(15);
 
@@ -159,6 +166,21 @@ export default function ExportPage() {
           yPosition += lineHeight;
         });
 
+        yPosition += 5;
+      }
+
+      // RichDoc addons (rendered as raw markdown text — PDF output is
+      // text-only so headings/bold/etc. appear as plain ASCII).
+      const richDocMd = extractSectionRichDocMarkdown(section);
+      if (richDocMd) {
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(richDocMd, 170 - (level - 1) * 10);
+        lines.forEach((line: string) => {
+          checkPageBreak(lineHeight);
+          doc.text(line, indent, yPosition);
+          yPosition += lineHeight;
+        });
         yPosition += 5;
       }
 
@@ -205,8 +227,7 @@ export default function ExportPage() {
     }
 
     const renderSection = (section: Section & { subsections?: Section[] }, level: number) => {
-      const isEmpty = !section.content || section.content.trim().length === 0;
-      if (isEmpty && !includeEmptySections) return;
+      if (!sectionHasExportableContent(section) && !includeEmptySections) return;
 
       // Titulo da secao
       const headingLevel = level === 1 ? HeadingLevel.HEADING_1 :
@@ -233,6 +254,21 @@ export default function ExportPage() {
               })
             );
           }
+        });
+      }
+
+      // RichDoc addons — emit each markdown paragraph as a Word paragraph.
+      const richDocMd = extractSectionRichDocMarkdown(section);
+      if (richDocMd) {
+        richDocMd.split('\n\n').forEach(para => {
+          const trimmed = para.trim();
+          if (!trimmed) return;
+          children.push(
+            new Paragraph({
+              text: trimmed,
+              spacing: { after: 200 }
+            })
+          );
         });
       }
 

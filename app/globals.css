@@ -484,6 +484,34 @@ body {
   background: linear-gradient(90deg, rgba(129, 140, 248, 0.38) 0%, rgba(217, 70, 239, 0.32) 100%);
 }
 
+/* In-doc section refs ($[Section Name]) rendered as styled inline
+   chips so they stand out from regular markdown links. Both modes use
+   the gddapp:section: href scheme — the read-only host intercepts the
+   click for popup-aware navigation. */
+.rich-doc-readonly-host a[href^="https://gddapp.local/section/"] {
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+  padding: 0 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.rich-doc-readonly-host[data-theme="dark"] a[href^="https://gddapp.local/section/"] {
+  color: rgb(165, 180, 252);
+  background: rgba(99, 102, 241, 0.12);
+}
+.rich-doc-readonly-host[data-theme="dark"] a[href^="https://gddapp.local/section/"]:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-bottom-color: rgb(165, 180, 252);
+}
+.rich-doc-readonly-host[data-theme="light"] a[href^="https://gddapp.local/section/"] {
+  color: inherit;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.rich-doc-readonly-host[data-theme="light"] a[href^="https://gddapp.local/section/"]:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
 /* Document view (theme="light", rendered on the paper): derive the
    header tint from the paper's own text color so it adapts to every
    document theme (clean/modern/luxury/editorial/night) without

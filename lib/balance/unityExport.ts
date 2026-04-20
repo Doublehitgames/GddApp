@@ -1,6 +1,7 @@
 import { generateBalanceCurve } from "@/lib/balance/formulaEngine";
 import type { Project, Section } from "@/store/projectStore";
 import { sectionAddonToBalanceDraft } from "@/lib/addons/types";
+import { richDocToMarkdown, richDocToPlainText } from "@/lib/richDoc/serialize";
 
 type UnitySectionExport = {
   id: string;
@@ -10,6 +11,12 @@ type UnitySectionExport = {
     id: string;
     name: string;
     computedTable: Array<{ level: number; value: number }>;
+  }>;
+  richDocs: Array<{
+    id: string;
+    name: string;
+    markdown: string;
+    plainText: string;
   }>;
 };
 
@@ -49,6 +56,18 @@ export function buildUnityExport(project: Project): UnityExportV1 {
         computedTable: curve.points,
       };
     }),
+    richDocs: (section.addons || [])
+      .filter((addon) => addon.type === "richDoc")
+      .map((addon) => {
+        const data = (addon as { data?: { id?: string; blocks?: unknown } }).data;
+        const blocks = data?.blocks;
+        return {
+          id: data?.id || addon.id,
+          name: addon.name || "Documento",
+          markdown: richDocToMarkdown(blocks),
+          plainText: richDocToPlainText(blocks),
+        };
+      }),
   }));
 
   return {
