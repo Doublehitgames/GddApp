@@ -18,12 +18,18 @@
       "mcp__gdd-manager__list_projects",
       "Bash(npx tsc *)",
       "Bash(npx jest *)",
+      "Bash(npx eslint *)",
       "Bash(npm test)",
       "Bash(npm run lint)",
+      "Bash(npm run -s lint)",
       "Bash(npm run build)",
+      "Bash(npm run -s build)",
       "Bash(npm run -s i18n:check)",
       "Bash(npm run -s i18n:audit)",
-      "Bash(npm run -s i18n:validate)"
+      "Bash(npm run -s i18n:validate)",
+      "Bash(npm info *)",
+      "Bash(ls -1t *)",
+      "Bash(ls -la *)"
     ]
   }
 }
