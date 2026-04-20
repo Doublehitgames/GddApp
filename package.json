@@ -21,6 +21,9 @@
     "i18n:validate": "npm run -s i18n:check && npm run -s i18n:audit"
   },
   "dependencies": {
+    "@blocknote/core": "^0.48.1",
+    "@blocknote/mantine": "^0.48.1",
+    "@blocknote/react": "^0.48.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

@@ -27,6 +27,22 @@ export type FieldLibraryAddonDraft = {
   entries: FieldLibraryEntry[];
 };
 
+/** Opaque BlockNote block — we persist whatever `editor.document` returns. */
+export type RichDocBlock = {
+  id?: string;
+  type?: string;
+  props?: Record<string, unknown>;
+  content?: unknown;
+  children?: RichDocBlock[];
+};
+
+export type RichDocAddonDraft = {
+  id: string;
+  name: string;
+  blocks: RichDocBlock[];
+  schemaVersion: 1;
+};
+
 export type ProgressionColumnGenerator =
   | { mode: "manual" }
   | { mode: "linear"; base: number; step: number; bias?: number }
@@ -329,6 +345,7 @@ export type SectionAddonType =
   | "attributeModifiers"
   | "fieldLibrary"
   | "exportSchema"
+  | "richDoc"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -437,6 +454,14 @@ export type ExportSchemaSectionAddon = {
   data: ExportSchemaAddonDraft;
 };
 
+export type RichDocSectionAddon = {
+  id: string;
+  type: "richDoc";
+  name: string;
+  group?: string;
+  data: RichDocAddonDraft;
+};
+
 // Legacy addon shape kept for compatibility in normalize/migration flows.
 export type GenericStatsSectionAddon = {
   id: string;
@@ -460,6 +485,7 @@ export type SectionAddon =
   | AttributeModifiersSectionAddon
   | FieldLibrarySectionAddon
   | ExportSchemaSectionAddon
+  | RichDocSectionAddon
   | GenericStatsSectionAddon;
 
 function createDefaultRows(
@@ -696,6 +722,20 @@ export function createDefaultFieldLibraryAddon(addonId: string): FieldLibrarySec
           description: "",
         },
       ],
+    },
+  };
+}
+
+export function createDefaultRichDocAddon(addonId: string): RichDocSectionAddon {
+  return {
+    id: addonId,
+    type: "richDoc",
+    name: "Documento",
+    data: {
+      id: addonId,
+      name: "Documento",
+      blocks: [],
+      schemaVersion: 1,
     },
   };
 }

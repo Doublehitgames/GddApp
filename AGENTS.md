@@ -61,6 +61,8 @@ Documentação geral: `docs/QUICKSTART.md`, `docs/TESTES_COMPLETOS.md`, `docs/GU
 | Capa do projeto (cover image) | `app/projects/[id]/ProjectDetailClient.tsx`, `app/projects/[id]/view/GDDViewClient.tsx`, `app/page.tsx`, `lib/googleDrivePicker.ts`, `store/projectStore.ts` (`coverImageUrl`) |
 | SQL da capa do projeto | `lib/supabase/add_project_cover_image.sql` (`projects.cover_image_url`) |
 | Addons em seções | `lib/addons/*`, `store/projectStore.ts` (`section.addons`), `app/api/projects/sync/route.ts` (`balance_addons`) |
+| Tipos de addon | progressionTable, xpBalance, currency, globalVariable, economyLink, inventory, production, dataSchema, attributeDefinitions, attributeProfile, attributeModifiers, fieldLibrary, exportSchema, **richDoc** (BlockNote/Notion-like, novo em 2026-04-20) |
+| RichDoc (Notion-like) | `components/RichDocAddonPanel.tsx`, `components/RichDocAddonReadOnly.tsx`, `components/RichDocEditor.tsx`, `lib/richDoc/embedBlock.tsx`. Lazy via `next/dynamic({ ssr: false })`. Embed customizado suporta YouTube/Vimeo/Loom/Streamable. richDoc é group-agnostic — não participa do sistema de A/B groups (A/B tabs e "+ Notas" somem em seções com só richDocs). |
 | Emojis (atalho de UI) | `components/EmojiQuickPicker.tsx`, `app/projects/[id]/ProjectEditClient.tsx`, `app/projects/[id]/sections/SectionDetailClient.tsx` |
 
 ---

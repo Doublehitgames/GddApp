@@ -161,6 +161,7 @@ REMOVER: id-da-secao
 - attributeModifiers
 - fieldLibrary
 - exportSchema
+- richDoc
 
 **JSON esperado (resumo):**
 - ADDON_CRIAR currency: {"name":"Moeda Base","code":"GOLD","displayName":"Ouro","kind":"soft","decimals":0}
@@ -175,6 +176,7 @@ REMOVER: id-da-secao
 - ADDON_CRIAR attributeProfile: {"name":"Perfil do Personagem","definitionsRef":"section-id-definicoes","values":[{"attributeKey":"strength","value":12},{"attributeKey":"stamina","value":95}]}
 - ADDON_CRIAR attributeModifiers: {"name":"Buff da Espada","definitionsRef":"section-id-definicoes","modifiers":[{"attributeKey":"strength","mode":"add","value":5},{"attributeKey":"stamina","mode":"mult","value":1.1}]}
 - ADDON_CRIAR fieldLibrary: {"name":"Biblioteca de Campos","entries":[{"key":"sell_price","label":"Preço de Venda","description":"Preço pelo qual o item é vendido ao NPC"},{"key":"buy_price","label":"Preço de Compra"}]}
+- ADDON_CRIAR richDoc: {"name":"Resumo do Sistema","blocks":[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Visão Geral"}]},{"type":"paragraph","content":[{"type":"text","text":"Descrição rica em Markdown/BlockNote."}]}],"schemaVersion":1}
 - ADDON_EDITAR: envie apenas campos que precisam mudar no jsonPatch
 - ADDON_REMOVER: remove pelo addonId
 

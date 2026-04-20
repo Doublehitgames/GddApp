@@ -335,6 +335,55 @@ describe("normalizeSectionAddons fieldLibrary", () => {
     }
   });
 
+  it("normalizes richDoc with tolerant block passthrough", () => {
+    const input = [
+      {
+        id: "rd-1",
+        type: "richDoc",
+        name: "My Doc",
+        data: {
+          id: "rd-1",
+          name: "My Doc",
+          blocks: [
+            { id: "b1", type: "paragraph", props: {}, content: [{ type: "text", text: "hi" }] },
+            { id: "b2", type: "future-unknown-type", props: { foo: 1 }, content: "opaque" },
+            "garbage",
+            null,
+            { id: "b3", type: "heading", props: { level: 2 }, content: [] },
+          ],
+          schemaVersion: 1,
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    expect(normalized?.length).toBe(1);
+    const doc = normalized?.[0];
+    expect(doc?.type).toBe("richDoc");
+    if (doc?.type === "richDoc") {
+      expect(doc.data.blocks).toHaveLength(3);
+      expect(doc.data.blocks[1].type).toBe("future-unknown-type");
+      expect(doc.data.schemaVersion).toBe(1);
+    }
+  });
+
+  it("defaults richDoc to empty blocks when missing", () => {
+    const input = [
+      {
+        id: "rd-2",
+        type: "richDoc",
+        name: "Empty",
+        data: { id: "rd-2", name: "Empty" },
+      },
+    ];
+    const normalized = normalizeSectionAddons(input);
+    const doc = normalized?.[0];
+    expect(doc?.type).toBe("richDoc");
+    if (doc?.type === "richDoc") {
+      expect(doc.data.blocks).toEqual([]);
+    }
+  });
+
   it("migrates legacy columnLibrary type to fieldLibrary on load", () => {
     const input = [
       {

@@ -405,4 +405,14 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional().describe("Array output format"),
   };
   pair("export_schema", "exportSchema", "export/remote config schema", exportSchemaFields, optional(exportSchemaFields));
+
+  // ── 14. Rich Doc ────────────────────────────────────────────────
+
+  const richDocFields = {
+    blocks: z
+      .array(z.record(z.string(), z.unknown()))
+      .describe("BlockNote document blocks (each block is an object with id/type/props/content/children). Opaque — forwarded as-is."),
+    schemaVersion: z.literal(1).optional().describe("Schema version, always 1"),
+  };
+  pair("rich_doc", "richDoc", "rich document (Notion-style blocks: headings, lists, images, embeds, columns)", richDocFields, optional(richDocFields));
 }

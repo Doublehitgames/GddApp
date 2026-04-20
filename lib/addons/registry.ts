@@ -14,6 +14,7 @@ import {
   createDefaultInventoryAddon,
   createDefaultProductionAddon,
   createDefaultProgressionTableAddon,
+  createDefaultRichDocAddon,
   sectionAddonToBalanceDraft,
 } from "@/lib/addons/types";
 import { AttributeDefinitionsAddonPanel } from "@/components/AttributeDefinitionsAddonPanel";
@@ -42,9 +43,12 @@ import { ProductionAddonPanel } from "@/components/ProductionAddonPanel";
 import { ProductionAddonReadOnly } from "@/components/ProductionAddonReadOnly";
 import { ProgressionTableAddonPanel } from "@/components/ProgressionTableAddonPanel";
 import { ProgressionTableAddonReadOnly } from "@/components/ProgressionTableAddonReadOnly";
+import { RichDocAddonPanel } from "@/components/RichDocAddonPanel";
+import { RichDocAddonReadOnly } from "@/components/RichDocAddonReadOnly";
 import React from "react";
 
 export type AddonCategory =
+  | "content"
   | "progression"
   | "economy"
   | "items"
@@ -84,6 +88,7 @@ export type AddonRegistryEntry = {
 
 /** Order used when grouping in the picker UI. */
 export const ADDON_CATEGORY_ORDER: AddonCategory[] = [
+  "content",
   "progression",
   "economy",
   "items",
@@ -434,6 +439,32 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "exportSchema") return null;
       return React.createElement(ExportSchemaAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+        bare: options?.bare,
+      });
+    },
+  },
+  {
+    type: "richDoc",
+    label: "Documento Rico",
+    category: "content",
+    emoji: "📝",
+    createDefault: () => {
+      const addonId = `rich-doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultRichDocAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "richDoc") return null;
+      return React.createElement(RichDocAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "richDoc") return null;
+      return React.createElement(RichDocAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,

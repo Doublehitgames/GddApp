@@ -1794,16 +1794,26 @@ function SectionDetailContent({
     prevAddonCountRef.current = addons.length;
   }, [addons.length]);
 
-  // Addon group management
+  // Addon group management.
+  // richDoc addons are group-agnostic: they never drive group tabs and are
+  // always visible regardless of which group is active.
   const addonGroups = useMemo(() => {
     const groups = new Set<string>();
     for (const addon of addons) {
+      if (addon.type === "richDoc") continue;
       groups.add((addon as any).group || "A");
     }
     return Array.from(groups).sort();
   }, [addons]);
 
-  const groupAddons = addons.filter((a: any) => ((a as any).group || "A") === activeGroup);
+  const hasGroupableAddons = useMemo(
+    () => addons.some((a: SectionAddon) => a.type !== "richDoc"),
+    [addons]
+  );
+
+  const groupAddons = addons.filter(
+    (a: any) => a.type === "richDoc" || ((a as any).group || "A") === activeGroup
+  );
 
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -2684,7 +2694,9 @@ function SectionDetailContent({
                 }
               />
 
-              {/* Group tabs + notes + compare — rendered last so the cards stay the main focus */}
+              {/* Group tabs + notes + compare — rendered last so the cards stay the main focus.
+                  Hidden when the section only contains richDoc addons (A/B testing is irrelevant there). */}
+              {hasGroupableAddons && (
               <div className="flex items-center gap-1.5 flex-wrap pt-2">
                 {addonGroups.map((g: string) => (
                   editingGroupName === g ? (
@@ -2773,6 +2785,7 @@ function SectionDetailContent({
                   </button>
                 )}
               </div>
+              )}
             </div>
           )}
 

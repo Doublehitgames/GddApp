@@ -18,6 +18,8 @@ import type {
   ProgressionTableAddonDraft,
   ProgressionTableColumn,
   ProgressionTableRow,
+  RichDocAddonDraft,
+  RichDocBlock,
   SectionAddon,
 } from "@/lib/addons/types";
 import { balanceDraftToSectionAddon, buildProgressionRowsFromRange } from "@/lib/addons/types";
@@ -658,6 +660,28 @@ function normalizeFieldLibraryDraft(value: unknown): FieldLibraryAddonDraft | nu
   };
 }
 
+function normalizeRichDocBlocks(value: unknown): RichDocBlock[] {
+  if (!Array.isArray(value)) return [];
+  const out: RichDocBlock[] = [];
+  for (const item of value) {
+    if (!isObject(item)) continue;
+    out.push(item as RichDocBlock);
+  }
+  return out;
+}
+
+function normalizeRichDocDraft(value: unknown): RichDocAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  return {
+    id: value.id,
+    name: value.name,
+    blocks: normalizeRichDocBlocks(value.blocks),
+    schemaVersion: 1,
+  };
+}
+
 function shouldMigrateEconomyProduction(draft: EconomyLinkAddonDraft): boolean {
   return Boolean(
     draft.hasProductionConfig &&
@@ -784,6 +808,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "attributeModifiers" &&
     value.type !== "fieldLibrary" &&
     value.type !== "exportSchema" &&
+    value.type !== "richDoc" &&
     value.type !== "genericStats"
   ) {
     return null;
@@ -1015,6 +1040,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "exportSchema") {
         const draft = normalizeExportSchemaDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "richDoc") {
+        const draft = normalizeRichDocDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,

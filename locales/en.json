@@ -830,6 +830,15 @@
       "brokenLibraryRef": "The linked library field was not found. Using the last saved name as fallback."
     }
   },
+  "richDocAddon": {
+    "addonTypeLabel": "Rich Document",
+    "defaultName": "Document",
+    "namePlaceholder": "Document name",
+    "editorPlaceholder": "Rich editor (BlockNote)",
+    "blocksSuffix": "block(s)",
+    "blocksLabel": "rich content block(s)",
+    "emptyState": "Empty document"
+  },
   "fieldLibraryAddon": {
     "addonTypeLabel": "Field Library",
     "defaultName": "Field Library",
@@ -1636,6 +1645,7 @@
     "emptyResults": "No addon found",
     "closeAriaLabel": "Close",
     "category": {
+      "content": "Content",
       "progression": "Progression",
       "economy": "Economy",
       "items": "Items & Production",
@@ -1671,6 +1681,7 @@
     "attributeProfile": { "description": "Concrete attribute values for a character/item" },
     "attributeModifiers": { "description": "Buffs/debuffs that change attributes (+10 STR, x1.5 DEX)" },
     "fieldLibrary": { "description": "Reusable names/keys shared across pages" },
-    "exportSchema": { "description": "Exports the final JSON consumed by the game" }
+    "exportSchema": { "description": "Exports the final JSON consumed by the game" },
+    "richDoc": { "description": "Notion-style rich document with headings, lists, images, embeds, and columns" }
   }
 }

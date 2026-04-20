@@ -61,6 +61,7 @@ export function AddonPickerModal({ open, onClose, onPick }: AddonPickerModalProp
     if (type === "attributeModifiers") return t("attributeModifiersAddon.addonTypeLabel", fallback);
     if (type === "fieldLibrary") return t("fieldLibraryAddon.addonTypeLabel", fallback);
     if (type === "exportSchema") return t("exportSchemaAddon.addonTypeLabel", fallback);
+    if (type === "richDoc") return t("richDocAddon.addonTypeLabel", fallback);
     return fallback;
   };
 

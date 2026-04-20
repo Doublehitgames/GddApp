@@ -830,6 +830,15 @@
       "brokenLibraryRef": "El campo vinculado a la Biblioteca no fue encontrado. Usando el último nombre guardado como fallback."
     }
   },
+  "richDocAddon": {
+    "addonTypeLabel": "Documento Rico",
+    "defaultName": "Documento",
+    "namePlaceholder": "Nombre del documento",
+    "editorPlaceholder": "Editor enriquecido (BlockNote)",
+    "blocksSuffix": "bloque(s)",
+    "blocksLabel": "bloque(s) de contenido enriquecido",
+    "emptyState": "Documento vacío"
+  },
   "fieldLibraryAddon": {
     "addonTypeLabel": "Biblioteca de Campos",
     "defaultName": "Biblioteca de Campos",
@@ -1636,6 +1645,7 @@
     "emptyResults": "Ningún addon encontrado",
     "closeAriaLabel": "Cerrar",
     "category": {
+      "content": "Contenido",
       "progression": "Progresión",
       "economy": "Economía",
       "items": "Ítems y Producción",
@@ -1671,6 +1681,7 @@
     "attributeProfile": { "description": "Valores concretos de atributos para un personaje/ítem" },
     "attributeModifiers": { "description": "Buffs/debuffs que alteran atributos (+10 STR, x1.5 DEX)" },
     "fieldLibrary": { "description": "Nombres/claves reutilizables compartidos entre páginas" },
-    "exportSchema": { "description": "Exporta el JSON final consumido por el juego" }
+    "exportSchema": { "description": "Exporta el JSON final consumido por el juego" },
+    "richDoc": { "description": "Documento enriquecido estilo Notion con títulos, listas, imágenes, embeds y columnas" }
   }
 }
