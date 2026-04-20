@@ -23,6 +23,10 @@ import {
 } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import {
+  FREE_MAX_SECTIONS_PER_PROJECT,
+  FREE_MAX_SECTIONS_TOTAL,
+} from "@/lib/structuralLimits";
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -81,6 +85,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const removeSection = useProjectStore((s) => s.removeSection);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
+  const duplicateSection = useProjectStore((s) => s.duplicateSection);
   const countDescendants = useProjectStore((s) => s.countDescendants);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
@@ -133,6 +138,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   // native keys (italic, etc.) keep working in inputs and the Toast UI editor.
   //   Ctrl+I         → open addon picker
   //   Ctrl+M         → open "move section" modal (Ctrl+Shift+M on Mac, to avoid Cmd+M minimize)
+  //   Ctrl+D         → duplicate page (overrides browser bookmark — confirmed with user)
+  const duplicateRef = useRef<() => void>(() => {});
   useEffect(() => {
     const isMac =
       typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
@@ -159,6 +166,12 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       if (key === "m" && event.shiftKey === wantsShift) {
         event.preventDefault();
         setShowMoveModal(true);
+        return;
+      }
+      // Ctrl+D (Cmd+D on Mac) → duplicate page
+      if (key === "d" && !event.shiftKey) {
+        event.preventDefault();
+        duplicateRef.current();
         return;
       }
     };
@@ -317,6 +330,51 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     await handleImproveWithAI(modificationRequest.trim());
   }
 
+
+  function handleDuplicateSection() {
+    if (!section || !project) return;
+    const suffix = t("sectionDetail.duplicate.copySuffix", " (cópia)");
+    const outcome = duplicateSection(projectId, sectionId, suffix, sectionAuditBy);
+
+    if (!outcome.newRootId) {
+      const max =
+        outcome.limitReason === "structural_limit_sections_total"
+          ? FREE_MAX_SECTIONS_TOTAL
+          : FREE_MAX_SECTIONS_PER_PROJECT;
+      const key =
+        outcome.limitReason === "structural_limit_sections_total"
+          ? "sectionDetail.duplicate.blockedTotal"
+          : "sectionDetail.duplicate.blockedPerProject";
+      alert(t(key, "").replace("{max}", String(max)));
+      return;
+    }
+
+    if (outcome.skipped.length > 0) {
+      const max =
+        outcome.limitReason === "structural_limit_sections_total"
+          ? FREE_MAX_SECTIONS_TOTAL
+          : FREE_MAX_SECTIONS_PER_PROJECT;
+      const key =
+        outcome.limitReason === "structural_limit_sections_total"
+          ? "sectionDetail.duplicate.partialTotal"
+          : "sectionDetail.duplicate.partialPerProject";
+      const total = outcome.duplicated.length + outcome.skipped.length;
+      const titles = outcome.duplicated.map((d) => `"${d.title}"`).join(", ");
+      const skippedTitles = outcome.skipped.map((d) => `"${d.title}"`).join(", ");
+      alert(
+        t(key, "")
+          .replace("{max}", String(max))
+          .replace("{count}", String(outcome.duplicated.length))
+          .replace("{total}", String(total))
+          .replace("{titles}", titles)
+          .replace("{skippedTitles}", skippedTitles)
+      );
+    }
+
+    router.push(`/projects/${projectId}/sections/${outcome.newRootId}`);
+  }
+
+  duplicateRef.current = handleDuplicateSection;
 
   // Função para mover a seção
   function handleMoveSection(target: string) {
@@ -805,6 +863,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     showMoveModal={showMoveModal}
     setShowMoveModal={setShowMoveModal}
     handleMoveSection={handleMoveSection}
+    handleDuplicateSection={handleDuplicateSection}
     sections={project?.sections || []}
     setSection={setSection}
     sectionVersions={sectionVersions}
@@ -1571,6 +1630,7 @@ function SectionDetailContent({
   sectionColor, setSectionColor, hasValidConfig,
   showMoveModal, setShowMoveModal,
   handleMoveSection,
+  handleDuplicateSection,
   sections,
   setSection,
   sectionVersions,
@@ -2316,6 +2376,16 @@ function SectionDetailContent({
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleDuplicateSection}
+                  className="w-8 h-8 flex items-center justify-center bg-violet-600 text-white rounded-lg border border-violet-400/40 hover:bg-violet-700 transition-colors"
+                  title={t("sectionDetail.actions.duplicateSection")}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15V6a1 1 0 011-1h9" />
                   </svg>
                 </button>
               </>

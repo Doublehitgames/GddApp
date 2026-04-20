@@ -845,6 +845,14 @@
     "descriptionPlaceholder": "What this field means in the game...",
     "removeEntryButton": "Remove field",
     "readOnlyEmpty": "No fields defined.",
+    "readOnlyColLabel": "Name",
+    "readOnlyColKey": "Key",
+    "readOnlyColDescription": "Description",
+    "readOnlyColUsage": "Used in",
+    "summaryCount": "{count} fields defined",
+    "summaryUsages": "{count} uses in the project",
+    "usedInBadge": "{count} uses",
+    "notUsedBadge": "Not used",
     "validation": {
       "keyRequired": "Key is required.",
       "keyUnique": "Key must be unique."
@@ -1064,6 +1072,7 @@
       "editSectionName": "Edit section name",
       "addAddon": "Add addon to this page",
       "moveSection": "Move section to another location",
+      "duplicateSection": "Duplicate page (Ctrl+D)",
       "decreaseHeight": "Decrease height",
       "increaseHeight": "Increase height",
       "editorModeLabel": "Mode"
@@ -1103,6 +1112,14 @@
     },
     "confirmDelete": "Are you sure you want to delete this section?",
     "confirmDeleteWithChildren": "Are you sure you want to delete this section and its {count} subsection(s)?",
+    "duplicate": {
+      "copySuffix": " (copy)",
+      "blockedPerProject": "Per-project page limit of {max} reached. No pages were duplicated.",
+      "blockedTotal": "Account-wide page limit of {max} reached. No pages were duplicated.",
+      "partialPerProject": "Per-project page limit of {max} reached. {count} of {total} pages duplicated: {titles}.\n\nSkipped: {skippedTitles}.",
+      "partialTotal": "Account-wide page limit of {max} reached. {count} of {total} pages duplicated: {titles}.\n\nSkipped: {skippedTitles}.",
+      "successMany": "{count} pages duplicated."
+    },
     "domain": {
       "label": "Systems",
       "suggestWithAI": "Suggest with AI",

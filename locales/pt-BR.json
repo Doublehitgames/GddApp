@@ -845,6 +845,14 @@
     "descriptionPlaceholder": "Para que serve este campo no jogo...",
     "removeEntryButton": "Remover campo",
     "readOnlyEmpty": "Nenhum campo definido.",
+    "readOnlyColLabel": "Nome",
+    "readOnlyColKey": "Chave",
+    "readOnlyColDescription": "Descrição",
+    "readOnlyColUsage": "Usado em",
+    "summaryCount": "{count} campos definidos",
+    "summaryUsages": "{count} usos no projeto",
+    "usedInBadge": "{count} usos",
+    "notUsedBadge": "Não usado",
     "validation": {
       "keyRequired": "A chave é obrigatória.",
       "keyUnique": "A chave deve ser única."
@@ -1064,6 +1072,7 @@
       "editSectionName": "Editar nome da seção",
       "addAddon": "Adicionar addon nesta página",
       "moveSection": "Mover seção para outro local",
+      "duplicateSection": "Duplicar página (Ctrl+D)",
       "decreaseHeight": "Diminuir altura",
       "increaseHeight": "Aumentar altura",
       "editorModeLabel": "Modo"
@@ -1103,6 +1112,14 @@
     },
     "confirmDelete": "Tem certeza que deseja excluir esta seção?",
     "confirmDeleteWithChildren": "Tem certeza que deseja excluir esta seção e suas {count} subseção(s)?",
+    "duplicate": {
+      "copySuffix": " (cópia)",
+      "blockedPerProject": "Limite de {max} páginas por projeto atingido. Nenhuma página foi duplicada.",
+      "blockedTotal": "Limite total de {max} páginas da conta atingido. Nenhuma página foi duplicada.",
+      "partialPerProject": "Limite de {max} páginas por projeto atingido. {count} de {total} páginas foram duplicadas: {titles}.\n\nIgnoradas: {skippedTitles}.",
+      "partialTotal": "Limite total de {max} páginas da conta atingido. {count} de {total} páginas foram duplicadas: {titles}.\n\nIgnoradas: {skippedTitles}.",
+      "successMany": "{count} páginas duplicadas."
+    },
     "domain": {
       "label": "Sistemas",
       "suggestWithAI": "Sugerir com IA",
