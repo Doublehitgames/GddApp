@@ -344,6 +344,12 @@ export interface ProjectStore {
   getProject: (id: UUID) => Project | undefined;
   addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
   addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
+  duplicateSection: (
+    projectId: UUID,
+    sectionId: UUID,
+    copySuffix: string,
+    createdBy?: SectionAuditBy
+  ) => import("./sectionCrudSlice").DuplicateSectionOutcome;
   removeProject: (id: UUID) => void;
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;

@@ -4,7 +4,22 @@ import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
+import { duplicateAddonsForDuplicatedSection } from "@/lib/addons/copy";
 import type { SyncEngineAPI } from "./syncEngine";
+
+export type DuplicateSectionOutcome = {
+  /** ID of the duplicated root section, or null when the limit blocked everything. */
+  newRootId: UUID | null;
+  /** Pages that were actually cloned (root + included descendants). */
+  duplicated: Array<{ oldId: UUID; newId: UUID; title: string }>;
+  /** Pages skipped because the structural limit would be exceeded. */
+  skipped: Array<{ oldId: UUID; title: string }>;
+  /** Which limit was hit (if any were skipped). */
+  limitReason:
+    | "structural_limit_sections_per_project"
+    | "structural_limit_sections_total"
+    | null;
+};
 
 type StoreSet = (partial: Partial<ProjectStore> | ((state: ProjectStore) => Partial<ProjectStore>)) => void;
 type StoreGet = () => ProjectStore;
@@ -87,6 +102,153 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         projectId
       );
       return newId;
+    },
+
+    duplicateSection: (
+      projectId: UUID,
+      sectionId: UUID,
+      copySuffix: string,
+      createdBy?: SectionAuditBy
+    ): DuplicateSectionOutcome => {
+      const projects = get().projects;
+      const project = projects.find((p) => p.id === projectId);
+      const empty: DuplicateSectionOutcome = {
+        newRootId: null,
+        duplicated: [],
+        skipped: [],
+        limitReason: null,
+      };
+      if (!project) return empty;
+      const allSections = project.sections || [];
+      const root = allSections.find((s) => s.id === sectionId);
+      if (!root) return empty;
+
+      // BFS in parent-before-child order so cuts never leave an orphan.
+      const bfs: Section[] = [];
+      const queue: Section[] = [root];
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        bfs.push(current);
+        const children = allSections
+          .filter((s) => s.parentId === current.id)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        queue.push(...children);
+      }
+
+      // Compute how many we can create under both limits.
+      const sectionsInProject = allSections.length;
+      const totalSections = projects.reduce(
+        (sum, p) => sum + (p.sections || []).length,
+        0
+      );
+      const allowedByProject =
+        FREE_MAX_SECTIONS_PER_PROJECT - sectionsInProject;
+      const allowedByTotal = FREE_MAX_SECTIONS_TOTAL - totalSections;
+      const allowed = Math.max(0, Math.min(allowedByProject, allowedByTotal));
+
+      let limitReason: DuplicateSectionOutcome["limitReason"] = null;
+      if (allowed < bfs.length) {
+        limitReason =
+          allowedByProject <= allowedByTotal
+            ? "structural_limit_sections_per_project"
+            : "structural_limit_sections_total";
+      }
+
+      if (allowed === 0) {
+        return {
+          ...empty,
+          skipped: bfs.map((s) => ({ oldId: s.id, title: s.title })),
+          limitReason,
+        };
+      }
+
+      const take = bfs.slice(0, allowed);
+      const skip = bfs.slice(allowed);
+      const idMap = new Map<UUID, UUID>();
+      for (const s of take) idMap.set(s.id, crypto.randomUUID());
+
+      const now = new Date().toISOString();
+      const audit = createdBy
+        ? {
+            created_by: createdBy.userId,
+            created_by_name: createdBy.displayName ?? null,
+            updated_at: now,
+            updated_by: createdBy.userId,
+            updated_by_name: createdBy.displayName ?? null,
+          }
+        : {};
+
+      // Sibling ordering: the duplicated root sits right after the original among
+      // its siblings. Everything after the original is pushed down by one.
+      const rootParent = root.parentId;
+      const rootSiblings = allSections
+        .filter((s) => s.parentId === rootParent)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      const rootIdxInSiblings = rootSiblings.findIndex((s) => s.id === root.id);
+      const insertAfterOrder =
+        rootSiblings[rootIdxInSiblings]?.order ?? rootSiblings.length;
+
+      const pushedSiblingIds = new Set(
+        rootSiblings.slice(rootIdxInSiblings + 1).map((s) => s.id)
+      );
+
+      const newSections: Section[] = take.map((s) => {
+        const newId = idMap.get(s.id)!;
+        const isRoot = s.id === root.id;
+        const { addons: newAddons, idMap: addonIdMap } =
+          duplicateAddonsForDuplicatedSection(s.addons);
+
+        // Remap section.dataId if it pointed to an addon that was duplicated.
+        const newDataId =
+          s.dataId && addonIdMap.has(s.dataId)
+            ? addonIdMap.get(s.dataId)
+            : s.dataId;
+
+        const cloned: Section = {
+          ...s,
+          id: newId,
+          parentId: isRoot ? rootParent : idMap.get(s.parentId as UUID),
+          order: isRoot ? insertAfterOrder + 1 : s.order,
+          title: isRoot ? `${s.title}${copySuffix}` : s.title,
+          created_at: now,
+          addons: newAddons.length > 0 ? newAddons : undefined,
+          dataId: newDataId,
+          // Flowchart state references addon/section IDs we did not remap; drop it.
+          flowchartEnabled: undefined,
+          flowchartState: undefined,
+          ...audit,
+        };
+        return cloned;
+      });
+
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) => {
+            if (p.id !== projectId) return p;
+            const shifted = (p.sections || []).map((s) =>
+              pushedSiblingIds.has(s.id)
+                ? { ...s, order: (s.order || 0) + 1 }
+                : s
+            );
+            return {
+              ...p,
+              updatedAt: now,
+              sections: [...shifted, ...newSections],
+            };
+          }),
+        projectId
+      );
+
+      return {
+        newRootId: idMap.get(root.id) ?? null,
+        duplicated: take.map((s) => ({
+          oldId: s.id,
+          newId: idMap.get(s.id)!,
+          title: s.title,
+        })),
+        skipped: skip.map((s) => ({ oldId: s.id, title: s.title })),
+        limitReason,
+      };
     },
 
     editSection: (
