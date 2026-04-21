@@ -395,6 +395,181 @@ body {
   padding-right: 0;
 }
 
+/* /stat custom block: compact inline card with label + value (+ optional
+   modifier). The editor mode renders inputs that auto-size to their
+   content; the read-only mode collapses to a single styled span so
+   multiple stats can sit on the same paragraph line. */
+.rich-doc-stat-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  line-height: 1.4;
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.18), rgba(217, 70, 239, 0.14));
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.rich-doc-stat-block.rich-doc-stat-empty {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.rich-doc-stat-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(199, 210, 254);
+}
+.rich-doc-stat-sep {
+  color: rgba(199, 210, 254, 0.6);
+  margin: 0 1px;
+}
+.rich-doc-stat-value {
+  color: rgb(245, 245, 255);
+  font-weight: 600;
+}
+.rich-doc-stat-modifier {
+  color: rgb(165, 180, 252);
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+/* Light theme (document paper): derive colours from currentColor so it
+   adapts to whichever paper theme the user picked. */
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-stat-block {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-color: color-mix(in srgb, currentColor 25%, transparent);
+  box-shadow: none;
+}
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-stat-label,
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-stat-sep,
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-stat-value,
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-stat-modifier {
+  color: inherit;
+}
+
+/* Editor mode: tighten the inputs so they look like editable spans, not
+   form fields. Auto-width is set inline via `style={{ width: ... }}`
+   based on the current text length. */
+.rich-doc-stat-edit .rich-doc-stat-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 0 2px;
+  min-width: 2ch;
+}
+.rich-doc-stat-edit .rich-doc-stat-input-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(199, 210, 254);
+}
+.rich-doc-stat-edit .rich-doc-stat-input-value {
+  font-weight: 600;
+  text-align: center;
+}
+.rich-doc-stat-edit .rich-doc-stat-input-modifier {
+  font-size: 0.85em;
+  color: rgb(165, 180, 252);
+  text-align: center;
+}
+.rich-doc-stat-edit .rich-doc-stat-input::placeholder {
+  opacity: 0.5;
+}
+.rich-doc-stat-edit .rich-doc-stat-input:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+}
+
+.rich-doc-stat-picker-trigger {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.85em;
+  opacity: 0.45;
+  transition: opacity 120ms;
+}
+.rich-doc-stat-picker-trigger:hover,
+.rich-doc-stat-picker-trigger[data-linked="true"] {
+  opacity: 1;
+}
+
+/* fieldLibrary picker popover for the stat block. Positioned absolutely
+   below the label input. Inherits the bn-root z-index bump so it floats
+   above the addon editor drawer. */
+.rich-doc-stat-picker {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 90;
+  width: 280px;
+  background: rgb(17, 24, 39);
+  border: 1px solid rgb(75, 75, 80);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rich-doc-stat-picker-search {
+  background: rgba(0, 0, 0, 0.3);
+  border: none;
+  border-bottom: 1px solid rgb(55, 65, 81);
+  color: white;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.rich-doc-stat-picker-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.rich-doc-stat-picker-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "label key" "source source";
+  gap: 2px 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(75, 75, 80, 0.3);
+}
+.rich-doc-stat-picker-item:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+.rich-doc-stat-picker-label { grid-area: label; font-weight: 600; }
+.rich-doc-stat-picker-key {
+  grid-area: key;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  color: rgb(165, 180, 252);
+  background: rgba(99, 102, 241, 0.15);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.rich-doc-stat-picker-source {
+  grid-area: source;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.rich-doc-stat-picker-empty {
+  padding: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
 /* Tables: stretch the wrapper to the full container width and force the
    table to fill it. Column widths stored by BlockNote (from the resize
    handles) are honoured proportionally under `table-layout: fixed`, so

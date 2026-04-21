@@ -18,6 +18,7 @@ import {
 } from "@blocknote/core";
 import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
+import { StatBlock } from "@/lib/richDoc/statBlock";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -40,6 +41,7 @@ const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     embed: EmbedBlock(),
+    stat: StatBlock(),
   },
 });
 
@@ -151,7 +153,6 @@ export default function RichDocEditor({
             // Picker errors (no client id, oauth denial) are surfaced
             // via console; the empty state in the embed/image block
             // already gives the user a manual URL fallback.
-            // eslint-disable-next-line no-console
             console.error("[richDoc] Drive picker failed:", e);
           }
         },
@@ -168,9 +169,26 @@ export default function RichDocEditor({
           break;
         }
       }
+      const gameDesignGroup = t("richDocAddon.slashMenu.gameDesignGroup", "Game Design");
+      const statItem = {
+        key: "stat",
+        title: t("richDocAddon.slashMenu.stat.title", "Stat"),
+        subtext: t("richDocAddon.slashMenu.stat.subtext", "Inline attribute (STR: 18 +4) — links to Field Library"),
+        aliases: ["stat", "attribute", "atributo", "atributos", "value"],
+        group: gameDesignGroup,
+        icon: <span style={{ fontSize: 18 }}>📊</span>,
+        onItemClick: () => {
+          const cursor = editor.getTextCursorPosition().block;
+          editor.insertBlocks(
+            [{ type: "stat", props: { labelKey: "", valueText: "", modifier: "" } }],
+            cursor,
+            "after",
+          );
+        },
+      };
       const combined = lastMediaIdx >= 0
-        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1)]
-        : [...defaults, embedItem, driveImageItem];
+        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), statItem]
+        : [...defaults, embedItem, driveImageItem, statItem];
       return filterSuggestionItems(combined, query);
     };
   }, [editor, mediaGroupLabel, t]);

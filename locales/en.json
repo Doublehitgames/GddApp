@@ -839,6 +839,7 @@
     "blocksLabel": "rich content block(s)",
     "emptyState": "Empty document",
     "slashMenu": {
+      "gameDesignGroup": "Game Design",
       "embed": {
         "title": "Embed",
         "subtext": "YouTube, Vimeo, Loom, Streamable"
@@ -846,6 +847,10 @@
       "driveImage": {
         "title": "Drive Image",
         "subtext": "Pick an image from Google Drive"
+      },
+      "stat": {
+        "title": "Stat",
+        "subtext": "Inline attribute (STR: 18 +4) — links to Field Library"
       }
     }
   },

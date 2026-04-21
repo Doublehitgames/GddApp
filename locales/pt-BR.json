@@ -839,6 +839,7 @@
     "blocksLabel": "bloco(s) de conteúdo rico",
     "emptyState": "Documento vazio",
     "slashMenu": {
+      "gameDesignGroup": "Game Design",
       "embed": {
         "title": "Incorporar vídeo",
         "subtext": "YouTube, Vimeo, Loom, Streamable"
@@ -846,6 +847,10 @@
       "driveImage": {
         "title": "Imagem do Drive",
         "subtext": "Selecionar imagem do Google Drive"
+      },
+      "stat": {
+        "title": "Stat",
+        "subtext": "Atributo inline (FOR: 18 +4) — vincula à Biblioteca de Campos"
       }
     }
   },
