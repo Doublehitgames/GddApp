@@ -39,7 +39,7 @@ describe("getSectionAiContent", () => {
       ],
     };
     const text = getSectionAiContent(section);
-    expect(text).toMatch(/Markdown body\..*### Lore.*rich text/s);
+    expect(text).toMatch(/Markdown body\.[\s\S]*### Lore[\s\S]*rich text/);
   });
 
   it("ignores non-richDoc addons", () => {

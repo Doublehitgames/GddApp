@@ -837,7 +837,17 @@
     "editorPlaceholder": "Rich editor (BlockNote)",
     "blocksSuffix": "block(s)",
     "blocksLabel": "rich content block(s)",
-    "emptyState": "Empty document"
+    "emptyState": "Empty document",
+    "slashMenu": {
+      "embed": {
+        "title": "Embed",
+        "subtext": "YouTube, Vimeo, Loom, Streamable"
+      },
+      "driveImage": {
+        "title": "Drive Image",
+        "subtext": "Pick an image from Google Drive"
+      }
+    }
   },
   "fieldLibraryAddon": {
     "addonTypeLabel": "Field Library",

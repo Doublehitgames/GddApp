@@ -837,7 +837,17 @@
     "editorPlaceholder": "Editor rico (BlockNote)",
     "blocksSuffix": "bloco(s)",
     "blocksLabel": "bloco(s) de conteúdo rico",
-    "emptyState": "Documento vazio"
+    "emptyState": "Documento vazio",
+    "slashMenu": {
+      "embed": {
+        "title": "Incorporar vídeo",
+        "subtext": "YouTube, Vimeo, Loom, Streamable"
+      },
+      "driveImage": {
+        "title": "Imagem do Drive",
+        "subtext": "Selecionar imagem do Google Drive"
+      }
+    }
   },
   "fieldLibraryAddon": {
     "addonTypeLabel": "Biblioteca de Campos",

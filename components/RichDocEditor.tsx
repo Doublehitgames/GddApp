@@ -16,9 +16,11 @@ import {
   filterSuggestionItems,
   type PartialBlock,
 } from "@blocknote/core";
+import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/addons/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface RichDocEditorProps {
   blocks: RichDocBlock[];
@@ -41,6 +43,18 @@ const schema = BlockNoteSchema.create({
   },
 });
 
+/** Map the app locale to a BlockNote bundled dictionary. The package
+ *  ships a generic Portuguese (`pt`) — close enough for pt-BR — and
+ *  Spanish (`es`); anything else falls back to English. */
+function pickBlockNoteDictionary(locale: string) {
+  const head = locale.toLowerCase().split(/[-_]/)[0];
+  switch (head) {
+    case "pt": return bnLocales.pt;
+    case "es": return bnLocales.es;
+    default: return bnLocales.en;
+  }
+}
+
 export default function RichDocEditor({
   blocks,
   editable,
@@ -48,9 +62,14 @@ export default function RichDocEditor({
   onChange,
   debounceMs = 300,
 }: RichDocEditorProps) {
+  const { locale, t } = useI18n();
+  const dictionary = useMemo(() => pickBlockNoteDictionary(locale), [locale]);
+  const mediaGroupLabel = (dictionary.slash_menu?.image?.group as string | undefined) || "Media";
+
   const editor = useCreateBlockNote({
     schema,
     initialContent: toInitialContent(blocks),
+    dictionary,
     tables: {
       splitCells: true,
       cellBackgroundColor: true,
@@ -96,10 +115,10 @@ export default function RichDocEditor({
       const defaults = getDefaultReactSlashMenuItems(editor);
       const embedItem = {
         key: "embed",
-        title: "Embed",
-        subtext: "YouTube, Vimeo, Loom, Streamable",
+        title: t("richDocAddon.slashMenu.embed.title", "Embed"),
+        subtext: t("richDocAddon.slashMenu.embed.subtext", "YouTube, Vimeo, Loom, Streamable"),
         aliases: ["video", "youtube", "vimeo", "iframe", "embed"],
-        group: "Media",
+        group: mediaGroupLabel,
         icon: <span style={{ fontSize: 18 }}>🎬</span>,
         onItemClick: () => {
           const cursor = editor.getTextCursorPosition().block;
@@ -112,10 +131,10 @@ export default function RichDocEditor({
       };
       const driveImageItem = {
         key: "drive-image",
-        title: "Drive Image",
-        subtext: "Pick an image from Google Drive",
+        title: t("richDocAddon.slashMenu.driveImage.title", "Drive Image"),
+        subtext: t("richDocAddon.slashMenu.driveImage.subtext", "Pick an image from Google Drive"),
         aliases: ["image", "drive", "google", "upload", "picture", "img"],
-        group: "Media",
+        group: mediaGroupLabel,
         icon: <span style={{ fontSize: 18 }}>🖼️</span>,
         onItemClick: async () => {
           try {
@@ -138,11 +157,13 @@ export default function RichDocEditor({
         },
       };
       // Append right after the LAST item in the Media group, otherwise we
-      // split the group in half and BlockNote pushes two separate "Media"
-      // labels with the same React key.
+      // split the group in half and BlockNote pushes two separate
+      // group labels with the same React key. Compare against the
+      // *localised* group label so this still works when the editor's
+      // dictionary is pt or es.
       let lastMediaIdx = -1;
       for (let i = defaults.length - 1; i >= 0; i--) {
-        if ((defaults[i] as { group?: string }).group === "Media") {
+        if ((defaults[i] as { group?: string }).group === mediaGroupLabel) {
           lastMediaIdx = i;
           break;
         }
@@ -152,7 +173,7 @@ export default function RichDocEditor({
         : [...defaults, embedItem, driveImageItem];
       return filterSuggestionItems(combined, query);
     };
-  }, [editor]);
+  }, [editor, mediaGroupLabel, t]);
 
   return (
     <BlockNoteView
