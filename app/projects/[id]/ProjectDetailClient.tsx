@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
+import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useAuthStore } from "@/store/authStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import {
@@ -550,7 +551,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
         sections: (project.sections || []).map((s) => ({
             id: s.id,
             title: s.title,
-            content: s.content,
+            content: getSectionAiContent(s),
             parentId: s.parentId,
             domainTags: s.domainTags,
             addonTypes: Array.from(new Set((s.addons || []).map((addon) => addon.type))).filter(Boolean) as string[],

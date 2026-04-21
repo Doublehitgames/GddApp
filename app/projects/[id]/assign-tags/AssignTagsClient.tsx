@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useProjectStore } from "@/store/projectStore";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import { useI18n } from "@/lib/i18n/provider";
+import { getSectionAiContent } from "@/utils/sectionAiContent";
 
 const BULK_CHUNK_SIZE = 25;
 
@@ -61,7 +62,7 @@ export default function AssignTagsClient({ projectId }: Props) {
             sections: chunk.map((s) => ({
               id: s.id,
               title: s.title,
-              content: (s.content || "").slice(0, 2000),
+              content: getSectionAiContent(s).slice(0, 2000),
             })),
           }),
         });

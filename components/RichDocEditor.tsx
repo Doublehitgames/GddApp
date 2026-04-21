@@ -16,7 +16,8 @@ import {
   filterSuggestionItems,
   type PartialBlock,
 } from "@blocknote/core";
-import { EmbedBlock } from "@/lib/richDoc/embedBlock";
+import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
+import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/addons/types";
 
 interface RichDocEditorProps {
@@ -56,6 +57,25 @@ export default function RichDocEditor({
       cellTextColor: true,
       headers: true,
     },
+    // Auto-embed: when the user pastes ONLY a recognised video URL
+    // (no extra text), insert an Embed block instead of a plain link.
+    // Mixed pastes (paragraph with a URL inside) fall through to the
+    // default markdown/plain paste behaviour so we don't surprise the
+    // user mid-paragraph.
+    pasteHandler: ({ event, editor: ed, defaultPasteHandler }) => {
+      const text = event.clipboardData?.getData("text/plain") || "";
+      const trimmed = text.trim();
+      if (trimmed && !/\s/.test(trimmed) && toEmbedUrl(trimmed)) {
+        const cursor = ed.getTextCursorPosition().block;
+        ed.insertBlocks(
+          [{ type: "embed", props: { url: trimmed } }],
+          cursor,
+          "after",
+        );
+        return true;
+      }
+      return defaultPasteHandler();
+    },
   });
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,6 +110,33 @@ export default function RichDocEditor({
           );
         },
       };
+      const driveImageItem = {
+        key: "drive-image",
+        title: "Drive Image",
+        subtext: "Pick an image from Google Drive",
+        aliases: ["image", "drive", "google", "upload", "picture", "img"],
+        group: "Media",
+        icon: <span style={{ fontSize: 18 }}>🖼️</span>,
+        onItemClick: async () => {
+          try {
+            const picked = await openGoogleDriveImagePicker();
+            if (!picked) return;
+            const url = driveFileIdToImageUrl(picked.id);
+            const cursor = editor.getTextCursorPosition().block;
+            editor.insertBlocks(
+              [{ type: "image", props: { url, caption: picked.name } }],
+              cursor,
+              "after",
+            );
+          } catch (e) {
+            // Picker errors (no client id, oauth denial) are surfaced
+            // via console; the empty state in the embed/image block
+            // already gives the user a manual URL fallback.
+            // eslint-disable-next-line no-console
+            console.error("[richDoc] Drive picker failed:", e);
+          }
+        },
+      };
       // Append right after the LAST item in the Media group, otherwise we
       // split the group in half and BlockNote pushes two separate "Media"
       // labels with the same React key.
@@ -101,8 +148,8 @@ export default function RichDocEditor({
         }
       }
       const combined = lastMediaIdx >= 0
-        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, ...defaults.slice(lastMediaIdx + 1)]
-        : [...defaults, embedItem];
+        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1)]
+        : [...defaults, embedItem, driveImageItem];
       return filterSuggestionItems(combined, query);
     };
   }, [editor]);

@@ -12,6 +12,7 @@ import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPic
 import { collectIntraSectionDeps } from "@/lib/addons/refs";
 import { GroupDiffModal } from "@/components/GroupDiffModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
+import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
 import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar, addYouTubeButtonToToolbar } from "@/utils/toastui-color-plugin";
 import {
@@ -2483,7 +2484,7 @@ function SectionDetailContent({
                     projectTitle: project?.title,
                     projectDescription: project?.description,
                     sectionTitle: section.title,
-                    sectionContent: (section.content || "").slice(0, 2000),
+                    sectionContent: getSectionAiContent(section).slice(0, 2000),
                     existingTags: section.domainTags,
                   }),
                 });

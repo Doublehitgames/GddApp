@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useProjectStore, type LastConsistencyAnalysis } from "@/store/projectStore";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import { useI18n } from "@/lib/i18n/provider";
+import { getSectionAiContent } from "@/utils/sectionAiContent";
 
 interface Props {
   projectId: string;
@@ -57,7 +58,7 @@ export default function AnalysisClient({ projectId }: Props) {
     sections: (project.sections || []).map((s: any) => ({
       id: s.id,
       title: s.title,
-      content: s.content,
+      content: getSectionAiContent(s),
       parentId: s.parentId,
       domainTags: s.domainTags,
     })),
