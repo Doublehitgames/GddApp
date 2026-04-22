@@ -16,6 +16,90 @@
     "search": "Search",
     "back": "Back"
   },
+  "pageTypes": {
+    "sidebar": {
+      "pickerHeader": "Page type",
+      "pickerButtonTitlePrefix": "Page type:",
+      "addonsBadgeOne": "{n} addon",
+      "addonsBadgeMany": "{n} addons"
+    },
+    "ids": {
+      "blank": {
+        "label": "Blank",
+        "description": "Empty page, no pre-configured addons."
+      },
+      "items": {
+        "label": "Items",
+        "description": "Game item catalog. Includes inventory and economy link."
+      },
+      "equipmentItem": {
+        "label": "Items with Effect",
+        "description": "Items that also modify attributes (sword, potion, armor). Includes inventory, economy and attribute modifiers."
+      },
+      "characters": {
+        "label": "Characters",
+        "description": "Game characters (playable or enemies) with attribute profile, XP curve, per-level progression and variant modifiers."
+      },
+      "attributeDefinitions": {
+        "label": "Base Attribute Definitions",
+        "description": "Defines a set of attributes (HP, ATK, DEF, etc.) + field library with progression keys pre-filled."
+      },
+      "economy": {
+        "label": "Economy",
+        "description": "Game currency or economic resource.",
+        "defaultSectionTitle": "Coin"
+      },
+      "progression": {
+        "label": "Progression",
+        "description": "XP tables, levels and progression curves."
+      },
+      "narrative": {
+        "label": "Narrative",
+        "description": "Pages for lore, script or rich-text description."
+      }
+    },
+    "addonNames": {
+      "inventory": "Inventory",
+      "economy": "Economy",
+      "attributeDefinitionsBase": "Base attributes",
+      "fieldLibrary": "Field Library",
+      "currency": "Currency",
+      "xpCurve": "XP Curve",
+      "equipmentEffects": "Effects",
+      "variantModifiers": "Variant modifiers"
+    },
+    "autoSections": {
+      "buyDiscount": "📉 Buy Discount",
+      "sellMarkup": "📈 Sell Bonus"
+    },
+    "globalVariables": {
+      "buyDiscountDisplayName": "Buy Discount",
+      "buyDiscountNotes": "Reduces item buy value by 10%.",
+      "sellMarkupDisplayName": "Sell Bonus",
+      "sellMarkupNotes": "Increases item sell value by 10%."
+    },
+    "requiresDialog": {
+      "titlePrefix": "Link",
+      "titleConnector": "to",
+      "introDefault": "{page} pages usually link to a {required} page. Choose below how to link.",
+      "introCurrency": "{page} pages use a currency to define buy and sell values. Choose below which currency to link — the page will also receive discount and bonus modifiers automatically.",
+      "linkExistingHeader": "Link to existing page",
+      "otherOptionsHeader": "Other options",
+      "createNewLabelPrefix": "Create new page",
+      "createNewDescription": "Creates both at once and links to the new page.",
+      "skipLabel": "Continue without linking",
+      "skipDescription": "Creates the page without a reference; you can link it later manually.",
+      "cancel": "Cancel",
+      "confirm": "Confirm and create",
+      "close": "Close",
+      "attrCountOne": "{n} attribute",
+      "attrCountMany": "{n} attributes",
+      "noAttrs": "no attributes",
+      "currencyNoName": "(no name)",
+      "currencyCodeLabel": "code",
+      "currencyKindLabel": "type"
+    }
+  },
   "auth": {
     "login": {
       "title": "Sign in to your account",
@@ -1674,6 +1758,7 @@
     "searchPlaceholder": "Search addon...",
     "emptyResults": "No addon found",
     "closeAriaLabel": "Close",
+    "singletonDisabled": "This page already has an addon of this type.",
     "category": {
       "content": "Content",
       "progression": "Progression",

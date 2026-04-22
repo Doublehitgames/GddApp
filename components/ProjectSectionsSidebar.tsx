@@ -18,6 +18,9 @@ import {
   findCurrencyCandidates,
   findEconomyModifierSectionIds,
   getPageType,
+  getPageTypeDefaultSectionTitle,
+  getPageTypeDescription,
+  getPageTypeLabel,
   type PageType,
   type PageTypeId,
   type RequiresCandidate,
@@ -353,14 +356,22 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
 
     if (!buyId) {
       const addonId = `gvar-buy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const addon = createBuyDiscountGlobalVariableAddon(addonId);
-      const newId = createSectionWithArgs("📉 Desconto de Compra", null, "blank", [addon], ["economy"]);
+      const addon = createBuyDiscountGlobalVariableAddon(addonId, {
+        displayName: t("pageTypes.globalVariables.buyDiscountDisplayName", "Desconto de Compra"),
+        notes: t("pageTypes.globalVariables.buyDiscountNotes", "Reduz o valor de compra de itens em 10%."),
+      });
+      const sectionTitle = t("pageTypes.autoSections.buyDiscount", "📉 Desconto de Compra");
+      const newId = createSectionWithArgs(sectionTitle, null, "blank", [addon], ["economy"]);
       buyId = newId ?? null;
     }
     if (!sellId) {
       const addonId = `gvar-sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      const addon = createSellMarkupGlobalVariableAddon(addonId);
-      const newId = createSectionWithArgs("📈 Bônus de Venda", null, "blank", [addon], ["economy"]);
+      const addon = createSellMarkupGlobalVariableAddon(addonId, {
+        displayName: t("pageTypes.globalVariables.sellMarkupDisplayName", "Bônus de Venda"),
+        notes: t("pageTypes.globalVariables.sellMarkupNotes", "Aumenta o valor de venda de itens em 10%."),
+      });
+      const sectionTitle = t("pageTypes.autoSections.sellMarkup", "📈 Bônus de Venda");
+      const newId = createSectionWithArgs(sectionTitle, null, "blank", [addon], ["economy"]);
       sellId = newId ?? null;
     }
     return { buyId, sellId };
@@ -383,13 +394,18 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       return;
     }
     if (kind === "currency") {
+      const pageTypeLabel = getPageTypeLabel(pageType, t).toLowerCase();
+      const introCopy = t(
+        "pageTypes.requiresDialog.introCurrency",
+        "Páginas de {page} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente."
+      ).replace("{page}", pageTypeLabel);
       setRequiresDialog({
         open: true,
         pageType,
         requiredPageType: getPageType("economy") ?? null,
         candidates: findCurrencyCandidates(project?.sections || []),
         requirementKind: "currency",
-        introCopy: `Páginas de ${pageType.label.toLowerCase()} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente.`,
+        introCopy,
         title: state.title,
         parentSectionId: state.parentSectionId,
         pageTypeId: state.pageTypeId,
@@ -487,8 +503,8 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       if (reqPT) {
         // Build the addons ONCE so we can both pass them as customAddons
         // to the create call AND derive stable ref IDs from the same seed.
-        const seededAll = buildPageTypeAddons(reqPT.id);
-        const baseTitle = reqPT.defaultSectionTitle || reqPT.label;
+        const seededAll = buildPageTypeAddons(reqPT.id, {}, t);
+        const baseTitle = getPageTypeDefaultSectionTitle(reqPT, t);
         const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
         const newId = createSectionWithArgs(sectionTitle, null, reqPT.id, seededAll);
         if (!newId) return;
@@ -502,7 +518,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
           }));
         }
         attrDefsFieldLibrary = extractFieldLibraryRefForAttrs(
-          { id: newId, title: reqPT.label, addons: seededAll },
+          { id: newId, title: sectionTitle, addons: seededAll },
           attrDefsAttributes.map((a) => a.key)
         );
       }
@@ -516,7 +532,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     } else if (currencyChoice?.mode === "create-new") {
       const reqPT = getPageType("economy");
       if (reqPT) {
-        const baseTitle = reqPT.defaultSectionTitle || reqPT.label;
+        const baseTitle = getPageTypeDefaultSectionTitle(reqPT, t);
         const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
         const newId = createSectionWithArgs(sectionTitle, null, reqPT.id);
         if (!newId) return;
@@ -551,7 +567,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         : undefined,
     };
 
-    const customAddons = buildPageTypeAddons(state.pageTypeId, options);
+    const customAddons = buildPageTypeAddons(state.pageTypeId, options, t);
     const created = createSectionWithArgs(
       state.title,
       state.parentSectionId,
@@ -782,7 +798,11 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
             onClick={() => setPageTypePickerOpen((v) => !v)}
             aria-haspopup="true"
             aria-expanded={pageTypePickerOpen}
-            title={`Tipo de página: ${getPageType(selectedPageTypeId)?.label ?? "Em branco"}`}
+            title={`${t("pageTypes.sidebar.pickerButtonTitlePrefix", "Tipo de página:")} ${
+              getPageType(selectedPageTypeId)
+                ? getPageTypeLabel(getPageType(selectedPageTypeId)!, t)
+                : t("pageTypes.ids.blank.label", "Em branco")
+            }`}
             className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-2.5 text-sm transition-all duration-150 ${
               pageTypePickerOpen || selectedPageTypeId !== "blank"
                 ? "border-indigo-400 bg-indigo-600/20 text-indigo-100 shadow-sm shadow-indigo-900/30"
@@ -825,12 +845,17 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
           {pageTypePickerOpen && (
             <div className="ui-menu-pop absolute z-40 left-0 bottom-full mb-2 w-80 rounded-xl border border-gray-600/90 bg-gray-900/95 backdrop-blur-sm shadow-2xl shadow-black/35 p-2">
               <div className="px-2 py-1.5 text-xs font-medium text-gray-300 border-b border-gray-700/70 mb-1">
-                Tipo de página
+                {t("pageTypes.sidebar.pickerHeader", "Tipo de página")}
               </div>
               <div className="max-h-72 overflow-y-auto scrollbar-premium pr-1 space-y-0.5">
                 {PAGE_TYPES.map((pt) => {
                   const active = pt.id === selectedPageTypeId;
                   const addonsCount = pt.addons.length;
+                  const badgeKey = addonsCount === 1
+                    ? "pageTypes.sidebar.addonsBadgeOne"
+                    : "pageTypes.sidebar.addonsBadgeMany";
+                  const badgeFallback = addonsCount === 1 ? "{n} addon" : "{n} addons";
+                  const badgeText = t(badgeKey, badgeFallback).replace("{n}", String(addonsCount));
                   return (
                     <button
                       key={pt.id}
@@ -848,15 +873,15 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
                       <span className="text-lg leading-none mt-0.5" aria-hidden="true">{pt.emoji}</span>
                       <span className="flex-1 min-w-0">
                         <span className="flex items-center gap-2">
-                          <span className="font-medium">{pt.label}</span>
+                          <span className="font-medium">{getPageTypeLabel(pt, t)}</span>
                           {addonsCount > 0 && (
                             <span className="inline-flex items-center h-4 px-1.5 rounded-md bg-gray-800/80 border border-gray-700/70 text-[10px] font-semibold text-gray-300 tabular-nums">
-                              {addonsCount} addon{addonsCount === 1 ? "" : "s"}
+                              {badgeText}
                             </span>
                           )}
                         </span>
                         <span className="block text-xs text-gray-400 mt-0.5 leading-snug">
-                          {pt.description}
+                          {getPageTypeDescription(pt, t)}
                         </span>
                       </span>
                     </button>

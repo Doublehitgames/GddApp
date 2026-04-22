@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type {
-  PageType,
-  RequiresCandidate,
+import { useEffect, useMemo, useState } from "react";
+import {
+  getPageTypeLabel,
+  type PageType,
+  type RequiresCandidate,
 } from "@/lib/pageTypes/registry";
+import { useI18n } from "@/lib/i18n/provider";
 
 export type PageTypeRequiresChoice =
   | { mode: "link-existing"; candidate: RequiresCandidate }
@@ -27,6 +29,38 @@ type Selection =
   | { kind: "create-new" }
   | { kind: "skip" };
 
+function buildCandidatePreview(
+  c: RequiresCandidate,
+  t: (key: string, fallback?: string) => string
+): string {
+  if (c.kind === "attributeDefinitions") {
+    const attrs = c.attributes || [];
+    if (attrs.length === 0) return t("pageTypes.requiresDialog.noAttrs", "sem atributos");
+    const listed = attrs.slice(0, 4).map((a) => a.label || a.key).join(", ");
+    const more = attrs.length > 4 ? `, +${attrs.length - 4}` : "";
+    const countKey =
+      attrs.length === 1
+        ? "pageTypes.requiresDialog.attrCountOne"
+        : "pageTypes.requiresDialog.attrCountMany";
+    const fallback = attrs.length === 1 ? "{n} atributo" : "{n} atributos";
+    const countText = t(countKey, fallback).replace("{n}", String(attrs.length));
+    return listed ? `${countText} (${listed}${more})` : countText;
+  }
+  if (c.kind === "currency") {
+    const currency = c.currency;
+    const displayName = currency?.displayName?.trim();
+    const code = currency?.code?.trim();
+    const kind = currency?.kind;
+    const parts = [
+      displayName || t("pageTypes.requiresDialog.currencyNoName", "(sem nome)"),
+      code ? `${t("pageTypes.requiresDialog.currencyCodeLabel", "código")} ${code}` : null,
+      kind ? `${t("pageTypes.requiresDialog.currencyKindLabel", "tipo")} ${kind}` : null,
+    ].filter(Boolean) as string[];
+    return parts.join(" · ");
+  }
+  return "";
+}
+
 export function PageTypeRequiresDialog({
   open,
   pageType,
@@ -36,17 +70,21 @@ export function PageTypeRequiresDialog({
   onCancel,
   introCopy,
 }: Props) {
-  const defaultSelection: Selection =
-    candidates.length > 0
-      ? { kind: "candidate", candidateId: candidates[0].sectionId + "::" + candidates[0].addonId }
-      : { kind: "create-new" };
+  const { t } = useI18n();
+
+  const defaultSelection: Selection = useMemo(
+    () =>
+      candidates.length > 0
+        ? { kind: "candidate", candidateId: candidates[0].sectionId + "::" + candidates[0].addonId }
+        : { kind: "create-new" },
+    [candidates]
+  );
   const [selection, setSelection] = useState<Selection>(defaultSelection);
 
   useEffect(() => {
     if (!open) return;
     setSelection(defaultSelection);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, candidates.length]);
+  }, [open, defaultSelection]);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +99,20 @@ export function PageTypeRequiresDialog({
   }, [open, onCancel]);
 
   if (!open || !pageType || !requiredPageType) return null;
+
+  const pageTypeLabel = getPageTypeLabel(pageType, t);
+  const requiredLabel = getPageTypeLabel(requiredPageType, t);
+  const titlePrefix = t("pageTypes.requiresDialog.titlePrefix", "Vincular");
+  const titleConnector = t("pageTypes.requiresDialog.titleConnector", "a");
+  const titleText = `${titlePrefix} ${pageType.emoji} ${pageTypeLabel} ${titleConnector} ${requiredPageType.emoji} ${requiredLabel}`;
+  const ariaLabel = `${titlePrefix} ${pageTypeLabel} ${titleConnector} ${requiredLabel}`;
+  const defaultIntro = t(
+    "pageTypes.requiresDialog.introDefault",
+    "Páginas de {page} costumam vincular a uma página de {required}. Escolha abaixo como vincular."
+  )
+    .replace("{page}", pageTypeLabel.toLowerCase())
+    .replace("{required}", requiredLabel.toLowerCase());
+  const intro = introCopy ?? defaultIntro;
 
   const handleConfirm = () => {
     if (selection.kind === "candidate") {
@@ -87,24 +139,18 @@ export function PageTypeRequiresDialog({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={`Vincular ${pageType.label} a ${requiredPageType.label}`}
+          aria-label={ariaLabel}
           className="w-full max-w-xl mt-16 rounded-2xl border border-gray-700 bg-gray-900 shadow-2xl overflow-hidden"
         >
           <div className="px-5 py-4 border-b border-gray-800 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-base font-semibold text-gray-100">
-                Vincular {pageType.emoji} {pageType.label} a {requiredPageType.emoji}{" "}
-                {requiredPageType.label}
-              </h3>
-              <p className="mt-1 text-xs text-gray-400 leading-relaxed">
-                {introCopy ??
-                  `Páginas de ${pageType.label.toLowerCase()} costumam vincular a uma página de ${requiredPageType.label.toLowerCase()}. Escolha abaixo como vincular.`}
-              </p>
+              <h3 className="text-base font-semibold text-gray-100">{titleText}</h3>
+              <p className="mt-1 text-xs text-gray-400 leading-relaxed">{intro}</p>
             </div>
             <button
               type="button"
               onClick={onCancel}
-              aria-label="Fechar"
+              aria-label={t("pageTypes.requiresDialog.close", "Fechar")}
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
             >
               ✕
@@ -115,13 +161,13 @@ export function PageTypeRequiresDialog({
             {candidates.length > 0 && (
               <>
                 <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                  Vincular a página existente
+                  {t("pageTypes.requiresDialog.linkExistingHeader", "Vincular a página existente")}
                 </h4>
                 {candidates.map((c) => {
                   const id = c.sectionId + "::" + c.addonId;
                   const active =
                     selection.kind === "candidate" && selection.candidateId === id;
-                  const previewText = c.previewLines.filter(Boolean).join(" · ");
+                  const previewText = buildCandidatePreview(c, t);
                   return (
                     <label
                       key={id}
@@ -169,7 +215,7 @@ export function PageTypeRequiresDialog({
             )}
 
             <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mt-3 mb-1">
-              Outras opções
+              {t("pageTypes.requiresDialog.otherOptionsHeader", "Outras opções")}
             </h4>
             <label
               className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-all ${
@@ -199,10 +245,14 @@ export function PageTypeRequiresDialog({
               </span>
               <span className="flex-1 min-w-0 text-sm text-gray-100">
                 <span className="block font-medium">
-                  Criar nova página {requiredPageType.emoji} {requiredPageType.label}
+                  {t("pageTypes.requiresDialog.createNewLabelPrefix", "Criar nova página")}{" "}
+                  {requiredPageType.emoji} {requiredLabel}
                 </span>
                 <span className="block text-xs text-gray-400 mt-0.5">
-                  Cria ambas de uma vez e vincula a nova página.
+                  {t(
+                    "pageTypes.requiresDialog.createNewDescription",
+                    "Cria ambas de uma vez e vincula a nova página."
+                  )}
                 </span>
               </span>
             </label>
@@ -232,9 +282,14 @@ export function PageTypeRequiresDialog({
                 {selection.kind === "skip" && <span className="h-1.5 w-1.5 rounded-full bg-gray-900" />}
               </span>
               <span className="flex-1 min-w-0 text-sm text-gray-100">
-                <span className="block font-medium">Continuar sem vincular</span>
+                <span className="block font-medium">
+                  {t("pageTypes.requiresDialog.skipLabel", "Continuar sem vincular")}
+                </span>
                 <span className="block text-xs text-gray-400 mt-0.5">
-                  Cria a página sem referência; você pode vincular depois manualmente.
+                  {t(
+                    "pageTypes.requiresDialog.skipDescription",
+                    "Cria a página sem referência; você pode vincular depois manualmente."
+                  )}
                 </span>
               </span>
             </label>
@@ -246,14 +301,14 @@ export function PageTypeRequiresDialog({
               onClick={onCancel}
               className="inline-flex items-center h-9 rounded-lg border border-gray-600 bg-gray-800 px-4 text-sm text-gray-200 hover:bg-gray-700 hover:text-white transition-colors"
             >
-              Cancelar
+              {t("pageTypes.requiresDialog.cancel", "Cancelar")}
             </button>
             <button
               type="button"
               onClick={handleConfirm}
               className="ui-btn-primary-gradient inline-flex items-center h-9 rounded-lg px-4 text-sm font-medium shadow-md shadow-indigo-900/30"
             >
-              Confirmar e criar
+              {t("pageTypes.requiresDialog.confirm", "Confirmar e criar")}
             </button>
           </div>
         </div>

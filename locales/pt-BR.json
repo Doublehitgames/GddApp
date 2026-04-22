@@ -16,6 +16,90 @@
     "search": "Buscar",
     "back": "Voltar"
   },
+  "pageTypes": {
+    "sidebar": {
+      "pickerHeader": "Tipo de página",
+      "pickerButtonTitlePrefix": "Tipo de página:",
+      "addonsBadgeOne": "{n} addon",
+      "addonsBadgeMany": "{n} addons"
+    },
+    "ids": {
+      "blank": {
+        "label": "Em branco",
+        "description": "Página vazia, sem addons pré-configurados."
+      },
+      "items": {
+        "label": "Itens",
+        "description": "Catálogo de itens do jogo. Inclui inventário e ligação com economia."
+      },
+      "equipmentItem": {
+        "label": "Itens com Efeito",
+        "description": "Itens que também modificam atributos (espada, poção, armadura). Inclui inventário, economia e modificadores de atributos."
+      },
+      "characters": {
+        "label": "Personagens",
+        "description": "Personagens do jogo (jogáveis ou inimigos) com perfil de atributos, curva de XP, progressão por nível e modificadores por variante."
+      },
+      "attributeDefinitions": {
+        "label": "Definições de Atributos Base",
+        "description": "Define um conjunto de atributos (HP, ATK, DEF, etc.) + biblioteca de campos com as chaves de progressão pré-preenchidas."
+      },
+      "economy": {
+        "label": "Economia",
+        "description": "Moeda ou recurso econômico do jogo.",
+        "defaultSectionTitle": "Coin"
+      },
+      "progression": {
+        "label": "Progressão",
+        "description": "Tabelas de XP, níveis e curvas de progressão."
+      },
+      "narrative": {
+        "label": "Narrativa",
+        "description": "Páginas de lore, roteiro ou descrição em texto rico."
+      }
+    },
+    "addonNames": {
+      "inventory": "Inventário",
+      "economy": "Economia",
+      "attributeDefinitionsBase": "Atributos base",
+      "fieldLibrary": "Biblioteca de Campos",
+      "currency": "Moeda",
+      "xpCurve": "Curva de XP",
+      "equipmentEffects": "Efeitos",
+      "variantModifiers": "Modificadores por variante"
+    },
+    "autoSections": {
+      "buyDiscount": "📉 Desconto de Compra",
+      "sellMarkup": "📈 Bônus de Venda"
+    },
+    "globalVariables": {
+      "buyDiscountDisplayName": "Desconto de Compra",
+      "buyDiscountNotes": "Reduz o valor de compra de itens em 10%.",
+      "sellMarkupDisplayName": "Bônus de Venda",
+      "sellMarkupNotes": "Aumenta o valor de venda de itens em 10%."
+    },
+    "requiresDialog": {
+      "titlePrefix": "Vincular",
+      "titleConnector": "a",
+      "introDefault": "Páginas de {page} costumam vincular a uma página de {required}. Escolha abaixo como vincular.",
+      "introCurrency": "Páginas de {page} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente.",
+      "linkExistingHeader": "Vincular a página existente",
+      "otherOptionsHeader": "Outras opções",
+      "createNewLabelPrefix": "Criar nova página",
+      "createNewDescription": "Cria ambas de uma vez e vincula a nova página.",
+      "skipLabel": "Continuar sem vincular",
+      "skipDescription": "Cria a página sem referência; você pode vincular depois manualmente.",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar e criar",
+      "close": "Fechar",
+      "attrCountOne": "{n} atributo",
+      "attrCountMany": "{n} atributos",
+      "noAttrs": "sem atributos",
+      "currencyNoName": "(sem nome)",
+      "currencyCodeLabel": "código",
+      "currencyKindLabel": "tipo"
+    }
+  },
   "auth": {
     "login": {
       "title": "Entre na sua conta",
@@ -1674,6 +1758,7 @@
     "searchPlaceholder": "Buscar addon...",
     "emptyResults": "Nenhum addon encontrado",
     "closeAriaLabel": "Fechar",
+    "singletonDisabled": "Esta página já possui um addon deste tipo.",
     "category": {
       "content": "Conteúdo",
       "progression": "Progressão",

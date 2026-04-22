@@ -25,11 +25,16 @@ export type PageTypeId =
 export type PageTypeAddon = {
   type: SectionAddonType;
   role: "primary" | "recommended";
-  /** Override the default name used by the seeded addon. */
+  /** Override the default name used by the seeded addon (pt-BR fallback). */
   nameOverride?: string;
+  /** i18n key for the localized nameOverride. Takes precedence over `nameOverride` when a translator is available. */
+  nameOverrideKey?: string;
   /** Post-create tweak (e.g. preload attribute list with HP/ATK/DEF). */
   customize?: (addon: SectionAddon) => SectionAddon;
 };
+
+/** Lightweight translator type (matches the `t` returned by `useI18n()`). */
+export type Translator = (key: string, fallback?: string) => string;
 
 export type PageType = {
   id: PageTypeId;
@@ -96,8 +101,8 @@ export const PAGE_TYPES: PageType[] = [
     description: "Catálogo de itens do jogo. Inclui inventário e ligação com economia.",
     emoji: "🎒",
     addons: [
-      { type: "inventory", role: "primary", nameOverride: "Inventário" },
-      { type: "economyLink", role: "recommended", nameOverride: "Economia" },
+      { type: "inventory", role: "primary", nameOverride: "Inventário", nameOverrideKey: "pageTypes.addonNames.inventory" },
+      { type: "economyLink", role: "recommended", nameOverride: "Economia", nameOverrideKey: "pageTypes.addonNames.economy" },
     ],
     requires: ["economy"],
     tags: ["items", "economy"],
@@ -108,9 +113,9 @@ export const PAGE_TYPES: PageType[] = [
     description: "Itens que também modificam atributos (espada, poção, armadura). Inclui inventário, economia e modificadores de atributos.",
     emoji: "⚔️",
     addons: [
-      { type: "inventory", role: "primary", nameOverride: "Inventário" },
-      { type: "economyLink", role: "recommended", nameOverride: "Economia" },
-      { type: "attributeModifiers", role: "recommended", nameOverride: "Efeitos" },
+      { type: "inventory", role: "primary", nameOverride: "Inventário", nameOverrideKey: "pageTypes.addonNames.inventory" },
+      { type: "economyLink", role: "recommended", nameOverride: "Economia", nameOverrideKey: "pageTypes.addonNames.economy" },
+      { type: "attributeModifiers", role: "recommended", nameOverride: "Efeitos", nameOverrideKey: "pageTypes.addonNames.equipmentEffects" },
     ],
     requires: ["economy", "attributeDefinitions"],
     tags: ["items", "economy", "combat"],
@@ -122,9 +127,9 @@ export const PAGE_TYPES: PageType[] = [
     emoji: "👤",
     addons: [
       { type: "attributeProfile", role: "primary" },
-      { type: "xpBalance", role: "recommended", nameOverride: "Curva de XP" },
+      { type: "xpBalance", role: "recommended", nameOverride: "Curva de XP", nameOverrideKey: "pageTypes.addonNames.xpCurve" },
       { type: "progressionTable", role: "recommended" },
-      { type: "attributeModifiers", role: "recommended", nameOverride: "Modificadores por variante" },
+      { type: "attributeModifiers", role: "recommended", nameOverride: "Modificadores por variante", nameOverrideKey: "pageTypes.addonNames.variantModifiers" },
     ],
     requires: ["attributeDefinitions"],
     tags: ["characters", "combat", "progression"],
@@ -139,12 +144,14 @@ export const PAGE_TYPES: PageType[] = [
         type: "attributeDefinitions",
         role: "primary",
         nameOverride: "Atributos base",
+        nameOverrideKey: "pageTypes.addonNames.attributeDefinitionsBase",
         customize: seedAttributeDefinitions,
       },
       {
         type: "fieldLibrary",
         role: "recommended",
         nameOverride: "Biblioteca de Campos",
+        nameOverrideKey: "pageTypes.addonNames.fieldLibrary",
       },
     ],
     tags: ["combat", "progression"],
@@ -160,6 +167,7 @@ export const PAGE_TYPES: PageType[] = [
         type: "currency",
         role: "primary",
         nameOverride: "Moeda",
+        nameOverrideKey: "pageTypes.addonNames.currency",
         customize: seedDefaultCurrency,
       },
     ],
@@ -198,6 +206,46 @@ export function getPageType(id: PageTypeId | string | undefined): PageType | und
   return PAGE_TYPES.find((p) => p.id === resolvedId);
 }
 
+// ─── i18n helpers ────────────────────────────────────────────────────────
+
+/** Returns the localized label for a page type, with pt-BR fallback. */
+export function getPageTypeLabel(pt: PageType, t?: Translator): string {
+  if (!t) return pt.label;
+  return t(`pageTypes.ids.${pt.id}.label`, pt.label);
+}
+
+/** Returns the localized description for a page type, with pt-BR fallback. */
+export function getPageTypeDescription(pt: PageType, t?: Translator): string {
+  if (!t) return pt.description;
+  return t(`pageTypes.ids.${pt.id}.description`, pt.description);
+}
+
+/**
+ * Returns the localized `defaultSectionTitle` for a page type, falling back
+ * to its label when no default title is declared.
+ */
+export function getPageTypeDefaultSectionTitle(pt: PageType, t?: Translator): string {
+  const fallback = pt.defaultSectionTitle || pt.label;
+  if (!t) return fallback;
+  if (pt.defaultSectionTitle) {
+    return t(`pageTypes.ids.${pt.id}.defaultSectionTitle`, pt.defaultSectionTitle);
+  }
+  return t(`pageTypes.ids.${pt.id}.label`, pt.label);
+}
+
+/**
+ * Resolves the addon name used when seeding a page type's addons. Prefers
+ * the localized `nameOverrideKey` when a translator is available; otherwise
+ * returns the pt-BR `nameOverride` or an empty string.
+ */
+export function resolveAddonName(entry: PageTypeAddon, t?: Translator): string | undefined {
+  if (!entry.nameOverride && !entry.nameOverrideKey) return undefined;
+  if (t && entry.nameOverrideKey) {
+    return t(entry.nameOverrideKey, entry.nameOverride ?? "");
+  }
+  return entry.nameOverride;
+}
+
 // ─── Candidates ──────────────────────────────────────────────────────────
 
 export type RequiresCandidateKind = "attributeDefinitions" | "currency";
@@ -209,10 +257,14 @@ export type RequiresCandidate = {
   sectionTitle: string;
   addonId: string;
   addonName: string;
-  /** Short human-readable extras shown beneath the addon name. */
-  previewLines: string[];
   /** Filled when kind === "attributeDefinitions". */
   attributes?: AttributeDefinitionEntry[];
+  /** Filled when kind === "currency". */
+  currency?: {
+    code?: string;
+    displayName?: string;
+    kind?: string;
+  };
 };
 
 /** Backward-compat alias (v1 public name). */
@@ -231,20 +283,13 @@ export function findAttributeDefinitionsCandidates(
   for (const section of sections) {
     for (const addon of section.addons || []) {
       if (addon.type !== "attributeDefinitions") continue;
-      const attrs = addon.data.attributes || [];
-      const preview = attrs.slice(0, 4).map((a) => a.label || a.key).join(", ");
-      const more = attrs.length > 4 ? `, +${attrs.length - 4}` : "";
-      const line = attrs.length
-        ? `${attrs.length} atributo${attrs.length === 1 ? "" : "s"}${preview ? ` (${preview}${more})` : ""}`
-        : "sem atributos";
       out.push({
         kind: "attributeDefinitions",
         sectionId: section.id,
         sectionTitle: section.title || section.id,
         addonId: addon.id,
         addonName: addon.name || addon.data.name || "Definições de atributos",
-        previewLines: [line],
-        attributes: attrs,
+        attributes: addon.data.attributes || [],
       });
     }
   }
@@ -279,21 +324,17 @@ export function findCurrencyCandidates(sections: SectionLike[]): RequiresCandida
   for (const section of sections) {
     for (const addon of section.addons || []) {
       if (addon.type !== "currency") continue;
-      const code = addon.data.code?.trim();
-      const displayName = addon.data.displayName?.trim();
-      const kind = addon.data.kind;
-      const parts = [
-        displayName || "(sem nome)",
-        code ? `código ${code}` : null,
-        kind ? `tipo ${kind}` : null,
-      ].filter(Boolean) as string[];
       out.push({
         kind: "currency",
         sectionId: section.id,
         sectionTitle: section.title || section.id,
         addonId: addon.id,
         addonName: addon.name || addon.data.name || "Moeda",
-        previewLines: [parts.join(" · ")],
+        currency: {
+          code: addon.data.code?.trim(),
+          displayName: addon.data.displayName?.trim(),
+          kind: addon.data.kind,
+        },
       });
     }
   }
@@ -323,38 +364,48 @@ export function findEconomyModifierSectionIds(sections: SectionLike[]): {
 
 // ─── Seeded globalVariable factories (used only by the sidebar flow) ─────
 
-export function createBuyDiscountGlobalVariableAddon(addonId: string): GlobalVariableSectionAddon {
+export function createBuyDiscountGlobalVariableAddon(
+  addonId: string,
+  labels?: { displayName?: string; notes?: string }
+): GlobalVariableSectionAddon {
+  const displayName = labels?.displayName || "Desconto de Compra";
+  const notes = labels?.notes || "Reduz o valor de compra de itens em 10%.";
   return {
     id: addonId,
     type: "globalVariable",
-    name: "Desconto de Compra",
+    name: displayName,
     data: {
       id: addonId,
-      name: "Desconto de Compra",
+      name: displayName,
       key: BUY_DISCOUNT_VAR_KEY,
-      displayName: "Desconto de Compra",
+      displayName,
       valueType: "percent",
       defaultValue: -10,
       scope: "global",
-      notes: "Reduz o valor de compra de itens em 10%.",
+      notes,
     },
   };
 }
 
-export function createSellMarkupGlobalVariableAddon(addonId: string): GlobalVariableSectionAddon {
+export function createSellMarkupGlobalVariableAddon(
+  addonId: string,
+  labels?: { displayName?: string; notes?: string }
+): GlobalVariableSectionAddon {
+  const displayName = labels?.displayName || "Bônus de Venda";
+  const notes = labels?.notes || "Aumenta o valor de venda de itens em 10%.";
   return {
     id: addonId,
     type: "globalVariable",
-    name: "Bônus de Venda",
+    name: displayName,
     data: {
       id: addonId,
-      name: "Bônus de Venda",
+      name: displayName,
       key: SELL_MARKUP_VAR_KEY,
-      displayName: "Bônus de Venda",
+      displayName,
       valueType: "percent",
       defaultValue: 10,
       scope: "global",
-      notes: "Aumenta o valor de venda de itens em 10%.",
+      notes,
     },
   };
 }
@@ -395,7 +446,8 @@ export type BuildPageTypeAddonsOptions = {
 
 export function buildPageTypeAddons(
   pageTypeId: PageTypeId,
-  options: BuildPageTypeAddonsOptions = {}
+  options: BuildPageTypeAddonsOptions = {},
+  t?: Translator
 ): SectionAddon[] {
   const pt = getPageType(pageTypeId);
   if (!pt || pt.addons.length === 0) return [];
@@ -404,8 +456,9 @@ export function buildPageTypeAddons(
     const registry = getAddonRegistryEntry(entry.type);
     if (!registry) continue;
     let addon = registry.createDefault();
-    if (entry.nameOverride) {
-      addon = { ...addon, name: entry.nameOverride };
+    const resolvedName = resolveAddonName(entry, t);
+    if (resolvedName) {
+      addon = { ...addon, name: resolvedName };
     }
     if (entry.customize) {
       addon = entry.customize(addon);
