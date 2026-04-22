@@ -275,6 +275,8 @@ export type Section = {
   domainTags?: string[];
   /** Addons genéricos vinculados a esta seção. */
   addons?: SectionAddon[];
+  /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
+  pageTypeId?: string;
   /** Notas por grupo de addons (ex.: hipotese do teste A/B). Chave = nome do grupo. */
   addonGroupNotes?: Record<string, string>;
   /** Quem criou a seção (id e nome para exibição). */
@@ -342,8 +344,8 @@ export interface ProjectStore {
   // Mutations
   addProject: (name: string, description: string) => string;
   getProject: (id: UUID) => Project | undefined;
-  addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
-  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => UUID;
+  addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
+  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
   duplicateSection: (
     projectId: UUID,
     sectionId: UUID,

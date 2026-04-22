@@ -63,6 +63,12 @@ export type AddonRegistryEntry = {
   category: AddonCategory;
   /** Emoji shown in the picker card. */
   emoji: string;
+  /**
+   * When true, at most one addon of this type may exist in the same
+   * addon group of a section. The add-addon picker disables the entry
+   * once a section (group) already holds one.
+   */
+  singleton?: boolean;
   createDefault: () => SectionAddon;
   renderEditor: (addon: SectionAddon, onChange: (next: SectionAddon) => void, onRemove: () => void) => React.ReactNode;
   renderReadOnly: (
@@ -190,6 +196,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     label: "Definições de Atributos",
     category: "attributes",
     emoji: "🎯",
+    singleton: true,
     createDefault: () => {
       const addonId = `attr-defs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultAttributeDefinitionsAddon(addonId);
@@ -216,6 +223,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     label: "Perfil de Atributos",
     category: "attributes",
     emoji: "👤",
+    singleton: true,
     createDefault: () => {
       const addonId = `attr-profile-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultAttributeProfileAddon(addonId);
@@ -268,6 +276,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     label: "Currency",
     category: "economy",
     emoji: "🪙",
+    singleton: true,
     createDefault: () => {
       const addonId = `currency-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultCurrencyAddon(addonId);
@@ -398,6 +407,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     label: "Biblioteca de Campos",
     category: "data",
     emoji: "📚",
+    singleton: true,
     createDefault: () => {
       const addonId = `field-library-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       return createDefaultFieldLibraryAddon(addonId);

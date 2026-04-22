@@ -9,6 +9,21 @@ import { useI18n } from "@/lib/i18n/provider";
 import { getSectionSearchText } from "@/utils/sectionSearchText";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
+  PAGE_TYPES,
+  buildPageTypeAddons,
+  createBuyDiscountGlobalVariableAddon,
+  createSellMarkupGlobalVariableAddon,
+  extractFieldLibraryRefForAttrs,
+  findAttributeDefinitionsCandidates,
+  findCurrencyCandidates,
+  findEconomyModifierSectionIds,
+  getPageType,
+  type PageType,
+  type PageTypeId,
+  type RequiresCandidate,
+} from "@/lib/pageTypes/registry";
+import { PageTypeRequiresDialog, type PageTypeRequiresChoice } from "@/components/PageTypeRequiresDialog";
+import {
   Collision,
   CollisionDetection,
   DndContext,
@@ -63,10 +78,34 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
   const [addonFilterMenuOpen, setAddonFilterMenuOpen] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [nameError, setNameError] = useState("");
+  const [selectedPageTypeId, setSelectedPageTypeId] = useState<PageTypeId>("blank");
+  const [pageTypePickerOpen, setPageTypePickerOpen] = useState(false);
+  const [requiresDialog, setRequiresDialog] = useState<{
+    open: boolean;
+    pageType: PageType | null;
+    requiredPageType: PageType | null;
+    candidates: RequiresCandidate[];
+    requirementKind: "attributeDefinitions" | "currency" | null;
+    introCopy?: string;
+    /** Snapshot of inputs captured when the dialog was opened. */
+    title: string;
+    parentSectionId: string | null;
+    pageTypeId: PageTypeId;
+  }>({
+    open: false,
+    pageType: null,
+    requiredPageType: null,
+    candidates: [],
+    requirementKind: null,
+    title: "",
+    parentSectionId: null,
+    pageTypeId: "blank",
+  });
 
   const sectionListRef = useRef<HTMLDivElement | null>(null);
   const tagFilterMenuRef = useRef<HTMLDivElement | null>(null);
   const addonFilterMenuRef = useRef<HTMLDivElement | null>(null);
+  const pageTypePickerRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -182,6 +221,17 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
   }, [addonFilterMenuOpen]);
 
   useEffect(() => {
+    if (!pageTypePickerOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (pageTypePickerRef.current?.contains(event.target as Node)) return;
+      setPageTypePickerOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [pageTypePickerOpen]);
+
+
+  useEffect(() => {
     if (!currentSectionId) return;
     const sections = project?.sections || [];
     if (sections.length === 0) return;
@@ -240,20 +290,21 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     );
   };
 
-  const handleAddByContext = () => {
-    const title = newSectionTitle.trim();
-    if (!title || nameError) return;
+  const createSectionWithArgs = (
+    title: string,
+    parentSectionId: string | null,
+    pageTypeId: PageTypeId,
+    customAddons?: import("@/lib/addons/types").SectionAddon[],
+    domainTagsOverride?: string[]
+  ): string | undefined => {
+    const pageTypeArg = pageTypeId === "blank" ? undefined : pageTypeId;
+    const pt = getPageType(pageTypeId);
+    const domainTags = domainTagsOverride ?? (pt?.tags ? [...pt.tags] : undefined);
     try {
-      if (
-        currentSectionId &&
-        (project?.sections || []).some((section: any) => section.id === currentSectionId)
-      ) {
-        addSubsection(projectId, currentSectionId, title, "", sectionAuditBy);
-      } else {
-        addSection(projectId, title, undefined, sectionAuditBy);
+      if (parentSectionId) {
+        return addSubsection(projectId, parentSectionId, title, "", sectionAuditBy, pageTypeArg, customAddons, domainTags);
       }
-      setNewSectionTitle("");
-      setNameError("");
+      return addSection(projectId, title, undefined, sectionAuditBy, pageTypeArg, customAddons, domainTags);
     } catch (e) {
       if (
         e instanceof Error &&
@@ -265,10 +316,250 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
             ? t("limits.sectionsTotal")
             : t("limits.sectionsPerProject")
         );
-      } else {
-        throw e;
+        return undefined;
+      }
+      throw e;
+    }
+  };
+
+  type RequirementKind = "attributeDefinitions" | "currency";
+  type PendingCreate = {
+    title: string;
+    parentSectionId: string | null;
+    pageTypeId: PageTypeId;
+    resolved: Partial<Record<RequirementKind, PageTypeRequiresChoice>>;
+    remainingKinds: RequirementKind[];
+  };
+
+  const REQUIRES_TO_KIND: Record<string, RequirementKind> = {
+    attributeDefinitions: "attributeDefinitions",
+    economy: "currency",
+  };
+
+  const resetAddInputs = () => {
+    setNewSectionTitle("");
+    setSelectedPageTypeId("blank");
+  };
+
+  /**
+   * Ensures the 2 sentinel globalVariable sections ("Desconto de Compra" /
+   * "Bônus de Venda") exist at the project root, creating them if missing.
+   */
+  const ensureEconomyModifierSectionIds = (): { buyId: string | null; sellId: string | null } => {
+    const sections = project?.sections || [];
+    const existing = findEconomyModifierSectionIds(sections);
+    let buyId = existing.buyDiscountSectionId;
+    let sellId = existing.sellMarkupSectionId;
+
+    if (!buyId) {
+      const addonId = `gvar-buy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const addon = createBuyDiscountGlobalVariableAddon(addonId);
+      const newId = createSectionWithArgs("📉 Desconto de Compra", null, "blank", [addon], ["economy"]);
+      buyId = newId ?? null;
+    }
+    if (!sellId) {
+      const addonId = `gvar-sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const addon = createSellMarkupGlobalVariableAddon(addonId);
+      const newId = createSectionWithArgs("📈 Bônus de Venda", null, "blank", [addon], ["economy"]);
+      sellId = newId ?? null;
+    }
+    return { buyId, sellId };
+  };
+
+  const openModalForKind = (kind: RequirementKind, state: PendingCreate) => {
+    const pageType = getPageType(state.pageTypeId) ?? null;
+    if (!pageType) return;
+    if (kind === "attributeDefinitions") {
+      setRequiresDialog({
+        open: true,
+        pageType,
+        requiredPageType: getPageType("attributeDefinitions") ?? null,
+        candidates: findAttributeDefinitionsCandidates(project?.sections || []),
+        requirementKind: "attributeDefinitions",
+        title: state.title,
+        parentSectionId: state.parentSectionId,
+        pageTypeId: state.pageTypeId,
+      });
+      return;
+    }
+    if (kind === "currency") {
+      setRequiresDialog({
+        open: true,
+        pageType,
+        requiredPageType: getPageType("economy") ?? null,
+        candidates: findCurrencyCandidates(project?.sections || []),
+        requirementKind: "currency",
+        introCopy: `Páginas de ${pageType.label.toLowerCase()} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente.`,
+        title: state.title,
+        parentSectionId: state.parentSectionId,
+        pageTypeId: state.pageTypeId,
+      });
+    }
+  };
+
+  const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
+
+  const handleAddByContext = () => {
+    const title = newSectionTitle.trim();
+    if (!title || nameError) return;
+
+    const parentSectionId =
+      currentSectionId &&
+      (project?.sections || []).some((section: any) => section.id === currentSectionId)
+        ? currentSectionId
+        : null;
+
+    const pageType = selectedPageTypeId === "blank" ? null : getPageType(selectedPageTypeId) ?? null;
+    const kinds: RequirementKind[] = (pageType?.requires || [])
+      .map((r) => REQUIRES_TO_KIND[r])
+      .filter((k): k is RequirementKind => !!k);
+
+    if (!pageType || kinds.length === 0) {
+      const created = createSectionWithArgs(title, parentSectionId, selectedPageTypeId);
+      if (created === undefined) return;
+      setNameError("");
+      resetAddInputs();
+      return;
+    }
+
+    const state: PendingCreate = {
+      title,
+      parentSectionId,
+      pageTypeId: selectedPageTypeId,
+      resolved: {},
+      remainingKinds: kinds,
+    };
+    setPendingCreate(state);
+    openModalForKind(state.remainingKinds[0], state);
+  };
+
+  const handleRequiresCancel = () => {
+    setRequiresDialog((prev) => ({ ...prev, open: false }));
+    setPendingCreate(null);
+  };
+
+  const handleRequiresChoice = (choice: PageTypeRequiresChoice) => {
+    if (!pendingCreate) return;
+    const kind = requiresDialog.requirementKind;
+    setRequiresDialog((prev) => ({ ...prev, open: false }));
+    if (!kind) return;
+
+    const nextState: PendingCreate = {
+      ...pendingCreate,
+      resolved: { ...pendingCreate.resolved, [kind]: choice },
+      remainingKinds: pendingCreate.remainingKinds.slice(1),
+    };
+    setPendingCreate(nextState);
+
+    if (nextState.remainingKinds.length > 0) {
+      openModalForKind(nextState.remainingKinds[0], nextState);
+    } else {
+      executePendingCreate(nextState);
+    }
+  };
+
+  const executePendingCreate = (state: PendingCreate) => {
+    setPendingCreate(null);
+
+    // Resolve attribute definitions link.
+    let attrDefsSectionId: string | null = null;
+    let attrDefsAttributes: Array<{ key: string; label?: string; defaultValue: number | boolean }> = [];
+    let attrDefsFieldLibrary:
+      | { libraryAddonId: string; entryIdByAttrKey: Record<string, string> }
+      | undefined;
+    const attrChoice = state.resolved.attributeDefinitions;
+    if (attrChoice?.mode === "link-existing") {
+      attrDefsSectionId = attrChoice.candidate.sectionId;
+      attrDefsAttributes = (attrChoice.candidate.attributes || []).map((a) => ({
+        key: a.key,
+        label: a.label,
+        defaultValue: a.defaultValue,
+      }));
+      const linkedSection = (project?.sections || []).find(
+        (s: any) => s.id === attrChoice.candidate.sectionId
+      );
+      attrDefsFieldLibrary = extractFieldLibraryRefForAttrs(
+        linkedSection,
+        attrDefsAttributes.map((a) => a.key)
+      );
+    } else if (attrChoice?.mode === "create-new") {
+      const reqPT = getPageType("attributeDefinitions");
+      if (reqPT) {
+        // Build the addons ONCE so we can both pass them as customAddons
+        // to the create call AND derive stable ref IDs from the same seed.
+        const seededAll = buildPageTypeAddons(reqPT.id);
+        const baseTitle = reqPT.defaultSectionTitle || reqPT.label;
+        const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
+        const newId = createSectionWithArgs(sectionTitle, null, reqPT.id, seededAll);
+        if (!newId) return;
+        attrDefsSectionId = newId;
+        const seededAttrs = seededAll.find((a) => a.type === "attributeDefinitions");
+        if (seededAttrs && seededAttrs.type === "attributeDefinitions") {
+          attrDefsAttributes = seededAttrs.data.attributes.map((a) => ({
+            key: a.key,
+            label: a.label,
+            defaultValue: a.defaultValue,
+          }));
+        }
+        attrDefsFieldLibrary = extractFieldLibraryRefForAttrs(
+          { id: newId, title: reqPT.label, addons: seededAll },
+          attrDefsAttributes.map((a) => a.key)
+        );
       }
     }
+
+    // Resolve currency link.
+    let currencySectionId: string | null = null;
+    const currencyChoice = state.resolved.currency;
+    if (currencyChoice?.mode === "link-existing") {
+      currencySectionId = currencyChoice.candidate.sectionId;
+    } else if (currencyChoice?.mode === "create-new") {
+      const reqPT = getPageType("economy");
+      if (reqPT) {
+        const baseTitle = reqPT.defaultSectionTitle || reqPT.label;
+        const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
+        const newId = createSectionWithArgs(sectionTitle, null, reqPT.id);
+        if (!newId) return;
+        currencySectionId = newId;
+      }
+    }
+
+    // Ensure economy modifier sections when the page type declares an economy
+    // requirement (items, equipmentItem).
+    let buyId: string | null = null;
+    let sellId: string | null = null;
+    if (state.resolved.currency) {
+      const mod = ensureEconomyModifierSectionIds();
+      buyId = mod.buyId;
+      sellId = mod.sellId;
+    }
+
+    const options = {
+      linkAttributeDefinitions: attrDefsSectionId
+        ? {
+            sectionId: attrDefsSectionId,
+            attributes: attrDefsAttributes,
+            fieldLibrary: attrDefsFieldLibrary,
+          }
+        : undefined,
+      linkCurrency: currencySectionId ? { sectionId: currencySectionId } : undefined,
+      linkEconomyModifiers: state.resolved.currency
+        ? { buySectionId: buyId ?? undefined, sellSectionId: sellId ?? undefined }
+        : undefined,
+      economyLinkBaseValues: state.resolved.currency
+        ? { buyValue: 100, sellValue: 50 }
+        : undefined,
+    };
+
+    const customAddons = buildPageTypeAddons(state.pageTypeId, options);
+    const created = createSectionWithArgs(
+      state.title,
+      state.parentSectionId,
+      state.pageTypeId,
+      customAddons.length ? customAddons : undefined
+    );
+    if (created === undefined) return;
+    resetAddInputs();
   };
 
   if (!mounted || !project) return null;
@@ -485,7 +776,24 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       </div>
 
       <div className="relative z-20 mt-4 pt-4 border-t border-gray-700/80">
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="relative flex gap-2 flex-wrap items-center" ref={pageTypePickerRef}>
+          <button
+            type="button"
+            onClick={() => setPageTypePickerOpen((v) => !v)}
+            aria-haspopup="true"
+            aria-expanded={pageTypePickerOpen}
+            title={`Tipo de página: ${getPageType(selectedPageTypeId)?.label ?? "Em branco"}`}
+            className={`inline-flex h-10 items-center gap-1.5 rounded-xl border px-2.5 text-sm transition-all duration-150 ${
+              pageTypePickerOpen || selectedPageTypeId !== "blank"
+                ? "border-indigo-400 bg-indigo-600/20 text-indigo-100 shadow-sm shadow-indigo-900/30"
+                : "border-gray-600 bg-gray-900/75 text-gray-200 hover:border-indigo-400 hover:text-white hover:bg-gray-800/90"
+            }`}
+          >
+            <span className="text-base leading-none">{getPageType(selectedPageTypeId)?.emoji ?? "📄"}</span>
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
           <input
             value={newSectionTitle}
             onChange={(e) => {
@@ -513,9 +821,62 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
             <span className="text-base leading-none">+</span>
             {t("projectDetail.add")}
           </button>
+
+          {pageTypePickerOpen && (
+            <div className="ui-menu-pop absolute z-40 left-0 bottom-full mb-2 w-80 rounded-xl border border-gray-600/90 bg-gray-900/95 backdrop-blur-sm shadow-2xl shadow-black/35 p-2">
+              <div className="px-2 py-1.5 text-xs font-medium text-gray-300 border-b border-gray-700/70 mb-1">
+                Tipo de página
+              </div>
+              <div className="max-h-72 overflow-y-auto scrollbar-premium pr-1 space-y-0.5">
+                {PAGE_TYPES.map((pt) => {
+                  const active = pt.id === selectedPageTypeId;
+                  const addonsCount = pt.addons.length;
+                  return (
+                    <button
+                      key={pt.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPageTypeId(pt.id);
+                        setPageTypePickerOpen(false);
+                      }}
+                      className={`w-full text-left flex items-start gap-2.5 rounded-lg border px-2.5 py-2 text-sm transition-all ${
+                        active
+                          ? "border-indigo-400/60 bg-gradient-to-r from-indigo-600/25 to-fuchsia-600/20 text-indigo-100"
+                          : "border-transparent text-gray-200 hover:bg-gray-800/80 hover:border-gray-700/80"
+                      }`}
+                    >
+                      <span className="text-lg leading-none mt-0.5" aria-hidden="true">{pt.emoji}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-2">
+                          <span className="font-medium">{pt.label}</span>
+                          {addonsCount > 0 && (
+                            <span className="inline-flex items-center h-4 px-1.5 rounded-md bg-gray-800/80 border border-gray-700/70 text-[10px] font-semibold text-gray-300 tabular-nums">
+                              {addonsCount} addon{addonsCount === 1 ? "" : "s"}
+                            </span>
+                          )}
+                        </span>
+                        <span className="block text-xs text-gray-400 mt-0.5 leading-snug">
+                          {pt.description}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         {nameError && <span className="text-red-400 text-sm mt-1 block">{nameError}</span>}
       </div>
+      <PageTypeRequiresDialog
+        open={requiresDialog.open}
+        pageType={requiresDialog.pageType}
+        requiredPageType={requiresDialog.requiredPageType}
+        candidates={requiresDialog.candidates}
+        introCopy={requiresDialog.introCopy}
+        onCancel={handleRequiresCancel}
+        onConfirm={handleRequiresChoice}
+      />
     </aside>
   );
 }

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { EconomyLinkAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitOptionalNumberInput } from "@/components/common/CommitInput";
 
@@ -115,11 +116,16 @@ function formatModifierPreview(meta: GlobalVariableCalcMeta): string | null {
 export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLinkAddonPanelProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
+  const scopedProjects = useMemo(
+    () => (currentProjectId ? projects.filter((p) => p.id === currentProjectId) : projects),
+    [projects, currentProjectId]
+  );
 
   const currencyRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string }> = [];
     const seen = new Set<string>();
-    for (const project of projects) {
+    for (const project of scopedProjects) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "currency") continue;
@@ -136,12 +142,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       }
     }
     return out;
-  }, [projects]);
+  }, [scopedProjects]);
 
   const globalVariableRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; projectId: string; sectionId: string; meta: GlobalVariableCalcMeta }> = [];
     const seen = new Set<string>();
-    for (const project of projects) {
+    for (const project of scopedProjects) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "globalVariable") continue;
@@ -163,12 +169,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       }
     }
     return out;
-  }, [projects]);
+  }, [scopedProjects]);
 
   const xpRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; minLevel?: number; maxLevel?: number }> = [];
     const seen = new Set<string>();
-    for (const project of projects) {
+    for (const project of scopedProjects) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "xpBalance") continue;
@@ -193,11 +199,11 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       }
     }
     return out;
-  }, [projects]);
+  }, [scopedProjects]);
 
   const globalVariableByRefId = useMemo(() => {
     const map = new Map<string, GlobalVariableCalcMeta>();
-    for (const project of projects) {
+    for (const project of scopedProjects) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "globalVariable") continue;
@@ -210,7 +216,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       }
     }
     return map;
-  }, [projects]);
+  }, [scopedProjects]);
 
   const validationMessages = useMemo(() => {
     const messages: string[] = [];

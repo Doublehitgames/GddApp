@@ -2344,6 +2344,7 @@ function SectionDetailContent({
                   open={showAddonMenu}
                   onClose={() => setShowAddonMenu(false)}
                   onPick={(type) => onAddAddon(type, activeGroup)}
+                  existingTypes={groupAddons.map((a: any) => a.type)}
                 />
                 <button
                   onClick={handleImproveWithAI}

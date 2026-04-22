@@ -15,6 +15,7 @@ import type { DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, Econom
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import {
   CommitNumberInput,
   CommitOptionalNumberInput,
@@ -112,6 +113,7 @@ function resolveEntryKey(entry: DataSchemaEntry, options: LibraryFieldOption[]):
 export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAddonPanelProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
   const entries = addon.entries || [];
 
   // Find the section that contains this Data Schema addon (for DataID binding)
@@ -131,7 +133,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   const availableLibraryFields = useMemo<LibraryFieldOption[]>(() => {
     const out: LibraryFieldOption[] = [];
     const seenLibraryIds = new Set<string>();
-    for (const project of projects) {
+    const scope = currentProjectId
+      ? projects.filter((p) => p.id === currentProjectId)
+      : projects;
+    for (const project of scope) {
       for (const sec of project.sections || []) {
         const sectionTitle = (sec as { title?: string; id: string }).title?.trim() || (sec as { id: string }).id;
         for (const sectionAddon of (sec as { addons?: Array<{ id: string; type: string; name: string; data: Record<string, unknown> }> }).addons || []) {
@@ -158,7 +163,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       }
     }
     return out;
-  }, [projects]);
+  }, [projects, currentProjectId]);
 
   useEffect(() => {
     if (!libraryPickerOpenEntryId) return;
@@ -181,7 +186,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   const xpRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; decimals: number }> = [];
     const seen = new Set<string>();
-    for (const project of projects) {
+    const scope = currentProjectId
+      ? projects.filter((p) => p.id === currentProjectId)
+      : projects;
+    for (const project of scope) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "xpBalance") continue;
@@ -202,7 +210,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       }
     }
     return out;
-  }, [projects]);
+  }, [projects, currentProjectId]);
 
   const ECONOMY_LINK_FIELDS: Array<{ key: EconomyLinkFieldKey; label: string }> = [
     { key: "buyValue", label: "Valor de Compra" },

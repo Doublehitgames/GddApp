@@ -14,6 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { AttributeProfileAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput } from "@/components/common/CommitInput";
 
@@ -40,6 +41,7 @@ function clampNumber(value: number, min?: number, max?: number): number {
 export function AttributeProfileAddonPanel({ addon, onChange, onRemove }: AttributeProfileAddonPanelProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
   const values = addon.values || [];
   const [collapsedValues, setCollapsedValues] = useState<Record<string, boolean>>({});
   const rowIdSignature = useMemo(() => values.map((item) => item.id).join("|"), [values]);
@@ -62,7 +64,10 @@ export function AttributeProfileAddonPanel({ addon, onChange, onRemove }: Attrib
         max?: number;
       }>;
     }> = [];
-    for (const project of projects) {
+    const scope = currentProjectId
+      ? projects.filter((p) => p.id === currentProjectId)
+      : projects;
+    for (const project of scope) {
       for (const section of project.sections || []) {
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "attributeDefinitions") continue;
@@ -82,7 +87,7 @@ export function AttributeProfileAddonPanel({ addon, onChange, onRemove }: Attrib
       }
     }
     return out;
-  }, [projects]);
+  }, [projects, currentProjectId]);
 
   const selectedDefinition = definitionOptions.find((item) => item.refId === addon.definitionsRef);
   const selectedAttributes = selectedDefinition?.attributes || [];

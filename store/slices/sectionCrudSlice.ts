@@ -5,6 +5,7 @@ import {
   FREE_MAX_SECTIONS_TOTAL,
 } from "@/lib/structuralLimits";
 import { duplicateAddonsForDuplicatedSection } from "@/lib/addons/copy";
+import { buildPageTypeAddons, type PageTypeId } from "@/lib/pageTypes/registry";
 import type { SyncEngineAPI } from "./syncEngine";
 
 export type DuplicateSectionOutcome = {
@@ -26,7 +27,7 @@ type StoreGet = () => ProjectStore;
 
 export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: SyncEngineAPI) {
   return {
-    addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => {
+    addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -43,6 +44,14 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const audit = createdBy
         ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
         : {};
+      const seededAddons: SectionAddon[] | undefined = customAddons?.length
+        ? customAddons
+        : pageTypeId
+        ? (() => {
+            const addons = buildPageTypeAddons(pageTypeId as PageTypeId);
+            return addons.length ? addons : undefined;
+          })()
+        : undefined;
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -54,7 +63,18 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                 updatedAt: now,
                 sections: [
                   ...(p.sections || []),
-                  { id: newId, title, content: content || "", created_at: now, parentId: undefined, order: maxOrder + 1, ...audit } as Section,
+                  {
+                    id: newId,
+                    title,
+                    content: content || "",
+                    created_at: now,
+                    parentId: undefined,
+                    order: maxOrder + 1,
+                    ...(pageTypeId && pageTypeId !== "blank" ? { pageTypeId } : {}),
+                    ...(seededAddons ? { addons: seededAddons } : {}),
+                    ...(domainTags && domainTags.length ? { domainTags } : {}),
+                    ...audit,
+                  } as Section,
                 ],
               };
             }
@@ -65,7 +85,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return newId;
     },
 
-    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy) => {
+    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -82,6 +102,14 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const audit = createdBy
         ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
         : {};
+      const seededAddons: SectionAddon[] | undefined = customAddons?.length
+        ? customAddons
+        : pageTypeId
+        ? (() => {
+            const addons = buildPageTypeAddons(pageTypeId as PageTypeId);
+            return addons.length ? addons : undefined;
+          })()
+        : undefined;
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -93,7 +121,18 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                 updatedAt: now,
                 sections: [
                   ...(p.sections || []),
-                  { id: newId, title, content: content || "", created_at: now, parentId, order: maxOrder + 1, ...audit } as Section,
+                  {
+                    id: newId,
+                    title,
+                    content: content || "",
+                    created_at: now,
+                    parentId,
+                    order: maxOrder + 1,
+                    ...(pageTypeId && pageTypeId !== "blank" ? { pageTypeId } : {}),
+                    ...(seededAddons ? { addons: seededAddons } : {}),
+                    ...(domainTags && domainTags.length ? { domainTags } : {}),
+                    ...audit,
+                  } as Section,
                 ],
               };
             }

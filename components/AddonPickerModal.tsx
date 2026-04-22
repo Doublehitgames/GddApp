@@ -9,6 +9,11 @@ interface AddonPickerModalProps {
   open: boolean;
   onClose: () => void;
   onPick: (type: SectionAddonType) => void;
+  /**
+   * Types that are already present on the target section (or active addon
+   * group). Singleton entries matching any of these are shown disabled.
+   */
+  existingTypes?: ReadonlyArray<SectionAddonType>;
 }
 
 function normalizeForSearch(raw: string): string {
@@ -18,7 +23,8 @@ function normalizeForSearch(raw: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-export function AddonPickerModal({ open, onClose, onPick }: AddonPickerModalProps) {
+export function AddonPickerModal({ open, onClose, onPick, existingTypes }: AddonPickerModalProps) {
+  const existingTypeSet = useMemo(() => new Set(existingTypes || []), [existingTypes]);
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -157,15 +163,30 @@ export function AddonPickerModal({ open, onClose, onPick }: AddonPickerModalProp
                     {group.entries.map((entry) => {
                       const label = getLabel(entry.type, entry.label);
                       const description = getDescription(entry.type);
+                      const isDisabled = !!entry.singleton && existingTypeSet.has(entry.type);
+                      const disabledReason = isDisabled
+                        ? t(
+                            "addonPicker.singletonDisabled",
+                            "Esta página já possui um addon deste tipo."
+                          )
+                        : null;
                       return (
                         <button
                           key={entry.type}
                           type="button"
                           onClick={() => {
+                            if (isDisabled) return;
                             onPick(entry.type);
                             onClose();
                           }}
-                          className="group text-left rounded-xl border border-gray-700 bg-gray-850 bg-gray-800/70 hover:bg-gray-800 hover:border-cyan-500/60 px-3 py-3 transition-colors focus:outline-none focus-visible:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
+                          disabled={isDisabled}
+                          aria-disabled={isDisabled}
+                          title={disabledReason || undefined}
+                          className={
+                            isDisabled
+                              ? "group text-left rounded-xl border border-gray-800 bg-gray-900/50 px-3 py-3 opacity-50 cursor-not-allowed"
+                              : "group text-left rounded-xl border border-gray-700 bg-gray-850 bg-gray-800/70 hover:bg-gray-800 hover:border-cyan-500/60 px-3 py-3 transition-colors focus:outline-none focus-visible:border-cyan-400 focus-visible:ring-2 focus-visible:ring-cyan-500/30"
+                          }
                         >
                           <div className="flex items-start gap-2.5">
                             <span className="text-2xl leading-none select-none" aria-hidden>
@@ -176,6 +197,11 @@ export function AddonPickerModal({ open, onClose, onPick }: AddonPickerModalProp
                               {description && (
                                 <p className="mt-0.5 text-[11px] text-gray-400 leading-snug line-clamp-2">
                                   {description}
+                                </p>
+                              )}
+                              {disabledReason && (
+                                <p className="mt-1 text-[11px] text-amber-300/90 leading-snug">
+                                  {disabledReason}
                                 </p>
                               )}
                             </div>

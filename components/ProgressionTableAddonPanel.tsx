@@ -32,6 +32,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey } from "@/hooks/useBlurCommitText";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import {
   CommitNumberInput,
   CommitOptionalNumberInput,
@@ -399,10 +400,14 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
 
   // ── Library linking: collect entries from every fieldLibrary addon in the project ──
   const projects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
   const availableLibraryColumns = useMemo<LibraryColumnOption[]>(() => {
     const out: LibraryColumnOption[] = [];
     const seenLibraryIds = new Set<string>();
-    for (const project of projects) {
+    const scope = currentProjectId
+      ? projects.filter((p) => p.id === currentProjectId)
+      : projects;
+    for (const project of scope) {
       for (const section of project.sections || []) {
         const sectionTitle = (section as { title?: string; id: string }).title?.trim() || (section as { id: string }).id;
         for (const sectionAddon of (section as { addons?: Array<{ id: string; type: string; name: string; data: Record<string, unknown> }> }).addons || []) {
@@ -429,7 +434,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       }
     }
     return out;
-  }, [projects]);
+  }, [projects, currentProjectId]);
 
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
   // No more attribute overrides — `resolvedColumns` is just the raw columns.
