@@ -839,7 +839,7 @@
     "blocksLabel": "bloque(s) de contenido enriquecido",
     "emptyState": "Documento vacío",
     "slashMenu": {
-      "gameDesignGroup": "Game Design",
+      "calloutsGroup": "Callouts",
       "embed": {
         "title": "Insertar video",
         "subtext": "YouTube, Vimeo, Loom, Streamable"
@@ -848,9 +848,23 @@
         "title": "Imagen de Drive",
         "subtext": "Elegir imagen de Google Drive"
       },
-      "stat": {
-        "title": "Stat",
-        "subtext": "Atributo inline (FUE: 18 +4) — enlaza con la Biblioteca de Campos"
+      "callout": {
+        "note": {
+          "title": "Nota",
+          "subtext": "Información general o anotación"
+        },
+        "warning": {
+          "title": "Atención",
+          "subtext": "Cuidado, detalle crítico o riesgo"
+        },
+        "design-decision": {
+          "title": "Decisión de diseño",
+          "subtext": "Registro de una elección — por qué decidimos así"
+        },
+        "balance-note": {
+          "title": "Nota de balance",
+          "subtext": "Observación de playtest o preocupación de balance"
+        }
       }
     }
   },

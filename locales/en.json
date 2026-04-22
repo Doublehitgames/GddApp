@@ -839,7 +839,7 @@
     "blocksLabel": "rich content block(s)",
     "emptyState": "Empty document",
     "slashMenu": {
-      "gameDesignGroup": "Game Design",
+      "calloutsGroup": "Callouts",
       "embed": {
         "title": "Embed",
         "subtext": "YouTube, Vimeo, Loom, Streamable"
@@ -848,9 +848,23 @@
         "title": "Drive Image",
         "subtext": "Pick an image from Google Drive"
       },
-      "stat": {
-        "title": "Stat",
-        "subtext": "Inline attribute (STR: 18 +4) — links to Field Library"
+      "callout": {
+        "note": {
+          "title": "Note",
+          "subtext": "General info or annotation"
+        },
+        "warning": {
+          "title": "Warning",
+          "subtext": "Caution, gotcha, or risk to flag"
+        },
+        "design-decision": {
+          "title": "Design decision",
+          "subtext": "A documented call — why we chose this"
+        },
+        "balance-note": {
+          "title": "Balance note",
+          "subtext": "Playtesting observation or balance concern"
+        }
       }
     }
   },

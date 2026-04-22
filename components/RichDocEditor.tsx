@@ -18,7 +18,7 @@ import {
 } from "@blocknote/core";
 import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
-import { StatBlock } from "@/lib/richDoc/statBlock";
+import { CalloutBlock, CALLOUT_VARIANTS, type CalloutVariant } from "@/lib/richDoc/calloutBlock";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -41,7 +41,7 @@ const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     embed: EmbedBlock(),
-    stat: StatBlock(),
+    callout: CalloutBlock(),
   },
 });
 
@@ -169,26 +169,26 @@ export default function RichDocEditor({
           break;
         }
       }
-      const gameDesignGroup = t("richDocAddon.slashMenu.gameDesignGroup", "Game Design");
-      const statItem = {
-        key: "stat",
-        title: t("richDocAddon.slashMenu.stat.title", "Stat"),
-        subtext: t("richDocAddon.slashMenu.stat.subtext", "Inline attribute (STR: 18 +4) — links to Field Library"),
-        aliases: ["stat", "attribute", "atributo", "atributos", "value"],
-        group: gameDesignGroup,
-        icon: <span style={{ fontSize: 18 }}>📊</span>,
+      const calloutsGroup = t("richDocAddon.slashMenu.calloutsGroup", "Callouts");
+      const calloutItems = CALLOUT_VARIANTS.map((variant: CalloutVariant) => ({
+        key: `callout-${variant.id}`,
+        title: t(`richDocAddon.slashMenu.callout.${variant.id}.title`, variant.defaultTitle),
+        subtext: t(`richDocAddon.slashMenu.callout.${variant.id}.subtext`, variant.defaultSubtext),
+        aliases: variant.aliases,
+        group: calloutsGroup,
+        icon: <span style={{ fontSize: 18 }}>{variant.icon}</span>,
         onItemClick: () => {
           const cursor = editor.getTextCursorPosition().block;
           editor.insertBlocks(
-            [{ type: "stat", props: { labelKey: "", valueText: "", modifier: "" } }],
+            [{ type: "callout", props: { variant: variant.id } }],
             cursor,
             "after",
           );
         },
-      };
+      }));
       const combined = lastMediaIdx >= 0
-        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), statItem]
-        : [...defaults, embedItem, driveImageItem, statItem];
+        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), ...calloutItems]
+        : [...defaults, embedItem, driveImageItem, ...calloutItems];
       return filterSuggestionItems(combined, query);
     };
   }, [editor, mediaGroupLabel, t]);
