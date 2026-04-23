@@ -112,7 +112,11 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     weight: z.number().default(0).describe("Item weight"),
     stackable: z.boolean().default(true).describe("Can items stack?"),
     maxStack: z.number().default(99).describe("Max stack size"),
-    inventoryCategory: z.string().default("").describe("Category (e.g. weapon, food, material)"),
+    inventoryCategory: z.string().default("").describe("Category (e.g. weapon, food, material). Ignored when categoryLibraryRef is set — the Library entry's label takes precedence."),
+    categoryLibraryRef: z.object({
+      libraryAddonId: z.string().describe("Outer ID of the Field Library addon"),
+      entryId: z.string().describe("Entry ID inside the Field Library"),
+    }).optional().describe("Bind the category to a Field Library entry — keeps category names consistent across items."),
     slotSize: z.number().default(1).describe("Inventory slots occupied"),
     durability: z.number().default(0).describe("Base durability (0 = no durability)"),
     bindType: z.enum(["none", "onPickup", "onEquip"]).default("none").describe("Bind on pickup/equip"),
@@ -417,26 +421,80 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   // ── 13. Export Schema ───────────────────────────────────────────
 
+  const exportSchemaBindingSchema = z.object({
+    source: z.enum([
+      "manual",
+      "dataSchema",
+      "rowLevel",
+      "rowColumn",
+      // craftTable-scoped
+      "entryField",
+      "productionField",
+      "itemField",
+    ]).describe(
+      "Binding source. 'rowLevel' / 'rowColumn' are valid only inside a " +
+      "progressionTable array. 'entryField' is valid inside a craftTable array. " +
+      "'productionField' is valid inside a craftTable array (follows entry.productionRef). " +
+      "'itemField' is valid inside productionIngredients/productionOutputs arrays."
+    ),
+    // source: manual
+    value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+    valueType: z.enum(["string", "number", "boolean"]).optional(),
+    // source: dataSchema
+    addonId: z.string().optional(),
+    addonName: z.string().optional(),
+    entryKey: z.string().optional(),
+    entryId: z.string().optional(),
+    // source: rowColumn
+    columnId: z.string().optional(),
+    // source: entryField | productionField | itemField
+    field: z.string().optional().describe(
+      "entryField: order|productionRef|category|hidden|unlockLevelEnabled|unlockLevel|" +
+      "unlockLevelXpRef|unlockCurrencyEnabled|unlockCurrencyAmount|unlockCurrencyRef|" +
+      "unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
+      "productionField: name|mode|craftTimeSeconds|minOutput|maxOutput|intervalSeconds|" +
+      "capacity|requiresCollection|outputRef. " +
+      "itemField: itemRef|quantity."
+    ),
+  }).describe("Value binding");
+
+  const exportSchemaArraySourceSchema = z.object({
+    type: z.enum([
+      "progressionTable",
+      "craftTable",
+      "productionIngredients",
+      "productionOutputs",
+    ]).describe(
+      "'progressionTable' and 'craftTable' require addonId. " +
+      "'productionIngredients' and 'productionOutputs' follow the current craftTable entry's " +
+      "production and do not take an addonId (must be nested inside a craftTable array node)."
+    ),
+    addonId: z.string().optional().describe("Section ID of the target addon (progressionTable or craftTable)"),
+    addonName: z.string().optional().describe("Fallback match by name when used in templates"),
+  }).describe("Array iteration source");
+
   const exportSchemaNodeSchema: z.ZodTypeAny = z.lazy(() =>
     z.object({
       id: z.string().optional().describe("Node ID"),
       key: z.string().describe("JSON key"),
       nodeType: z.enum(["object", "array", "value"]).describe("Node type"),
       children: z.array(exportSchemaNodeSchema).optional().describe("Child nodes (for object type)"),
-      binding: z.object({
-        source: z.enum(["manual", "dataSchema", "rowLevel", "rowColumn"]),
-        value: z.union([z.string(), z.number(), z.boolean()]).optional(),
-        valueType: z.enum(["string", "number", "boolean"]).optional(),
-        addonId: z.string().optional(),
-        entryKey: z.string().optional(),
-        columnId: z.string().optional(),
-      }).optional().describe("Value binding"),
+      // array node
+      arraySource: exportSchemaArraySourceSchema.optional().describe("Iteration source (for array type)"),
+      itemTemplate: z.array(exportSchemaNodeSchema).optional().describe("Template applied per iteration (for array type)"),
+      // value node
+      binding: exportSchemaBindingSchema.optional(),
+      abs: z.boolean().optional().describe("Apply Math.abs to the resolved numeric value"),
+      multiplier: z.number().optional().describe("Multiply the resolved numeric value by this factor"),
     }),
   );
 
   const exportSchemaFields = {
     nodes: z.array(exportSchemaNodeSchema).describe("Export schema tree nodes"),
-    arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional().describe("Array output format"),
+    arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional().describe(
+      "Array output format (only applies to progressionTable arrays; craftTable and production " +
+      "arrays are always rowMajor)."
+    ),
   };
   pair("export_schema", "exportSchema", "export/remote config schema", exportSchemaFields, optional(exportSchemaFields));
 
