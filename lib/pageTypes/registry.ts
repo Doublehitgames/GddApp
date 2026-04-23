@@ -1,8 +1,11 @@
 import type {
   AttributeDefinitionEntry,
   AttributeProfileAddonDraft,
+  CraftTableEntry,
   EconomyLinkAddonDraft,
   GlobalVariableSectionAddon,
+  ProductionIngredient,
+  ProductionOutput,
   ProgressionTableColumn,
   SectionAddon,
   SectionAddonType,
@@ -20,7 +23,28 @@ export type PageTypeId =
   | "attributeDefinitions"
   | "economy"
   | "progression"
+  | "recipe"
+  | "craftTable"
   | "narrative";
+
+/**
+ * Semantic dependencies a page type can declare. Each kind is resolved by
+ * the sidebar via a dedicated modal flow (link-existing / create-new / skip)
+ * and wired into the seeded addons at build time.
+ */
+export type RequirementKind =
+  | "attributeDefinitions"
+  | "currency"
+  | "itemIngredient"
+  | "itemOutput";
+
+/** Which page type to create when the user picks "create new" for each kind. */
+export const REQUIREMENT_KIND_TO_PAGE_TYPE: Record<RequirementKind, PageTypeId> = {
+  attributeDefinitions: "attributeDefinitions",
+  currency: "economy",
+  itemIngredient: "items",
+  itemOutput: "items",
+};
 
 export type PageTypeAddon = {
   type: SectionAddonType;
@@ -42,8 +66,8 @@ export type PageType = {
   description: string;
   emoji: string;
   addons: PageTypeAddon[];
-  /** Other page types this one expects to exist in the project. */
-  requires?: PageTypeId[];
+  /** Semantic dependencies resolved by the requires dialog, in declared order. */
+  requires?: RequirementKind[];
   /**
    * Fallback section title used when this page type is auto-created by
    * another flow (e.g. the requires-dialog "create new" path). When absent,
@@ -104,7 +128,7 @@ export const PAGE_TYPES: PageType[] = [
       { type: "inventory", role: "primary", nameOverride: "Inventário", nameOverrideKey: "pageTypes.addonNames.inventory" },
       { type: "economyLink", role: "recommended", nameOverride: "Economia", nameOverrideKey: "pageTypes.addonNames.economy" },
     ],
-    requires: ["economy"],
+    requires: ["currency"],
     tags: ["items", "economy"],
   },
   {
@@ -117,7 +141,7 @@ export const PAGE_TYPES: PageType[] = [
       { type: "economyLink", role: "recommended", nameOverride: "Economia", nameOverrideKey: "pageTypes.addonNames.economy" },
       { type: "attributeModifiers", role: "recommended", nameOverride: "Efeitos", nameOverrideKey: "pageTypes.addonNames.equipmentEffects" },
     ],
-    requires: ["economy", "attributeDefinitions"],
+    requires: ["currency", "attributeDefinitions"],
     tags: ["items", "economy", "combat"],
   },
   {
@@ -185,6 +209,37 @@ export const PAGE_TYPES: PageType[] = [
     tags: ["progression"],
   },
   {
+    id: "recipe",
+    label: "Receita",
+    description: "Uma receita que transforma itens-ingrediente em itens-saída. Seleciona os itens envolvidos no momento da criação.",
+    emoji: "📜",
+    addons: [
+      {
+        type: "production",
+        role: "primary",
+        nameOverride: "Produção",
+        nameOverrideKey: "pageTypes.addonNames.production",
+      },
+    ],
+    requires: ["itemIngredient", "itemOutput"],
+    tags: ["crafting", "items"],
+  },
+  {
+    id: "craftTable",
+    label: "Mesa de Craft",
+    description: "Uma estação de produção que reúne receitas existentes (ex.: Serraria, Bancada). Unlocks opcionais ficam off por padrão.",
+    emoji: "🏭",
+    addons: [
+      {
+        type: "craftTable",
+        role: "primary",
+        nameOverride: "Mesa de Produção",
+        nameOverrideKey: "pageTypes.addonNames.craftTable",
+      },
+    ],
+    tags: ["crafting"],
+  },
+  {
     id: "narrative",
     label: "Narrativa",
     description: "Páginas de lore, roteiro ou descrição em texto rico.",
@@ -248,7 +303,11 @@ export function resolveAddonName(entry: PageTypeAddon, t?: Translator): string |
 
 // ─── Candidates ──────────────────────────────────────────────────────────
 
-export type RequiresCandidateKind = "attributeDefinitions" | "currency";
+export type RequiresCandidateKind =
+  | "attributeDefinitions"
+  | "currency"
+  | "item"
+  | "recipe";
 
 /** Generic candidate presented in the requires dialog. */
 export type RequiresCandidate = {
@@ -264,6 +323,20 @@ export type RequiresCandidate = {
     code?: string;
     displayName?: string;
     kind?: string;
+  };
+  /** Filled when kind === "item": raw item metadata used for preview. */
+  item?: {
+    inventoryName?: string;
+    category?: string;
+    stackable?: boolean;
+    maxStack?: number;
+  };
+  /** Filled when kind === "recipe": output summary used for preview. */
+  recipe?: {
+    mode: "passive" | "recipe";
+    ingredientsCount: number;
+    outputsCount: number;
+    craftTimeSeconds?: number;
   };
 };
 
@@ -317,6 +390,53 @@ export function extractFieldLibraryRefForAttrs(
   }
   if (Object.keys(entryIdByAttrKey).length === 0) return undefined;
   return { libraryAddonId: library.id, entryIdByAttrKey };
+}
+
+export function findItemCandidates(sections: SectionLike[]): RequiresCandidate[] {
+  const out: RequiresCandidate[] = [];
+  for (const section of sections) {
+    for (const addon of section.addons || []) {
+      if (addon.type !== "inventory") continue;
+      out.push({
+        kind: "item",
+        sectionId: section.id,
+        sectionTitle: section.title || section.id,
+        addonId: addon.id,
+        addonName: addon.name || addon.data.name || "Item",
+        item: {
+          inventoryName: addon.data.name,
+          category: addon.data.inventoryCategory,
+          stackable: addon.data.stackable,
+          maxStack: addon.data.maxStack,
+        },
+      });
+    }
+  }
+  return out;
+}
+
+export function findRecipeCandidates(sections: SectionLike[]): RequiresCandidate[] {
+  const out: RequiresCandidate[] = [];
+  for (const section of sections) {
+    for (const addon of section.addons || []) {
+      if (addon.type !== "production") continue;
+      if (addon.data.mode !== "recipe") continue;
+      out.push({
+        kind: "recipe",
+        sectionId: section.id,
+        sectionTitle: section.title || section.id,
+        addonId: addon.id,
+        addonName: addon.name || addon.data.name || "Receita",
+        recipe: {
+          mode: addon.data.mode,
+          ingredientsCount: (addon.data.ingredients || []).length,
+          outputsCount: (addon.data.outputs || []).length,
+          craftTimeSeconds: addon.data.craftTimeSeconds,
+        },
+      });
+    }
+  }
+  return out;
 }
 
 export function findCurrencyCandidates(sections: SectionLike[]): RequiresCandidate[] {
@@ -442,6 +562,18 @@ export type BuildPageTypeAddonsOptions = {
     buyValue?: number;
     sellValue?: number;
   };
+  /** Wires a seeded `production` addon to recipe-mode with ingredient/output items. */
+  linkRecipe?: {
+    ingredientSectionId?: string;
+    outputSectionId?: string;
+    ingredientQuantity?: number;
+    outputQuantity?: number;
+    craftTimeSeconds?: number;
+  };
+  /** Pre-populates a seeded `craftTable` addon with entries referencing recipe sections. */
+  linkCraftTableRecipes?: {
+    recipeSectionIds: string[];
+  };
 };
 
 export function buildPageTypeAddons(
@@ -474,6 +606,12 @@ export function buildPageTypeAddons(
     }
     if (addon.type === "economyLink") {
       addon = applyEconomyLinkOptions(addon, options);
+    }
+    if (addon.type === "production" && options.linkRecipe) {
+      addon = applyRecipeOptions(addon, options.linkRecipe);
+    }
+    if (addon.type === "craftTable" && options.linkCraftTableRecipes) {
+      addon = applyCraftTableRecipes(addon, options.linkCraftTableRecipes);
     }
     out.push(addon);
   }
@@ -596,6 +734,48 @@ function customizeProgressionTableForAttributes(
   };
 }
 
+function applyRecipeOptions(
+  addon: Extract<SectionAddon, { type: "production" }>,
+  link: NonNullable<BuildPageTypeAddonsOptions["linkRecipe"]>
+): Extract<SectionAddon, { type: "production" }> {
+  const ingredients: ProductionIngredient[] = link.ingredientSectionId
+    ? [{ itemRef: link.ingredientSectionId, quantity: link.ingredientQuantity ?? 10 }]
+    : addon.data.ingredients || [];
+  const outputs: ProductionOutput[] = link.outputSectionId
+    ? [{ itemRef: link.outputSectionId, quantity: link.outputQuantity ?? 1 }]
+    : addon.data.outputs || [];
+  return {
+    ...addon,
+    data: {
+      ...addon.data,
+      mode: "recipe",
+      ingredients,
+      outputs,
+      craftTimeSeconds: link.craftTimeSeconds ?? addon.data.craftTimeSeconds ?? 60,
+    },
+  };
+}
+
+function applyCraftTableRecipes(
+  addon: Extract<SectionAddon, { type: "craftTable" }>,
+  link: NonNullable<BuildPageTypeAddonsOptions["linkCraftTableRecipes"]>
+): Extract<SectionAddon, { type: "craftTable" }> {
+  const now = Date.now();
+  const existingCount = (addon.data.entries || []).length;
+  const newEntries: CraftTableEntry[] = link.recipeSectionIds.map((sectionId, idx) => ({
+    id: `craft-entry-${now}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+    productionRef: sectionId,
+    order: existingCount + idx,
+  }));
+  return {
+    ...addon,
+    data: {
+      ...addon.data,
+      entries: [...(addon.data.entries || []), ...newEntries],
+    },
+  };
+}
+
 function applyEconomyLinkOptions(
   addon: Extract<SectionAddon, { type: "economyLink" }>,
   options: BuildPageTypeAddonsOptions
@@ -628,15 +808,3 @@ function applyEconomyLinkOptions(
   return { ...addon, data };
 }
 
-export function missingRequiredPageTypes(
-  pageTypeId: PageTypeId,
-  existingPageTypeIds: Array<PageTypeId | string | undefined>
-): PageType[] {
-  const pt = getPageType(pageTypeId);
-  if (!pt?.requires?.length) return [];
-  const existing = new Set(existingPageTypeIds.filter(Boolean) as string[]);
-  return pt.requires
-    .filter((req) => !existing.has(req))
-    .map((req) => getPageType(req))
-    .filter((x): x is PageType => !!x);
-}

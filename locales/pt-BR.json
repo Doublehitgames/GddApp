@@ -53,6 +53,15 @@
         "label": "Progressão",
         "description": "Tabelas de XP, níveis e curvas de progressão."
       },
+      "recipe": {
+        "label": "Receita",
+        "description": "Uma receita que transforma itens-ingrediente em itens-saída. Seleciona os itens envolvidos no momento da criação.",
+        "sidebarInputPlaceholder": "Nome do resultado (ex.: Tábua)"
+      },
+      "craftTable": {
+        "label": "Mesa de Craft",
+        "description": "Uma estação de produção que reúne receitas existentes (ex.: Serraria, Bancada). Unlocks opcionais ficam off por padrão."
+      },
       "narrative": {
         "label": "Narrativa",
         "description": "Páginas de lore, roteiro ou descrição em texto rico."
@@ -66,11 +75,28 @@
       "currency": "Moeda",
       "xpCurve": "Curva de XP",
       "equipmentEffects": "Efeitos",
-      "variantModifiers": "Modificadores por variante"
+      "variantModifiers": "Modificadores por variante",
+      "production": "Produção",
+      "craftTable": "Mesa de Produção"
     },
     "autoSections": {
       "buyDiscount": "📉 Desconto de Compra",
-      "sellMarkup": "📈 Bônus de Venda"
+      "sellMarkup": "📈 Bônus de Venda",
+      "newIngredientItem": "Novo Ingrediente",
+      "newOutputItem": "Novo Item de Saída",
+      "recipePrefix": "Receita de"
+    },
+    "craftTablePicker": {
+      "title": "Selecionar receitas para a Mesa de Craft",
+      "intro": "Escolha quais receitas já existentes entram nesta mesa. Você pode ajustar depois.",
+      "selectedCount": "{n} selecionada(s)",
+      "selectAll": "Selecionar todas",
+      "clearAll": "Limpar",
+      "ingredientsOne": "{n} ingrediente",
+      "ingredientsMany": "{n} ingredientes",
+      "outputsOne": "{n} saída",
+      "outputsMany": "{n} saídas",
+      "craftTime": "{s}s"
     },
     "globalVariables": {
       "buyDiscountDisplayName": "Desconto de Compra",
@@ -83,6 +109,53 @@
       "titleConnector": "a",
       "introDefault": "Páginas de {page} costumam vincular a uma página de {required}. Escolha abaixo como vincular.",
       "introCurrency": "Páginas de {page} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente.",
+      "introItemIngredient": "Selecione o item usado como ingrediente desta receita. Você pode linkar um item existente ou criar um novo.",
+      "introItemOutput": "Selecione o item gerado como saída desta receita. Você pode linkar um item existente ou criar um novo.",
+      "ingredientNameLabel": "Nome do ingrediente",
+      "ingredientNamePlaceholder": "Ex.: Madeira, Tecido, Ferro",
+      "outputNameLabel": "Nome do item de saída",
+      "sectionNameLabel": "Nome da página",
+      "recipeSettings": {
+        "header": "Quantidades e tempo de produção",
+        "description": "Esses valores vão para o addon de Produção da receita. Você pode ajustar depois.",
+        "ingredientQtyLabel": "Qtde. de ingrediente",
+        "outputQtyLabel": "Qtde. produzida",
+        "craftTimeLabel": "Tempo (seg.)"
+      },
+      "byKind": {
+        "attributeDefinitions": {
+          "title": "Atributos base de {name}",
+          "linkExistingHeader": "Usar atributos já definidos",
+          "createNewLabel": "Criar uma nova página de atributos",
+          "createNewDescription": "Vamos criar uma página com atributos base (HP, ATK, DEF, SPD) + biblioteca de campos prontos para progressão. Você pode ajustar tudo depois.",
+          "skipLabel": "Deixar pra depois",
+          "skipDescription": "Cria a página sem atributos vinculados — você pode configurar manualmente no addon de Perfil de Atributos mais tarde."
+        },
+        "currency": {
+          "title": "Moeda de {name}",
+          "linkExistingHeader": "Usar uma moeda existente",
+          "createNewLabel": "Criar uma nova página de moeda",
+          "createNewDescription": "Vamos criar uma página de Economia com uma moeda padrão (Coins). Você pode renomear, mudar o código e ajustar as configurações depois.",
+          "skipLabel": "Deixar pra depois",
+          "skipDescription": "Cria a página sem moeda vinculada — os campos de compra e venda ficam vazios até você configurar manualmente."
+        },
+        "itemIngredient": {
+          "title": "Ingrediente da receita de {name}",
+          "linkExistingHeader": "Usar um item existente como ingrediente",
+          "createNewLabel": "Criar uma nova página para o ingrediente",
+          "createNewDescription": "Vamos criar uma página de Itens para este ingrediente, com inventário e economia já vinculados. Você pode adicionar mais ingredientes depois, direto no addon de Produção.",
+          "skipLabel": "Deixar pra depois",
+          "skipDescription": "Cria a receita sem definir o ingrediente agora — você pode linkar manualmente mais tarde no addon de Produção."
+        },
+        "itemOutput": {
+          "title": "Resultado da receita de {name}",
+          "linkExistingHeader": "Usar um item existente como resultado",
+          "createNewLabel": "Criar uma nova página para o resultado",
+          "createNewDescription": "Vamos criar uma página de Itens para o resultado da receita, com inventário e economia já vinculados. O nome abaixo será o título da página.",
+          "skipLabel": "Deixar pra depois",
+          "skipDescription": "Cria a receita sem definir o resultado agora — você pode linkar manualmente mais tarde no addon de Produção."
+        }
+      },
       "linkExistingHeader": "Vincular a página existente",
       "otherOptionsHeader": "Outras opções",
       "createNewLabelPrefix": "Criar nova página",

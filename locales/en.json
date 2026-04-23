@@ -53,6 +53,15 @@
         "label": "Progression",
         "description": "XP tables, levels and progression curves."
       },
+      "recipe": {
+        "label": "Recipe",
+        "description": "A recipe that turns ingredient items into output items. Picks the items involved when created.",
+        "sidebarInputPlaceholder": "Output name (e.g. Planks)"
+      },
+      "craftTable": {
+        "label": "Crafting Table",
+        "description": "A production station that groups existing recipes (e.g. Sawmill, Workbench). Unlocks stay off by default."
+      },
       "narrative": {
         "label": "Narrative",
         "description": "Pages for lore, script or rich-text description."
@@ -66,11 +75,28 @@
       "currency": "Currency",
       "xpCurve": "XP Curve",
       "equipmentEffects": "Effects",
-      "variantModifiers": "Variant modifiers"
+      "variantModifiers": "Variant modifiers",
+      "production": "Production",
+      "craftTable": "Crafting Table"
     },
     "autoSections": {
       "buyDiscount": "📉 Buy Discount",
-      "sellMarkup": "📈 Sell Bonus"
+      "sellMarkup": "📈 Sell Bonus",
+      "newIngredientItem": "New Ingredient",
+      "newOutputItem": "New Output Item",
+      "recipePrefix": "Recipe:"
+    },
+    "craftTablePicker": {
+      "title": "Select recipes for this Crafting Table",
+      "intro": "Pick which existing recipes belong on this table. You can adjust later.",
+      "selectedCount": "{n} selected",
+      "selectAll": "Select all",
+      "clearAll": "Clear",
+      "ingredientsOne": "{n} ingredient",
+      "ingredientsMany": "{n} ingredients",
+      "outputsOne": "{n} output",
+      "outputsMany": "{n} outputs",
+      "craftTime": "{s}s"
     },
     "globalVariables": {
       "buyDiscountDisplayName": "Buy Discount",
@@ -83,6 +109,53 @@
       "titleConnector": "to",
       "introDefault": "{page} pages usually link to a {required} page. Choose below how to link.",
       "introCurrency": "{page} pages use a currency to define buy and sell values. Choose below which currency to link — the page will also receive discount and bonus modifiers automatically.",
+      "introItemIngredient": "Pick the item used as an ingredient in this recipe. You can link an existing item or create a new one.",
+      "introItemOutput": "Pick the item produced as output of this recipe. You can link an existing item or create a new one.",
+      "ingredientNameLabel": "Ingredient name",
+      "ingredientNamePlaceholder": "e.g. Wood, Cloth, Iron",
+      "outputNameLabel": "Output item name",
+      "sectionNameLabel": "Page name",
+      "recipeSettings": {
+        "header": "Quantities and craft time",
+        "description": "These values go into the recipe's Production addon. You can adjust later.",
+        "ingredientQtyLabel": "Ingredient qty",
+        "outputQtyLabel": "Output qty",
+        "craftTimeLabel": "Time (sec)"
+      },
+      "byKind": {
+        "attributeDefinitions": {
+          "title": "Base attributes for {name}",
+          "linkExistingHeader": "Use attributes already defined",
+          "createNewLabel": "Create a new attributes page",
+          "createNewDescription": "We'll create a page with base attributes (HP, ATK, DEF, SPD) + a field library ready for progression. You can tweak everything later.",
+          "skipLabel": "Skip for now",
+          "skipDescription": "Creates the page with no linked attributes — you can set up the Attribute Profile addon manually later."
+        },
+        "currency": {
+          "title": "Currency for {name}",
+          "linkExistingHeader": "Use an existing currency",
+          "createNewLabel": "Create a new currency page",
+          "createNewDescription": "We'll create an Economy page with a default currency (Coins). You can rename it, change the code, and adjust settings later.",
+          "skipLabel": "Skip for now",
+          "skipDescription": "Creates the page with no linked currency — buy and sell fields stay empty until you configure manually."
+        },
+        "itemIngredient": {
+          "title": "Ingredient for the {name} recipe",
+          "linkExistingHeader": "Use an existing item as the ingredient",
+          "createNewLabel": "Create a new page for the ingredient",
+          "createNewDescription": "We'll create an Items page for this ingredient with inventory and economy already wired. You can add more ingredients later in the Production addon.",
+          "skipLabel": "Skip for now",
+          "skipDescription": "Creates the recipe without the ingredient — you can link it manually later in the Production addon."
+        },
+        "itemOutput": {
+          "title": "Output of the {name} recipe",
+          "linkExistingHeader": "Use an existing item as the output",
+          "createNewLabel": "Create a new page for the output",
+          "createNewDescription": "We'll create an Items page for the recipe's output with inventory and economy already wired. The name below will be the page title.",
+          "skipLabel": "Skip for now",
+          "skipDescription": "Creates the recipe without the output — you can link it manually later in the Production addon."
+        }
+      },
       "linkExistingHeader": "Link to existing page",
       "otherOptionsHeader": "Other options",
       "createNewLabelPrefix": "Create new page",

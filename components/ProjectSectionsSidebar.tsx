@@ -10,6 +10,7 @@ import { getSectionSearchText } from "@/utils/sectionSearchText";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
   PAGE_TYPES,
+  REQUIREMENT_KIND_TO_PAGE_TYPE,
   buildPageTypeAddons,
   createBuyDiscountGlobalVariableAddon,
   createSellMarkupGlobalVariableAddon,
@@ -17,6 +18,8 @@ import {
   findAttributeDefinitionsCandidates,
   findCurrencyCandidates,
   findEconomyModifierSectionIds,
+  findItemCandidates,
+  findRecipeCandidates,
   getPageType,
   getPageTypeDefaultSectionTitle,
   getPageTypeDescription,
@@ -24,7 +27,9 @@ import {
   type PageType,
   type PageTypeId,
   type RequiresCandidate,
+  type RequirementKind,
 } from "@/lib/pageTypes/registry";
+import { CraftTableRecipePickerDialog } from "@/components/CraftTableRecipePickerDialog";
 import { PageTypeRequiresDialog, type PageTypeRequiresChoice } from "@/components/PageTypeRequiresDialog";
 import {
   Collision,
@@ -88,8 +93,21 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     pageType: PageType | null;
     requiredPageType: PageType | null;
     candidates: RequiresCandidate[];
-    requirementKind: "attributeDefinitions" | "currency" | null;
+    requirementKind: RequirementKind | null;
     introCopy?: string;
+    askNameOnCreateNew?: boolean;
+    createNewNameLabel?: string;
+    createNewNamePlaceholder?: string;
+    defaultCreateNewName?: string;
+    allowEmptyCreateNewName?: boolean;
+    dialogTitle?: string;
+    linkExistingHeader?: string;
+    createNewLabel?: string;
+    createNewDescription?: string;
+    skipLabel?: string;
+    skipDescription?: string;
+    showRecipeSettings?: boolean;
+    defaultRecipeSettings?: { ingredientQty: number; outputQty: number; craftTimeSeconds: number };
     /** Snapshot of inputs captured when the dialog was opened. */
     title: string;
     parentSectionId: string | null;
@@ -325,18 +343,12 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     }
   };
 
-  type RequirementKind = "attributeDefinitions" | "currency";
   type PendingCreate = {
     title: string;
     parentSectionId: string | null;
     pageTypeId: PageTypeId;
     resolved: Partial<Record<RequirementKind, PageTypeRequiresChoice>>;
     remainingKinds: RequirementKind[];
-  };
-
-  const REQUIRES_TO_KIND: Record<string, RequirementKind> = {
-    attributeDefinitions: "attributeDefinitions",
-    economy: "currency",
   };
 
   const resetAddInputs = () => {
@@ -380,16 +392,49 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
   const openModalForKind = (kind: RequirementKind, state: PendingCreate) => {
     const pageType = getPageType(state.pageTypeId) ?? null;
     if (!pageType) return;
+    const sectionNameLabel = t("pageTypes.requiresDialog.sectionNameLabel", "Nome da página");
+
+    // Helper: resolves the per-kind copy block (title/headers/labels/descriptions).
+    // Interpolates `{name}` placeholders with the title the user typed.
+    const interp = (s: string) => s.replace(/\{name\}/g, state.title);
+    const kindCopy = (kindId: RequirementKind) => {
+      const base = `pageTypes.requiresDialog.byKind.${kindId}`;
+      return {
+        title: interp(t(`${base}.title`, "")),
+        linkExistingHeader: interp(t(`${base}.linkExistingHeader`, "")),
+        createNewLabel: interp(t(`${base}.createNewLabel`, "")),
+        createNewDescription: interp(t(`${base}.createNewDescription`, "")),
+        skipLabel: interp(t(`${base}.skipLabel`, "")),
+        skipDescription: interp(t(`${base}.skipDescription`, "")),
+      };
+    };
+    // Fallback to undefined when the locale returns an empty string so the
+    // dialog falls back to the generic copy.
+    const orUndef = (s: string) => (s && s.trim() ? s : undefined);
+
     if (kind === "attributeDefinitions") {
+      const reqPT = getPageType("attributeDefinitions");
+      const defaultName = reqPT ? getPageTypeDefaultSectionTitle(reqPT, t) : "Definições de Atributos Base";
+      const copy = kindCopy("attributeDefinitions");
       setRequiresDialog({
         open: true,
         pageType,
-        requiredPageType: getPageType("attributeDefinitions") ?? null,
+        requiredPageType: reqPT ?? null,
         candidates: findAttributeDefinitionsCandidates(project?.sections || []),
         requirementKind: "attributeDefinitions",
         title: state.title,
         parentSectionId: state.parentSectionId,
         pageTypeId: state.pageTypeId,
+        askNameOnCreateNew: true,
+        createNewNameLabel: sectionNameLabel,
+        createNewNamePlaceholder: defaultName,
+        defaultCreateNewName: defaultName,
+        dialogTitle: orUndef(copy.title),
+        linkExistingHeader: orUndef(copy.linkExistingHeader),
+        createNewLabel: orUndef(copy.createNewLabel),
+        createNewDescription: orUndef(copy.createNewDescription),
+        skipLabel: orUndef(copy.skipLabel),
+        skipDescription: orUndef(copy.skipDescription),
       });
       return;
     }
@@ -399,21 +444,85 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         "pageTypes.requiresDialog.introCurrency",
         "Páginas de {page} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente."
       ).replace("{page}", pageTypeLabel);
+      const reqPT = getPageType("economy");
+      const defaultName = reqPT ? getPageTypeDefaultSectionTitle(reqPT, t) : "Coin";
+      const copy = kindCopy("currency");
       setRequiresDialog({
         open: true,
         pageType,
-        requiredPageType: getPageType("economy") ?? null,
+        requiredPageType: reqPT ?? null,
         candidates: findCurrencyCandidates(project?.sections || []),
         requirementKind: "currency",
         introCopy,
         title: state.title,
         parentSectionId: state.parentSectionId,
         pageTypeId: state.pageTypeId,
+        askNameOnCreateNew: true,
+        createNewNameLabel: sectionNameLabel,
+        createNewNamePlaceholder: defaultName,
+        defaultCreateNewName: defaultName,
+        dialogTitle: orUndef(copy.title),
+        linkExistingHeader: orUndef(copy.linkExistingHeader),
+        createNewLabel: orUndef(copy.createNewLabel),
+        createNewDescription: orUndef(copy.createNewDescription),
+        skipLabel: orUndef(copy.skipLabel),
+        skipDescription: orUndef(copy.skipDescription),
+      });
+      return;
+    }
+    if (kind === "itemIngredient" || kind === "itemOutput") {
+      const isIngredient = kind === "itemIngredient";
+      const introKey = isIngredient
+        ? "pageTypes.requiresDialog.introItemIngredient"
+        : "pageTypes.requiresDialog.introItemOutput";
+      const introFallback = isIngredient
+        ? "Selecione o item usado como ingrediente desta receita. Você pode linkar um item existente ou criar um novo."
+        : "Selecione o item gerado como saída desta receita. Você pode linkar um item existente ou criar um novo.";
+      const nameLabel = isIngredient
+        ? t("pageTypes.requiresDialog.ingredientNameLabel", "Nome do ingrediente")
+        : t("pageTypes.requiresDialog.outputNameLabel", "Nome do item de saída");
+      const placeholder = isIngredient
+        ? t("pageTypes.requiresDialog.ingredientNamePlaceholder", "Ex.: Madeira, Tecido, Ferro")
+        : undefined;
+      const copy = kindCopy(kind);
+      // Recipe quantities + time show up in the ingredient modal, since for
+      // `recipe` this is the only step the user sees.
+      const attachRecipeSettings = state.pageTypeId === "recipe" && isIngredient;
+      setRequiresDialog({
+        open: true,
+        pageType,
+        requiredPageType: getPageType("items") ?? null,
+        candidates: findItemCandidates(project?.sections || []),
+        requirementKind: kind,
+        introCopy: t(introKey, introFallback),
+        title: state.title,
+        parentSectionId: state.parentSectionId,
+        pageTypeId: state.pageTypeId,
+        askNameOnCreateNew: true,
+        createNewNameLabel: nameLabel,
+        createNewNamePlaceholder: placeholder,
+        // Ingredient: no default (user must name). Output: pre-fill with typed recipe title.
+        defaultCreateNewName: isIngredient ? undefined : state.title,
+        dialogTitle: orUndef(copy.title),
+        linkExistingHeader: orUndef(copy.linkExistingHeader),
+        createNewLabel: orUndef(copy.createNewLabel),
+        createNewDescription: orUndef(copy.createNewDescription),
+        skipLabel: orUndef(copy.skipLabel),
+        skipDescription: orUndef(copy.skipDescription),
+        showRecipeSettings: attachRecipeSettings,
+        defaultRecipeSettings: attachRecipeSettings
+          ? { ingredientQty: 10, outputQty: 1, craftTimeSeconds: 60 }
+          : undefined,
       });
     }
   };
 
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
+  const [craftTablePending, setCraftTablePending] = useState<{
+    title: string;
+    parentSectionId: string | null;
+    candidates: RequiresCandidate[];
+  } | null>(null);
 
   const handleAddByContext = () => {
     const title = newSectionTitle.trim();
@@ -426,9 +535,21 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         : null;
 
     const pageType = selectedPageTypeId === "blank" ? null : getPageType(selectedPageTypeId) ?? null;
-    const kinds: RequirementKind[] = (pageType?.requires || [])
-      .map((r) => REQUIRES_TO_KIND[r])
-      .filter((k): k is RequirementKind => !!k);
+    const kinds: RequirementKind[] = pageType?.requires ? [...pageType.requires] : [];
+
+    // craftTable: no requires, but pop a recipe multi-picker when recipes exist.
+    if (pageType?.id === "craftTable") {
+      const recipeCandidates = findRecipeCandidates(project?.sections || []);
+      if (recipeCandidates.length > 0) {
+        setCraftTablePending({ title, parentSectionId, candidates: recipeCandidates });
+        return;
+      }
+      const created = createSectionWithArgs(title, parentSectionId, selectedPageTypeId);
+      if (created === undefined) return;
+      setNameError("");
+      resetAddInputs();
+      return;
+    }
 
     if (!pageType || kinds.length === 0) {
       const created = createSectionWithArgs(title, parentSectionId, selectedPageTypeId);
@@ -438,15 +559,42 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       return;
     }
 
+    // For `recipe`: the typed title IS the output name. Pre-resolve the
+    // itemOutput requirement so the user only sees the ingredient modal.
+    const preResolved: PendingCreate["resolved"] = {};
+    const remainingKinds = kinds.filter((k) => {
+      if (selectedPageTypeId === "recipe" && k === "itemOutput") {
+        // If an item with this exact title already exists (minus emoji prefix),
+        // link to it; otherwise create a new one with the typed name.
+        const sections = project?.sections || [];
+        const normalize = (s: string) => s.replace(/^[^\w]+/, "").trim().toLowerCase();
+        const typedNorm = normalize(title);
+        const existing = findItemCandidates(sections).find(
+          (c) => normalize(c.sectionTitle) === typedNorm
+        );
+        if (existing) {
+          preResolved.itemOutput = { mode: "link-existing", candidate: existing };
+        } else {
+          preResolved.itemOutput = { mode: "create-new", name: title };
+        }
+        return false;
+      }
+      return true;
+    });
+
     const state: PendingCreate = {
       title,
       parentSectionId,
       pageTypeId: selectedPageTypeId,
-      resolved: {},
-      remainingKinds: kinds,
+      resolved: preResolved,
+      remainingKinds,
     };
     setPendingCreate(state);
-    openModalForKind(state.remainingKinds[0], state);
+    if (state.remainingKinds.length > 0) {
+      openModalForKind(state.remainingKinds[0], state);
+    } else {
+      executePendingCreate(state);
+    }
   };
 
   const handleRequiresCancel = () => {
@@ -504,7 +652,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         // Build the addons ONCE so we can both pass them as customAddons
         // to the create call AND derive stable ref IDs from the same seed.
         const seededAll = buildPageTypeAddons(reqPT.id, {}, t);
-        const baseTitle = getPageTypeDefaultSectionTitle(reqPT, t);
+        const baseTitle = attrChoice.name?.trim() || getPageTypeDefaultSectionTitle(reqPT, t);
         const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
         const newId = createSectionWithArgs(sectionTitle, null, reqPT.id, seededAll);
         if (!newId) return;
@@ -532,7 +680,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     } else if (currencyChoice?.mode === "create-new") {
       const reqPT = getPageType("economy");
       if (reqPT) {
-        const baseTitle = getPageTypeDefaultSectionTitle(reqPT, t);
+        const baseTitle = currencyChoice.name?.trim() || getPageTypeDefaultSectionTitle(reqPT, t);
         const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
         const newId = createSectionWithArgs(sectionTitle, null, reqPT.id);
         if (!newId) return;
@@ -550,6 +698,68 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       sellId = mod.sellId;
     }
 
+    // Resolve item ingredient/output links for the `recipe` page type.
+    const resolveItemChoice = (
+      choice: PageTypeRequiresChoice | undefined,
+      titleOverride: string,
+      titleFallback: string
+    ): string | null => {
+      if (!choice || choice.mode === "skip") return null;
+      if (choice.mode === "link-existing") return choice.candidate.sectionId;
+      // create-new: route through the full items flow so ingredient/output items
+      // end up with their own currency + modifier refs already wired.
+      const itemsPT = getPageType("items");
+      if (!itemsPT) return null;
+      const currencyId = currencySectionId;
+      if (!currencyId) return null; // can't create an item without a currency resolved
+      const chosenName = choice.name?.trim();
+      const base = chosenName || titleOverride || titleFallback;
+      const itemTitle = `${itemsPT.emoji} ${base}`;
+      const itemAddons = buildPageTypeAddons(
+        "items",
+        {
+          linkCurrency: { sectionId: currencyId },
+          linkEconomyModifiers: { buySectionId: buyId ?? undefined, sellSectionId: sellId ?? undefined },
+          economyLinkBaseValues: { buyValue: 100, sellValue: 50 },
+        },
+        t
+      );
+      const newId = createSectionWithArgs(itemTitle, null, "items", itemAddons);
+      return newId ?? null;
+    };
+
+    // For recipe flow, also guarantee a currency exists so we can seed item pages' economy link.
+    if (
+      state.pageTypeId === "recipe" &&
+      (state.resolved.itemIngredient?.mode === "create-new" ||
+        state.resolved.itemOutput?.mode === "create-new") &&
+      !currencySectionId
+    ) {
+      const ecoPT = getPageType("economy");
+      if (ecoPT) {
+        const ecoTitle = `${ecoPT.emoji} ${getPageTypeDefaultSectionTitle(ecoPT, t)}`;
+        const newId = createSectionWithArgs(ecoTitle, null, ecoPT.id);
+        if (newId) {
+          currencySectionId = newId;
+          const mod = ensureEconomyModifierSectionIds();
+          buyId = mod.buyId;
+          sellId = mod.sellId;
+        }
+      }
+    }
+
+    const ingredientSectionId = resolveItemChoice(
+      state.resolved.itemIngredient,
+      "", // no default override — the modal asks the user for a name
+      t("pageTypes.autoSections.newIngredientItem", "Novo Ingrediente")
+    );
+    // Output inherits the title the user typed for the Recipe page (e.g. "Tábua").
+    const outputSectionId = resolveItemChoice(
+      state.resolved.itemOutput,
+      state.title,
+      t("pageTypes.autoSections.newOutputItem", "Novo Item de Saída")
+    );
+
     const options = {
       linkAttributeDefinitions: attrDefsSectionId
         ? {
@@ -565,13 +775,59 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       economyLinkBaseValues: state.resolved.currency
         ? { buyValue: 100, sellValue: 50 }
         : undefined,
+      linkRecipe:
+        ingredientSectionId || outputSectionId
+          ? (() => {
+              // Recipe settings flow in via the ingredient-modal choice
+              // (recipe's only visible step). Fall back to sensible defaults.
+              const settings =
+                (state.resolved.itemIngredient as { recipeSettings?: { ingredientQty: number; outputQty: number; craftTimeSeconds: number } } | undefined)?.recipeSettings;
+              return {
+                ingredientSectionId: ingredientSectionId ?? undefined,
+                outputSectionId: outputSectionId ?? undefined,
+                ingredientQuantity: settings?.ingredientQty ?? 10,
+                outputQuantity: settings?.outputQty ?? 1,
+                craftTimeSeconds: settings?.craftTimeSeconds ?? 60,
+              };
+            })()
+          : undefined,
     };
 
     const customAddons = buildPageTypeAddons(state.pageTypeId, options, t);
+    // For the recipe page type, prefix the section title with "Receita de"
+    // (skipped when the user already typed the prefix).
+    let finalTitle = state.title;
+    if (state.pageTypeId === "recipe") {
+      const prefix = t("pageTypes.autoSections.recipePrefix", "Receita de");
+      const normalized = finalTitle.toLowerCase().trim();
+      const normalizedPrefix = prefix.toLowerCase() + " ";
+      if (!normalized.startsWith(normalizedPrefix)) {
+        finalTitle = `${prefix} ${finalTitle}`;
+      }
+    }
     const created = createSectionWithArgs(
-      state.title,
+      finalTitle,
       state.parentSectionId,
       state.pageTypeId,
+      customAddons.length ? customAddons : undefined
+    );
+    if (created === undefined) return;
+    resetAddInputs();
+  };
+
+  const handleCraftTableConfirm = (selectedSectionIds: string[]) => {
+    if (!craftTablePending) return;
+    const snap = craftTablePending;
+    setCraftTablePending(null);
+    const customAddons = buildPageTypeAddons(
+      "craftTable",
+      { linkCraftTableRecipes: { recipeSectionIds: selectedSectionIds } },
+      t
+    );
+    const created = createSectionWithArgs(
+      snap.title,
+      snap.parentSectionId,
+      "craftTable",
       customAddons.length ? customAddons : undefined
     );
     if (created === undefined) return;
@@ -826,11 +1082,17 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
                 setNameError("");
               }
             }}
-            placeholder={
-              currentSectionId
+            placeholder={(() => {
+              const fallback = currentSectionId
                 ? t("sectionDetail.subsections.addPlaceholder")
-                : t("projectDetail.newSectionPlaceholder")
-            }
+                : t("projectDetail.newSectionPlaceholder");
+              if (selectedPageTypeId === "blank") return fallback;
+              const custom = t(
+                `pageTypes.ids.${selectedPageTypeId}.sidebarInputPlaceholder`,
+                ""
+              );
+              return custom && custom.trim() ? custom : fallback;
+            })()}
             className={`ui-input-dark ui-focus-ring-indigo flex-1 min-w-[160px] px-3 py-2 text-sm ${nameError ? "border-red-500" : "border-gray-600"}`}
           />
           <button
@@ -899,8 +1161,27 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         requiredPageType={requiresDialog.requiredPageType}
         candidates={requiresDialog.candidates}
         introCopy={requiresDialog.introCopy}
+        askNameOnCreateNew={requiresDialog.askNameOnCreateNew}
+        createNewNameLabel={requiresDialog.createNewNameLabel}
+        createNewNamePlaceholder={requiresDialog.createNewNamePlaceholder}
+        defaultCreateNewName={requiresDialog.defaultCreateNewName}
+        allowEmptyCreateNewName={requiresDialog.allowEmptyCreateNewName}
+        title={requiresDialog.dialogTitle}
+        linkExistingHeader={requiresDialog.linkExistingHeader}
+        createNewLabel={requiresDialog.createNewLabel}
+        createNewDescription={requiresDialog.createNewDescription}
+        skipLabel={requiresDialog.skipLabel}
+        skipDescription={requiresDialog.skipDescription}
+        showRecipeSettings={requiresDialog.showRecipeSettings}
+        defaultRecipeSettings={requiresDialog.defaultRecipeSettings}
         onCancel={handleRequiresCancel}
         onConfirm={handleRequiresChoice}
+      />
+      <CraftTableRecipePickerDialog
+        open={craftTablePending !== null}
+        candidates={craftTablePending?.candidates || []}
+        onCancel={() => setCraftTablePending(null)}
+        onConfirm={handleCraftTableConfirm}
       />
     </aside>
   );
