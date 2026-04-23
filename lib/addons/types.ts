@@ -104,6 +104,11 @@ export type InventoryAddonDraft = {
   stackable: boolean;
   maxStack: number;
   inventoryCategory: string;
+  /** When linked, the category is derived from a Field Library entry's label. */
+  categoryLibraryRef?: {
+    libraryAddonId: string;
+    entryId: string;
+  };
   slotSize: number;
   hasDurabilityConfig?: boolean;
   durability: number;
@@ -179,6 +184,45 @@ export type ProductionAddonDraft = {
   craftTimeSeconds?: number;
   craftTimeSecondsProgressionLink?: ProductionProgressionLink;
   notes?: string;
+};
+
+export type CraftTableUnlockLevel = {
+  enabled: boolean;
+  xpAddonRef?: string;
+  level?: number;
+};
+
+export type CraftTableUnlockCurrency = {
+  enabled: boolean;
+  currencyAddonRef?: string;
+  amount?: number;
+};
+
+export type CraftTableUnlockItem = {
+  enabled: boolean;
+  itemRef?: string;
+  quantity?: number;
+};
+
+export type CraftTableUnlock = {
+  level?: CraftTableUnlockLevel;
+  currency?: CraftTableUnlockCurrency;
+  item?: CraftTableUnlockItem;
+};
+
+export type CraftTableEntry = {
+  id: string;
+  productionRef?: string;
+  category?: string;
+  order: number;
+  unlock?: CraftTableUnlock;
+  hidden?: boolean;
+};
+
+export type CraftTableAddonDraft = {
+  id: string;
+  name: string;
+  entries: CraftTableEntry[];
 };
 
 export type DataSchemaValueType = "int" | "float" | "seconds" | "percent" | "boolean" | "string";
@@ -286,17 +330,52 @@ export type AttributeModifiersAddonDraft = {
 
 // ── Export Schema addon ──────────────────────────────────────────────
 
-export type ExportSchemaArraySource = {
-  type: "progressionTable";
-  addonId: string;
-  addonName?: string;
-};
+export type ExportSchemaArraySource =
+  | { type: "progressionTable"; addonId: string; addonName?: string }
+  | { type: "craftTable"; addonId: string; addonName?: string }
+  /** Iterates the ingredients of the current craft table entry's Production addon. */
+  | { type: "productionIngredients" }
+  /** Iterates the outputs of the current craft table entry's Production addon. */
+  | { type: "productionOutputs" };
+
+export type ProductionScalarField =
+  | "name"
+  | "mode"
+  | "craftTimeSeconds"
+  | "minOutput"
+  | "maxOutput"
+  | "intervalSeconds"
+  | "capacity"
+  | "requiresCollection"
+  | "outputRef";
+
+export type ProductionItemField = "itemRef" | "quantity";
+
+export type CraftTableEntryField =
+  | "order"
+  | "productionRef"
+  | "category"
+  | "hidden"
+  | "unlockLevelEnabled"
+  | "unlockLevel"
+  | "unlockLevelXpRef"
+  | "unlockCurrencyEnabled"
+  | "unlockCurrencyAmount"
+  | "unlockCurrencyRef"
+  | "unlockItemEnabled"
+  | "unlockItemQuantity"
+  | "unlockItemRef";
 
 export type ExportSchemaBinding =
   | { source: "manual"; value: string | number | boolean; valueType: "string" | "number" | "boolean" }
   | { source: "dataSchema"; addonId: string; addonName?: string; entryKey: string; entryId?: string }
   | { source: "rowLevel" }
-  | { source: "rowColumn"; columnId: string };
+  | { source: "rowColumn"; columnId: string }
+  | { source: "entryField"; field: CraftTableEntryField }
+  /** Follows the current craft entry's productionRef and reads a scalar field from that Production addon. */
+  | { source: "productionField"; field: ProductionScalarField }
+  /** Reads a field from the current ingredient/output row (inside productionIngredients/productionOutputs array). */
+  | { source: "itemField"; field: ProductionItemField };
 
 export type ExportSchemaNode = {
   id: string;
@@ -339,6 +418,7 @@ export type SectionAddonType =
   | "globalVariable"
   | "inventory"
   | "production"
+  | "craftTable"
   | "dataSchema"
   | "attributeDefinitions"
   | "attributeProfile"
@@ -404,6 +484,14 @@ export type ProductionSectionAddon = {
   name: string;
   group?: string;
   data: ProductionAddonDraft;
+};
+
+export type CraftTableSectionAddon = {
+  id: string;
+  type: "craftTable";
+  name: string;
+  group?: string;
+  data: CraftTableAddonDraft;
 };
 
 export type DataSchemaSectionAddon = {
@@ -479,6 +567,7 @@ export type SectionAddon =
   | GlobalVariableSectionAddon
   | InventorySectionAddon
   | ProductionSectionAddon
+  | CraftTableSectionAddon
   | DataSchemaSectionAddon
   | AttributeDefinitionsSectionAddon
   | AttributeProfileSectionAddon
@@ -625,6 +714,19 @@ export function createDefaultProductionAddon(addonId: string): ProductionSection
       ingredients: [],
       outputs: [],
       craftTimeSeconds: 60,
+    },
+  };
+}
+
+export function createDefaultCraftTableAddon(addonId: string): CraftTableSectionAddon {
+  return {
+    id: addonId,
+    type: "craftTable",
+    name: "Mesa de Produção",
+    data: {
+      id: addonId,
+      name: "Mesa de Produção",
+      entries: [],
     },
   };
 }

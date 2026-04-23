@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProductionAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
 
@@ -60,11 +61,65 @@ function computeLinkedValue(
 
 export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAddonPanelProps) {
   const { t } = useI18n();
-  const projects = useProjectStore((state) => state.projects);
+  const allProjects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
+  const projects = useMemo(
+    () => (currentProjectId ? allProjects.filter((p) => p.id === currentProjectId) : allProjects),
+    [allProjects, currentProjectId]
+  );
   const [isMinOutputLinkMenuOpen, setIsMinOutputLinkMenuOpen] = useState(false);
   const [isMaxOutputLinkMenuOpen, setIsMaxOutputLinkMenuOpen] = useState(false);
   const [isIntervalLinkMenuOpen, setIsIntervalLinkMenuOpen] = useState(false);
   const [isCraftLinkMenuOpen, setIsCraftLinkMenuOpen] = useState(false);
+  const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<
+    { sectionId: string; title: string; shortDescription: string } | null
+  >(null);
+  const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pendingAnchorNavigation) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (anchorPreviewCardRef.current?.contains(event.target as Node)) return;
+      setPendingAnchorNavigation(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPendingAnchorNavigation(null);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pendingAnchorNavigation]);
+
+  const navigateToDocumentAnchor = (sectionId: string) => {
+    const targetId = `section-${sectionId}`;
+    const targetElement =
+      (document.getElementById(targetId) as HTMLElement | null) ||
+      (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
+    if (!targetElement) {
+      const match = window.location.pathname.match(/\/projects\/([^/]+)/);
+      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      return;
+    }
+    const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    window.history.replaceState(null, "", `#${targetId}`);
+    targetElement.classList.add("gdd-anchor-highlight");
+    window.setTimeout(() => targetElement.classList.remove("gdd-anchor-highlight"), 1800);
+  };
+
+  const toShortDescription = (raw: string): string => {
+    const plain = (raw || "")
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[#>*`~_-]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!plain) return "";
+    return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
+  };
 
   const inventoryOptions = useMemo(() => {
     const out: Array<{ projectId: string; sectionId: string; label: string }> = [];
@@ -101,13 +156,39 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     for (const project of projects) {
       for (const section of project.sections || []) {
         const found = (section.addons || []).some(
-          (item) => item.type === "production" && item.id === addon.id
+          (item) =>
+            item.type === "production" && (item.id === addon.id || item.data?.id === addon.id)
         );
         if (found) return section;
       }
     }
     return undefined;
   }, [addon.id, projects]);
+
+  const craftTableReferences = useMemo(() => {
+    if (!currentSection) return [] as Array<{ projectId: string; sectionId: string; label: string }>;
+    const refs: Array<{ projectId: string; sectionId: string; label: string }> = [];
+    const seen = new Set<string>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "craftTable") continue;
+          const uses = (sectionAddon.data.entries || []).some(
+            (entry) => entry.productionRef === currentSection.id
+          );
+          if (!uses) continue;
+          if (seen.has(section.id)) continue;
+          seen.add(section.id);
+          refs.push({
+            projectId: project.id,
+            sectionId: section.id,
+            label: sectionAddon.name?.trim() || section.title?.trim() || section.id,
+          });
+        }
+      }
+    }
+    return refs;
+  }, [currentSection, projects]);
 
   const progressionColumnOptions = useMemo(() => {
     const out: ProgressionColumnOption[] = [];
@@ -551,6 +632,34 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
           </div>
         )}
 
+        {addon.mode === "recipe" && craftTableReferences.length > 0 && (
+          <div className={`${PANEL_BLOCK_CLASS} text-xs text-gray-300`}>
+            {t("productionAddon.producedOn", "Produzida na mesa")}:{" "}
+            {craftTableReferences.map((ref, index) => (
+              <span key={ref.sectionId}>
+                {index > 0 ? ", " : ""}
+                <a
+                  href={`#section-${ref.sectionId}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    const project = projects.find((p) => p.id === ref.projectId);
+                    const section = project?.sections?.find((s) => s.id === ref.sectionId);
+                    setPendingAnchorNavigation({
+                      sectionId: ref.sectionId,
+                      title: section?.title || ref.label,
+                      shortDescription: toShortDescription(section?.content || ""),
+                    });
+                  }}
+                  className="gdd-inline-anchor underline cursor-pointer text-sky-300 hover:text-sky-200"
+                  title={t("view.anchorPreview.goToSection", "Ir para a seção")}
+                >
+                  {ref.label}
+                </a>
+              </span>
+            ))}
+          </div>
+        )}
+
         {addon.mode === "recipe" && (
           <div className={PANEL_BLOCK_CLASS}>
             <div className="space-y-3">
@@ -751,6 +860,52 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
         )}
       </div>
 
+      {pendingAnchorNavigation && (
+        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
+          <div
+            ref={anchorPreviewCardRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("view.anchorPreview.title", "Pré-visualização")}
+            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
+          >
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("view.anchorPreview.title", "Pré-visualização")}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">
+                {pendingAnchorNavigation.title}
+              </h3>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm leading-6 text-gray-700">
+                {pendingAnchorNavigation.shortDescription ||
+                  t("view.anchorPreview.noDescription", "Sem descrição.")}
+              </p>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingAnchorNavigation(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {t("common.cancel", "Cancelar")}
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  navigateToDocumentAnchor(pendingAnchorNavigation.sectionId);
+                  setPendingAnchorNavigation(null);
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {t("view.anchorPreview.goButton", "Ir")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -7,7 +7,7 @@ import type {
   ExportSchemaNode,
   SectionAddon,
 } from "@/lib/addons/types";
-import { resolveExportSchema, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
+import { buildSectionLookup, resolveExportSchema, resolveExportSchemaWithPreview, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
 import { importJsonToAddons } from "@/lib/addons/exportSchemaImporter";
 import { useProjectStore } from "@/store/projectStore";
 import {
@@ -20,7 +20,15 @@ import {
   BTN_PRIMARY,
   uid,
   addChildToNode,
+  duplicateInList,
+  makeNewNode,
+  AddIcon,
+  AddNodeButton,
+  CollapseBroadcastContext,
+  type CollapseBroadcast,
+  NodeValuePreviewContext,
   SchemaNodeEditor,
+  SortableNodeList,
 } from "./exportSchema/SchemaTreeEditor";
 
 /** Recursively patch addonId references in export schema nodes to use reused IDs */
@@ -38,8 +46,13 @@ function patchNodeAddonIds(
     };
   }
 
-  // Patch arraySource addonId
-  if (node.arraySource?.addonId && idMap.has(node.arraySource.addonId)) {
+  // Patch arraySource addonId (only sources that carry one)
+  if (
+    node.arraySource &&
+    (node.arraySource.type === "progressionTable" || node.arraySource.type === "craftTable") &&
+    node.arraySource.addonId &&
+    idMap.has(node.arraySource.addonId)
+  ) {
     patched = {
       ...patched,
       arraySource: { ...node.arraySource, addonId: idMap.get(node.arraySource.addonId)! },
@@ -73,15 +86,20 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
+  const [collapseBroadcast, setCollapseBroadcast] = useState<CollapseBroadcast | null>(null);
+
+  const triggerExpandAll = () => setCollapseBroadcast((prev) => ({ version: (prev?.version ?? 0) + 1, target: "expand" }));
+  const triggerCollapseAll = () => setCollapseBroadcast((prev) => ({ version: (prev?.version ?? 0) + 1, target: "collapse" }));
 
   // Find sibling addons from the store if not provided externally
   const projects = useProjectStore((s) => s.projects);
   const setSectionAddons = useProjectStore((s) => s.setSectionAddons);
 
   const sectionContext = useMemo(() => {
+    const matchesSelf = (a: SectionAddon) => a.id === addon.id || a.data?.id === addon.id;
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
-        const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
+        const found = (sec.addons ?? []).find(matchesSelf);
         if (found) return { projectId: proj.id, sectionId: sec.id, addons: sec.addons ?? [], dataId: sec.dataId, sectionTitle: sec.title || "section" };
       }
     }
@@ -89,9 +107,10 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   }, [projects, addon.id]);
 
   // group is on the SectionAddon wrapper, not the draft
-  const myAddonWrapper = sectionContext?.addons.find((a: SectionAddon) => a.id === addon.id);
+  const matchesSelf = (a: SectionAddon) => a.id === addon.id || a.data?.id === addon.id;
+  const myAddonWrapper = sectionContext?.addons.find(matchesSelf);
   const myGroup = (myAddonWrapper as any)?.group || "A";
-  const sectionAddons = externalAddons ?? (sectionContext?.addons.filter((a: SectionAddon) => a.id !== addon.id && ((a as any).group || "A") === myGroup) ?? []);
+  const sectionAddons = externalAddons ?? (sectionContext?.addons.filter((a: SectionAddon) => !matchesSelf(a) && ((a as any).group || "A") === myGroup) ?? []);
 
   // Column libraries are cross-section — collect from the whole project so libraryRef keys resolve.
   const globalFieldLibraries = useMemo<SectionAddon[]>(() => {
@@ -120,29 +139,45 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     [addon, onChange]
   );
 
-  const addRootNode = () => {
-    const newNode: ExportSchemaNode = {
-      id: uid(),
-      key: "newProperty",
-      nodeType: "value",
-      binding: { source: "manual", value: "", valueType: "string" },
-    };
-    commit([...addon.nodes, newNode]);
+  const addRootNode = (type: "value" | "object" | "array" = "value") => {
+    commit([...addon.nodes, makeNewNode(type)]);
   };
 
-  const handleAddChild = (parentId: string, isTemplate: boolean) => {
-    const child: ExportSchemaNode = {
-      id: uid(),
-      key: "newProperty",
-      nodeType: "value",
-      binding: { source: "manual", value: "", valueType: "string" },
-    };
-    commit(addChildToNode(addon.nodes, parentId, child, isTemplate));
+  const handleAddChild = (
+    parentId: string,
+    isTemplate: boolean,
+    type: "value" | "object" | "array" = "value"
+  ) => {
+    commit(addChildToNode(addon.nodes, parentId, makeNewNode(type), isTemplate));
   };
+
+  const sectionLookup = useMemo(() => buildSectionLookup(projects), [projects]);
+
+  // Resolved value per node (first iteration of any array wins). Used to render
+  // inline preview chips next to each leaf in the tree editor.
+  const nodeValueMap = useMemo(
+    () => resolveExportSchemaWithPreview(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup).nodeValueMap,
+    [addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup]
+  );
+
+  // The arrayFormat selector only affects ProgressionTable iteration. If the schema
+  // doesn't use any ProgressionTable array source, the format is irrelevant — we
+  // disable the selector to avoid confusing the user.
+  const hasProgressionArraySource = useMemo(() => {
+    const walk = (nodes: ExportSchemaNode[]): boolean => {
+      for (const n of nodes) {
+        if (n.nodeType === "array" && n.arraySource?.type === "progressionTable") return true;
+        if (n.children && walk(n.children)) return true;
+        if (n.itemTemplate && walk(n.itemTemplate)) return true;
+      }
+      return false;
+    };
+    return walk(addon.nodes);
+  }, [addon.nodes]);
 
   const resolved = useMemo(
-    () => (showPreview ? resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat) : null),
-    [showPreview, addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat]
+    () => (showPreview ? resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup) : null),
+    [showPreview, addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup]
   );
 
   const jsonString = useMemo(
@@ -151,14 +186,14 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   );
 
   const handleCopy = async () => {
-    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat));
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup));
     await navigator.clipboard.writeText(json);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = () => {
-    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat));
+    const json = stringifyExportJson(resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup));
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -198,7 +233,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         const siblings = sectionContext.addons.filter((a) => a.id !== rcAddon.id && ((a as any).group || "A") === group);
         const pool = [...siblings, ...globalFieldLibraries.filter((lib) => !siblings.some((s) => s.id === lib.id))];
         const rcDraft = rcAddon.data as ExportSchemaAddonDraft;
-        const json = resolveExportSchema(rcDraft.nodes, pool, sectionContext.dataId, rcDraft.arrayFormat);
+        const json = resolveExportSchema(rcDraft.nodes, pool, sectionContext.dataId, rcDraft.arrayFormat, sectionLookup);
         const filename = `${sectionName}_${sanitizeFilename(group)}.json`;
         zip.file(filename, stringifyExportJson(json));
       }
@@ -329,35 +364,75 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
                 Nenhuma propriedade definida. Clique em &quot;+ Propriedade&quot; para comecar.
               </p>
             )}
-            {addon.nodes.map((node) => (
-              <SchemaNodeEditor
-                key={node.id}
-                node={node}
-                onUpdate={(updated) =>
-                  commit(addon.nodes.map((n) => (n.id === updated.id ? updated : n)))
-                }
-                onRemove={() => commit(addon.nodes.filter((n) => n.id !== node.id))}
-                onAddChild={handleAddChild}
-                sectionAddons={sectionAddons}
-                depth={0}
-                insideArray={false}
-                readOnly={false}
+            {addon.nodes.length > 0 && (
+              <div className="mb-2 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={triggerExpandAll}
+                  className="rounded-md border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-300 hover:bg-gray-700 hover:text-white"
+                  title="Expandir todos os nós da árvore"
+                >
+                  ▼ Expandir tudo
+                </button>
+                <button
+                  type="button"
+                  onClick={triggerCollapseAll}
+                  className="rounded-md border border-gray-700 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-300 hover:bg-gray-700 hover:text-white"
+                  title="Recolher todos os nós da árvore"
+                >
+                  ▶ Recolher tudo
+                </button>
+              </div>
+            )}
+            <CollapseBroadcastContext.Provider value={collapseBroadcast}>
+            <NodeValuePreviewContext.Provider value={nodeValueMap}>
+            <SortableNodeList
+              nodes={addon.nodes}
+              onReorder={(next) => commit(next)}
+              renderItem={(node) => (
+                <SchemaNodeEditor
+                  node={node}
+                  onUpdate={(updated) =>
+                    commit(addon.nodes.map((n) => (n.id === updated.id ? updated : n)))
+                  }
+                  onRemove={() => commit(addon.nodes.filter((n) => n.id !== node.id))}
+                  onDuplicate={() => commit(duplicateInList(addon.nodes, node.id))}
+                  onAddChild={handleAddChild}
+                  sectionAddons={sectionAddons}
+                  depth={0}
+                  insideArray={false}
+                  readOnly={false}
+                />
+              )}
+            />
+            </NodeValuePreviewContext.Provider>
+            </CollapseBroadcastContext.Provider>
+            <div className="mt-2">
+              <AddNodeButton
+                label={<>na <span className="font-mono text-gray-200">raiz</span></>}
+                title="Adicionar propriedade na raiz do JSON"
+                onAdd={addRootNode}
               />
-            ))}
-            <button type="button" className={BTN + " mt-2"} onClick={addRootNode}>
-              + Propriedade
-            </button>
+            </div>
           </div>
         )}
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <label className="flex items-center gap-1.5 text-xs text-gray-400" title="Formato do JSON para nós array (tabelas de balanceamento)">
+        <label
+          className={`flex items-center gap-1.5 text-xs ${hasProgressionArraySource ? "text-gray-400" : "text-gray-500 opacity-60"}`}
+          title={
+            hasProgressionArraySource
+              ? "Formato do JSON para nós array (tabelas de balanceamento)"
+              : "Este schema não itera tabelas de balanceamento — formato fixo em rowMajor."
+          }
+        >
           Formato:
           <select
             className={SELECT + " !text-xs"}
-            value={addon.arrayFormat ?? "rowMajor"}
+            value={hasProgressionArraySource ? (addon.arrayFormat ?? "rowMajor") : "rowMajor"}
+            disabled={!hasProgressionArraySource}
             onChange={(e) =>
               onChange({ ...addon, arrayFormat: e.target.value as ExportSchemaArrayFormat })
             }

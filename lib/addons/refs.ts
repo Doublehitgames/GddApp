@@ -159,6 +159,63 @@ type ReverseRefPatch = (
  * points at `toSectionId`. Returns a new addon when changed, original
  * otherwise.
  */
+type CraftUnlockSlot = "level" | "currency" | "item";
+const CRAFT_UNLOCK_REF_KEYS: Record<CraftUnlockSlot, "xpAddonRef" | "currencyAddonRef" | "itemRef"> = {
+  level: "xpAddonRef",
+  currency: "currencyAddonRef",
+  item: "itemRef",
+};
+
+function remapCraftTableUnlockRef(
+  addon: SectionAddon,
+  slot: CraftUnlockSlot,
+  from: string,
+  to: string,
+  bump: () => void
+): SectionAddon {
+  if (addon.type !== "craftTable") return addon;
+  const refKey = CRAFT_UNLOCK_REF_KEYS[slot];
+  const entries = addon.data.entries;
+  if (!Array.isArray(entries)) return addon;
+  let changed = false;
+  const nextEntries = entries.map((entry) => {
+    const slotValue = entry.unlock?.[slot] as Record<string, unknown> | undefined;
+    if (!slotValue) return entry;
+    if (slotValue[refKey] !== from) return entry;
+    changed = true;
+    bump();
+    return {
+      ...entry,
+      unlock: {
+        ...entry.unlock,
+        [slot]: { ...slotValue, [refKey]: to },
+      },
+    };
+  });
+  if (!changed) return addon;
+  return { ...addon, data: { ...addon.data, entries: nextEntries } };
+}
+
+function remapCraftTableProductionRef(
+  addon: SectionAddon,
+  from: string,
+  to: string,
+  bump: () => void
+): SectionAddon {
+  if (addon.type !== "craftTable") return addon;
+  const entries = addon.data.entries;
+  if (!Array.isArray(entries)) return addon;
+  let changed = false;
+  const nextEntries = entries.map((entry) => {
+    if (entry.productionRef !== from) return entry;
+    changed = true;
+    bump();
+    return { ...entry, productionRef: to };
+  });
+  if (!changed) return addon;
+  return { ...addon, data: { ...addon.data, entries: nextEntries } };
+}
+
 const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = {
   xpBalance: (addon, from, to, bump) => {
     // DataSchemaEntry.unitXpRef + EconomyLinkAddonDraft.unlockRef
@@ -184,10 +241,12 @@ const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = 
         return { ...addon, data: { ...addon.data, unlockRef: to } };
       }
     }
+    if (addon.type === "craftTable") return remapCraftTableUnlockRef(addon, "level", from, to, bump);
     return addon;
   },
 
   currency: (addon, from, to, bump) => {
+    if (addon.type === "craftTable") return remapCraftTableUnlockRef(addon, "currency", from, to, bump);
     if (addon.type !== "economyLink") return addon;
     const data = addon.data;
     let changed = false;
@@ -206,7 +265,13 @@ const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = 
     return { ...addon, data: nextData };
   },
 
+  production: (addon, from, to, bump) => {
+    if (addon.type === "craftTable") return remapCraftTableProductionRef(addon, from, to, bump);
+    return addon;
+  },
+
   inventory: (addon, from, to, bump) => {
+    if (addon.type === "craftTable") return remapCraftTableUnlockRef(addon, "item", from, to, bump);
     if (addon.type === "economyLink") {
       const data = addon.data;
       if (data.producedItemRef === from) {

@@ -6,6 +6,7 @@ import {
   createDefaultAttributeModifiersAddon,
   createDefaultAttributeProfileAddon,
   createDefaultFieldLibraryAddon,
+  createDefaultCraftTableAddon,
   createDefaultCurrencyAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
@@ -41,6 +42,8 @@ import { InventoryAddonPanel } from "@/components/InventoryAddonPanel";
 import { InventoryAddonReadOnly } from "@/components/InventoryAddonReadOnly";
 import { ProductionAddonPanel } from "@/components/ProductionAddonPanel";
 import { ProductionAddonReadOnly } from "@/components/ProductionAddonReadOnly";
+import { CraftTableAddonPanel } from "@/components/CraftTableAddonPanel";
+import { CraftTableAddonReadOnly } from "@/components/CraftTableAddonReadOnly";
 import { ProgressionTableAddonPanel } from "@/components/ProgressionTableAddonPanel";
 import { ProgressionTableAddonReadOnly } from "@/components/ProgressionTableAddonReadOnly";
 import { RichDocAddonPanel } from "@/components/RichDocAddonPanel";
@@ -370,6 +373,33 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "production") return null;
       return React.createElement(ProductionAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+        bare: options?.bare,
+      });
+    },
+  },
+  {
+    type: "craftTable",
+    label: "Mesa de Produção",
+    category: "items",
+    emoji: "🛠️",
+    singleton: true,
+    createDefault: () => {
+      const addonId = `craft-table-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultCraftTableAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "craftTable") return null;
+      return React.createElement(CraftTableAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "craftTable") return null;
+      return React.createElement(CraftTableAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,

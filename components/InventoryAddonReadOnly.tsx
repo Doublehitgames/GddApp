@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { InventoryAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 interface InventoryAddonReadOnlyProps {
   addon: InventoryAddonDraft;
@@ -47,7 +48,24 @@ export function InventoryAddonReadOnly({ addon, theme = "dark", bare = false }: 
 
   const labelClass = isLight ? "text-gray-700" : "text-gray-300";
   const mutedClass = isLight ? "text-gray-600" : "text-gray-400";
-  const category = addon.inventoryCategory || t("inventoryAddon.emptyValue", "nao informado");
+  const linkedCategoryLabel = useMemo(() => {
+    if (!addon.categoryLibraryRef) return null;
+    for (const project of projects) {
+      for (const sec of project.sections || []) {
+        for (const sectionAddon of sec.addons || []) {
+          if (sectionAddon.type !== "fieldLibrary") continue;
+          if (sectionAddon.id !== addon.categoryLibraryRef.libraryAddonId) continue;
+          const match = (sectionAddon.data.entries || []).find(
+            (entry) => entry.id === addon.categoryLibraryRef!.entryId
+          );
+          if (match) return match.label;
+        }
+      }
+    }
+    return null;
+  }, [addon.categoryLibraryRef, projects]);
+  const category =
+    linkedCategoryLabel ?? (addon.inventoryCategory || t("inventoryAddon.emptyValue", "nao informado"));
   const maxStack = addon.stackable ? addon.maxStack : 1;
   const hasDurabilityConfig = addon.hasDurabilityConfig ?? (addon.durability > 0 || (addon.maxDurability ?? 0) > 0);
   const hasVolumeConfig = addon.hasVolumeConfig ?? (addon.volume ?? 0) > 0;
@@ -217,7 +235,8 @@ export function InventoryAddonReadOnly({ addon, theme = "dark", bare = false }: 
       )}
       <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-2`}>
         <p className={labelClass}>
-          {t("inventoryAddon.summaryStart", "Item de categoria")} {category}.{" "}
+          {t("inventoryAddon.summaryStart", "Item de categoria")}{" "}
+          <LibraryLabelPath value={category} className="align-middle" />.{" "}
           {t("inventoryAddon.summaryWeightPrefix", "Peso")} {addon.weight}
           {hasVolumeConfig ? `, ${t("inventoryAddon.summarySlotPrefix", "usa")} ${addon.slotSize} slot(s)` : ""},{" "}
           {addon.stackable

@@ -8,6 +8,7 @@ import type {
 } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 interface FieldLibraryAddonReadOnlyProps {
   addon: FieldLibraryAddonDraft;
@@ -255,8 +256,11 @@ export function FieldLibraryAddonReadOnly({ addon, theme = "dark", bare = false 
                 return (
                   <Fragment key={entry.id}>
                     <tr className={`border-t ${rowBorderClass}`}>
-                      <td className="px-2.5 py-1.5 align-top whitespace-nowrap">
-                        <span className="font-medium">{entry.label || entry.key}</span>
+                      <td className="px-2.5 py-1.5 align-top">
+                        <LibraryLabelPath
+                          value={entry.label || entry.key}
+                          className="font-medium"
+                        />
                       </td>
                       <td className="px-2.5 py-1.5 align-top whitespace-nowrap">
                         <code className={`text-xs font-mono ${mutedClass}`}>{entry.key}</code>

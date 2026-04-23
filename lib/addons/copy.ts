@@ -14,6 +14,7 @@ const ID_PREFIX: Record<SectionAddonType, string> = {
   globalVariable: "gvar",
   inventory: "inventory",
   production: "production",
+  craftTable: "craft-table",
   dataSchema: "data-schema",
   attributeDefinitions: "attr-defs",
   attributeProfile: "attr-profile",

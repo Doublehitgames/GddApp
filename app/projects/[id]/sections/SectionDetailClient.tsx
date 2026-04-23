@@ -2070,6 +2070,12 @@ function SectionDetailContent({
     if (type === "production") {
       return t("productionAddon.addonTypeLabel", "Producao");
     }
+    if (type === "craftTable") {
+      return t("craftTableAddon.addonTypeLabel", "Craft Table");
+    }
+    if (type === "richDoc") {
+      return t("richDocAddon.addonTypeLabel", "Doc");
+    }
     if (type === "dataSchema" || type === "genericStats") {
       return t("dataSchemaAddon.addonTypeLabel", "Schema de Dados");
     }

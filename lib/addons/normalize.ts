@@ -4,6 +4,10 @@ import type {
   AttributeModifiersAddonDraft,
   AttributeProfileAddonDraft,
   FieldLibraryAddonDraft,
+  CraftTableAddonDraft,
+  CraftTableEntry,
+  CraftTableEntryField,
+  CraftTableUnlock,
   CurrencyAddonDraft,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
@@ -298,6 +302,18 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
   const maxStackRaw = asPositiveIntegerOrUndefined(value.maxStack) ?? 1;
   const maxStack = stackable ? Math.max(1, maxStackRaw) : 1;
   const inventoryCategory = typeof value.inventoryCategory === "string" ? value.inventoryCategory : "";
+  let categoryLibraryRef: InventoryAddonDraft["categoryLibraryRef"];
+  if (
+    isObject(value.categoryLibraryRef) &&
+    typeof (value.categoryLibraryRef as { libraryAddonId?: unknown }).libraryAddonId === "string" &&
+    typeof (value.categoryLibraryRef as { entryId?: unknown }).entryId === "string"
+  ) {
+    const libAddonId = ((value.categoryLibraryRef as { libraryAddonId: string }).libraryAddonId || "").trim();
+    const refEntryId = ((value.categoryLibraryRef as { entryId: string }).entryId || "").trim();
+    if (libAddonId && refEntryId) {
+      categoryLibraryRef = { libraryAddonId: libAddonId, entryId: refEntryId };
+    }
+  }
   const slotSize = asFiniteNumber(value.slotSize) ?? 0;
   const durability = Math.max(0, asFiniteNumber(value.durability) ?? 0);
   const volume = asFiniteNumber(value.volume);
@@ -325,6 +341,7 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
     stackable,
     maxStack,
     inventoryCategory,
+    ...(categoryLibraryRef ? { categoryLibraryRef } : {}),
     slotSize: Math.max(0, slotSize),
     hasDurabilityConfig,
     durability: hasDurabilityConfig ? durability : 0,
@@ -407,6 +424,93 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
     craftTimeSeconds,
     craftTimeSecondsProgressionLink,
     notes: notes || undefined,
+  };
+}
+
+function normalizeCraftTableUnlock(raw: unknown): CraftTableUnlock | undefined {
+  if (!isObject(raw)) return undefined;
+  const result: CraftTableUnlock = {};
+  if (isObject(raw.level)) {
+    const enabled = asBooleanLoose(raw.level.enabled);
+    const xpAddonRef = typeof raw.level.xpAddonRef === "string" ? raw.level.xpAddonRef.trim() : "";
+    const level = asPositiveIntegerOrUndefined(raw.level.level);
+    if (enabled || xpAddonRef || level != null) {
+      result.level = {
+        enabled,
+        xpAddonRef: xpAddonRef || undefined,
+        level,
+      };
+    }
+  }
+  if (isObject(raw.currency)) {
+    const enabled = asBooleanLoose(raw.currency.enabled);
+    const currencyAddonRef = typeof raw.currency.currencyAddonRef === "string" ? raw.currency.currencyAddonRef.trim() : "";
+    const amount = asPositiveIntegerOrUndefined(raw.currency.amount);
+    if (enabled || currencyAddonRef || amount != null) {
+      result.currency = {
+        enabled,
+        currencyAddonRef: currencyAddonRef || undefined,
+        amount,
+      };
+    }
+  }
+  if (isObject(raw.item)) {
+    const enabled = asBooleanLoose(raw.item.enabled);
+    const itemRef = typeof raw.item.itemRef === "string" ? raw.item.itemRef.trim() : "";
+    const quantity = asPositiveIntegerOrUndefined(raw.item.quantity);
+    if (enabled || itemRef || quantity != null) {
+      result.item = {
+        enabled,
+        itemRef: itemRef || undefined,
+        quantity,
+      };
+    }
+  }
+  if (!result.level && !result.currency && !result.item) return undefined;
+  return result;
+}
+
+function normalizeCraftTableEntries(raw: unknown): CraftTableEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CraftTableEntry[] = [];
+  const seenIds = new Set<string>();
+  for (let index = 0; index < raw.length; index += 1) {
+    const item = raw[index];
+    if (!isObject(item)) continue;
+    let id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `entry_${index + 1}`;
+    let dedupe = 2;
+    while (seenIds.has(id)) {
+      id = `${id}_${dedupe}`;
+      dedupe += 1;
+    }
+    seenIds.add(id);
+    const productionRef = typeof item.productionRef === "string" && item.productionRef.trim() ? item.productionRef.trim() : undefined;
+    const category = typeof item.category === "string" && item.category.trim() ? item.category.trim() : undefined;
+    const orderNum = asFiniteNumber(item.order);
+    const order = orderNum == null ? index : Math.floor(orderNum);
+    const unlock = normalizeCraftTableUnlock(item.unlock);
+    const hidden = item.hidden == null ? undefined : asBooleanLoose(item.hidden) || undefined;
+    out.push({
+      id,
+      productionRef,
+      category,
+      order,
+      unlock,
+      hidden,
+    });
+  }
+  out.sort((a, b) => a.order - b.order);
+  return out;
+}
+
+function normalizeCraftTableDraft(value: unknown): CraftTableAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  return {
+    id: value.id,
+    name: value.name,
+    entries: normalizeCraftTableEntries(value.entries),
   };
 }
 
@@ -731,6 +835,47 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
     if (!columnId) return undefined;
     return { source: "rowColumn", columnId };
   }
+  if (source === "entryField") {
+    const validFields: ReadonlySet<CraftTableEntryField> = new Set<CraftTableEntryField>([
+      "order",
+      "productionRef",
+      "category",
+      "hidden",
+      "unlockLevelEnabled",
+      "unlockLevel",
+      "unlockLevelXpRef",
+      "unlockCurrencyEnabled",
+      "unlockCurrencyAmount",
+      "unlockCurrencyRef",
+      "unlockItemEnabled",
+      "unlockItemQuantity",
+      "unlockItemRef",
+    ]);
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (!validFields.has(field as CraftTableEntryField)) return undefined;
+    return { source: "entryField", field: field as CraftTableEntryField };
+  }
+  if (source === "productionField") {
+    const validFields: ReadonlySet<string> = new Set([
+      "name",
+      "mode",
+      "craftTimeSeconds",
+      "minOutput",
+      "maxOutput",
+      "intervalSeconds",
+      "capacity",
+      "requiresCollection",
+      "outputRef",
+    ]);
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (!validFields.has(field)) return undefined;
+    return { source: "productionField", field: field as "name" | "mode" | "craftTimeSeconds" | "minOutput" | "maxOutput" | "intervalSeconds" | "capacity" | "requiresCollection" | "outputRef" };
+  }
+  if (source === "itemField") {
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (field !== "itemRef" && field !== "quantity") return undefined;
+    return { source: "itemField", field };
+  }
   return undefined;
 }
 
@@ -748,9 +893,20 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
       node.children = Array.isArray(rawNode.children) ? normalizeExportSchemaNodes(rawNode.children) : [];
     }
     if (nodeType === "array") {
-      if (isObject(rawNode.arraySource) && rawNode.arraySource.type === "progressionTable" && typeof rawNode.arraySource.addonId === "string") {
-        const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
-        node.arraySource = { type: "progressionTable", addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
+      if (isObject(rawNode.arraySource)) {
+        const rawType = rawNode.arraySource.type;
+        if (
+          (rawType === "progressionTable" || rawType === "craftTable") &&
+          typeof rawNode.arraySource.addonId === "string"
+        ) {
+          const sourceType = rawType as "progressionTable" | "craftTable";
+          const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
+          node.arraySource = { type: sourceType, addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
+        } else if (rawType === "productionIngredients") {
+          node.arraySource = { type: "productionIngredients" };
+        } else if (rawType === "productionOutputs") {
+          node.arraySource = { type: "productionOutputs" };
+        }
       }
       node.itemTemplate = Array.isArray(rawNode.itemTemplate) ? normalizeExportSchemaNodes(rawNode.itemTemplate) : [];
     }
@@ -802,6 +958,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "globalVariable" &&
     value.type !== "inventory" &&
     value.type !== "production" &&
+    value.type !== "craftTable" &&
     value.type !== "dataSchema" &&
     value.type !== "attributeDefinitions" &&
     value.type !== "attributeProfile" &&
@@ -979,6 +1136,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "production") {
         const draft = normalizeProductionDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "craftTable") {
+        const draft = normalizeCraftTableDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,

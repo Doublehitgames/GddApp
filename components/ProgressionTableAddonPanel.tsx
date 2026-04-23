@@ -37,6 +37,7 @@ import {
   CommitNumberInput,
   CommitOptionalNumberInput,
 } from "@/components/common/CommitInput";
+import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 const FORMULA_ALLOWED_VARIABLES = new Set(["base", "level", "delta"]);
@@ -1278,7 +1279,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           <circle cx="12" cy="15" r="1.5" />
                         </svg>
                       </span>
-                      {resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")}
+                      {column.libraryRef ? (
+                        <LibraryLabelPath
+                          value={resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")}
+                        />
+                      ) : (
+                        resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")
+                      )}
                       {column.libraryRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
                     </span>
                     <span className="text-[10px] text-gray-400">
@@ -1300,8 +1307,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           {column.libraryRef ? (
                             <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
                               <span aria-hidden className="text-[10px]">📎</span>
-                              <span className="flex-1 truncate">
-                                {resolveColumnDisplayName(column, availableLibraryColumns)}
+                              <span className="flex-1 flex flex-wrap items-center gap-1">
+                                <LibraryLabelPath value={resolveColumnDisplayName(column, availableLibraryColumns)} />
                               </span>
                               <button
                                 type="button"
@@ -1390,7 +1397,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
                                                 title={entry.description || undefined}
                                               >
-                                                <span className="flex-1 truncate">{entry.label}</span>
+                                                <LibraryLabelPath value={entry.label} className="flex-1" />
                                                 <span className="shrink-0 text-[10px] text-gray-500">{entry.key}</span>
                                               </button>
                                             ))}

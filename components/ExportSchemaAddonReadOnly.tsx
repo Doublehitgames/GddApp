@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import type {
   ExportSchemaAddonDraft,
   ExportSchemaArrayFormat,
+  ExportSchemaNode,
   SectionAddon,
 } from "@/lib/addons/types";
-import { resolveExportSchema, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
+import { buildSectionLookup, resolveExportSchema, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
 import { useProjectStore } from "@/store/projectStore";
 
 interface ExportSchemaAddonReadOnlyProps {
@@ -42,13 +43,18 @@ export function ExportSchemaAddonReadOnly({
   const sectionContext = useMemo(() => {
     if (externalAddons) return { addons: externalAddons, dataId: undefined as string | undefined };
 
+    const matchesSelf = (a: SectionAddon) => a.id === addon.id || a.data?.id === addon.id;
     for (const proj of projects) {
       for (const sec of proj.sections ?? []) {
-        const found = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
-        if (found) {
-          const wrapper = (sec.addons ?? []).find((a: SectionAddon) => a.id === addon.id);
+        const wrapper = (sec.addons ?? []).find(matchesSelf);
+        if (wrapper) {
           const myGroup = (wrapper as any)?.group || "A";
-          return { addons: (sec.addons ?? []).filter((a: SectionAddon) => a.id !== addon.id && ((a as any).group || "A") === myGroup), dataId: sec.dataId };
+          return {
+            addons: (sec.addons ?? []).filter(
+              (a: SectionAddon) => !matchesSelf(a) && ((a as any).group || "A") === myGroup
+            ),
+            dataId: sec.dataId,
+          };
         }
       }
     }
@@ -76,9 +82,23 @@ export function ExportSchemaAddonReadOnly({
     [sectionContext, globalFieldLibraries]
   );
 
+  const sectionLookup = useMemo(() => buildSectionLookup(projects), [projects]);
+
+  const hasProgressionArraySource = useMemo(() => {
+    const walk = (nodes: ExportSchemaNode[]): boolean => {
+      for (const n of nodes) {
+        if (n.nodeType === "array" && n.arraySource?.type === "progressionTable") return true;
+        if (n.children && walk(n.children)) return true;
+        if (n.itemTemplate && walk(n.itemTemplate)) return true;
+      }
+      return false;
+    };
+    return walk(addon.nodes);
+  }, [addon.nodes]);
+
   const resolved = useMemo(
-    () => resolveExportSchema(addon.nodes, resolverAddons, sectionContext.dataId, format),
-    [addon.nodes, resolverAddons, sectionContext, format],
+    () => resolveExportSchema(addon.nodes, resolverAddons, sectionContext.dataId, format, sectionLookup),
+    [addon.nodes, resolverAddons, sectionContext, format, sectionLookup],
   );
 
   const jsonString = useMemo(
@@ -136,11 +156,23 @@ export function ExportSchemaAddonReadOnly({
           </h5>
         )}
         <div className="flex items-center gap-2 flex-wrap">
-          <label className={`flex items-center gap-1.5 text-xs ${isDark ? "text-gray-400" : "text-gray-600"}`} title="Formato do JSON para nós array (tabelas de balanceamento)">
+          <label
+            className={`flex items-center gap-1.5 text-xs ${
+              hasProgressionArraySource
+                ? (isDark ? "text-gray-400" : "text-gray-600")
+                : (isDark ? "text-gray-500" : "text-gray-500") + " opacity-60"
+            }`}
+            title={
+              hasProgressionArraySource
+                ? "Formato do JSON para nós array (tabelas de balanceamento)"
+                : "Este schema não itera tabelas de balanceamento — formato fixo em rowMajor."
+            }
+          >
             Formato:
             <select
               className={selectClass}
-              value={format}
+              value={hasProgressionArraySource ? format : "rowMajor"}
+              disabled={!hasProgressionArraySource}
               onChange={(e) => setFormat(e.target.value as ExportSchemaArrayFormat)}
             >
               <option value="rowMajor">Row-major (array de objetos)</option>

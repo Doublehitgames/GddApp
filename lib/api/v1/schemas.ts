@@ -62,11 +62,14 @@ const addonTypes = [
   "globalVariable",
   "inventory",
   "production",
+  "craftTable",
   "dataSchema",
   "attributeDefinitions",
   "attributeProfile",
   "attributeModifiers",
+  "fieldLibrary",
   "exportSchema",
+  "richDoc",
   "genericStats",
 ] as const;
 

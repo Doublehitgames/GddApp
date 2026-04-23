@@ -21,6 +21,7 @@ import {
   CommitOptionalNumberInput,
   CommitTextInput,
 } from "@/components/common/CommitInput";
+import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 interface DataSchemaAddonPanelProps {
   addon: DataSchemaAddonDraft;
@@ -589,7 +590,11 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                               <circle cx="12" cy="15" r="1.5" />
                             </svg>
                           </span>
-                          {title}
+                          {entry.libraryRef ? (
+                            <LibraryLabelPath value={title} />
+                          ) : (
+                            title
+                          )}
                           {entry.libraryRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
                         </span>
                         <span className="text-[10px] text-gray-400">{effectiveKey || "key"}</span>
@@ -618,9 +623,9 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                   <div className="space-y-1.5">
                                     <div className="flex items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
                                       <span aria-hidden className="text-[10px]">📎</span>
-                                      <span className="flex-1 truncate">
-                                        {resolveEntryLabel(entry, availableLibraryFields)}
-                                        <span className="ml-1 text-[10px] text-sky-400/80">
+                                      <span className="flex-1 flex flex-wrap items-center gap-1">
+                                        <LibraryLabelPath value={resolveEntryLabel(entry, availableLibraryFields)} />
+                                        <span className="text-[10px] text-sky-400/80">
                                           ({resolveEntryKey(entry, availableLibraryFields)})
                                         </span>
                                       </span>
@@ -720,7 +725,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                                       className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
                                                       title={opt.description || undefined}
                                                     >
-                                                      <span className="flex-1 truncate">{opt.label}</span>
+                                                      <LibraryLabelPath value={opt.label} className="flex-1" />
                                                       <span className="shrink-0 text-[10px] text-gray-500">{opt.key}</span>
                                                     </button>
                                                   ))}

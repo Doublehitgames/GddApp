@@ -301,6 +301,40 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   };
   pair("production", "production", "production (passive or recipe)", productionFields, optional(productionFields));
 
+  // ── 7b. Craft Table ─────────────────────────────────────────────
+
+  const craftTableUnlockSchema = z.object({
+    level: z.object({
+      enabled: z.boolean(),
+      xpAddonRef: z.string().optional().describe("Section ID of the XP Balance addon"),
+      level: z.number().optional().describe("Required level"),
+    }).optional(),
+    currency: z.object({
+      enabled: z.boolean(),
+      currencyAddonRef: z.string().optional().describe("Section ID of the Currency addon"),
+      amount: z.number().optional().describe("Required amount"),
+    }).optional(),
+    item: z.object({
+      enabled: z.boolean(),
+      itemRef: z.string().optional().describe("Section ID of the item (Inventory addon)"),
+      quantity: z.number().optional().describe("Required quantity"),
+    }).optional(),
+  });
+
+  const craftTableEntrySchema = z.object({
+    id: z.string().optional().describe("Entry ID (auto-generated if omitted)"),
+    productionRef: z.string().optional().describe("Section ID of the Production addon (recipe)"),
+    category: z.string().optional().describe("Category label (free text; shared across entries in this table)"),
+    order: z.number().describe("Display order"),
+    unlock: craftTableUnlockSchema.optional().describe("Unlock conditions (AND of enabled slots; none enabled = always unlocked)"),
+    hidden: z.boolean().optional().describe("Hide entry without deleting"),
+  });
+
+  const craftTableFields = {
+    entries: z.array(craftTableEntrySchema).default([]).describe("Recipes available on this table"),
+  };
+  pair("craft_table", "craftTable", "craft table (station aggregating Production recipes with unlock conditions)", craftTableFields, optional(craftTableFields));
+
   // ── 8. Data Schema ──────────────────────────────────────────────
 
   const dataSchemaEntrySchema = z.object({

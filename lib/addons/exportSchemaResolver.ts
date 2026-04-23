@@ -4,21 +4,66 @@ import type {
   ExportSchemaBinding,
   ExportSchemaArrayFormat,
   SectionAddon,
+  CraftTableAddonDraft,
+  CraftTableEntry,
   DataSchemaAddonDraft,
   DataSchemaEntry,
   EconomyLinkAddonDraft,
   ProductionAddonDraft,
+  ProductionIngredient,
+  ProductionOutput,
+  ProductionScalarField,
   ProgressionTableAddonDraft,
   ProgressionTableRow,
 } from "@/lib/addons/types";
 
+export type SectionLookupEntry = {
+  dataId?: string | null;
+  addons: SectionAddon[];
+};
+
+export type SectionLookup = Map<string, SectionLookupEntry>;
+
 type ResolveContext = {
   sectionAddons: SectionAddon[];
   sectionDataId?: string;
+  sectionLookup?: SectionLookup;
   row?: ProgressionTableRow;
+  entry?: CraftTableEntry;
+  /** Current production addon resolved from entry.productionRef (cached per iteration). */
+  currentProduction?: ProductionAddonDraft;
+  /** Current ingredient/output row (inside productionIngredients/productionOutputs array). */
+  currentItem?: ProductionIngredient | ProductionOutput;
   arrayFormat?: ExportSchemaArrayFormat;
   currentTable?: ProgressionTableAddonDraft;
+  /** When provided, the resolver writes every node's computed value here
+   *  (first iteration wins for template nodes inside arrays). Used by the
+   *  editor to show inline previews. */
+  nodeValueMap?: Map<string, unknown>;
 };
+
+/** Resolves a section-ID ref to the target section's dataId. Returns empty string when missing. */
+function resolveRefToDataId(sectionId: string | undefined, lookup?: SectionLookup): string {
+  if (!sectionId || !lookup) return "";
+  const meta = lookup.get(sectionId);
+  if (!meta) return "";
+  const dataId = meta.dataId;
+  return typeof dataId === "string" && dataId.trim() ? dataId.trim() : "";
+}
+
+/** Finds a Production addon by section-ID ref (the section that contains it). */
+function findProductionByRef(
+  sectionRef: string | undefined,
+  lookup?: SectionLookup
+): ProductionAddonDraft | undefined {
+  if (!sectionRef || !lookup) return undefined;
+  const meta = lookup.get(sectionRef);
+  if (!meta) return undefined;
+  for (const addon of meta.addons) {
+    if (addon.type === "production") return addon.data as ProductionAddonDraft;
+  }
+  return undefined;
+}
 
 function resolveColumnExportKey(
   columnId: string,
@@ -45,9 +90,10 @@ function findDataSchemaAddon(
   addonId: string,
   addonName?: string
 ): DataSchemaAddonDraft | undefined {
-  // Try by ID first
+  // Try by outer addon id or inner data.id (they sometimes diverge between store and DB)
   for (const addon of addons) {
-    if ((addon.type === "dataSchema" || addon.type === "genericStats") && addon.id === addonId) {
+    if (addon.type !== "dataSchema" && addon.type !== "genericStats") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) {
       return addon.data as DataSchemaAddonDraft;
     }
   }
@@ -62,14 +108,125 @@ function findDataSchemaAddon(
   return undefined;
 }
 
+function findCraftTableAddon(
+  addons: SectionAddon[],
+  addonId: string,
+  addonName?: string
+): CraftTableAddonDraft | undefined {
+  for (const addon of addons) {
+    if (addon.type !== "craftTable") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) {
+      return addon.data as CraftTableAddonDraft;
+    }
+  }
+  if (addonName) {
+    for (const addon of addons) {
+      if (addon.type === "craftTable" && addon.name === addonName) {
+        return addon.data as CraftTableAddonDraft;
+      }
+    }
+  }
+  return undefined;
+}
+
+function resolveEntryField(
+  entry: CraftTableEntry,
+  field: Extract<ExportSchemaBinding, { source: "entryField" }>["field"],
+  lookup?: SectionLookup
+): string | number | boolean | null {
+  switch (field) {
+    case "order":
+      return entry.order ?? 0;
+    case "productionRef":
+      return resolveRefToDataId(entry.productionRef, lookup);
+    case "category":
+      return entry.category ?? "";
+    case "hidden":
+      return Boolean(entry.hidden);
+    case "unlockLevelEnabled":
+      return Boolean(entry.unlock?.level?.enabled);
+    case "unlockLevel":
+      return entry.unlock?.level?.level ?? 0;
+    case "unlockLevelXpRef":
+      return resolveRefToDataId(entry.unlock?.level?.xpAddonRef, lookup);
+    case "unlockCurrencyEnabled":
+      return Boolean(entry.unlock?.currency?.enabled);
+    case "unlockCurrencyAmount":
+      return entry.unlock?.currency?.amount ?? 0;
+    case "unlockCurrencyRef":
+      return resolveRefToDataId(entry.unlock?.currency?.currencyAddonRef, lookup);
+    case "unlockItemEnabled":
+      return Boolean(entry.unlock?.item?.enabled);
+    case "unlockItemQuantity":
+      return entry.unlock?.item?.quantity ?? 0;
+    case "unlockItemRef":
+      return resolveRefToDataId(entry.unlock?.item?.itemRef, lookup);
+    default:
+      return null;
+  }
+}
+
+function resolveProductionField(
+  prod: ProductionAddonDraft | undefined,
+  field: ProductionScalarField,
+  lookup?: SectionLookup
+): string | number | boolean | null {
+  if (!prod) {
+    // Sensible zero-ish defaults so exports don't render `null`s when a ref is missing.
+    switch (field) {
+      case "name":
+      case "mode":
+      case "outputRef":
+        return "";
+      case "requiresCollection":
+        return false;
+      default:
+        return 0;
+    }
+  }
+  switch (field) {
+    case "name":
+      return prod.name ?? "";
+    case "mode":
+      return prod.mode ?? "passive";
+    case "craftTimeSeconds":
+      return prod.craftTimeSeconds ?? 0;
+    case "minOutput":
+      return prod.minOutput ?? 0;
+    case "maxOutput":
+      return prod.maxOutput ?? 0;
+    case "intervalSeconds":
+      return prod.intervalSeconds ?? 0;
+    case "capacity":
+      return prod.capacity ?? 0;
+    case "requiresCollection":
+      return Boolean(prod.requiresCollection);
+    case "outputRef":
+      return resolveRefToDataId(prod.outputRef, lookup);
+    default:
+      return null;
+  }
+}
+
+function resolveItemField(
+  item: ProductionIngredient | ProductionOutput | undefined,
+  field: "itemRef" | "quantity",
+  lookup?: SectionLookup
+): string | number | null {
+  if (!item) return field === "quantity" ? 0 : "";
+  if (field === "quantity") return item.quantity ?? 0;
+  return resolveRefToDataId(item.itemRef, lookup);
+}
+
 function findProgressionTableAddon(
   addons: SectionAddon[],
   addonId: string,
   addonName?: string
 ): ProgressionTableAddonDraft | undefined {
-  // Try by ID first
+  // Try by outer addon id or inner data.id (they sometimes diverge between store and DB)
   for (const addon of addons) {
-    if (addon.type === "progressionTable" && addon.id === addonId) {
+    if (addon.type !== "progressionTable") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) {
       return addon.data as ProgressionTableAddonDraft;
     }
   }
@@ -176,6 +333,16 @@ function resolveBinding(
     case "rowColumn":
       if (!ctx.row) return null;
       return ctx.row.values[binding.columnId] ?? null;
+
+    case "entryField":
+      if (!ctx.entry) return null;
+      return resolveEntryField(ctx.entry, binding.field, ctx.sectionLookup);
+
+    case "productionField":
+      return resolveProductionField(ctx.currentProduction, binding.field, ctx.sectionLookup);
+
+    case "itemField":
+      return resolveItemField(ctx.currentItem, binding.field, ctx.sectionLookup);
 
     default:
       return null;
@@ -297,7 +464,58 @@ function buildMatrix(
   return { headers, rows };
 }
 
+/**
+ * Row-major iteration over Craft Table entries (sorted by `order`).
+ * Craft Table only supports rowMajor — other formats assume rows × columns
+ * which doesn't apply here.
+ */
+function buildCraftTableRowMajor(
+  craft: CraftTableAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  const sorted = [...(craft.entries || [])].sort((a, b) => a.order - b.order);
+  return sorted.map((entry) => {
+    const currentProduction = findProductionByRef(entry.productionRef, ctx.sectionLookup);
+    const entryCtx: ResolveContext = { ...ctx, entry, currentProduction };
+    const itemObj: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      itemObj[resolveNodeKey(tmpl, entryCtx)] = resolveNode(tmpl, entryCtx);
+    }
+    return itemObj;
+  });
+}
+
+function buildProductionItemRowMajor(
+  items: Array<ProductionIngredient | ProductionOutput>,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  return items.map((item) => {
+    const itemCtx: ResolveContext = { ...ctx, currentItem: item };
+    const out: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      out[resolveNodeKey(tmpl, itemCtx)] = resolveNode(tmpl, itemCtx);
+    }
+    return out;
+  });
+}
+
 function resolveNode(
+  node: ExportSchemaNode,
+  ctx: ResolveContext
+): unknown {
+  const value = resolveNodeInner(node, ctx);
+  // First-wins: inside array iterations, only the first iteration's resolution
+  // reaches here for a given template-node id because subsequent calls see the
+  // id already present and skip writing.
+  if (ctx.nodeValueMap && !ctx.nodeValueMap.has(node.id)) {
+    ctx.nodeValueMap.set(node.id, value);
+  }
+  return value;
+}
+
+function resolveNodeInner(
   node: ExportSchemaNode,
   ctx: ResolveContext
 ): unknown {
@@ -312,6 +530,23 @@ function resolveNode(
 
     case "array": {
       if (!node.arraySource || !node.itemTemplate) return [];
+      if (node.arraySource.type === "craftTable") {
+        const craft = findCraftTableAddon(
+          ctx.sectionAddons,
+          node.arraySource.addonId,
+          node.arraySource.addonName
+        );
+        if (!craft) return [];
+        return buildCraftTableRowMajor(craft, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "productionIngredients") {
+        const items = ctx.currentProduction?.ingredients || [];
+        return buildProductionItemRowMajor(items, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "productionOutputs") {
+        const items = ctx.currentProduction?.outputs || [];
+        return buildProductionItemRowMajor(items, node.itemTemplate, ctx);
+      }
       const table = findProgressionTableAddon(
         ctx.sectionAddons,
         node.arraySource.addonId,
@@ -352,14 +587,52 @@ export function resolveExportSchema(
   nodes: ExportSchemaNode[],
   sectionAddons: SectionAddon[],
   sectionDataId?: string,
-  arrayFormat: ExportSchemaArrayFormat = "rowMajor"
+  arrayFormat: ExportSchemaArrayFormat = "rowMajor",
+  sectionLookup?: SectionLookup
 ): Record<string, unknown> {
-  const ctx: ResolveContext = { sectionAddons, sectionDataId, arrayFormat };
+  const ctx: ResolveContext = { sectionAddons, sectionDataId, arrayFormat, sectionLookup };
   const result: Record<string, unknown> = {};
   for (const node of nodes) {
     result[resolveNodeKey(node, ctx)] = resolveNode(node, ctx);
   }
   return result;
+}
+
+/**
+ * Same as `resolveExportSchema` but also returns a map of nodeId → resolved value,
+ * useful for the editor to render inline previews next to each node.
+ * Inside array iterations, the FIRST iteration's value is recorded for each
+ * template node.
+ */
+export function resolveExportSchemaWithPreview(
+  nodes: ExportSchemaNode[],
+  sectionAddons: SectionAddon[],
+  sectionDataId?: string,
+  arrayFormat: ExportSchemaArrayFormat = "rowMajor",
+  sectionLookup?: SectionLookup
+): { result: Record<string, unknown>; nodeValueMap: Map<string, unknown> } {
+  const nodeValueMap = new Map<string, unknown>();
+  const ctx: ResolveContext = { sectionAddons, sectionDataId, arrayFormat, sectionLookup, nodeValueMap };
+  const result: Record<string, unknown> = {};
+  for (const node of nodes) {
+    result[resolveNodeKey(node, ctx)] = resolveNode(node, ctx);
+  }
+  return { result, nodeValueMap };
+}
+
+/** Helper: builds a SectionLookup from a list of projects (each containing sections with addons). */
+export function buildSectionLookup(
+  projects: Array<{
+    sections?: Array<{ id: string; dataId?: string | null; addons?: SectionAddon[] }>;
+  }>
+): SectionLookup {
+  const map: SectionLookup = new Map();
+  for (const project of projects || []) {
+    for (const sec of project.sections || []) {
+      map.set(sec.id, { dataId: sec.dataId ?? null, addons: sec.addons ?? [] });
+    }
+  }
+  return map;
 }
 
 // ── Pretty-printer ─────────────────────────────────────────────────

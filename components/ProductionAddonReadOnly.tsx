@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ProductionAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 
 interface ProductionAddonReadOnlyProps {
   addon: ProductionAddonDraft;
@@ -70,7 +71,12 @@ function computeLinkedTimeSeconds(
 
 export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }: ProductionAddonReadOnlyProps) {
   const { t } = useI18n();
-  const projects = useProjectStore((state) => state.projects);
+  const allProjects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
+  const projects = useMemo(
+    () => (currentProjectId ? allProjects.filter((p) => p.id === currentProjectId) : allProjects),
+    [allProjects, currentProjectId]
+  );
   const isLight = theme === "light";
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
   const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
@@ -110,13 +116,38 @@ export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }:
     for (const project of projects) {
       for (const section of project.sections || []) {
         const found = (section.addons || []).some(
-          (item) => item.type === "production" && item.id === addon.id
+          (item) =>
+            item.type === "production" && (item.id === addon.id || item.data?.id === addon.id)
         );
         if (found) return section;
       }
     }
     return undefined;
   }, [addon.id, projects]);
+
+  const craftTableReferences = useMemo(() => {
+    if (!currentSection) return [] as Array<{ sectionId: string; label: string }>;
+    const refs: Array<{ sectionId: string; label: string }> = [];
+    const seen = new Set<string>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "craftTable") continue;
+          const uses = (sectionAddon.data.entries || []).some(
+            (entry) => entry.productionRef === currentSection.id
+          );
+          if (!uses) continue;
+          if (seen.has(section.id)) continue;
+          seen.add(section.id);
+          refs.push({
+            sectionId: section.id,
+            label: sectionAddon.name?.trim() || section.title?.trim() || section.id,
+          });
+        }
+      }
+    }
+    return refs;
+  }, [currentSection, projects]);
 
   const progressionColumnOptions = useMemo(() => {
     const out: ProgressionColumnOption[] = [];
@@ -295,6 +326,28 @@ export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }:
         <p className={isLight ? "text-gray-700" : "text-gray-300"}>
           {addon.mode === "passive" ? passiveSummary : recipeSummary}
         </p>
+        {addon.mode === "recipe" && craftTableReferences.length > 0 && (
+          <p className={isLight ? "text-gray-700" : "text-gray-300"}>
+            {t("productionAddon.producedOn", "Produzida na mesa")}:{" "}
+            {craftTableReferences.map((ref, index) => {
+              const meta = sectionsById.get(ref.sectionId);
+              if (!meta) {
+                return (
+                  <span key={ref.sectionId}>
+                    {index > 0 ? ", " : ""}
+                    {ref.label}
+                  </span>
+                );
+              }
+              return (
+                <span key={ref.sectionId}>
+                  {index > 0 ? ", " : ""}
+                  {renderSectionLink(ref.sectionId, { ...meta, title: ref.label })}
+                </span>
+              );
+            })}
+          </p>
+        )}
         {(minOutputSimulationBadges || maxOutputSimulationBadges || timeSimulationBadges) && (
           <div className="space-y-1">
             {minOutputSimulationBadges ? (

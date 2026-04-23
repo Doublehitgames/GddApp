@@ -141,7 +141,12 @@ describe("moveAddon", () => {
       },
     };
     const moved = moveAddon(original) as ExportSchemaSectionAddon;
-    expect(moved.data.nodes[0].arraySource?.addonId).toBeUndefined();
+    const movedArraySource = moved.data.nodes[0].arraySource;
+    expect(
+      movedArraySource && (movedArraySource.type === "progressionTable" || movedArraySource.type === "craftTable")
+        ? movedArraySource.addonId
+        : undefined
+    ).toBeUndefined();
     const binding = moved.data.nodes[0].itemTemplate?.[0].binding;
     if (binding?.source === "dataSchema") {
       expect(binding.addonId).toBeUndefined();

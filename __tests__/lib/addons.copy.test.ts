@@ -198,7 +198,11 @@ describe("copyAddon", () => {
 
     const copy = copyAddon(original) as ExportSchemaSectionAddon;
     const [arrNode, objNode] = copy.data.nodes;
-    expect(arrNode.arraySource?.addonId).toBeUndefined();
+    expect(
+      arrNode.arraySource && (arrNode.arraySource.type === "progressionTable" || arrNode.arraySource.type === "craftTable")
+        ? arrNode.arraySource.addonId
+        : undefined
+    ).toBeUndefined();
     expect(arrNode.itemTemplate?.[0].binding?.source).toBe("dataSchema");
     if (arrNode.itemTemplate?.[0].binding?.source === "dataSchema") {
       expect(arrNode.itemTemplate?.[0].binding.addonId).toBeUndefined();

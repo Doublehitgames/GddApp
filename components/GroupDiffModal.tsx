@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { SectionAddon, ExportSchemaAddonDraft } from "@/lib/addons/types";
-import { resolveExportSchema } from "@/lib/addons/exportSchemaResolver";
+import { buildSectionLookup, resolveExportSchema } from "@/lib/addons/exportSchemaResolver";
 import { diffJson, type DiffEntry } from "@/lib/addons/groupDiff";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -48,6 +48,8 @@ export function GroupDiffModal({ addons, groups, sectionDataId, onClose }: Group
     return out;
   }, [projects]);
 
+  const sectionLookup = useMemo(() => buildSectionLookup(projects), [projects]);
+
   const resolveGroupJson = (group: string): Record<string, unknown> | null => {
     const gAddons = addons.filter((a) => ((a as any).group || "A") === group);
     const exportAddon = gAddons.find((a) => a.type === "exportSchema");
@@ -55,7 +57,7 @@ export function GroupDiffModal({ addons, groups, sectionDataId, onClose }: Group
     const draft = exportAddon.data as ExportSchemaAddonDraft;
     const siblings = gAddons.filter((a) => a.id !== exportAddon.id);
     const pool = [...siblings, ...globalFieldLibraries.filter((lib) => !siblings.some((s) => s.id === lib.id))];
-    return resolveExportSchema(draft.nodes, pool, sectionDataId, draft.arrayFormat);
+    return resolveExportSchema(draft.nodes, pool, sectionDataId, draft.arrayFormat, sectionLookup);
   };
 
   const jsonA = useMemo(() => resolveGroupJson(groupA), [addons, groupA, sectionDataId]);
