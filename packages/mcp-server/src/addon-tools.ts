@@ -118,7 +118,11 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       entryId: z.string().describe("Entry ID inside the Field Library"),
     }).optional().describe("Bind the category to a Field Library entry — keeps category names consistent across items."),
     slotSize: z.number().default(1).describe("Inventory slots occupied"),
+    hasDurabilityConfig: z.boolean().optional().describe("Toggle: show/hide the durability config. When false, durability/maxDurability are ignored by the UI."),
     durability: z.number().default(0).describe("Base durability (0 = no durability)"),
+    maxDurability: z.number().optional().describe("Maximum durability; present only when hasDurabilityConfig is true."),
+    hasVolumeConfig: z.boolean().optional().describe("Toggle: show/hide the volume config."),
+    volume: z.number().optional().describe("Item volume; present only when hasVolumeConfig is true."),
     bindType: z.enum(["none", "onPickup", "onEquip"]).default("none").describe("Bind on pickup/equip"),
     showInShop: z.boolean().default(true).describe("Visible in shop?"),
     consumable: z.boolean().default(false).describe("Is consumable?"),
@@ -162,23 +166,24 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   const progressionColumnSchema = z.object({
     id: z.string().describe("Column ID"),
-    name: z.string().describe("Column name"),
+    name: z.string().describe("Column name. Ignored when libraryRef is set — the Library entry's label takes precedence."),
+    libraryRef: z.object({
+      libraryAddonId: z.string().describe("Outer ID of the Field Library addon"),
+      entryId: z.string().describe("Entry ID inside the Field Library"),
+    }).optional().describe("Bind the column name to a Field Library entry — keeps column names consistent across tables (and with Attribute Definitions / Data Schema)."),
     decimals: z.number().optional().default(0),
     isPercentage: z.boolean().optional(),
     min: z.number().optional(),
     max: z.number().optional(),
-    attributeRef: z.object({
-      definitionsRef: z.string().describe("Section ID of the attribute definitions addon"),
-      attributeKey: z.string().describe("Attribute key from the definitions"),
-    }).optional().describe("Links column name to an attribute from an Attribute Profile. The column name auto-syncs with the attribute label."),
     generator: z.object({
       mode: z.enum(["manual", "linear", "exponential", "formula"]),
       base: z.number().optional(),
       step: z.number().optional(),
       growth: z.number().optional(),
       bias: z.number().optional().describe("Linear and exponential only — curve shape. 1.0 = pure linear/exponential, >1 slow early/fast late, <1 fast early/flat late. Endpoints are always preserved."),
-      expression: z.string().optional(),
-      baseColumnId: z.string().optional(),
+      expression: z.string().optional().describe("Formula mode only — expression evaluated per level."),
+      baseColumnId: z.string().optional().describe("Formula mode only — column whose values drive the expression variables."),
+      baseManualValue: z.number().optional().describe("Formula mode only — fallback constant used when baseColumnId resolves to empty."),
     }).optional().describe("Auto-generation config"),
   });
 
@@ -290,17 +295,30 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     quantity: z.number().describe("Output quantity"),
   });
 
+  // Production values (min/max output, interval, craft time) can optionally
+  // be scaled per-level by linking to a progression table column. When linked,
+  // the scalar field is populated from the progression row at runtime.
+  const productionProgressionLinkSchema = z.object({
+    progressionAddonId: z.string().describe("Outer ID of the progressionTable addon supplying values"),
+    columnId: z.string().describe("Column ID inside that progression table"),
+    columnName: z.string().describe("Cached column name for display"),
+  });
+
   const productionFields = {
     mode: z.enum(["passive", "recipe"]).default("passive").describe("Production mode"),
     outputRef: z.string().optional().describe("Output item section ID (passive mode)"),
     minOutput: z.number().optional().default(1).describe("Minimum output quantity"),
+    minOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link minOutput to a progression table column (level-scaled)."),
     maxOutput: z.number().optional().default(1).describe("Maximum output quantity"),
+    maxOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link maxOutput to a progression table column (level-scaled)."),
     intervalSeconds: z.number().optional().default(60).describe("Production interval in seconds"),
+    intervalSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link intervalSeconds to a progression table column (level-scaled)."),
     requiresCollection: z.boolean().optional().default(false).describe("Requires manual collection?"),
     capacity: z.number().optional().describe("Storage capacity"),
     ingredients: z.array(ingredientSchema).optional().default([]).describe("Recipe ingredients"),
     outputs: z.array(outputSchema).optional().default([]).describe("Recipe outputs"),
     craftTimeSeconds: z.number().optional().default(60).describe("Craft time in seconds"),
+    craftTimeSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link craftTimeSeconds to a progression table column (level-scaled)."),
     notes: z.string().optional().describe("Design notes"),
   };
   pair("production", "production", "production (passive or recipe)", productionFields, optional(productionFields));
@@ -341,15 +359,47 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   // ── 8. Data Schema ──────────────────────────────────────────────
 
+  // Data schema entries can SOURCE their value from several places instead
+  // of storing it directly. At most one source should be set at a time.
+  const economyLinkFieldEnum = z.enum([
+    "buyValue",
+    "minBuyValue",
+    "sellValue",
+    "maxSellValue",
+    "unlockValue",
+  ]);
+  const productionFieldEnum = z.enum([
+    "minOutput",
+    "maxOutput",
+    "intervalSeconds",
+    "craftTimeSeconds",
+    "capacity",
+    "outputBuyEffective",
+    "outputMinBuyValue",
+    "outputSellEffective",
+    "outputMaxSellValue",
+    "outputUnlockValue",
+  ]);
+
   const dataSchemaEntrySchema = z.object({
     id: z.string().optional().describe("Entry ID (auto-generated if omitted)"),
-    key: z.string().describe("Data key (e.g. max_hp)"),
-    label: z.string().describe("Display label"),
+    key: z.string().describe("Data key (e.g. max_hp). Ignored when libraryRef is set — the Library entry's key takes precedence."),
+    label: z.string().describe("Display label. Ignored when libraryRef is set."),
+    libraryRef: z.object({
+      libraryAddonId: z.string().describe("Outer ID of the Field Library addon"),
+      entryId: z.string().describe("Entry ID inside the Field Library"),
+    }).optional().describe("Bind key/label to a Field Library entry — keeps names consistent across schemas."),
     valueType: z.enum(["int", "float", "seconds", "percent", "boolean", "string"]).describe("Value type"),
-    value: z.union([z.number(), z.boolean(), z.string()]).describe("Default value"),
+    value: z.union([z.number(), z.boolean(), z.string()]).describe("Default value (ignored when a source ref is set)"),
     min: z.number().optional().describe("Minimum value"),
     max: z.number().optional().describe("Maximum value"),
     unit: z.string().optional().describe("Display unit (e.g. 'hp', 's')"),
+    unitXpRef: z.string().optional().describe("Section ID of an xpBalance addon — shows unit as XP per level."),
+    economyLinkRef: z.string().optional().describe("Section ID that has an economyLink addon — sources the value from it."),
+    economyLinkField: economyLinkFieldEnum.optional().describe("Which field from the Economy Link addon to pull."),
+    productionRef: z.string().optional().describe("Addon ID of a Production addon in the same section — sources the value from it."),
+    productionField: productionFieldEnum.optional().describe("Which field from the Production addon to pull."),
+    usePageDataId: z.boolean().optional().describe("When true, value is derived from the section's dataId field."),
     notes: z.string().optional().describe("Design notes"),
   });
 
