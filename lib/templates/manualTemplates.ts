@@ -1,4 +1,5 @@
 import type { AppLocale } from "@/lib/i18n/config";
+import type { BuildPageTypeAddonsOptions, PageTypeId } from "@/lib/pageTypes/registry";
 
 export type WizardProjectType = "digital_game";
 export type WizardGenre = "rpg" | "roguelike" | "platformer" | "puzzle" | "simulation";
@@ -19,6 +20,18 @@ export type TemplateSection = {
   title: string;
   content: string;
   subsections?: TemplateSection[];
+  /**
+   * Optional page type assignment. When present, the section is created with
+   * the page type's default addons seeded — the same way the sidebar's
+   * page-type picker does — instead of a plain text-only section.
+   *
+   * `options` is fed into `buildPageTypeAddons` to pre-seed the addons
+   * (e.g. attribute presets, seeded currency defaults, etc.).
+   */
+  pageType?: {
+    id: PageTypeId;
+    options?: BuildPageTypeAddonsOptions;
+  };
 };
 
 export type ResolvedTemplate = {
@@ -41,8 +54,9 @@ const section = (
   id: string,
   title: string,
   content: string,
-  subsections?: TemplateSection[]
-): TemplateSection => ({ id, title, content, subsections });
+  subsections?: TemplateSection[],
+  pageType?: TemplateSection["pageType"]
+): TemplateSection => ({ id, title, content, subsections, pageType });
 
 const GENRE_META: Record<WizardGenre, GenreMeta> = {
   rpg: {
@@ -183,6 +197,91 @@ const TEMPLATE_TEXT_TRANSLATIONS: Record<string, LocaleText> = {
   "Expansao de Conteudo": { en: "Content Expansion", es: "Expansión de contenido" },
 };
 
+// ───────────────────────────────────────────────────────────────────
+// Page-type seed helpers
+// ───────────────────────────────────────────────────────────────────
+// Small factories that build `BuildPageTypeAddonsOptions` payloads used
+// to pre-seed addons on page-typed template sections. Kept here — not in
+// the registry — because they're opinionated defaults scoped to template
+// starter kits, not to the app-wide page type system.
+
+/**
+ * Progression table seed covering the most common 1→20 level range with a
+ * gentle exponential growth. Good default for starter kits because it shows
+ * the progression curve visibly without feeling overwhelming.
+ */
+function seedProgression1to20(): TemplateSection["pageType"] {
+  return {
+    id: "progression",
+    // progression page type seeds xpBalance + progressionTable with its own
+    // defaults; we don't need to override here — tuning is done in the UI.
+  };
+}
+
+/** RPG-style attributes: HP, ATK, DEF, MAG, SPD. */
+function seedRpgAttributes(): TemplateSection["pageType"] {
+  return {
+    id: "attributeDefinitions",
+    options: {
+      attributeDefinitionsOverrides: {
+        attributes: [
+          { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
+          { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
+          { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
+          { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
+          { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
+        ],
+      },
+    },
+  };
+}
+
+/** Platformer-style attributes: HP and Speed — simpler, movement-centric. */
+function seedPlatformerAttributes(): TemplateSection["pageType"] {
+  return {
+    id: "attributeDefinitions",
+    options: {
+      attributeDefinitionsOverrides: {
+        attributes: [
+          { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
+          { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
+          { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
+        ],
+      },
+    },
+  };
+}
+
+/** Simple economy page — defaults to the registry's seeded currency. */
+function seedEconomy(): TemplateSection["pageType"] {
+  return { id: "economy" };
+}
+
+/** Single character example (class/enemy) — relies on registry defaults. */
+function seedCharacterExample(): TemplateSection["pageType"] {
+  return { id: "characters" };
+}
+
+/** Single equipment item example. */
+function seedEquipmentExample(): TemplateSection["pageType"] {
+  return { id: "equipmentItem" };
+}
+
+/** Single consumable/collectible item example. */
+function seedItemExample(): TemplateSection["pageType"] {
+  return { id: "items" };
+}
+
+/** Craft table example — starts empty, user links recipes later. */
+function seedCraftTableExample(): TemplateSection["pageType"] {
+  return { id: "craftTable" };
+}
+
+/** Narrative rich-doc page for lore/script content. */
+function seedNarrative(): TemplateSection["pageType"] {
+  return { id: "narrative" };
+}
+
 const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
   mini: [
     section(
@@ -198,7 +297,9 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
     section(
       "common-mini-progressao",
       "Progressao",
-      "Explique como o jogador evolui, desbloqueia conteudo e percebe ganho de poder."
+      "Explique como o jogador evolui, desbloqueia conteudo e percebe ganho de poder.",
+      undefined,
+      seedProgression1to20()
     ),
     section(
       "common-mini-controles",
@@ -235,7 +336,9 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
     section(
       "common-medio-progressao",
       "Progressao e Dificuldade",
-      "Curva de progressao, marcos, desbloqueios e controle de dificuldade."
+      "Curva de progressao, marcos, desbloqueios e controle de dificuldade.",
+      undefined,
+      seedProgression1to20()
     ),
     section(
       "common-medio-controles",
@@ -292,8 +395,20 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
       "Progressao, Dificuldade e Balanceamento",
       "Curva de poder, gates de conteudo, tuning de dificuldade e prevencao de power creep.",
       [
-        section("common-completo-balance-xp", "Balanceamento de XP", "Custos de nivel, pacing e marcos de dominancia."),
-        section("common-completo-balance-economia", "Balanceamento de Economia", "Fontes/sinks, inflacao e controles antifarming."),
+        section(
+          "common-completo-balance-xp",
+          "Balanceamento de XP",
+          "Custos de nivel, pacing e marcos de dominancia.",
+          undefined,
+          seedProgression1to20()
+        ),
+        section(
+          "common-completo-balance-economia",
+          "Balanceamento de Economia",
+          "Fontes/sinks, inflacao e controles antifarming.",
+          undefined,
+          seedEconomy()
+        ),
       ]
     ),
     section(
@@ -347,19 +462,46 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
 const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>> = {
   rpg: {
     mini: [
-      section("rpg-mini-classes", "Classes e Atributos", "Classes iniciais, atributos principais e identidade de build."),
+      section(
+        "rpg-mini-classes",
+        "Classes e Atributos",
+        "Classes iniciais, atributos principais e identidade de build.",
+        undefined,
+        seedRpgAttributes()
+      ),
       section("rpg-mini-combate", "Combate", "Modelo de combate, alvo e fluxo de turno/tempo real."),
-      section("rpg-mini-mundo", "Mundo e Narrativa", "Tema, faccoes e objetivo da jornada principal."),
+      section("rpg-mini-mundo", "Mundo e Narrativa", "Tema, faccoes e objetivo da jornada principal.", undefined, seedNarrative()),
     ],
     medio: [
       section("rpg-medio-personagens", "Personagens Jogaveis", "Classes, papeis e assinatura de gameplay por classe.", [
-        section("rpg-medio-atributos", "Atributos", "STR, AGI, INT, VIT e impacto numerico."),
+        section(
+          "rpg-medio-atributos",
+          "Atributos",
+          "STR, AGI, INT, VIT e impacto numerico.",
+          undefined,
+          seedRpgAttributes()
+        ),
+        section(
+          "rpg-medio-classe-exemplo",
+          "Classe de Exemplo: Guerreiro",
+          "Exemplo de classe pronta para duplicar — ajuste nome, atributos e habilidades.",
+          undefined,
+          seedCharacterExample()
+        ),
         section("rpg-medio-skills", "Skills", "Ativas/passivas, cooldowns e custos."),
       ]),
       section("rpg-medio-combate", "Sistema de Combate", "Modelo de dano, defesa, critico, esquiva e status effects."),
-      section("rpg-medio-itens", "Itens e Equipamentos", "Tipos, raridade, equipaveis, consumiveis e upgrades."),
-      section("rpg-medio-narrativa", "Narrativa e NPCs", "Arco principal, lore, faccoes e missao secundaria."),
-      section("rpg-medio-economia", "Economia", "Moedas, fontes, sinks e controle de progressao economica."),
+      section("rpg-medio-itens", "Itens e Equipamentos", "Tipos, raridade, equipaveis, consumiveis e upgrades.", [
+        section(
+          "rpg-medio-item-exemplo",
+          "Item de Exemplo: Espada Curta",
+          "Exemplo de equipamento pronto para duplicar — ajuste preco, atributos e inventario.",
+          undefined,
+          seedEquipmentExample()
+        ),
+      ]),
+      section("rpg-medio-narrativa", "Narrativa e NPCs", "Arco principal, lore, faccoes e missao secundaria.", undefined, seedNarrative()),
+      section("rpg-medio-economia", "Economia", "Moedas, fontes, sinks e controle de progressao economica.", undefined, seedEconomy()),
     ],
     completo: [
       section("rpg-completo-mecanicas", "Mecanicas Principais de RPG", "Exploracao, combate, progressao e inventario com regras detalhadas.", [
@@ -367,7 +509,27 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         section("rpg-completo-inventario", "Inventario", "Limites, stack, filtros e comparacao de itens."),
       ]),
       section("rpg-completo-personagens", "Personagens, Classes e Buildcraft", "Design de classes, atributos base e espacos de customizacao.", [
-        section("rpg-completo-classes", "Classes", "Funcoes, pontos fortes, counters e sinergias."),
+        section(
+          "rpg-completo-atributos-base",
+          "Atributos Base",
+          "Atributos compartilhados entre todas as classes.",
+          undefined,
+          seedRpgAttributes()
+        ),
+        section(
+          "rpg-completo-classes",
+          "Classes",
+          "Funcoes, pontos fortes, counters e sinergias.",
+          [
+            section(
+              "rpg-completo-classe-exemplo",
+              "Classe de Exemplo: Guerreiro",
+              "Exemplo para duplicar e ajustar.",
+              undefined,
+              seedCharacterExample()
+            ),
+          ]
+        ),
         section("rpg-completo-skill-tree", "Arvore de Habilidades", "Ramos, custos e milestones de build."),
       ]),
       section("rpg-completo-combate", "Sistema de Combate Avancado", "Formula de dano, resistencia, buffs/debuffs, IA e telemetria de combate.", [
@@ -375,12 +537,27 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         section("rpg-completo-ia-inimiga", "IA Inimiga e Bosses", "Comportamentos, fases e leitura de telegraph."),
       ]),
       section("rpg-completo-itens", "Itens, Equipamentos e Loot", "Taxonomia de item, raridade, drop table, upgrade e item sinks.", [
+        section(
+          "rpg-completo-item-exemplo",
+          "Item de Exemplo: Espada Curta",
+          "Equipamento pronto para duplicar.",
+          undefined,
+          seedEquipmentExample()
+        ),
         section("rpg-completo-loot", "Politica de Loot", "Tabelas, pity timers, garantia minima e anti-frustracao."),
         section("rpg-completo-upgrade", "Upgrade e Encantamento", "Custos, falhas, risco e progressao de gear."),
       ]),
-      section("rpg-completo-narrativa", "Narrativa, Lore e Missoes", "Main quest, side quest, worldbuilding e impacto de escolhas."),
-      section("rpg-completo-secundarios", "Sistemas Secundarios", "Crafting, guildas, ranking, eventos e PvP opcional."),
-      section("rpg-completo-economia", "Economia e Monetizacao de RPG", "Modelagem de moedas, sinks, progressao e limites de monetizacao."),
+      section("rpg-completo-narrativa", "Narrativa, Lore e Missoes", "Main quest, side quest, worldbuilding e impacto de escolhas.", undefined, seedNarrative()),
+      section("rpg-completo-secundarios", "Sistemas Secundarios", "Crafting, guildas, ranking, eventos e PvP opcional.", [
+        section(
+          "rpg-completo-mesa-craft",
+          "Mesa de Craft",
+          "Estacao que agrega receitas — ligue receitas existentes depois.",
+          undefined,
+          seedCraftTableExample()
+        ),
+      ]),
+      section("rpg-completo-economia", "Economia e Monetizacao de RPG", "Modelagem de moedas, sinks, progressao e limites de monetizacao.", undefined, seedEconomy()),
     ],
   },
   roguelike: {
@@ -394,7 +571,13 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
       section("rogue-medio-procedural", "Geracao Procedural", "Regras de composicao de salas, eventos e encontros."),
       section("rogue-medio-builds", "Buildcraft e Sinergias", "Categorias de build, tags e combinacoes proibidas."),
       section("rogue-medio-meta", "Metaprogressao e Persistencia", "Unlock trees, meta currency e onboarding progressivo."),
-      section("rogue-medio-economia", "Economia de Run", "Drops, lojas, rerolls e custo de decisao."),
+      section(
+        "rogue-medio-economia",
+        "Economia de Run",
+        "Drops, lojas, rerolls e custo de decisao.",
+        undefined,
+        seedEconomy()
+      ),
     ],
     completo: [
       section("rogue-completo-run-architecture", "Arquitetura de Run", "Modelo completo de inicio ao boss final com checkpoints de decisao.", [
@@ -406,7 +589,13 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
       section("rogue-completo-buildcraft", "Buildcraft", "Sistemas de tags, sinergias, antisinergias e teto de poder."),
       section("rogue-completo-metaprogressao", "Metaprogressao", "Desbloqueios permanentes sem invalidar desafio de run."),
       section("rogue-completo-bosses", "Elites e Bosses", "Conjuntos de padroes, telegrafo e regras de fairness."),
-      section("rogue-completo-economia", "Economia e Loja de Run", "Drops, rerolls, currency sinks e equilibrio de recompensa."),
+      section(
+        "rogue-completo-economia",
+        "Economia e Loja de Run",
+        "Drops, rerolls, currency sinks e equilibrio de recompensa.",
+        undefined,
+        seedEconomy()
+      ),
     ],
   },
   platformer: {
@@ -417,10 +606,25 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
     ],
     medio: [
       section("plat-medio-physics", "Physics e Controle", "Aceleracao, desaceleracao, coyote time e jump buffering."),
+      section(
+        "plat-medio-atributos",
+        "Atributos do Jogador",
+        "Atributos base do personagem (HP, velocidade, altura de pulo).",
+        undefined,
+        seedPlatformerAttributes()
+      ),
       section("plat-medio-level-design", "Level Design", "Principios de ensino de mecanica e leitura de risco."),
       section("plat-medio-checkpoints", "Checkpoints e Recuperacao", "Distribuicao de checkpoints e tempo de retorno."),
       section("plat-medio-enemies", "Inimigos e Obstaculos", "Tipos, variacoes e combinacoes por mundo."),
-      section("plat-medio-recompensas", "Recompensas e Colecionaveis", "Itens opcionais e incentivo de mastery."),
+      section("plat-medio-recompensas", "Recompensas e Colecionaveis", "Itens opcionais e incentivo de mastery.", [
+        section(
+          "plat-medio-colecionavel-exemplo",
+          "Colecionavel de Exemplo: Moeda",
+          "Exemplo de item colecionavel para duplicar.",
+          undefined,
+          seedItemExample()
+        ),
+      ]),
     ],
     completo: [
       section("plat-completo-movimento", "Sistema de Movimento Avancado", "Modelo tecnico completo para consistencia de controle.", [
@@ -429,9 +633,24 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
       ]),
       section("plat-completo-level-architecture", "Arquitetura de Fases", "Blueprint de fase com onboarding, combinacao e mastery."),
       section("plat-completo-curva", "Curva de Dificuldade e Pacing", "Cadencia de desafio por ato/mundo e descanso cognitivo."),
+      section(
+        "plat-completo-atributos",
+        "Atributos do Jogador",
+        "Atributos base do personagem.",
+        undefined,
+        seedPlatformerAttributes()
+      ),
       section("plat-completo-combate", "Combate (se aplicavel)", "Regras de dano, invencibilidade e leitura de telegraph."),
       section("plat-completo-bosses", "Boss Fights", "Design de fases de boss, pattern readability e tuning."),
-      section("plat-completo-colecionaveis", "Economia de Colecionaveis", "Colecionaveis, unlocks e recompensas de habilidade."),
+      section("plat-completo-colecionaveis", "Economia de Colecionaveis", "Colecionaveis, unlocks e recompensas de habilidade.", [
+        section(
+          "plat-completo-colecionavel-exemplo",
+          "Colecionavel de Exemplo: Moeda",
+          "Item colecionavel para duplicar.",
+          undefined,
+          seedItemExample()
+        ),
+      ], seedEconomy()),
       section("plat-completo-qa", "Playtest de Sensacao de Controle", "Plano de teste focado em resposta e frustacao percebida."),
     ],
   },
@@ -468,18 +687,51 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
       section("sim-mini-progressao", "Progressao", "Desbloqueios por marcos e expansao gradual."),
     ],
     medio: [
-      section("sim-medio-cadeias", "Cadeias de Producao", "Cadeias de valor e dependencias entre modulos."),
-      section("sim-medio-economia", "Economia Sistemica", "Fontes/sinks de moeda, inflacao e estabilidade."),
+      section("sim-medio-cadeias", "Cadeias de Producao", "Cadeias de valor e dependencias entre modulos.", [
+        section(
+          "sim-medio-mesa-exemplo",
+          "Mesa de Producao de Exemplo",
+          "Estacao que agrupa receitas — ligue receitas criadas depois.",
+          undefined,
+          seedCraftTableExample()
+        ),
+      ]),
+      section(
+        "sim-medio-economia",
+        "Economia Sistemica",
+        "Fontes/sinks de moeda, inflacao e estabilidade.",
+        undefined,
+        seedEconomy()
+      ),
       section("sim-medio-agentes", "Agentes e Comportamento", "NPCs/entidades e regras de tomada de decisao."),
       section("sim-medio-eventos", "Eventos Dinamicos", "Eventos aleatorios e resposta do sistema."),
       section("sim-medio-ui", "UI de Operacao e Telemetria", "Indicadores operacionais e alertas importantes."),
     ],
     completo: [
       section("sim-completo-modelagem", "Modelagem de Sistemas", "Representar sistemas, dependencias e limites operacionais.", [
-        section("sim-completo-cadeias", "Cadeias de Producao", "Entradas, transformacoes, perdas e throughput alvo."),
+        section(
+          "sim-completo-cadeias",
+          "Cadeias de Producao",
+          "Entradas, transformacoes, perdas e throughput alvo.",
+          [
+            section(
+              "sim-completo-mesa-exemplo",
+              "Mesa de Producao de Exemplo",
+              "Estacao que agrupa receitas.",
+              undefined,
+              seedCraftTableExample()
+            ),
+          ]
+        ),
         section("sim-completo-buffer", "Buffers e Capacidade", "Estoques, capacidade maxima e gargalos."),
       ]),
-      section("sim-completo-economia", "Economia de Simulacao", "Politica de preco, inflacao, subsidios e sinks estruturais."),
+      section(
+        "sim-completo-economia",
+        "Economia de Simulacao",
+        "Politica de preco, inflacao, subsidios e sinks estruturais.",
+        undefined,
+        seedEconomy()
+      ),
       section("sim-completo-agentes", "Agentes, IA e Comportamentos", "Regras de decisao, prioridades e conflitos entre agentes."),
       section("sim-completo-riscos", "Eventos e Gestao de Crise", "Eventos de risco, impacto sistico e planos de contingencia."),
       section("sim-completo-balance", "Balanceamento e Tuning", "Parametros de tuning e telemetria para estabilidade de loop."),

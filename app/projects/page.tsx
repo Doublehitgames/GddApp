@@ -246,6 +246,7 @@ export default function ProjectsPage() {
         addSection,
         addSubsection,
         selectedRootSectionIds,
+        t,
       });
       router.push(`/projects/${projectId}`);
     } catch (e) {
