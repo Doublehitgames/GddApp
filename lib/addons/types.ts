@@ -314,11 +314,29 @@ export type AttributeProfileAddonDraft = {
 
 export type AttributeModifierMode = "add" | "mult" | "set";
 
+export type AttributeModifierStacking = "unique" | "refresh" | "stack";
+export type AttributeModifierCategory = "buff" | "debuff" | "neutral";
+
 export type AttributeModifierEntry = {
   id: string;
   attributeKey: string;
   mode: AttributeModifierMode;
   value: number | boolean;
+  /** When true, the modifier is applied temporarily. Absent/false means permanent. */
+  temporary?: boolean;
+  /** Duration in seconds while `temporary` is true. */
+  durationSeconds?: number;
+  /** How re-applications are handled. Absent = engine default. */
+  stackingRule?: AttributeModifierStacking;
+  /**
+   * If set (and `temporary` is true), applies `value` every N seconds for the duration.
+   * Absent means the modifier is a one-shot that stays active for `durationSeconds`.
+   */
+  tickIntervalSeconds?: number;
+  /** Gameplay category. Guides UI/AI (e.g. dispel, resistance). */
+  category?: AttributeModifierCategory;
+  /** Free-form tags (e.g. "poison", "magical", "bleed"). */
+  tags?: string[];
 };
 
 export type AttributeModifiersAddonDraft = {

@@ -11,11 +11,16 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { AttributeModifiersAddonDraft, AttributeModifierMode } from "@/lib/addons/types";
+import type {
+  AttributeModifiersAddonDraft,
+  AttributeModifierMode,
+  AttributeModifierStacking,
+  AttributeModifierCategory,
+} from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
-import { CommitNumberInput } from "@/components/common/CommitInput";
+import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 
 interface AttributeModifiersAddonPanelProps {
   addon: AttributeModifiersAddonDraft;
@@ -290,6 +295,140 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                                     className={INPUT_CLASS}
                                   />
                                 )}
+                              </label>
+                            </div>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                              <div>
+                                <span className="mb-1 block text-xs text-gray-400">
+                                  {t("attributeModifiersAddon.temporaryLabel", "Temporário")}
+                                </span>
+                                <div className="flex items-center gap-2 rounded-lg border border-gray-600 bg-gray-900 px-3 py-2">
+                                  <ToggleSwitch
+                                    checked={Boolean(row.temporary)}
+                                    onChange={(next) =>
+                                      updateRow(row.id, {
+                                        temporary: next,
+                                        durationSeconds: next ? (row.durationSeconds ?? 0) : undefined,
+                                      })
+                                    }
+                                    ariaLabel={`toggle-temporary-${row.id}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      updateRow(row.id, {
+                                        temporary: !row.temporary,
+                                        durationSeconds: !row.temporary ? (row.durationSeconds ?? 0) : undefined,
+                                      })
+                                    }
+                                    className="text-[11px] text-gray-400 hover:text-gray-200"
+                                  >
+                                    {row.temporary
+                                      ? t("attributeModifiersAddon.temporaryOn", "Por tempo limitado")
+                                      : t("attributeModifiersAddon.temporaryOff", "Permanente")}
+                                  </button>
+                                </div>
+                              </div>
+                              {row.temporary && (
+                                <div>
+                                  <span className="mb-1 block text-xs text-gray-400">
+                                    {t("attributeModifiersAddon.durationLabel", "Duração (segundos)")}
+                                  </span>
+                                  <CommitNumberInput
+                                    value={row.durationSeconds ?? 0}
+                                    onCommit={(next) =>
+                                      updateRow(row.id, { durationSeconds: next < 0 ? 0 : next })
+                                    }
+                                    step="1"
+                                    integer
+                                    className={INPUT_CLASS}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-3 rounded-lg border border-gray-700 bg-gray-900/50 p-2.5">
+                              <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
+                                {t("attributeModifiersAddon.behaviorBlockLabel", "Comportamento")}
+                              </p>
+                              <div className="grid gap-2 sm:grid-cols-3">
+                                <label>
+                                  <span className="mb-1 block text-xs text-gray-400">
+                                    {t("attributeModifiersAddon.stackingLabel", "Empilhamento")}
+                                  </span>
+                                  <select
+                                    value={row.stackingRule || ""}
+                                    onChange={(event) =>
+                                      updateRow(row.id, {
+                                        stackingRule: (event.target.value || undefined) as
+                                          | AttributeModifierStacking
+                                          | undefined,
+                                      })
+                                    }
+                                    className={INPUT_CLASS}
+                                  >
+                                    <option value="">{t("attributeModifiersAddon.stackingDefault", "Padrão")}</option>
+                                    <option value="unique">{t("attributeModifiersAddon.stackingUnique", "Único (ignora se já ativo)")}</option>
+                                    <option value="refresh">{t("attributeModifiersAddon.stackingRefresh", "Renovar (reseta duração)")}</option>
+                                    <option value="stack">{t("attributeModifiersAddon.stackingStack", "Acumular")}</option>
+                                  </select>
+                                </label>
+                                <label>
+                                  <span className="mb-1 block text-xs text-gray-400">
+                                    {t("attributeModifiersAddon.categoryLabel", "Categoria")}
+                                  </span>
+                                  <select
+                                    value={row.category || ""}
+                                    onChange={(event) =>
+                                      updateRow(row.id, {
+                                        category: (event.target.value || undefined) as
+                                          | AttributeModifierCategory
+                                          | undefined,
+                                      })
+                                    }
+                                    className={INPUT_CLASS}
+                                  >
+                                    <option value="">{t("attributeModifiersAddon.categoryNone", "Não definida")}</option>
+                                    <option value="buff">{t("attributeModifiersAddon.categoryBuff", "Buff")}</option>
+                                    <option value="debuff">{t("attributeModifiersAddon.categoryDebuff", "Debuff")}</option>
+                                    <option value="neutral">{t("attributeModifiersAddon.categoryNeutral", "Neutro")}</option>
+                                  </select>
+                                </label>
+                                {row.temporary && (
+                                  <label>
+                                    <span className="mb-1 block text-xs text-gray-400">
+                                      {t("attributeModifiersAddon.tickIntervalLabel", "Intervalo de tick (s)")}
+                                    </span>
+                                    <CommitNumberInput
+                                      value={row.tickIntervalSeconds ?? 0}
+                                      onCommit={(next) =>
+                                        updateRow(row.id, {
+                                          tickIntervalSeconds: next > 0 ? Math.floor(next) : undefined,
+                                        })
+                                      }
+                                      step="1"
+                                      integer
+                                      className={INPUT_CLASS}
+                                    />
+                                  </label>
+                                )}
+                              </div>
+                              <label className="mt-2 block">
+                                <span className="mb-1 block text-xs text-gray-400">
+                                  {t("attributeModifiersAddon.tagsLabel", "Tags (separadas por vírgula)")}
+                                </span>
+                                <CommitTextInput
+                                  value={(row.tags || []).join(", ")}
+                                  onCommit={(next) => {
+                                    const parsed = next
+                                      .split(",")
+                                      .map((s) => s.trim().toLowerCase())
+                                      .filter(Boolean);
+                                    const unique = Array.from(new Set(parsed));
+                                    updateRow(row.id, { tags: unique.length > 0 ? unique : undefined });
+                                  }}
+                                  className={INPUT_CLASS}
+                                  placeholder={t("attributeModifiersAddon.tagsPlaceholder", "ex: poison, magical")}
+                                />
                               </label>
                             </div>
                           </div>

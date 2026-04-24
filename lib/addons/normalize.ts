@@ -717,11 +717,42 @@ function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAdd
     const mode = item.mode === "mult" || item.mode === "set" ? item.mode : "add";
     const numeric = asFiniteNumber(item.value);
     const normalizedValue = numeric == null ? asBooleanLoose(item.value) : numeric;
+    const temporary = item.temporary === true ? true : undefined;
+    const rawDuration = asFiniteNumber(item.durationSeconds);
+    const durationSeconds = temporary && rawDuration != null && rawDuration >= 0
+      ? Math.floor(rawDuration)
+      : undefined;
+    const stackingRule =
+      item.stackingRule === "unique" || item.stackingRule === "refresh" || item.stackingRule === "stack"
+        ? item.stackingRule
+        : undefined;
+    const rawTick = asFiniteNumber(item.tickIntervalSeconds);
+    const tickIntervalSeconds = temporary && rawTick != null && rawTick > 0
+      ? Math.floor(rawTick)
+      : undefined;
+    const category =
+      item.category === "buff" || item.category === "debuff" || item.category === "neutral"
+        ? item.category
+        : undefined;
+    const rawTags = Array.isArray(item.tags) ? item.tags : [];
+    const tagSet = new Set<string>();
+    for (const tag of rawTags) {
+      if (typeof tag !== "string") continue;
+      const trimmed = tag.trim().toLowerCase();
+      if (trimmed) tagSet.add(trimmed);
+    }
+    const tags = tagSet.size > 0 ? Array.from(tagSet) : undefined;
     modifiers.push({
       id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `attr_mod_${index + 1}`,
       attributeKey,
       mode,
       value: normalizedValue,
+      ...(temporary ? { temporary: true } : {}),
+      ...(durationSeconds !== undefined ? { durationSeconds } : {}),
+      ...(stackingRule ? { stackingRule } : {}),
+      ...(tickIntervalSeconds !== undefined ? { tickIntervalSeconds } : {}),
+      ...(category ? { category } : {}),
+      ...(tags ? { tags } : {}),
     });
   }
   return {
