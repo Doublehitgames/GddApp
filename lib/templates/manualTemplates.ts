@@ -361,169 +361,1056 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
       "Visao Geral",
       "Defina nome do jogo, pitch, publico-alvo, plataformas e diferencial principal."
     ),
-    section(
+    narrative(
       "common-mini-core-loop",
       "Core Loop",
-      "Descreva o loop primario e o resultado esperado por sessao de jogo."
+      "O ciclo principal que o jogador repete — a essencia do jogo.",
+      [
+        h("O que e um Core Loop?", 2),
+        p(
+          "Core Loop e o ciclo de acoes que o jogador repete o tempo todo. E a resposta pra \"o que o jogador ESTA FAZENDO quando joga seu jogo?\"."
+        ),
+        h("Exemplos por Genero", 3),
+        li("RPG: explorar → combater → ganhar XP/loot → melhorar personagem → explorar area mais dificil."),
+        li("Roguelike: descer andar → coletar itens → lutar boss → morrer/avancar → gastar meta currency."),
+        li("Platformer: correr → pular → alcancar checkpoint → enfrentar desafio novo."),
+        li("Puzzle: ver fase → testar hipotese → ajustar → resolver → proxima fase."),
+        li("Simulation: coletar recursos → transformar → distribuir → reinvestir."),
+        callout(
+          "design-decision",
+          "Um core loop deve caber numa frase. Se precisa de um paragrafo pra descrever, voce tem loops demais — escolha o dominante."
+        ),
+        callout(
+          "warning",
+          "Todo o resto do jogo (narrativa, UI, economia) gira em torno do core loop. Comece por ele — nao tente definir economia antes de saber o que o jogador vai fazer com o dinheiro."
+        ),
+      ]
     ),
-    section(
-      "common-mini-progressao",
-      "Progressao",
-      "Explique como o jogador evolui, desbloqueia conteudo e percebe ganho de poder.",
-      undefined,
-      seedProgression1to20()
-    ),
-    section(
+    {
+      id: "common-mini-progressao",
+      title: "Progressao",
+      content: "Como o jogador evolui, desbloqueia conteudo e percebe ganho de poder.",
+      pageType: {
+        id: "progression",
+        options: {
+          richDocBlocks: [
+            h("O que e Progressao?", 2),
+            p(
+              "Progressao e a sensacao de \"estou ficando melhor\" que o jogador percebe ao longo da sessao e entre sessoes. Pode ser numerica (nivel/stats), de habilidade (player aprende melhor), de conteudo (novas areas), ou narrativa (historia avanca)."
+            ),
+            h("Tipos de Progressao", 3),
+            li("Numerica: stats sobem, itens melhores, numeros maiores."),
+            li("De Habilidade: player executa melhor, mesmo sem mudanca no jogo."),
+            li("De Conteudo: novas areas, inimigos, mecanicas desbloqueadas."),
+            li("Narrativa: historia avanca, novos NPCs, mundo muda."),
+            callout(
+              "design-decision",
+              "Os melhores jogos misturam 3+ tipos. So numerica vira grind; so habilidade vira frustracao; so conteudo vira drift (nunca termina). Equilibre."
+            ),
+            callout(
+              "note",
+              "A tabela de progressao ao lado vem com uma curva de XP exponencial 1-20. Use-a como ponto de partida e ajuste os numeros em playtest."
+            ),
+            callout(
+              "warning",
+              "Progressao e o que faz o jogador VOLTAR amanha. Se ele nao tem claro o que ganha por jogar mais 30min, voce perde retencao."
+            ),
+          ],
+        },
+      },
+    },
+    narrative(
       "common-mini-controles",
       "Controles e Input",
-      "Mapeamento minimo por plataforma e requisitos basicos de acessibilidade."
+      "Mapeamento basico por plataforma.",
+      [
+        h("Controles e Input", 2),
+        p(
+          "Como o jogador interage com o jogo fisicamente. Mapping claro aqui evita retrabalho enorme depois."
+        ),
+        h("Regras de Ouro", 3),
+        li("Maximo 4-5 botoes principais no core loop. Mais vira luta com controles."),
+        li("Botoes devem ser semanticamente agrupados: \"acoes ofensivas\" juntas, \"acoes defensivas\" juntas."),
+        li("Plataforma mobile: alvo minimo de 44px por hit area (Apple HIG)."),
+        callout(
+          "design-decision",
+          "Controles bons sao invisiveis: jogador esquece deles e foca no jogo. Controles ruins aparecem como frustracao constante."
+        ),
+        callout(
+          "warning",
+          "Testar controles com PAD + TECLADO + MOUSE (se PC) desde cedo. Alguns designs funcionam num, falham no outro."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-mini-ui",
       "UX/UI Essencial",
-      "HUD minimo, feedback de sucesso/erro e fluxo principal de menus."
+      "HUD minimo, feedback visual e fluxo de menus.",
+      [
+        h("UX/UI Essencial", 2),
+        p(
+          "HUD (Heads-Up Display) mostra informacao em jogo. Menus sao telas fora do jogo. Ambos precisam ser rapidos de ler e de navegar."
+        ),
+        h("HUD", 3),
+        li("Mostra SO informacao critica: HP, recursos chave, alerta urgente."),
+        li("Sempre no mesmo canto da tela — jogador aprende onde olhar."),
+        li("Some em momentos cinematicos."),
+        h("Menus", 3),
+        li("Fluxo principal com no maximo 3 clicks ate qualquer tela."),
+        li("Back button consistente (mesmo local em todas as telas)."),
+        li("Feedback imediato: todo botao pressionado responde em < 100ms."),
+        callout(
+          "design-decision",
+          "HUD minimalista vence HUD rico em quase todos os casos. Se voce DEVE mostrar algo, pergunte: \"quando o jogador consulta isso?\" Se raramente, fora do HUD."
+        ),
+        callout(
+          "warning",
+          "Evite popup de tutorial no meio do gameplay. Ensine pelo DESIGN (ver Onboarding Pedagogico em Puzzle, se tem), nao por texto."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-mini-roadmap",
       "Roadmap Inicial",
-      "Passos para prototipo e primeira versao jogavel."
+      "Do protipo ao primeiro jogavel — marcos realistas.",
+      [
+        h("Roadmap Inicial", 2),
+        p(
+          "Roadmap e o plano de construcao do jogo em marcos. Cada marco entrega algo jogavel e testavel. Sem marcos, projeto naufraga em \"quase pronto\" eterno."
+        ),
+        h("Marcos Tipicos pra Mini-Jogo", 3),
+        li("M1 — Protipo vertical: 1 tela, 1 mecanica, sem arte final (2-4 semanas)."),
+        li("M2 — Primeiro jogavel: core loop completo, 3-5 fases, arte placeholder (6-10 semanas)."),
+        li("M3 — Content complete: todas as fases, arte final 70%, audio 50% (12-16 semanas)."),
+        li("M4 — Polish + lancamento: bugs, audio 100%, marketing (4-8 semanas)."),
+        callout(
+          "design-decision",
+          "Protipo vertical ANTES de content complete: voce prova que o core loop e divertido com 1 tela. Se nao for, mudar 1 tela e barato. Mudar 50 fases e catastrofico."
+        ),
+        callout(
+          "balance-note",
+          "Dobre todos os prazos. Solo dev: triplique. Nao e pessimismo — e estatistica. Jogos estao sempre atrasados."
+        ),
+        callout(
+          "warning",
+          "Se voce nao consegue quebrar o projeto em marcos claros, ainda nao tem projeto — tem ideia. Marcos sao o primeiro sinal de execucao real."
+        ),
+      ]
     ),
   ],
   medio: [
     // Visao Geral is now genre-specific — each genre provides its own rich,
     // narrative version (e.g. rpg-medio-visao-geral-elder).
-    section(
+    narrative(
       "common-medio-core-loop",
       "Core Loop e Loops Secundarios",
-      "Documentar loop principal e loops de suporte como economia, colecao e crafting."
+      "Loop principal + loops de suporte (economia, colecao, crafting).",
+      [
+        h("Core Loop Primario", 2),
+        p(
+          "O loop que o jogador executa 80% do tempo. Descreva em 3-5 passos curtos, de acao a recompensa, fechando em nova acao."
+        ),
+        h("Loops Secundarios", 3),
+        p(
+          "Loops que alimentam o primario mas nao sao o foco. Aparecem com menos frequencia, geralmente em momentos escolhidos pelo jogador."
+        ),
+        li("Economia: jogador vende/compra entre ciclos principais."),
+        li("Colecao: jogador junta itens raros encontrados na exploracao."),
+        li("Crafting: jogador transforma recursos entre sessoes."),
+        li("Social: jogador interage com outros entre runs."),
+        callout(
+          "design-decision",
+          "Loops secundarios NAO devem interromper o primario por mais de 1-2 min. Se \"comprar pocao\" exige 5min de menu, voce matou o flow."
+        ),
+        callout(
+          "balance-note",
+          "Playtest: peca pro jogador descrever o que \"fez\" no jogo. Se ele nao mencionar o core loop nas primeiras 3 frases, ele esta confuso sobre o que o jogo pede."
+        ),
+        callout(
+          "warning",
+          "Evite empilhar loops secundarios antes do primario estar redondo. 3 loops ruins nao viram 1 bom."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-medio-mecanicas",
       "Mecanicas Centrais",
-      "Listar mecanicas obrigatorias e regras de estado para cada sistema principal."
+      "As mecanicas que definem o jogo — o que o jogador faz moment-to-moment.",
+      [
+        h("Mecanicas Centrais", 2),
+        p(
+          "Mecanicas sao as acoes que o jogador executa + as regras que definem como o mundo responde. Diferenca pra \"feature\": uma feature e uma adicao (ex: sistema de guilda). Uma MECANICA e uma acao (ex: pular, atacar, negociar)."
+        ),
+        h("Categorias comuns", 3),
+        li("Movimento — como o jogador se move (correr, pular, esquivar, voar)."),
+        li("Interacao — como o jogador interage com o mundo (atacar, usar, falar, coletar)."),
+        li("Progressao — como o jogador evolui (ganhar XP, craftar, melhorar gear)."),
+        li("Recursos — como o jogador gerencia (vida, mana, moedas, inventario)."),
+        h("Regra de definicao", 3),
+        p(
+          "Pra cada mecanica, defina: entrada (botao/input), saida (resultado no jogo), regras de exceção (quando NAO funciona)."
+        ),
+        callout(
+          "design-decision",
+          "Mecanicas com exceção clara (ex: \"nao pode pular dentro da agua\") sao MAIS divertidas que mecanicas sempre disponiveis. A restricao e o que cria problema pra jogador resolver."
+        ),
+        callout(
+          "balance-note",
+          "Jogos bons tem 5-8 mecanicas centrais. Menos de 3: jogo raso. Mais de 10: jogador sobrecarregado. Se voce listou 15, pense o que pode fundir."
+        ),
+        callout(
+          "warning",
+          "Mecanicas devem aparecer no DESIGN antes de aparecer no jogo. Se voce esta implementando sem ter definido aqui, e receita de sistema incoerente."
+        ),
+      ]
     ),
-    section(
-      "common-medio-progressao",
-      "Progressao e Dificuldade",
-      "Curva de progressao, marcos, desbloqueios e controle de dificuldade.",
-      undefined,
-      seedProgression1to20()
-    ),
-    section(
+    {
+      id: "common-medio-progressao",
+      title: "Progressao e Dificuldade",
+      content: "Curva de progressao + dificuldade calibrada + marcos de desbloqueio.",
+      pageType: {
+        id: "progression",
+        options: {
+          richDocBlocks: [
+            h("Progressao e Dificuldade", 2),
+            p(
+              "Progressao e \"o que o jogador ganha ao jogar\". Dificuldade e \"qual desafio e apresentado\". As duas precisam andar juntas: se so sobe progressao, jogo vira trivial; se so sobe dificuldade, vira frustrante."
+            ),
+            h("Curva de Progressao", 3),
+            p(
+              "A tabela ao lado mostra valores por nivel. Exponencial (crescimento 1.15) e um bom default — cresce perceptivelmente mas nao explode. Ajuste em playtest."
+            ),
+            li("Linear: ganho constante por nivel. Funciona em puzzle/platformer."),
+            li("Exponencial: ganho acelera. Funciona em RPG/roguelike (matches time-to-max)."),
+            li("Softcap: ganho acelera ate X, depois achata. Funciona em MMO/long-term."),
+            h("Marcos de Desbloqueio", 3),
+            li("Toda 5-10 niveis, desbloqueie ALGO (nova mecanica, area, classe)."),
+            li("Evite \"niveis vazios\" (so stats sobem, nada novo acontece)."),
+            callout(
+              "design-decision",
+              "Milestones (nao so niveis) e o que mantem engajamento. Nivel 17 sem nada de novo e chato. Nivel 15 com \"desbloqueou skill nova\" mantem o jogador."
+            ),
+            callout(
+              "balance-note",
+              "Tempo alvo entre marcos: 20-45min in-game. Menos = milestone inflation (perde valor). Mais = jogador cansa antes do proximo."
+            ),
+            callout(
+              "warning",
+              "Dificuldade deve subir MAIS LENTAMENTE que progressao. Senao, o jogador nao sente ganho — continua no mesmo nivel de desafio relativo."
+            ),
+          ],
+        },
+      },
+    },
+    narrative(
       "common-medio-controles",
       "Controles, Acessibilidade e QoL",
-      "Mapeamento por plataforma, remapeamento e recursos de acessibilidade."
+      "Mapping, remapping e acessibilidade.",
+      [
+        h("Controles, Acessibilidade e QoL", 2),
+        p(
+          "Controles respondem a pergunta \"como jogo?\". Acessibilidade a \"posso jogar?\". QoL (Quality of Life) a \"jogar e prazeroso?\". As tres precisam estar planejadas."
+        ),
+        h("Controles", 3),
+        li("Mapping principal por plataforma (PC, console, mobile)."),
+        li("Input buffering em acoes rapidas (ex: dash durante pulo)."),
+        li("Dead zones customizaveis em sticks analogicos."),
+        h("Acessibilidade Basica", 3),
+        li("Remapping de todos os botoes."),
+        li("Daltonismo: UI nao pode depender SO de cor pra transmitir info."),
+        li("Opcao de reducao de flash/motion (epilepsia, enjoo)."),
+        li("Legendas por padrao ON em cutscenes/dialogo."),
+        h("QoL Classicos", 3),
+        li("Autosave frequente + save manual."),
+        li("Skip de cutscenes ja vistas."),
+        li("Sistema de pause confiavel em qualquer momento."),
+        callout(
+          "design-decision",
+          "Acessibilidade nao e pos-producao. Planejar desde Alpha (ex: escolher paleta com contraste alto, evitar UI so-com-cor) e 100x mais barato que retrofit."
+        ),
+        callout(
+          "balance-note",
+          "QoL e o que separa \"jogo bom\" de \"jogo que jogadores AMAM\". Autosave robusto, skip de repetitivo, UI limpa — tudo invisivel quando funciona, devastador quando falta."
+        ),
+        callout(
+          "warning",
+          "Se voce lanca sem remapping de botoes, esta EXCLUINDO jogadores com desabilidade motora. E nao custa muito implementar — e decisao, nao limitacao."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-medio-ui",
       "UX/UI e Feedback",
-      "Fluxo de menu, estados do HUD, telemetria visual e consistencia de feedback."
+      "HUD, menus, fluxos e feedback consistente.",
+      [
+        h("UX/UI e Feedback", 2),
+        p(
+          "UI e visual. UX e comportamento. Feedback e resposta. Os tres formam uma experiencia coerente — faltando um, o jogo sente defeituoso."
+        ),
+        h("Arquitetura de Telas", 3),
+        li("Menu principal (novo jogo, continuar, opcoes, creditos)."),
+        li("Menu in-game (pause, inventario, mapa, opcoes)."),
+        li("Telas de overlay (level up, death, victory)."),
+        h("Feedback Consistente", 3),
+        li("Som e animacao para toda acao do jogador."),
+        li("Feedback de erro distinto de feedback de sucesso (cor, som)."),
+        li("Anticipa acao quando possivel (hover state em botao)."),
+        callout(
+          "design-decision",
+          "Feedback consistente = contrato com o jogador. Se \"verde = bom\" em uma tela, tem que ser verde em todas. Quebrar isso gera desconfianca."
+        ),
+        callout(
+          "balance-note",
+          "Latencia perceptivel: acima de 100ms entre input e feedback, jogador percebe como lag. Em genres competitivos (FPS, fighting), alvo < 50ms."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-medio-arte-audio",
       "Arte e Audio",
-      "Direcao visual, linguagem de efeitos e trilha/sons de acao."
+      "Direcao visual + assinatura sonora.",
+      [
+        h("Arte e Audio", 2),
+        p(
+          "Arte define a PRIMEIRA impressao. Audio define a IMERSAO. Juntos, criam a identidade do jogo — marca o jogador de forma que mecanica sozinha nao consegue."
+        ),
+        h("Direcao de Arte", 3),
+        li("Moodboard: 20-40 imagens que representam o look/feel desejado."),
+        li("Paleta: cores primarias e secundarias limitadas (nao mais de 5-7)."),
+        li("Silhuetas: todos os personagens/inimigos devem ser reconheciveis em silhueta."),
+        li("Animacao chave: idle, walk/run, ataque, morte. Qualidade acima da quantidade."),
+        h("Direcao de Audio", 3),
+        li("Assinatura musical: 2-3 temas principais que voltam em variacoes."),
+        li("SFX: cada acao chave tem som unico e identificavel."),
+        li("Audio ambient: background que preenche sem distrair."),
+        li("Mix: SFX > musica em momentos de acao; musica > SFX em cinematicas."),
+        callout(
+          "design-decision",
+          "Restricao de paleta/estilo AUMENTA identidade. Jogos com 20 estilos visuais misturados parecem generic. Limite quantidade pra maximizar impacto."
+        ),
+        callout(
+          "balance-note",
+          "Playtest SEM som. Se o jogo sente perda dramatica, audio esta fazendo o trabalho pesado — bom sinal. Se sente igual, audio esta decorativo — repensa."
+        ),
+        callout(
+          "warning",
+          "Audio final (composer, voice acting) e caro. Placeholder audio ate Beta e aceitavel — pro final, contrate cedo pra evitar crunch artistico."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-medio-tecnologia",
       "Tecnologia",
-      "Engine, ferramentas, pipelines e dependencias externas."
+      "Engine, ferramentas, pipeline e decisoes tecnicas.",
+      [
+        h("Tecnologia", 2),
+        p(
+          "Decisoes tecnicas tem custo assimetrico: trocar depois e MUITO mais caro que decidir certo cedo. Pensar aqui cedo salva meses depois."
+        ),
+        h("Principais Decisoes", 3),
+        li("Engine: Unity / Unreal / Godot / Custom — cada uma com tradeoffs de velocidade, custo, licenciamento."),
+        li("Linguagem: C# / C++ / GDScript / Lua — pela equipe e pela engine."),
+        li("Arquitetura: ECS / MVC / state machines — define como sistemas se conectam."),
+        li("Versionamento: git / perforce / svn + branching strategy (trunk-based, gitflow)."),
+        li("Backend (se houver): auth, save cloud, analytics, A/B."),
+        h("Pipeline", 3),
+        li("Asset pipeline: como arte/audio sai do tool pra o jogo (automacao)."),
+        li("Build system: como gera builds testaveis (CI/CD)."),
+        li("Test suite: smoke tests automatizados, regressao."),
+        callout(
+          "design-decision",
+          "Escolha engine pelo QUE VOCE PODE ENTREGAR, nao pelo que parece bonito. Unreal e poderoso mas exige time grande. Godot e leve mas ecosystem menor. Escolha por fit."
+        ),
+        callout(
+          "balance-note",
+          "Build time cresce com projeto. Investir em CI cedo (de mes 3) evita 30min de build manual em mes 12. Pensa matematica: 30min × 10 builds/dia × 6 meses = 150h perdidos."
+        ),
+        callout(
+          "warning",
+          "Dependencia de biblioteca com licenca ambigua e bomba-relogio. Audit legal em Beta PELO MENOS — melhor no Alpha."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-medio-roadmap-riscos",
       "Roadmap e Riscos",
-      "Milestones de MVP/alpha e principais riscos de design, tecnica e escopo."
+      "MVP/Alpha/Beta/Launch + catalogo de riscos com mitigacao.",
+      [
+        h("Roadmap e Riscos", 2),
+        p(
+          "Roadmap sem analise de riscos e optimismo enganador. Toda decisao de planejamento tem risco embutido — documenta-los separa projeto serio de wishlist."
+        ),
+        h("Marcos Tipicos", 3),
+        li("MVP (Minimum Viable Product) — core loop + 20% do conteudo final. Jogavel por estranhos."),
+        li("Alpha — 70% do conteudo. Funcionalmente completo, cheio de bugs. Playtest externo."),
+        li("Beta — 95% do conteudo. Polish fase. Bug hunting, otimizacao, localizacao."),
+        li("Soft Launch — release em 1-2 territorios. Valida retencao, monetizacao."),
+        li("Global Launch — marketing push, servidor scaling, suporte ao vivo."),
+        h("Riscos Comuns (categorizados)", 3),
+        li("Risco de Escopo — designs que crescem alem do orcamento. Ex: \"so mais uma classe\"."),
+        li("Risco Tecnico — dependencia critica que pode falhar. Ex: engine nova que ninguem dominou."),
+        li("Risco de Mercado — concorrente lanca primeiro. Ex: outro RPG com mesmo tema."),
+        li("Risco de Equipe — dev chave sai. Ex: lead programmer burnout."),
+        li("Risco de Plataforma — mudanca em politica. Ex: Apple muda regras de IAP."),
+        callout(
+          "design-decision",
+          "Pra cada risco: probabilidade (baixa/media/alta) + impacto (baixo/medio/alto) + plano de mitigacao. Risco \"medio×alto\" sem mitigacao significa projeto provavelmente vai explodir."
+        ),
+        callout(
+          "balance-note",
+          "Regra de bolso: scope creep e o risco #1 de 90% dos projetos. Nao e tecnologia. Nao e arte. E \"nao saber quando parar de adicionar\"."
+        ),
+        callout(
+          "warning",
+          "Projetos que ignoram riscos falham por motivos previsiveis. Projetos que documentam riscos falham por motivos imprevisiveis (mais raros). Na duvida, documente."
+        ),
+        callout(
+          "warning",
+          "Revisite esta secao a cada marco. Riscos mudam: o que era critico no MVP pode ser trivial no Beta, e vice-versa."
+        ),
+      ]
     ),
   ],
   completo: [
-    section(
+    narrative(
       "common-completo-visao-geral",
       "Visao Geral Completa",
-      "Nome, genero, publico, plataformas, referencias, pitch e diferencial competitivo.",
+      "Pitch, publico, plataformas, referencias + USP + Metas de Produto.",
       [
-        section("common-completo-visao-usp", "USP e Proposta de Valor", "Definir promessa central e motivos para retenao."),
-        section("common-completo-visao-meta", "Metas de Produto", "Objetivos de experiencia e metas de qualidade."),
+        h("Visao Geral — preencha com SEU jogo", 2),
+        p(
+          "Esta pagina e o resumo executivo do seu projeto. Qualquer pessoa (dev novo, publisher, marketing) deve conseguir entender o projeto inteiro lendo esta pagina por 2-3 minutos."
+        ),
+        h("Campos Essenciais", 3),
+        li("Nome do jogo (final ou working title)."),
+        li("Genero (incluindo micro-genero: nao so \"RPG\", mas \"RPG tatico em turnos com elementos de deck-building\")."),
+        li("Publico-alvo (faixa etaria, plataforma preferida, jogos similares que consomem)."),
+        li("Plataformas alvo (ordem de prioridade)."),
+        li("Referencias (3-5 jogos que inspiram, com POR QUE)."),
+        li("Pitch (uma frase que vende o jogo)."),
+        li("Diferencial competitivo (o que te torna escolhido em vez do concorrente)."),
+        callout(
+          "warning",
+          "Os subitens abaixo (USP e Metas de Produto) aprofundam. Comece por eles se ainda nao tem claro o que diferencia o seu jogo."
+        ),
+        callout(
+          "design-decision",
+          "Se voce nao consegue preencher esta pagina com numeros e decisoes concretas, o projeto ainda e ideia. Projetos reais tem pitch claro, publico definido, plataforma priorizada."
+        ),
+      ],
+      [
+        narrative(
+          "common-completo-visao-usp",
+          "USP e Proposta de Valor",
+          "Unique Selling Proposition detalhada.",
+          [
+            h("USP — Unique Selling Proposition", 2),
+            p(
+              "USP e o que separa seu jogo dos concorrentes. Nao e \"melhor graficos\" nem \"mais conteudo\" — e uma COMBINACAO ESPECIFICA de elementos que ninguem mais tem."
+            ),
+            h("Template", 3),
+            li("\"Um [genero] com [mecanica principal unica] onde o jogador [acao central] em [contexto especifico]\"."),
+            h("Exemplos", 3),
+            li("Hades: \"Um roguelike onde a morte avanca a narrativa e relacionamentos interpessoais sao metaprogressao.\""),
+            li("Celeste: \"Um platformer preciso onde a dificuldade extrema e acompanhada de modo assist sem penalidade.\""),
+            li("Monument Valley: \"Um puzzle 3D onde a perspectiva e a mecanica, nao decorativa.\""),
+            callout(
+              "design-decision",
+              "USP especifico > USP amplo. \"Jogo divertido\" nao e USP. \"Roguelike com narrativa que avanca na morte\" e USP."
+            ),
+            callout(
+              "balance-note",
+              "Teste seu USP com 10 pessoas que nao conhecem o projeto. Se metade nao consegue repetir em uma frase, USP ainda esta confuso."
+            ),
+            callout(
+              "warning",
+              "Sem USP claro, marketing fica generico e dificil de pegar. Publisher rejeita. Media ignora. USP e o gancho — invista."
+            ),
+          ]
+        ),
+        narrative(
+          "common-completo-visao-meta",
+          "Metas de Produto",
+          "Objetivos de experiencia + metas de qualidade.",
+          [
+            h("Metas de Produto", 2),
+            p(
+              "Definir objetivos ANTES da producao permite medir sucesso. Sem metas, qualquer resultado pode ser justificado como \"o que era esperado\"."
+            ),
+            h("Metas de Experiencia", 3),
+            li("Sentimento dominante no core loop (ex: tensao, descoberta, dominio, zen)."),
+            li("Momento memoravel por sessao (o que o jogador vai contar pro amigo)."),
+            li("Curva de engajamento: primeira hora, primeiros 10 horas, long-term."),
+            h("Metas de Qualidade", 3),
+            li("Meta critica: Metacritic 80+? 70+? Depende do orcamento."),
+            li("Meta de user review: 85%+ positivo no Steam."),
+            li("Meta de retencao D7: 30%+ pra indie premium, 20%+ pra F2P."),
+            h("Metas de Negocio (se aplicavel)", 3),
+            li("Vendas no primeiro mes."),
+            li("ROI (Return on Investment) em 12 meses."),
+            li("Break-even point."),
+            callout(
+              "design-decision",
+              "Metas devem ser ambiciosas MAS alcancaveis. \"Vender 1M\" em um primeiro jogo indie e delirio. \"Vender 30k no ano 1\" pode ser meta razoavel pra mercado especifico."
+            ),
+            callout(
+              "warning",
+              "Metas muito vagas (ex: \"fazer um bom jogo\") nao orientam decisoes. Metas muito rigidas (ex: \"MUST hit 90 meta\") levam a cortar escopo arriscado. Calibre."
+            ),
+          ]
+        ),
       ]
     ),
-    section(
+    narrative(
       "common-completo-core-loop",
       "Core Loop e Loops Secundarios",
-      "Explorar, executar acao principal, receber recompensa, evoluir e repetir com variacao.",
+      "Ciclo principal + loops de suporte detalhados.",
       [
-        section("common-completo-loop-primario", "Loop Primario", "Etapas com entrada, decisao e saida por ciclo."),
-        section("common-completo-loop-sec", "Loops Secundarios", "Sistema social, crafting, ranking, desafios e eventos."),
+        h("Arquitetura de Loops", 2),
+        p(
+          "Todo jogo tem 1 core loop DOMINANTE (executado 70-80% do tempo) + loops secundarios. A relacao entre eles define o feel do jogo."
+        ),
+        callout(
+          "design-decision",
+          "Se voce nao consegue identificar o core loop dominante, o design ainda esta inconclusivo. Todo jogo \"bom\" que voce joga tem UM loop que voce repete mais que os outros — e intencional."
+        ),
+        callout(
+          "warning",
+          "Os dois subitens abaixo detalham loop primario e secundarios. Preencha ambos antes de definir outros sistemas do jogo — sem core loop claro, todo o resto vira suposicao."
+        ),
+      ],
+      [
+        narrative(
+          "common-completo-loop-primario",
+          "Loop Primario",
+          "Etapas com entrada, decisao e saida por ciclo.",
+          [
+            h("Loop Primario", 2),
+            p(
+              "Descreva o loop em 3-5 passos. Cada passo deve ter: entrada (o que dispara), acao (o que o jogador faz), saida (o que o jogador recebe, que alimenta o proximo passo)."
+            ),
+            h("Template", 3),
+            li("Passo 1: [entrada] → [acao] → [saida]."),
+            li("Passo 2: [saida do 1 vira entrada] → [acao] → [saida]."),
+            li("... fecha de volta no passo 1 com variacao."),
+            callout(
+              "design-decision",
+              "Fechar o loop com VARIACAO (nao mesma coisa) e o que impede tedio. Ex: depois de lutar inimigo X, jogador volta pra lutar X+1, nao X de novo."
+            ),
+            callout(
+              "balance-note",
+              "Tempo de um ciclo do loop primario: de 30s (platformer) a 10min (RPG). Se leva > 15min, considere quebrar em sub-loops."
+            ),
+          ]
+        ),
+        narrative(
+          "common-completo-loop-sec",
+          "Loops Secundarios",
+          "Sistemas que alimentam ou recompensam o core loop.",
+          [
+            h("Loops Secundarios", 2),
+            p(
+              "Sistemas que o jogador acessa esporadicamente. Alimentam o core loop (crafting prepara ferramentas pra exploracao) ou recompensam progresso (social celebra conquistas)."
+            ),
+            li("Social: guilds, chat, ranking, PvP opcional."),
+            li("Crafting: receitas, workshops, upgrade."),
+            li("Eventos: sazonais, semanais, narrativos."),
+            li("Desafios: achievements, mastery challenges."),
+            callout(
+              "design-decision",
+              "Loop secundario deve ter seu PROPRIO loop pequeno — nao deve ser so uma tela estatica. \"Craftar um item\" ja eh um mini-loop (juntar materiais → combinar → ganhar item)."
+            ),
+            callout(
+              "warning",
+              "Priorize o minimo viavel de secundarios no lancamento. Guilda, ranking, eventos, crafting — e MUITO sistema. Escolha 1-2 pro lancamento e planeje os outros pra pos-launch."
+            ),
+          ]
+        ),
       ]
     ),
-    section(
+    narrative(
       "common-completo-mecanicas",
       "Mecanicas e Regras de Sistema",
-      "Regras formais, condicoes de sucesso/fracasso e interdependencia entre sistemas."
-    ),
-    section(
-      "common-completo-progressao",
-      "Progressao, Dificuldade e Balanceamento",
-      "Curva de poder, gates de conteudo, tuning de dificuldade e prevencao de power creep.",
+      "Mecanicas formalizadas + regras de sistema + interdependencias.",
       [
-        section(
-          "common-completo-balance-xp",
-          "Balanceamento de XP",
-          "Custos de nivel, pacing e marcos de dominancia.",
-          undefined,
-          seedProgression1to20()
+        h("Mecanicas Formalizadas", 2),
+        p(
+          "Para cada mecanica, documente: o que faz, quando esta disponivel, interdependencia com outras, e como o jogador aprende ela."
         ),
-        section(
-          "common-completo-balance-economia",
-          "Balanceamento de Economia",
-          "Fontes/sinks, inflacao e controles antifarming.",
-          undefined,
-          seedEconomy()
+        h("Template por Mecanica", 3),
+        li("Nome — ex: \"Dash\"."),
+        li("Input — ex: \"pressionar botao X no ar\"."),
+        li("Efeito — ex: \"movimento rapido de 2m na direcao do stick\"."),
+        li("Restricoes — ex: \"1 uso por pulo, cooldown de 0.3s\"."),
+        li("Interacoes — ex: \"pode atravessar projetis, nao pode atravessar paredes\"."),
+        li("Ensino — ex: \"introduzido no mundo 3 apos obstaculo que exige\"."),
+        h("Interdependencia entre Sistemas", 3),
+        p(
+          "Mecanicas nunca vivem isoladas. Documente como combinam: dash + ataque = dash-attack. XP + equipamento = item de nivel. Esta matriz e o que da profundidade ao jogo."
+        ),
+        callout(
+          "design-decision",
+          "Mecanicas que COMBINAM multiplicam possibilidades. 3 mecanicas que se combinam tem MAIS design space que 6 mecanicas isoladas. Priorize combinacao, nao adicao."
+        ),
+        callout(
+          "balance-note",
+          "Toda mecanica nova EXIGE re-validacao das existentes. Adicionou dash? Testa combate, plataforma, exploracao com dash ATIVO em cada uma. Senao, voce criou bugs invisiveis."
+        ),
+        callout(
+          "warning",
+          "Mecanica que voce nao consegue ensinar ao jogador em 1-2 minutos de gameplay e forte candidata a ser removida. Mecanicas invisiveis ao jogador sao dinheiro jogado fora."
         ),
       ]
     ),
-    section(
+    narrative(
+      "common-completo-progressao",
+      "Progressao, Dificuldade e Balanceamento",
+      "Curva de poder + gates + controle de power creep.",
+      [
+        h("Progressao e Balanceamento", 2),
+        p(
+          "Em jogos grandes (RPG completo, MMO, roguelike), progressao tem 3 dimensoes: curva de poder (quanto o player cresce), gates de conteudo (o que destrava quando), e controle de power creep (evitar que conteudo antigo vire trivial)."
+        ),
+        h("Os 3 Erros Classicos", 3),
+        li("Curva plana — jogador nao sente progresso. Abandona."),
+        li("Curva muito ingrime — jogador que atrasa nunca recupera. Abandona."),
+        li("Power creep descontrolado — conteudo novo invalida antigo. Backlog inutil."),
+        callout(
+          "design-decision",
+          "A solucao pra power creep moderno e scaling: enemigos/desafios escalam com player. Perde sensacao de dominar? NAO — com limiares (nivel 1-20 escala, 20+ para). Hibrido preserva os dois sentimentos."
+        ),
+        callout(
+          "warning",
+          "Os dois subitens abaixo aprofundam XP e Economia separadamente. Sao o coracao do balanceamento — erre neles e o jogo inteiro fica desequilibrado."
+        ),
+      ],
+      [
+        {
+          id: "common-completo-balance-xp",
+          title: "Balanceamento de XP",
+          content: "Custos de nivel, pacing de level up e power spikes.",
+          pageType: {
+            id: "progression",
+            options: {
+              richDocBlocks: [
+                h("Balanceamento de XP", 2),
+                p(
+                  "XP e a moeda de tempo do jogador. Cada atividade (matar, quest, boss) da XP. Curva define quanto XP subir de nivel. Erros aqui afetam a experiencia inteira."
+                ),
+                h("Tipos de Curva", 3),
+                li("Linear: nivel N custa N × base. Previsivel. Bom pra jogos de sessao curta."),
+                li("Exponencial: nivel N custa base × 1.15^N. Cresce acelerado. Bom pra RPG."),
+                li("Tiered (patamar): custos saltam em niveis pivots (10, 25, 50). Bom pra MMO."),
+                li("Softcap: exponencial ate X, depois linear lento. Bom pra mobile long-term."),
+                h("Regras de Ouro", 3),
+                li("Primeiros niveis devem ser RAPIDOS (2-3 min). Prende o jogador."),
+                li("Niveis mid-game: 15-30 min. Sweet spot de engagement."),
+                li("Endgame: 1-3 h por nivel. Respeita tempo mas mantem horizonte."),
+                callout(
+                  "design-decision",
+                  "Primeiros niveis rapidos (\"easy wins\") sao cientificamente comprovados (dopamine hit). Nao punca novato com level slow."
+                ),
+                callout(
+                  "balance-note",
+                  "Playtestar com dados reais: telemetria tempo-ate-level(N) por quartil de jogador. Se quartil inferior demora 5x mais que mediana, curva esta muito severa pra casual."
+                ),
+                callout(
+                  "warning",
+                  "A tabela ao lado comeca com exponencial 1.15. Ajuste apos PRIMEIRO playtest — nunca em teoria pura. Seu jogo concreto tem demandas que numero sozinho nao prevê."
+                ),
+              ],
+            },
+          },
+        },
+        {
+          id: "common-completo-balance-economia",
+          title: "Balanceamento de Economia",
+          content: "Fontes/sinks de moeda, inflacao e controles antifarming.",
+          pageType: {
+            id: "economy",
+            options: {
+              richDocBlocks: [
+                h("Balanceamento de Economia", 2),
+                p(
+                  "Economia saudavel e circular: moeda entra (fontes), moeda sai (sinks). Se entra mais que sai, inflacao (moeda vira lixo). Se sai mais que entra, escassez (jogador nao consegue nada)."
+                ),
+                h("Fontes Comuns", 3),
+                li("Drop de combate (menor valor, alta frequencia)."),
+                li("Missoes (valor medio, frequencia controlada)."),
+                li("Bosses (valor alto, raro)."),
+                li("Venda de itens (liquida excesso de inventario)."),
+                h("Sinks Comuns", 3),
+                li("Consumiveis (pocoes, buffs temporarios)."),
+                li("Equipamento (upgrade, repair, sockets)."),
+                li("Fast-travel, housing, cosmeticos."),
+                li("Taxas e impostos (quando faz sentido narrativamente)."),
+                callout(
+                  "design-decision",
+                  "Cosmeticos sao sinks eficientes: tiram moeda sem afetar balanceamento de poder. Muitos jogos usam cosmeticos so pra estabilizar economia."
+                ),
+                callout(
+                  "balance-note",
+                  "Alvo: razao fontes/sinks = 1.1-1.3 em steady state (jogador com reserva saudavel). Se > 2.0, inflacao. Se < 1.0, jogador frustrado."
+                ),
+                callout(
+                  "warning",
+                  "Controles antifarming sao essenciais. Diminishing returns em XP/moeda apos X kills/hora e a regra padrao pra evitar bots e grinding abusivo."
+                ),
+                callout(
+                  "warning",
+                  "Economia e sistema VIVO. Monitore apos lancamento: se preco de item X na trade/auction house disparar, algum sink quebrou."
+                ),
+              ],
+            },
+          },
+        },
+      ]
+    ),
+    narrative(
       "common-completo-controles",
       "Controles, Input e Acessibilidade",
-      "Mapeamento completo por plataforma, sensibilidade, customizacao e opcoes assistivas."
+      "Mapping detalhado, sensibilidade, acessibilidade e assistive options.",
+      [
+        h("Controles, Input e Acessibilidade", 2),
+        p(
+          "Jogo completo precisa entregar controles excelentes + acessibilidade de nivel AAA. Eis o check-list."
+        ),
+        h("Controles", 3),
+        li("Mapping padrao por plataforma (documentar cada)."),
+        li("Remapping completo (todo botao deve ser reatribuivel)."),
+        li("Sensibilidade: cameras e sticks com 0-100 ajustavel."),
+        li("Input buffer: 4-6 frames pra jogos de acao, maior pra plataformas."),
+        li("Curva de input: resposta ao stick (linear vs curva)."),
+        h("Acessibilidade AAA", 3),
+        li("Daltonismo: modos Protanopia, Deuteranopia, Tritanopia (3 comuns)."),
+        li("Motor: slow mode, auto-target, controle-com-uma-mao."),
+        li("Cognitivo: hints opcionais, skip de puzzles, simplificacao de mecanicas."),
+        li("Visual: text scaling, UI scaling, high contrast mode."),
+        li("Audio: legendas com nome do falante, descricao de SFX importantes."),
+        li("Epilepsia: modo de flash reduzido, screen shake controlavel."),
+        callout(
+          "design-decision",
+          "Acessibilidade nao e feature de PUBLICO DE NICHO — e feature de TODOS OS JOGADORES. Legenda ON ajuda em ambiente barulhento. Slow mode ajuda em sessao cansada. UI grande ajuda em celular."
+        ),
+        callout(
+          "balance-note",
+          "Cada feature de acessibilidade precisa de QA dedicado. Testar \"funciona\" e diferente de testar \"e usavel\" — valide com usuarios da comunidade."
+        ),
+        callout(
+          "warning",
+          "Skip de puzzle em jogo de puzzle pode parecer contradicao — mas jogador preso em UMA fase abandona O JOGO INTEIRO. Skip NUNCA e obrigatorio; existe por emergencia."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-ui",
       "UX/UI",
-      "Arquitetura de telas, hierarquia de informacao, feedback visual e fluxo de onboarding."
+      "Arquitetura de telas, hierarquia visual e fluxos detalhados.",
+      [
+        h("UX/UI", 2),
+        p(
+          "Em jogos grandes, UI vira sistema complexo. Sem arquitetura, vira colcha de retalhos — telas inconsistentes, navegacao confusa, telemetria invisivel."
+        ),
+        h("Arquitetura de Telas", 3),
+        li("Mapa de telas: diagrama de todas as telas e transicoes."),
+        li("Agrupamento por tarefa (managing character, managing world, settings)."),
+        li("Ordem de entrada: do ACESSAVEL (1 click) ao RARO (5+ clicks)."),
+        h("Hierarquia de Informacao", 3),
+        li("Primary info (HP, main objective): maior, sempre visivel."),
+        li("Secondary info (resources, buffs): medio, contextual."),
+        li("Tertiary info (achievements, stats): pequeno, on-demand."),
+        h("Fluxo de Onboarding", 3),
+        li("Tutorial integrado, nao modal."),
+        li("Progressive disclosure: nova mecanica = novo tutorial curto."),
+        li("Refresh: player voltando apos hiato ve \"ultima atividade\"."),
+        callout(
+          "design-decision",
+          "Mapa de telas antes de implementar: papel e caneta. Um diagrama ruim em papel custa 1h; um fluxo ruim em codigo custa 100h."
+        ),
+        callout(
+          "balance-note",
+          "Telemetria de UI: tempo por tela, click rate por botao, abandono por fluxo. Telas com alta friccao aparecem sozinhas nos dados."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-arte-audio",
       "Direcao de Arte e Audio",
-      "Guia visual, paleta, animacoes chave, assinatura sonora e mix de eventos."
+      "Guia visual + assinatura sonora + mix profissional.",
+      [
+        h("Direcao de Arte e Audio", 2),
+        p(
+          "Em jogos completos, arte e audio sao responsaveis por 40-50% do budget. Direcao forte evita iteracao cara depois."
+        ),
+        h("Guia Visual (Style Guide)", 3),
+        li("Moodboard de referencia (4-8 imagens canonicas)."),
+        li("Paleta: 5-7 cores primarias + secundarias. Documentada com hex codes."),
+        li("Silhuetas: todo character/inimigo deve ser reconhecivel em sombra."),
+        li("Anima principal: idle, walk/run, attack, hit, death. 12-24 frames em 2D, boneco 3D completo em 3D."),
+        li("VFX: framework de particles (fire, magic, impact) padronizado."),
+        h("Direcao de Audio", 3),
+        li("Tema principal + 3-5 variacoes por situacao (combate, calma, boss)."),
+        li("SFX library: por categoria (UI, player, world, enemy, environment)."),
+        li("Dialogue: voice acting lead actors + background extras."),
+        li("Mix profissional: mastering, ducking (musica cede pra SFX em acao)."),
+        callout(
+          "design-decision",
+          "Paleta RESTRITA aumenta identidade. Hades tem 6 cores dominantes. Monument Valley tem 8. Jogos que \"misturam tudo\" perdem distinctiveness."
+        ),
+        callout(
+          "balance-note",
+          "Audio lead deve ter clara autoridade sobre mix final. Muitos jogos tem audio bom que e estragado por mix ruim — cada sistema grita por atencao."
+        ),
+        callout(
+          "warning",
+          "Outsourcing de arte/audio requer onboarding pesado do style guide. Sem style guide, cada freelancer entrega algo diferente e voce tem colcha de retalhos."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-tecnologia",
       "Tecnologia e Arquitetura",
-      "Engine, backend, analytics, save, ferramentas internas e observabilidade."
+      "Engine, backend, analytics, observabilidade.",
+      [
+        h("Tecnologia e Arquitetura", 2),
+        p(
+          "Em jogo completo, tech vira sistema vivo com multiplas camadas: engine, backend, analytics, tools, observability. Decisoes aqui afetam custo operacional por anos."
+        ),
+        h("Frontend (Engine)", 3),
+        li("Engine + linguagem + arquitetura (ECS, MVC, state)."),
+        li("Asset pipeline com automacao."),
+        li("Build system com CI/CD."),
+        h("Backend (se houver)", 3),
+        li("Auth: provider (Firebase, custom, PlayFab)."),
+        li("Save cloud + sync offline."),
+        li("Analytics events + dashboards."),
+        li("Server auth (pra evitar cheats) em features competitivas."),
+        h("Tools Internos", 3),
+        li("Editor de conteudo pra designer (quests, dialogos, balance)."),
+        li("Debug menu: teleport, give item, set level, force event."),
+        li("Replay system pra QA reproduzir bugs."),
+        h("Observabilidade", 3),
+        li("Crash reporting (Sentry, custom)."),
+        li("Performance monitoring em real devices."),
+        li("Analytics funnel: de instalacao a primeira acao core."),
+        callout(
+          "design-decision",
+          "Tools internos parecem \"custo morto\" mas aceleram iteracao 10x. Editor custom de quest = designer cria quest em 10min em vez de 2h. ROI enorme."
+        ),
+        callout(
+          "balance-note",
+          "Orcamento de infra (servidores, analytics SaaS) deve ser estimado ANTES de Beta. Lancamento com infra subdimensionada = crash em dia 1."
+        ),
+        callout(
+          "warning",
+          "Dependencias externas (engine, SDK, bibliotecas) mudam de politica. Substituicao pode custar meses. Avalie bus factor de cada uma."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-kpis",
       "KPIs e Telemetria",
-      "Definir retencao, conversao, funil de tutorial, ARPU/LTV e metricas de engajamento."
+      "Metricas de sucesso + dashboards + eventos de telemetria.",
+      [
+        h("KPIs e Telemetria", 2),
+        p(
+          "Sem metricas, voce nao sabe o que esta funcionando. KPIs (Key Performance Indicators) sao as 5-10 metricas que RESUMEM a saude do jogo. Telemetria e a infraestrutura que as captura."
+        ),
+        h("KPIs Classicos", 3),
+        li("DAU/MAU (Daily/Monthly Active Users) — pico de atividade e retencao."),
+        li("D1/D7/D30 retention — % jogadores que voltam em 1/7/30 dias."),
+        li("ARPU (Average Revenue Per User) — receita por usuario ativo."),
+        li("LTV (Lifetime Value) — receita total esperada por usuario."),
+        li("Churn rate — % jogadores que param de jogar."),
+        li("CPI (Cost Per Install) — custo de marketing por usuario novo."),
+        h("KPIs Funcionais (jogo)", 3),
+        li("Tempo medio ate primeiro sucesso no core loop."),
+        li("Taxa de conclusao do tutorial."),
+        li("Taxa de conclusao por ato/capitulo."),
+        li("Tempo medio por sessao."),
+        h("Telemetria Essencial", 3),
+        li("Eventos estruturados: install, first_launch, tutorial_start/end, level_up, boss_attempt/defeat."),
+        li("Contexto em cada evento: device, versao, tempo desde install, nivel atual."),
+        li("Dashboards: visualizacao em tempo real dos KPIs."),
+        callout(
+          "design-decision",
+          "Telemetria sobre jogadores: privacy first. Nao colete mais do que precisa. Opt-in em territorios com GDPR/LGPD. Anonimize dados pessoais."
+        ),
+        callout(
+          "balance-note",
+          "Se D1 < 40%, jogo tem problema de onboarding. Se D7/D1 < 30%, core loop nao engaja. Esses numeros sao thresholds claros da industria."
+        ),
+        callout(
+          "warning",
+          "Telemetria sem analise e lixo. Defina quem olha os dashboards semanalmente — designer? product? analytics dedicated? Sem responsavel, dados viram ruido."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-monetizacao",
       "Monetizacao (quando aplicavel)",
-      "Politica de monetizacao, limites eticos e impacto de UX em ads/IAP/battle pass."
+      "Modelos, etica e impacto em UX.",
+      [
+        h("Monetizacao", 2),
+        p(
+          "Monetizacao define como o jogo paga sua producao. Escolha certa pra seu genero e publico + execucao etica = sustento de longo prazo. Errada = jogadores abandonam (ou pior, reviews destruidoras)."
+        ),
+        h("Modelos", 3),
+        li("Premium (one-time) — paga 1x, joga tudo. Classico. Ex: Hollow Knight, Stardew Valley."),
+        li("Freemium IAP — gratuito, compra itens/speed-up. Dominante em mobile."),
+        li("Battle Pass — assinatura por temporada com recompensas. Fortnite-style."),
+        li("Ads — gratuito, interrupcao publicitaria. Hyper-casual mobile."),
+        li("Subscription (GamePass, Apple Arcade) — acesso a catalogo. Modelo novo."),
+        li("Hybrid — combinacao (premium + cosmetics, freemium + premium version)."),
+        h("Principios Eticos", 3),
+        li("Nao paywall progressao core: jogador nao-pagante deve poder terminar o jogo."),
+        li("Loot boxes com odds TRANSPARENTES (obrigatorio em varios paises)."),
+        li("Limite em gastos de menor (parental lock)."),
+        li("Cosmetico > funcional: melhor vender skin que power."),
+        h("Impacto em UX", 3),
+        li("Freemium requer loops de engagement retentive (daily rewards, energy)."),
+        li("Ads precisam timing cuidadoso — interrupcao errada afasta."),
+        li("IAP store deve ser acessivel mas nao agressivo."),
+        callout(
+          "design-decision",
+          "Pay-to-win mata retencao longterm em praticamente todo jogo nao-competitivo casual. Pague pra SER mais forte e diferente de pagar pra DESBLOQUEAR conteudo — so o segundo e sustentavel."
+        ),
+        callout(
+          "balance-note",
+          "Whales (top spenders) geram 60-80% da receita freemium. Nao quer dizer que voce deve explorar — significa que design deve dar valor REAL ao whale (colecionismo, status) enquanto protege casual."
+        ),
+        callout(
+          "warning",
+          "Se monetizacao aparece antes do player se divertir, jogador abandona antes de virar cliente. Regra de ouro: prove o FUN antes de oferecer o PAGAMENTO."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-qa",
       "QA, Testes e Instrumentacao",
-      "Plano de teste funcional, regressao de sistemas e testes de balanceamento."
+      "Plano de teste, regressao e automacao.",
+      [
+        h("QA, Testes e Instrumentacao", 2),
+        p(
+          "QA (Quality Assurance) vai alem de \"procurar bug\". E um sistema com estrategia, ferramentas, processo e priorizacao."
+        ),
+        h("Tipos de Teste", 3),
+        li("Funcional: cada feature faz o que deve fazer."),
+        li("Regressao: features antigas nao quebraram com mudanca nova."),
+        li("Compatibilidade: em diferentes devices, OS, resolucoes."),
+        li("Performance: framerate, memoria, tempo de load."),
+        li("Balanceamento: sistema econômico/progressão equilibrado."),
+        li("Localizacao: strings traduzidas, cultural appropriateness."),
+        li("Usability: jogador novo consegue entender sem doc externa."),
+        h("Automacao", 3),
+        li("Smoke tests: build carrega, menu aparece, gameplay basico nao crasha."),
+        li("Regression suite: cenarios criticos testados a cada build."),
+        li("Stress test: N jogadores simulados simultaneos (online games)."),
+        h("Bug Tracking", 3),
+        li("Severidade: Critical (crash, data loss) / High (feature broken) / Medium (UX) / Low (cosmetic)."),
+        li("Prioridade: Must-fix (bloqueia release) / Should-fix / Nice-to-have."),
+        li("Matriz severidade × prioridade orienta sprint."),
+        callout(
+          "design-decision",
+          "QA interno + externo separados. Equipe interna vicia (conhece shortcut), QA externo pega o que voce ja nao ve. Faz beta fechado cedo se orcamento permite."
+        ),
+        callout(
+          "balance-note",
+          "Bug que aparece em 20+ reports e claramente critical. Bug em 1 report pode ser fringe case. Priorize por frequencia real — nao por dor subjetiva."
+        ),
+        callout(
+          "warning",
+          "Ignorar QA de acessibilidade e garantia de review ruim. Comunidade gamer com disability e vocal e justa — testar com eles ou com ferramentas apropriadas e obrigatorio."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-roadmap",
       "Roadmap de Producao",
-      "MVP, alpha, soft launch, global launch e metas por milestone."
+      "Timeline detalhada com marcos entregaveis.",
+      [
+        h("Roadmap de Producao", 2),
+        p(
+          "Roadmap completo e mais detalhado que o medio: alem de marcos, inclui metas verificaveis e DO/DONE criteria (quando um marco e considerado fechado)."
+        ),
+        h("Estrutura de Marco", 3),
+        li("Nome + prazo em semanas (absoluto, nao relativo)."),
+        li("Entregaveis: lista do que DEVE estar pronto."),
+        li("DO criteria: como saber que marco esta completo (objetivo, nao subjetivo)."),
+        li("Dependencias: quais marcos anteriores precisam estar fechados."),
+        li("Responsaveis: quem entrega cada parte."),
+        h("Marcos Recomendados", 3),
+        li("Pre-producao (concept, prototipo vertical, GDD draft)."),
+        li("Producao Alpha (core systems, primeiro 30% conteudo, art style locked)."),
+        li("Producao Beta (feature complete, 95% conteudo, polish)."),
+        li("Pre-lancamento (QA, localizacao, marketing, store page)."),
+        li("Soft launch (1-2 territorios, 2-4 semanas de learn)."),
+        li("Global launch + pos-lancamento (hotfixes, content updates)."),
+        callout(
+          "design-decision",
+          "DO criteria OBJETIVOS evitam \"marco terminado\" subjetivo. Ex: Alpha = \"jogador novo consegue terminar ato 1 sem crash em 20min\". Claro? Sim. Verificavel? Sim."
+        ),
+        callout(
+          "balance-note",
+          "Tempos tipicos (estimativas conservadoras pra solo/small team): Pre-producao 2-4 meses. Alpha 6-12 meses. Beta 3-6 meses. Pre-lancamento 2-3 meses. Triplica pra solo dev."
+        ),
+        callout(
+          "warning",
+          "Roadmap sem datas absolutas = roadmap inutil. \"Em algumas semanas\" nao e planejamento. \"Entregar em 15 de marco\" e."
+        ),
+      ]
     ),
-    section(
+    narrative(
       "common-completo-riscos",
       "Riscos e Mitigacoes",
-      "Riscos tecnicos, de design e de mercado com plano de contingencia."
+      "Catalogo de riscos com probabilidade × impacto × plano de contingencia.",
+      [
+        h("Riscos e Mitigacoes", 2),
+        p(
+          "Nenhum projeto grande entrega sem enfrentar riscos. A diferenca entre projeto que sobrevive e projeto que explode e: quem documentou, priorizou e mitigou preventivamente."
+        ),
+        h("Matriz de Risco", 3),
+        p(
+          "Pra cada risco: Probabilidade (1-5) × Impacto (1-5) = Score. Ordenar por score. Atacar top 5-10."
+        ),
+        h("Riscos Tecnicos Tipicos", 3),
+        li("Engine/framework nao suporta X feature planejada. Mitigacao: prototipar cedo a feature critica."),
+        li("Performance em plataforma alvo. Mitigacao: profile em device real desde mes 1."),
+        li("Dependencia de biblioteca que pode mudar licenca. Mitigacao: avaliar alternativas em Alpha."),
+        li("Dev chave sai. Mitigacao: documentar, bus factor > 1, pair programming em areas criticas."),
+        h("Riscos de Design Tipicos", 3),
+        li("Core loop nao se sustenta (playtest ruim). Mitigacao: playtest EM PROTIPO, nao em Alpha."),
+        li("Dificuldade desbalanceada. Mitigacao: telemetria de mortes/tempo desde Beta aberto."),
+        li("Monetizacao hostil ao player. Mitigacao: soft launch em mercado pequeno antes."),
+        h("Riscos de Mercado Tipicos", 3),
+        li("Concorrente lanca jogo similar antes. Mitigacao: acompanhar anuncios, ajustar USP."),
+        li("Plataforma muda politica (Apple, Google, Steam). Mitigacao: diversificar plataformas."),
+        li("Genre perde hype (ex: roguelikes saturados). Mitigacao: USP forte, nao so \"mais um\"."),
+        h("Riscos de Projeto/Equipe", 3),
+        li("Scope creep. Mitigacao: feature freeze em marcos, backlog \"depois do lancamento\"."),
+        li("Burnout. Mitigacao: 40h/semana (nao crunch), ferias obrigatorias entre marcos."),
+        li("Conflito interno. Mitigacao: decisor claro por area, retrospectivas mensais."),
+        callout(
+          "design-decision",
+          "Regra do top-10: atacar os 10 riscos com maior probabilidade × impacto. Os outros sao noise — nao gaste tempo de planejamento, apenas monitore."
+        ),
+        callout(
+          "balance-note",
+          "Sem mitigacao, risco vira certeza. Nao basta listar — tem que ter plano executavel. \"Prototipar feature X ate semana 8\" e mitigacao. \"Se acontecer, a gente pensa\" nao e."
+        ),
+        callout(
+          "warning",
+          "Scope creep e o killer. Em quase todo projeto post-mortem, aparece. Aceite que vai acontecer e tenha sistema pra barrar (feature freeze dates, priorizacao MUSThave/SHOULDhave/COULDhave)."
+        ),
+        callout(
+          "warning",
+          "Revisite riscos A CADA MARCO. Riscos que eram teoricos no concept viram reais em Alpha. Riscos de lancamento so existem quando voce esta perto de lancar."
+        ),
+        callout(
+          "warning",
+          "Guarde tambem lista de RISCOS JA MATERIALIZADOS: \"em mes 3 perdemos o artista principal, mitigamos por outsource.\" Esse historico ensina MUITO pros proximos projetos."
+        ),
+      ]
     ),
   ],
 };
@@ -2023,13 +2910,44 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
         ]
       ),
-      section(
-        "plat-medio-atributos",
-        "Atributos do Jogador",
-        "HP, Speed e Jump Height de Spark — ajusta valores iniciais.",
-        undefined,
-        seedPlatformerAttributes()
-      ),
+      {
+        id: "plat-medio-atributos",
+        title: "Atributos do Jogador",
+        content: "HP, Speed e Jump Height de Spark — valores base ajustaveis.",
+        pageType: {
+          id: "attributeDefinitions",
+          options: {
+            attributeDefinitionsOverrides: {
+              attributes: [
+                { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
+                { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
+                { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
+              ],
+            },
+            richDocBlocks: [
+              h("Atributos do Jogador — Spark the Fox", 2),
+              p(
+                "Platformer tem atributos mais simples que RPG — o foco e movimento, nao numeros. Spark tem 3 atributos base."
+              ),
+              li("HP (int) — pontos de vida. Default 3 (estilo clasico de platformer)."),
+              li("Speed (float) — multiplicador de velocidade. Default 1.0 (base)."),
+              li("Jump Height (float) — multiplicador de altura do pulo. Default 1.5."),
+              callout(
+                "design-decision",
+                "Atributos multiplicativos (Speed 1.0 como base) em vez de aditivos permitem power-ups mais expressivos sem quebrar math: Speed 2.0 claramente dobra."
+              ),
+              callout(
+                "note",
+                "Esta pagina ja vem com os 3 atributos criados. Ajuste valores iniciais ou adicione novos (ex: Dash Count pra numero de dashes por pulo) no painel lateral."
+              ),
+              callout(
+                "warning",
+                "Platformer pode viver com 2-3 atributos. Evite o impulso de \"RPG-izar\" — em platformer, design da FASE e muito mais importante que stats do personagem."
+              ),
+            ],
+          },
+        },
+      },
       narrative(
         "plat-medio-level-design",
         "Level Design",
@@ -2258,13 +3176,53 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
         ]
       ),
-      section(
-        "plat-completo-atributos",
-        "Atributos do Jogador",
-        "HP, Speed e Jump Height de Spark.",
-        undefined,
-        seedPlatformerAttributes()
-      ),
+      {
+        id: "plat-completo-atributos",
+        title: "Atributos do Jogador",
+        content: "HP + Speed + Jump Height de Spark, com notas de balanceamento.",
+        pageType: {
+          id: "attributeDefinitions",
+          options: {
+            attributeDefinitionsOverrides: {
+              attributes: [
+                { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
+                { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
+                { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
+              ],
+            },
+            richDocBlocks: [
+              h("Atributos do Jogador — Detalhe", 2),
+              p(
+                "Spark tem 3 atributos minimalistas. Aqui detalhamos interacao com itens, power-ups e modo assist."
+              ),
+              h("HP", 3),
+              li("Default: 3."),
+              li("Power-up \"Coracao\" aumenta HP max em +1 (permanente)."),
+              li("Modo Assist: HP inicial 5 (invisivel no tracking)."),
+              h("Speed", 3),
+              li("Default: 1.0 (6 unidades/seg absoluto)."),
+              li("Multiplicado por power-up \"Bota Veloz\" (×1.3, temporario)."),
+              li("Multiplicado por terreno (gelo ×1.5, areia ×0.7)."),
+              h("Jump Height", 3),
+              li("Default: 1.5 (3.5 unidades de altura)."),
+              li("Power-up \"Super Pulo\" (×1.2, permanente)."),
+              li("Power-up \"Double Jump\" desbloqueia pulo extra no ar (nao afeta altura)."),
+              callout(
+                "design-decision",
+                "Atributos multiplicativos sao compostos em ordem: base × power-up × terreno. Isso torna math previsivel: final = base × todos multiplicadores."
+              ),
+              callout(
+                "balance-note",
+                "Speed × Jump Height conjunta define GAP maximo que Spark consegue atravessar. Alterar um SEM ajustar o outro quebra level design das fases existentes."
+              ),
+              callout(
+                "warning",
+                "Em fases de boss, alguns atributos sao OVERRIDEN (ex: speed fixo no boss pra consistencia). Documente excecoes por fase."
+              ),
+            ],
+          },
+        },
+      },
       narrative(
         "plat-completo-combate",
         "Combate (se aplicavel)",
