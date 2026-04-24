@@ -1072,6 +1072,10 @@
   "productionAddon": {
     "addonTypeLabel": "Producao",
     "defaultName": "Production",
+    "craftTablesBlockLabel": "Mesas de produção associadas",
+    "craftTablesHint": "Marque as mesas onde esta receita deve aparecer. A mesa passa a listar esta receita automaticamente.",
+    "craftTablesEmpty": "Nenhuma Mesa de Produção criada neste projeto ainda. Crie uma para registrar esta receita nela.",
+    "openCraftTable": "Abrir mesa de produção",
     "modeLabel": "Modo de producao",
     "mode": {
       "passive": "Passiva",

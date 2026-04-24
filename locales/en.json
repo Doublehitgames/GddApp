@@ -1072,6 +1072,10 @@
   "productionAddon": {
     "addonTypeLabel": "Production",
     "defaultName": "Production",
+    "craftTablesBlockLabel": "Linked craft tables",
+    "craftTablesHint": "Check the tables where this recipe should appear. The table will list this recipe automatically.",
+    "craftTablesEmpty": "No craft table created in this project yet. Create one to register this recipe there.",
+    "openCraftTable": "Open craft table",
     "modeLabel": "Production mode",
     "mode": {
       "passive": "Passive",

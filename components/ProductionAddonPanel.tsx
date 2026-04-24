@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ProductionAddonDraft } from "@/lib/addons/types";
+import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
@@ -62,11 +63,101 @@ function computeLinkedValue(
 export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAddonPanelProps) {
   const { t } = useI18n();
   const allProjects = useProjectStore((state) => state.projects);
+  const updateSectionAddon = useProjectStore((state) => state.updateSectionAddon);
   const currentProjectId = useCurrentProjectId();
   const projects = useMemo(
     () => (currentProjectId ? allProjects.filter((p) => p.id === currentProjectId) : allProjects),
     [allProjects, currentProjectId]
   );
+  const { user, profile } = useAuthStore();
+  const sectionAuditBy = user
+    ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null }
+    : undefined;
+
+  const ownerLocation = useMemo(() => {
+    for (const p of projects) {
+      for (const s of p.sections || []) {
+        for (const a of s.addons || []) {
+          if (a.id === addon.id && a.type === "production") {
+            return { projectId: p.id, sectionId: s.id };
+          }
+        }
+      }
+    }
+    return null;
+  }, [projects, addon.id]);
+
+  const craftTables = useMemo(() => {
+    if (!ownerLocation) return [] as Array<{
+      sectionId: string;
+      sectionTitle: string;
+      addonId: string;
+      addonName: string;
+      addon: CraftTableSectionAddon;
+    }>;
+    const project = projects.find((p) => p.id === ownerLocation.projectId);
+    if (!project) return [];
+    const out: Array<{
+      sectionId: string;
+      sectionTitle: string;
+      addonId: string;
+      addonName: string;
+      addon: CraftTableSectionAddon;
+    }> = [];
+    for (const s of project.sections || []) {
+      for (const a of s.addons || []) {
+        if (a.type !== "craftTable") continue;
+        out.push({
+          sectionId: s.id,
+          sectionTitle: s.title || s.id,
+          addonId: a.id,
+          addonName: a.name || a.data.name || "Mesa",
+          addon: a,
+        });
+      }
+    }
+    return out;
+  }, [ownerLocation, projects]);
+
+  const linkedTableKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (!ownerLocation) return keys;
+    for (const ct of craftTables) {
+      const hasRef = (ct.addon.data.entries || []).some(
+        (entry) => entry.productionRef === ownerLocation.sectionId
+      );
+      if (hasRef) keys.add(`${ct.sectionId}:${ct.addonId}`);
+    }
+    return keys;
+  }, [craftTables, ownerLocation]);
+
+  const toggleCraftTableLink = (tableSectionId: string, tableAddonId: string, link: boolean) => {
+    if (!ownerLocation) return;
+    const target = craftTables.find((ct) => ct.sectionId === tableSectionId && ct.addonId === tableAddonId);
+    if (!target) return;
+    const currentEntries = target.addon.data.entries || [];
+    const newEntryId = `entry-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const nextEntries: CraftTableEntry[] = link
+      ? (() => {
+          if (currentEntries.some((e) => e.productionRef === ownerLocation.sectionId)) return currentEntries;
+          const appended: CraftTableEntry = {
+            id: newEntryId,
+            productionRef: ownerLocation.sectionId,
+            order: currentEntries.length,
+          };
+          return [...currentEntries, appended];
+        })()
+      : currentEntries
+          .filter((e) => e.productionRef !== ownerLocation.sectionId)
+          .map((e, index) => ({ ...e, order: index }));
+    if (nextEntries === currentEntries) return;
+    const nextAddon: SectionAddon = {
+      ...target.addon,
+      data: { ...target.addon.data, entries: nextEntries },
+    };
+    updateSectionAddon(ownerLocation.projectId, target.sectionId, target.addonId, nextAddon, sectionAuditBy);
+  };
+
   const [isMinOutputLinkMenuOpen, setIsMinOutputLinkMenuOpen] = useState(false);
   const [isMaxOutputLinkMenuOpen, setIsMaxOutputLinkMenuOpen] = useState(false);
   const [isIntervalLinkMenuOpen, setIsIntervalLinkMenuOpen] = useState(false);
@@ -344,6 +435,63 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
             <option value="recipe">{t("productionAddon.mode.recipe", "Receita")}</option>
           </select>
         </label>
+
+        {ownerLocation && (
+          <div className={PANEL_BLOCK_CLASS}>
+            <p className="mb-1 text-xs uppercase tracking-wide text-gray-400">
+              {t("productionAddon.craftTablesBlockLabel", "Mesas de produção associadas")}
+            </p>
+            {craftTables.length === 0 ? (
+              <p className="text-xs text-gray-400">
+                {t(
+                  "productionAddon.craftTablesEmpty",
+                  "Nenhuma Mesa de Produção criada neste projeto ainda. Crie uma para registrar esta receita nela."
+                )}
+              </p>
+            ) : (
+              <>
+                <p className="mb-2 text-xs text-gray-400">
+                  {t(
+                    "productionAddon.craftTablesHint",
+                    "Marque as mesas onde esta receita deve aparecer. A mesa passa a listar esta receita automaticamente."
+                  )}
+                </p>
+                <ul className="space-y-1.5">
+                  {craftTables.map((ct) => {
+                    const key = `${ct.sectionId}:${ct.addonId}`;
+                    const checked = linkedTableKeys.has(key);
+                    return (
+                      <li key={key}>
+                        <label className="flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900/60 px-2.5 py-1.5 hover:border-gray-500 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => toggleCraftTableLink(ct.sectionId, ct.addonId, e.target.checked)}
+                            className="h-4 w-4 accent-indigo-500"
+                          />
+                          <span className="flex-1 text-sm text-gray-200">
+                            {ct.sectionTitle}
+                            {ct.addonName && ct.addonName !== ct.sectionTitle ? (
+                              <span className="ml-1 text-xs text-gray-500">— {ct.addonName}</span>
+                            ) : null}
+                          </span>
+                          <a
+                            href={`/projects/${ownerLocation.projectId}/sections/${ct.sectionId}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-indigo-300 hover:text-indigo-200"
+                            title={t("productionAddon.openCraftTable", "Abrir mesa de produção")}
+                          >
+                            ↗
+                          </a>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
 
         {addon.mode === "passive" && (
           <div className={PANEL_BLOCK_CLASS}>
