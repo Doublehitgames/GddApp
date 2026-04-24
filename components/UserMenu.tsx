@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { getLocaleLabel, useI18n } from "@/lib/i18n/provider";
+import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
 
 export default function UserMenu() {
   const { user, profile, signOut } = useAuthStore();
@@ -106,6 +107,20 @@ export default function UserMenu() {
                   <span>🔑</span>
                   <span>{tr("Chaves de API", "API Keys", "Claves de API")}</span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    openShortcutsHelp();
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-between gap-2"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>⌨️</span>
+                    <span>{tr("Atalhos de teclado", "Keyboard shortcuts", "Atajos de teclado")}</span>
+                  </span>
+                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 text-gray-400">?</kbd>
+                </button>
               </div>
 
               <div className="px-3 py-2">

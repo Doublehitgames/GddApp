@@ -8,6 +8,58 @@
     "description": "Busque uma página para abrir",
     "confirm": "Abrir"
   },
+  "publicShare": {
+    "labelShort": "Público",
+    "copyTooltip": "Copiar link público",
+    "copied": "Link copiado!"
+  },
+  "quickNewPage": {
+    "modalTitle": "Nova página",
+    "modalHint": "Atalho: N · Enter para criar · Esc para fechar",
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "submit": "Criar página",
+    "titleLabel": "Nome da página",
+    "titlePlaceholder": "Ex.: Armas de fogo",
+    "typeLabel": "Tipo da página",
+    "parentLabel": "Criar dentro de (opcional)",
+    "parentRoot": "— Raiz do projeto —",
+    "errors": {
+      "titleRequired": "Digite um nome para a página.",
+      "limitPerProject": "Limite de páginas por projeto atingido.",
+      "limitTotal": "Limite total de páginas da conta atingido.",
+      "generic": "Não foi possível criar a página."
+    }
+  },
+  "shortcuts": {
+    "modalTitle": "Atalhos de teclado",
+    "modalHint": "Pressione ? a qualquer momento para abrir esta lista.",
+    "close": "Fechar",
+    "groups": {
+      "global": "Geral",
+      "section": "Página de seção",
+      "flowchart": "Fluxograma",
+      "search": "Busca no mapa mental"
+    },
+    "keys": {
+      "openPagePicker": "Abrir o buscador rápido de páginas",
+      "openHelp": "Abrir esta lista de atalhos",
+      "closeDialog": "Fechar diálogos e menus abertos",
+      "newPage": "Criar uma nova página (modal rápido)",
+      "addAddon": "Adicionar um addon nesta página",
+      "duplicateSection": "Duplicar a página atual",
+      "moveSection": "Mover a seção para outro local",
+      "undo": "Desfazer",
+      "redo": "Refazer",
+      "copyBlocks": "Copiar blocos selecionados",
+      "pasteBlocks": "Colar blocos",
+      "duplicateNode": "Duplicar bloco selecionado",
+      "deselectAll": "Desselecionar tudo",
+      "nextResult": "Próximo resultado",
+      "prevResult": "Resultado anterior",
+      "jumpResult": "Ir para resultado (Shift+Enter = anterior)"
+    }
+  },
   "common": {
     "appName": "GDD Manager",
     "save": "Salvar",
@@ -467,6 +519,7 @@
       "previewTitle": "Prévia do destaque",
       "previewEmpty": "Sem dados ainda. Preencha os campos e salve."
     },
+    "projectHomeLabel": "Página inicial do projeto",
     "sectionsTitle": "Seções do Projeto",
     "sectionsSubtitle": "Busque, navegue e reordene as seções principais com arrastar e soltar.",
     "showSectionsMenu": "Mostrar menu de seções",
@@ -1221,7 +1274,37 @@
     "valueLabel": "Valor",
     "removeModifierButton": "Remover modificador",
     "removeAddonButton": "Remover addon",
-    "readOnlyEmpty": "Nenhum modificador configurado."
+    "readOnlyEmpty": "Nenhum modificador configurado.",
+    "temporaryLabel": "Temporário",
+    "temporaryOn": "Por tempo limitado",
+    "temporaryOff": "Permanente",
+    "durationLabel": "Duração (segundos)",
+    "durationSuffix": "por {seconds}s",
+    "tickDurationSuffix": "cada {tick}s por {seconds}s",
+    "timingTickDuration": "a cada {tick}s durante {seconds}s (~{count} ticks)",
+    "timingTickOnly": "a cada {tick}s",
+    "timingDurationOnly": "durante {seconds}s",
+    "temporaryTag": "temporário",
+    "behaviorBlockLabel": "Comportamento",
+    "stackingLabel": "Empilhamento",
+    "stackingDefault": "Padrão",
+    "stackingUnique": "Único (ignora se já ativo)",
+    "stackingRefresh": "Renovar (reseta duração)",
+    "stackingStack": "Acumular",
+    "stacking_unique": "único",
+    "stacking_refresh": "renova",
+    "stacking_stack": "acumula",
+    "categoryLabel": "Categoria",
+    "categoryNone": "Não definida",
+    "categoryBuff": "Buff",
+    "categoryDebuff": "Debuff",
+    "categoryNeutral": "Neutro",
+    "category_buff": "Buff",
+    "category_debuff": "Debuff",
+    "category_neutral": "Neutro",
+    "tickIntervalLabel": "Intervalo de tick (s)",
+    "tagsLabel": "Tags (separadas por vírgula)",
+    "tagsPlaceholder": "ex: poison, magical"
   },
   "currencyAddon": {
     "addonTypeLabel": "Moeda",
@@ -1385,6 +1468,10 @@
       "increaseHeight": "Aumentar altura",
       "editorModeLabel": "Modo"
     },
+    "descriptionEditButton": "Editar",
+    "descriptionEditHint": "Duplo clique para editar a descrição",
+    "descriptionEditAria": "Editar descrição",
+    "descriptionEmptyPrompt": "Clique para adicionar uma descrição para esta página",
     "flowchart": {
       "title": "Fluxograma da página",
       "description": "Ative para manter um fluxograma exclusivo desta página.",
@@ -1417,6 +1504,9 @@
       "nameInputAria": "Nome do addon",
       "editNameTitle": "Editar nome do addon",
       "expandCollapseAria": "Expandir/ocultar addon"
+    },
+    "dataId": {
+      "duplicate": "Já existe uma página com este DataID neste projeto."
     },
     "confirmDelete": "Tem certeza que deseja excluir esta seção?",
     "confirmDeleteWithChildren": "Tem certeza que deseja excluir esta seção e suas {count} subseção(s)?",

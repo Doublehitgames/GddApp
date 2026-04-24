@@ -8,6 +8,58 @@
     "description": "Search for a page to open",
     "confirm": "Open"
   },
+  "publicShare": {
+    "labelShort": "Public",
+    "copyTooltip": "Copy public link",
+    "copied": "Link copied!"
+  },
+  "quickNewPage": {
+    "modalTitle": "New page",
+    "modalHint": "Shortcut: N · Enter to create · Esc to close",
+    "close": "Close",
+    "cancel": "Cancel",
+    "submit": "Create page",
+    "titleLabel": "Page name",
+    "titlePlaceholder": "e.g. Firearms",
+    "typeLabel": "Page type",
+    "parentLabel": "Create inside (optional)",
+    "parentRoot": "— Project root —",
+    "errors": {
+      "titleRequired": "Please enter a name for the page.",
+      "limitPerProject": "Project page limit reached.",
+      "limitTotal": "Account page limit reached.",
+      "generic": "Could not create the page."
+    }
+  },
+  "shortcuts": {
+    "modalTitle": "Keyboard shortcuts",
+    "modalHint": "Press ? anywhere to open this cheat sheet.",
+    "close": "Close",
+    "groups": {
+      "global": "Global",
+      "section": "Section page",
+      "flowchart": "Flowchart",
+      "search": "Mind map search"
+    },
+    "keys": {
+      "openPagePicker": "Open the quick page finder",
+      "openHelp": "Open this shortcut list",
+      "closeDialog": "Close open dialogs and menus",
+      "newPage": "Create a new page (quick modal)",
+      "addAddon": "Add an addon to this page",
+      "duplicateSection": "Duplicate the current page",
+      "moveSection": "Move the section elsewhere",
+      "undo": "Undo",
+      "redo": "Redo",
+      "copyBlocks": "Copy selected blocks",
+      "pasteBlocks": "Paste blocks",
+      "duplicateNode": "Duplicate selected block",
+      "deselectAll": "Deselect everything",
+      "nextResult": "Next result",
+      "prevResult": "Previous result",
+      "jumpResult": "Jump to result (Shift+Enter = previous)"
+    }
+  },
   "common": {
     "appName": "GDD Manager",
     "save": "Save",
@@ -467,6 +519,7 @@
       "previewTitle": "Spotlight preview",
       "previewEmpty": "No data yet. Fill the fields and save."
     },
+    "projectHomeLabel": "Project home",
     "sectionsTitle": "Project Sections",
     "sectionsSubtitle": "Search, browse, and reorder top-level sections with drag and drop.",
     "showSectionsMenu": "Show sections menu",
@@ -1221,7 +1274,37 @@
     "valueLabel": "Value",
     "removeModifierButton": "Remove modifier",
     "removeAddonButton": "Remove addon",
-    "readOnlyEmpty": "No modifiers configured."
+    "readOnlyEmpty": "No modifiers configured.",
+    "temporaryLabel": "Temporary",
+    "temporaryOn": "Time-limited",
+    "temporaryOff": "Permanent",
+    "durationLabel": "Duration (seconds)",
+    "durationSuffix": "for {seconds}s",
+    "tickDurationSuffix": "every {tick}s for {seconds}s",
+    "timingTickDuration": "every {tick}s for {seconds}s (~{count} ticks)",
+    "timingTickOnly": "every {tick}s",
+    "timingDurationOnly": "for {seconds}s",
+    "temporaryTag": "temporary",
+    "behaviorBlockLabel": "Behavior",
+    "stackingLabel": "Stacking",
+    "stackingDefault": "Default",
+    "stackingUnique": "Unique (ignore if already active)",
+    "stackingRefresh": "Refresh (reset duration)",
+    "stackingStack": "Stack",
+    "stacking_unique": "unique",
+    "stacking_refresh": "refresh",
+    "stacking_stack": "stack",
+    "categoryLabel": "Category",
+    "categoryNone": "Unset",
+    "categoryBuff": "Buff",
+    "categoryDebuff": "Debuff",
+    "categoryNeutral": "Neutral",
+    "category_buff": "Buff",
+    "category_debuff": "Debuff",
+    "category_neutral": "Neutral",
+    "tickIntervalLabel": "Tick interval (s)",
+    "tagsLabel": "Tags (comma-separated)",
+    "tagsPlaceholder": "e.g. poison, magical"
   },
   "currencyAddon": {
     "addonTypeLabel": "Currency",
@@ -1385,6 +1468,10 @@
       "increaseHeight": "Increase height",
       "editorModeLabel": "Mode"
     },
+    "descriptionEditButton": "Edit",
+    "descriptionEditHint": "Double-click to edit the description",
+    "descriptionEditAria": "Edit description",
+    "descriptionEmptyPrompt": "Click to add a description for this page",
     "flowchart": {
       "title": "Page flowchart",
       "description": "Enable to keep an exclusive flowchart for this page.",
@@ -1417,6 +1504,9 @@
       "nameInputAria": "Addon name",
       "editNameTitle": "Edit addon name",
       "expandCollapseAria": "Expand/collapse addon"
+    },
+    "dataId": {
+      "duplicate": "A page with this DataID already exists in this project."
     },
     "confirmDelete": "Are you sure you want to delete this section?",
     "confirmDeleteWithChildren": "Are you sure you want to delete this section and its {count} subsection(s)?",

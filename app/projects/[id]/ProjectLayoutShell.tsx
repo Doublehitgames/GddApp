@@ -8,6 +8,8 @@ import { GlobalPagePicker } from "@/components/GlobalPagePicker";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
+import { PublicShareButton } from "@/components/PublicShareButton";
+import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
 
 interface Props {
   children: React.ReactNode;
@@ -247,9 +249,27 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 </span>
               </span>
             )}
+            <PublicShareButton
+              shareToken={project?.mindMapSettings?.sharing?.shareToken}
+              isPublic={project?.mindMapSettings?.sharing?.isPublic}
+              variant="inline"
+              className="ml-2"
+            />
           </div>
 
           {isMindMapRoute && <BreadcrumbsMindMapSearch />}
+
+          <button
+            type="button"
+            onClick={() => openShortcutsHelp()}
+            className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-100 transition-colors hover:border-indigo-400 hover:bg-gray-800/90"
+            aria-label={t("shortcuts.modalTitle", "Atalhos de teclado")}
+            title={`${t("shortcuts.modalTitle", "Atalhos de teclado")} (?)`}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093V15m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
 
           {shouldShowSidebar && (
             <button

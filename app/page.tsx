@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
 import type { Project } from "@/store/projectStore";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
+import { PublicShareButton } from "@/components/PublicShareButton";
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
@@ -123,6 +124,11 @@ export default function Home() {
                             </div>
                           </div>
                         </Link>
+                        <PublicShareButton
+                          shareToken={p.mindMapSettings?.sharing?.shareToken}
+                          isPublic={p.mindMapSettings?.sharing?.isPublic}
+                          variant="card"
+                        />
                         <Link
                           href={`/projects/${p.id}/settings`}
                           className="relative z-10 p-2 bg-gray-700/95 text-white rounded-lg hover:bg-gray-600 transition-colors shrink-0 inline-flex items-center justify-center"

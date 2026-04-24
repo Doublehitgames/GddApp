@@ -404,6 +404,7 @@ export interface ProjectStore {
   reorderSections: (projectId: UUID, sectionIds: UUID[]) => void;
   countDescendants: (projectId: UUID, sectionId: UUID) => number;
   hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
+  hasDuplicateDataId: (projectId: UUID, dataId: string, excludeId?: UUID) => boolean;
   // Storage
   loadFromStorage: () => void;
   loadFromSupabase: () => Promise<"loaded" | "empty" | "error">;

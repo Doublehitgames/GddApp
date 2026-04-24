@@ -550,5 +550,16 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
 
       return siblings.some((s) => s.title.toLowerCase() === title.toLowerCase());
     },
+
+    hasDuplicateDataId: (projectId: UUID, dataId: string, excludeId?: UUID) => {
+      const trimmed = dataId.trim();
+      if (!trimmed) return false;
+      const project = get().projects.find((p) => p.id === projectId);
+      if (!project) return false;
+      const target = trimmed.toLowerCase();
+      return (project.sections || []).some(
+        (s) => s.id !== excludeId && (s.dataId || "").trim().toLowerCase() === target
+      );
+    },
   };
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
@@ -1239,12 +1240,30 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
 
   if (!mounted || !project) return null;
 
+  const isAtProjectHome = pathname === `/projects/${projectId}`;
+
   return (
     <aside className="relative overflow-hidden bg-gray-800/75 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 h-full flex flex-col">
       <span
         className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none"
         aria-hidden
       />
+
+      <Link
+        href={`/projects/${projectId}`}
+        aria-current={isAtProjectHome ? "page" : undefined}
+        className={`relative mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-150 ${
+          isAtProjectHome
+            ? "border-indigo-300/70 bg-indigo-600/25 text-indigo-50 shadow-md shadow-indigo-900/25"
+            : "border-gray-700/70 bg-gray-900/60 text-gray-200 hover:border-indigo-400/50 hover:bg-gray-800/80 hover:text-white"
+        }`}
+        title={t("projectDetail.projectHomeLabel", "Página inicial do projeto")}
+      >
+        <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" />
+        </svg>
+        <span className="truncate">{t("projectDetail.projectHomeLabel", "Página inicial do projeto")}</span>
+      </Link>
 
       <div className="relative mb-4" ref={tagFilterMenuRef}>
         <div>

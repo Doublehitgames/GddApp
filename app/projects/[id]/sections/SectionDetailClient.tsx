@@ -1786,7 +1786,9 @@ function SectionDetailContent({
   const [activeAddonId, setActiveAddonId] = useState<string | null>(null);
   const [isEditingDataId, setIsEditingDataId] = useState(false);
   const [dataIdDraft, setDataIdDraft] = useState("");
+  const [dataIdError, setDataIdError] = useState<string | null>(null);
   const setSectionDataId = useProjectStore((s) => s.setSectionDataId);
+  const hasDuplicateDataId = useProjectStore((s) => s.hasDuplicateDataId);
   const [confirmRemoveAddon, setConfirmRemoveAddon] = useState<{ id: string; label: string } | null>(null);
   const [activeGroup, setActiveGroup] = useState<string>("A");
   const [confirmRemoveGroup, setConfirmRemoveGroup] = useState(false);
@@ -2309,31 +2311,55 @@ function SectionDetailContent({
                     </button>
                   )}
                   {isEditingDataId && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
-                      <input
-                        autoFocus
-                        type="text"
-                        value={dataIdDraft}
-                        onChange={(e) => setDataIdDraft(e.target.value)}
-                        onBlur={() => {
-                          setSectionDataId(projectId, sectionId, dataIdDraft || undefined);
-                          setIsEditingDataId(false);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.currentTarget.blur();
-                          else if (e.key === "Escape") setIsEditingDataId(false);
-                        }}
-                        className="bg-transparent border-b border-indigo-500 text-xs font-mono text-gray-200 outline-none px-1 py-0.5 w-48 placeholder-gray-600"
-                        placeholder="ex: FARM_ANIMAL_CHICKEN"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingDataId(false)}
-                        className="text-gray-500 hover:text-gray-300 text-xs"
-                      >
-                        ✕
-                      </button>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={dataIdDraft}
+                          onChange={(e) => {
+                            setDataIdDraft(e.target.value);
+                            if (dataIdError) setDataIdError(null);
+                          }}
+                          onBlur={() => {
+                            const trimmed = dataIdDraft.trim();
+                            if (trimmed && hasDuplicateDataId(projectId, trimmed, sectionId)) {
+                              setDataIdError(t("sectionDetail.dataId.duplicate"));
+                              return;
+                            }
+                            setSectionDataId(projectId, sectionId, trimmed || undefined);
+                            setDataIdError(null);
+                            setIsEditingDataId(false);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.currentTarget.blur();
+                            else if (e.key === "Escape") {
+                              setDataIdError(null);
+                              setIsEditingDataId(false);
+                            }
+                          }}
+                          className={`bg-transparent border-b text-xs font-mono text-gray-200 outline-none px-1 py-0.5 w-48 placeholder-gray-600 ${
+                            dataIdError ? "border-red-500" : "border-indigo-500"
+                          }`}
+                          placeholder="ex: FARM_ANIMAL_CHICKEN"
+                          aria-invalid={dataIdError ? true : undefined}
+                        />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setDataIdError(null);
+                            setIsEditingDataId(false);
+                          }}
+                          className="text-gray-500 hover:text-gray-300 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {dataIdError && (
+                        <span className="text-[10px] text-red-400 font-medium">{dataIdError}</span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2533,25 +2559,54 @@ function SectionDetailContent({
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
         <div
-          className="max-w-6xl mx-auto mb-4 ui-card-premium"
+          className="group/description relative max-w-6xl mx-auto mb-4 ui-card-premium transition-colors hover:ring-1 hover:ring-indigo-500/40"
           onDoubleClick={() => setInlineEdit(true)}
+          title={section.content ? t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição') : undefined}
         >
           {section.content ? (
-            <MarkdownWithReferences
-              content={section.content}
-              projectId={projectId}
-              sections={project?.sections || []}
-              projectTokenSource={project}
-              currentSectionId={sectionId}
-              resolveDocumentAnchorPreview={(sectionId) => {
-                const sec = (project?.sections || []).find((s: any) => s.id === sectionId);
-                if (!sec) return null;
-                const plain = (sec.content || "").replace(/[#>*`~_\-![\]()]/g, "").replace(/\s+/g, " ").trim();
-                return { title: sec.title || sectionId, shortDescription: plain.length > 160 ? plain.slice(0, 157) + "..." : plain };
-              }}
-            />
+            <>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); setInlineEdit(true); }}
+                onDoubleClick={(event) => event.stopPropagation()}
+                aria-label={t('sectionDetail.descriptionEditAria', 'Editar descrição')}
+                title={t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição')}
+                className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 rounded-lg border border-indigo-400/40 bg-gray-900/85 px-2.5 py-1.5 text-xs text-indigo-100 opacity-0 shadow-sm backdrop-blur transition-opacity duration-150 hover:border-indigo-300/70 hover:bg-indigo-600/25 hover:text-white focus-visible:opacity-100 group-hover/description:opacity-100"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
+                </svg>
+                <span>{t('sectionDetail.descriptionEditButton', 'Editar')}</span>
+              </button>
+              <div className="cursor-text">
+                <MarkdownWithReferences
+                  content={section.content}
+                  projectId={projectId}
+                  sections={project?.sections || []}
+                  projectTokenSource={project}
+                  currentSectionId={sectionId}
+                  resolveDocumentAnchorPreview={(sectionId) => {
+                    const sec = (project?.sections || []).find((s: any) => s.id === sectionId);
+                    if (!sec) return null;
+                    const plain = (sec.content || "").replace(/[#>*`~_\-![\]()]/g, "").replace(/\s+/g, " ").trim();
+                    return { title: sec.title || sectionId, shortDescription: plain.length > 160 ? plain.slice(0, 157) + "..." : plain };
+                  }}
+                />
+              </div>
+            </>
           ) : (
-            <p className="text-gray-400">{t('projectDetail.noDescription')}</p>
+            <button
+              type="button"
+              onClick={() => setInlineEdit(true)}
+              className="w-full flex items-center gap-3 rounded-lg border border-dashed border-gray-600 bg-gray-900/40 px-4 py-6 text-left text-sm text-gray-300 transition-colors hover:border-indigo-400/60 hover:bg-indigo-600/10 hover:text-indigo-100"
+            >
+              <svg className="h-5 w-5 shrink-0 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
+              </svg>
+              <span className="flex-1">
+                {t('sectionDetail.descriptionEmptyPrompt', 'Clique para adicionar uma descrição para esta página')}
+              </span>
+            </button>
           )}
 
           {/* Integrated addon area — cards stacked inline, so the reader sees
