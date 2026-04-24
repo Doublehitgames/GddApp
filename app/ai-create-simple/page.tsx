@@ -7,6 +7,8 @@ import { GDDTemplate } from "@/types/ai";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
 import { useI18n } from "@/lib/i18n/provider";
+import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
+import { adaptAIGeneratedTemplate } from "@/lib/projects/adaptAIGeneratedTemplate";
 
 export default function AICreateSimple() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
@@ -430,33 +432,15 @@ ${mechanicsText}
     if (!template) return;
 
     try {
-      const projectId = addProject(template.projectTitle, template.projectDescription);
-
-      template.sections.forEach((section) => {
-        addSection(projectId, section.title);
-
-        const store = useProjectStore.getState();
-        const project = store.getProject(projectId);
-        const createdSection = project?.sections?.find((s) => s.title === section.title);
-
-        if (createdSection) {
-          store.editSection(projectId, createdSection.id, section.title, section.content);
-
-          if (section.subsections && section.subsections.length > 0) {
-            section.subsections.forEach((subsection) => {
-              addSubsection(projectId, createdSection.id, subsection.title);
-
-              const updatedProject = store.getProject(projectId);
-              const createdSubsection = updatedProject?.sections?.find(
-                (s) => s.parentId === createdSection.id && s.title === subsection.title
-              );
-
-              if (createdSubsection) {
-                store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content);
-              }
-            });
-          }
-        }
+      // Reuse the manual-template path so page types + richDocBlocks +
+      // hierarchy work the same way whether the user came via wizard or AI.
+      const resolved = adaptAIGeneratedTemplate(template);
+      const projectId = createProjectFromTemplate({
+        template: resolved,
+        addProject,
+        addSection,
+        addSubsection,
+        t,
       });
 
       router.push(`/projects/${projectId}/view?new=true`);

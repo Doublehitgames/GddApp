@@ -31,8 +31,14 @@ export async function POST(request: NextRequest) {
       { role: 'system', content: TEMPLATE_SYSTEM_PROMPT },
       { role: 'user', content: generateTemplatePrompt(body) }
     ], {
-      temperature: 0.4,
-      maxTokens: 4000,
+      // Bumped from 0.4 → 0.55: the new prompt asks the model to invent
+      // a fictional game with names, conflict, and callouts. A bit more
+      // creativity helps; 0.55 stays safe from rambling.
+      temperature: 0.55,
+      // Bumped from 4000 → 8000: structured output is now much richer
+      // (richDocBlocks per section + 5-group hierarchy + multi-level
+      // subsections). Truncation in the middle = invalid JSON → retry loop.
+      maxTokens: 8000,
     });
 
     // Parse JSON response

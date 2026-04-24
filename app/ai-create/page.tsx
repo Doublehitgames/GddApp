@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { GDDTemplate } from "@/types/ai";
-import { normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import AIConfigWarning from "@/components/AIConfigWarning";
 import { useI18n } from "@/lib/i18n/provider";
+import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
+import { adaptAIGeneratedTemplate } from "@/lib/projects/adaptAIGeneratedTemplate";
 
 export default function AICreateProject() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
@@ -76,35 +77,16 @@ export default function AICreateProject() {
     if (!template) return;
 
     try {
-      const projectId = addProject(template.projectTitle, template.projectDescription);
-
-      template.sections.forEach((section) => {
-        addSection(projectId, section.title);
-
-        const store = useProjectStore.getState();
-        const project = store.getProject(projectId);
-        const createdSection = project?.sections?.find((s) => s.title === section.title);
-
-        if (createdSection) {
-          const sectionTags = normalizeDomainTags(section.domainTags);
-          store.editSection(projectId, createdSection.id, section.title, section.content, undefined, undefined, undefined, sectionTags.length ? sectionTags : undefined);
-
-          if (section.subsections && section.subsections.length > 0) {
-            section.subsections.forEach((subsection) => {
-              addSubsection(projectId, createdSection.id, subsection.title);
-
-              const updatedProject = store.getProject(projectId);
-              const createdSubsection = updatedProject?.sections?.find(
-                (s) => s.parentId === createdSection.id && s.title === subsection.title
-              );
-
-              if (createdSubsection) {
-                const subsectionTags = normalizeDomainTags(subsection.domainTags);
-                store.editSection(projectId, createdSubsection.id, subsection.title, subsection.content, createdSection.id, undefined, undefined, subsectionTags.length ? subsectionTags : undefined);
-              }
-            });
-          }
-        }
+      // Adapt the AI output to the shared ResolvedTemplate shape so we can
+      // reuse the same path that manual templates use — which handles
+      // pageType + seeded addons + richDocBlocks + hierarchy.
+      const resolved = adaptAIGeneratedTemplate(template);
+      const projectId = createProjectFromTemplate({
+        template: resolved,
+        addProject,
+        addSection,
+        addSubsection,
+        t,
       });
 
       router.push(`/projects/${projectId}/view?new=true`);

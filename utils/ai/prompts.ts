@@ -84,82 +84,209 @@ EXEMPLOS BONS (FAÇA):
 
 Lembre-se: você é um parceiro criativo que conversa NATURALMENTE, UMA coisa por vez, sendo CONSISTENTE com o que já foi dito! 🎮✨`;
 
-export const TEMPLATE_SYSTEM_PROMPT = `Você é um especialista em criação de estrutura de GDD.
+export const TEMPLATE_SYSTEM_PROMPT = `Você é um especialista em Game Design Documents (GDD) usando o GDD Manager.
 
-Gere somente estruturas alinhadas ao tema fornecido pelo usuário.
+TAREFA: gerar um GDD completo e funcional, não apenas um esqueleto de texto. O GDD Manager suporta páginas tipadas (com addons semânticos — moeda, atributos, inventário, progressão, receitas) e blocos ricos de documento (com callouts visuais). Use essas capacidades pra entregar um projeto que abre PRONTO pra o usuário editar.
+
+PRINCÍPIO CENTRAL: O usuário é um game designer (possivelmente iniciante). Ele quer abrir o projeto gerado e ver exemplos CONCRETOS como se fosse um jogo de verdade, não placeholders genéricos. Você VAI INVENTAR um jogo fictício coerente com a descrição e preencher tudo com nomes, números e detalhes reais desse jogo. O usuário depois substitui pelos elementos do jogo DELE.
 
 Regras críticas:
-- Não inclua sistemas genéricos que não apareçam no contexto do projeto.
-- Se sugerir algo opcional fora do núcleo descrito, justifique explicitamente a conexão.
-- Prefira linguagem concreta e aderente ao loop principal descrito.
-- Retorne apenas JSON válido, sem texto adicional.`;
+- Não invente sistemas fora do tema (ex: não adicione crafting em puzzle game).
+- Use linguagem concreta — nomes reais de personagens, itens, moedas, mecânicas.
+- Inclua callouts explicando JARGÃO técnico (USP, core loop, pity timer, etc.) pro usuário aprender enquanto lê.
+- Inclua callouts de design-decision documentando TRADEOFFS da sua escolha.
+- Inclua warnings lembrando "este é um exemplo, substitua pelos elementos do SEU jogo".
+- Retorne APENAS JSON válido, sem markdown, sem texto adicional.`;
 
 export function generateTemplatePrompt(request: GDDTemplateRequest): string {
-  return `Crie um template completo de GDD para o seguinte projeto:
+  return `Crie um GDD completo e funcional para o seguinte projeto:
 
 **Tipo de Jogo:** ${request.gameType}
 **Descrição:** ${request.description}
 ${request.additionalInfo ? `**Informações Adicionais:** ${request.additionalInfo}` : ''}
 
-Retorne um JSON válido no seguinte formato (sem markdown, apenas JSON puro):
+Retorne JSON válido no formato especificado abaixo.
 
-**DOMÍNIOS VÁLIDOS (use em domainTags, minúsculo):** combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other
+═══════════════════════════════════════════════════════════════════
+PASSO 1 — INVENTE UM JOGO FICTÍCIO
+═══════════════════════════════════════════════════════════════════
 
+Antes de preencher qualquer seção, invente:
+- Um NOME para o jogo fictício (ex: "Elder Realms" pra RPG, "Abyss Descent" pra roguelike).
+- PROTAGONISTA com nome próprio (ex: "Kael, o Guerreiro Solar").
+- CONFLITO/OBJETIVO central (ex: "3 facções disputam fendas entre mundos").
+- NOMES de locais, itens, moedas específicos desse jogo.
+
+Use esses elementos em TODAS as seções. O usuário vai substituir, mas precisa ver CONCRETO.
+
+═══════════════════════════════════════════════════════════════════
+PASSO 2 — ESTRUTURE EM 5 GRUPOS HIERÁRQUICOS
+═══════════════════════════════════════════════════════════════════
+
+GDDs profissionais se organizam em 5 grupos. Siga esta ordem:
+
+1. **📖 Visão Geral — [Nome do Jogo]** (capa: pitch, público, USP, diferencial)
+2. **🎮 Design de Jogo** (container com: Core Loop, Mecânicas Centrais, Progressão)
+3. **📦 Conteúdo do Jogo** (container com: personagens, itens, combate, narrativa, economia — específico do gênero)
+4. **🎨 Apresentação** (container com: Controles/Acessibilidade, UX/UI, Arte e Áudio)
+5. **🏭 Produção** (container com: Tecnologia, Roadmap, Riscos, KPIs, Monetização, QA)
+
+Containers são seções pai que agrupam subsections. Eles próprios são páginas narrativas curtas explicando o que está dentro.
+
+═══════════════════════════════════════════════════════════════════
+PASSO 3 — USE PAGE TYPES APROPRIADOS
+═══════════════════════════════════════════════════════════════════
+
+O GDD Manager tem 10 tipos de página. Atribua um \`pageType\` quando fizer sentido:
+
+| pageType.id | Quando usar | O que seeda |
+|-------------|-------------|-------------|
+| \`narrative\` | Páginas de texto rico (Visão Geral, Narrativa, containers, quase tudo com descrição) | richDoc editor |
+| \`attributeDefinitions\` | Lista de atributos do jogo (HP, ATK, DEF, etc.) | Tabela de atributos |
+| \`economy\` | Página de moeda (pode ter uma moeda única ou principal) | Moeda configurável |
+| \`progression\` | Tabelas de XP, níveis, curva de progressão | Tabela de níveis |
+| \`characters\` | Personagem específico (uma classe, um herói, um inimigo individual) | Perfil de atributos + XP + progressão |
+| \`items\` | Item simples de coleção (moeda de coletar, fruta, etc.) | Inventário + economia |
+| \`equipmentItem\` | Item que modifica atributos (arma, armadura, amuleto, poção) | Inventário + economia + efeitos |
+| \`recipe\` | Receita específica (2 madeiras → 1 tábua) | Addon de produção |
+| \`craftTable\` | Estação de produção que agrega receitas (forja, bancada) | Mesa de craft vazia |
+| \`blank\` | Página vazia sem addons (raro — prefira \`narrative\`) | Nada |
+
+REGRA: use \`narrative\` para a MAIORIA das páginas (incluindo containers). Use tipos específicos só quando o conteúdo ESTRUTURALMENTE precisa (ex: lista de atributos → \`attributeDefinitions\`).
+
+═══════════════════════════════════════════════════════════════════
+PASSO 4 — PREENCHA O RICH DOC COM BLOCOS + CALLOUTS
+═══════════════════════════════════════════════════════════════════
+
+Para toda página \`narrative\` (e tipadas quando aplicável), preencha \`pageType.options.richDocBlocks\` com blocos estruturados no formato BlockNote:
+
+**Tipos de bloco suportados:**
+
+\`\`\`json
+// Parágrafo
+{ "type": "paragraph", "content": [{ "type": "text", "text": "Texto aqui.", "styles": {} }] }
+
+// Heading (level 2 ou 3)
+{ "type": "heading", "props": { "level": 2 }, "content": [{ "type": "text", "text": "Título", "styles": {} }] }
+
+// Item de lista
+{ "type": "bulletListItem", "content": [{ "type": "text", "text": "Item da lista", "styles": {} }] }
+
+// Callout — 4 variantes (note, warning, design-decision, balance-note)
+{ "type": "callout", "props": { "variant": "warning" }, "content": [{ "type": "text", "text": "Texto do callout", "styles": {} }] }
+\`\`\`
+
+**Variantes de callout — use intencionalmente:**
+
+- \`note\` (💡) — informação contextual, nota lateral
+- \`warning\` (⚠️) — **explicar jargão técnico** ("O que é USP?") OU lembrar "este é exemplo, substitua"
+- \`design-decision\` (🎯) — documentar um tradeoff que você tomou ("Por que escolhi 3 facções em vez de 2")
+- \`balance-note\` (⚖️) — concern de playtest ou tuning ("Cuidado com X, pode virar exploit")
+
+**Densidade alvo:** 3–5 callouts por página. Não exagere (1 por parágrafo vira ruído) nem omita (sem callouts, perde o valor educativo).
+
+═══════════════════════════════════════════════════════════════════
+PASSO 5 — SEED DE ATRIBUTOS (quando aplicável)
+═══════════════════════════════════════════════════════════════════
+
+Para \`attributeDefinitions\`, preencha \`pageType.options.attributeDefinitionsOverrides.attributes\` com atributos COERENTES com o gênero:
+
+- RPG tipicamente: HP, ATK, DEF, MAG, SPD (valores ~100/10/5/8/5)
+- Platformer: HP, Speed, Jump (valores ~3, 1.0, 1.5)
+- Roguelike: HP, ATK, Speed (+ mais se houver buildcraft)
+
+Formato:
+\`\`\`json
 {
-  "projectTitle": "Nome criativo e chamativo do projeto",
-  "projectDescription": "Descrição breve do projeto (2-3 linhas)",
+  "key": "hp",
+  "label": "HP",
+  "valueType": "int",
+  "defaultValue": 100,
+  "min": 0
+}
+\`\`\`
+
+\`valueType\` pode ser \`int\`, \`float\`, \`percent\`, \`boolean\`.
+
+═══════════════════════════════════════════════════════════════════
+FORMATO FINAL DO JSON
+═══════════════════════════════════════════════════════════════════
+
+\`\`\`json
+{
+  "projectTitle": "[nome do jogo do usuário, não o fictício]",
+  "projectDescription": "Descrição breve em 2-3 linhas.",
+  "fictionalGameName": "[nome do jogo fictício que você inventou]",
   "sections": [
     {
-      "title": "Nome da Seção",
-      "content": "Conteúdo inicial da seção em Markdown. Use ## para subtítulos, - para listas, etc.",
-      "domainTags": ["economy", "progression"],
+      "title": "📖 Visão Geral — [Nome do Jogo Fictício]",
+      "content": "Pitch, público, USP e diferencial do jogo de exemplo.",
+      "domainTags": ["other"],
+      "pageType": {
+        "id": "narrative",
+        "options": {
+          "richDocBlocks": [
+            { "type": "heading", "props": { "level": 2 }, "content": [{ "type": "text", "text": "Visão Geral — [nome fictício]", "styles": {} }] },
+            { "type": "paragraph", "content": [{ "type": "text", "text": "Parágrafo narrativo inventando o jogo...", "styles": {} }] },
+            { "type": "heading", "props": { "level": 3 }, "content": [{ "type": "text", "text": "Pitch", "styles": {} }] },
+            { "type": "paragraph", "content": [{ "type": "text", "text": "Frase de elevador...", "styles": {} }] },
+            { "type": "callout", "props": { "variant": "warning" }, "content": [{ "type": "text", "text": "O que é um pitch? É a frase de 15s...", "styles": {} }] },
+            { "type": "callout", "props": { "variant": "design-decision" }, "content": [{ "type": "text", "text": "Escolhi começar pelo protagonista porque...", "styles": {} }] },
+            { "type": "callout", "props": { "variant": "warning" }, "content": [{ "type": "text", "text": "Este conteúdo é fictício — substitua pelos elementos do SEU jogo.", "styles": {} }] }
+          ]
+        }
+      }
+    },
+    {
+      "title": "🎮 Design de Jogo",
+      "content": "Regras, loops e progressão.",
+      "domainTags": ["other"],
+      "pageType": { "id": "narrative", "options": { "richDocBlocks": [ ... ] } },
       "subsections": [
         {
-          "title": "Nome da Subseção",
-          "content": "Conteúdo da subseção em Markdown",
-          "domainTags": ["items"]
-        }
+          "title": "Core Loop",
+          "content": "...",
+          "pageType": { "id": "narrative", "options": { "richDocBlocks": [ ... ] } }
+        },
+        ...
       ]
-    }
+    },
+    {
+      "title": "📦 Conteúdo do Jogo",
+      "content": "...",
+      "pageType": { "id": "narrative", "options": { "richDocBlocks": [ ... ] } },
+      "subsections": [
+        // páginas específicas do gênero aqui
+        // EX: Personagens Jogáveis com subseções que são characters tipadas
+        // EX: Itens e Equipamentos com subseção equipmentItem tipada
+        // EX: Economia → pageType.id === "economy" com richDocBlocks
+      ]
+    },
+    { "title": "🎨 Apresentação", ... },
+    { "title": "🏭 Produção", ... }
   ]
 }
+\`\`\`
 
-**IMPORTANTE:**
-1. Crie um NOME CRIATIVO e CHAMATIVO para o projeto (não seja genérico!)
-2. Crie entre 5-8 seções principais relevantes ao tipo de jogo
-3. Cada seção principal pode ter 2-4 subseções
-4. Use referências cruzadas no formato $[Nome da Seção] quando apropriado
-5. Preencha cada seção com conteúdo inicial útil (não deixe vazio)
-6. Use Markdown para formatação (listas, títulos, negrito, etc.)
-7. Seja específico ao tipo de jogo mencionado
-8. Para CADA seção e subseção inclua "domainTags": array de 1 a 3 domínios (use só os IDs listados: combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other). Ex.: Overview → ["other"], Combate → ["combat"], Economia → ["economy"], Progressão → ["progression"].
-9. Retorne APENAS o JSON, sem texto adicional antes ou depois
-10. NÃO invente sistemas fora do escopo descrito. Se sugerir algo opcional além do núcleo, explique por que isso combina com a descrição do projeto.
+═══════════════════════════════════════════════════════════════════
+CHECKLIST FINAL (confira antes de retornar)
+═══════════════════════════════════════════════════════════════════
 
-Seções típicas de um GDD incluem:
-- Overview/Visão Geral
-- Conceito e Pilares
-- Gameplay/Mecânicas Core
-- Controles e Input (OBRIGATÓRIO - como o jogador interage: teclado, mouse, gamepad, touch, etc.)
-- Progressão do Jogador
-- Narrativa/História (se aplicável)
-- Arte e Estética
-- Audio/Música
-- UI/UX
-- Níveis/Mundo do Jogo
-- Sistemas específicos do gênero descrito (somente os que forem coerentes com a descrição informada)
-- Tecnologia
-- Plano de Desenvolvimento/Milestones
+- [ ] Inventou um jogo fictício com nome, protagonista, conflito?
+- [ ] Visão Geral é a PRIMEIRA seção?
+- [ ] Estrutura segue 5 grupos (Visão / Design / Conteúdo / Apresentação / Produção)?
+- [ ] Grupos 2-5 são containers com subsections (não flats)?
+- [ ] Cada página tem \`pageType\` atribuído (majoritariamente \`narrative\`)?
+- [ ] Páginas estruturais (atributos, economia, personagens, itens) usam page type específico?
+- [ ] richDocBlocks preenchido em TODAS as páginas com 3-5 callouts?
+- [ ] Callouts misturam 4 variantes (note, warning, design-decision, balance-note)?
+- [ ] Atributos seedados em \`attributeDefinitionsOverrides\` quando aplicável?
+- [ ] domainTags presente em cada seção (1-3 tags dos 11 válidos)?
+- [ ] Tom: exemplos CONCRETOS do jogo fictício, não placeholders genéricos?
 
-**ATENÇÃO ESPECIAL:**
-- A seção "Controles e Input" é OBRIGATÓRIA e deve detalhar:
-  * Esquema de controles para cada plataforma suportada
-  * Mapeamento de botões/teclas
-  * Gestos (se mobile/touch)
-  * Configurações de acessibilidade
-  * Exemplo: Para PC (WASD movimento, Mouse aim, Espaço pular), Mobile (Joystick virtual, Tap para ação)
+**DOMÍNIOS VÁLIDOS (domainTags, minúsculo):** combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other
 
-Adapte as seções ao tipo de jogo descrito.`;
+Retorne APENAS o JSON, sem markdown de code fence, sem texto adicional.`;
 }
 
 export function generateChatWithContextPrompt(
