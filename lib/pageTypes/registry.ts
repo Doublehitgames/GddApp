@@ -7,10 +7,11 @@ import type {
   ProductionIngredient,
   ProductionOutput,
   ProgressionTableColumn,
+  RichDocBlock,
   SectionAddon,
   SectionAddonType,
 } from "@/lib/addons/types";
-import { buildProgressionRowsFromRange } from "@/lib/addons/types";
+import { buildProgressionRowsFromRange, createDefaultRichDocAddon } from "@/lib/addons/types";
 import { generateAllProgressionColumnValues } from "@/lib/addons/progressionTableGenerator";
 import { getAddonRegistryEntry } from "@/lib/addons/registry";
 import type { GameDesignDomainId } from "@/lib/gameDesignDomains";
@@ -691,6 +692,12 @@ export type BuildPageTypeAddonsOptions = {
     outputQuantity?: number;
     craftTimeSeconds?: number;
   };
+  /**
+   * Replaces the empty default blocks of any seeded `richDoc` addon with
+   * pre-authored content. Used by the template system to ship starter-kit
+   * projects that open with real narrative and callouts already in place.
+   */
+  richDocBlocks?: RichDocBlock[];
   /** Pre-populates a seeded `craftTable` addon with entries referencing recipe sections. */
   linkCraftTableRecipes?: {
     recipeSectionIds: string[];
@@ -738,7 +745,25 @@ export function buildPageTypeAddons(
     if (addon.type === "craftTable" && options.linkCraftTableRecipes) {
       addon = applyCraftTableRecipes(addon, options.linkCraftTableRecipes);
     }
+    if (addon.type === "richDoc" && options.richDocBlocks && options.richDocBlocks.length > 0) {
+      addon = { ...addon, data: { ...addon.data, blocks: options.richDocBlocks } };
+    }
     out.push(addon);
+  }
+  // If richDocBlocks were provided but the page type has no native richDoc
+  // addon, append one carrying the blocks. This lets template authors attach
+  // narrative + callouts to typed pages (characters, equipmentItem, etc.)
+  // without forcing richDoc into every page type's default addon list.
+  if (options.richDocBlocks && options.richDocBlocks.length > 0 && !out.some((a) => a.type === "richDoc")) {
+    const addonId = `rich-doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const richDoc = createDefaultRichDocAddon(addonId);
+    const namedRichDoc = t
+      ? { ...richDoc, name: t("pageTypes.addonNames.richDocNotes", richDoc.name) }
+      : richDoc;
+    out.push({
+      ...namedRichDoc,
+      data: { ...namedRichDoc.data, blocks: options.richDocBlocks },
+    });
   }
   // Post-process: if the output contains both attributeDefinitions and
   // fieldLibrary, populate the library entries from the attrs (one per

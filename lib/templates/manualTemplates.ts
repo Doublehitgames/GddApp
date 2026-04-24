@@ -1,5 +1,6 @@
 import type { AppLocale } from "@/lib/i18n/config";
 import type { BuildPageTypeAddonsOptions, PageTypeId } from "@/lib/pageTypes/registry";
+import type { RichDocBlock } from "@/lib/addons/types";
 
 export type WizardProjectType = "digital_game";
 export type WizardGenre = "rpg" | "roguelike" | "platformer" | "puzzle" | "simulation";
@@ -282,6 +283,77 @@ function seedNarrative(): TemplateSection["pageType"] {
   return { id: "narrative" };
 }
 
+// ───────────────────────────────────────────────────────────────────
+// Rich doc block builders — short, readable helpers for authoring the
+// templates below. We keep the output as BlockNote-compatible blocks
+// (matching the editor's document shape). Minimal metadata: the editor
+// fills ids/defaults on load.
+// ───────────────────────────────────────────────────────────────────
+
+/** Paragraph block with a single plain-text run. */
+function p(text: string): RichDocBlock {
+  return {
+    type: "paragraph",
+    content: [{ type: "text", text, styles: {} }],
+  };
+}
+
+/** Heading block (h2 by default — templates rarely need h1). */
+function h(text: string, level: 1 | 2 | 3 = 2): RichDocBlock {
+  return {
+    type: "heading",
+    props: { level },
+    content: [{ type: "text", text, styles: {} }],
+  };
+}
+
+/** Bullet list item. */
+function li(text: string): RichDocBlock {
+  return {
+    type: "bulletListItem",
+    content: [{ type: "text", text, styles: {} }],
+  };
+}
+
+/** Callout block (variant maps to CalloutVariantId). */
+function callout(
+  variant: "note" | "warning" | "design-decision" | "balance-note",
+  text: string
+): RichDocBlock {
+  return {
+    type: "callout",
+    props: { variant },
+    content: [{ type: "text", text, styles: {} }],
+  };
+}
+
+/**
+ * Factory for a "narrative" template section pre-seeded with rich-doc
+ * blocks. Use this for sections that tell the user what a concept is +
+ * show a worked example from a fictional game.
+ *
+ * `shortSummary` fills the section's plain `content` markdown (used in
+ * search + list previews). The `blocks` become the richDoc addon body.
+ */
+function narrative(
+  id: string,
+  title: string,
+  shortSummary: string,
+  blocks: RichDocBlock[],
+  subsections?: TemplateSection[]
+): TemplateSection {
+  return {
+    id,
+    title,
+    content: shortSummary,
+    subsections,
+    pageType: {
+      id: "narrative",
+      options: { richDocBlocks: blocks },
+    },
+  };
+}
+
 const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
   mini: [
     section(
@@ -318,11 +390,8 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
     ),
   ],
   medio: [
-    section(
-      "common-medio-visao-geral",
-      "Visao Geral",
-      "Registrar pitch, publico, referencias, USP e posicionamento inicial."
-    ),
+    // Visao Geral is now genre-specific — each genre provides its own rich,
+    // narrative version (e.g. rpg-medio-visao-geral-elder).
     section(
       "common-medio-core-loop",
       "Core Loop e Loops Secundarios",
@@ -462,102 +531,931 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
 const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>> = {
   rpg: {
     mini: [
-      section(
-        "rpg-mini-classes",
-        "Classes e Atributos",
-        "Classes iniciais, atributos principais e identidade de build.",
-        undefined,
-        seedRpgAttributes()
+      narrative(
+        "rpg-mini-visao-geral",
+        "Visao Geral — Elder Realms",
+        "Pitch rapido do jogo de exemplo.",
+        [
+          h("Visao Geral — Elder Realms", 2),
+          p(
+            "Elder Realms e um RPG de fantasia tatico em turnos. Voce joga como Kael, um guerreiro amnesico que porta a Reliquia do Sol — unica arma capaz de selar fendas entre mundos. Tres faccoes disputam o controle dessas fendas e voce vai escolher lado."
+          ),
+          callout(
+            "warning",
+            "Este e um exemplo ficticio pra te guiar. Substitua Elder Realms, Kael e as faccoes pelos elementos do SEU jogo."
+          ),
+        ]
       ),
-      section("rpg-mini-combate", "Combate", "Modelo de combate, alvo e fluxo de turno/tempo real."),
-      section("rpg-mini-mundo", "Mundo e Narrativa", "Tema, faccoes e objetivo da jornada principal.", undefined, seedNarrative()),
+      {
+        id: "rpg-mini-classes",
+        title: "Classes e Atributos",
+        content: "5 atributos base + identidade de classe (Kael, Aria, Bran).",
+        pageType: {
+          id: "attributeDefinitions",
+          options: {
+            attributeDefinitionsOverrides: {
+              attributes: [
+                { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
+                { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
+                { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
+                { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
+                { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
+              ],
+            },
+            richDocBlocks: [
+              h("Classes e Atributos", 2),
+              p(
+                "Elder Realms usa cinco atributos base (HP/ATK/DEF/MAG/SPD) compartilhados por todas as classes."
+              ),
+              li("Kael, o Guerreiro Solar — tanque + DPS corpo-a-corpo (HP, DEF altos)."),
+              li("Aria, a Maga Eclipsada — dano magico a distancia (MAG, SPD altos)."),
+              li("Bran, o Vagante Sombrio — DPS agil com adagas e venenos (ATK, SPD altos)."),
+              callout(
+                "note",
+                "Os 5 atributos ja foram criados no painel lateral. Adicione mais se precisar (ex: LUK pra sorte). Crie uma pagina de Personagem por classe e linke esta pagina como fonte dos atributos."
+              ),
+              callout(
+                "warning",
+                "Como mini-template, esta versao nao gera paginas individuais de classes — crie-as manualmente usando o tipo \"Personagem\" no sidebar."
+              ),
+            ],
+          },
+        },
+      },
+      narrative(
+        "rpg-mini-combate",
+        "Combate",
+        "Combate tatico em turnos com Reliquia como recurso de escolha.",
+        [
+          h("Combate — Elder Realms", 2),
+          p(
+            "Tatico em turnos ordenados por SPD. Cada turno: atacar, usar skill, defender ou item. Dano = (ATK — DEF) × mod_skill × critico, com minimo de 1 hit."
+          ),
+          li("A Reliquia do Sol da 3 cargas por batalha, nao regenera durante combate."),
+          li("Estados: queima, congelamento, envenenamento — cada um com contrapeso."),
+          callout(
+            "design-decision",
+            "Formula subtrativa de dano ((ATK-DEF)×mod) em vez de multiplicativa: DEF baixo e mais impactante no comeco, criando sensacao clara de evolucao."
+          ),
+          callout(
+            "warning",
+            "Este e um modelo — se seu jogo e action, card-based ou tempo real, reescreva essa secao inteira."
+          ),
+        ]
+      ),
+      narrative(
+        "rpg-mini-mundo",
+        "Mundo e Narrativa",
+        "Tema, faccoes e objetivo da jornada de Kael.",
+        [
+          h("Mundo de Elder Realms", 2),
+          p(
+            "Mundo de fantasia em decadencia. Fendas entre dimensoes apareceram ha 20 anos e estao consumindo regioes inteiras. Tres faccoes disputam o controle delas."
+          ),
+          h("As Tres Faccoes", 3),
+          li("Ordem do Sol — teocratica, quer selar as fendas permanentemente."),
+          li("Reino Livre — quer usar as fendas como fonte de energia."),
+          li("Nomades do Veu — tribos que consideram as fendas sagradas."),
+          callout(
+            "design-decision",
+            "Tres faccoes (em vez de dois lados) forcam o jogador a ponderar tradeoffs — nao existe \"escolha obvia\" entre bem e mal."
+          ),
+          callout(
+            "warning",
+            "Esta e uma pagina Narrativa — o addon Rich Doc abaixo e seu espaco principal pra lore. Use headings (H2, H3) pra organizar por capitulos, regioes ou personagens."
+          ),
+        ]
+      ),
     ],
     medio: [
-      section("rpg-medio-personagens", "Personagens Jogaveis", "Classes, papeis e assinatura de gameplay por classe.", [
-        section(
-          "rpg-medio-atributos",
-          "Atributos",
-          "STR, AGI, INT, VIT e impacto numerico.",
-          undefined,
-          seedRpgAttributes()
-        ),
-        section(
-          "rpg-medio-classe-exemplo",
-          "Classe de Exemplo: Guerreiro",
-          "Exemplo de classe pronta para duplicar — ajuste nome, atributos e habilidades.",
-          undefined,
-          seedCharacterExample()
-        ),
-        section("rpg-medio-skills", "Skills", "Ativas/passivas, cooldowns e custos."),
-      ]),
-      section("rpg-medio-combate", "Sistema de Combate", "Modelo de dano, defesa, critico, esquiva e status effects."),
-      section("rpg-medio-itens", "Itens e Equipamentos", "Tipos, raridade, equipaveis, consumiveis e upgrades.", [
-        section(
-          "rpg-medio-item-exemplo",
-          "Item de Exemplo: Espada Curta",
-          "Exemplo de equipamento pronto para duplicar — ajuste preco, atributos e inventario.",
-          undefined,
-          seedEquipmentExample()
-        ),
-      ]),
-      section("rpg-medio-narrativa", "Narrativa e NPCs", "Arco principal, lore, faccoes e missao secundaria.", undefined, seedNarrative()),
-      section("rpg-medio-economia", "Economia", "Moedas, fontes, sinks e controle de progressao economica.", undefined, seedEconomy()),
+      narrative(
+        "rpg-medio-visao-geral",
+        "Visao Geral — Elder Realms",
+        "Pitch, publico-alvo, plataformas e diferencial do jogo de exemplo.",
+        [
+          h("Visao Geral — Elder Realms", 2),
+          p(
+            "Elder Realms e um RPG de fantasia focado em exploracao aberta e combate tatico em turnos. O jogador controla Kael, um guerreiro amnesico que acorda no topo de uma torre em ruinas e descobre que e o ultimo portador de uma reliquia capaz de selar fendas entre mundos."
+          ),
+
+          h("Pitch", 3),
+          p(
+            "Um RPG de fantasia onde cada decisao de combate reverbera na historia. Jogue como Kael, descubra tres faccoes em guerra, e escolha se vai salvar o mundo ou conquista-lo."
+          ),
+          callout(
+            "warning",
+            "O que e um pitch? E a frase de elevador que voce diria pra alguem ter interesse no seu jogo em 15 segundos. Nao e a sinopse — e o gancho. Pergunta que ele responde: por que alguem se importaria?"
+          ),
+
+          h("Publico-alvo", 3),
+          p(
+            "Fas de RPGs classicos dos anos 2000 (Final Fantasy X, Dragon Quest). Players de 25-45 anos que valorizam narrativa e progressao tatica acima de reflexos."
+          ),
+
+          h("Plataformas", 3),
+          p("PC (Steam) no lancamento. Port para Switch previsto seis meses depois."),
+
+          h("USP — Unique Selling Proposition", 3),
+          li(
+            "Reliquia como mecanica central: toda escolha de combate consome cargas da reliquia, que tambem move a narrativa."
+          ),
+          li(
+            "Sistema de faccoes dinamicas: tres faccoes (Ordem do Sol, Reino Livre, Nomades do Veu) respondem as suas acoes em tempo real."
+          ),
+          li(
+            "Morte permanente opcional: modo hard desbloqueavel apos zerar o jogo."
+          ),
+          callout(
+            "warning",
+            "O que e USP? E o que diferencia SEU jogo de todos os outros do genero. Nao precisa ser revolucionario — precisa ser especifico o suficiente pra alguem escolher o seu em vez do concorrente."
+          ),
+
+          h("Diferencial Competitivo", 3),
+          p(
+            "Elder Realms nao e \"mais um JRPG\" — o hook e que a reliquia (sua unica vantagem) e tambem seu limite. Cada batalha vencida te torna mais forte mas mais visado pelas faccoes."
+          ),
+          callout(
+            "design-decision",
+            "Por que comecamos esta secao com o protagonista, nao com o mundo: e mais facil vender uma pessoa do que um cenario. Quando voce falar do seu jogo, comece com \"voce joga como X\" — o contexto vem depois."
+          ),
+
+          callout(
+            "warning",
+            "Este conteudo e ficticio e serve como exemplo. Substitua Elder Realms, Kael e as faccoes pelos elementos do SEU jogo. As secoes (Pitch, Publico, USP) sao o que voce deve preencher — a ordem e a profundidade tambem."
+          ),
+        ]
+      ),
+      narrative(
+        "rpg-medio-personagens",
+        "Personagens Jogaveis",
+        "Classes, papeis e assinatura de gameplay do elenco de Elder Realms.",
+        [
+          h("Personagens Jogaveis — Elder Realms", 2),
+          p(
+            "O grupo de Elder Realms tem tres classes principais, cada uma com identidade clara e espaco pra evolucao. O equilibrio entre elas e a base do combate tatico: uma classe sozinha nao vence os encontros mais duros."
+          ),
+
+          h("Kael — O Guerreiro Solar", 3),
+          p(
+            "Tanque e atacante corpo-a-corpo. Portador da Reliquia do Sol, Kael convoca escudos de luz que absorvem dano e retornam parte dele ao atacante."
+          ),
+          li("Especialidade: proteger aliados e controlar a frente de batalha."),
+          li("Atributos fortes: HP e DEF. Atributos fracos: MAG e SPD."),
+
+          h("Aria — A Maga Eclipsada", 3),
+          p(
+            "Dano magico a distancia. Aria manipula fendas entre mundos pra conjurar ataques elementais — mas cada feitico drena a Reliquia do Sol, criando tensao entre poder e custo."
+          ),
+          li("Especialidade: dano em area e debuffs."),
+          li("Atributos fortes: MAG e SPD. Atributos fracos: HP e DEF."),
+
+          h("Bran — O Vagante Sombrio", 3),
+          p(
+            "DPS agil e furtivo. Bran nao tem reliquia — luta com duas adagas e venenos. Sua aposta e acabar com o inimigo antes de ser visto."
+          ),
+          li("Especialidade: critico alto, esquiva e mobilidade."),
+          li("Atributos fortes: ATK e SPD. Atributos fracos: HP e DEF."),
+
+          callout(
+            "design-decision",
+            "Por que tres classes com fraquezas explicitas: forca o jogador a formar time em vez de solar com o favorito. Em Elder Realms, TODOS os bosses tem fases que exigem mais de uma classe ativa — isso da valor narrativo e mecanico ao grupo."
+          ),
+          callout(
+            "warning",
+            "Use este elenco como molde. Troque nomes, apelidos e a identidade estetica pelos personagens do SEU jogo. Guarde a estrutura: cada classe com UM ponto forte claro + UM ponto fraco claro."
+          ),
+        ],
+        [
+          // Typed page (attributeDefinitions) + richDoc addon added by registry
+          // because richDocBlocks is present. Kept as a plain object literal
+          // because `narrative()` hardcodes page type to "narrative".
+          {
+            id: "rpg-medio-atributos",
+            title: "Atributos Base",
+            content: "Os cinco atributos compartilhados por Kael, Aria e Bran.",
+            pageType: {
+              id: "attributeDefinitions",
+              options: {
+                attributeDefinitionsOverrides: {
+                  attributes: [
+                    { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
+                    { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
+                    { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
+                    { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
+                    { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
+                  ],
+                },
+                richDocBlocks: [
+                  h("Atributos Base", 2),
+                  p(
+                    "Elder Realms usa cinco atributos numericos que afetam combate e exploracao. O painel ao lado mostra os valores iniciais; os reais escalam pela tabela de progressao (nivel 1 a 20)."
+                  ),
+                  li("HP — pontos de vida. Morre em 0."),
+                  li("ATK — dano fisico por golpe."),
+                  li("DEF — reducao de dano recebido."),
+                  li("MAG — poder de feiticos e cargas da Reliquia."),
+                  li("SPD — ordem no turno e chance de esquiva."),
+                  callout(
+                    "note",
+                    "Esta pagina ja vem com os 5 atributos criados no painel lateral. Voce pode editar valores, adicionar (ex: LUK pra sorte) ou remover — so nao esqueca de ajustar os personagens que referenciam ela."
+                  ),
+                  callout(
+                    "design-decision",
+                    "SPD afeta ordem E esquiva de proposito: um unico atributo com dois efeitos simplifica o mental model sem empobrecer o balanceamento."
+                  ),
+                ],
+              },
+            },
+          },
+          {
+            id: "rpg-medio-kael",
+            title: "Kael, o Guerreiro Solar",
+            content: "Ficha completa do protagonista tanque/DPS corpo-a-corpo.",
+            pageType: {
+              id: "characters",
+              options: {
+                richDocBlocks: [
+                  h("Kael, o Guerreiro Solar", 2),
+                  p(
+                    "Kael acordou sem memorias no topo da Torre Vermelha, com a Reliquia do Sol fundida ao peito. Ele nao escolheu ser o portador — mas e o unico que pode selar as fendas."
+                  ),
+                  h("Perfil de combate", 3),
+                  li("Papel: tanque + DPS corpo-a-corpo."),
+                  li("Assinatura: Escudo Solar (absorve dano e reflete 30% no atacante)."),
+                  li("Contra: inimigos com SPD alto que evitam seus golpes pesados."),
+                  callout(
+                    "note",
+                    "Esta pagina ja vem com os addons de Perfil de Atributos, Curva de XP, Tabela de Progressao e Efeitos por Personagem. Use-os pra balancear numeros sem mexer na ficha narrativa."
+                  ),
+                  callout(
+                    "warning",
+                    "Esta e uma classe de exemplo pra voce duplicar. Crie Aria, Bran e quantos mais precisar — cada uma com Perfil de Atributos proprio linkado a mesma pagina de Atributos Base."
+                  ),
+                ],
+              },
+            },
+          },
+          narrative(
+            "rpg-medio-skills",
+            "Skills — Habilidades Ativas e Passivas",
+            "Como skills funcionam em Elder Realms: custo, cooldown e sinergia.",
+            [
+              h("Skills em Elder Realms", 2),
+              p(
+                "Cada classe tem 4 skills ativas + 2 passivas. Ativas custam energia (regenerada por turno) ou cargas da Reliquia (escassas). Passivas sao sempre ativas mas nao se acumulam — so uma por tipo."
+              ),
+              h("Exemplos — Kael", 3),
+              li("Golpe Solar (ativa, 20 energia): ATK×1.8, ignora 50% da DEF."),
+              li("Escudo Aurora (ativa, 1 carga Reliquia): absorve 100+MAG de dano por 2 turnos."),
+              li("Postura Defensiva (passiva): +20% DEF enquanto HP > 50%."),
+              callout(
+                "design-decision",
+                "Custos duplos (energia OU Reliquia) existem pra criar escolhas reais: skills baratas pra uso constante, caras pra momentos chave. Se tudo fosse so cooldown, sairia roteirizado."
+              ),
+              callout(
+                "warning",
+                "Skills nao sao um page type — descreva elas aqui em texto por enquanto. Se evoluir, a gente pode criar um page type dedicado no futuro."
+              ),
+            ]
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-medio-combate",
+        "Sistema de Combate",
+        "Modelo tatico em turnos com Reliquia como recurso de escolha.",
+        [
+          h("Sistema de Combate — Elder Realms", 2),
+          p(
+            "Combate acontece em turnos, ordenados por SPD. Cada personagem tem uma acao por turno: atacar, usar skill, defender ou item. Posicao importa: quem ataca pelas costas ganha 50% de critico."
+          ),
+
+          h("Formula de Dano", 3),
+          p(
+            "Dano final = (ATK — DEF_alvo) × modificador_skill × critico. Se DEF ≥ ATK, dano minimo = 1 (nunca zero — impede cenarios impossiveis)."
+          ),
+
+          h("Estados Alterados", 3),
+          li("Queima — perde 5% HP por turno por 3 turnos (zera com agua)."),
+          li("Congelamento — pula proximo turno (zera com fogo)."),
+          li("Envenenamento — perde 3% HP por turno por 5 turnos (antidoto)."),
+
+          h("A Reliquia do Sol", 3),
+          p(
+            "Kael comeca cada batalha com 3 cargas da Reliquia. Cargas nao regeneram durante combate — voce recebe 1 ao acabar. Isso forca escolha: gastar tudo agora ou guardar pra boss?"
+          ),
+          callout(
+            "design-decision",
+            "A formula de dano e subtrativa ((ATK-DEF)×mod) em vez de multiplicativa (ATK×(1-DEF%)) de proposito: valores baixos de DEF sao mais impactantes no comeco do jogo, o que da sensacao clara de evolucao ao subir DEF."
+          ),
+          callout(
+            "balance-note",
+            "Dano minimo de 1 e uma rede de seguranca, mas pode virar vetor de exploit (ex: Bran com multiplos ataques conseguir matar um boss de DEF altissima). Monitore em playtest e considere cap de quantos hits de dano-1 um inimigo aceita por turno."
+          ),
+          callout(
+            "warning",
+            "Combate tatico em turnos e so UM modelo — pode ser tempo real, ACT, card-based, etc. Mantenha este texto apenas como referencia e reescreva se seu jogo usar outro modelo."
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-medio-itens",
+        "Itens e Equipamentos",
+        "Tipos, raridade e como equipamentos interagem com atributos em Elder Realms.",
+        [
+          h("Itens e Equipamentos — Elder Realms", 2),
+          p(
+            "Itens dividem-se em tres categorias: equipamentos (usaveis por classe), consumiveis (usados no inventario) e materiais (ingredientes de craft)."
+          ),
+
+          h("Raridade", 3),
+          li("Comum (cinza) — armas basicas, sem bonus especiais."),
+          li("Raro (azul) — 1 atributo extra + efeito modesto."),
+          li("Epico (roxo) — 2 atributos extras + efeito ativo ou passivo."),
+          li("Lendario (dourado) — assinatura unica com efeito narrativo."),
+
+          h("Exemplos — Elder Realms", 3),
+          li("Lamina do Crepusculo (epico): +8 ATK, +3 SPD. Ao matar inimigo, proximo ataque tem critico garantido."),
+          li("Escudo da Aurora (raro): +5 DEF. Reflete 15% do dano recebido."),
+          li("Pocao de Nevoa (consumivel): Bran fica invisivel por 2 turnos."),
+
+          callout(
+            "design-decision",
+            "Raridade dourada e reservada pra itens com peso narrativo — ganhar um deles e um marco da jornada, nao dropa aleatorio. Isso transforma raridade num sinal de progresso da historia, nao so de tempo de grind."
+          ),
+          callout(
+            "warning",
+            "Esta pagina e um container: dentro dela voce encontra \"Lamina do Crepusculo\" como exemplo de item com efeito. Duplique pra criar mais equipamentos, consumiveis e materiais do seu jogo."
+          ),
+        ],
+        [
+          {
+            id: "rpg-medio-item-exemplo",
+            title: "Lamina do Crepusculo",
+            content: "Espada lendaria de Bran — equipamento de exemplo com efeitos.",
+            pageType: {
+              id: "equipmentItem",
+              options: {
+                richDocBlocks: [
+                  h("Lamina do Crepusculo", 2),
+                  p(
+                    "A Lamina do Crepusculo foi forjada pelos Nomades do Veu no ultimo eclipse. So quem ja matou um ser do Veu pode empunha-la — uma condicao que Bran cumpre no capitulo 3 da historia principal."
+                  ),
+                  h("Efeitos de atributo", 3),
+                  li("+8 ATK"),
+                  li("+3 SPD"),
+                  h("Efeito ativo", 3),
+                  p(
+                    "Apos matar um inimigo, o proximo golpe de Bran tem critico garantido. Efeito expira se ele passar 1 turno sem atacar."
+                  ),
+                  callout(
+                    "note",
+                    "Esta pagina ja vem com os addons de Inventario, Economia e Efeitos por Personagem. Voce ajusta preco, atributos e inventario nos paineis laterais."
+                  ),
+                  callout(
+                    "design-decision",
+                    "Efeitos narrativos (matar um ser do Veu) em vez de condicoes genericas (nivel 10) ancoram items na historia. Quando o jogador recebe a Lamina, ele ja tem contexto — ele ganhou."
+                  ),
+                  callout(
+                    "warning",
+                    "Duplique esta pagina pra criar mais equipamentos. Mantenha o padrao: 1-2 atributos + 1 efeito ativo ou passivo + descricao com gancho narrativo."
+                  ),
+                ],
+              },
+            },
+          },
+        ]
+      ),
+
+      narrative(
+        "rpg-medio-narrativa",
+        "Narrativa e NPCs",
+        "Arco principal, faccoes e lore de Elder Realms.",
+        [
+          h("Narrativa — Elder Realms", 2),
+          p(
+            "A historia central de Elder Realms gira em torno de tres faccoes em guerra fria pelo controle das fendas entre mundos. Kael, Aria e Bran entram no meio desse conflito sem escolher lado — forcados pela Reliquia do Sol a tomar decisoes que os alinharao com uma ou outra."
+          ),
+
+          h("As Tres Faccoes", 3),
+          li("Ordem do Sol — teocratica, quer fechar as fendas permanentemente. Aliados se voce escolher \"salvar o mundo\"."),
+          li("Reino Livre — democratica, quer usar as fendas como fonte de energia. Aliados se voce escolher \"transformar o mundo\"."),
+          li("Nomades do Veu — tribos nomades, acham que as fendas sao sagradas. Aliados se voce escolher \"abracar o caos\"."),
+
+          h("Arco Principal", 3),
+          li("Ato 1 — Kael desperta, encontra Aria. Descobrem o sistema das fendas."),
+          li("Ato 2 — Bran se junta, conflito com a Ordem do Sol. Escolha: selar uma fenda e enfraquecer o Reino Livre, ou deixa-la aberta."),
+          li("Ato 3 — decisao final sobre as fendas. 3 finais possiveis alinhados com cada faccao."),
+
+          callout(
+            "design-decision",
+            "Tres faccoes em vez de dois lados forca o jogador a fazer tradeoffs — nao existe \"escolha obvia\". Tambem permite 3 finais sem multiplicar o conteudo exponencialmente: cada final muda narrativamente, nao mecanicamente."
+          ),
+          callout(
+            "warning",
+            "Este addon Rich Doc e perfeito pra desenvolver lore extensa. Use headings (H2, H3) pra organizar por capitulos, personagens ou regioes. Callouts tipo design-decision ajudam voce a lembrar POR QUE tomou certas decisoes narrativas."
+          ),
+        ]
+      ),
+
+      {
+        id: "rpg-medio-economia",
+        title: "Economia",
+        content: "Moeda Ouro de Elder Realms, fontes, sinks e regras de progressao.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia — Elder Realms", 2),
+              p(
+                "Elder Realms usa uma unica moeda, o Ouro. Ela e ganha em combate, explorando baus e vendendo itens. E gasta comprando consumiveis, reparando equipamentos e em servicos de cidade (tavernas, fast-travel)."
+              ),
+
+              h("Fontes (onde o ouro aparece)", 3),
+              li("Dropa de monstros comuns: 5-50 ouro por inimigo."),
+              li("Baus: 50-500 ouro por bau, dependendo da area."),
+              li("Vendendo itens: equipamentos comuns valem 10% do preco de compra."),
+
+              h("Sinks (onde o ouro some)", 3),
+              li("Reparo de equipamentos — taxa de 5% do valor por ponto de durabilidade."),
+              li("Pocoes e consumiveis — 20-200 ouro."),
+              li("Fast-travel entre cidades — 100 ouro por viagem."),
+
+              callout(
+                "note",
+                "Esta pagina ja vem com o addon de Moeda configurado. Use o painel lateral pra ajustar nome (\"Ouro\" virou \"Coins\" por padrao — renomeie), codigo e tipo."
+              ),
+              callout(
+                "design-decision",
+                "Uma moeda so (em vez de varias — ouro, gemas, tokens) mantem a economia legivel pra player casual. Se seu jogo precisa de economias secundarias (moedas de evento, metaprogressao), crie paginas separadas e linke entre elas."
+              ),
+              callout(
+                "balance-note",
+                "A taxa de reparo (5% por ponto) e delicada: se for alta demais, jogador evita usar equipamento caro; se for baixa, reparo vira irrelevante. Monitore em playtest se jogadores estao pescando por \"equipamento que nao quebra\"."
+              ),
+              callout(
+                "warning",
+                "Se seu jogo precisa de mais moedas, crie novas paginas de Economia — nao empilhe tudo nesta. Paginas separadas tornam mais facil linkar regras de conversao entre elas."
+              ),
+            ],
+          },
+        },
+      },
     ],
     completo: [
-      section("rpg-completo-mecanicas", "Mecanicas Principais de RPG", "Exploracao, combate, progressao e inventario com regras detalhadas.", [
-        section("rpg-completo-exploracao", "Exploracao", "Mapa, eventos, interacoes e gates de area."),
-        section("rpg-completo-inventario", "Inventario", "Limites, stack, filtros e comparacao de itens."),
-      ]),
-      section("rpg-completo-personagens", "Personagens, Classes e Buildcraft", "Design de classes, atributos base e espacos de customizacao.", [
-        section(
-          "rpg-completo-atributos-base",
-          "Atributos Base",
-          "Atributos compartilhados entre todas as classes.",
-          undefined,
-          seedRpgAttributes()
-        ),
-        section(
-          "rpg-completo-classes",
-          "Classes",
-          "Funcoes, pontos fortes, counters e sinergias.",
-          [
-            section(
-              "rpg-completo-classe-exemplo",
-              "Classe de Exemplo: Guerreiro",
-              "Exemplo para duplicar e ajustar.",
-              undefined,
-              seedCharacterExample()
-            ),
-          ]
-        ),
-        section("rpg-completo-skill-tree", "Arvore de Habilidades", "Ramos, custos e milestones de build."),
-      ]),
-      section("rpg-completo-combate", "Sistema de Combate Avancado", "Formula de dano, resistencia, buffs/debuffs, IA e telemetria de combate.", [
-        section("rpg-completo-formulas", "Formulas Base", "Dano, mitigacao, critico, esquiva e status."),
-        section("rpg-completo-ia-inimiga", "IA Inimiga e Bosses", "Comportamentos, fases e leitura de telegraph."),
-      ]),
-      section("rpg-completo-itens", "Itens, Equipamentos e Loot", "Taxonomia de item, raridade, drop table, upgrade e item sinks.", [
-        section(
-          "rpg-completo-item-exemplo",
-          "Item de Exemplo: Espada Curta",
-          "Equipamento pronto para duplicar.",
-          undefined,
-          seedEquipmentExample()
-        ),
-        section("rpg-completo-loot", "Politica de Loot", "Tabelas, pity timers, garantia minima e anti-frustracao."),
-        section("rpg-completo-upgrade", "Upgrade e Encantamento", "Custos, falhas, risco e progressao de gear."),
-      ]),
-      section("rpg-completo-narrativa", "Narrativa, Lore e Missoes", "Main quest, side quest, worldbuilding e impacto de escolhas.", undefined, seedNarrative()),
-      section("rpg-completo-secundarios", "Sistemas Secundarios", "Crafting, guildas, ranking, eventos e PvP opcional.", [
-        section(
-          "rpg-completo-mesa-craft",
-          "Mesa de Craft",
-          "Estacao que agrega receitas — ligue receitas existentes depois.",
-          undefined,
-          seedCraftTableExample()
-        ),
-      ]),
-      section("rpg-completo-economia", "Economia e Monetizacao de RPG", "Modelagem de moedas, sinks, progressao e limites de monetizacao.", undefined, seedEconomy()),
+      narrative(
+        "rpg-completo-visao-geral",
+        "Visao Geral — Elder Realms",
+        "Pitch, publico, plataformas e USP completos do jogo de exemplo.",
+        [
+          h("Visao Geral — Elder Realms", 2),
+          p(
+            "Elder Realms e um RPG de fantasia focado em exploracao aberta e combate tatico em turnos. O jogador controla Kael, guerreiro amnesico que acorda no topo de uma torre em ruinas portando a Reliquia do Sol — unica arma capaz de selar fendas entre mundos. Tres faccoes disputam o controle dessas fendas."
+          ),
+          h("Pitch", 3),
+          p(
+            "Um RPG de fantasia onde cada decisao de combate reverbera na historia. Jogue como Kael, descubra tres faccoes em guerra, e escolha se vai salvar o mundo, transforma-lo ou conquista-lo."
+          ),
+          h("USP — Diferenciais Competitivos", 3),
+          li("Reliquia como mecanica central: cargas escassas, decisao por turno."),
+          li("Faccoes dinamicas: acoes em uma regiao afetam relacionamentos em outras."),
+          li("Tres finais narrativamente distintos mas mecanicamente iguais (nao exige rejogar ato 1)."),
+          li("Morte permanente opcional em New Game+."),
+          callout(
+            "warning",
+            "O que e USP? Unique Selling Proposition — o que faz o seu jogo diferente dos concorrentes. Nao precisa ser revolucionario: precisa ser especifico."
+          ),
+          callout(
+            "design-decision",
+            "Comecamos a visao geral com o protagonista (Kael), nao com o cenario. Motivo: e mais facil vender uma pessoa do que um mundo. O contexto vem depois."
+          ),
+          callout(
+            "warning",
+            "Este conteudo e ficticio pra servir de exemplo. Substitua por Elder Realms pelos elementos do SEU jogo, mantendo a estrutura das secoes (Pitch, Publico, USP, Diferencial)."
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-mecanicas",
+        "Mecanicas Principais",
+        "Exploracao, combate, progressao e inventario de Elder Realms.",
+        [
+          h("Mecanicas Centrais — Elder Realms", 2),
+          p(
+            "O jogo alterna entre fases de exploracao (mundo aberto, puzzles ambientais, dialogo) e fases de combate (turnos taticos). Transicao e ativada por encontros visiveis no mapa — nao tem combate aleatorio."
+          ),
+          h("Pilares", 3),
+          li("Exploracao livre com gates narrativos, nao gates de nivel."),
+          li("Combate sempre opcional ate o boss de ato — voce pode tentar evitar."),
+          li("Reliquia alimenta tanto combate (skills) quanto exploracao (selar fendas)."),
+          callout(
+            "design-decision",
+            "Sem combate aleatorio: respeitamos o tempo do jogador. Quando ele luta, e porque escolheu."
+          ),
+        ],
+        [
+          narrative(
+            "rpg-completo-exploracao",
+            "Exploracao",
+            "Mundo aberto de Elder Realms, eventos, puzzles e gates.",
+            [
+              h("Exploracao", 2),
+              p(
+                "Elder Realms tem cinco regioes conectadas: Torre Vermelha (tutorial), Cidade Portal, Floresta do Veu, Deserto do Eclipse e Capital Branca. Voce pode acessa-las em ordem livre apos completar o ato 1."
+              ),
+              li("Cada regiao tem 3-5 fendas. Selar todas desbloqueia um boss opcional."),
+              li("Baus comuns requerem exploracao; baus raros requerem puzzle ambiental."),
+              li("NPCs ambientais contam lore sem bloquear progressao."),
+              callout(
+                "design-decision",
+                "Mundo semi-aberto (nao open world puro): controla o escopo de conteudo sem perder a sensacao de liberdade. Essa e a arquitetura usada por FF10 e Chrono Trigger."
+              ),
+            ]
+          ),
+          narrative(
+            "rpg-completo-inventario",
+            "Inventario",
+            "Regras de stack, filtros e comparacao em Elder Realms.",
+            [
+              h("Inventario", 2),
+              li("Limite: 99 itens unicos + 9 stacks de consumiveis."),
+              li("Consumiveis stackam ate 99. Equipamentos sao unicos."),
+              li("Filtros: Equipamento / Consumivel / Material / Chave."),
+              li("Ao equipar, aparece comparativo lado-a-lado com o item atual."),
+              callout(
+                "balance-note",
+                "Limite de 99 itens pode virar apertado no ato 2 — considere expansao via upgrade da cidade como recompensa de side quest."
+              ),
+            ]
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-personagens",
+        "Personagens, Classes e Buildcraft",
+        "Kael, Aria, Bran e o sistema de build de Elder Realms.",
+        [
+          h("Elenco Principal — Elder Realms", 2),
+          p(
+            "Tres classes jogaveis com identidades contrastantes. A composicao de grupo (escolha dois em cada batalha) e uma decisao tatica central."
+          ),
+          li("Kael — Guerreiro Solar (tanque + DPS corpo-a-corpo)."),
+          li("Aria — Maga Eclipsada (dano magico e debuffs)."),
+          li("Bran — Vagante Sombrio (critico alto, esquiva, venenos)."),
+          callout(
+            "design-decision",
+            "Cada classe tem UM ponto forte claro + UM ponto fraco claro. Sem isso, os jogadores escolheriam sempre a mesma — e a composicao de grupo perderia sentido."
+          ),
+        ],
+        [
+          {
+            id: "rpg-completo-atributos-base",
+            title: "Atributos Base",
+            content: "5 atributos compartilhados: HP, ATK, DEF, MAG, SPD.",
+            pageType: {
+              id: "attributeDefinitions",
+              options: {
+                attributeDefinitionsOverrides: {
+                  attributes: [
+                    { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
+                    { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
+                    { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
+                    { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
+                    { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
+                  ],
+                },
+                richDocBlocks: [
+                  h("Atributos Base — Elder Realms", 2),
+                  li("HP — pontos de vida. Morre em 0."),
+                  li("ATK — dano fisico por golpe."),
+                  li("DEF — reducao de dano recebido."),
+                  li("MAG — poder de feiticos e cargas da Reliquia."),
+                  li("SPD — ordem no turno e chance de esquiva."),
+                  callout(
+                    "note",
+                    "Esta pagina e referenciada por todas as classes. Adicionar atributo aqui (ex: LUK) afeta todos os personagens."
+                  ),
+                ],
+              },
+            },
+          },
+          narrative(
+            "rpg-completo-classes",
+            "Classes",
+            "As tres classes de Elder Realms: funcoes, sinergias e counters.",
+            [
+              h("Classes — Elder Realms", 2),
+              p(
+                "Kael, Aria e Bran sao as classes de partida. Elas nao mudam durante o jogo — o que evolui e a build dentro da arvore de habilidades."
+              ),
+              h("Sinergias", 3),
+              li("Kael+Aria — Kael tanka enquanto Aria castiga. Combo classico."),
+              li("Aria+Bran — debuff + critico. Otimo contra bosses de HP alto."),
+              li("Kael+Bran — dano bruto. Fraco contra inimigos voadores."),
+              callout(
+                "warning",
+                "Se seu jogo tem so uma classe, apague os 3 subsections abaixo e descreva so a classe principal. Se tem 5+, duplique o padrao mas cuide do escopo — cada classe vira conteudo."
+              ),
+            ],
+            [
+              {
+                id: "rpg-completo-kael",
+                title: "Kael, o Guerreiro Solar",
+                content: "Tanque e atacante corpo-a-corpo, portador da Reliquia do Sol.",
+                pageType: {
+                  id: "characters",
+                  options: {
+                    richDocBlocks: [
+                      h("Kael, o Guerreiro Solar", 2),
+                      p(
+                        "Guerreiro amnesico que acorda no topo da Torre Vermelha com a Reliquia do Sol fundida ao peito. Tanque + DPS corpo-a-corpo."
+                      ),
+                      li("Papel: absorver dano e controlar frente."),
+                      li("Skill assinatura: Escudo Solar (absorve dano e reflete 30%)."),
+                      li("Fraqueza: inimigos de SPD alto."),
+                      callout(
+                        "note",
+                        "Esta pagina ja vem com Perfil de Atributos, Curva de XP, Tabela de Progressao e Efeitos. Duplique-a pra criar Aria e Bran."
+                      ),
+                    ],
+                  },
+                },
+              },
+            ]
+          ),
+          narrative(
+            "rpg-completo-skill-tree",
+            "Arvore de Habilidades",
+            "Ramos, custos e milestones de build em Elder Realms.",
+            [
+              h("Arvore de Habilidades", 2),
+              p(
+                "Cada classe tem tres ramos (Forca, Tecnica, Reliquia). Cada ramo tem 8 habilidades desbloqueaveis por pontos de skill (1 por level up)."
+              ),
+              li("Ramo Forca: melhora ataque bruto e sobrevivencia."),
+              li("Ramo Tecnica: habilidades conditionais (criticos, combos)."),
+              li("Ramo Reliquia: reduz custo de skills que gastam Reliquia."),
+              callout(
+                "design-decision",
+                "3 ramos × 8 habilidades = 24 habilidades por classe. Impossivel maxar tudo ate level 20 — forca escolhas reais de build em cada run."
+              ),
+              callout(
+                "balance-note",
+                "Cuidado com ramos \"obvios\" (ex: Bran sempre maxa Tecnica). Se um ramo e sempre escolhido, o sistema de escolha virou ilusao."
+              ),
+            ]
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-combate",
+        "Sistema de Combate Avancado",
+        "Formulas, status, IA inimiga e bosses de Elder Realms.",
+        [
+          h("Combate — Detalhado", 2),
+          p(
+            "Combate em turnos ordenados por SPD. Posicionamento existe em grid 3×3. Ataque pelas costas = +50% critico. A Reliquia do Sol da 3 cargas por batalha e nao regenera durante combate."
+          ),
+        ],
+        [
+          narrative(
+            "rpg-completo-formulas",
+            "Formulas Base",
+            "Dano, critico, mitigacao e status effects de Elder Realms.",
+            [
+              h("Formulas Base", 2),
+              p("Dano = (ATK — DEF_alvo) × mod_skill × critico."),
+              p("Critico = 1.0 (normal) ou 1.5 (ataque pelas costas ou skill de critico garantido)."),
+              p("Chance de esquiva = (SPD_alvo — SPD_atacante) × 2%, cap em 40%."),
+              li("Queima — 5% HP/turno por 3 turnos (zera com agua)."),
+              li("Congelamento — pula 1 turno (zera com fogo)."),
+              li("Envenenamento — 3% HP/turno por 5 turnos (zera com antidoto)."),
+              callout(
+                "design-decision",
+                "Formula subtrativa ((ATK-DEF)×mod) em vez de multiplicativa (ATK×(1-DEF%)): DEF baixo e mais impactante no comeco, reforcando progressao."
+              ),
+              callout(
+                "balance-note",
+                "Cap de 40% esquiva previne Bran ficar \"intocavel\" com SPD 30+ contra inimigos lentos. Considere cap diferente em Hard Mode."
+              ),
+            ]
+          ),
+          narrative(
+            "rpg-completo-ia-inimiga",
+            "IA Inimiga e Bosses",
+            "Como inimigos decidem e como bosses tem fases.",
+            [
+              h("IA Inimiga", 2),
+              p(
+                "Inimigos comuns seguem heuristicas simples: priorizam alvo de menor HP, fogem quando abaixo de 20% HP. Previsiveis de proposito — o foco e a tatica do jogador."
+              ),
+              h("Bosses", 3),
+              li("3 fases: neutral (usa skills basicas), pressionado (< 50% HP: novas skills), desesperado (< 15%: ultimate)."),
+              li("Cada fase tem telegrafo visual (flash de cor) 1 turno antes."),
+              callout(
+                "design-decision",
+                "Telegrafo 1 turno antes da ultimate e sagrado: garante que morrer de boss e culpa do jogador, nao do dado. Essa regra salva de frustracao."
+              ),
+            ]
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-itens",
+        "Itens, Equipamentos e Loot",
+        "Taxonomia, raridade, drop table e upgrade em Elder Realms.",
+        [
+          h("Itens e Equipamentos", 2),
+          p(
+            "Tres tipos: equipamentos (usaveis por classe), consumiveis (pocoes, antidotos) e materiais (crafting)."
+          ),
+          h("Raridade", 3),
+          li("Comum (cinza) — armas basicas sem bonus."),
+          li("Raro (azul) — 1 atributo extra + efeito modesto."),
+          li("Epico (roxo) — 2 atributos extras + efeito ativo/passivo."),
+          li("Lendario (dourado) — assinatura unica + peso narrativo."),
+          callout(
+            "design-decision",
+            "Lendarios nao dropam aleatorio — so em momentos narrativos. Isso transforma raridade em sinal de progresso da historia."
+          ),
+        ],
+        [
+          {
+            id: "rpg-completo-lamina",
+            title: "Lamina do Crepusculo",
+            content: "Espada lendaria de Bran, ganha no capitulo 3.",
+            pageType: {
+              id: "equipmentItem",
+              options: {
+                richDocBlocks: [
+                  h("Lamina do Crepusculo", 2),
+                  p(
+                    "Forjada pelos Nomades do Veu no ultimo eclipse. So quem ja matou um ser do Veu pode empunha-la."
+                  ),
+                  li("+8 ATK, +3 SPD."),
+                  li("Ao matar inimigo, proximo ataque tem critico garantido."),
+                  callout(
+                    "design-decision",
+                    "Pre-requisito narrativo (matar um ser do Veu) em vez de nivel. Quando Bran recebe a lamina, ja tem contexto — ele ganhou."
+                  ),
+                ],
+              },
+            },
+          },
+          narrative(
+            "rpg-completo-loot",
+            "Politica de Loot",
+            "Drop tables, pity timers e garantias em Elder Realms.",
+            [
+              h("Politica de Loot", 2),
+              li("Drop rates: comum 70%, raro 25%, epico 4.5%, lendario 0% (so narrativo)."),
+              li("Pity timer: 10 baus sem raro+ garante um raro no 11."),
+              li("Garantia minima: chefe de ato sempre dropa 1 epico."),
+              callout(
+                "balance-note",
+                "Pity timer e contra-intuitivo pra designer mas essencial pra player: evita sequencias de azar que matam engajamento."
+              ),
+            ]
+          ),
+          narrative(
+            "rpg-completo-upgrade",
+            "Upgrade e Encantamento",
+            "Custos, risco e progressao de gear em Elder Realms.",
+            [
+              h("Upgrade e Encantamento", 2),
+              p(
+                "Equipamentos podem ser aprimorados em ferreiros. Upgrade +1 ao +5 sucesso garantido (custo crescente). +6 em diante tem chance de falha (perde materiais, mantem arma)."
+              ),
+              li("Cada +1 adiciona +10% aos stats base."),
+              li("Falha em +6 ou superior usa materiais raros — decisao de risco."),
+              callout(
+                "design-decision",
+                "Sucesso garantido ate +5 e contrato implicito: todo equipamento e upgradavel sem frustracao. Risco so acima disso, onde o player ja tomou decisao informada."
+              ),
+              callout(
+                "warning",
+                "Se seu jogo nao tem ferreiro/upgrade, apague esta secao. Se tem encantamento tipo diablo/poe, expanda com tabelas de affixes."
+              ),
+            ]
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-narrativa",
+        "Narrativa, Lore e Missoes",
+        "Arco principal, side quests e impacto de escolhas em Elder Realms.",
+        [
+          h("Narrativa — Elder Realms", 2),
+          p(
+            "3 atos com escolhas que ecoam no ato seguinte. Ato 1 tutorial e despertar; ato 2 guerra das faccoes; ato 3 decisao final sobre as fendas."
+          ),
+          h("Main Quest", 3),
+          li("Ato 1 — Kael desperta, encontra Aria, descobre o sistema das fendas. 3-5h."),
+          li("Ato 2 — Bran se junta, confronto com a Ordem. Escolha pivota o ato 3. 8-12h."),
+          li("Ato 3 — decisao final: selar tudo, usar como energia, ou libertar. 3 finais. 3-6h por final."),
+          h("Side Quests", 3),
+          li("15 side quests principais, cada uma alinhada com uma faccao."),
+          li("Completar todas as de uma faccao desbloqueia final \"puro\" daquela faccao."),
+          callout(
+            "design-decision",
+            "Side quests que alinham com uma faccao (em vez de neutras) transformam quest-grind em posicionamento politico. O jogador nao farma XP — ele escolhe lado."
+          ),
+          callout(
+            "warning",
+            "Esta pagina e o lar da lore. Use o addon Rich Doc abaixo pra escrever backstories de NPCs, descricoes de regioes e roteiros de quest. Callouts de design-decision ajudam a lembrar POR QUE tomou certas decisoes narrativas."
+          ),
+        ]
+      ),
+
+      narrative(
+        "rpg-completo-secundarios",
+        "Sistemas Secundarios",
+        "Crafting, guildas, eventos e PvP opcional em Elder Realms.",
+        [
+          h("Sistemas Secundarios", 2),
+          p(
+            "Conteudo opcional que estende o ciclo de vida do jogo sem bloquear main quest."
+          ),
+          li("Crafting — forjar equipamentos a partir de materiais (mesa dedicada abaixo)."),
+          li("Guildas — 3 guildas alinhadas com as faccoes. Recompensam com equipamento e skills."),
+          li("Arena — PvE roguelike pos-game. Sem recompensa narrativa, so skins."),
+          callout(
+            "warning",
+            "Sistemas secundarios sao armadilha de escopo. Se voce e solo dev, comece com UM (ex: so crafting). Guildas e arena podem vir em update pos-lancamento."
+          ),
+        ],
+        [
+          {
+            id: "rpg-completo-mesa-forja",
+            title: "Mesa de Forja",
+            content: "Estacao de crafting — agrega receitas de equipamento.",
+            pageType: {
+              id: "craftTable",
+              options: {
+                richDocBlocks: [
+                  h("Mesa de Forja", 2),
+                  p(
+                    "Local em Cidade Portal onde o jogador transforma materiais em equipamentos. Cada receita tem ingredientes, saida e tempo de produc ao."
+                  ),
+                  callout(
+                    "note",
+                    "Esta mesa comeca vazia. Crie paginas de Receita no sidebar e depois ligue-as aqui pelo addon Mesa de Producao."
+                  ),
+                  callout(
+                    "warning",
+                    "Se seu jogo nao tem crafting, remova esta subsection inteira."
+                  ),
+                ],
+              },
+            },
+          },
+        ]
+      ),
+
+      {
+        id: "rpg-completo-economia",
+        title: "Economia",
+        content: "Moeda Ouro de Elder Realms, fontes, sinks e limites.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia — Elder Realms", 2),
+              p(
+                "Moeda unica (Ouro). Fontes: combate, baus, venda de itens. Sinks: reparo, consumiveis, fast-travel, upgrade."
+              ),
+              h("Fontes", 3),
+              li("Drops de inimigos: 5-50 ouro."),
+              li("Baus: 50-500 ouro."),
+              li("Venda de equipamentos: 10% do preco de compra."),
+              h("Sinks", 3),
+              li("Reparo — 5% do valor do item por ponto de durabilidade."),
+              li("Upgrade — custo crescente por nivel do equipamento."),
+              li("Fast-travel — 100 ouro por viagem."),
+              li("Consumiveis — 20-200 ouro."),
+              callout(
+                "design-decision",
+                "Moeda unica mantem economia legivel pra player casual. Se precisar de metaprogressao (ex: gemas pra cosmeticos), crie pagina separada."
+              ),
+              callout(
+                "balance-note",
+                "Reparo a 5% por ponto e delicado. Se alto, jogador evita usar bom equipamento. Se baixo, reparo vira irrelevante."
+              ),
+              callout(
+                "warning",
+                "Monetizacao em RPG premium e diferente de F2P. Esta pagina cobre economia IN-GAME. Se seu jogo tem store real (DLCs, skins pagas), crie pagina separada pra modelo de monetizacao."
+              ),
+            ],
+          },
+        },
+      },
     ],
   },
   roguelike: {
