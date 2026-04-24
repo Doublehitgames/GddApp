@@ -54,7 +54,7 @@ export type PageTypeAddon = {
   /** i18n key for the localized nameOverride. Takes precedence over `nameOverride` when a translator is available. */
   nameOverrideKey?: string;
   /** Post-create tweak (e.g. preload attribute list with HP/ATK/DEF). */
-  customize?: (addon: SectionAddon) => SectionAddon;
+  customize?: (addon: SectionAddon, options?: BuildPageTypeAddonsOptions) => SectionAddon;
 };
 
 /** Lightweight translator type (matches the `t` returned by `useI18n()`). */
@@ -82,6 +82,32 @@ export type PageType = {
 export const BUY_DISCOUNT_VAR_KEY = "item_buy_discount";
 export const SELL_MARKUP_VAR_KEY = "item_sell_markup";
 
+/**
+ * Preset attributes used by the default `attributeDefinitions` seed.
+ * Exposed so the character-settings UI can offer checkboxes for them.
+ */
+export const PRESET_ATTRIBUTES: ReadonlyArray<{
+  key: string;
+  label: string;
+  valueType: AttributeDefinitionEntry["valueType"];
+  defaultValue: number;
+  min?: number;
+}> = [
+  { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
+  { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
+  { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
+  { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
+];
+
+/**
+ * Stable `{key,label}` projection of PRESET_ATTRIBUTES. Callers that feed
+ * the attribute-slots picker UI should reference this constant so the
+ * array identity is stable across renders (prevents unnecessary re-renders
+ * in child pickers).
+ */
+export const PRESET_ATTRIBUTES_DISPLAY: ReadonlyArray<{ key: string; label: string }> =
+  PRESET_ATTRIBUTES.map((p) => ({ key: p.key, label: p.label }));
+
 const seedDefaultCurrency = (addon: SectionAddon): SectionAddon => {
   if (addon.type !== "currency") return addon;
   return {
@@ -94,19 +120,27 @@ const seedDefaultCurrency = (addon: SectionAddon): SectionAddon => {
   };
 };
 
-const seedAttributeDefinitions = (addon: SectionAddon): SectionAddon => {
+const seedAttributeDefinitions = (
+  addon: SectionAddon,
+  options?: BuildPageTypeAddonsOptions
+): SectionAddon => {
   if (addon.type !== "attributeDefinitions") return addon;
   const now = Date.now();
+  const override = options?.attributeDefinitionsOverrides?.attributes;
+  const source = override && override.length > 0 ? override : PRESET_ATTRIBUTES;
+  const attributes: AttributeDefinitionEntry[] = source.map((attr, idx) => ({
+    id: `attr-${now}-${idx}-${attr.key}`,
+    key: attr.key,
+    label: attr.label,
+    valueType: attr.valueType,
+    defaultValue: attr.defaultValue,
+    ...(typeof attr.min === "number" ? { min: attr.min } : {}),
+  }));
   return {
     ...addon,
     data: {
       ...addon.data,
-      attributes: [
-        { id: `attr-${now}-hp`, key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
-        { id: `attr-${now}-atk`, key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
-        { id: `attr-${now}-def`, key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
-        { id: `attr-${now}-spd`, key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
-      ],
+      attributes,
     },
   };
 };
@@ -122,7 +156,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "items",
     label: "Itens",
-    description: "Catálogo de itens do jogo. Inclui inventário e ligação com economia.",
+    description: "Lista de itens do seu jogo (madeira, poção, chave). Já vem com inventário e preço de compra/venda.",
     emoji: "🎒",
     addons: [
       { type: "inventory", role: "primary", nameOverride: "Inventário", nameOverrideKey: "pageTypes.addonNames.inventory" },
@@ -134,7 +168,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "equipmentItem",
     label: "Itens com Efeito",
-    description: "Itens que também modificam atributos (espada, poção, armadura). Inclui inventário, economia e modificadores de atributos.",
+    description: "Itens que mudam atributos quando equipados ou usados (armadura, amuleto, poção). Já vem com inventário, preço e bônus de atributos.",
     emoji: "⚔️",
     addons: [
       { type: "inventory", role: "primary", nameOverride: "Inventário", nameOverrideKey: "pageTypes.addonNames.inventory" },
@@ -147,21 +181,21 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "characters",
     label: "Personagens",
-    description: "Personagens do jogo (jogáveis ou inimigos) com perfil de atributos, curva de XP, progressão por nível e modificadores por variante.",
+    description: "Personagens do jogo com atributos (HP, ATK, DEF...) e progressão por nível. Funciona pra heróis, inimigos ou NPCs.",
     emoji: "👤",
     addons: [
       { type: "attributeProfile", role: "primary" },
       { type: "xpBalance", role: "recommended", nameOverride: "Curva de XP", nameOverrideKey: "pageTypes.addonNames.xpCurve" },
       { type: "progressionTable", role: "recommended" },
-      { type: "attributeModifiers", role: "recommended", nameOverride: "Modificadores por variante", nameOverrideKey: "pageTypes.addonNames.variantModifiers" },
+      { type: "attributeModifiers", role: "recommended", nameOverride: "Efeitos por personagem", nameOverrideKey: "pageTypes.addonNames.variantModifiers" },
     ],
     requires: ["attributeDefinitions"],
     tags: ["characters", "combat", "progression"],
   },
   {
     id: "attributeDefinitions",
-    label: "Definições de Atributos Base",
-    description: "Define um conjunto de atributos (HP, ATK, DEF, etc.) + biblioteca de campos com as chaves de progressão pré-preenchidas.",
+    label: "Atributos",
+    description: "Lista de atributos (HP, ATK, DEF...) que pode ser reaproveitada por vários personagens.",
     emoji: "🎯",
     addons: [
       {
@@ -183,7 +217,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "economy",
     label: "Economia",
-    description: "Moeda ou recurso econômico do jogo.",
+    description: "Moeda do jogo (ouro, gemas, energia). Define o nome, o símbolo e regras básicas.",
     emoji: "🪙",
     defaultSectionTitle: "Coin",
     addons: [
@@ -200,7 +234,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "progression",
     label: "Progressão",
-    description: "Tabelas de XP, níveis e curvas de progressão.",
+    description: "Tabela de XP e níveis — quanto XP precisa pra subir de nível e o que cada nível entrega.",
     emoji: "📈",
     addons: [
       { type: "xpBalance", role: "primary" },
@@ -211,7 +245,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "recipe",
     label: "Receita",
-    description: "Uma receita que transforma itens-ingrediente em itens-saída. Seleciona os itens envolvidos no momento da criação.",
+    description: "Uma receita: ingredientes entram, item sai. Ex.: '2 Madeiras → 1 Tábua'.",
     emoji: "📜",
     addons: [
       {
@@ -227,7 +261,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "craftTable",
     label: "Mesa de Craft",
-    description: "Uma estação de produção que reúne receitas existentes (ex.: Serraria, Bancada). Unlocks opcionais ficam off por padrão.",
+    description: "Uma estação que agrupa várias receitas (Serraria, Forja, Bancada). Você escolhe quais receitas ela produz.",
     emoji: "🏭",
     addons: [
       {
@@ -242,7 +276,7 @@ export const PAGE_TYPES: PageType[] = [
   {
     id: "narrative",
     label: "Narrativa",
-    description: "Páginas de lore, roteiro ou descrição em texto rico.",
+    description: "Texto corrido pra lore, roteiro ou descrição — tipo um documento de texto.",
     emoji: "📖",
     addons: [{ type: "richDoc", role: "primary" }],
     tags: ["narrative"],
@@ -462,8 +496,10 @@ export function findCurrencyCandidates(sections: SectionLike[]): RequiresCandida
 }
 
 /**
- * Locates the two economy-modifier globalVariable sections by sentinel key.
- * Returns nulls when they don't exist yet — the sidebar then creates them.
+ * Locates the first pair of economy-modifier globalVariable sections
+ * (buy-discount + sell-markup). Accepts any key whose prefix matches the
+ * sentinel — this lets per-item variants (e.g. `item_buy_discount_premium`)
+ * also count as an existing pair.
  */
 export function findEconomyModifierSectionIds(sections: SectionLike[]): {
   buyDiscountSectionId: string | null;
@@ -475,21 +511,70 @@ export function findEconomyModifierSectionIds(sections: SectionLike[]): {
     for (const addon of section.addons || []) {
       if (addon.type !== "globalVariable") continue;
       const key = addon.data.key;
-      if (!buy && key === BUY_DISCOUNT_VAR_KEY) buy = section.id;
-      else if (!sell && key === SELL_MARKUP_VAR_KEY) sell = section.id;
+      if (!key) continue;
+      if (!buy && (key === BUY_DISCOUNT_VAR_KEY || key.startsWith(`${BUY_DISCOUNT_VAR_KEY}_`))) {
+        buy = section.id;
+      } else if (!sell && (key === SELL_MARKUP_VAR_KEY || key.startsWith(`${SELL_MARKUP_VAR_KEY}_`))) {
+        sell = section.id;
+      }
     }
   }
   return { buyDiscountSectionId: buy, sellMarkupSectionId: sell };
+}
+
+export type EconomyModifierCandidate = {
+  sectionId: string;
+  sectionTitle: string;
+  addonName: string;
+  percent: number;
+};
+
+/**
+ * Returns ALL economy-modifier globalVariable sections grouped into discount
+ * and markup buckets. Used by the currency modal to let the user pick zero,
+ * one or many modifiers to stack on an item's economyLink.
+ */
+export function findAllEconomyModifierCandidates(sections: SectionLike[]): {
+  discounts: EconomyModifierCandidate[];
+  markups: EconomyModifierCandidate[];
+} {
+  const discounts: EconomyModifierCandidate[] = [];
+  const markups: EconomyModifierCandidate[] = [];
+  for (const section of sections) {
+    for (const addon of section.addons || []) {
+      if (addon.type !== "globalVariable") continue;
+      const key = addon.data.key;
+      if (!key) continue;
+      const percent =
+        typeof addon.data.defaultValue === "number" ? addon.data.defaultValue : 0;
+      const candidate: EconomyModifierCandidate = {
+        sectionId: section.id,
+        sectionTitle: section.title || section.id,
+        addonName: addon.name || addon.data.displayName || addon.data.name || key,
+        percent,
+      };
+      // Filter by sign: a discount must reduce price (≤ 0), a bonus must increase it (≥ 0).
+      // GVs with the wrong sign are skipped so the picker only surfaces semantically valid ones.
+      if ((key === BUY_DISCOUNT_VAR_KEY || key.startsWith(`${BUY_DISCOUNT_VAR_KEY}_`)) && percent <= 0) {
+        discounts.push(candidate);
+      } else if ((key === SELL_MARKUP_VAR_KEY || key.startsWith(`${SELL_MARKUP_VAR_KEY}_`)) && percent >= 0) {
+        markups.push(candidate);
+      }
+    }
+  }
+  return { discounts, markups };
 }
 
 // ─── Seeded globalVariable factories (used only by the sidebar flow) ─────
 
 export function createBuyDiscountGlobalVariableAddon(
   addonId: string,
-  labels?: { displayName?: string; notes?: string }
+  labels?: { displayName?: string; notes?: string; defaultValue?: number; key?: string }
 ): GlobalVariableSectionAddon {
   const displayName = labels?.displayName || "Desconto de Compra";
   const notes = labels?.notes || "Reduz o valor de compra de itens em 10%.";
+  const defaultValue = typeof labels?.defaultValue === "number" ? labels.defaultValue : -10;
+  const key = labels?.key || BUY_DISCOUNT_VAR_KEY;
   return {
     id: addonId,
     type: "globalVariable",
@@ -497,10 +582,10 @@ export function createBuyDiscountGlobalVariableAddon(
     data: {
       id: addonId,
       name: displayName,
-      key: BUY_DISCOUNT_VAR_KEY,
+      key,
       displayName,
       valueType: "percent",
-      defaultValue: -10,
+      defaultValue,
       scope: "global",
       notes,
     },
@@ -509,10 +594,12 @@ export function createBuyDiscountGlobalVariableAddon(
 
 export function createSellMarkupGlobalVariableAddon(
   addonId: string,
-  labels?: { displayName?: string; notes?: string }
+  labels?: { displayName?: string; notes?: string; defaultValue?: number; key?: string }
 ): GlobalVariableSectionAddon {
   const displayName = labels?.displayName || "Bônus de Venda";
   const notes = labels?.notes || "Aumenta o valor de venda de itens em 10%.";
+  const defaultValue = typeof labels?.defaultValue === "number" ? labels.defaultValue : 10;
+  const key = labels?.key || SELL_MARKUP_VAR_KEY;
   return {
     id: addonId,
     type: "globalVariable",
@@ -520,10 +607,10 @@ export function createSellMarkupGlobalVariableAddon(
     data: {
       id: addonId,
       name: displayName,
-      key: SELL_MARKUP_VAR_KEY,
+      key,
       displayName,
       valueType: "percent",
-      defaultValue: 10,
+      defaultValue,
       scope: "global",
       notes,
     },
@@ -547,6 +634,15 @@ export type BuildPageTypeAddonsOptions = {
       libraryAddonId: string;
       entryIdByAttrKey: Record<string, string>;
     };
+    /**
+     * Overrides for the seeded progressionTable (level range + growth rate).
+     * Used by the Characters flow so the user can pick these values in the wizard.
+     */
+    progressionOverrides?: {
+      startLevel?: number;
+      endLevel?: number;
+      growthRate?: number;
+    };
   };
   /** Links any seeded `economyLink` addon's buy/sell currency refs. */
   linkCurrency?: {
@@ -554,13 +650,38 @@ export type BuildPageTypeAddonsOptions = {
   };
   /** Adds modifier refs to any seeded `economyLink` addon's buy/sell arrays. */
   linkEconomyModifiers?: {
-    buySectionId?: string;
-    sellSectionId?: string;
+    /** Section IDs of globalVariable discount pages to stack as buyModifiers. */
+    buySectionIds?: string[];
+    /** Section IDs of globalVariable markup pages to stack as sellModifiers. */
+    sellSectionIds?: string[];
   };
   /** Seed base values on the economyLink so the modifier effect is visible. */
   economyLinkBaseValues?: {
     buyValue?: number;
     sellValue?: number;
+  };
+  /**
+   * Pre-populates any seeded `attributeModifiers` addon with user-authored
+   * entries collected in the create wizard. Each entry targets one attribute
+   * key from the linked attributeDefinitions page.
+   */
+  attributeModifiersSeed?: Array<{
+    attributeKey: string;
+    mode: "add" | "mult" | "set";
+    value: number | boolean;
+  }>;
+  /**
+   * Overrides the default attribute list seeded into an `attributeDefinitions`
+   * addon (falls back to PRESET_ATTRIBUTES when absent/empty).
+   */
+  attributeDefinitionsOverrides?: {
+    attributes?: Array<{
+      key: string;
+      label: string;
+      valueType: AttributeDefinitionEntry["valueType"];
+      defaultValue: number;
+      min?: number;
+    }>;
   };
   /** Wires a seeded `production` addon to recipe-mode with ingredient/output items. */
   linkRecipe?: {
@@ -593,13 +714,17 @@ export function buildPageTypeAddons(
       addon = { ...addon, name: resolvedName };
     }
     if (entry.customize) {
-      addon = entry.customize(addon);
+      addon = entry.customize(addon, options);
     }
     if (options.linkAttributeDefinitions) {
       if (addon.type === "attributeProfile") {
         addon = linkAttributeProfile(addon, options.linkAttributeDefinitions);
       } else if (addon.type === "attributeModifiers") {
-        addon = linkAttributeModifiers(addon, options.linkAttributeDefinitions);
+        addon = linkAttributeModifiers(
+          addon,
+          options.linkAttributeDefinitions,
+          options.attributeModifiersSeed
+        );
       } else if (addon.type === "progressionTable" && options.linkAttributeDefinitions.attributes.length > 0) {
         addon = customizeProgressionTableForAttributes(addon, options.linkAttributeDefinitions);
       }
@@ -669,13 +794,28 @@ function linkAttributeProfile(
 
 function linkAttributeModifiers(
   addon: Extract<SectionAddon, { type: "attributeModifiers" }>,
-  link: NonNullable<BuildPageTypeAddonsOptions["linkAttributeDefinitions"]>
+  link: NonNullable<BuildPageTypeAddonsOptions["linkAttributeDefinitions"]>,
+  seed?: BuildPageTypeAddonsOptions["attributeModifiersSeed"]
 ): Extract<SectionAddon, { type: "attributeModifiers" }> {
+  // Build the initial modifier entries from the wizard seed. Only attrs that
+  // actually exist in the linked attributeDefinitions are kept — that guards
+  // against stale keys.
+  const knownKeys = new Set((link.attributes || []).map((a) => a.key));
+  const now = Date.now();
+  const modifiers = (seed || [])
+    .filter((s) => knownKeys.has(s.attributeKey))
+    .map((s, idx) => ({
+      id: `attr-mod-${now}-${idx}-${s.attributeKey}`,
+      attributeKey: s.attributeKey,
+      mode: s.mode,
+      value: s.value,
+    }));
   return {
     ...addon,
     data: {
       ...addon.data,
       definitionsRef: link.sectionId,
+      ...(modifiers.length > 0 ? { modifiers } : {}),
     },
   };
 }
@@ -690,9 +830,13 @@ function customizeProgressionTableForAttributes(
   addon: Extract<SectionAddon, { type: "progressionTable" }>,
   link: NonNullable<BuildPageTypeAddonsOptions["linkAttributeDefinitions"]>
 ): Extract<SectionAddon, { type: "progressionTable" }> {
-  const { attributes, fieldLibrary } = link;
-  const startLevel = 1;
-  const endLevel = 100;
+  const { attributes, fieldLibrary, progressionOverrides } = link;
+  const startLevel = Math.max(1, Math.floor(progressionOverrides?.startLevel ?? 1));
+  const endLevel = Math.max(startLevel, Math.floor(progressionOverrides?.endLevel ?? 100));
+  const growth =
+    typeof progressionOverrides?.growthRate === "number" && Number.isFinite(progressionOverrides.growthRate)
+      ? progressionOverrides.growthRate
+      : 1.15;
   const now = Date.now();
   const columns: ProgressionTableColumn[] = attributes.map((attr, idx) => {
     const base = typeof attr.defaultValue === "number" && Number.isFinite(attr.defaultValue) && attr.defaultValue !== 0
@@ -711,7 +855,7 @@ function customizeProgressionTableForAttributes(
             },
           }
         : {}),
-      generator: { mode: "exponential", base, growth: 1.15 },
+      generator: { mode: "exponential", base, growth },
       decimals: 0,
     };
   });
@@ -785,16 +929,18 @@ function applyEconomyLinkOptions(
     data.buyCurrencyRef = options.linkCurrency.sectionId;
     data.sellCurrencyRef = options.linkCurrency.sectionId;
   }
-  if (options.linkEconomyModifiers?.buySectionId) {
+  const buyIds = options.linkEconomyModifiers?.buySectionIds || [];
+  if (buyIds.length > 0) {
     data.buyModifiers = [
       ...(data.buyModifiers || []),
-      { refId: options.linkEconomyModifiers.buySectionId },
+      ...buyIds.map((refId) => ({ refId })),
     ];
   }
-  if (options.linkEconomyModifiers?.sellSectionId) {
+  const sellIds = options.linkEconomyModifiers?.sellSectionIds || [];
+  if (sellIds.length > 0) {
     data.sellModifiers = [
       ...(data.sellModifiers || []),
-      { refId: options.linkEconomyModifiers.sellSectionId },
+      ...sellIds.map((refId) => ({ refId })),
     ];
   }
   if (options.economyLinkBaseValues) {

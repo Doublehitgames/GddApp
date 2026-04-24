@@ -30,41 +30,41 @@
       },
       "items": {
         "label": "Itens",
-        "description": "Catálogo de itens do jogo. Inclui inventário e ligação com economia."
+        "description": "Lista de itens do seu jogo (madeira, poção, chave). Já vem com inventário e preço de compra/venda."
       },
       "equipmentItem": {
         "label": "Itens com Efeito",
-        "description": "Itens que também modificam atributos (espada, poção, armadura). Inclui inventário, economia e modificadores de atributos."
+        "description": "Itens que mudam atributos quando equipados ou usados (armadura, amuleto, poção). Já vem com inventário, preço e bônus de atributos."
       },
       "characters": {
         "label": "Personagens",
-        "description": "Personagens do jogo (jogáveis ou inimigos) com perfil de atributos, curva de XP, progressão por nível e modificadores por variante."
+        "description": "Personagens do jogo com atributos (HP, ATK, DEF...) e progressão por nível. Funciona pra heróis, inimigos ou NPCs."
       },
       "attributeDefinitions": {
-        "label": "Definições de Atributos Base",
-        "description": "Define um conjunto de atributos (HP, ATK, DEF, etc.) + biblioteca de campos com as chaves de progressão pré-preenchidas."
+        "label": "Atributos",
+        "description": "Lista de atributos (HP, ATK, DEF...) que pode ser reaproveitada por vários personagens."
       },
       "economy": {
         "label": "Economia",
-        "description": "Moeda ou recurso econômico do jogo.",
-        "defaultSectionTitle": "Coin"
+        "description": "Moeda do jogo (ouro, gemas, energia). Define o nome, o símbolo e regras básicas.",
+        "defaultSectionTitle": "Moeda"
       },
       "progression": {
         "label": "Progressão",
-        "description": "Tabelas de XP, níveis e curvas de progressão."
+        "description": "Tabela de XP e níveis — quanto XP precisa pra subir de nível e o que cada nível entrega."
       },
       "recipe": {
         "label": "Receita",
-        "description": "Uma receita que transforma itens-ingrediente em itens-saída. Seleciona os itens envolvidos no momento da criação.",
+        "description": "Uma receita: ingredientes entram, item sai. Ex.: '2 Madeiras → 1 Tábua'.",
         "sidebarInputPlaceholder": "Nome do resultado (ex.: Tábua)"
       },
       "craftTable": {
         "label": "Mesa de Craft",
-        "description": "Uma estação de produção que reúne receitas existentes (ex.: Serraria, Bancada). Unlocks opcionais ficam off por padrão."
+        "description": "Uma estação que agrupa várias receitas (Serraria, Forja, Bancada). Você escolhe quais receitas ela produz."
       },
       "narrative": {
         "label": "Narrativa",
-        "description": "Páginas de lore, roteiro ou descrição em texto rico."
+        "description": "Texto corrido pra lore, roteiro ou descrição — tipo um documento de texto."
       }
     },
     "addonNames": {
@@ -75,7 +75,7 @@
       "currency": "Moeda",
       "xpCurve": "Curva de XP",
       "equipmentEffects": "Efeitos",
-      "variantModifiers": "Modificadores por variante",
+      "variantModifiers": "Efeitos por personagem",
       "production": "Produção",
       "craftTable": "Mesa de Produção"
     },
@@ -96,7 +96,8 @@
       "ingredientsMany": "{n} ingredientes",
       "outputsOne": "{n} saída",
       "outputsMany": "{n} saídas",
-      "craftTime": "{s}s"
+      "craftTime": "{s}s",
+      "emptyState": "Nenhuma receita criada ainda. A mesa será criada vazia — você pode adicionar receitas depois."
     },
     "globalVariables": {
       "buyDiscountDisplayName": "Desconto de Compra",
@@ -107,64 +108,94 @@
     "requiresDialog": {
       "titlePrefix": "Vincular",
       "titleConnector": "a",
-      "introDefault": "Páginas de {page} costumam vincular a uma página de {required}. Escolha abaixo como vincular.",
-      "introCurrency": "Páginas de {page} usam uma moeda para definir valores de compra e venda. Escolha abaixo qual moeda vincular — a página também receberá modificadores de desconto e bônus automaticamente.",
-      "introItemIngredient": "Selecione o item usado como ingrediente desta receita. Você pode linkar um item existente ou criar um novo.",
-      "introItemOutput": "Selecione o item gerado como saída desta receita. Você pode linkar um item existente ou criar um novo.",
+      "introDefault": "Páginas de {page} costumam precisar de {required}. Escolha como ligar abaixo.",
+      "introCurrency": "Toda página de {page} usa uma moeda pra valores de compra e venda. Escolha qual moeda usar — a página já vai entrar com desconto e bônus prontos.",
+      "introItemIngredient": "Qual item entra nessa receita como ingrediente? Você pode usar um que já existe ou criar um novo.",
+      "introItemOutput": "Qual item sai dessa receita? Você pode usar um que já existe ou criar um novo.",
       "ingredientNameLabel": "Nome do ingrediente",
       "ingredientNamePlaceholder": "Ex.: Madeira, Tecido, Ferro",
       "outputNameLabel": "Nome do item de saída",
       "sectionNameLabel": "Nome da página",
       "recipeSettings": {
         "header": "Quantidades e tempo de produção",
-        "description": "Esses valores vão para o addon de Produção da receita. Você pode ajustar depois.",
+        "description": "Quanto entra, quanto sai e em quanto tempo. Pode mudar depois na página da receita.",
         "ingredientQtyLabel": "Qtde. de ingrediente",
         "outputQtyLabel": "Qtde. produzida",
         "craftTimeLabel": "Tempo (seg.)"
       },
+      "characterSettings": {
+        "header": "Configurações do personagem",
+        "description": "Quais atributos criar e de qual nível até qual nível o personagem vai. Dá pra mexer em tudo depois.",
+        "attributesLabel": "Atributos a criar",
+        "startLevelLabel": "Nível inicial",
+        "endLevelLabel": "Nível final",
+        "growthRateLabel": "Crescimento por nível"
+      },
+      "economySettings": {
+        "header": "Preço e descontos/bônus",
+        "description": "Preço base de compra e venda deste item. Descontos e bônus são páginas separadas — você escolhe quais aplicar ou cria novos só pra este item.",
+        "buyValueLabel": "Preço de compra",
+        "sellValueLabel": "Preço de venda",
+        "modifiersHeader": "Descontos e bônus",
+        "applyBuyDiscountLabel": "Aplicar desconto de compra",
+        "applySellMarkupLabel": "Aplicar bônus de venda",
+        "useExistingLabel": "Usar descontos/bônus que já existem",
+        "useExistingDescription": "Marque quais descontos e bônus valem pra este item. Se marcar vários, os percentuais se acumulam.",
+        "discountCandidatesLabel": "Descontos disponíveis",
+        "markupCandidatesLabel": "Bônus disponíveis",
+        "createNewLabel": "Criar desconto e bônus novos só pra este item",
+        "createNewDescription": "Cria um desconto e um bônus novos que só afetam este item. Os que já existem continuam iguais.",
+        "buyDiscountPctLabel": "Desconto de compra %",
+        "sellMarkupPctLabel": "Bônus de venda %",
+        "buyDiscountNameLabel": "Nome do desconto",
+        "buyDiscountNamePlaceholder": "Ex.: Desconto Premium",
+        "sellMarkupNameLabel": "Nome do bônus",
+        "sellMarkupNamePlaceholder": "Ex.: Bônus Premium"
+      },
       "byKind": {
         "attributeDefinitions": {
-          "title": "Atributos base de {name}",
-          "linkExistingHeader": "Usar atributos já definidos",
-          "createNewLabel": "Criar uma nova página de atributos",
-          "createNewDescription": "Vamos criar uma página com atributos base (HP, ATK, DEF, SPD) + biblioteca de campos prontos para progressão. Você pode ajustar tudo depois.",
+          "title": "Atributos de {name}",
+          "linkExistingHeader": "Usar atributos que já existem",
+          "createNewLabel": "Criar uma página nova de atributos",
+          "createNewDescription": "Cria uma página nova de Atributos com 4 atributos prontos: HP, ATK, DEF e SPD. Você pode renomear, adicionar mais ou remover depois. A mesma página pode ser reaproveitada por outros personagens.",
           "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a página sem atributos vinculados — você pode configurar manualmente no addon de Perfil de Atributos mais tarde."
+          "skipDescription": "Cria o personagem sem atributos agora. Você pode ligar uma página de atributos depois."
         },
         "currency": {
           "title": "Moeda de {name}",
-          "linkExistingHeader": "Usar uma moeda existente",
-          "createNewLabel": "Criar uma nova página de moeda",
-          "createNewDescription": "Vamos criar uma página de Economia com uma moeda padrão (Coins). Você pode renomear, mudar o código e ajustar as configurações depois.",
+          "linkExistingHeader": "Usar uma moeda que já existe",
+          "createNewLabel": "Criar uma moeda nova",
+          "createNewDescription": "Cria uma página de Economia com uma moeda básica (Coins). Dá pra renomear, trocar o símbolo e ajustar depois.",
           "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a página sem moeda vinculada — os campos de compra e venda ficam vazios até você configurar manualmente."
+          "skipDescription": "Cria a página sem moeda. Os campos de compra e venda ficam vazios até você ligar uma."
         },
         "itemIngredient": {
           "title": "Ingrediente da receita de {name}",
-          "linkExistingHeader": "Usar um item existente como ingrediente",
-          "createNewLabel": "Criar uma nova página para o ingrediente",
-          "createNewDescription": "Vamos criar uma página de Itens para este ingrediente, com inventário e economia já vinculados. Você pode adicionar mais ingredientes depois, direto no addon de Produção.",
+          "linkExistingHeader": "Usar um item que já existe",
+          "createNewLabel": "Criar um item novo pro ingrediente",
+          "createNewDescription": "Cria uma página de Item nova pra este ingrediente, já com inventário e preço. Dá pra adicionar mais ingredientes depois, na própria receita.",
           "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a receita sem definir o ingrediente agora — você pode linkar manualmente mais tarde no addon de Produção."
+          "skipDescription": "Cria a receita sem ingrediente agora. Você pode ligar um item depois na página da receita."
         },
         "itemOutput": {
           "title": "Resultado da receita de {name}",
-          "linkExistingHeader": "Usar um item existente como resultado",
-          "createNewLabel": "Criar uma nova página para o resultado",
-          "createNewDescription": "Vamos criar uma página de Itens para o resultado da receita, com inventário e economia já vinculados. O nome abaixo será o título da página.",
+          "linkExistingHeader": "Usar um item que já existe",
+          "createNewLabel": "Criar um item novo pro resultado",
+          "createNewDescription": "Cria uma página de Item nova pro resultado desta receita, já com inventário e preço. O nome abaixo vira o título da página.",
           "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a receita sem definir o resultado agora — você pode linkar manualmente mais tarde no addon de Produção."
+          "skipDescription": "Cria a receita sem definir o resultado agora. Você pode ligar um item depois na página da receita."
         }
       },
-      "linkExistingHeader": "Vincular a página existente",
+      "linkExistingHeader": "Ligar a uma página existente",
       "otherOptionsHeader": "Outras opções",
-      "createNewLabelPrefix": "Criar nova página",
-      "createNewDescription": "Cria ambas de uma vez e vincula a nova página.",
-      "skipLabel": "Continuar sem vincular",
-      "skipDescription": "Cria a página sem referência; você pode vincular depois manualmente.",
+      "createNewLabelPrefix": "Criar uma página nova",
+      "createNewDescription": "Cria a página nova e já liga pra você.",
+      "skipLabel": "Continuar sem ligar",
+      "skipDescription": "Cria a página sem ligação. Você pode ligar depois.",
       "cancel": "Cancelar",
       "confirm": "Confirmar e criar",
       "close": "Fechar",
+      "stepOf": "Passo {current} de {total}",
       "attrCountOne": "{n} atributo",
       "attrCountMany": "{n} atributos",
       "noAttrs": "sem atributos",
@@ -172,6 +203,41 @@
       "currencyCodeLabel": "código",
       "currencyKindLabel": "tipo"
     }
+  },
+  "pageCreationReview": {
+    "ariaLabel": "Revisar criação",
+    "title": "Pronto para criar",
+    "description": "Confira o que vai ser criado e vinculado antes de confirmar. Se algo estiver errado, clique em Voltar pra ajustar.",
+    "existingTag": "(existente)",
+    "newTag": "nova página",
+    "skip": "deixar em branco",
+    "currencyLabel": "Moeda",
+    "economyLabel": "Economia",
+    "priceLine": "Compra {buy}, venda {sell}",
+    "discountDefaultName": "Desconto",
+    "markupDefaultName": "Bônus",
+    "newDiscount": "novo desconto {name} ({pct}%)",
+    "newMarkup": "novo bônus {name} (+{pct}%)",
+    "newDiscountLabel": "Nova página de desconto",
+    "newDiscountValue": "\"{name}\" ({pct}%)",
+    "newMarkupLabel": "Nova página de bônus",
+    "newMarkupValue": "\"{name}\" (+{pct}%)",
+    "appliedModifiersLabel": "Modificadores aplicados",
+    "existingModifiers": "{buy} desconto(s) e {sell} bônus existentes",
+    "attributesLabel": "Atributos",
+    "attrCountOne": "{n} atributo",
+    "attrCountMany": "{n} atributos",
+    "effectsLabel": "Efeitos",
+    "progressionLabel": "Progressão",
+    "progressionValue": "níveis {start}–{end}, crescimento {growth}",
+    "ingredientLabel": "Ingrediente",
+    "recipeLabel": "Receita",
+    "recipeValue": "{inQty} ingrediente(s) → {outQty} resultado(s), {time}s",
+    "outputLabel": "Resultado",
+    "addonsLabel": "Addons",
+    "cancel": "Cancelar tudo",
+    "back": "Voltar",
+    "confirm": "Criar tudo"
   },
   "auth": {
     "login": {

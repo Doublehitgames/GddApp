@@ -171,6 +171,22 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     return out;
   }, [scopedProjects]);
 
+  const buyModifierOptions = useMemo(
+    () =>
+      globalVariableRefOptions.filter(
+        (o) => typeof o.meta.defaultValue === "number" && o.meta.defaultValue <= 0,
+      ),
+    [globalVariableRefOptions],
+  );
+
+  const sellModifierOptions = useMemo(
+    () =>
+      globalVariableRefOptions.filter(
+        (o) => typeof o.meta.defaultValue === "number" && o.meta.defaultValue >= 0,
+      ),
+    [globalVariableRefOptions],
+  );
+
   const xpRefOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string; minLevel?: number; maxLevel?: number }> = [];
     const seen = new Set<string>();
@@ -386,9 +402,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                 </div>
             <label className="block">
               <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.buyModifiers", "Variaveis de compra (refs, separadas por virgula)")}</span>
-              {globalVariableRefOptions.length > 0 && (
+              {buyModifierOptions.length > 0 && (
                 <div className="mb-2 max-h-28 space-y-1 overflow-auto rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-                  {globalVariableRefOptions.map((option) => {
+                  {buyModifierOptions.map((option) => {
                     const checked = (addon.buyModifiers || []).some((item) => item.refId === option.refId);
                     return (
                       <div key={option.refId} className="flex items-center gap-2 text-xs text-gray-300">
@@ -514,9 +530,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                   </label>
                 </div>
             <label className="block">
-              {globalVariableRefOptions.length > 0 && (
+              {sellModifierOptions.length > 0 && (
                 <div className="mb-2 max-h-28 space-y-1 overflow-auto rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-                  {globalVariableRefOptions.map((option) => {
+                  {sellModifierOptions.map((option) => {
                     const checked = (addon.sellModifiers || []).some((item) => item.refId === option.refId);
                     return (
                       <div key={option.refId} className="flex items-center gap-2 text-xs text-gray-300">

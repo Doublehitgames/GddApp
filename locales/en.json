@@ -30,41 +30,41 @@
       },
       "items": {
         "label": "Items",
-        "description": "Game item catalog. Includes inventory and economy link."
+        "description": "List of your game's items (wood, potion, key). Comes with inventory and buy/sell price ready."
       },
       "equipmentItem": {
         "label": "Items with Effect",
-        "description": "Items that also modify attributes (sword, potion, armor). Includes inventory, economy and attribute modifiers."
+        "description": "Items that change attributes when equipped or used (armor, amulet, potion). Comes with inventory, price and attribute bonuses."
       },
       "characters": {
         "label": "Characters",
-        "description": "Game characters (playable or enemies) with attribute profile, XP curve, per-level progression and variant modifiers."
+        "description": "Game characters with attributes (HP, ATK, DEF...) and per-level progression. Works for heroes, enemies or NPCs."
       },
       "attributeDefinitions": {
-        "label": "Base Attribute Definitions",
-        "description": "Defines a set of attributes (HP, ATK, DEF, etc.) + field library with progression keys pre-filled."
+        "label": "Attributes",
+        "description": "A list of attributes (HP, ATK, DEF...) that can be reused across many characters."
       },
       "economy": {
         "label": "Economy",
-        "description": "Game currency or economic resource.",
+        "description": "Game currency (gold, gems, energy). Sets the name, symbol and basic rules.",
         "defaultSectionTitle": "Coin"
       },
       "progression": {
         "label": "Progression",
-        "description": "XP tables, levels and progression curves."
+        "description": "XP and level table — how much XP each level needs and what each level gives."
       },
       "recipe": {
         "label": "Recipe",
-        "description": "A recipe that turns ingredient items into output items. Picks the items involved when created.",
+        "description": "A recipe: ingredients in, item out. E.g. '2 Woods → 1 Plank'.",
         "sidebarInputPlaceholder": "Output name (e.g. Planks)"
       },
       "craftTable": {
         "label": "Crafting Table",
-        "description": "A production station that groups existing recipes (e.g. Sawmill, Workbench). Unlocks stay off by default."
+        "description": "A station that groups several recipes (Sawmill, Forge, Workbench). You pick which recipes it produces."
       },
       "narrative": {
         "label": "Narrative",
-        "description": "Pages for lore, script or rich-text description."
+        "description": "Free-form text for lore, script or description — like a text document."
       }
     },
     "addonNames": {
@@ -75,7 +75,7 @@
       "currency": "Currency",
       "xpCurve": "XP Curve",
       "equipmentEffects": "Effects",
-      "variantModifiers": "Variant modifiers",
+      "variantModifiers": "Character effects",
       "production": "Production",
       "craftTable": "Crafting Table"
     },
@@ -96,7 +96,8 @@
       "ingredientsMany": "{n} ingredients",
       "outputsOne": "{n} output",
       "outputsMany": "{n} outputs",
-      "craftTime": "{s}s"
+      "craftTime": "{s}s",
+      "emptyState": "No recipes created yet. The table will be created empty — you can add recipes later."
     },
     "globalVariables": {
       "buyDiscountDisplayName": "Buy Discount",
@@ -107,64 +108,94 @@
     "requiresDialog": {
       "titlePrefix": "Link",
       "titleConnector": "to",
-      "introDefault": "{page} pages usually link to a {required} page. Choose below how to link.",
-      "introCurrency": "{page} pages use a currency to define buy and sell values. Choose below which currency to link — the page will also receive discount and bonus modifiers automatically.",
-      "introItemIngredient": "Pick the item used as an ingredient in this recipe. You can link an existing item or create a new one.",
-      "introItemOutput": "Pick the item produced as output of this recipe. You can link an existing item or create a new one.",
+      "introDefault": "{page} pages usually need {required}. Pick how to link below.",
+      "introCurrency": "Every {page} page uses a currency for buy and sell values. Pick which currency to use — the page will also come with a ready discount and bonus.",
+      "introItemIngredient": "Which item goes into this recipe as an ingredient? You can use one that already exists or create a new one.",
+      "introItemOutput": "Which item comes out of this recipe? You can use one that already exists or create a new one.",
       "ingredientNameLabel": "Ingredient name",
       "ingredientNamePlaceholder": "e.g. Wood, Cloth, Iron",
       "outputNameLabel": "Output item name",
       "sectionNameLabel": "Page name",
       "recipeSettings": {
         "header": "Quantities and craft time",
-        "description": "These values go into the recipe's Production addon. You can adjust later.",
+        "description": "How much goes in, how much comes out and how long it takes. You can change this later on the recipe page.",
         "ingredientQtyLabel": "Ingredient qty",
         "outputQtyLabel": "Output qty",
         "craftTimeLabel": "Time (sec)"
       },
+      "characterSettings": {
+        "header": "Character settings",
+        "description": "Which attributes to create, and from which level to which level the character goes. You can change everything later.",
+        "attributesLabel": "Attributes to create",
+        "startLevelLabel": "Start level",
+        "endLevelLabel": "End level",
+        "growthRateLabel": "Growth per level"
+      },
+      "economySettings": {
+        "header": "Price and discounts/bonuses",
+        "description": "Base buy and sell prices for this item. Discounts and bonuses are separate pages — pick which ones apply or create new ones just for this item.",
+        "buyValueLabel": "Buy price",
+        "sellValueLabel": "Sell price",
+        "modifiersHeader": "Discounts and bonuses",
+        "applyBuyDiscountLabel": "Apply buy discount",
+        "applySellMarkupLabel": "Apply sell bonus",
+        "useExistingLabel": "Use discounts/bonuses that already exist",
+        "useExistingDescription": "Tick which discounts and bonuses apply to this item. If you pick several, the percentages stack.",
+        "discountCandidatesLabel": "Available discounts",
+        "markupCandidatesLabel": "Available bonuses",
+        "createNewLabel": "Create a new discount and bonus just for this item",
+        "createNewDescription": "Creates a new discount and bonus that only affect this item. The existing ones stay the same.",
+        "buyDiscountPctLabel": "Buy discount %",
+        "sellMarkupPctLabel": "Sell bonus %",
+        "buyDiscountNameLabel": "Discount name",
+        "buyDiscountNamePlaceholder": "e.g. Premium Discount",
+        "sellMarkupNameLabel": "Bonus name",
+        "sellMarkupNamePlaceholder": "e.g. Premium Bonus"
+      },
       "byKind": {
         "attributeDefinitions": {
-          "title": "Base attributes for {name}",
-          "linkExistingHeader": "Use attributes already defined",
+          "title": "Attributes for {name}",
+          "linkExistingHeader": "Use attributes that already exist",
           "createNewLabel": "Create a new attributes page",
-          "createNewDescription": "We'll create a page with base attributes (HP, ATK, DEF, SPD) + a field library ready for progression. You can tweak everything later.",
+          "createNewDescription": "Creates a new Attributes page with 4 attributes ready: HP, ATK, DEF and SPD. You can rename them, add more or remove any later. The same page can be reused across characters.",
           "skipLabel": "Skip for now",
-          "skipDescription": "Creates the page with no linked attributes — you can set up the Attribute Profile addon manually later."
+          "skipDescription": "Creates the character without attributes for now. You can link an attributes page later."
         },
         "currency": {
           "title": "Currency for {name}",
-          "linkExistingHeader": "Use an existing currency",
-          "createNewLabel": "Create a new currency page",
-          "createNewDescription": "We'll create an Economy page with a default currency (Coins). You can rename it, change the code, and adjust settings later.",
+          "linkExistingHeader": "Use a currency that already exists",
+          "createNewLabel": "Create a new currency",
+          "createNewDescription": "Creates an Economy page with a basic currency (Coins). You can rename it, change the symbol and adjust later.",
           "skipLabel": "Skip for now",
-          "skipDescription": "Creates the page with no linked currency — buy and sell fields stay empty until you configure manually."
+          "skipDescription": "Creates the page with no currency. Buy and sell fields stay empty until you link one."
         },
         "itemIngredient": {
           "title": "Ingredient for the {name} recipe",
-          "linkExistingHeader": "Use an existing item as the ingredient",
-          "createNewLabel": "Create a new page for the ingredient",
-          "createNewDescription": "We'll create an Items page for this ingredient with inventory and economy already wired. You can add more ingredients later in the Production addon.",
+          "linkExistingHeader": "Use an item that already exists",
+          "createNewLabel": "Create a new item for the ingredient",
+          "createNewDescription": "Creates a new Item page for this ingredient, already with inventory and price. You can add more ingredients later on the recipe page itself.",
           "skipLabel": "Skip for now",
-          "skipDescription": "Creates the recipe without the ingredient — you can link it manually later in the Production addon."
+          "skipDescription": "Creates the recipe with no ingredient for now. You can link an item later on the recipe page."
         },
         "itemOutput": {
           "title": "Output of the {name} recipe",
-          "linkExistingHeader": "Use an existing item as the output",
-          "createNewLabel": "Create a new page for the output",
-          "createNewDescription": "We'll create an Items page for the recipe's output with inventory and economy already wired. The name below will be the page title.",
+          "linkExistingHeader": "Use an item that already exists",
+          "createNewLabel": "Create a new item for the output",
+          "createNewDescription": "Creates a new Item page for the recipe's output, already with inventory and price. The name below becomes the page title.",
           "skipLabel": "Skip for now",
-          "skipDescription": "Creates the recipe without the output — you can link it manually later in the Production addon."
+          "skipDescription": "Creates the recipe with no output defined for now. You can link an item later on the recipe page."
         }
       },
-      "linkExistingHeader": "Link to existing page",
+      "linkExistingHeader": "Link to an existing page",
       "otherOptionsHeader": "Other options",
-      "createNewLabelPrefix": "Create new page",
-      "createNewDescription": "Creates both at once and links to the new page.",
+      "createNewLabelPrefix": "Create a new page",
+      "createNewDescription": "Creates the new page and links it for you.",
       "skipLabel": "Continue without linking",
-      "skipDescription": "Creates the page without a reference; you can link it later manually.",
+      "skipDescription": "Creates the page with no link. You can link later.",
       "cancel": "Cancel",
       "confirm": "Confirm and create",
       "close": "Close",
+      "stepOf": "Step {current} of {total}",
       "attrCountOne": "{n} attribute",
       "attrCountMany": "{n} attributes",
       "noAttrs": "no attributes",
@@ -172,6 +203,41 @@
       "currencyCodeLabel": "code",
       "currencyKindLabel": "type"
     }
+  },
+  "pageCreationReview": {
+    "ariaLabel": "Review creation",
+    "title": "Ready to create",
+    "description": "Double-check what's about to be created and linked before confirming. If something's off, hit Back to adjust.",
+    "existingTag": "(existing)",
+    "newTag": "new page",
+    "skip": "leave empty",
+    "currencyLabel": "Currency",
+    "economyLabel": "Economy",
+    "priceLine": "Buy {buy}, sell {sell}",
+    "discountDefaultName": "Discount",
+    "markupDefaultName": "Bonus",
+    "newDiscount": "new discount {name} ({pct}%)",
+    "newMarkup": "new bonus {name} (+{pct}%)",
+    "newDiscountLabel": "New discount page",
+    "newDiscountValue": "\"{name}\" ({pct}%)",
+    "newMarkupLabel": "New bonus page",
+    "newMarkupValue": "\"{name}\" (+{pct}%)",
+    "appliedModifiersLabel": "Modifiers applied",
+    "existingModifiers": "{buy} discount(s) and {sell} existing bonus(es)",
+    "attributesLabel": "Attributes",
+    "attrCountOne": "{n} attribute",
+    "attrCountMany": "{n} attributes",
+    "effectsLabel": "Effects",
+    "progressionLabel": "Progression",
+    "progressionValue": "levels {start}–{end}, growth {growth}",
+    "ingredientLabel": "Ingredient",
+    "recipeLabel": "Recipe",
+    "recipeValue": "{inQty} ingredient(s) → {outQty} output(s), {time}s",
+    "outputLabel": "Output",
+    "addonsLabel": "Addons",
+    "cancel": "Cancel everything",
+    "back": "Back",
+    "confirm": "Create everything"
   },
   "auth": {
     "login": {

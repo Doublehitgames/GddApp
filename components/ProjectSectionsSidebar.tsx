@@ -9,12 +9,17 @@ import { useI18n } from "@/lib/i18n/provider";
 import { getSectionSearchText } from "@/utils/sectionSearchText";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
+  BUY_DISCOUNT_VAR_KEY,
   PAGE_TYPES,
+  PRESET_ATTRIBUTES,
+  PRESET_ATTRIBUTES_DISPLAY,
   REQUIREMENT_KIND_TO_PAGE_TYPE,
+  SELL_MARKUP_VAR_KEY,
   buildPageTypeAddons,
   createBuyDiscountGlobalVariableAddon,
   createSellMarkupGlobalVariableAddon,
   extractFieldLibraryRefForAttrs,
+  findAllEconomyModifierCandidates,
   findAttributeDefinitionsCandidates,
   findCurrencyCandidates,
   findEconomyModifierSectionIds,
@@ -30,6 +35,11 @@ import {
   type RequirementKind,
 } from "@/lib/pageTypes/registry";
 import { CraftTableRecipePickerDialog } from "@/components/CraftTableRecipePickerDialog";
+import {
+  AttributeDefinitionsSetupDialog,
+  type AttributeDefinitionsSetupResult,
+} from "@/components/AttributeDefinitionsSetupDialog";
+import { PageCreationReviewDialog } from "@/components/PageCreationReviewDialog";
 import { PageTypeRequiresDialog, type PageTypeRequiresChoice } from "@/components/PageTypeRequiresDialog";
 import {
   Collision,
@@ -108,6 +118,35 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     skipDescription?: string;
     showRecipeSettings?: boolean;
     defaultRecipeSettings?: { ingredientQty: number; outputQty: number; craftTimeSeconds: number };
+    showAttributeSlotsPicker?: boolean;
+    showAttributeModifiersPicker?: boolean;
+    showCharacterSettings?: boolean;
+    stepIndex?: number;
+    stepCount?: number;
+    defaultCharacterSettings?: {
+      selectedAttrKeys: string[];
+      customAttrs: Array<{ key: string; label: string }>;
+      startLevel: number;
+      endLevel: number;
+      growthRate: number;
+    };
+    characterAttributePresets?: ReadonlyArray<{ key: string; label: string }>;
+    showEconomySettings?: boolean;
+    defaultEconomySettings?: {
+      buyValue: number;
+      sellValue: number;
+      modifiersMode: "existing" | "new";
+      applyBuyDiscount: boolean;
+      applySellMarkup: boolean;
+      selectedBuyDiscountSectionIds: string[];
+      selectedSellMarkupSectionIds: string[];
+      buyDiscountPct: number;
+      sellMarkupPct: number;
+      buyDiscountName?: string;
+      sellMarkupName?: string;
+    };
+    existingBuyDiscountCandidates?: ReadonlyArray<{ sectionId: string; sectionTitle: string; addonName: string; percent: number }>;
+    existingSellMarkupCandidates?: ReadonlyArray<{ sectionId: string; sectionTitle: string; addonName: string; percent: number }>;
     /** Snapshot of inputs captured when the dialog was opened. */
     title: string;
     parentSectionId: string | null;
@@ -349,6 +388,12 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     pageTypeId: PageTypeId;
     resolved: Partial<Record<RequirementKind, PageTypeRequiresChoice>>;
     remainingKinds: RequirementKind[];
+    /**
+     * Kinds the user actually resolved via a wizard modal, in visit order.
+     * Used by the review dialog's "Voltar" to reopen the last visited step
+     * (pre-resolved kinds like `recipe.itemOutput` never enter this list).
+     */
+    visitedKinds: RequirementKind[];
   };
 
   const resetAddInputs = () => {
@@ -357,42 +402,124 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
   };
 
   /**
-   * Ensures the 2 sentinel globalVariable sections ("Desconto de Compra" /
-   * "Bônus de Venda") exist at the project root, creating them if missing.
+   * Returns globalVariable section IDs for the item's buy discount / sell
+   * markup modifiers. Behaviour depends on `opts.mode`:
+   *   - "existing": reuse sentinel-key pages if present. When missing, creates
+   *     them with defaults (first-time setup). Never mutates existing values.
+   *   - "new": always creates fresh globalVariable sections with unique keys,
+   *     per-item values and custom display names. Sentinel pages are left
+   *     intact.
    */
-  const ensureEconomyModifierSectionIds = (): { buyId: string | null; sellId: string | null } => {
+  const ensureEconomyModifierSectionIds = (opts?: {
+    mode?: "existing" | "new";
+    buyDiscountPct?: number;
+    sellMarkupPct?: number;
+    buyDiscountName?: string;
+    sellMarkupName?: string;
+    applyBuyDiscount?: boolean;
+    applySellMarkup?: boolean;
+    /** Existing discount section IDs selected by the user (existing mode only). */
+    selectedBuySectionIds?: string[];
+    selectedSellSectionIds?: string[];
+  }): { buyIds: string[]; sellIds: string[] } => {
+    const mode = opts?.mode ?? "existing";
+    const applyBuy = opts?.applyBuyDiscount ?? true;
+    const applySell = opts?.applySellMarkup ?? true;
     const sections = project?.sections || [];
-    const existing = findEconomyModifierSectionIds(sections);
-    let buyId = existing.buyDiscountSectionId;
-    let sellId = existing.sellMarkupSectionId;
 
-    if (!buyId) {
+    if (mode === "new") {
+      const slug = (s: string) =>
+        s
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^\w]+/g, "_")
+          .toLowerCase()
+          .replace(/^_+|_+$/g, "")
+          .slice(0, 24);
+      const now = Date.now();
+      const buyIds: string[] = [];
+      const sellIds: string[] = [];
+
+      if (applyBuy) {
+        const rand = Math.random().toString(36).slice(2, 6);
+        const buyDisplayName =
+          opts?.buyDiscountName?.trim() ||
+          `${t("pageTypes.globalVariables.buyDiscountDisplayName", "Desconto de Compra")} ${rand}`;
+        const buyKey = `${BUY_DISCOUNT_VAR_KEY}_${slug(buyDisplayName) || rand}`;
+        const buyAddonId = `gvar-buy-${now}-${rand}`;
+        const buyAddon = createBuyDiscountGlobalVariableAddon(buyAddonId, {
+          displayName: buyDisplayName,
+          notes: t("pageTypes.globalVariables.buyDiscountNotes", "Reduz o valor de compra de itens em 10%."),
+          defaultValue: opts?.buyDiscountPct,
+          key: buyKey,
+        });
+        const buySectionTitle = `📉 ${buyDisplayName}`;
+        const newBuy = createSectionWithArgs(buySectionTitle, null, "blank", [buyAddon], ["economy"]);
+        if (newBuy) buyIds.push(newBuy);
+      }
+
+      if (applySell) {
+        const sellRand = Math.random().toString(36).slice(2, 6);
+        const sellDisplayName =
+          opts?.sellMarkupName?.trim() ||
+          `${t("pageTypes.globalVariables.sellMarkupDisplayName", "Bônus de Venda")} ${sellRand}`;
+        const sellKey = `${SELL_MARKUP_VAR_KEY}_${slug(sellDisplayName) || sellRand}`;
+        const sellAddonId = `gvar-sell-${now}-${sellRand}`;
+        const sellAddon = createSellMarkupGlobalVariableAddon(sellAddonId, {
+          displayName: sellDisplayName,
+          notes: t("pageTypes.globalVariables.sellMarkupNotes", "Aumenta o valor de venda de itens em 10%."),
+          defaultValue: opts?.sellMarkupPct,
+          key: sellKey,
+        });
+        const sellSectionTitle = `📈 ${sellDisplayName}`;
+        const newSell = createSectionWithArgs(sellSectionTitle, null, "blank", [sellAddon], ["economy"]);
+        if (newSell) sellIds.push(newSell);
+      }
+
+      return { buyIds, sellIds };
+    }
+
+    // mode === "existing": link to the user-selected subset of existing pages.
+    // First-time callers (no candidates AT ALL) bootstrap a default pair.
+    const existing = findEconomyModifierSectionIds(sections);
+    const buyIds: string[] = applyBuy ? [...(opts?.selectedBuySectionIds || [])] : [];
+    const sellIds: string[] = applySell ? [...(opts?.selectedSellSectionIds || [])] : [];
+
+    if (applyBuy && buyIds.length === 0 && !existing.buyDiscountSectionId) {
       const addonId = `gvar-buy-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const addon = createBuyDiscountGlobalVariableAddon(addonId, {
         displayName: t("pageTypes.globalVariables.buyDiscountDisplayName", "Desconto de Compra"),
         notes: t("pageTypes.globalVariables.buyDiscountNotes", "Reduz o valor de compra de itens em 10%."),
+        defaultValue: opts?.buyDiscountPct,
       });
       const sectionTitle = t("pageTypes.autoSections.buyDiscount", "📉 Desconto de Compra");
       const newId = createSectionWithArgs(sectionTitle, null, "blank", [addon], ["economy"]);
-      buyId = newId ?? null;
+      if (newId) buyIds.push(newId);
     }
-    if (!sellId) {
+    if (applySell && sellIds.length === 0 && !existing.sellMarkupSectionId) {
       const addonId = `gvar-sell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const addon = createSellMarkupGlobalVariableAddon(addonId, {
         displayName: t("pageTypes.globalVariables.sellMarkupDisplayName", "Bônus de Venda"),
         notes: t("pageTypes.globalVariables.sellMarkupNotes", "Aumenta o valor de venda de itens em 10%."),
+        defaultValue: opts?.sellMarkupPct,
       });
       const sectionTitle = t("pageTypes.autoSections.sellMarkup", "📈 Bônus de Venda");
       const newId = createSectionWithArgs(sectionTitle, null, "blank", [addon], ["economy"]);
-      sellId = newId ?? null;
+      if (newId) sellIds.push(newId);
     }
-    return { buyId, sellId };
+    return { buyIds, sellIds };
   };
 
   const openModalForKind = (kind: RequirementKind, state: PendingCreate) => {
     const pageType = getPageType(state.pageTypeId) ?? null;
     if (!pageType) return;
     const sectionNameLabel = t("pageTypes.requiresDialog.sectionNameLabel", "Nome da página");
+
+    // Step chip: 1-indexed position of this modal among the USER-FACING
+    // kinds. Pre-resolved kinds (e.g. recipe.itemOutput) are excluded, so
+    // `visitedKinds.length + remainingKinds.length` yields the visible total.
+    const stepIndex = state.visitedKinds.length + 1;
+    const stepCount = state.visitedKinds.length + state.remainingKinds.length;
 
     // Helper: resolves the per-kind copy block (title/headers/labels/descriptions).
     // Interpolates `{name}` placeholders with the title the user typed.
@@ -414,8 +541,17 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
 
     if (kind === "attributeDefinitions") {
       const reqPT = getPageType("attributeDefinitions");
-      const defaultName = reqPT ? getPageTypeDefaultSectionTitle(reqPT, t) : "Definições de Atributos Base";
+      const defaultName = reqPT ? getPageTypeDefaultSectionTitle(reqPT, t) : "Atributos";
       const copy = kindCopy("attributeDefinitions");
+      // Level range + growth only make sense for `characters` (which seeds a
+      // progression table). EquipmentItem uses the slots picker without the
+      // level knobs.
+      const attachCharacterSettings = state.pageTypeId === "characters";
+      // Parents that seed `attributeModifiers` (and therefore also care about
+      // which attribute slots exist) opt into both the slots editor on
+      // create-new AND the per-attribute modifier editor on link-existing.
+      const supportsAttrCustomization =
+        state.pageTypeId === "characters" || state.pageTypeId === "equipmentItem";
       setRequiresDialog({
         open: true,
         pageType,
@@ -435,6 +571,21 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         createNewDescription: orUndef(copy.createNewDescription),
         skipLabel: orUndef(copy.skipLabel),
         skipDescription: orUndef(copy.skipDescription),
+        showAttributeSlotsPicker: supportsAttrCustomization,
+        showAttributeModifiersPicker: supportsAttrCustomization,
+        showCharacterSettings: attachCharacterSettings,
+        defaultCharacterSettings: supportsAttrCustomization
+          ? {
+              selectedAttrKeys: PRESET_ATTRIBUTES.map((p) => p.key),
+              customAttrs: [],
+              startLevel: 1,
+              endLevel: 100,
+              growthRate: 1.15,
+            }
+          : undefined,
+        characterAttributePresets: supportsAttrCustomization ? PRESET_ATTRIBUTES_DISPLAY : undefined,
+        stepIndex,
+        stepCount,
       });
       return;
     }
@@ -447,6 +598,29 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       const reqPT = getPageType("economy");
       const defaultName = reqPT ? getPageTypeDefaultSectionTitle(reqPT, t) : "Coin";
       const copy = kindCopy("currency");
+      // Expose economy knobs for page types that seed an economyLink.
+      const attachEconomySettings =
+        state.pageTypeId === "items" || state.pageTypeId === "equipmentItem";
+      // Collect ALL existing discount/markup globalVariables so the user can
+      // pick any subset to stack as modifiers on this item.
+      const allModCandidates = findAllEconomyModifierCandidates(project?.sections || []);
+      const hasExistingModifiers =
+        allModCandidates.discounts.length > 0 || allModCandidates.markups.length > 0;
+      const defaultEconomy = attachEconomySettings
+        ? {
+            buyValue: 100,
+            sellValue: 50,
+            modifiersMode: (hasExistingModifiers ? "existing" : "new") as "existing" | "new",
+            applyBuyDiscount: true,
+            applySellMarkup: true,
+            selectedBuyDiscountSectionIds: allModCandidates.discounts.map((c) => c.sectionId),
+            selectedSellMarkupSectionIds: allModCandidates.markups.map((c) => c.sectionId),
+            buyDiscountPct: allModCandidates.discounts[0]?.percent ?? -10,
+            sellMarkupPct: allModCandidates.markups[0]?.percent ?? 10,
+            buyDiscountName: "",
+            sellMarkupName: "",
+          }
+        : undefined;
       setRequiresDialog({
         open: true,
         pageType,
@@ -467,6 +641,12 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         createNewDescription: orUndef(copy.createNewDescription),
         skipLabel: orUndef(copy.skipLabel),
         skipDescription: orUndef(copy.skipDescription),
+        showEconomySettings: attachEconomySettings,
+        defaultEconomySettings: defaultEconomy,
+        existingBuyDiscountCandidates: attachEconomySettings ? allModCandidates.discounts : undefined,
+        existingSellMarkupCandidates: attachEconomySettings ? allModCandidates.markups : undefined,
+        stepIndex,
+        stepCount,
       });
       return;
     }
@@ -513,6 +693,8 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         defaultRecipeSettings: attachRecipeSettings
           ? { ingredientQty: 10, outputQty: 1, craftTimeSeconds: 60 }
           : undefined,
+        stepIndex,
+        stepCount,
       });
     }
   };
@@ -523,6 +705,16 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     parentSectionId: string | null;
     candidates: RequiresCandidate[];
   } | null>(null);
+  // Pending self-setup for an `attributeDefinitions` page. Holds the typed
+  // title + parent until the user confirms the setup dialog with a name and
+  // slot choices; then we create the page with overrides.
+  const [attrSetupPending, setAttrSetupPending] = useState<{
+    title: string;
+    parentSectionId: string | null;
+  } | null>(null);
+  // Holds the fully-resolved PendingCreate while the user reviews the
+  // summary dialog. Null when the review is not active.
+  const [reviewPending, setReviewPending] = useState<PendingCreate | null>(null);
 
   const handleAddByContext = () => {
     const title = newSectionTitle.trim();
@@ -537,17 +729,19 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     const pageType = selectedPageTypeId === "blank" ? null : getPageType(selectedPageTypeId) ?? null;
     const kinds: RequirementKind[] = pageType?.requires ? [...pageType.requires] : [];
 
-    // craftTable: no requires, but pop a recipe multi-picker when recipes exist.
+    // attributeDefinitions: no `requires`, but we want the user to confirm
+    // the page name and pick which slots to seed (including custom ones)
+    // before actually creating the page.
+    if (pageType?.id === "attributeDefinitions") {
+      setAttrSetupPending({ title, parentSectionId });
+      return;
+    }
+
+    // craftTable: no requires, but always show the recipe picker so the user
+    // sees the current set (or the empty-state hint when no recipes exist).
     if (pageType?.id === "craftTable") {
       const recipeCandidates = findRecipeCandidates(project?.sections || []);
-      if (recipeCandidates.length > 0) {
-        setCraftTablePending({ title, parentSectionId, candidates: recipeCandidates });
-        return;
-      }
-      const created = createSectionWithArgs(title, parentSectionId, selectedPageTypeId);
-      if (created === undefined) return;
-      setNameError("");
-      resetAddInputs();
+      setCraftTablePending({ title, parentSectionId, candidates: recipeCandidates });
       return;
     }
 
@@ -588,11 +782,14 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       pageTypeId: selectedPageTypeId,
       resolved: preResolved,
       remainingKinds,
+      visitedKinds: [],
     };
     setPendingCreate(state);
     if (state.remainingKinds.length > 0) {
       openModalForKind(state.remainingKinds[0], state);
     } else {
+      // No wizard steps — simple page types (blank, narrative, economy,
+      // progression) skip the review dialog entirely.
       executePendingCreate(state);
     }
   };
@@ -608,17 +805,27 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     setRequiresDialog((prev) => ({ ...prev, open: false }));
     if (!kind) return;
 
+    // Track this kind as visited (preResolved kinds like recipe.itemOutput
+    // never enter here — the review dialog uses this to know where "Voltar"
+    // should reopen). Dedupe so reopening a step doesn't double-count.
+    const visitedKinds = pendingCreate.visitedKinds.includes(kind)
+      ? pendingCreate.visitedKinds
+      : [...pendingCreate.visitedKinds, kind];
+
     const nextState: PendingCreate = {
       ...pendingCreate,
       resolved: { ...pendingCreate.resolved, [kind]: choice },
       remainingKinds: pendingCreate.remainingKinds.slice(1),
+      visitedKinds,
     };
     setPendingCreate(nextState);
 
     if (nextState.remainingKinds.length > 0) {
       openModalForKind(nextState.remainingKinds[0], nextState);
     } else {
-      executePendingCreate(nextState);
+      // All wizard steps done — hand off to the review dialog instead of
+      // committing directly. User confirms there to actually create.
+      setReviewPending(nextState);
     }
   };
 
@@ -649,9 +856,42 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     } else if (attrChoice?.mode === "create-new") {
       const reqPT = getPageType("attributeDefinitions");
       if (reqPT) {
+        // Derive attribute overrides from character settings (if present on this choice).
+        const charSettings = (
+          attrChoice as {
+            characterSettings?: {
+              selectedAttrKeys: string[];
+              customAttrs?: Array<{ key: string; label: string }>;
+            };
+          }
+        ).characterSettings;
+        const selectedKeys = charSettings?.selectedAttrKeys ?? null;
+        const customAttrs = charSettings?.customAttrs ?? [];
+        // Start from the filtered presets (or all presets if nothing selected)
+        // and append user-defined custom slots with sane int defaults so they
+        // match the AttributeDefinitionEntry shape `seedAttributeDefinitions`
+        // expects.
+        const presetBase =
+          selectedKeys && selectedKeys.length > 0
+            ? PRESET_ATTRIBUTES.filter((p) => selectedKeys.includes(p.key))
+            : undefined;
+        const customBase = customAttrs.map((attr) => ({
+          key: attr.key,
+          label: attr.label,
+          valueType: "int" as const,
+          defaultValue: 0,
+          min: 0,
+        }));
+        const attrOverrides =
+          presetBase || customBase.length > 0
+            ? [...(presetBase ?? []), ...customBase]
+            : undefined;
+        const attrBuildOptions = attrOverrides
+          ? { attributeDefinitionsOverrides: { attributes: attrOverrides } }
+          : {};
         // Build the addons ONCE so we can both pass them as customAddons
         // to the create call AND derive stable ref IDs from the same seed.
-        const seededAll = buildPageTypeAddons(reqPT.id, {}, t);
+        const seededAll = buildPageTypeAddons(reqPT.id, attrBuildOptions, t);
         const baseTitle = attrChoice.name?.trim() || getPageTypeDefaultSectionTitle(reqPT, t);
         const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
         const newId = createSectionWithArgs(sectionTitle, null, reqPT.id, seededAll);
@@ -689,13 +929,58 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     }
 
     // Ensure economy modifier sections when the page type declares an economy
-    // requirement (items, equipmentItem).
-    let buyId: string | null = null;
-    let sellId: string | null = null;
+    // requirement (items, equipmentItem). Also sync any user-chosen % with the
+    // existing globalVariable addon so the values take effect.
+    const economyChoice = state.resolved.currency as
+      | {
+          economySettings?: {
+            buyValue: number;
+            sellValue: number;
+            modifiersMode?: "existing" | "new";
+            applyBuyDiscount?: boolean;
+            applySellMarkup?: boolean;
+            buyDiscountPct: number;
+            sellMarkupPct: number;
+            buyDiscountName?: string;
+            sellMarkupName?: string;
+          };
+        }
+      | undefined;
+    const economySettings = economyChoice?.economySettings as
+      | {
+          buyValue: number;
+          sellValue: number;
+          modifiersMode?: "existing" | "new";
+          applyBuyDiscount?: boolean;
+          applySellMarkup?: boolean;
+          selectedBuyDiscountSectionIds?: string[];
+          selectedSellMarkupSectionIds?: string[];
+          buyDiscountPct: number;
+          sellMarkupPct: number;
+          buyDiscountName?: string;
+          sellMarkupName?: string;
+        }
+      | undefined;
+    let buyIds: string[] = [];
+    let sellIds: string[] = [];
     if (state.resolved.currency) {
-      const mod = ensureEconomyModifierSectionIds();
-      buyId = mod.buyId;
-      sellId = mod.sellId;
+      const mod = ensureEconomyModifierSectionIds(
+        economySettings
+          ? {
+              mode: economySettings.modifiersMode ?? "existing",
+              buyDiscountPct: economySettings.buyDiscountPct,
+              sellMarkupPct: economySettings.sellMarkupPct,
+              buyDiscountName: economySettings.buyDiscountName,
+              sellMarkupName: economySettings.sellMarkupName,
+              applyBuyDiscount: economySettings.applyBuyDiscount,
+              applySellMarkup: economySettings.applySellMarkup,
+              selectedBuySectionIds: economySettings.selectedBuyDiscountSectionIds,
+              selectedSellSectionIds: economySettings.selectedSellMarkupSectionIds,
+            }
+          : undefined
+      );
+      buyIds = mod.buyIds;
+      sellIds = mod.sellIds;
     }
 
     // Resolve item ingredient/output links for the `recipe` page type.
@@ -719,7 +1004,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         "items",
         {
           linkCurrency: { sectionId: currencyId },
-          linkEconomyModifiers: { buySectionId: buyId ?? undefined, sellSectionId: sellId ?? undefined },
+          linkEconomyModifiers: { buySectionIds: buyIds, sellSectionIds: sellIds },
           economyLinkBaseValues: { buyValue: 100, sellValue: 50 },
         },
         t
@@ -742,8 +1027,8 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         if (newId) {
           currencySectionId = newId;
           const mod = ensureEconomyModifierSectionIds();
-          buyId = mod.buyId;
-          sellId = mod.sellId;
+          buyIds = mod.buyIds;
+          sellIds = mod.sellIds;
         }
       }
     }
@@ -760,20 +1045,57 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       t("pageTypes.autoSections.newOutputItem", "Novo Item de Saída")
     );
 
+    // Pull character-settings progression overrides from the attrDefs choice.
+    const charSettingsForProgression = (
+      state.resolved.attributeDefinitions as
+        | { characterSettings?: { startLevel: number; endLevel: number; growthRate: number } }
+        | undefined
+    )?.characterSettings;
+    const progressionOverrides = charSettingsForProgression
+      ? {
+          startLevel: charSettingsForProgression.startLevel,
+          endLevel: charSettingsForProgression.endLevel,
+          growthRate: charSettingsForProgression.growthRate,
+        }
+      : undefined;
+
+    // Collect the user-authored per-attribute modifier plan (only present
+    // when the user picked an existing attributeDefinitions page in the
+    // wizard and the parent seeds an attributeModifiers addon).
+    const attrModifiersPlan = (
+      state.resolved.attributeDefinitions as
+        | {
+            attributeModifiersPlan?: Array<{
+              attributeKey: string;
+              mode: "add" | "mult" | "set";
+              value: number;
+            }>;
+          }
+        | undefined
+    )?.attributeModifiersPlan;
+
     const options = {
       linkAttributeDefinitions: attrDefsSectionId
         ? {
             sectionId: attrDefsSectionId,
             attributes: attrDefsAttributes,
             fieldLibrary: attrDefsFieldLibrary,
+            progressionOverrides,
           }
         : undefined,
+      attributeModifiersSeed:
+        attrModifiersPlan && attrModifiersPlan.length > 0
+          ? attrModifiersPlan
+          : undefined,
       linkCurrency: currencySectionId ? { sectionId: currencySectionId } : undefined,
       linkEconomyModifiers: state.resolved.currency
-        ? { buySectionId: buyId ?? undefined, sellSectionId: sellId ?? undefined }
+        ? { buySectionIds: buyIds, sellSectionIds: sellIds }
         : undefined,
       economyLinkBaseValues: state.resolved.currency
-        ? { buyValue: 100, sellValue: 50 }
+        ? {
+            buyValue: economySettings?.buyValue ?? 100,
+            sellValue: economySettings?.sellValue ?? 50,
+          }
         : undefined,
       linkRecipe:
         ingredientSectionId || outputSectionId
@@ -813,6 +1135,87 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     );
     if (created === undefined) return;
     resetAddInputs();
+  };
+
+  // Called when the user confirms the attributeDefinitions self-setup dialog.
+  // Builds the addons with slot overrides derived from the chosen presets +
+  // user-defined custom slots, then creates the section in one shot.
+  const handleAttrSetupConfirm = (result: AttributeDefinitionsSetupResult) => {
+    if (!attrSetupPending) return;
+    const snap = attrSetupPending;
+    setAttrSetupPending(null);
+    const reqPT = getPageType("attributeDefinitions");
+    if (!reqPT) return;
+    const presetBase =
+      result.selectedPresetKeys.length > 0
+        ? PRESET_ATTRIBUTES.filter((p) => result.selectedPresetKeys.includes(p.key))
+        : [];
+    const customBase = result.customAttrs.map((attr) => ({
+      key: attr.key,
+      label: attr.label,
+      valueType: "int" as const,
+      defaultValue: 0,
+      min: 0,
+    }));
+    const attrOverrides =
+      presetBase.length > 0 || customBase.length > 0
+        ? [...presetBase, ...customBase]
+        : undefined;
+    const customAddons = buildPageTypeAddons(
+      "attributeDefinitions",
+      attrOverrides
+        ? { attributeDefinitionsOverrides: { attributes: attrOverrides } }
+        : {},
+      t
+    );
+    const baseTitle =
+      result.name.trim() || snap.title || getPageTypeDefaultSectionTitle(reqPT, t);
+    const sectionTitle = `${reqPT.emoji} ${baseTitle}`;
+    const created = createSectionWithArgs(
+      sectionTitle,
+      snap.parentSectionId,
+      "attributeDefinitions",
+      customAddons.length ? customAddons : undefined
+    );
+    if (created === undefined) return;
+    setNameError("");
+    resetAddInputs();
+  };
+
+  // Fires when the user hits "Criar tudo" in the review dialog. This is the
+  // real commit — everything before this point was staging.
+  const handleReviewConfirm = () => {
+    if (!reviewPending) return;
+    const snap = reviewPending;
+    setReviewPending(null);
+    executePendingCreate(snap);
+  };
+
+  // Reopens the last wizard step the user actually saw (from `visitedKinds`)
+  // with prior choices preserved. If a user changes their mind on the new
+  // choice, the old entry in `resolved` is overwritten by handleRequiresChoice.
+  const handleReviewBack = () => {
+    if (!reviewPending) return;
+    const last = reviewPending.visitedKinds[reviewPending.visitedKinds.length - 1];
+    if (!last) {
+      // Nothing to go back to — simple page type; just cancel.
+      setReviewPending(null);
+      setPendingCreate(null);
+      return;
+    }
+    const restored: PendingCreate = {
+      ...reviewPending,
+      remainingKinds: [last],
+      visitedKinds: reviewPending.visitedKinds.slice(0, -1),
+    };
+    setPendingCreate(restored);
+    setReviewPending(null);
+    openModalForKind(last, restored);
+  };
+
+  const handleReviewCancel = () => {
+    setReviewPending(null);
+    setPendingCreate(null);
   };
 
   const handleCraftTableConfirm = (selectedSectionIds: string[]) => {
@@ -1156,6 +1559,11 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         {nameError && <span className="text-red-400 text-sm mt-1 block">{nameError}</span>}
       </div>
       <PageTypeRequiresDialog
+        // Force a full remount on step change so state (selection, name field,
+        // checkboxes, pcts) cannot leak between sequential steps of a multi-
+        // requires wizard. Without this, React batches the close/open into
+        // props-only updates and the "reset on open" effect never fires.
+        key={requiresDialog.requirementKind ?? "closed"}
         open={requiresDialog.open}
         pageType={requiresDialog.pageType}
         requiredPageType={requiresDialog.requiredPageType}
@@ -1174,6 +1582,17 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         skipDescription={requiresDialog.skipDescription}
         showRecipeSettings={requiresDialog.showRecipeSettings}
         defaultRecipeSettings={requiresDialog.defaultRecipeSettings}
+        showAttributeSlotsPicker={requiresDialog.showAttributeSlotsPicker}
+        showAttributeModifiersPicker={requiresDialog.showAttributeModifiersPicker}
+        showCharacterSettings={requiresDialog.showCharacterSettings}
+        defaultCharacterSettings={requiresDialog.defaultCharacterSettings}
+        characterAttributePresets={requiresDialog.characterAttributePresets}
+        showEconomySettings={requiresDialog.showEconomySettings}
+        defaultEconomySettings={requiresDialog.defaultEconomySettings}
+        existingBuyDiscountCandidates={requiresDialog.existingBuyDiscountCandidates}
+        existingSellMarkupCandidates={requiresDialog.existingSellMarkupCandidates}
+        stepIndex={requiresDialog.stepIndex}
+        stepCount={requiresDialog.stepCount}
         onCancel={handleRequiresCancel}
         onConfirm={handleRequiresChoice}
       />
@@ -1182,6 +1601,20 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         candidates={craftTablePending?.candidates || []}
         onCancel={() => setCraftTablePending(null)}
         onConfirm={handleCraftTableConfirm}
+      />
+      <AttributeDefinitionsSetupDialog
+        open={attrSetupPending !== null}
+        defaultName={attrSetupPending?.title || ""}
+        presets={PRESET_ATTRIBUTES_DISPLAY}
+        onCancel={() => setAttrSetupPending(null)}
+        onConfirm={handleAttrSetupConfirm}
+      />
+      <PageCreationReviewDialog
+        open={reviewPending !== null}
+        pending={reviewPending}
+        onCancel={handleReviewCancel}
+        onBack={handleReviewBack}
+        onConfirm={handleReviewConfirm}
       />
     </aside>
   );

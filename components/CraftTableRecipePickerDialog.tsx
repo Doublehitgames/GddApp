@@ -124,33 +124,43 @@ export function CraftTableRecipePickerDialog({
             </button>
           </div>
 
-          <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between gap-2">
-            <span className="text-xs text-gray-400">
-              {t("pageTypes.craftTablePicker.selectedCount", "{n} selecionada(s)").replace(
-                "{n}",
-                String(selected.size)
-              )}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={selectAll}
-                className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors"
-              >
-                {t("pageTypes.craftTablePicker.selectAll", "Selecionar todas")}
-              </button>
-              <span className="text-gray-600">·</span>
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
-              >
-                {t("pageTypes.craftTablePicker.clearAll", "Limpar")}
-              </button>
+          {candidates.length > 0 && (
+            <div className="px-5 py-3 border-b border-gray-800 flex items-center justify-between gap-2">
+              <span className="text-xs text-gray-400">
+                {t("pageTypes.craftTablePicker.selectedCount", "{n} selecionada(s)").replace(
+                  "{n}",
+                  String(selected.size)
+                )}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={selectAll}
+                  className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors"
+                >
+                  {t("pageTypes.craftTablePicker.selectAll", "Selecionar todas")}
+                </button>
+                <span className="text-gray-600">·</span>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  {t("pageTypes.craftTablePicker.clearAll", "Limpar")}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="px-5 py-4 max-h-[min(60vh,520px)] overflow-y-auto space-y-2">
+            {candidates.length === 0 && (
+              <div className="rounded-xl border border-dashed border-gray-700 bg-gray-900/40 px-4 py-6 text-center text-sm text-gray-400">
+                {t(
+                  "pageTypes.craftTablePicker.emptyState",
+                  "Nenhuma receita criada ainda. A mesa será criada vazia — você pode adicionar receitas depois."
+                )}
+              </div>
+            )}
             {candidates.map((c) => {
               const isChecked = selected.has(c.sectionId);
               const preview = buildPreview(c);
