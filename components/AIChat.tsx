@@ -35,6 +35,7 @@ interface AIChatProps {
       parentId?: string;
       domainTags?: string[];
       addonTypes?: string[];
+      pageTypeId?: string;
     }>;
   };
   onClose?: () => void;

@@ -222,9 +222,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       // Coleta contexto - extrai apenas dados serializáveis
       const subsections = sections
         .filter((s: any) => s.parentId === sectionId)
-        .map((s: any) => ({ 
-          title: String(s.title || ''), 
-          content: String(s.content || '') 
+        .map((s: any) => ({
+          title: String(s.title || ''),
+          content: String(s.content || ''),
+          pageTypeId: s.pageTypeId ? String(s.pageTypeId) : undefined,
         }));
       
       const parentSection = section.parentId ? sections.find((s: any) => s.id === section.parentId) : null;
@@ -253,6 +254,13 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       // Conteúdo base: usa o preview atual se existir, senão o conteúdo da seção
       const baseContent = String(showPreview ? previewContent : (section.content || ''));
 
+      // Resumo dos addons da seção atual (tipo + nome) — permite ao prompt evitar duplicar dados estruturados
+      const addonSummary = Array.isArray((section as any).addons)
+        ? ((section as any).addons as Array<{ type?: string; name?: string }>)
+            .filter((a) => a && typeof a.type === 'string')
+            .map((a) => ({ type: String(a.type), name: a.name ? String(a.name) : undefined }))
+        : undefined;
+
       // Cria payload com apenas dados primitivos
       const payload = {
         currentContent: baseContent,
@@ -262,7 +270,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
           breadcrumb: breadcrumb.length > 0 ? breadcrumb : undefined,
           parentContent: parentSection?.content ? String(parentSection.content).trim().slice(0, 1500) : undefined,
           subsections: subsections,
-          otherSections: otherSections
+          otherSections: otherSections,
+          pageTypeId: (section as any).pageTypeId ? String((section as any).pageTypeId) : undefined,
+          addons: addonSummary && addonSummary.length > 0 ? addonSummary : undefined,
+          projectDescription: project?.description ? String(project.description) : undefined,
         },
         projectTitle: String(project.title || 'GDD'),
         model: 'llama-3.1-8b-instant',

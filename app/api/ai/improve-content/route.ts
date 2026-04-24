@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
 import { AIMessage } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
+import {
+  buildSectionContextBlock,
+  getPageTypeWritingGuidance,
+  type PromptAddonSummary,
+} from '@/utils/ai/contextBuilders';
 
 interface ImproveContentRequest {
   currentContent: string;
@@ -13,8 +18,14 @@ interface ImproveContentRequest {
     breadcrumb?: string[];
     /** Conteúdo/resumo da seção pai para a IA entender o tema do ramo */
     parentContent?: string;
-    subsections?: Array<{ title: string; content?: string }>;
+    subsections?: Array<{ title: string; content?: string; pageTypeId?: string }>;
     otherSections?: Array<{ title: string; isEmpty?: boolean; isSubsection?: boolean }>;
+    /** Page type da seção atual (se tipada). Permite ao prompt respeitar a estrutura. */
+    pageTypeId?: string;
+    /** Resumo dos addons já configurados na seção (tipo + nome). Evita que a IA duplique dados estruturados. */
+    addons?: PromptAddonSummary[];
+    /** Descrição curta do projeto (para contexto temático). */
+    projectDescription?: string;
   };
   projectTitle: string;
   model?: string;
@@ -47,13 +58,29 @@ export async function POST(req: NextRequest) {
       model: model || aiConfig.model || 'llama-3.1-8b-instant',
     });
 
-    // Monta contexto rico para a IA
-    const contextInfo = buildContextInfo(sectionTitle, sectionContext, projectTitle, preservedElements);
+    const contextInfo = buildContextInfo(sectionContext, preservedElements);
+
+    const sectionContextBlock = buildSectionContextBlock({
+      sectionTitle,
+      pageTypeId: sectionContext.pageTypeId,
+      addons: sectionContext.addons,
+      breadcrumb: sectionContext.breadcrumb,
+      parentTitle: sectionContext.parentTitle,
+      parentContent: sectionContext.parentContent,
+      subsections: sectionContext.subsections?.map(s => ({ title: s.title, pageTypeId: s.pageTypeId })),
+      projectTitle,
+      projectDescription: sectionContext.projectDescription,
+    });
+
+    const pageTypeGuidance = getPageTypeWritingGuidance(sectionContext.pageTypeId);
 
     const systemPrompt = `Você é um assistente especializado em Game Design Documents (GDD).
 
-**TAREFA:** Melhorar o conteúdo de uma seção de GDD, mantendo elementos existentes.
+**TAREFA:** Melhorar o conteúdo narrativo de uma seção de GDD, respeitando os dados estruturados (addons) e elementos existentes.
 
+${sectionContextBlock}
+
+${pageTypeGuidance ? `\n${pageTypeGuidance}\n` : ""}
 **🔴 MENTALIDADE GDD – ESTRUTURA E USABILIDADE:** Ao escrever ou melhorar o conteúdo, avalie sempre como um GDD de verdade: será que o que estou citando faria sentido ter uma página própria? O usuário precisa encontrar e gerenciar esse tópico no documento? Se um conceito, sistema, item, inimigo, local ou mecânica for relevante o suficiente para alguém querer abrir, editar ou navegar até uma seção dedicada, use $[Nome] — assim a estrutura do documento fica clara e o conteúdo fica fácil de localizar e gerenciar. Pense na usabilidade: referências bem usadas tornam o GDD navegável e organizado.
 
 **REGRAS CRÍTICAS:**
@@ -264,70 +291,31 @@ function validatePreservedElements(improvedContent: string, preserved: ReturnTyp
   };
 }
 
-/**
- * Constrói informações de contexto para a IA
- */
 function buildContextInfo(
-  sectionTitle: string, 
   context: ImproveContentRequest['sectionContext'],
-  projectTitle: string,
   preserved: ReturnType<typeof extractPreservedElements>
 ) {
-  let info = `\n**CONTEXTO DO GDD:**\n`;
-  info += `- Projeto: "${projectTitle}" (NÃO é uma seção — nunca use $[${projectTitle}])\n`;
-  info += `- Seção atual: "${sectionTitle}"\n`;
+  let info = "";
 
-  if (context.breadcrumb && context.breadcrumb.length > 0) {
-    info += `\n**CAMINHO DA SEÇÃO (hierarquia):** ${context.breadcrumb.join(" > ")}\n`;
-    info += `- O conteúdo deve ser **específico ao escopo deste ramo**. Ex.: "Mitologia Nórdica" sob "Composição" = foco em composição musical inspirada em mitologia nórdica, não texto genérico sobre mitologia.\n`;
-  } else if (context.parentTitle) {
-    info += `- Seção pai: "${context.parentTitle}"\n`;
-  }
-
-  if (context.parentContent && context.parentContent.trim()) {
-    const snippet = context.parentContent.trim().slice(0, 800);
-    info += `\n**CONTEÚDO DA SEÇÃO PAI (para alinhar o tema):**\n${snippet}${context.parentContent.length > 800 ? "…" : ""}\n`;
-    info += `- Use este contexto para que o texto da seção atual seja coerente com o ramo (ex.: se o pai fala de composição musical, a seção atual deve tratar do subtema no mesmo ângulo).\n`;
-  }
-  
-  if (context.subsections && context.subsections.length > 0) {
-    info += `\n🔴 SUBSEÇÕES DESTA SEÇÃO (NÃO mencione esses tópicos!):\n`;
-    context.subsections.forEach(s => {
-      info += `  - "${s.title}"\n`;
-    });
-    info += `\n⚠️ IMPORTANTE: NÃO escreva sobre esses tópicos na descrição!\n`;
-    info += `⚠️ Eles já aparecerão automaticamente como subseções no documento!\n`;
-    info += `⚠️ Foque em aspectos gerais que NÃO estão cobertos pelas subseções!\n`;
-  }
-  
   if (context.otherSections && context.otherSections.length > 0) {
     info += `\n[CONTEXTO INTERNO - NÃO INCLUIR NO OUTPUT]\n`;
-    info += `\nSeções disponíveis para referência:\n`;
+    info += `\nSeções disponíveis para referência (use $[Nome Exato] quando citar):\n`;
     context.otherSections.forEach(s => {
       const prefix = s.isSubsection ? '  └─ ' : '- ';
       const status = s.isEmpty ? ' [VAZIA]' : '';
       info += `${prefix}$[${s.title}]${status}\n`;
     });
-    info += `\nComo usar:\n`;
-    info += `- Esta lista é APENAS para você consultar - NÃO copie para o output\n`;
-    info += `- Quando mencionar um tópico, procure seção relacionada na lista\n`;
-    info += `- Se encontrar, use $[Nome Exato] em vez de **negrito**\n`;
+    info += `\n- Esta lista é APENAS para consulta — NÃO copie para o output\n`;
+    info += `- Quando encontrar correspondência, use $[Nome Exato] em vez de **negrito**\n`;
     info += `- Se não encontrar, escreva normalmente sem referência\n`;
-    info += `- Exemplo: "através do $[Combate Estratégico]" (não "através do **Combate Estratégico**")\n`;
     info += `\n[FIM DO CONTEXTO INTERNO]\n`;
   }
 
   if (preserved.images.length > 0 || preserved.links.length > 0 || preserved.uploads.length > 0) {
     info += `\n**⚠️ ELEMENTOS A PRESERVAR:**\n`;
-    if (preserved.images.length > 0) {
-      info += `- ${preserved.images.length} imagem(ns)\n`;
-    }
-    if (preserved.links.length > 0) {
-      info += `- ${preserved.links.length} link(s)\n`;
-    }
-    if (preserved.uploads.length > 0) {
-      info += `- ${preserved.uploads.length} arquivo(s) enviado(s)\n`;
-    }
+    if (preserved.images.length > 0) info += `- ${preserved.images.length} imagem(ns)\n`;
+    if (preserved.links.length > 0) info += `- ${preserved.links.length} link(s)\n`;
+    if (preserved.uploads.length > 0) info += `- ${preserved.uploads.length} arquivo(s) enviado(s)\n`;
     info += `\n**IMPORTANTE:** Mantenha TODOS esses elementos no conteúdo melhorado!\n`;
   }
 

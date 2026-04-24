@@ -554,6 +554,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             content: getSectionAiContent(s),
             parentId: s.parentId,
             domainTags: s.domainTags,
+            pageTypeId: s.pageTypeId,
             addonTypes: Array.from(new Set((s.addons || []).map((addon) => addon.type))).filter(Boolean) as string[],
         })),
     } : undefined;

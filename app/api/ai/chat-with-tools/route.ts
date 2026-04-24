@@ -5,6 +5,12 @@ import { AI_TOOLS, TOOLS_SYSTEM_PROMPT } from '@/utils/ai/tools';
 import { AIMessage } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 import { assessThematicRelevance } from '@/utils/ai/thematicGuardrails';
+import {
+  PAGE_TYPES_PROMPT_BLOCK,
+  RICH_DOC_CALLOUTS_PROMPT_BLOCK,
+  FIVE_GROUP_HIERARCHY_PROMPT_BLOCK,
+} from '@/utils/ai/gddVocabulary';
+import { buildProjectTreeBlock } from '@/utils/ai/contextBuilders';
 
 interface ProjectContext {
   projectId: string;
@@ -17,6 +23,7 @@ interface ProjectContext {
     parentId?: string;
     domainTags?: string[];
     addonTypes?: string[];
+    pageTypeId?: string;
   }>;
 }
 
@@ -40,21 +47,23 @@ export async function POST(req: NextRequest) {
       model: model || aiConfig.model,
     });
     
-    // Adiciona contexto do projeto na mensagem do sistema
+    const treeBlock = projectContext
+      ? buildProjectTreeBlock(projectContext.sections, {
+          includeIds: true,
+          showTags: true,
+          showPageType: true,
+          showAddons: true,
+        })
+      : '';
+
     const contextInfo = projectContext ? `
 [CONTEXTO DO PROJETO]
 Projeto: ${projectContext.projectTitle} (ID: ${projectContext.projectId})
 Descrição: ${projectContext.projectDescription?.trim() || "Sem descrição informada."}
 Seções atuais: ${projectContext.sections.length}
 
-📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Entre colchetes: tags de sistema (economy, progression, crafting, items, world, narrative, etc.):
-${projectContext.sections.map(s => {
-  const isRoot = !s.parentId;
-  const prefix = isRoot ? '📁' : '  └─';
-  const tags = s.domainTags?.length ? ` [${s.domainTags.join(', ')}]` : '';
-  const addons = s.addonTypes?.length ? ` {addons: ${s.addonTypes.join(', ')}}` : '';
-  return `${prefix} ${s.title} (ID: ${s.id})${tags}${addons}`;
-}).join('\n')}
+📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Anotações: {pageType}, [tags], {addons}:
+${treeBlock}
 
 💡 DICAS:
 - Use $[Nome da Seção] para criar referências clicáveis
@@ -63,17 +72,31 @@ ${projectContext.sections.map(s => {
 - Exemplo de referência: "Este sistema se relaciona com $[Economia da Fazenda]"
 - Só proponha sistemas aderentes ao tema descrito no projeto
 - Se sugerir algo fora do núcleo, explique claramente a conexão com a descrição do jogo
-- Quando criar entidades de gameplay, avalie addons por domínio (inventory, economyLink, production, xpBalance/progressionTable, currency, globalVariable)
-- Não crie item/moeda/pet na raiz se já existir contêiner adequado (Itens, Economia, Moedas, Produção etc.)
-- Se faltar dado para configurar addon com segurança, faça perguntas curtas antes de emitir [EXECUTAR]
-- Pré-requisitos comuns:
-  - economyLink compra/venda -> referência de moeda (seção com addon currency)
-  - production recipe/passive -> referências para itens com addon inventory
-  - unlock por nível -> referência para seção com addon xpBalance
+
+🎯 QUANDO CRIAR SEÇÃO NOVA, PENSE EM 3 EIXOS:
+  1. **Onde colocar na hierarquia** — use os 5 grupos canônicos (Visão Geral / Design / Conteúdo / Apresentação / Produção). Não crie na raiz se houver contêiner adequado.
+  2. **Qual pageType atribuir** — a maioria é \`narrative\`; use tipados (\`economy\`, \`items\`, \`equipmentItem\`, \`characters\`, \`attributeDefinitions\`, \`progression\`, \`recipe\`, \`craftTable\`) apenas quando o conteúdo é estruturalmente aquele dado.
+  3. **Quais addons configurar** — avalie domínio (inventory, economyLink, production, currency, xpBalance/progressionTable, globalVariable). Não trate addon como opcional quando o caso é óbvio (item com estoque, compra/venda, curva de nível).
+
+📚 Para páginas \`narrative\`, use callouts em markdown (\`> [!note]\`, \`> [!warning]\`, \`> [!design-decision]\`, \`> [!balance-note]\`) — 3-5 por página — para ensinar jargão e documentar tradeoffs.
+
+🔗 Pré-requisitos de addon (valide antes de emitir [EXECUTAR]):
+  - economyLink compra/venda → referência de moeda (seção com addon currency)
+  - production recipe/passive → referências para itens com addon inventory
+  - unlock por nível → referência para seção com addon xpBalance
+  - attributeProfile/attributeModifiers → referência para seção com addon attributeDefinitions
+
+- Se faltar dado pra configurar addon com segurança, faça perguntas curtas ANTES de emitir [EXECUTAR].
 ` : '';
 
+    const vocabBlock = [
+      FIVE_GROUP_HIERARCHY_PROMPT_BLOCK,
+      PAGE_TYPES_PROMPT_BLOCK,
+      RICH_DOC_CALLOUTS_PROMPT_BLOCK,
+    ].join('\n\n');
+
     const enhancedMessages: AIMessage[] = [
-      { role: 'system', content: TOOLS_SYSTEM_PROMPT + '\n\n' + contextInfo },
+      { role: 'system', content: TOOLS_SYSTEM_PROMPT + '\n\n' + vocabBlock + '\n\n' + contextInfo },
       ...messages.filter(m => m.role !== 'system')
     ];
 
