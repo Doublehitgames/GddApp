@@ -354,6 +354,45 @@ function narrative(
   };
 }
 
+/**
+ * Factory for a "group container" section — a narrative page whose job
+ * is to introduce a cluster of child sections (Design, Conteudo, etc.)
+ * so the user opening the GDD has a mental map of what's in each branch.
+ *
+ * The container itself is browseable (has intro text + a list of what's
+ * inside) and its children appear underneath it in the sidebar.
+ */
+function groupContainer(
+  id: string,
+  title: string,
+  summary: string,
+  intro: string,
+  whatsInside: string[],
+  children: TemplateSection[]
+): TemplateSection {
+  return {
+    id,
+    title,
+    content: summary,
+    subsections: children,
+    pageType: {
+      id: "narrative",
+      options: {
+        richDocBlocks: [
+          h(title, 2),
+          p(intro),
+          h("O que tem aqui", 3),
+          ...whatsInside.map((item) => li(item)),
+          callout(
+            "note",
+            "Abra as subpaginas ao lado pra ver detalhes. Voce pode preencher nessa ordem ou saltar pro que quer atacar primeiro."
+          ),
+        ],
+      },
+    },
+  };
+}
+
 const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
   mini: [
     section(
@@ -4273,10 +4312,148 @@ function applyStyleToSection(item: TemplateSection, style: WizardStyle, locale: 
   };
 }
 
+/**
+ * Arranges common + genre-specific sections into a hierarchy that matches
+ * how a professional GDD is typically organized:
+ *
+ *   1. 📋 Visao Geral (capa)
+ *   2. 🎮 Design de Jogo (Core Loop, Mecanicas, Progressao)
+ *   3. 📦 Conteudo do Jogo (personagens, itens, combate, narrativa, economia)
+ *   4. 🎨 Apresentacao (controles, UX/UI, arte/audio)
+ *   5. 🏭 Producao (tecnologia, roadmap, riscos, KPIs, monetizacao, QA)
+ *
+ * Sections that don't exist in a given scope are quietly skipped, and
+ * containers with zero children aren't emitted at all.
+ */
 function composeSections(scope: WizardScope, genre: WizardGenre): TemplateSection[] {
   const common = COMMON_BY_SCOPE[scope].map(cloneSection);
   const genreSpecific = GENRE_BY_SCOPE[genre][scope].map(cloneSection);
-  return [...common, ...genreSpecific];
+
+  const findByIdEnd = (sections: TemplateSection[], suffix: string) =>
+    sections.find((s) => s.id.endsWith(suffix));
+  const findNestedById = (sections: TemplateSection[], id: string): TemplateSection | undefined => {
+    for (const s of sections) {
+      if (s.id === id) return s;
+      const inner = s.subsections ? findNestedById(s.subsections, id) : undefined;
+      if (inner) return inner;
+    }
+    return undefined;
+  };
+
+  // ─── Visao Geral (genre-specific preferred, common completo USP+Meta as children) ───
+  const visaoGeralGenre = findByIdEnd(genreSpecific, "-visao-geral");
+  const visaoGeralCommon = findByIdEnd(common, "-visao-geral");
+  let visaoGeral = visaoGeralGenre || visaoGeralCommon;
+  if (scope === "completo" && visaoGeralGenre) {
+    const usp = findNestedById(common, "common-completo-visao-usp");
+    const meta = findNestedById(common, "common-completo-visao-meta");
+    const extraSubs = [usp, meta].filter((s): s is TemplateSection => Boolean(s));
+    if (extraSubs.length > 0) {
+      visaoGeral = {
+        ...visaoGeralGenre,
+        subsections: [...(visaoGeralGenre.subsections || []), ...extraSubs],
+      };
+    }
+  }
+
+  // ─── Children pools (everything except visao-geral / its subs) ───
+  const isVisaoGeralRelated = (id: string) =>
+    id.endsWith("-visao-geral") ||
+    id === "common-completo-visao-usp" ||
+    id === "common-completo-visao-meta";
+  const commonRest = common.filter((s) => !isVisaoGeralRelated(s.id));
+  const genreRest = genreSpecific.filter((s) => !isVisaoGeralRelated(s.id));
+
+  // ─── Group children ───
+  const designChildren = [
+    findByIdEnd(commonRest, "-core-loop"),
+    findByIdEnd(commonRest, "-mecanicas"),
+    findByIdEnd(commonRest, "-progressao"),
+  ].filter((s): s is TemplateSection => Boolean(s));
+
+  const conteudoChildren = genreRest;
+
+  const apresentacaoChildren = [
+    findByIdEnd(commonRest, "-controles"),
+    findByIdEnd(commonRest, "-ui"),
+    findByIdEnd(commonRest, "-arte-audio"),
+  ].filter((s): s is TemplateSection => Boolean(s));
+
+  const producaoChildren = [
+    findByIdEnd(commonRest, "-tecnologia"),
+    findByIdEnd(commonRest, "-roadmap") || findByIdEnd(commonRest, "-roadmap-riscos"),
+    findByIdEnd(commonRest, "-riscos"),
+    findByIdEnd(commonRest, "-kpis"),
+    findByIdEnd(commonRest, "-monetizacao"),
+    findByIdEnd(commonRest, "-qa"),
+  ].filter((s): s is TemplateSection => Boolean(s));
+
+  // ─── Assemble in GDD-canonical order ───
+  const result: TemplateSection[] = [];
+
+  if (visaoGeral) result.push(visaoGeral);
+
+  if (designChildren.length > 0) {
+    result.push(
+      groupContainer(
+        `group-design-${scope}`,
+        "🎮 Design de Jogo",
+        "Regras, loops e progressao do jogo.",
+        "Esta pasta agrupa as decisoes de design \"de dentro pra fora\": o que o jogador faz, como os sistemas interagem, e como a progressao se desenrola.",
+        [
+          "Core Loop — o ciclo que o jogador repete.",
+          "Mecanicas Centrais — as acoes e regras formais.",
+          "Progressao e Dificuldade — como o jogador evolui.",
+        ],
+        designChildren
+      )
+    );
+  }
+
+  if (conteudoChildren.length > 0) {
+    result.push(
+      groupContainer(
+        `group-conteudo-${scope}`,
+        "📦 Conteudo do Jogo",
+        "Personagens, itens, combate, narrativa e economia.",
+        "Esta pasta contem o \"conteudo\" do jogo — o que o jogador vai ver, controlar, coletar e enfrentar. As paginas aqui sao especificas do seu genero.",
+        conteudoChildren.map((c) => `${c.title}`),
+        conteudoChildren
+      )
+    );
+  }
+
+  if (apresentacaoChildren.length > 0) {
+    result.push(
+      groupContainer(
+        `group-apresentacao-${scope}`,
+        "🎨 Apresentacao",
+        "Controles, UX/UI, arte e audio.",
+        "Esta pasta agrupa como o jogo se APRESENTA ao jogador: como ele interage (controles), como ele enxerga (UI), e como ele sente (arte e som).",
+        [
+          "Controles — como o jogador interage, incluindo acessibilidade.",
+          "UX/UI — HUD, menus e feedback.",
+          "Arte e Audio — direcao visual e sonora.",
+        ],
+        apresentacaoChildren
+      )
+    );
+  }
+
+  if (producaoChildren.length > 0) {
+    result.push(
+      groupContainer(
+        `group-producao-${scope}`,
+        "🏭 Producao",
+        "Tecnologia, roadmap, riscos, KPIs, monetizacao e QA.",
+        "Esta pasta agrupa decisoes de PRODUCAO — como o jogo vai ser feito, lancado e monitorado. Nao e sobre o que o jogador vive; e sobre como voce entrega.",
+        producaoChildren.map((c) => `${c.title}`),
+        producaoChildren
+      )
+    );
+  }
+
+  return result;
 }
 
 export function getWizardGenreOptions(locale: AppLocale = "pt-BR"): Array<{ id: WizardGenre; label: string }> {
