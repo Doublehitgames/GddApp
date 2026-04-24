@@ -1460,181 +1460,1781 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
   },
   roguelike: {
     mini: [
-      section("rogue-mini-run", "Estrutura de Run", "Inicio, progresso, boss e encerramento de run."),
-      section("rogue-mini-build", "Builds", "Pilares de build e 2-3 sinergias principais."),
-      section("rogue-mini-meta", "Metaprogressao", "Recompensas permanentes entre runs."),
+      narrative(
+        "rogue-mini-visao-geral",
+        "Visao Geral — Abyss Descent",
+        "Pitch curto do jogo de exemplo.",
+        [
+          h("Visao Geral — Abyss Descent", 2),
+          p(
+            "Abyss Descent e um action roguelike onde voce joga como Nyx, uma Errante amaldicoada a descer um poco infinito chamado Abissao. Cada descida e uma run. Morrer retorna voce a superficie, mas algumas almas colhidas (Essence) persistem — alimentando sua arvore de meta-progressao."
+          ),
+          callout(
+            "warning",
+            "Este e um exemplo ficticio. Substitua Nyx, Abissao e a Essence pelos elementos do SEU roguelike."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-mini-run",
+        "Estrutura de Run",
+        "Como uma descida da Abissao funciona.",
+        [
+          h("Estrutura de Run", 2),
+          li("Cada run tem 5 andares + 1 boss final."),
+          li("Andar = 4-6 salas interligadas, com saida pra proxima."),
+          li("Ao morrer, volta a superficie com Essence coletada."),
+          callout(
+            "design-decision",
+            "5 andares e um sweet-spot pra sessao de 30-40min. Menos vira \"so comecei e acabou\"; mais cansa antes do boss."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-mini-build",
+        "Builds",
+        "Pilares de build e sinergias em Abyss Descent.",
+        [
+          h("Builds", 2),
+          li("Pilar 1: Dano Direto (armas fisicas, critico alto)."),
+          li("Pilar 2: Dano Sustentado (veneno, queima, marcas)."),
+          li("Pilar 3: Defesa (escudos, lifesteal, reflexao)."),
+          callout(
+            "design-decision",
+            "3 pilares (nao 2, nao 5): o minimo pra ter escolha real sem overwhelming o jogador novo."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-mini-meta",
+        "Metaprogressao",
+        "O que persiste entre runs em Abyss Descent.",
+        [
+          h("Metaprogressao", 2),
+          p(
+            "Essence coletada nas runs pode ser gasta no Altar da Superficie entre descidas. Desbloqueia novas armas, relicarios iniciais e vantagens passivas."
+          ),
+          callout(
+            "design-decision",
+            "Meta persiste mas NAO substitui skill. Um player novo com meta maxa nao passa do boss sem aprender mecanicas."
+          ),
+          callout(
+            "balance-note",
+            "Playtestar cedo: meta nao pode trivializar early game. Se o jogador com 50h de meta clica no jogo e nao morre nunca, quebrou."
+          ),
+        ]
+      ),
     ],
     medio: [
-      section("rogue-medio-run-design", "Run Design", "Biome sequencing, escalada de risco e pacing de recursos."),
-      section("rogue-medio-procedural", "Geracao Procedural", "Regras de composicao de salas, eventos e encontros."),
-      section("rogue-medio-builds", "Buildcraft e Sinergias", "Categorias de build, tags e combinacoes proibidas."),
-      section("rogue-medio-meta", "Metaprogressao e Persistencia", "Unlock trees, meta currency e onboarding progressivo."),
-      section(
-        "rogue-medio-economia",
-        "Economia de Run",
-        "Drops, lojas, rerolls e custo de decisao.",
-        undefined,
-        seedEconomy()
+      narrative(
+        "rogue-medio-visao-geral",
+        "Visao Geral — Abyss Descent",
+        "Pitch, USP e diferencial do jogo de exemplo.",
+        [
+          h("Visao Geral — Abyss Descent", 2),
+          p(
+            "Abyss Descent e um action roguelike com fogo em tempo real, inspirado em Hades e Dead Cells. Voce joga Nyx, a Errante, descendo a Abissao atras da Alma da Mae — relic lendaria que concederia fim ao seu ciclo de maldicao."
+          ),
+          h("USP", 3),
+          li("Narrativa que progride DENTRO de cada run via dialogos curtos entre andares."),
+          li("Essence (meta currency) com escolha de 3 caminhos de upgrade mutuamente exclusivos."),
+          li("Variancia controlada: pools de loot ajustam com base no seu historico de runs (anti-frustracao)."),
+          callout(
+            "design-decision",
+            "Diferencial competitivo vs Hades: dialogos narrativos aparecem DURANTE a run (entre andares), nao so na superficie. Aumenta densidade narrativa sem aumentar tempo fora da acao."
+          ),
+          callout(
+            "warning",
+            "Este conteudo e ficticio. Substitua Abyss Descent e Nyx pelos elementos do SEU roguelike, mantendo a estrutura das secoes."
+          ),
+        ]
       ),
+      narrative(
+        "rogue-medio-run-design",
+        "Run Design",
+        "Pacing, escalada de risco e recursos por run.",
+        [
+          h("Run Design — Abyss Descent", 2),
+          p(
+            "Uma run tipica dura 30-45 minutos. 5 biomes (Cavernas, Ruinas, Pantanos, Abismo, Vazio), cada um com 4-6 salas + sala elite opcional. Boss no final do bioma 5."
+          ),
+          h("Escalada de Risco", 3),
+          li("Bioma 1-2: onboarding, inimigos lentos, loot generoso."),
+          li("Bioma 3-4: densidade sobe, aparecem elites, loot fica seletivo."),
+          li("Bioma 5: cenario estreito, inimigos coordenados, pouca oportunidade de cura."),
+          h("Pacing de Recursos", 3),
+          li("Vida regenerada so entre biomas (sala de descanso)."),
+          li("Moeda de run (Vestigio) dropa em todo combate. Lojas em cada bioma."),
+          callout(
+            "design-decision",
+            "Vida nao regenera entre salas DENTRO do bioma: mantem tensao tatica alta. Entre biomas SIM: respira o player antes do spike."
+          ),
+          callout(
+            "balance-note",
+            "Se jogador acaba bioma 5 com 100% vida, significa que desafio do bioma 4 foi baixo. Meta de playtest: chegar ao boss com 40-60% vida."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-medio-procedural",
+        "Geracao Procedural",
+        "Regras de composicao de salas, eventos e encontros em Abyss Descent.",
+        [
+          h("Geracao Procedural", 2),
+          p(
+            "Cada run usa uma seed. Bioma embaralha uma lista fixa de salas (40 por bioma), escolhe 5-6 respeitando regras: ao menos 1 combate, ao menos 1 elite aos 60% do bioma, sala de loja em posicao aleatoria."
+          ),
+          li("Salas proibidas de repetir no mesmo bioma (pool de 40, escolhe 5)."),
+          li("Eventos especiais (ex: mercador misterioso) tem chance base 10% por bioma, +10% se nao apareceu nos biomas anteriores."),
+          li("Seed visivel pro jogador: compartilha runs dificeis com amigos."),
+          callout(
+            "design-decision",
+            "Seed visivel e compartilhavel e feature de comunidade — nao compromete a fantasia de aleatoriedade e cria conteudo emergente (desafios, speedruns)."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-medio-builds",
+        "Buildcraft e Sinergias",
+        "Como builds se formam em Abyss Descent.",
+        [
+          h("Sistema de Tags", 2),
+          p(
+            "Cada item e relicario tem 1-3 tags: Fogo, Veneno, Sangue, Luz, Sombra, Ferro. Itens com tags iguais criam sinergias passivas (ex: 3 itens de Fogo = +50% dano de queima)."
+          ),
+          h("Pilares de Build", 3),
+          li("Pirokinetic — foco em Fogo + Sangue. Burst curto, dano alto."),
+          li("Plaguebearer — foco em Veneno + Sombra. Dano em tempo."),
+          li("Lightguard — foco em Luz + Ferro. Defensivo/control."),
+          callout(
+            "design-decision",
+            "Tags explicit (visiveis no item) em vez de categorias escondidas: player novo ja entende sinergia sem tutorial."
+          ),
+          callout(
+            "balance-note",
+            "Cuidado com sinergias de 4+ tags iguais. Testamos no Hades que pura single-tag vira loop matematicamente superior — mistas precisam ser incentivadas."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-medio-meta",
+        "Metaprogressao e Persistencia",
+        "Essence, Altar e desbloqueios permanentes em Abyss Descent.",
+        [
+          h("Metaprogressao", 2),
+          p(
+            "Essence e a alma fragmentada de criaturas derrotadas. Ela persiste entre runs e e gasta no Altar da Superficie."
+          ),
+          h("Arvore do Altar", 3),
+          li("Ramo Forca — novas armas iniciais."),
+          li("Ramo Sabedoria — relicarios iniciais (buff passivo por run)."),
+          li("Ramo Persistencia — extra cura, mais moedas, +1 reroll por run."),
+          p(
+            "Os 3 ramos sao MUTUAMENTE EXCLUSIVOS num mesmo \"ciclo\". Voce escolhe um, maxa, depois pode mudar."
+          ),
+          callout(
+            "design-decision",
+            "Exclusividade mutua forca o jogador a comprometer-se com um estilo por um periodo. Evita \"vou maxar tudo em 200h e o jogo vira trivial\"."
+          ),
+          callout(
+            "warning",
+            "Meta deve ser opcional pra clear. Balanceamento: um player com ZERO meta tem que ser capaz de clear (dificil, mas possivel). Se meta vira gate, vira grinding."
+          ),
+        ]
+      ),
+      {
+        id: "rogue-medio-economia",
+        title: "Economia de Run",
+        content: "Vestigios (moeda de run) em Abyss Descent: drops, lojas, rerolls.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia de Run", 2),
+              p(
+                "Abyss Descent tem DUAS moedas com ciclos diferentes:"
+              ),
+              li("Vestigios — moeda de run. Evapora ao morrer. Compra em lojas de bioma."),
+              li("Essence — moeda meta. Persiste entre runs. Gasta no Altar."),
+              h("Vestigios — Economia Dentro da Run", 3),
+              li("Inimigo comum: 5-15 vestigios."),
+              li("Elite: 30-80 vestigios."),
+              li("Sala de loja: compra itens (50-300) ou reroll (50)."),
+              h("Essence — Economia Meta", 3),
+              li("Dropa em quantidade proporcional a quanto voce avancou na run."),
+              li("Gasto unico no Altar da Superficie."),
+              callout(
+                "design-decision",
+                "Duas moedas com ciclos distintos resolvem tensao \"rush acc vs explore\": Vestigios te empurra pra usar agora (some), Essence recompensa risco (so vale se avancar)."
+              ),
+              callout(
+                "balance-note",
+                "Preco de reroll em loja e sensivel. Muito barato: player reroll-spam e o jogo vira lottery. Muito caro: loja vira decorativa."
+              ),
+              callout(
+                "warning",
+                "Esta pagina de Economia ja vem configurada com UMA moeda. Pra Abyss Descent, crie uma SEGUNDA pagina de Economia pra Essence."
+              ),
+            ],
+          },
+        },
+      },
     ],
     completo: [
-      section("rogue-completo-run-architecture", "Arquitetura de Run", "Modelo completo de inicio ao boss final com checkpoints de decisao.", [
-        section("rogue-completo-curva", "Curva de Risco", "Escalada por piso/bioma com controle de spike."),
-        section("rogue-completo-objetivos", "Objetivos Primario e Secundario", "Objetivos por run com opcional de mastery."),
-      ]),
-      section("rogue-completo-procedural", "Geracao Procedural Avancada", "Pools por contexto, seeds, restricoes de composicao e validacoes."),
-      section("rogue-completo-combate", "Combate, Armas e Modificadores", "Framework de combate com variancia controlada."),
-      section("rogue-completo-buildcraft", "Buildcraft", "Sistemas de tags, sinergias, antisinergias e teto de poder."),
-      section("rogue-completo-metaprogressao", "Metaprogressao", "Desbloqueios permanentes sem invalidar desafio de run."),
-      section("rogue-completo-bosses", "Elites e Bosses", "Conjuntos de padroes, telegrafo e regras de fairness."),
-      section(
-        "rogue-completo-economia",
-        "Economia e Loja de Run",
-        "Drops, rerolls, currency sinks e equilibrio de recompensa.",
-        undefined,
-        seedEconomy()
+      narrative(
+        "rogue-completo-visao-geral",
+        "Visao Geral — Abyss Descent",
+        "Pitch completo, publico, plataformas e USP.",
+        [
+          h("Visao Geral — Abyss Descent", 2),
+          p(
+            "Action roguelike PC/Switch inspirado em Hades e Dead Cells. Voce joga Nyx, a Errante, numa descida infinita ao poco Abissao em busca da Alma da Mae. Cada run dura 30-45min. Morrer e parte do ciclo: Essence persiste e alimenta meta-progressao."
+          ),
+          h("Pitch", 3),
+          p(
+            "Uma roguelike onde cada run te deixa um pouco menos humana. Colete Essence, escolha seu caminho de corrupcao, e descubra se a Alma da Mae vale o preco."
+          ),
+          h("USP", 3),
+          li("Narrativa progride DENTRO da run (dialogos entre andares)."),
+          li("Tres caminhos de meta-progressao mutuamente exclusivos (commitment)."),
+          li("Variancia controlada por historico de runs (anti-streak de azar)."),
+          callout(
+            "design-decision",
+            "Dialogos entre andares (nao so na superficie) ancoram o jogador no mundo sem interromper pacing do combate."
+          ),
+          callout(
+            "warning",
+            "Conteudo ficticio — substitua Abyss Descent e Nyx pelos elementos do seu roguelike."
+          ),
+        ]
       ),
+      narrative(
+        "rogue-completo-run-architecture",
+        "Arquitetura de Run",
+        "Modelo completo de run em Abyss Descent.",
+        [
+          h("Arquitetura de Run", 2),
+          p(
+            "Uma run tem 5 biomas sequenciais + boss final + boss secreto (unlockavel). Cada bioma tem estrutura propria: salas, elite opcional, sala de loja, sala de descanso, boss de bioma."
+          ),
+        ],
+        [
+          narrative(
+            "rogue-completo-curva",
+            "Curva de Risco",
+            "Escalada de desafio por bioma.",
+            [
+              h("Curva de Risco", 2),
+              li("Bioma 1 (Cavernas): onboarding. Inimigos lentos. Loot generoso."),
+              li("Bioma 2 (Ruinas): padrões mais complexos. Primeiro elite opcional."),
+              li("Bioma 3 (Pantanos): densidade aumenta. Estados alterados."),
+              li("Bioma 4 (Abismo): inimigos coordenados. Cura escassa."),
+              li("Bioma 5 (Vazio): pre-boss. Desafio maximo."),
+              callout(
+                "design-decision",
+                "Escalada em steps (nao rampa linear) permite momentos de respiro apos cada bioma. Evita \"pico monotono de dificuldade\"."
+              ),
+              callout(
+                "balance-note",
+                "Monitore taxa de morte por bioma. Se bioma 3 tem mais mortes que bioma 5, curva esta invertida."
+              ),
+            ]
+          ),
+          narrative(
+            "rogue-completo-objetivos",
+            "Objetivos Primario e Secundario",
+            "Quest de run + mastery opcional em Abyss Descent.",
+            [
+              h("Objetivos", 2),
+              p("Primario: chegar ao boss final (desce 5 biomas)."),
+              p(
+                "Secundario (opcional): mastery challenges por run — derrotar elites em cada bioma, completar sem usar potions, coletar X essencia, etc. Completam \"marcas\" que persistem."
+              ),
+              callout(
+                "design-decision",
+                "Mastery opcional (nao obrigatorio pra progresso) adiciona rejogabilidade sem punir o jogador casual."
+              ),
+            ]
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-completo-procedural",
+        "Geracao Procedural Avancada",
+        "Pools, seeds e regras de composicao em Abyss Descent.",
+        [
+          h("Geracao Procedural Avancada", 2),
+          p(
+            "Cada bioma tem um pool de 40 salas. Gerador escolhe 5-6 por run respeitando restricoes. Cada sala tem subvariantes (inimigos diferentes, layouts espelhados) que aumentam variacao sem novo conteudo manual."
+          ),
+          h("Regras", 3),
+          li("Ao menos 1 combate direto por bioma."),
+          li("1 sala elite opcional aparece aos 60-80% do bioma."),
+          li("Sala de loja em posicao aleatoria (nao primeira nem ultima)."),
+          li("Eventos narrativos unlockam com base em quantas runs voce ja fez."),
+          callout(
+            "design-decision",
+            "Pool grande (40 por bioma) com muitas subvariantes (>3x multiplier) cria variancia de ~120 salas percebidas com esforco de ~40."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-completo-combate",
+        "Combate, Armas e Modificadores",
+        "Framework de combate tempo real em Abyss Descent.",
+        [
+          h("Combate — Abyss Descent", 2),
+          p(
+            "Acao em tempo real, camera de topo. Nyx tem 3 botoes principais: ataque basico (dash-attack), ataque especial (cooldown), e dash (i-frames curtos)."
+          ),
+          li("Ataque basico: combo de 3 hits, ultimo mais forte."),
+          li("Especial: unico por arma. Cooldown 4-12s."),
+          li("Dash: 6 frames invencivel. 3 usos consecutivos antes de cooldown."),
+          h("Armas", 3),
+          li("Espada Runica — balanceada."),
+          li("Martelo Carmesim — slow, dano massivo."),
+          li("Adagas Gemeas — rapido, requer combo."),
+          li("Cajado Cristalino — distancia, canal de casts."),
+          callout(
+            "design-decision",
+            "3 botoes e sagrado pra acessibilidade em pad. Mais que isso vira luta com controles."
+          ),
+          callout(
+            "balance-note",
+            "Monitore pick rate de armas. Se Espada Runica e 60%+, balanceamento esta tendencioso a \"safe default\"."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-completo-buildcraft",
+        "Buildcraft",
+        "Sistema de tags, sinergias e teto de poder em Abyss Descent.",
+        [
+          h("Buildcraft", 2),
+          p(
+            "Itens tem 1-3 tags (Fogo, Veneno, Sangue, Luz, Sombra, Ferro). Combinacoes geram sinergias passivas escalonadas: 2 itens mesmos tag = +25% efeito; 3 itens = +50%; 4+ = +75% com diminishing returns."
+          ),
+          h("Antisinergias", 3),
+          li("Luz + Sombra: reducao de 50% em ambos os efeitos."),
+          li("Fogo + Agua (se tiver): cancela ambos."),
+          callout(
+            "design-decision",
+            "Antisinergias explicitas existem pra impedir builds \"stack tudo\" e forcar escolhas reais."
+          ),
+          callout(
+            "balance-note",
+            "Teto de poder em tag: 5 itens mesmo tag = mesmo bonus que 4. Previne scaling infinito em runs longas."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-completo-metaprogressao",
+        "Metaprogressao",
+        "Desbloqueios permanentes + tres caminhos exclusivos.",
+        [
+          h("Metaprogressao — Altar da Superficie", 2),
+          p(
+            "Gasta Essence pra desbloquear armas, relicarios iniciais e vantagens passivas. Tres ramos MUTUAMENTE EXCLUSIVOS dentro de um ciclo."
+          ),
+          li("Forca — desbloqueia armas novas."),
+          li("Sabedoria — desbloqueia relicarios iniciais."),
+          li("Persistencia — buffs passivos (+cura, +essencia, +reroll)."),
+          callout(
+            "design-decision",
+            "Exclusividade por ciclo obriga commitment: voce escolhe um caminho, maxa, AI troca. Evita o \"maxa tudo, trivialize o jogo\"."
+          ),
+          callout(
+            "warning",
+            "Teste: um player com meta-progressao ZERO deve conseguir clear em 100-300 runs. Se menos, meta virou obrigatoria."
+          ),
+        ]
+      ),
+      narrative(
+        "rogue-completo-bosses",
+        "Elites e Bosses",
+        "Padroes, telegrafos e fairness em Abyss Descent.",
+        [
+          h("Elites e Bosses", 2),
+          p(
+            "Cada bioma tem 1 boss fixo. Elites spawnam aleatoriamente em salas designadas. Boss final desbloqueia boss secreto no new game+."
+          ),
+          h("Estrutura de Boss", 3),
+          li("Fase 1 (100% HP): 3 padroes alternando."),
+          li("Fase 2 (60% HP): adiciona 2 padroes. Muda musica."),
+          li("Fase 3 (20% HP): padrao ultimate com telegrafo de 2 segundos."),
+          callout(
+            "design-decision",
+            "Fase 3 com telegrafo longo e sagrado: morrer pro boss deve ser leitura do jogador, nao dado. Salva de frustacao."
+          ),
+          callout(
+            "balance-note",
+            "Primeiro boss (bioma 1) deve ter taxa de morte ~80% na primeira tentativa do player. Menos = trivial. Muito mais = frustracao antes de engajamento."
+          ),
+        ]
+      ),
+      {
+        id: "rogue-completo-economia",
+        title: "Economia e Loja de Run",
+        content: "Vestigios (run) + Essence (meta) em Abyss Descent.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia — Abyss Descent", 2),
+              p("Duas moedas, ciclos diferentes:"),
+              li("Vestigios — moeda de run. Some ao morrer."),
+              li("Essence — moeda meta. Persiste."),
+              h("Lojas de Bioma (Vestigios)", 3),
+              li("Itens: 50-300 vestigios."),
+              li("Reroll de loja: 50 vestigios."),
+              li("Cura completa: 150 vestigios."),
+              callout(
+                "design-decision",
+                "Lojas 1 por bioma (5 por run) e o ideal: mais torna Vestigios commodity; menos torna irrelevante."
+              ),
+              callout(
+                "balance-note",
+                "Preco de cura (150) e calibrado pra ser decisao real: cobre ~3 inimigos comuns de loot. Mais barato = nunca morre em bioma facil; caro = player usa potion em vez."
+              ),
+              callout(
+                "warning",
+                "Esta pagina representa UMA moeda. Crie segunda pagina de Economia pra Essence (meta currency) com configuracao diferente."
+              ),
+            ],
+          },
+        },
+      },
     ],
   },
   platformer: {
     mini: [
-      section("plat-mini-movimento", "Movimento", "Velocidade, pulo e sensacao de controle."),
-      section("plat-mini-fases", "Estrutura de Fases", "Inicio, desafio, pico e conclusao por fase."),
-      section("plat-mini-progressao", "Progressao", "Desbloqueios de habilidade e novos obstaculos."),
+      narrative(
+        "plat-mini-visao-geral",
+        "Visao Geral — Spark the Fox",
+        "Pitch curto do jogo de exemplo.",
+        [
+          h("Visao Geral — Spark the Fox", 2),
+          p(
+            "Spark the Fox e um platformer 2D sobre uma raposinha laranja chamada Spark que sai em busca de sua irma Ember, capturada pelo Rei das Sombras. Oito mundos coloridos, pulo preciso, foco em timing e mastery."
+          ),
+          callout(
+            "warning",
+            "Exemplo ficticio. Substitua Spark, Ember e o Rei das Sombras pelos elementos do SEU platformer."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-mini-movimento",
+        "Movimento",
+        "Pulo, velocidade e sensacao de controle de Spark.",
+        [
+          h("Movimento — Spark the Fox", 2),
+          li("Spark corre a 6 u/s. Acelera ate o pico em 0.3s."),
+          li("Pulo: 3.5 unidades de altura, 0.5s de duracao."),
+          li("Coyote time: 0.1s apos cair da plataforma."),
+          li("Jump buffer: 0.15s antes de encostar no chao."),
+          callout(
+            "design-decision",
+            "Coyote time e jump buffer sao \"mentiras bonitas\" do platformer: o jogador sente que o controle funciona mesmo em timings ligeiramente errados. Invisivel mas crucial."
+          ),
+          callout(
+            "warning",
+            "Numeros (6 u/s, 3.5 alt) sao exemplo de Spark. Seu jogo precisa tunar esses valores em playtest — sensacao de pulo e sensivel a variacoes de 5-10%."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-mini-fases",
+        "Estrutura de Fases",
+        "Como uma fase de Spark the Fox e construida.",
+        [
+          h("Estrutura de Fase", 2),
+          li("Inicio (30s): apresenta uma mecanica nova de forma segura."),
+          li("Desenvolvimento (1-2min): combina a mecanica nova com mecanicas antigas."),
+          li("Pico (30-45s): desafio que exige mastery da mecanica."),
+          li("Conclusao (15s): trecho relaxante que celebra a passagem do pico."),
+          callout(
+            "design-decision",
+            "Essa arquitetura (intro-desenvolv-pico-conclusao) e o padrao Nintendo do Mario 3D World. Funciona porque respeita o ritmo cognitivo do jogador."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-mini-progressao",
+        "Progressao",
+        "Habilidades desbloqueaveis em Spark the Fox.",
+        [
+          h("Progressao", 2),
+          p(
+            "Nao ha leveling up. Progressao e por habilidades colecionadas ao longo da aventura — cada mundo novo introduz uma habilidade (dash, double jump, wall slide, etc.)."
+          ),
+          callout(
+            "design-decision",
+            "Progressao por habilidade, nao por numero, respeita o gender: em platformers, ganhar \"dobro de HP\" nao deixa o pulo mais divertido. Ganhar dash si."
+          ),
+        ]
+      ),
     ],
     medio: [
-      section("plat-medio-physics", "Physics e Controle", "Aceleracao, desaceleracao, coyote time e jump buffering."),
+      narrative(
+        "plat-medio-visao-geral",
+        "Visao Geral — Spark the Fox",
+        "Pitch, USP e publico-alvo do jogo de exemplo.",
+        [
+          h("Visao Geral — Spark the Fox", 2),
+          p(
+            "Platformer 2D cute-dark onde Spark, uma raposinha laranja, corre em 8 mundos coloridos atras da irma Ember, capturada pelo Rei das Sombras. Foco em timing preciso, level design ensinante e trilha sonora memoravel."
+          ),
+          h("USP", 3),
+          li("Cada mundo tem UMA mecanica nova (dash, double jump, wall slide, glide, time slow, etc.) — sem inflacao de botoes."),
+          li("Modo speedrun built-in com leaderboards online."),
+          li("Trilha sonora dinamica que se adapta ao ritmo do jogador."),
+          callout(
+            "design-decision",
+            "Uma mecanica por mundo (nao varias) garante que cada fase ensine algo novo sem sobrecarregar os controles."
+          ),
+          callout(
+            "warning",
+            "Conteudo ficticio. Substitua Spark, Ember e Rei das Sombras pelos elementos do SEU platformer."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-medio-physics",
+        "Physics e Controle",
+        "Parametros tecnicos de pulo e movimento de Spark the Fox.",
+        [
+          h("Physics", 2),
+          li("Velocidade maxima: 6 u/s."),
+          li("Aceleracao: 0-6 u/s em 0.3s (suave). Freada: 6-0 em 0.15s (rapida)."),
+          li("Pulo: altura 3.5u, duracao 0.5s (curva quadratica)."),
+          li("Gravidade: 18 u/s². Gravidade pos-pico +50% (cai mais rapido que sobe)."),
+          h("Assistencias", 3),
+          li("Coyote time: 0.1s."),
+          li("Jump buffer: 0.15s."),
+          li("Edge forgiveness: se cair em borda, empurra 0.2u pra seguranca."),
+          callout(
+            "design-decision",
+            "Gravidade pos-pico aumentada e outro \"trick\" classico: faz o pulo sentir peso sem deixar o jogador no ar tempo demais. Usado em Celeste, Hollow Knight, Mario."
+          ),
+          callout(
+            "balance-note",
+            "Valor crucial: altura do pulo x espaco entre plataformas. 3.5u cobre gaps de ate 4.5u horizontal (com corrida). Alterar um sem ajustar o outro quebra level design."
+          ),
+        ]
+      ),
       section(
         "plat-medio-atributos",
         "Atributos do Jogador",
-        "Atributos base do personagem (HP, velocidade, altura de pulo).",
+        "HP, Speed e Jump Height de Spark — ajusta valores iniciais.",
         undefined,
         seedPlatformerAttributes()
       ),
-      section("plat-medio-level-design", "Level Design", "Principios de ensino de mecanica e leitura de risco."),
-      section("plat-medio-checkpoints", "Checkpoints e Recuperacao", "Distribuicao de checkpoints e tempo de retorno."),
-      section("plat-medio-enemies", "Inimigos e Obstaculos", "Tipos, variacoes e combinacoes por mundo."),
-      section("plat-medio-recompensas", "Recompensas e Colecionaveis", "Itens opcionais e incentivo de mastery.", [
-        section(
-          "plat-medio-colecionavel-exemplo",
-          "Colecionavel de Exemplo: Moeda",
-          "Exemplo de item colecionavel para duplicar.",
-          undefined,
-          seedItemExample()
-        ),
-      ]),
+      narrative(
+        "plat-medio-level-design",
+        "Level Design",
+        "Principios de ensino, ritmo e leitura visual em Spark the Fox.",
+        [
+          h("Principios de Level Design", 2),
+          p(
+            "Toda fase de Spark segue 3 leis de level design:"
+          ),
+          li("Mostra a mecanica em ambiente seguro antes de exigir (conheca-estrese-teste)."),
+          li("Usa linguagem visual consistente: espinhos sempre vermelhos, plataformas moveis sempre amarelas."),
+          li("Toda morte deve ensinar algo novo — morrer pelo mesmo motivo duas vezes e failure do designer."),
+          callout(
+            "design-decision",
+            "Linguagem visual consistente e sagrada: se espinhos viram azuis em algum mundo, o jogador nao consegue mais confiar no que ve. Leitura visual e um contrato."
+          ),
+          callout(
+            "balance-note",
+            "Playtest com jogador novo: se ele morre mais de 5x no mesmo obstaculo, o obstaculo esta mal sinalizado ou injusto — nao dificil."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-medio-checkpoints",
+        "Checkpoints e Recuperacao",
+        "Distribuicao de checkpoints e tempo de retorno em Spark the Fox.",
+        [
+          h("Checkpoints", 2),
+          li("Checkpoint a cada 60-90s de gameplay perfeito (ou seja: apos cada secao desafiadora)."),
+          li("Ao morrer, renasce no checkpoint com 100% HP e colecionaveis da secao anteriores mantidos."),
+          li("Respawn em 0.5s — nao penaliza o jogador com tela de Game Over."),
+          callout(
+            "design-decision",
+            "Respawn rapido (<1s) e regra ouro do platformer moderno: penalizacao por tempo mata engagement. Celeste e Super Meat Boy consagraram o padrao."
+          ),
+          callout(
+            "warning",
+            "Checkpoint denso demais vira chato (tira tensao). Denso de menos vira frustrante. Monitore em playtest: taxa de desistencia em secao = checkpoint mal colocado."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-medio-enemies",
+        "Inimigos e Obstaculos",
+        "Catalogo de ameacas em Spark the Fox.",
+        [
+          h("Inimigos e Obstaculos", 2),
+          h("Inimigos (mundos)", 3),
+          li("Mundo 1 (Floresta Verdejante) — cogumelos saltadores, velozes mas previsiveis."),
+          li("Mundo 2 (Cavernas Azuis) — morcegos que seguem Spark em padrao senoidal."),
+          li("Mundo 3 (Deserto Laranja) — escorpioes que atiram areia em arco."),
+          h("Obstaculos", 3),
+          li("Espinhos — morte instantanea, sempre vermelhos."),
+          li("Plataformas moveis — amarelas, padrão previsivel."),
+          li("Agua — morte instantanea ate mundo 4 onde Spark aprende a nadar."),
+          callout(
+            "design-decision",
+            "Regra: cada mundo apresenta 1-2 inimigos NOVOS, mas nao mais que 3 tipos ao mesmo tempo na tela. Mantem leitura visual clara."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-medio-recompensas",
+        "Recompensas e Colecionaveis",
+        "O que Spark coleta e por que.",
+        [
+          h("Recompensas e Colecionaveis", 2),
+          li("Moedas (100 por mundo) — vida extra a cada 100. Totalmente opcional."),
+          li("Cristais Estelares (3 por fase, 24 no jogo) — desbloqueiam fases bonus."),
+          li("Relicarios de Ember (1 por mundo, 8 no total) — expansao de lore via flashbacks."),
+          callout(
+            "design-decision",
+            "3 tiers de colecionavel (facil/medio/dificil) servem publicos diferentes: casual pega moedas, completionist busca Cristais, hardcore+lore busca Relicarios."
+          ),
+          callout(
+            "warning",
+            "Esta pagina e um container. Dentro dela ha um item exemplo (Moeda). Duplique pra criar Cristais, Relicarios e quantos mais o seu jogo precisar."
+          ),
+        ],
+        [
+          {
+            id: "plat-medio-moeda-exemplo",
+            title: "Moeda Estelar",
+            content: "Colecionavel basico de Spark the Fox — 100 delas dao vida extra.",
+            pageType: {
+              id: "items",
+              options: {
+                richDocBlocks: [
+                  h("Moeda Estelar", 2),
+                  p(
+                    "Moedas brilhantes espalhadas por todas as fases. 100 moedas coletadas dao uma vida extra. Elas nao sao necessarias pra clear o jogo — sao recompensa de exploracao."
+                  ),
+                  li("100 unidades por mundo = 800 no jogo."),
+                  li("Coletar todas desbloqueia skin dourada de Spark."),
+                  callout(
+                    "note",
+                    "Esta pagina ja vem com Inventario e Economia configurados. Ajuste preco/quantidades no painel lateral."
+                  ),
+                  callout(
+                    "design-decision",
+                    "Colecionavel NAO obrigatorio e classico do platformer: serve o completionist sem frustrar o casual."
+                  ),
+                  callout(
+                    "warning",
+                    "Duplique esta pagina pra criar os outros colecionaveis (Cristais, Relicarios) — cada um com sua mecanica e raridade."
+                  ),
+                ],
+              },
+            },
+          },
+        ]
+      ),
     ],
     completo: [
-      section("plat-completo-movimento", "Sistema de Movimento Avancado", "Modelo tecnico completo para consistencia de controle.", [
-        section("plat-completo-params", "Parametros de Movimento", "Velocidade, gravidade, friccao e curva de input."),
-        section("plat-completo-assists", "Assistencias", "Autoassist, snap e opcoes de acessibilidade."),
-      ]),
-      section("plat-completo-level-architecture", "Arquitetura de Fases", "Blueprint de fase com onboarding, combinacao e mastery."),
-      section("plat-completo-curva", "Curva de Dificuldade e Pacing", "Cadencia de desafio por ato/mundo e descanso cognitivo."),
+      narrative(
+        "plat-completo-visao-geral",
+        "Visao Geral — Spark the Fox",
+        "Pitch, USP completos do jogo de exemplo.",
+        [
+          h("Visao Geral — Spark the Fox", 2),
+          p(
+            "Platformer 2D cute-dark. Spark, raposinha laranja, corre por 8 mundos coloridos atras de Ember (irma) sequestrada pelo Rei das Sombras. Foco em timing preciso, level design ensinante, trilha sonora dinamica. Publico: 8-35 anos, fas de Celeste, Mario, Rayman."
+          ),
+          h("USP", 3),
+          li("Uma mecanica nova por mundo — progressao de habilidade, nao de numero."),
+          li("Modo speedrun com leaderboards e ghost data de outros players."),
+          li("Trilha sonora adaptativa (intensidade varia com pace do jogador)."),
+          li("Modo assist opcional pra acessibilidade (mais dash, dano reduzido, etc.)."),
+          callout(
+            "warning",
+            "Conteudo ficticio — substitua Spark e Ember pelos elementos do SEU jogo."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-completo-movimento",
+        "Sistema de Movimento Avancado",
+        "Modelo tecnico completo do pulo e corrida de Spark.",
+        [
+          h("Sistema de Movimento", 2),
+          p(
+            "Movimento em Spark e tunado pra \"sentir certo\" antes de medir certo. Numeros aqui sao pontos de partida — playtest dita a realidade."
+          ),
+        ],
+        [
+          narrative(
+            "plat-completo-params",
+            "Parametros de Movimento",
+            "Valores tecnicos ajustaveis de Spark.",
+            [
+              h("Parametros", 2),
+              li("Velocidade: 6 u/s."),
+              li("Aceleracao: 20 u/s² (0-6 em 0.3s)."),
+              li("Freada: 40 u/s² (6-0 em 0.15s)."),
+              li("Gravidade: 18 u/s² (subindo). 27 u/s² (caindo — 50% a mais)."),
+              li("Pulo: velocidade inicial 10 u/s. Altura maxima 3.5u."),
+              li("Curva de input: dead zone 0.1, response quadratico 0.1-0.9, linear acima."),
+              callout(
+                "design-decision",
+                "Gravidade assimetrica (cai mais rapido que sobe) faz pulo sentir weight sem perder responsividade. Classico de plataformers modernos."
+              ),
+              callout(
+                "balance-note",
+                "Nao altere estes numeros isoladamente. Cada um afeta os outros: aumentar velocidade sem aumentar freada cria \"slippery\" feel."
+              ),
+            ]
+          ),
+          narrative(
+            "plat-completo-assists",
+            "Assistencias",
+            "Features que escondem o erro e modos de acessibilidade.",
+            [
+              h("Assistencias", 2),
+              h("Invisiveis (sempre ativas)", 3),
+              li("Coyote time: 0.1s."),
+              li("Jump buffer: 0.15s."),
+              li("Edge forgiveness: empurra 0.2u pra seguranca em bordas."),
+              li("Corner correction: se bater canto da cabeca, empurra pro lado."),
+              h("Modo Assist (opcional)", 3),
+              li("Slow motion em secoes dificeis (ate 50%)."),
+              li("Invulneravel a espinhos (mantem desafio de layout)."),
+              li("Dash ilimitado."),
+              callout(
+                "design-decision",
+                "Modo assist nao penaliza conquistas nem leaderboards — escolha pessoal do jogador sobre como se divertir. Celeste consagrou o padrao."
+              ),
+            ]
+          ),
+        ]
+      ),
+      narrative(
+        "plat-completo-level-architecture",
+        "Arquitetura de Fases",
+        "Blueprint de fase com onboarding, combinacao e mastery.",
+        [
+          h("Arquitetura de Fase", 2),
+          p(
+            "Cada fase de Spark segue 4 fases internas de pacing, cada uma com objetivo cognitivo claro."
+          ),
+          li("Intro (30s) — apresenta mecanica em ambiente seguro."),
+          li("Desenvolvimento (1-2min) — combina com mecanicas anteriores."),
+          li("Pico (30-45s) — exige mastery da nova mecanica."),
+          li("Conclusao (15s) — trecho celebratorio de baixa tensao."),
+          callout(
+            "design-decision",
+            "Padrao vindo do Mario 3D World / Donkey Kong Country: respeita o ritmo cognitivo do jogador — nao deixa ele em tensao continua (cansativo) nem em descanso continuo (enfadonho)."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-completo-curva",
+        "Curva de Dificuldade e Pacing",
+        "Como a dificuldade cresce ao longo de Spark the Fox.",
+        [
+          h("Curva de Dificuldade", 2),
+          p(
+            "Entre mundos, dificuldade sobe em steps (nao rampa). Primeira fase de mundo novo e sempre mais facil que ultima do mundo anterior — respiro pra absorver nova mecanica."
+          ),
+          li("Mundo 1: tutorial. Cada fase mais dificil que a anterior."),
+          li("Mundo 2: reseta com fases faceis no comeco. Pico no final."),
+          li("... padrao se repete ate Mundo 8."),
+          li("Fases bonus: dificuldade propria, entre \"mundo atual\" e \"mundo +1\"."),
+          callout(
+            "balance-note",
+            "Taxa de desistencia por fase: alvo abaixo de 20% pra fases normais. Acima de 40% = fase mal calibrada."
+          ),
+        ]
+      ),
       section(
         "plat-completo-atributos",
         "Atributos do Jogador",
-        "Atributos base do personagem.",
+        "HP, Speed e Jump Height de Spark.",
         undefined,
         seedPlatformerAttributes()
       ),
-      section("plat-completo-combate", "Combate (se aplicavel)", "Regras de dano, invencibilidade e leitura de telegraph."),
-      section("plat-completo-bosses", "Boss Fights", "Design de fases de boss, pattern readability e tuning."),
-      section("plat-completo-colecionaveis", "Economia de Colecionaveis", "Colecionaveis, unlocks e recompensas de habilidade.", [
-        section(
-          "plat-completo-colecionavel-exemplo",
-          "Colecionavel de Exemplo: Moeda",
-          "Item colecionavel para duplicar.",
-          undefined,
-          seedItemExample()
-        ),
-      ], seedEconomy()),
-      section("plat-completo-qa", "Playtest de Sensacao de Controle", "Plano de teste focado em resposta e frustacao percebida."),
+      narrative(
+        "plat-completo-combate",
+        "Combate (se aplicavel)",
+        "Combate simples em Spark the Fox.",
+        [
+          h("Combate", 2),
+          p(
+            "Spark nao ataca diretamente. Derrota inimigos pulando em cima (Mario-style). Alguns inimigos sao invencíveis por cima (espinhos nas costas): exigem dash lateral ou desvio."
+          ),
+          li("Inimigo comum: 1 pulo = derrotado. Da moeda extra."),
+          li("Inimigo blindado: 3 dashes laterais = derrotado."),
+          li("Spark leva dano: perde uma vida (respawn no checkpoint)."),
+          callout(
+            "design-decision",
+            "Combate minimalista e proposital: platformer deve ser sobre pulo, nao sobre armas. Combate serve pra adicionar variedade sem competir com movimento."
+          ),
+          callout(
+            "warning",
+            "Se seu platformer tem combate rico (Hollow Knight), apague esta secao e escreva um modelo proprio."
+          ),
+        ]
+      ),
+      narrative(
+        "plat-completo-bosses",
+        "Boss Fights",
+        "Design dos bosses de Spark the Fox.",
+        [
+          h("Boss Fights", 2),
+          p(
+            "Cada mundo (8) termina com boss. Bosses tem 3 fases, cada uma com padrao visual distinto. Uma batalha demora 2-3min se o jogador dominou a mecanica daquele mundo."
+          ),
+          h("Estrutura padrao", 3),
+          li("Fase 1 — padrão lento, 2 ataques, ensina a leitura."),
+          li("Fase 2 — acrescenta 1 ataque, aumenta velocidade."),
+          li("Fase 3 — rage mode. Combinacoes de todos os ataques, sem pausa entre eles."),
+          callout(
+            "design-decision",
+            "Boss usa as mecanicas DAQUELE mundo especificamente: se Mundo 3 introduziu dash, boss 3 exige dash pra esquivar. Isso valida o aprendizado."
+          ),
+          callout(
+            "balance-note",
+            "Tempo alvo de clear do boss apos primeira vitoria: 2-3min. Se e 5min+, o boss e boring (arrastado). Se e <1min, e trivial."
+          ),
+        ]
+      ),
+      {
+        id: "plat-completo-colecionaveis",
+        title: "Economia de Colecionaveis",
+        content: "Moedas + Cristais + Relicarios em Spark the Fox.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia de Colecionaveis", 2),
+              p(
+                "Spark tem 3 moedas/colecionaveis, cada um com publico diferente."
+              ),
+              h("Moedas Estelares", 3),
+              li("100 por mundo, 800 no jogo total."),
+              li("100 moedas = 1 vida extra."),
+              li("Publico: casual. Nao obrigatorio."),
+              h("Cristais Estelares", 3),
+              li("3 por fase, 24 total. Um e obvio; dois sao escondidos."),
+              li("10 Cristais desbloqueiam fase bonus."),
+              li("Publico: completionist."),
+              h("Relicarios de Ember", 3),
+              li("1 por mundo, 8 total. Bem escondidos."),
+              li("Cada um expande lore via flashback de 30s."),
+              li("Publico: fa de narrativa e hardcore."),
+              callout(
+                "design-decision",
+                "3 tiers atende 3 publicos distintos sem precisar de 3 jogos diferentes. Moedas atendem o casual, Cristais o completionist, Relicarios o lore hunter."
+              ),
+              callout(
+                "warning",
+                "Platformer com UM unico colecionavel (ex: so moedas) atende um publico so. Multiplicar e barato (e design, nao arte) e amplia enormemente rejogabilidade."
+              ),
+            ],
+          },
+        },
+      },
+      narrative(
+        "plat-completo-qa",
+        "Playtest de Sensacao de Controle",
+        "Plano de teste focado em feel de Spark the Fox.",
+        [
+          h("Plano de Playtest", 2),
+          li("Teste alpha com 5-10 jogadores de cada perfil (casual, medio, hardcore)."),
+          li("Meta: gravar reacao facial + input. Pulo perdido = investigar se foi erro do jogador ou se tunning estava errado."),
+          li("Questao critica: \"Em algum momento voce sentiu que o pulo \'traiu\' voce?\""),
+          callout(
+            "design-decision",
+            "\"Trair\" e a palavra chave. Morte por erro do jogador e aceitavel. Morte por controle e feedback loop quebrado."
+          ),
+          callout(
+            "balance-note",
+            "Se 3+ jogadores distintos reclamam do mesmo obstaculo/mecanica, nao e skill issue — e tuning."
+          ),
+        ]
+      ),
     ],
   },
   puzzle: {
     mini: [
-      section("puzzle-mini-regras", "Regras do Puzzle", "Regras simples, condicoes de vitoria e perda."),
-      section("puzzle-mini-fases", "Progressao de Fases", "Sequencia basica de dificuldade e introducao de mecanicas."),
-      section("puzzle-mini-feedback", "Feedback", "Feedback visual/sonoro para acerto e erro."),
+      narrative(
+        "puzzle-mini-visao-geral",
+        "Visao Geral — Spectra",
+        "Pitch curto do jogo de exemplo.",
+        [
+          h("Visao Geral — Spectra", 2),
+          p(
+            "Spectra e um puzzle minimalista de combinar cores. Cada fase e uma grade com prismas coloridos. O jogador conecta prismas da mesma familia (vermelho/laranja, azul/verde) por caminhos curtos pra gerar luz branca e clear a fase."
+          ),
+          callout(
+            "warning",
+            "Exemplo ficticio. Substitua Spectra e prismas pelos elementos do SEU puzzle."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-mini-regras",
+        "Regras do Puzzle",
+        "Regras basicas de Spectra.",
+        [
+          h("Regras", 2),
+          li("Grade de 5×5 ate 8×8 celulas."),
+          li("Cada celula contem 0 ou 1 prisma."),
+          li("Jogador desenha caminhos conectando prismas de cores COMPATIVEIS (lista definida)."),
+          li("Caminho nao pode cruzar outro caminho."),
+          li("Fase e vencida quando todos os prismas estao conectados."),
+          li("Nao ha perda — puzzle permite retry infinito."),
+          callout(
+            "design-decision",
+            "Ausencia de \"perda\" (vs game over) e intencional em puzzle: o desafio e mental, nao temporal. Pressao arruinaria a experiencia."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-mini-fases",
+        "Progressao de Fases",
+        "Como fases ensinam em Spectra.",
+        [
+          h("Progressao de Fases", 2),
+          p(
+            "Cada set de 5 fases introduz UMA mecanica nova (ex: prismas bloqueadores, cores exclusivas, espelhos). A quinta fase de cada set testa mastery."
+          ),
+          callout(
+            "design-decision",
+            "1 mecanica por set mantem carga cognitiva gerenciavel. Introduzir 2 mecanicas simultaneas confunde o jogador sobre qual e o teste."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-mini-feedback",
+        "Feedback",
+        "Feedback visual e sonoro em Spectra.",
+        [
+          h("Feedback", 2),
+          li("Conectar prismas: som suave de chime + brilho na linha."),
+          li("Conexao incorreta: linha pisca vermelho, volta ao estado anterior."),
+          li("Fase vencida: todos os prismas pulsam em unisono + som satisfatorio + transicao lenta."),
+          callout(
+            "design-decision",
+            "Erro \"gentil\" (volta ao estado anterior) em vez de game over: puzzle e iterativo. Punir erro mata experimentacao."
+          ),
+        ]
+      ),
     ],
     medio: [
-      section("puzzle-medio-regras-formais", "Regras Formais", "Estados validos, restricoes e condicoes de solucao."),
-      section("puzzle-medio-taxonomia", "Taxonomia de Puzzles", "Classes de puzzle por habilidade cognitiva exigida."),
-      section("puzzle-medio-onboarding", "Onboarding Pedagogico", "Sequencia de ensino sem texto excessivo."),
-      section("puzzle-medio-dicas", "Sistema de Dicas", "Camadas de hint e penalidade opcional."),
-      section("puzzle-medio-telemetria", "Telemetria de Dificuldade", "Tempo por fase, tentativas e abandono."),
+      narrative(
+        "puzzle-medio-visao-geral",
+        "Visao Geral — Spectra",
+        "Pitch, USP do jogo de exemplo.",
+        [
+          h("Visao Geral — Spectra", 2),
+          p(
+            "Puzzle mobile/PC minimalista de combinar cores. Grade de prismas; jogador traca caminhos pra conectar cores compativeis. Foco em 100 fases handcrafted + geracao procedural pos-clear. Trilha sonora ambient evolui com progresso."
+          ),
+          h("USP", 3),
+          li("Solver de referencia que prova que cada fase tem pelo menos UMA solucao."),
+          li("Sistema de hints gradual (3 niveis) sem punicao."),
+          li("Geracao procedural pos-clear usando o solver pra validar."),
+          callout(
+            "design-decision",
+            "Solver de referencia e o que separa puzzle de qualidade (Baba Is You, Monument Valley) de puzzle \"duvidoso\": toda fase e GARANTIDA solvavel."
+          ),
+          callout(
+            "warning",
+            "Ficticio. Substitua Spectra pelos elementos do SEU puzzle."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-medio-regras-formais",
+        "Regras Formais",
+        "Definicao matematica das regras de Spectra.",
+        [
+          h("Regras Formais", 2),
+          p(
+            "Fase e uma grade G(m, n) com subset P ⊂ G de celulas com prismas. Cada prisma tem cor c ∈ {V, L, A, E, R, I} (vermelho, laranja, azul, esmeralda, roxo, indigo)."
+          ),
+          h("Operacoes Permitidas", 3),
+          li("Tracar caminho T entre prismas p1 e p2 tal que cor(p1) e compativel com cor(p2)."),
+          li("Caminhos so andam ortogonalmente (sem diagonais)."),
+          li("Caminho nao pode se cruzar com outro caminho."),
+          h("Condicao de Solucao", 3),
+          p(
+            "Fase clear quando todo prisma P tem exatamente UM caminho conectado a ele, e todos os caminhos sao validos (cores compativeis)."
+          ),
+          callout(
+            "design-decision",
+            "Definir regras formalmente (com variaveis matematicas) permite escrever o solver. Sem isso, puzzle vira adivinhacao de design."
+          ),
+          callout(
+            "warning",
+            "Se seu puzzle tem regras dificeis de formalizar, ele tambem vai ser dificil de balancear. Forca a definicao antes de construir."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-medio-taxonomia",
+        "Taxonomia de Puzzles",
+        "Tipos de puzzle em Spectra por habilidade cognitiva.",
+        [
+          h("Taxonomia", 2),
+          p("Os 100 puzzles de Spectra se dividem em 4 tipos cognitivos:"),
+          li("Planejamento (planejar sequencia de conexoes antes de desenhar) — 40 fases."),
+          li("Reconhecimento (ver padrao visual que sugere solucao) — 25 fases."),
+          li("Tentativa e erro controlado (experimento com espaco pequeno) — 20 fases."),
+          li("Lateral (solucao nao-obvia, \"aha moment\") — 15 fases."),
+          callout(
+            "design-decision",
+            "Misturar tipos mantem variedade cognitiva. Jogo de so-planejamento cansa; so-lateral frustra."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-medio-onboarding",
+        "Onboarding Pedagogico",
+        "Como Spectra ensina sem texto.",
+        [
+          h("Onboarding sem texto", 2),
+          p(
+            "As 10 primeiras fases de Spectra ensinam mecanicas pela forma como sao construidas — sem tutorial em texto. O jogador so pode avancar se entendeu."
+          ),
+          li("Fase 1: 2 prismas da mesma cor. Solucao obvia ensina \"tracar caminho\"."),
+          li("Fase 2: 4 prismas em 2 pares. Ensina \"conectar multiplos\"."),
+          li("Fase 3: adiciona obstaculo simples (celula vazia bloqueia). Ensina \"caminho desvia\"."),
+          li("... ate Fase 10: todas as regras basicas foram aprendidas pelo jogar."),
+          callout(
+            "design-decision",
+            "Ensinar por design e mais efetivo que ensinar por texto. Tutorial de texto e lido passivamente; fase ensinante e exercitada ativamente."
+          ),
+          callout(
+            "balance-note",
+            "Alvo: 95% dos jogadores devem concluir as 10 primeiras fases em <20 minutos. Se demora mais, onboarding falhou e precisa simplificar."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-medio-dicas",
+        "Sistema de Dicas",
+        "Hints graduais em Spectra.",
+        [
+          h("Sistema de Hints", 2),
+          p(
+            "Jogador pode pedir hint em qualquer fase. Cada fase tem 3 niveis de hint, revelados progressivamente."
+          ),
+          li("Hint 1 — destaca UM prisma da solucao (dica visual sutil)."),
+          li("Hint 2 — mostra o PRIMEIRO segmento do caminho correto."),
+          li("Hint 3 — revela a solucao completa (jogador pode tracar manualmente ou aceitar solve automatico)."),
+          callout(
+            "design-decision",
+            "Hints sem penalizacao respeitam o jogador casual. Se hint custa coisa, jogadores travam sem avancar — o pior resultado pra um puzzle."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-medio-telemetria",
+        "Telemetria de Dificuldade",
+        "O que medir em playtest de Spectra.",
+        [
+          h("Telemetria", 2),
+          li("Tempo ate primeira solucao — alvo: 30s (facil), 2min (medio), 5min (dificil)."),
+          li("Numero de tentativas antes de clear — alvo: <10 por fase."),
+          li("Taxa de uso de hint — alvo: <30% dos jogadores em fase bem calibrada."),
+          li("Taxa de desistencia — alvo: <5% por fase. Acima: fase quebrada."),
+          callout(
+            "design-decision",
+            "Puzzle bem calibrado tem \"aha moment\" em 1-3 tentativas. Se demora 10+, a pista visual esta ruim. Se eh < 3 segundos, e facil demais."
+          ),
+        ]
+      ),
     ],
     completo: [
-      section("puzzle-completo-modelo", "Modelo Formal do Puzzle", "Representacao de estado, operacoes permitidas e validade.", [
-        section("puzzle-completo-solver", "Solver de Referencia", "Heuristicas e verificacao de solvabilidade."),
-        section("puzzle-completo-geracao", "Geracao de Conteudo", "Geracao de fases com filtros de dificuldade."),
-      ]),
-      section("puzzle-completo-curva", "Curva de Dificuldade", "Planejamento de dificuldade por capitulo, incluindo revisao de mecanicas."),
-      section("puzzle-completo-onboarding", "Onboarding e Tutoriais", "Introducao progressiva com foco em aprendizado ativo."),
-      section("puzzle-completo-hints", "Sistema de Hints e Recuperacao", "Hints graduais, undo, reset e suporte antitrava."),
-      section("puzzle-completo-ui", "UI Cognitiva", "Legibilidade, hierarquia visual e minimizacao de ruido."),
-      section("puzzle-completo-analytics", "Analytics de Qualidade", "Matriz de friccao e sinalizadores de fase mal calibrada."),
-      section("puzzle-completo-conteudo", "Plano de Conteudo", "Pacotes de fase, eventos sazonais e desafios semanais."),
+      narrative(
+        "puzzle-completo-visao-geral",
+        "Visao Geral — Spectra",
+        "Pitch, USP e publico completos.",
+        [
+          h("Visao Geral — Spectra", 2),
+          p(
+            "Puzzle premium mobile/PC com 100 fases handcrafted + geracao procedural pos-clear + modo daily challenge. Estetica minimalista (geometrica, cores quentes), trilha ambient. Publico: 25-50 anos, fans de Monument Valley, The Witness, Baba Is You."
+          ),
+          h("USP", 3),
+          li("Solver de referencia: toda fase procedural GARANTIDA solvavel."),
+          li("Hints graduais sem penalizacao (3 niveis)."),
+          li("Daily Challenge com leaderboards."),
+          li("Zero iAP — premium one-time."),
+          callout(
+            "warning",
+            "Ficticio. Substitua Spectra pelo seu puzzle."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-modelo",
+        "Modelo Formal do Puzzle",
+        "Representacao formal de Spectra pra solver.",
+        [
+          h("Modelo Formal", 2),
+          p(
+            "Grade G com celulas. Prismas P com cor c. Caminho T e sequencia de celulas adjacentes ortogonais. Solucao S = conjunto de caminhos que conecta todos os P com cores compativeis sem cruzamento."
+          ),
+        ],
+        [
+          narrative(
+            "puzzle-completo-solver",
+            "Solver de Referencia",
+            "Como o solver valida fases de Spectra.",
+            [
+              h("Solver", 2),
+              p(
+                "Implementacao BFS com backtracking. Para cada par de prismas compativeis, busca caminho mais curto; tenta todas as combinacoes de pareamento; retorna true/false e numero de solucoes."
+              ),
+              li("Tempo alvo: solver termina em <500ms pra fase 8×8."),
+              li("Detecta fases \"triviais\" (uma unica solucao facil): rejeita pra curadoria."),
+              li("Detecta fases \"ambiguas\" (mais de 1 solucao): marca pra review."),
+              callout(
+                "design-decision",
+                "Solver nao aceita fases com 1 ou 100+ solucoes. 1 = muito restrita (player frustra). 100+ = solucao obvia (player acha sem pensar)."
+              ),
+              callout(
+                "warning",
+                "Solver e investimento pesado de engenharia no comeco mas salva tempo de design depois: voce pode gerar 1000 fases em vez de desenhar 100."
+              ),
+            ]
+          ),
+          narrative(
+            "puzzle-completo-geracao",
+            "Geracao de Conteudo",
+            "Como fases sao geradas procedualmente em Spectra.",
+            [
+              h("Geracao Procedural", 2),
+              p(
+                "Gerador escolhe: tamanho (5-8), numero de prismas (4-12), distribuicao de cores. Aplica solver pra validar. Rejeita se: trivial, sem solucao, ou multiplas solucoes faceis."
+              ),
+              li("Taxa de aceitacao: ~15% (8 de cada 10 geradas sao rejeitadas)."),
+              li("Tempo por fase aceita: 5-10 segundos (maior no 8×8)."),
+              li("Fases geradas taggeadas por tipo cognitivo (planejamento, lateral, etc.)."),
+              callout(
+                "design-decision",
+                "Taxa de aceitacao baixa (15%) e sinal de que o solver esta rigoroso. Se fosse 80%, o gerador estaria aceitando lixo."
+              ),
+            ]
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-curva",
+        "Curva de Dificuldade",
+        "Dificuldade por capitulo em Spectra.",
+        [
+          h("Curva de Dificuldade", 2),
+          p(
+            "10 capitulos × 10 fases = 100 handcrafted. Dentro do capitulo: 3 faceis, 5 medias, 2 dificeis. Entre capitulos: nova mecanica introduzida."
+          ),
+          li("Capitulo 1-3: ensino. Mecanica basicas."),
+          li("Capitulo 4-7: combinacao. Misturar mecanicas ja ensinadas."),
+          li("Capitulo 8-10: mastery. Fases \"aha moment\" que exigem insight lateral."),
+          callout(
+            "balance-note",
+            "Primeiros 3 capitulos precisam ter taxa de abandono <2%. Se mais, player novo bate de frente com dificuldade e desiste."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-onboarding",
+        "Onboarding e Tutoriais",
+        "Como Spectra ensina sem texto.",
+        [
+          h("Onboarding Silencioso", 2),
+          p(
+            "Nenhum texto explicativo nas primeiras 15 fases. Mecanicas sao ensinadas pela construcao da fase — jogador ou entende e avanca, ou nao entende e nao avanca."
+          ),
+          li("Fase 1-5: conectar 2-4 prismas de mesma cor."),
+          li("Fase 6-10: introduz cores compativeis (laranja = vermelho+amarelo)."),
+          li("Fase 11-15: obstaculos estaticos."),
+          callout(
+            "design-decision",
+            "Onboarding silencioso respeita inteligencia do jogador e funciona melhor que tutorial textual em qualquer idioma (Monument Valley e prova)."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-hints",
+        "Sistema de Hints e Recuperacao",
+        "Hints graduais, undo, reset e antitrava.",
+        [
+          h("Hints e Recuperacao", 2),
+          h("Hints (3 niveis, sem penalidade)", 3),
+          li("Hint 1 — destaca um prisma da solucao."),
+          li("Hint 2 — mostra primeiro segmento do caminho."),
+          li("Hint 3 — revela solucao completa, jogador pode aceitar solve."),
+          h("Recuperacao", 3),
+          li("Undo ilimitado."),
+          li("Reset rapido (botao, 1 clique, sem confirmacao)."),
+          li("Skip fase: desbloqueado apos 10min de frustracao numa fase. Skip nao marca como clear — fica opcional voltar."),
+          callout(
+            "design-decision",
+            "Skip apos 10min e auto-antitrava: evita que o jogador abandone o JOGO por causa de UMA fase quebrada."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-ui",
+        "UI Cognitiva",
+        "Hierarquia visual e minimizacao de ruido em Spectra.",
+        [
+          h("UI Cognitiva", 2),
+          li("Grade sempre centralizada, com padding igual em todos os lados."),
+          li("Prismas sempre mesma escala (16% do tamanho da celula)."),
+          li("Caminhos tracados em cor neutra (cinza claro) pra nao competir com cor dos prismas."),
+          li("Fundo estatico (sem animacao de fundo que tire atencao)."),
+          callout(
+            "design-decision",
+            "Minimizar ruido visual nao e so estetica — e funcao. Puzzle exige foco. Elementos decorativos competem com o raciocinio."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-analytics",
+        "Analytics de Qualidade",
+        "Matriz de friccao em Spectra.",
+        [
+          h("Analytics", 2),
+          p(
+            "Captura por fase: tempo ate clear, numero de tentativas, uso de hint, taxa de skip, taxa de retorno (jogou fase X, voltou ao menu, jogou de novo?)."
+          ),
+          h("Sinalizadores de Fase Quebrada", 3),
+          li("Taxa de skip > 10%: fase muito dificil ou pista ruim."),
+          li("Uso de hint 3 > 40%: solucao nao-obvia o suficiente."),
+          li("Taxa de retorno > 5%: jogador desiste no meio da sessao."),
+          callout(
+            "balance-note",
+            "Uma vez por mes, rode matriz de friccao pra identificar top 10 fases problematicas. Nao tente consertar todas — foque nas 3 piores."
+          ),
+        ]
+      ),
+      narrative(
+        "puzzle-completo-conteudo",
+        "Plano de Conteudo",
+        "Expansao pos-lancamento de Spectra.",
+        [
+          h("Plano de Conteudo", 2),
+          li("Lancamento: 100 fases handcrafted + modo procedural infinito."),
+          li("Mes 1 pos-lancamento: Daily Challenge (1 fase nova por dia)."),
+          li("Mes 3: DLC tematica (gelo, fogo, espelho) — nova mecanica em 20 fases."),
+          li("Mes 6: Comunity packs (fases criadas pelos jogadores, validadas pelo solver)."),
+          callout(
+            "design-decision",
+            "Community packs usam o MESMO solver — validacao automatizada. Sem isso, moderacao manual seria inviavel."
+          ),
+          callout(
+            "warning",
+            "Plano de conteudo pos-lancamento e importante desde o design inicial: alguns sistemas (validacao automatizada) precisam existir no core pra expansoes serem viaveis depois."
+          ),
+        ]
+      ),
     ],
   },
   simulation: {
     mini: [
-      section("sim-mini-loop", "Loop de Gestao", "Coletar, transformar, distribuir e reinvestir."),
-      section("sim-mini-recursos", "Recursos", "Recursos principais, entradas, saidas e gargalos."),
-      section("sim-mini-progressao", "Progressao", "Desbloqueios por marcos e expansao gradual."),
+      narrative(
+        "sim-mini-visao-geral",
+        "Visao Geral — Harbor Town",
+        "Pitch curto do jogo de exemplo.",
+        [
+          h("Visao Geral — Harbor Town", 2),
+          p(
+            "Harbor Town e um jogo de gestao de vila portuaria. Voce administra uma pequena cidade na costa: recebe caravanas com recursos brutos, transforma em mercadorias na cidade, e envia barcos pro mar vender o que produziu. Cresce gradual de 20 habitantes pra 500+."
+          ),
+          callout(
+            "warning",
+            "Ficticio. Substitua Harbor Town pelos elementos do SEU jogo de simulacao."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-mini-loop",
+        "Loop de Gestao",
+        "O ciclo principal de Harbor Town.",
+        [
+          h("Loop Principal", 2),
+          li("Caravanas chegam (a cada 5min, trazem recursos brutos)."),
+          li("Trabalhadores transformam (madeira → tabua; ferro → ferramentas)."),
+          li("Barcos distribuem (leva mercadorias pro mar, trazem ouro)."),
+          li("Ouro reinveste (contrata mais trabalhadores, melhora workshops)."),
+          callout(
+            "design-decision",
+            "Loop e sempre 4 passos: coletar, transformar, distribuir, reinvestir. Se faltar um, jogo vira \"acumular e nao fazer nada\" ou \"fazer e nao progredir\"."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-mini-recursos",
+        "Recursos",
+        "Recursos primarios de Harbor Town.",
+        [
+          h("Recursos", 2),
+          h("Brutos (caravanas)", 3),
+          li("Madeira, Pedra, Ferro."),
+          h("Processados (workshops)", 3),
+          li("Tabua (madeira), Tijolo (pedra), Ferramenta (ferro)."),
+          h("Mercadorias (exportacao)", 3),
+          li("Moveis (tabua+ferramenta), Construcao (tijolo+ferramenta), Armas (ferramenta+ferramenta)."),
+          callout(
+            "design-decision",
+            "Cada mercadoria requer 2+ recursos diferentes. Isso cria interdependencia e impede \"especializar em um so\"."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-mini-progressao",
+        "Progressao",
+        "Como Harbor Town cresce.",
+        [
+          h("Progressao", 2),
+          li("Marco 1 (50 habitantes): desbloqueia 2o tipo de workshop."),
+          li("Marco 2 (100 habitantes): desbloqueia porto maior (mais barcos)."),
+          li("Marco 3 (250 habitantes): desbloqueia banco (emprestimos)."),
+          li("Marco 4 (500 habitantes): endgame — exportacao para capital real do reino."),
+          callout(
+            "design-decision",
+            "Marcos por populacao (nao tempo) — recompensa o jogador que expande, nao o que espera."
+          ),
+        ]
+      ),
     ],
     medio: [
-      section("sim-medio-cadeias", "Cadeias de Producao", "Cadeias de valor e dependencias entre modulos.", [
-        section(
-          "sim-medio-mesa-exemplo",
-          "Mesa de Producao de Exemplo",
-          "Estacao que agrupa receitas — ligue receitas criadas depois.",
-          undefined,
-          seedCraftTableExample()
-        ),
-      ]),
-      section(
-        "sim-medio-economia",
-        "Economia Sistemica",
-        "Fontes/sinks de moeda, inflacao e estabilidade.",
-        undefined,
-        seedEconomy()
+      narrative(
+        "sim-medio-visao-geral",
+        "Visao Geral — Harbor Town",
+        "Pitch, USP do jogo de exemplo.",
+        [
+          h("Visao Geral — Harbor Town", 2),
+          p(
+            "Sim de gestao de vila portuaria. Voce comeca com 20 habitantes e expande ate 500+. Recebe caravanas com recursos, transforma em mercadorias, exporta via barcos. Eventos dinamicos (tempestade, praga, festival) forcam adaptacao."
+          ),
+          h("USP", 3),
+          li("Cadeias de producao interdependentes (cada mercadoria precisa de 2+ workshops)."),
+          li("Eventos dinamicos contextuais (nao aleatorios puros — baseados em situacao da vila)."),
+          li("Modo sandbox + Modo campanha (10 cenarios com objetivos)."),
+          callout(
+            "design-decision",
+            "Eventos contextuais em vez de totalmente aleatorios: se a vila esta dependente de pesca, \"seca\" e pouco impactante mas \"tempestade\" e catastrofe. Isso torna cada vila unica."
+          ),
+          callout(
+            "warning",
+            "Ficticio — substitua Harbor Town pelos elementos do SEU sim."
+          ),
+        ]
       ),
-      section("sim-medio-agentes", "Agentes e Comportamento", "NPCs/entidades e regras de tomada de decisao."),
-      section("sim-medio-eventos", "Eventos Dinamicos", "Eventos aleatorios e resposta do sistema."),
-      section("sim-medio-ui", "UI de Operacao e Telemetria", "Indicadores operacionais e alertas importantes."),
+      narrative(
+        "sim-medio-cadeias",
+        "Cadeias de Producao",
+        "Cadeias de valor e dependencias em Harbor Town.",
+        [
+          h("Cadeias de Producao", 2),
+          p(
+            "Harbor Town tem 3 tipos de trabalhadores (Lenhador, Ferreiro, Marinheiro) e 4 workshops (Carpintaria, Forja, Estaleiro, Mercado). Mercadorias finais precisam de 2+ workshops — cria interdependencia."
+          ),
+          h("Fluxos Tipicos", 3),
+          li("Madeira bruta → Carpintaria (Lenhador) → Tabua."),
+          li("Tabua + Prego → Forja (Ferreiro) → Moveis."),
+          li("Moveis → Mercado → venda externa (ouro)."),
+          callout(
+            "design-decision",
+            "Cadeias longas (3-4 passos) em vez de curtas (1-2) sao proposital: cria gargalos interessantes. Se tudo fosse \"1 passo\", nao haveria decisao de onde alocar trabalhadores."
+          ),
+          callout(
+            "balance-note",
+            "Cuidado com upstream bottlenecks. Se Lenhador e sempre o gargalo, jogo vira \"spam de Lenhador\". Balanceie pra que cada trabalhador tenha pico de demanda em momentos diferentes."
+          ),
+        ],
+        [
+          {
+            id: "sim-medio-carpintaria",
+            title: "Carpintaria",
+            content: "Workshop de exemplo de Harbor Town — agrupa receitas de madeira.",
+            pageType: {
+              id: "craftTable",
+              options: {
+                richDocBlocks: [
+                  h("Carpintaria", 2),
+                  p(
+                    "Primeiro workshop de Harbor Town. Transforma madeira bruta em tabuas e moveis. Requer 1 Lenhador alocado. Produz uma tabua a cada 20s."
+                  ),
+                  h("Receitas iniciais", 3),
+                  li("Tabua — 2 madeira → 1 tabua (20s)."),
+                  li("Barril — 3 tabua → 1 barril (40s)."),
+                  li("Movel Simples — 2 tabua + 1 prego → 1 movel (60s)."),
+                  callout(
+                    "note",
+                    "Este craftTable comeca vazio. Crie paginas de Receita no sidebar (Tabua, Barril, Movel) e linke-as aqui pelo addon Mesa de Producao."
+                  ),
+                  callout(
+                    "design-decision",
+                    "Tempo de produc ao crescente por complexidade (20s → 40s → 60s) cria decisao: produzir muitos simples ou alguns complexos?"
+                  ),
+                ],
+              },
+            },
+          },
+        ]
+      ),
+      {
+        id: "sim-medio-economia",
+        title: "Economia Sistemica",
+        content: "Moeda Ouro + sistema de fontes/sinks em Harbor Town.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia Sistemica — Harbor Town", 2),
+              p(
+                "Moeda unica: Ouro. Fontes: vendas externas (mercadorias exportadas), impostos coletados. Sinks: salarios, manutencao de workshops, compra de recursos em emergencia."
+              ),
+              h("Fontes", 3),
+              li("Venda de mercadoria via barco: 10-200 ouro."),
+              li("Imposto sobre habitantes: 1 ouro por habitante por dia."),
+              li("Eventos (ex: festival): 100-500 ouro."),
+              h("Sinks", 3),
+              li("Salario de trabalhador: 2 ouro/dia."),
+              li("Manutencao de workshop: 10 ouro/dia."),
+              li("Compra de emergencia (mercadoria com escassez): 5x preco normal."),
+              callout(
+                "design-decision",
+                "Salario > 0 forca o jogador a operar a vila lucrativamente. Trabalhador ocioso custa dinheiro — pressao constante pra otimizar."
+              ),
+              callout(
+                "balance-note",
+                "Se o jogador chega a ter ouro ilimitado sem pressao, quebrou. Alvo de \"breathing room\": jogador bem-sucedido tem reserva de 1-3 dias de despesas. Menos vira estressante; mais vira snowball."
+              ),
+            ],
+          },
+        },
+      },
+      narrative(
+        "sim-medio-agentes",
+        "Agentes e Comportamento",
+        "Habitantes de Harbor Town como agentes de IA.",
+        [
+          h("Agentes — Habitantes", 2),
+          p(
+            "Cada habitante e um agente independente com estado interno: fome, fadiga, felicidade. Decide a cada tick: ir trabalhar, comer, dormir, reclamar com o prefeito."
+          ),
+          h("Regras Basicas", 3),
+          li("Fome crescente: aos 80%, procura comida. Aos 100%, para de trabalhar."),
+          li("Fadiga crescente: aos 70%, produtividade cai 30%. Aos 100%, dorme."),
+          li("Felicidade: cresce com bons eventos, cai com escassez, grave cai em evento negativo."),
+          li("Felicidade < 30%: habitante ameaca sair da vila (grace period de 3 dias)."),
+          callout(
+            "design-decision",
+            "Agentes independentes (em vez de contador abstrato \"felicidade total\") da vida ao jogo — o jogador pode acompanhar um habitante especifico se quiser."
+          ),
+          callout(
+            "balance-note",
+            "Monitore: taxa de saida de habitantes. Alvo: <5% ao dia em vila saudavel. Acima = sistema quebrado em algum lugar (fome? fadiga?)."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-medio-eventos",
+        "Eventos Dinamicos",
+        "Eventos de Harbor Town.",
+        [
+          h("Eventos Dinamicos", 2),
+          p(
+            "Eventos nao sao aleatorios puros — sao escolhidos com base no estado da vila. Uma vila que depende de pesca tem mais chance de \"tempestade\" que \"seca\". Isso torna cada vila unica."
+          ),
+          h("Tipos", 3),
+          li("Positivos — Festival, Mercador Raro, Boa Colheita."),
+          li("Neutros — Visitante Estrangeiro, Pedido Especial."),
+          li("Negativos — Tempestade, Praga, Incendio, Escassez."),
+          callout(
+            "design-decision",
+            "Eventos sao escolhidos pelo sistema nao pelo RNG puro. Uma vila que cresceu sem investir em seguranca vai receber \"incendio\" — o evento parece injusto mas e consequencia."
+          ),
+          callout(
+            "warning",
+            "Eventos devem SEMPRE ter solucao. Evento que \"so da azar\" frustra. Evento que testa preparacao da vila ensina."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-medio-ui",
+        "UI de Operacao e Telemetria",
+        "Indicadores operacionais de Harbor Town.",
+        [
+          h("UI", 2),
+          p(
+            "UI de sim precisa balancear \"info completa\" com \"nao sufocar\". Harbor Town usa camadas: overview sempre visivel, detalhes on-demand."
+          ),
+          h("Sempre Visivel", 3),
+          li("Populacao atual / maxima."),
+          li("Ouro atual + renda liquida (ultimas 24h)."),
+          li("Alertas urgentes (fome, escassez, evento negativo)."),
+          h("On-demand", 3),
+          li("Graficos de producao (ultimos 7 dias)."),
+          li("Lista de habitantes com estado."),
+          li("Relatorios de comercio."),
+          callout(
+            "design-decision",
+            "Alertas sao o que tira o jogador do overview pra ir agir. Se voce tem MUITOS alertas o tempo todo, eles ficam invisiveis. Seja seletivo."
+          ),
+        ]
+      ),
     ],
     completo: [
-      section("sim-completo-modelagem", "Modelagem de Sistemas", "Representar sistemas, dependencias e limites operacionais.", [
-        section(
-          "sim-completo-cadeias",
-          "Cadeias de Producao",
-          "Entradas, transformacoes, perdas e throughput alvo.",
-          [
-            section(
-              "sim-completo-mesa-exemplo",
-              "Mesa de Producao de Exemplo",
-              "Estacao que agrupa receitas.",
-              undefined,
-              seedCraftTableExample()
-            ),
-          ]
-        ),
-        section("sim-completo-buffer", "Buffers e Capacidade", "Estoques, capacidade maxima e gargalos."),
-      ]),
-      section(
-        "sim-completo-economia",
-        "Economia de Simulacao",
-        "Politica de preco, inflacao, subsidios e sinks estruturais.",
-        undefined,
-        seedEconomy()
+      narrative(
+        "sim-completo-visao-geral",
+        "Visao Geral — Harbor Town",
+        "Pitch, USP, publico completos.",
+        [
+          h("Visao Geral — Harbor Town", 2),
+          p(
+            "Sim de gestao portuaria PC. 20 a 500+ habitantes. Cadeias de producao interdependentes, eventos contextuais, modo campanha com 10 cenarios + sandbox. Inspirado em Anno 1800, Banished."
+          ),
+          h("USP", 3),
+          li("Cadeias interdependentes (toda mercadoria exige 2+ workshops)."),
+          li("Eventos contextuais (baseados em dependencias da vila)."),
+          li("Habitantes como agentes independentes (fome, fadiga, felicidade individuais)."),
+          li("Modo campanha narrativo (nao so sandbox)."),
+          callout(
+            "warning",
+            "Ficticio — Harbor Town e exemplo. Substitua pelo SEU sim."
+          ),
+        ]
       ),
-      section("sim-completo-agentes", "Agentes, IA e Comportamentos", "Regras de decisao, prioridades e conflitos entre agentes."),
-      section("sim-completo-riscos", "Eventos e Gestao de Crise", "Eventos de risco, impacto sistico e planos de contingencia."),
-      section("sim-completo-balance", "Balanceamento e Tuning", "Parametros de tuning e telemetria para estabilidade de loop."),
-      section("sim-completo-ux", "UX de Supervisao", "Dashboards, alertas, drill-down e comandos rapidos."),
-      section("sim-completo-expansao", "Expansao de Conteudo", "Novos sistemas, DLC/updates e estrategia de complexidade."),
+      narrative(
+        "sim-completo-modelagem",
+        "Modelagem de Sistemas",
+        "Como sistemas de Harbor Town sao modelados.",
+        [
+          h("Modelagem", 2),
+          p(
+            "Harbor Town modela a vila como sistema de fluxos: recursos entram (caravanas, producao), fluem por workshops (transformacao), saem (exportacao, consumo). Cada no tem capacidade e throughput."
+          ),
+        ],
+        [
+          narrative(
+            "sim-completo-cadeias",
+            "Cadeias de Producao",
+            "Detalhes de throughput e bottleneck em Harbor Town.",
+            [
+              h("Cadeias de Producao", 2),
+              p(
+                "Cada workshop tem: capacidade maxima, workers alocados, throughput efetivo (capacidade × workers%)."
+              ),
+              li("Carpintaria max: 10 tabuas/hora. 1 Lenhador: 5/h. 2 Lenhadores: 8/h (diminishing)."),
+              li("Forja max: 8 ferramentas/hora. 1 Ferreiro: 4/h. 2 Ferreiros: 7/h."),
+              li("Estaleiro max: 2 barcos/mes (producao lenta)."),
+              callout(
+                "design-decision",
+                "Diminishing returns em workers alocados (2 trabalhadores NAO dobram output) forca o jogador a distribuir em vez de concentrar."
+              ),
+              callout(
+                "balance-note",
+                "Throughput e a metrica central. Se um workshop sempre tem worker ocioso, throughput esta ok (folga). Se sempre cheio, e gargalo — sinal pra expandir."
+              ),
+            ],
+            [
+              {
+                id: "sim-completo-carpintaria",
+                title: "Carpintaria",
+                content: "Workshop de madeira em Harbor Town — exemplo.",
+                pageType: {
+                  id: "craftTable",
+                  options: {
+                    richDocBlocks: [
+                      h("Carpintaria", 2),
+                      p(
+                        "Primeiro workshop de Harbor Town. Transforma madeira em tabua, barris, moveis. Tempo varia por complexidade da receita."
+                      ),
+                      callout(
+                        "note",
+                        "Este craftTable comeca vazio. Crie paginas de Receita e linke-as aqui."
+                      ),
+                    ],
+                  },
+                },
+              },
+            ]
+          ),
+          narrative(
+            "sim-completo-buffer",
+            "Buffers e Capacidade",
+            "Estoque, capacidade e gargalos em Harbor Town.",
+            [
+              h("Buffers e Capacidade", 2),
+              li("Armazem central: capacidade inicial 500 unidades. Expansivel."),
+              li("Cada workshop tem inventario local: 20 unidades de input + 20 de output."),
+              li("Quando inventario local enche, workshop para (worker fica ocioso)."),
+              callout(
+                "design-decision",
+                "Workshops param quando output local enche — NAO escrevem pro armazem automaticamente. Isso cria necessidade de transporte (logistica) e variety de gameplay."
+              ),
+              callout(
+                "balance-note",
+                "Tamanho do buffer afeta forte o gameplay. Buffer grande: jogo vira relaxante. Buffer pequeno: constante micro-gerenciamento. Alvo: jogador precisa agir 2-3x por ciclo produtivo."
+              ),
+            ]
+          ),
+        ]
+      ),
+      {
+        id: "sim-completo-economia",
+        title: "Economia de Simulacao",
+        content: "Politica de preco, inflacao e sinks estruturais em Harbor Town.",
+        pageType: {
+          id: "economy",
+          options: {
+            richDocBlocks: [
+              h("Economia — Harbor Town", 2),
+              p(
+                "Economia tem Ouro interno (circulacao na vila) + Ouro de exportacao (ganho ao vender pro mercado externo). Precos flutuam com oferta/demanda."
+              ),
+              h("Precos Dinamicos", 3),
+              li("Mercadoria em abundancia: preco cai ate 50% do base."),
+              li("Mercadoria escassa: preco sobe ate 200% do base."),
+              li("Atualizacao de preco: a cada dia in-game (5min real)."),
+              h("Sinks Estruturais", 3),
+              li("Salarios (2 ouro por worker/dia)."),
+              li("Manutencao de workshops (10 ouro/dia)."),
+              li("Impostos do reino (20% de toda exportacao)."),
+              li("Eventos (incendio, praga): custos imprevisiveis."),
+              callout(
+                "design-decision",
+                "Sinks estruturais (constantes) + sinks imprevisiveis (eventos) criam tensao: jogador precisa manter reserva pra eventos sem estocar demais (ouro parado nao rende)."
+              ),
+              callout(
+                "balance-note",
+                "Cap de ouro util: 500-1000 em reserva e suficiente pra qualquer evento. Mais que isso, jogador deveria estar reinvestindo."
+              ),
+            ],
+          },
+        },
+      },
+      narrative(
+        "sim-completo-agentes",
+        "Agentes, IA e Comportamentos",
+        "Habitantes de Harbor Town como agentes.",
+        [
+          h("Sistema de Agentes", 2),
+          p(
+            "Cada habitante e um agente independente com atributos (fome, fadiga, felicidade, skill de trabalho). Decide a cada tick: qual acao priorizar."
+          ),
+          h("Sistema de Prioridade", 3),
+          li("Fome 80%+: buscar comida (override trabalho)."),
+          li("Fadiga 90%+: dormir."),
+          li("Felicidade <30%: ir a taverna/templo. Nao trabalha."),
+          li("Senao: trabalhar no workshop alocado."),
+          h("Conflitos", 3),
+          li("Dois habitantes querem mesma comida: vai o que tem mais fome."),
+          li("Workshop cheio: worker fica ocioso e perde felicidade."),
+          li("Greve coletiva: >50% dos habitantes infelizes param tudo por 24h."),
+          callout(
+            "design-decision",
+            "Greve coletiva e feature, nao bug: evita que o jogador ignore felicidade indefinidamente. Cria evento climatico que forca mudanca de estrategia."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-completo-riscos",
+        "Eventos e Gestao de Crise",
+        "Eventos contextuais e planos de contingencia.",
+        [
+          h("Eventos e Crise", 2),
+          p(
+            "Eventos em Harbor Town sao contextuais — escolhidos com base em vulnerabilidades da vila. Vila sem guarda tem mais chance de \"banditismo\". Vila sem estoque tem mais chance de \"escassez\"."
+          ),
+          h("Catalogo", 3),
+          li("Tempestade (impacto: -30% producao da pesca por 3 dias)."),
+          li("Praga (impacto: +50% fome dos habitantes por 5 dias)."),
+          li("Banditismo (impacto: rouba 20% do armazem. Preveni vel com Guarda)."),
+          li("Festival (impacto positivo: +30% felicidade, +20% produtividade por 3 dias)."),
+          callout(
+            "design-decision",
+            "Evento SEMPRE tem solucao ou mitigacao. Evento \"so da azar\" frustra. Evento que teste preparacao ensina."
+          ),
+          callout(
+            "balance-note",
+            "Frequencia de eventos: 1 a cada 5 dias in-game e saudavel. Mais frequente vira caos; menos frequente vira tedio."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-completo-balance",
+        "Balanceamento e Tuning",
+        "Metricas e parametros de tuning em Harbor Town.",
+        [
+          h("Balanceamento", 2),
+          h("Metricas Principais", 3),
+          li("Tempo medio pra atingir 100 habitantes (alvo: 90-120 min)."),
+          li("Taxa de sobrevivencia em evento negativo (alvo: 85%)."),
+          li("Razao ouro-gasto/ouro-ganho em steady state (alvo: 0.6-0.8)."),
+          h("Parametros Tunaveis", 3),
+          li("Custo de workshop (muda a agressividade da expansao)."),
+          li("Salario de worker (muda a pressao economica)."),
+          li("Taxa de crescimento populacional (muda o pacing geral)."),
+          callout(
+            "design-decision",
+            "Expor estes 3 parametros como sliders in-game transforma \"balanceamento\" em \"modo de dificuldade\". Jogador experiente tuna pra si."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-completo-ux",
+        "UX de Supervisao",
+        "Dashboards, alertas e comandos em Harbor Town.",
+        [
+          h("UX de Supervisao", 2),
+          p(
+            "Jogo de gestao pede UX diferente de jogo de acao. O jogador precisa VER o sistema inteiro e agir sem micro-management."
+          ),
+          h("Painel Principal", 3),
+          li("Overview da vila: pop, ouro, renda liquida, alertas."),
+          li("Mapa: visao de cima dos workshops e habitantes."),
+          li("Timeline: ultimos 7 dias de eventos chave."),
+          h("Comandos Rapidos", 3),
+          li("Pause/Play/Speed 2x/Speed 4x."),
+          li("Drill-down em qualquer workshop clicando."),
+          li("Alert pinning: ancora um alerta pra nao some ate resolver."),
+          callout(
+            "design-decision",
+            "Speed 4x e essencial em sim: permite pular periodos de rotina. Mas sempre pausavel pra decisao critica."
+          ),
+        ]
+      ),
+      narrative(
+        "sim-completo-expansao",
+        "Expansao de Conteudo",
+        "Como Harbor Town evolui pos-lancamento.",
+        [
+          h("Expansao de Conteudo", 2),
+          li("Lancamento: 10 cenarios de campanha + sandbox."),
+          li("Mes 3: DLC Comercio Exterior (4 novos cenarios em rotas comerciais)."),
+          li("Mes 6: DLC Guerra (sistema militar, defesa, ataques a outras vilas)."),
+          li("Mes 12: expansao Colonizacao (criar vilas-satelite)."),
+          callout(
+            "design-decision",
+            "DLCs ADICIONAM sistemas, nao substituem. Jogador que comprou so base continua tendo jogo completo. Essa e a etica dos DLCs Paradox."
+          ),
+          callout(
+            "warning",
+            "Plano de conteudo existe desde o design: sistemas novos (militar, colonizacao) precisam de hooks na arquitetura inicial ou viram retrofit doloroso."
+          ),
+        ]
+      ),
     ],
   },
 };
