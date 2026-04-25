@@ -1103,6 +1103,59 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
     if (field !== "itemRef" && field !== "quantity") return undefined;
     return { source: "itemField", field };
   }
+  if (source === "skillField") {
+    const validFields: ReadonlySet<string> = new Set([
+      "id",
+      "name",
+      "kind",
+      "description",
+      "cooldownSeconds",
+      "tagsCsv",
+      "unlockLevelEnabled",
+      "unlockLevel",
+      "unlockLevelXpRef",
+      "unlockCurrencyEnabled",
+      "unlockCurrencyAmount",
+      "unlockCurrencyRef",
+      "unlockItemEnabled",
+      "unlockItemQuantity",
+      "unlockItemRef",
+    ]);
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (!validFields.has(field)) return undefined;
+    return { source: "skillField", field: field as Extract<ExportSchemaBinding, { source: "skillField" }>["field"] };
+  }
+  if (source === "skillCostField") {
+    const validFields: ReadonlySet<string> = new Set([
+      "id",
+      "type",
+      "amount",
+      "currencyRef",
+      "definitionsRef",
+      "attributeKey",
+    ]);
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (!validFields.has(field)) return undefined;
+    return { source: "skillCostField", field: field as Extract<ExportSchemaBinding, { source: "skillCostField" }>["field"] };
+  }
+  if (source === "skillEffectField") {
+    const validFields: ReadonlySet<string> = new Set([
+      "id",
+      "attributeModifiersSectionId",
+      "attributeModifiersAddonId",
+      "modifierEntryId",
+      "resolvedMode",
+      "resolvedAttributeKey",
+      "resolvedValue",
+      "resolvedTemporary",
+      "resolvedDurationSeconds",
+      "resolvedTickIntervalSeconds",
+      "resolvedCategory",
+    ]);
+    const field = typeof raw.field === "string" ? raw.field.trim() : "";
+    if (!validFields.has(field)) return undefined;
+    return { source: "skillEffectField", field: field as Extract<ExportSchemaBinding, { source: "skillEffectField" }>["field"] };
+  }
   return undefined;
 }
 
@@ -1123,16 +1176,20 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
       if (isObject(rawNode.arraySource)) {
         const rawType = rawNode.arraySource.type;
         if (
-          (rawType === "progressionTable" || rawType === "craftTable") &&
+          (rawType === "progressionTable" || rawType === "craftTable" || rawType === "skills") &&
           typeof rawNode.arraySource.addonId === "string"
         ) {
-          const sourceType = rawType as "progressionTable" | "craftTable";
+          const sourceType = rawType as "progressionTable" | "craftTable" | "skills";
           const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
           node.arraySource = { type: sourceType, addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
         } else if (rawType === "productionIngredients") {
           node.arraySource = { type: "productionIngredients" };
         } else if (rawType === "productionOutputs") {
           node.arraySource = { type: "productionOutputs" };
+        } else if (rawType === "skillCosts") {
+          node.arraySource = { type: "skillCosts" };
+        } else if (rawType === "skillEffects") {
+          node.arraySource = { type: "skillEffects" };
         }
       }
       node.itemTemplate = Array.isArray(rawNode.itemTemplate) ? normalizeExportSchemaNodes(rawNode.itemTemplate) : [];
