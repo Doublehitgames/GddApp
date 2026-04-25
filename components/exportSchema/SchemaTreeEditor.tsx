@@ -618,6 +618,7 @@ export function BindingEditor({
     { value: "attributeModifiersSectionId", label: "attributeModifiersSectionId (dataId)" },
     { value: "attributeModifiersAddonId", label: "attributeModifiersAddonId" },
     { value: "modifierEntryId", label: "modifierEntryId" },
+    { value: "resolvedName", label: "resolved.name" },
     { value: "resolvedMode", label: "resolved.mode" },
     { value: "resolvedAttributeKey", label: "resolved.attributeKey" },
     { value: "resolvedValue", label: "resolved.value" },

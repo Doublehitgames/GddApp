@@ -401,6 +401,12 @@ export type AttributeModifierCategory = "buff" | "debuff" | "neutral";
 
 export type AttributeModifierEntry = {
   id: string;
+  /**
+   * Optional human-readable name. When set, the UI uses it as the entry's
+   * title (Skills effect checklist, ReadOnly headings, ExportSchema bindings).
+   * Falls back to the auto-formatted label (e.g. "+10 ATK 30s") when empty.
+   */
+  name?: string;
   attributeKey: string;
   mode: AttributeModifierMode;
   value: number | boolean;
@@ -509,6 +515,8 @@ export type SkillEffectField =
   | "attributeModifiersSectionId"
   | "attributeModifiersAddonId"
   | "modifierEntryId"
+  /** User-provided display name from the source modifier entry (empty when unset). */
+  | "resolvedName"
   | "resolvedMode"
   | "resolvedAttributeKey"
   | "resolvedValue"

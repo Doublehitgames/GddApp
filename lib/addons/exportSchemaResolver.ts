@@ -392,6 +392,8 @@ function resolveSkillEffectField(
       return effect.attributeModifiersAddonId ?? "";
     case "modifierEntryId":
       return effect.modifierEntryId ?? "";
+    case "resolvedName":
+      return resolved?.name?.trim() ?? "";
     case "resolvedMode":
       return resolved?.mode ?? "";
     case "resolvedAttributeKey":

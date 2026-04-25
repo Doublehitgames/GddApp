@@ -148,6 +148,18 @@ function asPositiveIntegerOrUndefined(value: unknown): number | undefined {
   return Math.max(0, Math.floor(parsed));
 }
 
+/**
+ * Like {@link asPositiveIntegerOrUndefined} but preserves sub-second
+ * precision (3 decimals). Use for time fields where 0.5s, 1.1s, 1.25s are
+ * meaningful (cooldowns, durations, tick intervals, production timers).
+ */
+function asPositiveFloatOrUndefined(value: unknown): number | undefined {
+  const parsed = asFiniteNumber(value);
+  if (parsed == null) return undefined;
+  if (parsed <= 0) return undefined;
+  return Math.round(parsed * 1000) / 1000;
+}
+
 function asBooleanLoose(value: unknown): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
@@ -199,7 +211,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
           producedItemRef ||
             produceMin != null ||
             produceMax != null ||
-            asPositiveIntegerOrUndefined(value.productionTimeSeconds) != null
+            asPositiveFloatOrUndefined(value.productionTimeSeconds) != null
         );
   const unlockValue = asPositiveIntegerOrUndefined(value.unlockValue);
   const hasUnlockConfig =
@@ -224,7 +236,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     producedItemRef: producedItemRef || undefined,
     produceMin: normalizedProduceMin,
     produceMax: normalizedProduceMax,
-    productionTimeSeconds: asPositiveIntegerOrUndefined(value.productionTimeSeconds),
+    productionTimeSeconds: asPositiveFloatOrUndefined(value.productionTimeSeconds),
     hasUnlockConfig,
     unlockRef: unlockRef || undefined,
     unlockValue,
@@ -391,8 +403,11 @@ function normalizeSkillEntry(item: unknown, index: number): SkillEntry | null {
   const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `skill-${index + 1}`;
   const kind = item.kind === "passive" ? "passive" : "active";
   const description = typeof item.description === "string" && item.description.trim() ? item.description : undefined;
+  // Cooldowns can be sub-second (e.g. 0.5 = 2 uses/sec, 1.1 = slightly slower
+  // than 1/sec). Round to a sane precision (3 decimals) instead of truncating.
   const cdNum = asFiniteNumber(item.cooldownSeconds);
-  const cooldownSeconds = cdNum != null && cdNum > 0 ? Math.floor(cdNum) : undefined;
+  const cooldownSeconds =
+    cdNum != null && cdNum > 0 ? Math.round(cdNum * 1000) / 1000 : undefined;
   const rawCosts = Array.isArray(item.costs) ? item.costs : [];
   const costs: SkillCost[] = [];
   for (let i = 0; i < rawCosts.length; i += 1) {
@@ -590,13 +605,15 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   const maxOutput = maxOutputRaw == null ? undefined : minOutput == null ? maxOutputRaw : Math.max(minOutput, maxOutputRaw);
   const minOutputProgressionLink = normalizeProductionProgressionLink(value.minOutputProgressionLink);
   const maxOutputProgressionLink = normalizeProductionProgressionLink(value.maxOutputProgressionLink);
-  const intervalSeconds = asPositiveIntegerOrUndefined(value.intervalSeconds);
+  // Time fields keep sub-second precision so e.g. fast-tick recipes (0.5s)
+  // and decimal craft timers (1.5s) survive the round-trip.
+  const intervalSeconds = asPositiveFloatOrUndefined(value.intervalSeconds);
   const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
   const capacity = asPositiveIntegerOrUndefined(value.capacity);
   const capacityProgressionLink = normalizeProductionProgressionLink(value.capacityProgressionLink);
   const ingredients = normalizeProductionItems(value.ingredients);
   const outputs = normalizeProductionItems(value.outputs);
-  const craftTimeSeconds = asPositiveIntegerOrUndefined(value.craftTimeSeconds);
+  const craftTimeSeconds = asPositiveFloatOrUndefined(value.craftTimeSeconds);
   const intervalSecondsProgressionLink = normalizeProductionProgressionLink(value.intervalSecondsProgressionLink);
   const craftTimeSecondsProgressionLink = normalizeProductionProgressionLink(value.craftTimeSecondsProgressionLink);
   const notes = typeof value.notes === "string" ? value.notes : "";
@@ -914,9 +931,11 @@ function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAdd
     const numeric = asFiniteNumber(item.value);
     const normalizedValue = numeric == null ? asBooleanLoose(item.value) : numeric;
     const temporary = item.temporary === true ? true : undefined;
+    // Time fields preserve sub-second precision (round to 3 decimals) so DoT
+    // ticks like 0.25s and durations like 1.5s persist as the user typed them.
     const rawDuration = asFiniteNumber(item.durationSeconds);
     const durationSeconds = temporary && rawDuration != null && rawDuration >= 0
-      ? Math.floor(rawDuration)
+      ? Math.round(rawDuration * 1000) / 1000
       : undefined;
     const stackingRule =
       item.stackingRule === "unique" || item.stackingRule === "refresh" || item.stackingRule === "stack"
@@ -924,7 +943,7 @@ function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAdd
         : undefined;
     const rawTick = asFiniteNumber(item.tickIntervalSeconds);
     const tickIntervalSeconds = temporary && rawTick != null && rawTick > 0
-      ? Math.floor(rawTick)
+      ? Math.round(rawTick * 1000) / 1000
       : undefined;
     const category =
       item.category === "buff" || item.category === "debuff" || item.category === "neutral"
@@ -938,8 +957,13 @@ function normalizeAttributeModifiersDraft(value: unknown): AttributeModifiersAdd
       if (trimmed) tagSet.add(trimmed);
     }
     const tags = tagSet.size > 0 ? Array.from(tagSet) : undefined;
+    // Optional display name — preserved verbatim when present, dropped silently
+    // when empty/whitespace so the auto-formatted fallback kicks in.
+    const rawName = typeof item.name === "string" ? item.name.trim() : "";
+    const name = rawName.length > 0 ? rawName : undefined;
     modifiers.push({
       id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : `attr_mod_${index + 1}`,
+      ...(name ? { name } : {}),
       attributeKey,
       mode,
       value: normalizedValue,
@@ -1144,6 +1168,7 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
       "attributeModifiersSectionId",
       "attributeModifiersAddonId",
       "modifierEntryId",
+      "resolvedName",
       "resolvedMode",
       "resolvedAttributeKey",
       "resolvedValue",

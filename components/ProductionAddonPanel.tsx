@@ -634,8 +634,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   value={addon.intervalSeconds}
                   onCommit={(next) => commit({ intervalSeconds: next })}
                   min={0}
-                  step={1}
-                  integer
+                  step={0.1}
                   className={INPUT_CLASS}
                 />
               </LinkedFieldRow>
@@ -838,8 +837,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   value={addon.craftTimeSeconds}
                   onCommit={(next) => commit({ craftTimeSeconds: next })}
                   min={0}
-                  step={1}
-                  integer
+                  step={0.1}
                   className={INPUT_CLASS}
                 />
               </LinkedFieldRow>

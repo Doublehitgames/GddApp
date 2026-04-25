@@ -343,11 +343,25 @@ export function SkillsAddonReadOnly({ addon, theme = "dark", bare = false }: Ski
                           </span>
                         );
                       }
+                      // Prefer the user-provided name when set (e.g. "Fireball
+                      // burn"). The auto-formatted technical label is shown
+                      // tucked in parentheses so context isn't lost.
+                      const customName = meta.entry.name?.trim();
+                      const technical = formatModifier(meta.entry, meta.attrLabel);
                       return (
                         <span key={eff.id}>
                           {i > 0 ? " · " : null}
                           <SectionAnchorLink sectionId={eff.attributeModifiersSectionId} variant="inline" theme={theme}>
-                            {formatModifier(meta.entry, meta.attrLabel)}
+                            {customName ? (
+                              <>
+                                {customName}
+                                <span className={isLight ? "ml-1 text-gray-500" : "ml-1 text-gray-400"}>
+                                  ({technical})
+                                </span>
+                              </>
+                            ) : (
+                              technical
+                            )}
                           </SectionAnchorLink>
                         </span>
                       );

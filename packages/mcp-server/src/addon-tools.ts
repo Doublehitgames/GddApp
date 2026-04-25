@@ -444,6 +444,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   const attrModEntrySchema = z.object({
     id: z.string().optional().describe("Modifier ID"),
+    name: z.string().optional().describe("Optional display name (e.g. 'Fireball impact'). Falls back to auto-formatted label when empty."),
     attributeKey: z.string().describe("Attribute key to modify"),
     mode: z.enum(["add", "mult", "set"]).describe("Modifier mode (add, multiply, or set)"),
     value: z.union([z.number(), z.boolean()]).describe("Modifier value"),
@@ -517,8 +518,8 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "unlockCurrencyRef|unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
       "skillCostField: id|type|amount|currencyRef|definitionsRef|attributeKey. " +
       "skillEffectField: id|attributeModifiersSectionId|attributeModifiersAddonId|" +
-      "modifierEntryId|resolvedMode|resolvedAttributeKey|resolvedValue|resolvedTemporary|" +
-      "resolvedDurationSeconds|resolvedTickIntervalSeconds|resolvedCategory."
+      "modifierEntryId|resolvedName|resolvedMode|resolvedAttributeKey|resolvedValue|" +
+      "resolvedTemporary|resolvedDurationSeconds|resolvedTickIntervalSeconds|resolvedCategory."
     ),
   }).describe("Value binding");
 

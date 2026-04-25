@@ -19,13 +19,12 @@ import type {
   SkillKind,
   SkillCostType,
   AttributeModifierEntry,
+  AttributeModifierStacking,
 } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { CommitNumberInput, CommitOptionalNumberInput, CommitTextInput } from "@/components/common/CommitInput";
-import { ToggleSwitch } from "@/components/ToggleSwitch";
-import { openQuickNewPage } from "@/components/QuickNewPageModal";
 
 interface SkillsAddonPanelProps {
   addon: SkillsAddonDraft;
@@ -166,7 +165,30 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
     return out;
   }, [projects, currentProjectId]);
 
-  /** All AttributeModifiers entries across the project, with display labels. */
+  /**
+   * Find which section the *current* Skills addon lives in by matching its ID.
+   * Each addon ID is unique across the project, so a single sweep is enough.
+   * Returns `null` while the addon hasn't been persisted yet (rare race).
+   */
+  const hostSectionId = useMemo(() => {
+    const scoped = currentProjectId
+      ? projects.filter((p) => p.id === currentProjectId)
+      : projects;
+    for (const project of scoped) {
+      for (const section of project.sections || []) {
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.id === addon.id) return section.id;
+        }
+      }
+    }
+    return null;
+  }, [projects, currentProjectId, addon.id]);
+
+  /**
+   * AttributeModifiers entries from the SAME SECTION as this Skills addon.
+   * (Singleton enforcement means there is at most one Modifiers addon per
+   * page, but we keep the iteration generic in case that ever changes.)
+   */
   const effectCatalog = useMemo(() => {
     type Item = {
       sectionId: string;
@@ -174,16 +196,30 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
       addonId: string;
       addonName: string;
       entryId: string;
+      /** Auto-formatted technical label (e.g. "+10 ATK 30s"). Always present. */
       label: string;
+      /** User-provided display name on the source modifier entry, when set. */
+      entryName?: string;
+      /** Effect duration in seconds (from the source modifier). 0 / undefined = instantâneo. */
+      durationSeconds?: number;
+      /** True when the modifier persists with no fixed duration (permanente). */
+      permanent: boolean;
+      /** Stacking rule from the source modifier (default = refresh when absent). */
+      stackingRule?: AttributeModifierStacking;
+      /** Tick interval — present means it's a DoT-style modifier. */
+      tickIntervalSeconds?: number;
     };
     const out: Item[] = [];
+    if (!hostSectionId) return out;
     const scoped = currentProjectId
       ? projects.filter((p) => p.id === currentProjectId)
       : projects;
     for (const project of scoped) {
       for (const section of project.sections || []) {
+        if (section.id !== hostSectionId) continue;
         // Build attribute key → label map for THIS section's attributeModifiers
-        // (resolved via the modifiers' definitionsRef).
+        // (resolved via the modifiers' definitionsRef — which still points at a
+        // potentially remote AttributeDefinitions section).
         for (const sectionAddon of section.addons || []) {
           if (sectionAddon.type !== "attributeModifiers") continue;
           const defsRef = sectionAddon.data.definitionsRef;
@@ -203,6 +239,8 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
           }
           for (const entry of sectionAddon.data.modifiers || []) {
             const attrLabel = labelByKey.get(entry.attributeKey) || entry.attributeKey;
+            const duration = entry.temporary ? entry.durationSeconds : undefined;
+            const trimmedName = entry.name?.trim();
             out.push({
               sectionId: section.id,
               sectionTitle: section.title || section.id,
@@ -210,13 +248,18 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
               addonName: sectionAddon.name || sectionAddon.data.name || "Modifiers",
               entryId: entry.id,
               label: formatModifierLabel(entry, attrLabel),
+              entryName: trimmedName || undefined,
+              durationSeconds: duration,
+              permanent: !entry.temporary,
+              stackingRule: entry.stackingRule,
+              tickIntervalSeconds: entry.temporary ? entry.tickIntervalSeconds : undefined,
             });
           }
         }
       }
     }
     return out;
-  }, [projects, currentProjectId]);
+  }, [projects, currentProjectId, hostSectionId]);
 
   // ── Collapsed entries housekeeping ────────────────────────────
 
@@ -285,27 +328,6 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) return;
     updateEntry(entryId, { costs: (entry.costs || []).filter((c) => c.id !== costId) });
-  };
-
-  const addEffect = (entryId: string, key: string) => {
-    // key format: `${sectionId}::${addonId}::${entryId}`
-    const [sectionId, addonId, modEntryId] = key.split("::");
-    if (!sectionId || !addonId || !modEntryId) return;
-    const entry = entries.find((e) => e.id === entryId);
-    if (!entry) return;
-    const effect: SkillEffectRef = {
-      id: newId("eff"),
-      attributeModifiersSectionId: sectionId,
-      attributeModifiersAddonId: addonId,
-      modifierEntryId: modEntryId,
-    };
-    updateEntry(entryId, { effects: [...(entry.effects || []), effect] });
-  };
-
-  const removeEffect = (entryId: string, effectId: string) => {
-    const entry = entries.find((e) => e.id === entryId);
-    if (!entry) return;
-    updateEntry(entryId, { effects: (entry.effects || []).filter((e) => e.id !== effectId) });
   };
 
   /** Toggle helper — adds the effect when checked, removes ALL effects matching the entry when unchecked. */
@@ -408,20 +430,6 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
   };
 
   // ── Rendering helpers ────────────────────────────────────────
-
-  const renderEmptyHint = (text: string, ctaLabel: string): ReactNode => (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
-      <span>{text}</span>
-      <button
-        type="button"
-        onClick={openQuickNewPage}
-        className="inline-flex items-center gap-1 rounded-md border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-50 hover:bg-amber-500/30"
-      >
-        <span aria-hidden="true">+</span>
-        <span>{ctaLabel}</span>
-      </button>
-    </div>
-  );
 
   const renderCostRow = (entry: SkillEntry, cost: SkillCost): ReactNode => {
     const isAttribute = cost.type === "attribute";
@@ -634,6 +642,299 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
         <button type="button" onClick={() => removeCost(entry.id, cost.id)} className={BUTTON_DANGER_CLASS}>
           {t("common.remove", "Remover")}
         </button>
+      </div>
+    );
+  };
+
+  /**
+   * Renders the "Recarga entre usos" UX:
+   * - input + live derived label (sem limite / X usos por segundo / 1 a cada Ns)
+   * - quick presets (chips)
+   * - timeline comparing caster recharge vs longest linked-effect duration,
+   *   only shown when at least one linked effect has a finite duration.
+   */
+  const renderCooldownBlock = (entry: SkillEntry): ReactNode => {
+    const cd = entry.cooldownSeconds;
+    // Resolve linked effects (from this skill) against the catalog.
+    const linkedItems = (entry.effects || [])
+      .map((eff) =>
+        effectCatalog.find(
+          (it) =>
+            it.sectionId === eff.attributeModifiersSectionId &&
+            it.addonId === eff.attributeModifiersAddonId &&
+            it.entryId === eff.modifierEntryId
+        )
+      )
+      .filter((it): it is NonNullable<typeof it> => Boolean(it));
+    const finiteDurations = linkedItems
+      .map((it) => it.durationSeconds)
+      .filter((d): d is number => typeof d === "number" && d > 0);
+    const longestDuration = finiteDurations.length > 0 ? Math.max(...finiteDurations) : 0;
+    const shortestDuration = finiteDurations.length > 0 ? Math.min(...finiteDurations) : 0;
+    const hasMixedDurations =
+      finiteDurations.length > 1 && shortestDuration !== longestDuration;
+    const hasPermanent = linkedItems.some((it) => it.permanent);
+
+    // Pick the dominant linked effect (the one driving the longest bar) — its
+    // stacking rule and tick interval are the ones we visualise.
+    const dominantItem =
+      finiteDurations.length > 0
+        ? linkedItems.find((it) => it.durationSeconds === longestDuration)
+        : undefined;
+    const dominantStacking: AttributeModifierStacking =
+      dominantItem?.stackingRule ?? "refresh";
+    const dominantTick = dominantItem?.tickIntervalSeconds;
+    // Are stacking rules mixed across linked effects?
+    const stackingRules = new Set(
+      linkedItems
+        .map((it) => it.stackingRule ?? "refresh")
+        .filter((_, idx) => (linkedItems[idx].durationSeconds ?? 0) > 0)
+    );
+    const hasMixedStacking = stackingRules.size > 1;
+
+    // Derived "what does this mean" label.
+    let derivedLabel: string;
+    let derivedTone: "muted" | "info" | "warn" = "muted";
+    if (cd == null) {
+      derivedLabel = t(
+        "skillsAddon.cooldownDerivedNoLimit",
+        "Sem limite — dispara enquanto o input estiver ativo"
+      );
+      derivedTone = "warn";
+    } else if (cd <= 0) {
+      derivedLabel = t(
+        "skillsAddon.cooldownDerivedZero",
+        "0s — sem espera entre usos (autofire)"
+      );
+      derivedTone = "warn";
+    } else if (cd < 1) {
+      const perSec = (1 / cd).toFixed(cd < 0.2 ? 0 : 1);
+      derivedLabel = t(
+        "skillsAddon.cooldownDerivedSubSecond",
+        `≈ ${perSec} usos por segundo (autofire limitado)`
+      ).replace("{perSec}", perSec);
+      derivedTone = "info";
+    } else if (cd === 1) {
+      derivedLabel = t("skillsAddon.cooldownDerivedOne", "1 uso por segundo");
+      derivedTone = "info";
+    } else if (cd < 60) {
+      derivedLabel = t(
+        "skillsAddon.cooldownDerivedManySeconds",
+        `1 uso a cada ${cd}s`
+      ).replace("{seconds}", String(cd));
+      derivedTone = "info";
+    } else {
+      const minutes = (cd / 60).toFixed(cd % 60 === 0 ? 0 : 1);
+      derivedLabel = t(
+        "skillsAddon.cooldownDerivedUlti",
+        `Ultimate — 1 uso a cada ${minutes}min`
+      ).replace("{minutes}", minutes);
+      derivedTone = "info";
+    }
+
+    const toneClass =
+      derivedTone === "warn"
+        ? "text-amber-300"
+        : derivedTone === "info"
+        ? "text-indigo-300"
+        : "text-gray-400";
+
+    type Preset = { label: string; value: number | undefined };
+    const presets: Preset[] = [
+      { label: t("skillsAddon.cooldownPresetNone", "♾ Sem limite"), value: undefined },
+      { label: t("skillsAddon.cooldownPresetAttack", "⚔ Ataque (1s)"), value: 1 },
+      { label: t("skillsAddon.cooldownPresetSkill", "✨ Skill (5s)"), value: 5 },
+      { label: t("skillsAddon.cooldownPresetUlti", "🔥 Ultimate (60s)"), value: 60 },
+    ];
+    const isPresetActive = (p: Preset) =>
+      (p.value === undefined && cd == null) || (p.value !== undefined && cd === p.value);
+
+    // Timeline visualization.
+    // Use whichever is bigger (cooldown vs longest effect duration) as the scale.
+    const scale = Math.max(cd ?? 0, longestDuration, 1);
+    const cooldownPct = cd && cd > 0 ? Math.min(100, (cd / scale) * 100) : 0;
+    const effectPct = longestDuration > 0 ? Math.min(100, (longestDuration / scale) * 100) : 0;
+
+    // Stacking summary — the wording (and color) depend on the dominant
+    // modifier's stackingRule, because each rule reads completely differently:
+    //   • unique  → second cast does nothing while the first is active
+    //   • refresh → each cast resets the duration
+    //   • stack   → casts pile up as independent applicators
+    let stackingHint: string | null = null;
+    let stackingTone: "neutral" | "warn" | "danger" = "neutral";
+    if (cd != null && cd > 0 && longestDuration > 0) {
+      const castsInWindow = Math.floor(longestDuration / cd) + 1;
+      if (dominantStacking === "unique") {
+        const effective = Math.max(cd, longestDuration);
+        const cooldownTooShort = cd < longestDuration;
+        stackingHint = `Empilhamento "único": recasts antes de ${longestDuration}s são ignorados. Cooldown efetivo = ${effective}s.`;
+        stackingTone = cooldownTooShort ? "warn" : "neutral";
+      } else if (dominantStacking === "stack") {
+        stackingHint = `Empilhamento "stack": em ${longestDuration}s podem coexistir até ${castsInWindow} instâncias do efeito.`;
+        stackingTone = castsInWindow >= 5 ? "danger" : "warn";
+      } else {
+        stackingHint = `Empilhamento "refresh": cada cast renova os ${longestDuration}s. Em ${longestDuration}s podem ocorrer ${castsInWindow} casts.`;
+        stackingTone = "neutral";
+      }
+    } else if (cd == null && longestDuration > 0) {
+      if (dominantStacking === "unique") {
+        stackingHint = `Sem limite de recarga + empilhamento "único": só vale o primeiro cast a cada janela de ${longestDuration}s.`;
+        stackingTone = "warn";
+      } else if (dominantStacking === "stack") {
+        stackingHint = `Sem limite de recarga + empilhamento "stack": pode acumular incontáveis instâncias do efeito ao segurar o input.`;
+        stackingTone = "danger";
+      } else {
+        stackingHint = `Sem limite de recarga: o efeito de ${longestDuration}s é reaplicado a cada input.`;
+        stackingTone = "warn";
+      }
+    }
+    if (hasMixedStacking && stackingHint) {
+      stackingHint += " Atenção: efeitos vinculados usam regras de empilhamento diferentes.";
+      stackingTone = stackingTone === "danger" ? "danger" : "warn";
+    }
+    if (hasMixedDurations && stackingHint) {
+      stackingHint += ` Durações variam de ${shortestDuration}s a ${longestDuration}s.`;
+    }
+    const stackingToneClass =
+      stackingTone === "danger"
+        ? "text-rose-300"
+        : stackingTone === "warn"
+        ? "text-amber-300"
+        : "text-gray-300";
+
+    return (
+      <div className={SUB_BLOCK_CLASS}>
+        <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
+          {t("skillsAddon.cooldownSectionLabel", "Recarga entre usos")}
+        </p>
+
+        <div className="grid gap-2 sm:grid-cols-[160px_1fr] items-center">
+          <CommitOptionalNumberInput
+            value={entry.cooldownSeconds}
+            onCommit={(next) => updateEntry(entry.id, { cooldownSeconds: next })}
+            min={0}
+            step={0.1}
+            integer={false}
+            placeholder={t("skillsAddon.cooldownPlaceholder", "vazio = sem limite")}
+            className={INPUT_CLASS}
+          />
+          <span className={`text-[11px] ${toneClass}`}>{derivedLabel}</span>
+        </div>
+
+        {/* Presets */}
+        <div className="mt-2 flex flex-wrap gap-1">
+          {presets.map((p) => {
+            const active = isPresetActive(p);
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => updateEntry(entry.id, { cooldownSeconds: p.value })}
+                className={
+                  active
+                    ? "rounded-md border border-indigo-400/60 bg-indigo-500/20 px-2 py-0.5 text-[10px] font-medium text-indigo-100"
+                    : BUTTON_TINY_CLASS
+                }
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Timeline (only when there's something to compare). */}
+        {(longestDuration > 0 || hasPermanent) && (
+          <div className="mt-3 rounded-md border border-gray-700 bg-gray-900/50 p-2.5">
+            <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-500">
+              {t("skillsAddon.cooldownTimelineLabel", "Linha do tempo")}
+            </p>
+            <div className="space-y-1.5">
+              {/* Caster row */}
+              <div className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-[10px] text-gray-400" title={t("skillsAddon.cooldownCasterTooltip", "Tempo do caster — quando você pode usar de novo")}>
+                  🧙 {t("skillsAddon.cooldownCasterShort", "Você")}
+                </span>
+                <div className="relative h-3 flex-1 overflow-hidden rounded bg-gray-800">
+                  {cd != null && cd > 0 ? (
+                    <>
+                      <div
+                        className="absolute inset-y-0 left-0 bg-indigo-500/60"
+                        style={{ width: `${cooldownPct}%` }}
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-indigo-50">
+                        {t("skillsAddon.cooldownTimelineCasterLabel", `recarga ${cd}s`).replace("{seconds}", String(cd))}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-amber-300">
+                      {t("skillsAddon.cooldownTimelineCasterNoLimit", "sem limite — pronto sempre")}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Target row */}
+              <div className="flex items-center gap-2">
+                <span className="w-16 shrink-0 text-[10px] text-gray-400" title={t("skillsAddon.cooldownTargetTooltip", "Tempo do alvo — quanto tempo o efeito permanece aplicado")}>
+                  🎯 {t("skillsAddon.cooldownTargetShort", "Alvo")}
+                </span>
+                <div className="relative h-3 flex-1 overflow-hidden rounded bg-gray-800">
+                  {hasPermanent && longestDuration === 0 ? (
+                    <>
+                      <div className="absolute inset-0 bg-emerald-500/40" />
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-emerald-50">
+                        {t("skillsAddon.cooldownTimelineTargetPermanent", "permanente")}
+                      </span>
+                    </>
+                  ) : longestDuration > 0 ? (
+                    <>
+                      <div
+                        className="absolute inset-y-0 left-0 bg-emerald-500/60"
+                        style={{ width: `${effectPct}%` }}
+                      />
+                      {/* Tick dividers — only when the dominant effect is a DoT
+                          (tickIntervalSeconds > 0). Renders evenly-spaced thin
+                          vertical lines inside the green portion of the bar. */}
+                      {dominantTick && dominantTick > 0 && longestDuration > dominantTick && (
+                        <>
+                          {Array.from({ length: Math.floor(longestDuration / dominantTick) }).map(
+                            (_, i) => {
+                              const t = (i + 1) * dominantTick;
+                              if (t >= longestDuration) return null;
+                              const leftPct = (t / scale) * 100;
+                              return (
+                                <span
+                                  key={`tick-${i}`}
+                                  className="absolute inset-y-0 w-px bg-emerald-200/70"
+                                  style={{ left: `${leftPct}%` }}
+                                  aria-hidden="true"
+                                />
+                              );
+                            }
+                          )}
+                        </>
+                      )}
+                      <span className="absolute inset-0 flex items-center justify-center text-[10px] text-emerald-50">
+                        {dominantTick && dominantTick > 0
+                          ? `efeito ${longestDuration}s · ${Math.floor(longestDuration / dominantTick)} ticks`
+                          : `efeito ${longestDuration}s`}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-500">
+                      {t("skillsAddon.cooldownTimelineTargetInstant", "instantâneo")}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {stackingHint && (
+              <p className={`mt-2 text-[11px] ${stackingToneClass}`}>
+                {stackingTone === "danger" ? "⚠️" : stackingTone === "warn" ? "⚠" : "💡"} {stackingHint}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -878,21 +1179,7 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
                             />
                           </label>
 
-                          {entry.kind === "active" && (
-                            <label className="block sm:max-w-[200px]">
-                              <span className="mb-1 block text-xs text-gray-400">
-                                {t("skillsAddon.cooldownLabel", "Cooldown (segundos)")}
-                              </span>
-                              <CommitOptionalNumberInput
-                                value={entry.cooldownSeconds}
-                                onCommit={(next) => updateEntry(entry.id, { cooldownSeconds: next })}
-                                min={0}
-                                step={1}
-                                integer
-                                className={INPUT_CLASS}
-                              />
-                            </label>
-                          )}
+                          {entry.kind === "active" && renderCooldownBlock(entry)}
 
                           {/* Costs */}
                           <div className={SUB_BLOCK_CLASS}>
@@ -927,120 +1214,101 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
                               {t("skillsAddon.effectsLabel", "Efeitos")}
                             </p>
                             {effectCatalog.length === 0 ? (
-                              renderEmptyHint(
-                                t(
-                                  "skillsAddon.noEffectsHint",
-                                  "Nenhuma página com Attribute Modifiers. Crie uma pra usar entries como efeito."
-                                ),
-                                t("skillsAddon.createModifiersCta", "Criar página de Modificadores")
-                              )
+                              <p className="text-[11px] text-amber-300">
+                                {t(
+                                  "skillsAddon.noEffectsHintLocal",
+                                  "Adicione um addon de Modificadores de Atributos nesta mesma página pra poder vincular efeitos aqui."
+                                )}
+                              </p>
                             ) : (
                               (() => {
-                                // Group catalog by addon so the user can pick MULTIPLE entries
-                                // (and even all entries) of the same modifier addon at once.
-                                type Group = {
-                                  sectionId: string;
-                                  sectionTitle: string;
-                                  addonId: string;
-                                  addonName: string;
-                                  items: typeof effectCatalog;
-                                };
-                                const groups: Group[] = [];
-                                const groupKey = (i: typeof effectCatalog[number]) => `${i.sectionId}::${i.addonId}`;
-                                const indexByKey = new Map<string, number>();
-                                for (const item of effectCatalog) {
-                                  const k = groupKey(item);
-                                  let gi = indexByKey.get(k);
-                                  if (gi == null) {
-                                    gi = groups.length;
-                                    indexByKey.set(k, gi);
-                                    groups.push({
-                                      sectionId: item.sectionId,
-                                      sectionTitle: item.sectionTitle,
-                                      addonId: item.addonId,
-                                      addonName: item.addonName,
-                                      items: [],
-                                    });
-                                  }
-                                  groups[gi].items.push(item);
-                                }
+                                // Singleton enforcement guarantees at most one Modifiers addon
+                                // per section, so we render the entries flat (no group headers).
                                 const linkedKeys = new Set(
                                   (entry.effects || []).map(
                                     (eff) =>
                                       `${eff.attributeModifiersSectionId}::${eff.attributeModifiersAddonId}::${eff.modifierEntryId}`
                                   )
                                 );
+                                const total = effectCatalog.length;
+                                const checkedCount = effectCatalog.filter((it) =>
+                                  linkedKeys.has(`${it.sectionId}::${it.addonId}::${it.entryId}`)
+                                ).length;
+                                const allChecked = total > 0 && checkedCount === total;
+                                // All items share the same section/addon (host page).
+                                const hostAddonId = effectCatalog[0].addonId;
+                                const hostSectionIdLocal = effectCatalog[0].sectionId;
                                 return (
                                   <>
-                                    <p className="mb-2 text-[11px] text-gray-400">
-                                      {t(
-                                        "skillsAddon.effectsHint",
-                                        "Marque os modificadores que esta habilidade aplica. Você pode escolher quantos quiser, inclusive de addons diferentes."
-                                      )}
-                                    </p>
-                                    <div className="space-y-2">
-                                      {groups.map((g) => {
-                                        const totalInGroup = g.items.length;
-                                        const checkedInGroup = g.items.filter((it) =>
-                                          linkedKeys.has(`${it.sectionId}::${it.addonId}::${it.entryId}`)
-                                        ).length;
-                                        const allChecked = totalInGroup > 0 && checkedInGroup === totalInGroup;
+                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                      <p className="text-[11px] text-gray-400">
+                                        {t(
+                                          "skillsAddon.effectsHintLocal",
+                                          "Marque os modificadores desta página que esta habilidade aplica."
+                                        )}
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-gray-500">
+                                          ({checkedCount}/{total})
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            toggleAllEffectsFromAddon(
+                                              entry.id,
+                                              hostSectionIdLocal,
+                                              hostAddonId,
+                                              !allChecked
+                                            )
+                                          }
+                                          className={BUTTON_TINY_CLASS}
+                                        >
+                                          {allChecked
+                                            ? t("skillsAddon.deselectAll", "Desmarcar todos")
+                                            : t("skillsAddon.selectAll", "Marcar todos")}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <ul className="space-y-1">
+                                      {effectCatalog.map((it) => {
+                                        const itemKey = `${it.sectionId}::${it.addonId}::${it.entryId}`;
+                                        const checked = linkedKeys.has(itemKey);
                                         return (
-                                          <div
-                                            key={`${g.sectionId}::${g.addonId}`}
-                                            className="rounded-md border border-gray-700 bg-gray-900/40 p-2"
-                                          >
-                                            <div className="mb-1.5 flex items-center justify-between gap-2">
-                                              <span className="text-[11px] text-gray-300 truncate">
-                                                <strong>{g.sectionTitle}</strong>
-                                                <span className="ml-1 text-gray-500">· {g.addonName}</span>
-                                                <span className="ml-1 text-[10px] text-gray-500">
-                                                  ({checkedInGroup}/{totalInGroup})
-                                                </span>
-                                              </span>
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  toggleAllEffectsFromAddon(entry.id, g.sectionId, g.addonId, !allChecked)
+                                          <li key={itemKey}>
+                                            <label className="flex items-start gap-2 rounded px-1.5 py-1 text-xs text-gray-200 hover:bg-gray-800/40 cursor-pointer">
+                                              <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={(e) =>
+                                                  toggleEffectByKey(
+                                                    entry.id,
+                                                    it.sectionId,
+                                                    it.addonId,
+                                                    it.entryId,
+                                                    e.target.checked
+                                                  )
                                                 }
-                                                className={BUTTON_TINY_CLASS}
-                                              >
-                                                {allChecked
-                                                  ? t("skillsAddon.deselectAll", "Desmarcar todos")
-                                                  : t("skillsAddon.selectAll", "Marcar todos")}
-                                              </button>
-                                            </div>
-                                            <ul className="space-y-1">
-                                              {g.items.map((it) => {
-                                                const itemKey = `${it.sectionId}::${it.addonId}::${it.entryId}`;
-                                                const checked = linkedKeys.has(itemKey);
-                                                return (
-                                                  <li key={itemKey}>
-                                                    <label className="flex items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-200 hover:bg-gray-800/40 cursor-pointer">
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={(e) =>
-                                                          toggleEffectByKey(
-                                                            entry.id,
-                                                            it.sectionId,
-                                                            it.addonId,
-                                                            it.entryId,
-                                                            e.target.checked
-                                                          )
-                                                        }
-                                                        className="h-3.5 w-3.5 accent-indigo-500"
-                                                      />
-                                                      <span className="flex-1">{it.label}</span>
-                                                    </label>
-                                                  </li>
-                                                );
-                                              })}
-                                            </ul>
-                                          </div>
+                                                className="mt-0.5 h-3.5 w-3.5 accent-indigo-500"
+                                              />
+                                              <span className="flex-1">
+                                                {it.entryName ? (
+                                                  <>
+                                                    <span className="block font-medium text-gray-100">
+                                                      {it.entryName}
+                                                    </span>
+                                                    <span className="block text-[10px] text-gray-400">
+                                                      {it.label}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  it.label
+                                                )}
+                                              </span>
+                                            </label>
+                                          </li>
                                         );
                                       })}
-                                    </div>
+                                    </ul>
                                   </>
                                 );
                               })()

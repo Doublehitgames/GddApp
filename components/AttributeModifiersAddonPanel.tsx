@@ -193,7 +193,13 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
               {modifiers.map((row) => {
                 const meta = selectedAttributes.find((item) => item.key === row.attributeKey);
                 const isBoolean = meta?.valueType === "boolean";
+                // Prefer the user-provided name when present; fall back to the
+                // attribute label/key, then a generic placeholder. The right-side
+                // chip keeps showing the attributeKey so you still see "what"
+                // even when the title is a custom label like "Fireball impact".
+                const customName = row.name?.trim();
                 const title =
+                  customName ||
                   meta?.label ||
                   row.attributeKey ||
                   t("attributeModifiersAddon.fallbackTitle", "Modificador");
@@ -235,6 +241,19 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
 
                       {!collapsedModifiers[row.id] && (
                         <div className="space-y-3">
+                          <label className="block">
+                            <span className="mb-1 block text-xs text-gray-400">
+                              Nome (opcional)
+                            </span>
+                            <CommitTextInput
+                              value={row.name || ""}
+                              onCommit={(next) =>
+                                updateRow(row.id, { name: next.trim() ? next.trim() : undefined })
+                              }
+                              placeholder="Ex.: Fireball impact, Burn DoT, Iron Skin..."
+                              className={INPUT_CLASS}
+                            />
+                          </label>
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                             <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
                               {t("attributeModifiersAddon.modifierBlockLabel", "Modificador")}
@@ -339,8 +358,7 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                                     onCommit={(next) =>
                                       updateRow(row.id, { durationSeconds: next < 0 ? 0 : next })
                                     }
-                                    step="1"
-                                    integer
+                                    step="0.1"
                                     className={INPUT_CLASS}
                                   />
                                 </div>
@@ -402,11 +420,10 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                                       value={row.tickIntervalSeconds ?? 0}
                                       onCommit={(next) =>
                                         updateRow(row.id, {
-                                          tickIntervalSeconds: next > 0 ? Math.floor(next) : undefined,
+                                          tickIntervalSeconds: next > 0 ? next : undefined,
                                         })
                                       }
-                                      step="1"
-                                      integer
+                                      step="0.1"
                                       className={INPUT_CLASS}
                                     />
                                   </label>

@@ -455,7 +455,8 @@ export function PageTypeRequiresDialog({
       ? {
           ingredientQty: Math.max(1, Math.floor(ingredientQty)),
           outputQty: Math.max(1, Math.floor(outputQty)),
-          craftTimeSeconds: Math.max(0, Math.floor(craftTimeSeconds)),
+          // Sub-second craft times (e.g. 0.5s) are valid; round to 3 decimals.
+          craftTimeSeconds: Math.max(0, Math.round(craftTimeSeconds * 1000) / 1000),
         }
       : undefined;
     // The caller reads `customAttrs` to seed extra slots on create-new.
@@ -1336,7 +1337,7 @@ export function PageTypeRequiresDialog({
                     <input
                       type="number"
                       min={0}
-                      step={1}
+                      step={0.1}
                       value={craftTimeSeconds}
                       onChange={(e) => setCraftTimeSeconds(Number(e.target.value))}
                       className="ui-input-dark ui-focus-ring-indigo w-full rounded-md border border-gray-600 bg-gray-900/80 px-2.5 py-1.5 text-sm text-gray-100"

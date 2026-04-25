@@ -124,6 +124,13 @@ export function AttributeModifiersAddonReadOnly({ addon, theme = "dark", bare = 
                   bare ? "" : isLight ? "bg-gray-50 px-2 py-1.5" : "bg-gray-800/40 px-2 py-1.5"
                 }`}
               >
+                {entry.name?.trim() ? (
+                  <p
+                    className={`text-sm font-semibold ${isLight ? "text-gray-900" : "text-gray-100"}`}
+                  >
+                    {entry.name.trim()}
+                  </p>
+                ) : null}
                 <p>
                   <strong>{definitionsMeta?.keys.get(entry.attributeKey) || entry.attributeKey}</strong>
                   {entry.attributeKey ? (
