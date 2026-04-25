@@ -243,14 +243,17 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                         <div className="space-y-3">
                           <label className="block">
                             <span className="mb-1 block text-xs text-gray-400">
-                              Nome (opcional)
+                              {t("attributeModifiersAddon.nameLabel", "Nome (opcional)")}
                             </span>
                             <CommitTextInput
                               value={row.name || ""}
                               onCommit={(next) =>
                                 updateRow(row.id, { name: next.trim() ? next.trim() : undefined })
                               }
-                              placeholder="Ex.: Fireball impact, Burn DoT, Iron Skin..."
+                              placeholder={t(
+                                "attributeModifiersAddon.namePlaceholder",
+                                "Ex.: Fireball impact, Burn DoT, Iron Skin..."
+                              )}
                               className={INPUT_CLASS}
                             />
                           </label>

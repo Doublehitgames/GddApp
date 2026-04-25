@@ -767,33 +767,69 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
       if (dominantStacking === "unique") {
         const effective = Math.max(cd, longestDuration);
         const cooldownTooShort = cd < longestDuration;
-        stackingHint = `Empilhamento "único": recasts antes de ${longestDuration}s são ignorados. Cooldown efetivo = ${effective}s.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintUnique",
+          'Empilhamento "único": recasts antes de {duration}s são ignorados. Cooldown efetivo = {effective}s.'
+        )
+          .replace("{duration}", String(longestDuration))
+          .replace("{effective}", String(effective));
         stackingTone = cooldownTooShort ? "warn" : "neutral";
       } else if (dominantStacking === "stack") {
-        stackingHint = `Empilhamento "stack": em ${longestDuration}s podem coexistir até ${castsInWindow} instâncias do efeito.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintStack",
+          'Empilhamento "stack": em {duration}s podem coexistir até {casts} instâncias do efeito.'
+        )
+          .replace("{duration}", String(longestDuration))
+          .replace("{casts}", String(castsInWindow));
         stackingTone = castsInWindow >= 5 ? "danger" : "warn";
       } else {
-        stackingHint = `Empilhamento "refresh": cada cast renova os ${longestDuration}s. Em ${longestDuration}s podem ocorrer ${castsInWindow} casts.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintRefresh",
+          'Empilhamento "refresh": cada cast renova os {duration}s. Em {duration}s podem ocorrer {casts} casts.'
+        )
+          .replace(/\{duration\}/g, String(longestDuration))
+          .replace("{casts}", String(castsInWindow));
         stackingTone = "neutral";
       }
     } else if (cd == null && longestDuration > 0) {
       if (dominantStacking === "unique") {
-        stackingHint = `Sem limite de recarga + empilhamento "único": só vale o primeiro cast a cada janela de ${longestDuration}s.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintNoLimitUnique",
+          'Sem limite de recarga + empilhamento "único": só vale o primeiro cast a cada janela de {duration}s.'
+        ).replace("{duration}", String(longestDuration));
         stackingTone = "warn";
       } else if (dominantStacking === "stack") {
-        stackingHint = `Sem limite de recarga + empilhamento "stack": pode acumular incontáveis instâncias do efeito ao segurar o input.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintNoLimitStack",
+          'Sem limite de recarga + empilhamento "stack": pode acumular incontáveis instâncias do efeito ao segurar o input.'
+        );
         stackingTone = "danger";
       } else {
-        stackingHint = `Sem limite de recarga: o efeito de ${longestDuration}s é reaplicado a cada input.`;
+        stackingHint = t(
+          "skillsAddon.stackingHintNoLimitRefresh",
+          "Sem limite de recarga: o efeito de {duration}s é reaplicado a cada input."
+        ).replace("{duration}", String(longestDuration));
         stackingTone = "warn";
       }
     }
     if (hasMixedStacking && stackingHint) {
-      stackingHint += " Atenção: efeitos vinculados usam regras de empilhamento diferentes.";
+      stackingHint +=
+        " " +
+        t(
+          "skillsAddon.stackingHintMixed",
+          "Atenção: efeitos vinculados usam regras de empilhamento diferentes."
+        );
       stackingTone = stackingTone === "danger" ? "danger" : "warn";
     }
     if (hasMixedDurations && stackingHint) {
-      stackingHint += ` Durações variam de ${shortestDuration}s a ${longestDuration}s.`;
+      stackingHint +=
+        " " +
+        t(
+          "skillsAddon.stackingHintMixedDurations",
+          "Durações variam de {shortest}s a {longest}s."
+        )
+          .replace("{shortest}", String(shortestDuration))
+          .replace("{longest}", String(longestDuration));
     }
     const stackingToneClass =
       stackingTone === "danger"
@@ -916,8 +952,16 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
                       )}
                       <span className="absolute inset-0 flex items-center justify-center text-[10px] text-emerald-50">
                         {dominantTick && dominantTick > 0
-                          ? `efeito ${longestDuration}s · ${Math.floor(longestDuration / dominantTick)} ticks`
-                          : `efeito ${longestDuration}s`}
+                          ? t(
+                              "skillsAddon.cooldownTimelineTargetWithTicks",
+                              "efeito {seconds}s · {ticks} ticks"
+                            )
+                              .replace("{seconds}", String(longestDuration))
+                              .replace("{ticks}", String(Math.floor(longestDuration / dominantTick)))
+                          : t(
+                              "skillsAddon.cooldownTimelineTargetLabel",
+                              "efeito {seconds}s"
+                            ).replace("{seconds}", String(longestDuration))}
                       </span>
                     </>
                   ) : (
