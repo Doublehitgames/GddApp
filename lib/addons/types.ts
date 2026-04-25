@@ -419,6 +419,16 @@ export type AttributeModifierEntry = {
   /**
    * If set (and `temporary` is true), applies `value` every N seconds for the duration.
    * Absent means the modifier is a one-shot that stays active for `durationSeconds`.
+   *
+   * **Tick convention (trailing).** The first tick fires at t = N (one
+   * interval after the cast), not at t = 0. The number of ticks over a
+   * `durationSeconds` window is `floor(durationSeconds / tickIntervalSeconds)`.
+   *
+   * Example: `durationSeconds: 10, tickIntervalSeconds: 1, value: -1` →
+   * 10 ticks at t = 1, 2, …, 10 → total `-10`. The Skills cooldown
+   * timeline visualisation in the editor and the per-tick math (`N ticks`
+   * label) both assume this convention. Game engines reading the export
+   * MUST follow trailing semantics or the GDD numbers will lie.
    */
   tickIntervalSeconds?: number;
   /** Gameplay category. Guides UI/AI (e.g. dispel, resistance). */

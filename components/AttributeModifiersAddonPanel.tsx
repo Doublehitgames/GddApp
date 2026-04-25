@@ -416,8 +416,12 @@ export function AttributeModifiersAddonPanel({ addon, onChange, onRemove }: Attr
                                 </label>
                                 {row.temporary && (
                                   <label>
-                                    <span className="mb-1 block text-xs text-gray-400">
+                                    <span
+                                      className="mb-1 block text-xs text-gray-400"
+                                      title="Convenção: trailing tick — o primeiro tick dispara em t=N (não em t=0). Total = floor(duração / intervalo) ticks. Ex.: dur=10, tick=1 → 10 aplicações em t=1..10."
+                                    >
                                       {t("attributeModifiersAddon.tickIntervalLabel", "Intervalo de tick (s)")}
+                                      <span className="ml-1 text-gray-500">ⓘ</span>
                                     </span>
                                     <CommitNumberInput
                                       value={row.tickIntervalSeconds ?? 0}
