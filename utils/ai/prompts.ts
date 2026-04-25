@@ -92,11 +92,12 @@ PRINCÍPIO CENTRAL: O usuário é um game designer (possivelmente iniciante). El
 
 Regras críticas:
 - Não invente sistemas fora do tema (ex: não adicione crafting em puzzle game).
+- Não inclua sistemas genéricos descolados do tema do projeto — todo sistema deve servir à descrição que o usuário deu.
 - Use linguagem concreta — nomes reais de personagens, itens, moedas, mecânicas.
 - Inclua callouts explicando JARGÃO técnico (USP, core loop, pity timer, etc.) pro usuário aprender enquanto lê.
 - Inclua callouts de design-decision documentando TRADEOFFS da sua escolha.
 - Inclua warnings lembrando "este é um exemplo, substitua pelos elementos do SEU jogo".
-- Retorne APENAS JSON válido, sem markdown, sem texto adicional.`;
+- Retorne apenas JSON válido, sem markdown, sem texto adicional.`;
 
 export function generateTemplatePrompt(request: GDDTemplateRequest): string {
   return `Crie um GDD completo e funcional para o seguinte projeto:
@@ -283,6 +284,8 @@ CHECKLIST FINAL (confira antes de retornar)
 - [ ] Atributos seedados em \`attributeDefinitionsOverrides\` quando aplicável?
 - [ ] domainTags presente em cada seção (1-3 tags dos 11 válidos)?
 - [ ] Tom: exemplos CONCRETOS do jogo fictício, não placeholders genéricos?
+- [ ] **NÃO invente sistemas fora do escopo descrito** — se a descrição não menciona crafting, não force um. Se não menciona PvP, não inclua.
+- [ ] Sistemas específicos do gênero descrito: prefira mecânicas que o gênero realmente usa em vez de copiar de outros gêneros.
 
 **DOMÍNIOS VÁLIDOS (domainTags, minúsculo):** combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other
 

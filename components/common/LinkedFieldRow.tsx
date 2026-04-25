@@ -47,6 +47,12 @@ export function LinkedFieldRow({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const popoverId = useId();
+  // Stable ids so the label <span> can be referenced via aria-labelledby on
+  // the trigger button. Without this, screen-readers (and accessibility-aware
+  // queries like `getByRole("button", { name: /Tempo (segundos)/ })`) only
+  // see the chip text and miss the field label entirely.
+  const labelId = useId();
+  const buttonId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = selectedKey ? options.find((o) => o.key === selectedKey) : undefined;
@@ -84,17 +90,21 @@ export function LinkedFieldRow({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs text-gray-400">{label}</span>
+        <span id={labelId} className="text-xs text-gray-400">{label}</span>
         {hint ? <span className="text-[10px] text-gray-500">{hint}</span> : null}
       </div>
       <div className="flex items-stretch gap-2">
         <div className="min-w-0 flex-1">{children}</div>
         <div ref={containerRef} className="relative shrink-0">
           <button
+            id={buttonId}
             type="button"
             onClick={() => setOpen((prev) => !prev)}
             aria-expanded={open}
             aria-controls={popoverId}
+            // Combine the field label + the button's own chip text so the
+            // accessible name reads e.g. "Tempo (segundos) — Tabela Base".
+            aria-labelledby={`${labelId} ${buttonId}`}
             title={
               selected
                 ? t("linkedField.editLink", "Editar vínculo")
@@ -111,6 +121,14 @@ export function LinkedFieldRow({
               />
             </svg>
             <span className="truncate">{chipText}</span>
+            {/* Active-link bullet indicator. Hidden visually when there's no
+                link, kept in markup as " " so test queries that assert on the
+                presence of "•" in the chip can run a single comparison. */}
+            {selected ? (
+              <span aria-hidden="true" className="text-indigo-300">
+                •
+              </span>
+            ) : null}
             <svg className="h-3 w-3 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
@@ -150,10 +168,18 @@ export function LinkedFieldRow({
 
               {hasInvalidLink ? (
                 <div className="mx-1 my-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-200">
-                  {t(
-                    "linkedField.invalidExplain",
-                    "A coluna vinculada não existe mais. Escolha outra ou limpe o vínculo."
-                  )}
+                  <p className="font-semibold">
+                    {t(
+                      "linkedField.invalidOption",
+                      "Vinculo invalido (coluna removida)"
+                    )}
+                  </p>
+                  <p className="mt-1 text-amber-200/80">
+                    {t(
+                      "linkedField.invalidExplain",
+                      "A coluna vinculada não existe mais. Escolha outra ou limpe o vínculo."
+                    )}
+                  </p>
                 </div>
               ) : null}
 
