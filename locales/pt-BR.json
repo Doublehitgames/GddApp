@@ -28,28 +28,11 @@
     "makeOneWay": "Tornar mão única (somente De → Para)",
     "makeBidirectional": "Tornar mão dupla (Para → De também)",
     "currencyEmptyHint": "Nenhuma página com Moeda neste projeto. Crie pelo menos duas para definir uma conversão.",
+    "currencyOnlyOneHint": "Só tem 1 moeda no projeto. Crie mais uma para definir uma conversão.",
     "createCurrencyCta": "Criar página de Moeda",
     "brokenCurrency": "Moeda removida",
     "brokenLinkExplain": "Uma das moedas não existe mais. Selecione outra ou remova esta conversão.",
-    "readOnlyEmpty": "Nenhuma conversão configurada.",
-    "wizard": {
-      "title": "Vamos configurar a Casa de Câmbio",
-      "intro": "Para definir uma conversão você precisa de pelo menos 2 moedas no projeto.",
-      "skip": "Pular wizard",
-      "alreadyHave": "Você já tem:",
-      "stepLabel": "Etapa {step} de 2",
-      "stepFirstHint": "Crie a primeira moeda. Ex.: Gold, Coins, Diamonds.",
-      "stepSecondHint": "Crie a segunda moeda — algo que faça sentido converter pra primeira.",
-      "nameLabel": "Nome",
-      "namePlaceholder": "Ex.: Gold",
-      "codeLabel": "Código (opcional)",
-      "codePlaceholder": "GOLD",
-      "createFirst": "Criar primeira moeda",
-      "createSecond": "Criar segunda moeda",
-      "afterHint": "Cada moeda vira uma página própria do projeto — você pode editar nome, código e tipo depois.",
-      "nameRequired": "Digite um nome para a moeda.",
-      "createFailed": "Não foi possível criar a moeda."
-    }
+    "readOnlyEmpty": "Nenhuma conversão configurada."
   },
   "linkedField": {
     "noLink": "Sem vínculo",

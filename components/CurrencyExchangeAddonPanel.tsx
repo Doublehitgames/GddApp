@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type {
   CurrencyExchangeAddonDraft,
   CurrencyExchangeDirection,
@@ -8,7 +8,6 @@ import type {
 } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
-import { useAuthStore } from "@/store/authStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 import { openQuickNewPage } from "@/components/QuickNewPageModal";
@@ -41,18 +40,7 @@ function newEntryId(): string {
 export function CurrencyExchangeAddonPanel({ addon, onChange }: CurrencyExchangeAddonPanelProps) {
   const { t } = useI18n();
   const allProjects = useProjectStore((state) => state.projects);
-  const addSection = useProjectStore((state) => state.addSection);
-  const updateSectionAddon = useProjectStore((state) => state.updateSectionAddon);
-  const { user, profile } = useAuthStore();
-  const sectionAuditBy = user
-    ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null }
-    : undefined;
   const currentProjectId = useCurrentProjectId();
-  const [wizardSkipped, setWizardSkipped] = useState(false);
-  const [wizardName, setWizardName] = useState("");
-  const [wizardCode, setWizardCode] = useState("");
-  const [wizardError, setWizardError] = useState<string | null>(null);
-  const [wizardBusy, setWizardBusy] = useState(false);
 
   const currencyOptions = useMemo<CurrencyOption[]>(() => {
     const out: CurrencyOption[] = [];
@@ -131,212 +119,35 @@ export function CurrencyExchangeAddonPanel({ addon, onChange }: CurrencyExchange
     commit([...(addon.entries || []), next]);
   };
 
-  const handleWizardCreate = () => {
-    if (!currentProjectId) return;
-    const name = wizardName.trim();
-    if (!name) {
-      setWizardError(t("currencyExchangeAddon.wizard.nameRequired", "Digite um nome para a moeda."));
-      return;
-    }
-    setWizardBusy(true);
-    try {
-      // Reuse the "economy" page type so the new section is properly seeded
-      // with a Currency addon following the standard convention.
-      const newSectionId = addSection(currentProjectId, name, "", sectionAuditBy, "economy");
-      if (!newSectionId) throw new Error("create_failed");
-      // Customize the seeded currency: set displayName to the typed name and
-      // code to whatever the user typed (or auto-derive from name). Make sure
-      // the code is unique within the project — append a numeric suffix if
-      // another currency already uses it.
-      const baseCode =
-        wizardCode.trim().toUpperCase() ||
-        name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").slice(0, 8) ||
-        "COIN";
-      // Read live store state (not the React-rendered `allProjects` snapshot,
-      // which doesn't yet include the section we just created).
-      const liveProjects = useProjectStore.getState().projects;
-      const liveProject = liveProjects.find((p) => p.id === currentProjectId);
-      const existingCodes = new Set<string>();
-      for (const s of liveProject?.sections || []) {
-        for (const a of s.addons || []) {
-          if (a.type !== "currency") continue;
-          if (s.id === newSectionId) continue;
-          const c = (a.data.code || "").trim().toUpperCase();
-          if (c) existingCodes.add(c);
-        }
-      }
-      let code = baseCode;
-      let suffix = 2;
-      while (existingCodes.has(code)) {
-        code = `${baseCode}${suffix}`;
-        suffix += 1;
-      }
-      const newSection = liveProject?.sections?.find((s) => s.id === newSectionId);
-      const currencyAddon = newSection?.addons?.find((a) => a.type === "currency");
-      if (currencyAddon && currencyAddon.type === "currency") {
-        updateSectionAddon(
-          currentProjectId,
-          newSectionId,
-          currencyAddon.id,
-          {
-            ...currencyAddon,
-            data: { ...currencyAddon.data, displayName: name, code },
-          },
-          sectionAuditBy
-        );
-      }
-      setWizardName("");
-      setWizardCode("");
-      setWizardError(null);
-    } catch {
-      setWizardError(t("currencyExchangeAddon.wizard.createFailed", "Não foi possível criar a moeda."));
-    } finally {
-      setWizardBusy(false);
-    }
-  };
-
-  const showWizard =
-    !wizardSkipped &&
-    (addon.entries || []).length === 0 &&
-    currencyOptions.length < 2;
-
-  const renderWizard = () => {
-    const stepIndex = currencyOptions.length + 1;
-    const created = currencyOptions.map((c) => c.label);
+  const renderCurrencyEmptyHint = () => {
+    const text =
+      currencyOptions.length === 0
+        ? t(
+            "currencyExchangeAddon.currencyEmptyHint",
+            "Nenhuma página com Moeda neste projeto. Crie pelo menos duas para definir uma conversão."
+          )
+        : t(
+            "currencyExchangeAddon.currencyOnlyOneHint",
+            "Só tem 1 moeda no projeto. Crie mais uma para definir uma conversão."
+          );
     return (
-      <div className="mb-3 rounded-xl border border-indigo-500/40 bg-indigo-600/10 p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h4 className="text-sm font-semibold text-indigo-100">
-              {t("currencyExchangeAddon.wizard.title", "Vamos configurar a Casa de Câmbio")}
-            </h4>
-            <p className="mt-1 text-xs text-indigo-200/80">
-              {t(
-                "currencyExchangeAddon.wizard.intro",
-                "Para definir uma conversão você precisa de pelo menos 2 moedas no projeto."
-              )}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWizardSkipped(true)}
-            className="shrink-0 text-[11px] text-indigo-200/70 hover:text-indigo-100 underline"
-          >
-            {t("currencyExchangeAddon.wizard.skip", "Pular wizard")}
-          </button>
-        </div>
-
-        {created.length > 0 && (
-          <div className="rounded-lg border border-emerald-500/40 bg-emerald-600/15 px-3 py-2 text-[11px] text-emerald-100">
-            <span className="font-semibold">
-              {t("currencyExchangeAddon.wizard.alreadyHave", "Você já tem:")}
-            </span>{" "}
-            {created.join(" · ")}
-          </div>
-        )}
-
-        <div className="rounded-lg border border-indigo-500/30 bg-gray-900/60 p-3 space-y-2">
-          <p className="text-[11px] uppercase tracking-wide text-indigo-200/80">
-            {t("currencyExchangeAddon.wizard.stepLabel", "Etapa {step} de 2").replace(
-              "{step}",
-              String(stepIndex)
-            )}
-          </p>
-          <p className="text-xs text-gray-200">
-            {stepIndex === 1
-              ? t(
-                  "currencyExchangeAddon.wizard.stepFirstHint",
-                  "Crie a primeira moeda. Ex.: Gold, Coins, Diamonds."
-                )
-              : t(
-                  "currencyExchangeAddon.wizard.stepSecondHint",
-                  "Crie a segunda moeda — algo que faça sentido converter pra primeira."
-                )}
-          </p>
-          <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
-            <label className="block">
-              <span className="mb-1 block text-[11px] text-gray-400">
-                {t("currencyExchangeAddon.wizard.nameLabel", "Nome")}
-              </span>
-              <input
-                type="text"
-                value={wizardName}
-                onChange={(e) => {
-                  setWizardName(e.target.value);
-                  if (wizardError) setWizardError(null);
-                }}
-                placeholder={t("currencyExchangeAddon.wizard.namePlaceholder", "Ex.: Gold")}
-                className={INPUT_CLASS}
-                autoComplete="off"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] text-gray-400">
-                {t("currencyExchangeAddon.wizard.codeLabel", "Código (opcional)")}
-              </span>
-              <input
-                type="text"
-                value={wizardCode}
-                onChange={(e) => setWizardCode(e.target.value)}
-                placeholder={t("currencyExchangeAddon.wizard.codePlaceholder", "GOLD")}
-                className={INPUT_CLASS}
-                autoComplete="off"
-              />
-            </label>
-          </div>
-          {wizardError && (
-            <p className="text-xs text-red-400" role="alert">
-              {wizardError}
-            </p>
-          )}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleWizardCreate}
-              disabled={wizardBusy || !wizardName.trim()}
-              className="rounded-lg border border-indigo-400/60 bg-indigo-600/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {stepIndex === 1
-                ? t("currencyExchangeAddon.wizard.createFirst", "Criar primeira moeda")
-                : t("currencyExchangeAddon.wizard.createSecond", "Criar segunda moeda")}
-            </button>
-          </div>
-        </div>
-
-        <p className="text-[10px] text-indigo-200/60">
-          {t(
-            "currencyExchangeAddon.wizard.afterHint",
-            "Cada moeda vira uma página própria do projeto — você pode editar nome, código e tipo depois."
-          )}
-        </p>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
+        <span>{text}</span>
+        <button
+          type="button"
+          onClick={openQuickNewPage}
+          className="inline-flex items-center gap-1 rounded-md border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-50 hover:bg-amber-500/30"
+        >
+          <span aria-hidden="true">+</span>
+          <span>{t("currencyExchangeAddon.createCurrencyCta", "Criar página de Moeda")}</span>
+        </button>
       </div>
     );
   };
 
-  const renderCurrencyEmptyHint = () => (
-    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
-      <span>
-        {t(
-          "currencyExchangeAddon.currencyEmptyHint",
-          "Nenhuma página com Moeda neste projeto. Crie pelo menos duas para definir uma conversão."
-        )}
-      </span>
-      <button
-        type="button"
-        onClick={openQuickNewPage}
-        className="inline-flex items-center gap-1 rounded-md border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-50 hover:bg-amber-500/30"
-      >
-        <span aria-hidden="true">+</span>
-        <span>{t("currencyExchangeAddon.createCurrencyCta", "Criar página de Moeda")}</span>
-      </button>
-    </div>
-  );
-
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="space-y-3">
-        {showWizard && renderWizard()}
-
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-100">
             {t("currencyExchangeAddon.entriesTitle", "Conversões")}
@@ -351,7 +162,7 @@ export function CurrencyExchangeAddonPanel({ addon, onChange }: CurrencyExchange
           </button>
         </div>
 
-        {!showWizard && currencyOptions.length === 0 ? renderCurrencyEmptyHint() : null}
+        {currencyOptions.length < 2 ? renderCurrencyEmptyHint() : null}
 
         {(addon.entries || []).length === 0 ? (
           <div className={PANEL_BLOCK_CLASS}>

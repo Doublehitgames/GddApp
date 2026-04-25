@@ -247,6 +247,7 @@ export const PAGE_TYPES: PageType[] = [
         nameOverrideKey: "pageTypes.addonNames.currencyExchange",
       },
     ],
+    requires: ["currency"],
     tags: ["economy"],
   },
   {

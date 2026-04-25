@@ -28,28 +28,11 @@
     "makeOneWay": "Make one-way (only From → To)",
     "makeBidirectional": "Make two-way (To → From also works)",
     "currencyEmptyHint": "No page with Currency in this project. Create at least two to define a conversion.",
+    "currencyOnlyOneHint": "Only 1 currency in the project. Create one more to define a conversion.",
     "createCurrencyCta": "Create a Currency page",
     "brokenCurrency": "Removed currency",
     "brokenLinkExplain": "One of the currencies no longer exists. Pick another or remove this conversion.",
-    "readOnlyEmpty": "No conversion configured.",
-    "wizard": {
-      "title": "Let's set up the Currency Exchange",
-      "intro": "To define a conversion you need at least 2 currencies in the project.",
-      "skip": "Skip wizard",
-      "alreadyHave": "You already have:",
-      "stepLabel": "Step {step} of 2",
-      "stepFirstHint": "Create the first currency. e.g. Gold, Coins, Diamonds.",
-      "stepSecondHint": "Create the second currency — something that makes sense to convert against the first.",
-      "nameLabel": "Name",
-      "namePlaceholder": "e.g. Gold",
-      "codeLabel": "Code (optional)",
-      "codePlaceholder": "GOLD",
-      "createFirst": "Create first currency",
-      "createSecond": "Create second currency",
-      "afterHint": "Each currency becomes its own project page — you can edit name, code and type later.",
-      "nameRequired": "Please enter a name for the currency.",
-      "createFailed": "Could not create the currency."
-    }
+    "readOnlyEmpty": "No conversion configured."
   },
   "linkedField": {
     "noLink": "No link",
