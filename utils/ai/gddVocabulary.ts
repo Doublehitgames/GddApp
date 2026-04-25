@@ -60,6 +60,11 @@ const ADDON_PROMPT_INFO: Record<Exclude<SectionAddonType, "genericStats">, Addon
     whenToUse:
       "Página de conversões entre moedas. Define entradas como '100 GOLD → 1 GEM', com direção (mão única ou dupla) e notas opcionais.",
   },
+  skills: {
+    label: "Skills (Habilidades)",
+    whenToUse:
+      "Catálogo de habilidades (active/passive) com cooldown, custos (currency/attribute/charges), efeitos referenciando entries de Attribute Modifiers e condição de unlock (level/currency/item).",
+  },
   globalVariable: {
     label: "Global Variable",
     whenToUse: "Variável global reutilizável (taxa de venda, bônus, multiplicador).",

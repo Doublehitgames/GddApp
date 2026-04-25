@@ -10,6 +10,10 @@ import type {
   CraftTableUnlock,
   CurrencyAddonDraft,
   CurrencyExchangeAddonDraft,
+  SkillsAddonDraft,
+  SkillEntry,
+  SkillCost,
+  SkillEffectRef,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
   ExportSchemaAddonDraft,
@@ -288,6 +292,154 @@ function normalizeCurrencyExchangeDraft(value: unknown): CurrencyExchangeAddonDr
   return {
     id: value.id,
     name: value.name,
+    entries,
+  };
+}
+
+function normalizeSkillCost(item: unknown, index: number): SkillCost | null {
+  if (!isObject(item)) return null;
+  const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `skill-cost-${index + 1}`;
+  const type = item.type === "currency" || item.type === "attribute" || item.type === "charges" ? item.type : null;
+  if (!type) return null;
+  const amountNum = asFiniteNumber(item.amount);
+  const amount = amountNum != null && amountNum >= 0 ? amountNum : 0;
+  const currencyRef =
+    type === "currency" && typeof item.currencyRef === "string" && item.currencyRef.trim()
+      ? item.currencyRef.trim()
+      : undefined;
+  const attributeKey =
+    type === "attribute" && typeof item.attributeKey === "string" && item.attributeKey.trim()
+      ? item.attributeKey.trim()
+      : undefined;
+  return {
+    id,
+    type,
+    amount,
+    ...(currencyRef ? { currencyRef } : {}),
+    ...(attributeKey ? { attributeKey } : {}),
+  };
+}
+
+function normalizeSkillEffect(item: unknown, index: number): SkillEffectRef | null {
+  if (!isObject(item)) return null;
+  if (typeof item.attributeModifiersSectionId !== "string" || !item.attributeModifiersSectionId.trim()) return null;
+  if (typeof item.attributeModifiersAddonId !== "string" || !item.attributeModifiersAddonId.trim()) return null;
+  if (typeof item.modifierEntryId !== "string" || !item.modifierEntryId.trim()) return null;
+  const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `skill-effect-${index + 1}`;
+  return {
+    id,
+    attributeModifiersSectionId: item.attributeModifiersSectionId.trim(),
+    attributeModifiersAddonId: item.attributeModifiersAddonId.trim(),
+    modifierEntryId: item.modifierEntryId.trim(),
+  };
+}
+
+function normalizeSkillUnlock(value: unknown): SkillEntry["unlock"] {
+  if (!isObject(value)) return undefined;
+  const out: NonNullable<SkillEntry["unlock"]> = {};
+  if (isObject(value.level)) {
+    const enabled = value.level.enabled === true;
+    const xpAddonRef =
+      typeof value.level.xpAddonRef === "string" && value.level.xpAddonRef.trim()
+        ? value.level.xpAddonRef.trim()
+        : undefined;
+    const lv = asFiniteNumber(value.level.level);
+    out.level = {
+      enabled,
+      ...(xpAddonRef ? { xpAddonRef } : {}),
+      ...(lv != null ? { level: Math.max(0, Math.floor(lv)) } : {}),
+    };
+  }
+  if (isObject(value.currency)) {
+    const enabled = value.currency.enabled === true;
+    const currencyAddonRef =
+      typeof value.currency.currencyAddonRef === "string" && value.currency.currencyAddonRef.trim()
+        ? value.currency.currencyAddonRef.trim()
+        : undefined;
+    const amt = asFiniteNumber(value.currency.amount);
+    out.currency = {
+      enabled,
+      ...(currencyAddonRef ? { currencyAddonRef } : {}),
+      ...(amt != null ? { amount: Math.max(0, amt) } : {}),
+    };
+  }
+  if (isObject(value.item)) {
+    const enabled = value.item.enabled === true;
+    const itemRef =
+      typeof value.item.itemRef === "string" && value.item.itemRef.trim()
+        ? value.item.itemRef.trim()
+        : undefined;
+    const qty = asFiniteNumber(value.item.quantity);
+    out.item = {
+      enabled,
+      ...(itemRef ? { itemRef } : {}),
+      ...(qty != null ? { quantity: Math.max(0, Math.floor(qty)) } : {}),
+    };
+  }
+  if (!out.level && !out.currency && !out.item) return undefined;
+  return out;
+}
+
+function normalizeSkillEntry(item: unknown, index: number): SkillEntry | null {
+  if (!isObject(item)) return null;
+  if (typeof item.name !== "string") return null;
+  const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `skill-${index + 1}`;
+  const kind = item.kind === "passive" ? "passive" : "active";
+  const description = typeof item.description === "string" && item.description.trim() ? item.description : undefined;
+  const cdNum = asFiniteNumber(item.cooldownSeconds);
+  const cooldownSeconds = cdNum != null && cdNum > 0 ? Math.floor(cdNum) : undefined;
+  const rawCosts = Array.isArray(item.costs) ? item.costs : [];
+  const costs: SkillCost[] = [];
+  for (let i = 0; i < rawCosts.length; i += 1) {
+    const c = normalizeSkillCost(rawCosts[i], i);
+    if (c) costs.push(c);
+  }
+  const rawEffects = Array.isArray(item.effects) ? item.effects : [];
+  const effects: SkillEffectRef[] = [];
+  for (let i = 0; i < rawEffects.length; i += 1) {
+    const e = normalizeSkillEffect(rawEffects[i], i);
+    if (e) effects.push(e);
+  }
+  const unlock = normalizeSkillUnlock(item.unlock);
+  const rawTags = Array.isArray(item.tags) ? item.tags : [];
+  const tagSet = new Set<string>();
+  for (const tag of rawTags) {
+    if (typeof tag !== "string") continue;
+    const trimmed = tag.trim().toLowerCase();
+    if (trimmed) tagSet.add(trimmed);
+  }
+  const tags = tagSet.size > 0 ? Array.from(tagSet) : undefined;
+  return {
+    id,
+    name: item.name,
+    kind,
+    ...(description ? { description } : {}),
+    ...(cooldownSeconds !== undefined ? { cooldownSeconds } : {}),
+    ...(costs.length > 0 ? { costs } : {}),
+    ...(effects.length > 0 ? { effects } : {}),
+    ...(unlock ? { unlock } : {}),
+    ...(tags ? { tags } : {}),
+  };
+}
+
+function normalizeSkillsDraft(value: unknown): SkillsAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const definitionsRef =
+    typeof value.definitionsRef === "string" && value.definitionsRef.trim()
+      ? value.definitionsRef.trim()
+      : undefined;
+  const rawEntries = Array.isArray(value.entries) ? value.entries : [];
+  const entries: SkillEntry[] = [];
+  for (let i = 0; i < rawEntries.length; i += 1) {
+    const e = normalizeSkillEntry(rawEntries[i], i);
+    if (e) entries.push(e);
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    ...(definitionsRef ? { definitionsRef } : {}),
     entries,
   };
 }
@@ -1031,6 +1183,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "economyLink" &&
     value.type !== "currency" &&
     value.type !== "currencyExchange" &&
+    value.type !== "skills" &&
     value.type !== "globalVariable" &&
     value.type !== "inventory" &&
     value.type !== "production" &&
@@ -1192,6 +1345,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "currencyExchange") {
         const draft = normalizeCurrencyExchangeDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "skills") {
+        const draft = normalizeSkillsDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,

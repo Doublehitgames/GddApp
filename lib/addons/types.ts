@@ -106,6 +106,60 @@ export type CurrencyExchangeAddonDraft = {
   entries: CurrencyExchangeEntry[];
 };
 
+// ── Skills addon ────────────────────────────────────────────────────
+
+export type SkillKind = "active" | "passive";
+
+/** What a skill costs to use. Each entry covers one currency/attribute/charges payment. */
+export type SkillCostType = "currency" | "attribute" | "charges";
+
+export type SkillCost = {
+  id: string;
+  type: SkillCostType;
+  amount: number;
+  /** Required when type === "currency". Section ID of a Currency addon. */
+  currencyRef?: string;
+  /** Required when type === "attribute". Key from the linked AttributeDefinitions. */
+  attributeKey?: string;
+};
+
+/** Reference to one entry of an `attributeModifiers` addon, as a skill effect. */
+export type SkillEffectRef = {
+  id: string;
+  /** Section ID where the source attributeModifiers addon lives. */
+  attributeModifiersSectionId: string;
+  /** Addon ID inside that section (a section may host multiple). */
+  attributeModifiersAddonId: string;
+  /** ID of the AttributeModifierEntry inside that addon's `modifiers` list. */
+  modifierEntryId: string;
+};
+
+export type SkillEntry = {
+  id: string;
+  name: string;
+  description?: string;
+  kind: SkillKind;
+  /** Only meaningful when kind === "active". */
+  cooldownSeconds?: number;
+  costs?: SkillCost[];
+  effects?: SkillEffectRef[];
+  /** Reuses the CraftTableUnlock structure (level + currency + item). */
+  unlock?: CraftTableUnlock;
+  /** Free-form tags (e.g. "fire", "single-target"). Lower-cased + dedup'd by normalize. */
+  tags?: string[];
+};
+
+export type SkillsAddonDraft = {
+  id: string;
+  name: string;
+  /**
+   * Optional shared link to an AttributeDefinitions section. When set, the
+   * cost picker for type === "attribute" gets a typed dropdown of attribute keys.
+   */
+  definitionsRef?: string;
+  entries: SkillEntry[];
+};
+
 export type GlobalVariableValueType = "percent" | "multiplier" | "flat" | "boolean";
 export type GlobalVariableScope = "global" | "mode" | "event" | "season";
 
@@ -471,6 +525,7 @@ export type SectionAddonType =
   | "exportSchema"
   | "richDoc"
   | "currencyExchange"
+  | "skills"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -603,6 +658,14 @@ export type RichDocSectionAddon = {
   data: RichDocAddonDraft;
 };
 
+export type SkillsSectionAddon = {
+  id: string;
+  type: "skills";
+  name: string;
+  group?: string;
+  data: SkillsAddonDraft;
+};
+
 // Legacy addon shape kept for compatibility in normalize/migration flows.
 export type GenericStatsSectionAddon = {
   id: string;
@@ -629,6 +692,7 @@ export type SectionAddon =
   | FieldLibrarySectionAddon
   | ExportSchemaSectionAddon
   | RichDocSectionAddon
+  | SkillsSectionAddon
   | GenericStatsSectionAddon;
 
 function createDefaultRows(
@@ -905,6 +969,19 @@ export function createDefaultRichDocAddon(addonId: string): RichDocSectionAddon 
       name: "Documento",
       blocks: [],
       schemaVersion: 1,
+    },
+  };
+}
+
+export function createDefaultSkillsAddon(addonId: string): SkillsSectionAddon {
+  return {
+    id: addonId,
+    type: "skills",
+    name: "Skills",
+    data: {
+      id: addonId,
+      name: "Skills",
+      entries: [],
     },
   };
 }

@@ -27,7 +27,8 @@ export type PageTypeId =
   | "progression"
   | "recipe"
   | "craftTable"
-  | "narrative";
+  | "narrative"
+  | "skills";
 
 /**
  * Semantic dependencies a page type can declare. Each kind is resolved by
@@ -327,6 +328,22 @@ export const PAGE_TYPES: PageType[] = [
     emoji: "📖",
     addons: [{ type: "richDoc", role: "primary" }],
     tags: ["narrative"],
+  },
+  {
+    id: "skills",
+    label: "Habilidades",
+    description: "Catálogo de habilidades (active/passive) com cooldown, custos e efeitos referenciando Attribute Modifiers.",
+    emoji: "⚡",
+    defaultSectionTitle: "Habilidades",
+    addons: [
+      {
+        type: "skills",
+        role: "primary",
+        nameOverride: "Habilidades",
+        nameOverrideKey: "pageTypes.addonNames.skills",
+      },
+    ],
+    tags: ["combat", "progression"],
   },
 ];
 

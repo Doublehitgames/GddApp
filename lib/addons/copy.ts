@@ -23,6 +23,7 @@ const ID_PREFIX: Record<SectionAddonType, string> = {
   fieldLibrary: "field-library",
   exportSchema: "export-schema",
   richDoc: "rich-doc",
+  skills: "skills",
   genericStats: "data-schema",
 };
 

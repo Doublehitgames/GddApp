@@ -17,6 +17,7 @@ import {
   createDefaultProductionAddon,
   createDefaultProgressionTableAddon,
   createDefaultRichDocAddon,
+  createDefaultSkillsAddon,
   sectionAddonToBalanceDraft,
 } from "@/lib/addons/types";
 import { AttributeDefinitionsAddonPanel } from "@/components/AttributeDefinitionsAddonPanel";
@@ -51,6 +52,8 @@ import { ProgressionTableAddonPanel } from "@/components/ProgressionTableAddonPa
 import { ProgressionTableAddonReadOnly } from "@/components/ProgressionTableAddonReadOnly";
 import { RichDocAddonPanel } from "@/components/RichDocAddonPanel";
 import { RichDocAddonReadOnly } from "@/components/RichDocAddonReadOnly";
+import { SkillsAddonPanel } from "@/components/SkillsAddonPanel";
+import { SkillsAddonReadOnly } from "@/components/SkillsAddonReadOnly";
 import React from "react";
 
 export type AddonCategory =
@@ -271,6 +274,32 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "attributeModifiers") return null;
       return React.createElement(AttributeModifiersAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+        bare: options?.bare,
+      });
+    },
+  },
+  {
+    type: "skills",
+    label: "Habilidades",
+    category: "attributes",
+    emoji: "⚡",
+    createDefault: () => {
+      const addonId = `skills-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultSkillsAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "skills") return null;
+      return React.createElement(SkillsAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "skills") return null;
+      return React.createElement(SkillsAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,

@@ -2104,6 +2104,9 @@ function SectionDetailContent({
     if (type === "attributeModifiers") {
       return t("attributeModifiersAddon.addonTypeLabel", "Modificadores de Atributos");
     }
+    if (type === "skills") {
+      return t("skillsAddon.addonTypeLabel", "Habilidades");
+    }
     if (type === "fieldLibrary") {
       return t("fieldLibraryAddon.addonTypeLabel", "Biblioteca de Campos");
     }
