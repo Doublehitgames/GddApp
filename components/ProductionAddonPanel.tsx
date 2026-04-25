@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
@@ -8,6 +8,8 @@ import { useAuthStore } from "@/store/authStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
+import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
+import { openQuickNewPage } from "@/components/QuickNewPageModal";
 
 interface ProductionAddonPanelProps {
   addon: ProductionAddonDraft;
@@ -158,10 +160,6 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     updateSectionAddon(ownerLocation.projectId, target.sectionId, target.addonId, nextAddon, sectionAuditBy);
   };
 
-  const [isMinOutputLinkMenuOpen, setIsMinOutputLinkMenuOpen] = useState(false);
-  const [isMaxOutputLinkMenuOpen, setIsMaxOutputLinkMenuOpen] = useState(false);
-  const [isIntervalLinkMenuOpen, setIsIntervalLinkMenuOpen] = useState(false);
-  const [isCraftLinkMenuOpen, setIsCraftLinkMenuOpen] = useState(false);
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<
     { sectionId: string; title: string; shortDescription: string } | null
   >(null);
@@ -360,34 +358,87 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   const maxOutputLevelBadges = buildLevelBadges(maxOutputSelectedOption, addon.maxOutput, toQuantityLabel);
   const intervalLevelBadges = buildLevelBadges(intervalSelectedOption, addon.intervalSeconds, toSecondsLabel);
   const craftLevelBadges = buildLevelBadges(craftSelectedOption, addon.craftTimeSeconds, toSecondsLabel);
-  const buildLinkLabel = (baseLabel: string, linkedColumnName: string | undefined, fallbackColumnName: string | undefined) => {
-    if (!fallbackColumnName) return baseLabel;
-    const linkedName =
-      linkedColumnName ||
-      fallbackColumnName ||
-      t("productionAddon.invalidProgressionLinkOption", "Vinculo invalido (coluna removida)");
-    return `${baseLabel} (${linkedName})`;
+
+  const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
+    () =>
+      progressionColumnOptions.map((option) => ({
+        key: option.key,
+        label: option.label,
+      })),
+    [progressionColumnOptions]
+  );
+
+  const renderLevelBadges = (
+    badges: ReturnType<typeof buildLevelBadges>,
+    keyPrefix: string
+  ): ReactNode => {
+    if (!badges) return null;
+    return (
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {badges.map((badge) => (
+          <span
+            key={`${keyPrefix}-lv-${badge.level}`}
+            className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100"
+          >
+            Lv{badge.level}: {badge.value}
+          </span>
+        ))}
+      </div>
+    );
   };
-  const minOutputLinkLabel = (() => {
-    const base = t("productionAddon.minOutputLabel", "Qtd minima");
-    const link = addon.minOutputProgressionLink;
-    return buildLinkLabel(base, minOutputSelectedOption?.label, link?.columnName);
-  })();
-  const maxOutputLinkLabel = (() => {
-    const base = t("productionAddon.maxOutputLabel", "Qtd maxima");
-    const link = addon.maxOutputProgressionLink;
-    return buildLinkLabel(base, maxOutputSelectedOption?.label, link?.columnName);
-  })();
-  const intervalLinkLabel = (() => {
-    const base = t("productionAddon.intervalSecondsLabel", "Tempo (segundos)");
-    const link = addon.intervalSecondsProgressionLink;
-    return buildLinkLabel(base, intervalSelectedOption?.label, link?.columnName);
-  })();
-  const craftLinkLabel = (() => {
-    const base = t("productionAddon.craftTimeSecondsLabel", "Tempo de receita (segundos)");
-    const link = addon.craftTimeSecondsProgressionLink;
-    return buildLinkLabel(base, craftSelectedOption?.label, link?.columnName);
-  })();
+
+  const handleLinkChange = (
+    field:
+      | "minOutputProgressionLink"
+      | "maxOutputProgressionLink"
+      | "intervalSecondsProgressionLink"
+      | "craftTimeSecondsProgressionLink",
+    option: LinkedFieldOption | undefined
+  ) => {
+    if (!option) {
+      commit({ [field]: undefined } as Partial<ProductionAddonDraft>);
+      return;
+    }
+    const found = progressionColumnOptions.find((o) => o.key === option.key);
+    if (!found) return;
+    commit({
+      [field]: {
+        progressionAddonId: found.progressionAddonId,
+        columnId: found.columnId,
+        columnName: found.columnName,
+      },
+    } as Partial<ProductionAddonDraft>);
+  };
+
+  const renderEmptyOptionsCta = (): ReactNode => (
+    <button
+      type="button"
+      onClick={openQuickNewPage}
+      className="inline-flex items-center gap-1 rounded-md border border-indigo-400/50 bg-indigo-600/20 px-2 py-1 text-[11px] font-medium text-indigo-100 hover:bg-indigo-600/30"
+    >
+      <span aria-hidden="true">+</span>
+      <span>{t("productionAddon.createProgressionPageCta", "Criar página com progressão")}</span>
+    </button>
+  );
+
+  const renderInventoryEmptyHint = (): ReactNode => (
+    <div className="mt-1 flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
+      <span>
+        {t(
+          "productionAddon.inventoryEmptyHint",
+          "Nenhuma página com Inventário neste projeto. Crie uma página de Itens primeiro."
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={openQuickNewPage}
+        className="inline-flex items-center gap-1 rounded-md border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-50 hover:bg-amber-500/30"
+      >
+        <span aria-hidden="true">+</span>
+        <span>{t("productionAddon.createItemsPageCta", "Criar página de Itens")}</span>
+      </button>
+    </div>
+  );
 
   const commit = (patch: Partial<ProductionAddonDraft>) => {
     const next: ProductionAddonDraft = {
@@ -514,6 +565,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   value={addon.outputRef || ""}
                   onChange={(event) => commit({ outputRef: event.target.value || undefined })}
                   className={INPUT_CLASS}
+                  disabled={inventoryOptions.length === 0}
                 >
                   <option value="">{t("productionAddon.selectNone", "Sem referencia")}</option>
                   {inventoryOptions.map((option) => (
@@ -522,64 +574,19 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     </option>
                   ))}
                 </select>
+                {inventoryOptions.length === 0 ? renderInventoryEmptyHint() : null}
               </label>
 
               <div className="space-y-2">
-                <label className="block">
-                  <button
-                    type="button"
-                    onClick={() => setIsMinOutputLinkMenuOpen((prev) => !prev)}
-                    className="mb-1 block text-left text-xs text-gray-400 hover:text-gray-200 underline"
-                    aria-expanded={isMinOutputLinkMenuOpen}
-                    aria-label={minOutputLinkLabel}
-                  >
-                  {minOutputLinkLabel}
-                  {addon.minOutputProgressionLink ? (
-                    <span className="ml-1 inline-block text-gray-300" aria-hidden="true">
-                      •
-                    </span>
-                  ) : null}
-                  </button>
-                  {isMinOutputLinkMenuOpen ? (
-                    <div className="mb-2 max-h-40 overflow-auto rounded-lg border border-gray-700 bg-gray-900/80 p-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          commit({ minOutputProgressionLink: undefined });
-                          setIsMinOutputLinkMenuOpen(false);
-                        }}
-                        className="block w-full rounded px-2 py-1 text-left text-xs text-gray-200 hover:bg-gray-800"
-                      >
-                        {t("productionAddon.noProgressionLinkOption", "Sem vinculo")}
-                      </button>
-                      {minOutputSelectedKey && !minOutputSelectedOption && (
-                        <div className="px-2 py-1 text-xs text-amber-300">
-                          {t("productionAddon.invalidProgressionLinkOption", "Vinculo invalido (coluna removida)")}
-                        </div>
-                      )}
-                      {progressionColumnOptions.map((option) => (
-                        <button
-                          key={`min-${option.key}`}
-                          type="button"
-                          onClick={() => {
-                            commit({
-                              minOutputProgressionLink: {
-                                progressionAddonId: option.progressionAddonId,
-                                columnId: option.columnId,
-                                columnName: option.columnName,
-                              },
-                            });
-                            setIsMinOutputLinkMenuOpen(false);
-                          }}
-                          className={`block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-800 ${
-                            minOutputSelectedKey === option.key ? "text-gray-100 bg-gray-800/70" : "text-gray-300"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                <LinkedFieldRow
+                  label={t("productionAddon.minOutputLabel", "Qtd minima")}
+                  selectedKey={minOutputSelectedKey}
+                  options={linkedFieldOptions}
+                  invalidLabelFallback={addon.minOutputProgressionLink?.columnName}
+                  onChange={(option) => handleLinkChange("minOutputProgressionLink", option)}
+                  emptyStateCta={renderEmptyOptionsCta()}
+                  badges={renderLevelBadges(minOutputLevelBadges, "min-output")}
+                >
                   <CommitOptionalNumberInput
                     value={addon.minOutput}
                     onCommit={(next) => commit({ minOutput: next })}
@@ -588,74 +595,16 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     integer
                     className={INPUT_CLASS}
                   />
-                  {minOutputLevelBadges ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {minOutputLevelBadges.map((badge) => (
-                        <span
-                          key={`min-output-lv-${badge.level}`}
-                          className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100"
-                        >
-                          Lv{badge.level}: {badge.value}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </label>
-                <label className="block">
-                  <button
-                    type="button"
-                    onClick={() => setIsMaxOutputLinkMenuOpen((prev) => !prev)}
-                    className="mb-1 block text-left text-xs text-gray-400 hover:text-gray-200 underline"
-                    aria-expanded={isMaxOutputLinkMenuOpen}
-                    aria-label={maxOutputLinkLabel}
-                  >
-                  {maxOutputLinkLabel}
-                  {addon.maxOutputProgressionLink ? (
-                    <span className="ml-1 inline-block text-gray-300" aria-hidden="true">
-                      •
-                    </span>
-                  ) : null}
-                  </button>
-                  {isMaxOutputLinkMenuOpen ? (
-                    <div className="mb-2 max-h-40 overflow-auto rounded-lg border border-gray-700 bg-gray-900/80 p-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          commit({ maxOutputProgressionLink: undefined });
-                          setIsMaxOutputLinkMenuOpen(false);
-                        }}
-                        className="block w-full rounded px-2 py-1 text-left text-xs text-gray-200 hover:bg-gray-800"
-                      >
-                        {t("productionAddon.noProgressionLinkOption", "Sem vinculo")}
-                      </button>
-                      {maxOutputSelectedKey && !maxOutputSelectedOption && (
-                        <div className="px-2 py-1 text-xs text-amber-300">
-                          {t("productionAddon.invalidProgressionLinkOption", "Vinculo invalido (coluna removida)")}
-                        </div>
-                      )}
-                      {progressionColumnOptions.map((option) => (
-                        <button
-                          key={`max-${option.key}`}
-                          type="button"
-                          onClick={() => {
-                            commit({
-                              maxOutputProgressionLink: {
-                                progressionAddonId: option.progressionAddonId,
-                                columnId: option.columnId,
-                                columnName: option.columnName,
-                              },
-                            });
-                            setIsMaxOutputLinkMenuOpen(false);
-                          }}
-                          className={`block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-800 ${
-                            maxOutputSelectedKey === option.key ? "text-gray-100 bg-gray-800/70" : "text-gray-300"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                </LinkedFieldRow>
+                <LinkedFieldRow
+                  label={t("productionAddon.maxOutputLabel", "Qtd maxima")}
+                  selectedKey={maxOutputSelectedKey}
+                  options={linkedFieldOptions}
+                  invalidLabelFallback={addon.maxOutputProgressionLink?.columnName}
+                  onChange={(option) => handleLinkChange("maxOutputProgressionLink", option)}
+                  emptyStateCta={renderEmptyOptionsCta()}
+                  badges={renderLevelBadges(maxOutputLevelBadges, "max-output")}
+                >
                   <CommitOptionalNumberInput
                     value={addon.maxOutput}
                     onCommit={(next) => commit({ maxOutput: next })}
@@ -664,75 +613,17 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     integer
                     className={INPUT_CLASS}
                   />
-                  {maxOutputLevelBadges ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {maxOutputLevelBadges.map((badge) => (
-                        <span
-                          key={`max-output-lv-${badge.level}`}
-                          className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100"
-                        >
-                          Lv{badge.level}: {badge.value}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </label>
+                </LinkedFieldRow>
               </div>
-              <label className="block">
-                <button
-                  type="button"
-                  onClick={() => setIsIntervalLinkMenuOpen((prev) => !prev)}
-                  className="mb-1 block text-left text-xs text-gray-400 hover:text-gray-200 underline"
-                  aria-expanded={isIntervalLinkMenuOpen}
-                  aria-label={intervalLinkLabel}
-                >
-                  {intervalLinkLabel}
-                  {addon.intervalSecondsProgressionLink ? (
-                    <span className="ml-1 inline-block text-gray-300" aria-hidden="true">
-                      •
-                    </span>
-                  ) : null}
-                </button>
-                {isIntervalLinkMenuOpen ? (
-                  <div className="mb-2 max-h-40 overflow-auto rounded-lg border border-gray-700 bg-gray-900/80 p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        commit({ intervalSecondsProgressionLink: undefined });
-                        setIsIntervalLinkMenuOpen(false);
-                      }}
-                      className="block w-full rounded px-2 py-1 text-left text-xs text-gray-200 hover:bg-gray-800"
-                    >
-                      {t("productionAddon.noProgressionLinkOption", "Sem vinculo")}
-                    </button>
-                    {intervalSelectedKey && !intervalSelectedOption && (
-                      <div className="px-2 py-1 text-xs text-amber-300">
-                        {t("productionAddon.invalidProgressionLinkOption", "Vinculo invalido (coluna removida)")}
-                      </div>
-                    )}
-                    {progressionColumnOptions.map((option) => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => {
-                          commit({
-                            intervalSecondsProgressionLink: {
-                              progressionAddonId: option.progressionAddonId,
-                              columnId: option.columnId,
-                              columnName: option.columnName,
-                            },
-                          });
-                          setIsIntervalLinkMenuOpen(false);
-                        }}
-                        className={`block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-800 ${
-                          intervalSelectedKey === option.key ? "text-gray-100 bg-gray-800/70" : "text-gray-300"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+              <LinkedFieldRow
+                label={t("productionAddon.intervalSecondsLabel", "Tempo (segundos)")}
+                selectedKey={intervalSelectedKey}
+                options={linkedFieldOptions}
+                invalidLabelFallback={addon.intervalSecondsProgressionLink?.columnName}
+                onChange={(option) => handleLinkChange("intervalSecondsProgressionLink", option)}
+                emptyStateCta={renderEmptyOptionsCta()}
+                badges={renderLevelBadges(intervalLevelBadges, "interval")}
+              >
                 <CommitOptionalNumberInput
                   value={addon.intervalSeconds}
                   onCommit={(next) => commit({ intervalSeconds: next })}
@@ -741,19 +632,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   integer
                   className={INPUT_CLASS}
                 />
-                {intervalLevelBadges ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {intervalLevelBadges.map((badge) => (
-                      <span
-                        key={`interval-label-${badge.level}`}
-                        className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100"
-                      >
-                        Lv{badge.level}: {badge.value}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </label>
+              </LinkedFieldRow>
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-2">
@@ -818,10 +697,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     type="button"
                     onClick={() => commit({ ingredients: [...(addon.ingredients || []), { itemRef: "", quantity: 1 }] })}
                     className={BUTTON_TINY_CLASS}
+                    disabled={inventoryOptions.length === 0}
                   >
                     {t("productionAddon.addIngredientButton", "+ Ingrediente")}
                   </button>
                 </div>
+                {inventoryOptions.length === 0 ? renderInventoryEmptyHint() : null}
                 <div className="space-y-2">
                   {(addon.ingredients || []).map((ingredient, index) => (
                     <div key={`ingredient-${index}`} className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
@@ -876,10 +757,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     type="button"
                     onClick={() => commit({ outputs: [...(addon.outputs || []), { itemRef: "", quantity: 1 }] })}
                     className={BUTTON_TINY_CLASS}
+                    disabled={inventoryOptions.length === 0}
                   >
                     {t("productionAddon.addOutputButton", "+ Saida")}
                   </button>
                 </div>
+                {inventoryOptions.length === 0 ? renderInventoryEmptyHint() : null}
                 <div className="space-y-2">
                   {(addon.outputs || []).map((output, index) => (
                     <div key={`output-${index}`} className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
@@ -927,61 +810,15 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 </div>
               </div>
 
-              <label className="block">
-                <button
-                  type="button"
-                  onClick={() => setIsCraftLinkMenuOpen((prev) => !prev)}
-                  className="mb-1 block text-left text-xs text-gray-400 hover:text-gray-200 underline"
-                  aria-expanded={isCraftLinkMenuOpen}
-                  aria-label={craftLinkLabel}
-                >
-                  {craftLinkLabel}
-                  {addon.craftTimeSecondsProgressionLink ? (
-                    <span className="ml-1 inline-block text-gray-300" aria-hidden="true">
-                      •
-                    </span>
-                  ) : null}
-                </button>
-                {isCraftLinkMenuOpen ? (
-                  <div className="mb-2 max-h-40 overflow-auto rounded-lg border border-gray-700 bg-gray-900/80 p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        commit({ craftTimeSecondsProgressionLink: undefined });
-                        setIsCraftLinkMenuOpen(false);
-                      }}
-                      className="block w-full rounded px-2 py-1 text-left text-xs text-gray-200 hover:bg-gray-800"
-                    >
-                      {t("productionAddon.noProgressionLinkOption", "Sem vinculo")}
-                    </button>
-                    {craftSelectedKey && !craftSelectedOption && (
-                      <div className="px-2 py-1 text-xs text-amber-300">
-                        {t("productionAddon.invalidProgressionLinkOption", "Vinculo invalido (coluna removida)")}
-                      </div>
-                    )}
-                    {progressionColumnOptions.map((option) => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => {
-                          commit({
-                            craftTimeSecondsProgressionLink: {
-                              progressionAddonId: option.progressionAddonId,
-                              columnId: option.columnId,
-                              columnName: option.columnName,
-                            },
-                          });
-                          setIsCraftLinkMenuOpen(false);
-                        }}
-                        className={`block w-full rounded px-2 py-1 text-left text-xs hover:bg-gray-800 ${
-                          craftSelectedKey === option.key ? "text-gray-100 bg-gray-800/70" : "text-gray-300"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
+              <LinkedFieldRow
+                label={t("productionAddon.craftTimeSecondsLabel", "Tempo de receita (segundos)")}
+                selectedKey={craftSelectedKey}
+                options={linkedFieldOptions}
+                invalidLabelFallback={addon.craftTimeSecondsProgressionLink?.columnName}
+                onChange={(option) => handleLinkChange("craftTimeSecondsProgressionLink", option)}
+                emptyStateCta={renderEmptyOptionsCta()}
+                badges={renderLevelBadges(craftLevelBadges, "craft")}
+              >
                 <CommitOptionalNumberInput
                   value={addon.craftTimeSeconds}
                   onCommit={(next) => commit({ craftTimeSeconds: next })}
@@ -990,19 +827,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   integer
                   className={INPUT_CLASS}
                 />
-                {craftLevelBadges ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {craftLevelBadges.map((badge) => (
-                      <span
-                        key={`craft-label-${badge.level}`}
-                        className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100"
-                      >
-                        Lv{badge.level}: {badge.value}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </label>
+              </LinkedFieldRow>
             </div>
           </div>
         )}

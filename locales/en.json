@@ -13,6 +13,15 @@
     "copyTooltip": "Copy public link",
     "copied": "Link copied!"
   },
+  "linkedField": {
+    "noLink": "No link",
+    "addLink": "Link to a progression table",
+    "editLink": "Edit link",
+    "popoverTitle": "Link to a progression table",
+    "invalid": "Broken link",
+    "invalidExplain": "The linked column no longer exists. Pick another or clear the link.",
+    "emptyOptions": "No progression table in this section. Create one to link."
+  },
   "quickNewPage": {
     "modalTitle": "New page",
     "modalHint": "Shortcut: N · Enter to create · Esc to close",
@@ -1076,6 +1085,9 @@
     "craftTablesHint": "Check the tables where this recipe should appear. The table will list this recipe automatically.",
     "craftTablesEmpty": "No craft table created in this project yet. Create one to register this recipe there.",
     "openCraftTable": "Open craft table",
+    "createProgressionPageCta": "Create a page with a progression table",
+    "inventoryEmptyHint": "No page with Inventory in this project. Create an Items page first.",
+    "createItemsPageCta": "Create an Items page",
     "modeLabel": "Production mode",
     "mode": {
       "passive": "Passive",

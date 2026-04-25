@@ -13,6 +13,15 @@
     "copyTooltip": "Copiar link público",
     "copied": "Link copiado!"
   },
+  "linkedField": {
+    "noLink": "Sem vínculo",
+    "addLink": "Vincular a uma tabela de progressão",
+    "editLink": "Editar vínculo",
+    "popoverTitle": "Vincular a tabela de progressão",
+    "invalid": "Vínculo quebrado",
+    "invalidExplain": "A coluna vinculada não existe mais. Escolha outra ou limpe o vínculo.",
+    "emptyOptions": "Nenhuma tabela de progressão nesta seção. Crie uma para vincular."
+  },
   "quickNewPage": {
     "modalTitle": "Nova página",
     "modalHint": "Atalho: N · Enter para criar · Esc para fechar",
@@ -1076,6 +1085,9 @@
     "craftTablesHint": "Marque as mesas onde esta receita deve aparecer. A mesa passa a listar esta receita automaticamente.",
     "craftTablesEmpty": "Nenhuma Mesa de Produção criada neste projeto ainda. Crie uma para registrar esta receita nela.",
     "openCraftTable": "Abrir mesa de produção",
+    "createProgressionPageCta": "Criar página com progressão",
+    "inventoryEmptyHint": "Nenhuma página com Inventário neste projeto. Crie uma página de Itens primeiro.",
+    "createItemsPageCta": "Criar página de Itens",
     "modeLabel": "Modo de producao",
     "mode": {
       "passive": "Passiva",
