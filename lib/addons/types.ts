@@ -178,6 +178,7 @@ export type ProductionAddonDraft = {
   intervalSecondsProgressionLink?: ProductionProgressionLink;
   requiresCollection?: boolean;
   capacity?: number;
+  capacityProgressionLink?: ProductionProgressionLink;
   // Recipe mode
   ingredients: ProductionIngredient[];
   outputs: ProductionOutput[];

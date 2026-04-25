@@ -324,10 +324,14 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   const craftSelectedKey = addon.craftTimeSecondsProgressionLink
     ? `${addon.craftTimeSecondsProgressionLink.progressionAddonId}::${addon.craftTimeSecondsProgressionLink.columnId}`
     : "";
+  const capacitySelectedKey = addon.capacityProgressionLink
+    ? `${addon.capacityProgressionLink.progressionAddonId}::${addon.capacityProgressionLink.columnId}`
+    : "";
   const minOutputSelectedOption = minOutputSelectedKey ? progressionColumnOptionByKey.get(minOutputSelectedKey) : undefined;
   const maxOutputSelectedOption = maxOutputSelectedKey ? progressionColumnOptionByKey.get(maxOutputSelectedKey) : undefined;
   const intervalSelectedOption = intervalSelectedKey ? progressionColumnOptionByKey.get(intervalSelectedKey) : undefined;
   const craftSelectedOption = craftSelectedKey ? progressionColumnOptionByKey.get(craftSelectedKey) : undefined;
+  const capacitySelectedOption = capacitySelectedKey ? progressionColumnOptionByKey.get(capacitySelectedKey) : undefined;
 
   const buildLevelBadges = (
     option: ProgressionColumnOption | undefined,
@@ -358,6 +362,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   const maxOutputLevelBadges = buildLevelBadges(maxOutputSelectedOption, addon.maxOutput, toQuantityLabel);
   const intervalLevelBadges = buildLevelBadges(intervalSelectedOption, addon.intervalSeconds, toSecondsLabel);
   const craftLevelBadges = buildLevelBadges(craftSelectedOption, addon.craftTimeSeconds, toSecondsLabel);
+  const capacityLevelBadges = buildLevelBadges(capacitySelectedOption, addon.capacity, toQuantityLabel);
 
   const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
     () =>
@@ -392,7 +397,8 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
       | "minOutputProgressionLink"
       | "maxOutputProgressionLink"
       | "intervalSecondsProgressionLink"
-      | "craftTimeSecondsProgressionLink",
+      | "craftTimeSecondsProgressionLink"
+      | "capacityProgressionLink",
     option: LinkedFieldOption | undefined
   ) => {
     if (!option) {
@@ -643,17 +649,26 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     ariaLabel={t("productionAddon.requiresCollectionLabel", "Requer coleta manual")}
                   />
                 </div>
-                <label className="block rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-                  <span className="mb-1 block text-xs text-gray-400">{t("productionAddon.capacityLabel", "Capacidade maxima")}</span>
-                  <CommitOptionalNumberInput
-                    value={addon.capacity}
-                    onCommit={(next) => commit({ capacity: next })}
-                    min={0}
-                    step={1}
-                    integer
-                    className={INPUT_CLASS}
-                  />
-                </label>
+                <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-2">
+                  <LinkedFieldRow
+                    label={t("productionAddon.capacityLabel", "Capacidade maxima")}
+                    selectedKey={capacitySelectedKey}
+                    options={linkedFieldOptions}
+                    invalidLabelFallback={addon.capacityProgressionLink?.columnName}
+                    onChange={(option) => handleLinkChange("capacityProgressionLink", option)}
+                    emptyStateCta={renderEmptyOptionsCta()}
+                    badges={renderLevelBadges(capacityLevelBadges, "capacity")}
+                  >
+                    <CommitOptionalNumberInput
+                      value={addon.capacity}
+                      onCommit={(next) => commit({ capacity: next })}
+                      min={0}
+                      step={1}
+                      integer
+                      className={INPUT_CLASS}
+                    />
+                  </LinkedFieldRow>
+                </div>
               </div>
             </div>
           </div>

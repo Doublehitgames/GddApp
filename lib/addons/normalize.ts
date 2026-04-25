@@ -399,6 +399,7 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   const intervalSeconds = asPositiveIntegerOrUndefined(value.intervalSeconds);
   const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
   const capacity = asPositiveIntegerOrUndefined(value.capacity);
+  const capacityProgressionLink = normalizeProductionProgressionLink(value.capacityProgressionLink);
   const ingredients = normalizeProductionItems(value.ingredients);
   const outputs = normalizeProductionItems(value.outputs);
   const craftTimeSeconds = asPositiveIntegerOrUndefined(value.craftTimeSeconds);
@@ -419,6 +420,7 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
     intervalSecondsProgressionLink,
     requiresCollection,
     capacity,
+    capacityProgressionLink,
     ingredients,
     outputs,
     craftTimeSeconds,
