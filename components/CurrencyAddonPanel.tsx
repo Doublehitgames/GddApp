@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { CurrencyAddonDraft, CurrencyKind } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
+import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 
 interface CurrencyAddonPanelProps {
@@ -13,16 +16,42 @@ interface CurrencyAddonPanelProps {
 const PANEL_SHELL_CLASS = "rounded-2xl border border-gray-700/80 bg-gray-900/70 p-4 md:p-5";
 const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
+const INPUT_CLASS_ERROR =
+  "w-full rounded-lg border border-rose-500/70 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-rose-500";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
 
 export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonPanelProps) {
   const { t } = useI18n();
+  const projectId = useCurrentProjectId();
+  const hasDuplicateCurrencyCode = useProjectStore((s) => s.hasDuplicateCurrencyCode);
+  const [codeError, setCodeError] = useState<string | null>(null);
 
   const commit = (patch: Partial<CurrencyAddonDraft>) => {
     onChange({
       ...addon,
       ...patch,
     });
+  };
+
+  const handleCodeCommit = (next: string) => {
+    const trimmed = next.trim().toUpperCase();
+    if (!trimmed) {
+      setCodeError(null);
+      commit({ code: "" });
+      return;
+    }
+    if (projectId && hasDuplicateCurrencyCode(projectId, trimmed, addon.id)) {
+      setCodeError(
+        t(
+          "currencyAddon.codeDuplicate",
+          "Este código já está em uso por outra moeda neste projeto."
+        )
+      );
+      // Don't commit — keep the previous value so the user must pick a unique one.
+      return;
+    }
+    setCodeError(null);
+    commit({ code: trimmed });
   };
 
   const kinds: CurrencyKind[] = ["soft", "premium", "event", "other"];
@@ -37,11 +66,17 @@ export function CurrencyAddonPanel({ addon, onChange, onRemove }: CurrencyAddonP
             </span>
             <CommitTextInput
               value={addon.code}
-              onCommit={(next) => commit({ code: next })}
+              onCommit={handleCodeCommit}
               transform={(raw) => raw.trim().toUpperCase()}
               placeholder={t("currencyAddon.codePlaceholder", "Ex.: COINS")}
-              className={INPUT_CLASS}
+              className={codeError ? INPUT_CLASS_ERROR : INPUT_CLASS}
+              aria-invalid={codeError ? true : undefined}
             />
+            {codeError && (
+              <p className="mt-1 text-[11px] text-rose-300" role="alert">
+                {codeError}
+              </p>
+            )}
           </label>
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">

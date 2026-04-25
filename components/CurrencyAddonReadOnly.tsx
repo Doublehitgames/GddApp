@@ -45,6 +45,7 @@ export function CurrencyAddonReadOnly({ addon, theme = "dark", bare = false }: C
     return null;
   }, [projects, addon.id]);
 
+  // ownerSectionId is also used by relatedExchanges below.
   const currencyByRef = useMemo(() => {
     const map = new Map<string, CurrencyMeta>();
     for (const project of projects) {
@@ -87,13 +88,9 @@ export function CurrencyAddonReadOnly({ addon, theme = "dark", bare = false }: C
         <span className={isLight ? "text-amber-700" : "text-amber-300"}>↯</span>
       );
     }
-    if (ref === ownerSectionId) {
-      // Don't link the current currency to itself.
-      return <strong>{meta.code}</strong>;
-    }
     return (
       <SectionAnchorLink sectionId={ref} variant="inline" theme={theme}>
-        <strong>{meta.code}</strong>
+        <strong>{meta.displayName}</strong>
       </SectionAnchorLink>
     );
   };

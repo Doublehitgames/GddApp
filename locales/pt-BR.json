@@ -1367,6 +1367,7 @@
     "namePlaceholder": "Ex.: Coins",
     "codeLabel": "Codigo",
     "codePlaceholder": "Ex.: COINS",
+    "codeDuplicate": "Este código já está em uso por outra moeda neste projeto.",
     "displayNameLabel": "Nome exibido",
     "displayNamePlaceholder": "Ex.: Moedas",
     "summaryLabel": "Resumo",

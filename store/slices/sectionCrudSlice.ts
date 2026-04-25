@@ -561,5 +561,21 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         (s) => s.id !== excludeId && (s.dataId || "").trim().toLowerCase() === target
       );
     },
+
+    hasDuplicateCurrencyCode: (projectId: UUID, code: string, excludeAddonId?: string) => {
+      const trimmed = code.trim();
+      if (!trimmed) return false;
+      const project = get().projects.find((p) => p.id === projectId);
+      if (!project) return false;
+      const target = trimmed.toUpperCase();
+      for (const section of project.sections || []) {
+        for (const addon of section.addons || []) {
+          if (addon.type !== "currency") continue;
+          if (addon.id === excludeAddonId) continue;
+          if ((addon.data.code || "").trim().toUpperCase() === target) return true;
+        }
+      }
+      return false;
+    },
   };
 }

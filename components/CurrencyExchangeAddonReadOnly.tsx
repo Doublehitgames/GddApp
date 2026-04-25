@@ -65,10 +65,12 @@ export function CurrencyExchangeAddonReadOnly({
     return (
       <SectionAnchorLink sectionId={ref} variant="inline" theme={theme}>
         <span>
-          <strong>{meta.code}</strong>
-          <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-            ({meta.displayName})
-          </span>
+          <strong>{meta.displayName}</strong>
+          {meta.code && meta.code !== meta.displayName ? (
+            <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+              ({meta.code})
+            </span>
+          ) : null}
         </span>
       </SectionAnchorLink>
     );

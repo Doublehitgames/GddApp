@@ -405,6 +405,7 @@ export interface ProjectStore {
   countDescendants: (projectId: UUID, sectionId: UUID) => number;
   hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
   hasDuplicateDataId: (projectId: UUID, dataId: string, excludeId?: UUID) => boolean;
+  hasDuplicateCurrencyCode: (projectId: UUID, code: string, excludeAddonId?: string) => boolean;
   // Storage
   loadFromStorage: () => void;
   loadFromSupabase: () => Promise<"loaded" | "empty" | "error">;

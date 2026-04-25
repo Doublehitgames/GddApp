@@ -145,10 +145,33 @@ export function CurrencyExchangeAddonPanel({ addon, onChange }: CurrencyExchange
       const newSectionId = addSection(currentProjectId, name, "", sectionAuditBy, "economy");
       if (!newSectionId) throw new Error("create_failed");
       // Customize the seeded currency: set displayName to the typed name and
-      // code to whatever the user typed (or auto-derive from name).
-      const code = wizardCode.trim().toUpperCase() || name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").slice(0, 8);
-      const project = allProjects.find((p) => p.id === currentProjectId);
-      const newSection = project?.sections?.find((s) => s.id === newSectionId);
+      // code to whatever the user typed (or auto-derive from name). Make sure
+      // the code is unique within the project — append a numeric suffix if
+      // another currency already uses it.
+      const baseCode =
+        wizardCode.trim().toUpperCase() ||
+        name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").slice(0, 8) ||
+        "COIN";
+      // Read live store state (not the React-rendered `allProjects` snapshot,
+      // which doesn't yet include the section we just created).
+      const liveProjects = useProjectStore.getState().projects;
+      const liveProject = liveProjects.find((p) => p.id === currentProjectId);
+      const existingCodes = new Set<string>();
+      for (const s of liveProject?.sections || []) {
+        for (const a of s.addons || []) {
+          if (a.type !== "currency") continue;
+          if (s.id === newSectionId) continue;
+          const c = (a.data.code || "").trim().toUpperCase();
+          if (c) existingCodes.add(c);
+        }
+      }
+      let code = baseCode;
+      let suffix = 2;
+      while (existingCodes.has(code)) {
+        code = `${baseCode}${suffix}`;
+        suffix += 1;
+      }
+      const newSection = liveProject?.sections?.find((s) => s.id === newSectionId);
       const currencyAddon = newSection?.addons?.find((a) => a.type === "currency");
       if (currencyAddon && currencyAddon.type === "currency") {
         updateSectionAddon(
