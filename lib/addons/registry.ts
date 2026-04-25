@@ -8,6 +8,7 @@ import {
   createDefaultFieldLibraryAddon,
   createDefaultCraftTableAddon,
   createDefaultCurrencyAddon,
+  createDefaultCurrencyExchangeAddon,
   createDefaultDataSchemaAddon,
   createDefaultEconomyLinkAddon,
   createDefaultExportSchemaAddon,
@@ -30,6 +31,8 @@ import { BalanceAddonPanel } from "@/components/BalanceAddonPanel";
 import { BalanceAddonReadOnly } from "@/components/BalanceAddonReadOnly";
 import { CurrencyAddonPanel } from "@/components/CurrencyAddonPanel";
 import { CurrencyAddonReadOnly } from "@/components/CurrencyAddonReadOnly";
+import { CurrencyExchangeAddonPanel } from "@/components/CurrencyExchangeAddonPanel";
+import { CurrencyExchangeAddonReadOnly } from "@/components/CurrencyExchangeAddonReadOnly";
 import { EconomyLinkAddonPanel } from "@/components/EconomyLinkAddonPanel";
 import { EconomyLinkAddonReadOnly } from "@/components/EconomyLinkAddonReadOnly";
 import { DataSchemaAddonPanel } from "@/components/DataSchemaAddonPanel";
@@ -295,6 +298,32 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "currency") return null;
       return React.createElement(CurrencyAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+        bare: options?.bare,
+      });
+    },
+  },
+  {
+    type: "currencyExchange",
+    label: "Casa de Câmbio",
+    category: "economy",
+    emoji: "💱",
+    createDefault: () => {
+      const addonId = `currency-exchange-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultCurrencyExchangeAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "currencyExchange") return null;
+      return React.createElement(CurrencyExchangeAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "currencyExchange") return null;
+      return React.createElement(CurrencyExchangeAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,

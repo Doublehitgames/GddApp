@@ -13,6 +13,26 @@
     "copyTooltip": "Copy public link",
     "copied": "Link copied!"
   },
+  "currencyExchangeAddon": {
+    "addonTypeLabel": "Currency Exchange",
+    "defaultName": "Currency Exchange",
+    "entriesTitle": "Conversions",
+    "addEntryButton": "+ Conversion",
+    "removeEntryButton": "Remove",
+    "emptyState": "No conversion configured yet. Add one to define a rate between two currencies.",
+    "fromLabel": "Spend",
+    "toLabel": "Receive",
+    "selectNone": "Select the currency",
+    "notesLabel": "Notes (limits, conditions)",
+    "notesPlaceholder": "e.g. up to 5x per day",
+    "makeOneWay": "Make one-way (only From → To)",
+    "makeBidirectional": "Make two-way (To → From also works)",
+    "currencyEmptyHint": "No page with Currency in this project. Create at least two to define a conversion.",
+    "createCurrencyCta": "Create a Currency page",
+    "brokenCurrency": "Removed currency",
+    "brokenLinkExplain": "One of the currencies no longer exists. Pick another or remove this conversion.",
+    "readOnlyEmpty": "No conversion configured."
+  },
   "linkedField": {
     "noLink": "No link",
     "addLink": "Link to a progression table",
@@ -1336,6 +1356,7 @@
     "summaryTypePrefix": "type",
     "summaryDecimalsNone": "no decimals",
     "summaryDecimalsSomeSuffix": "decimal places",
+    "exchangesBlockLabel": "Available conversions",
     "kindLabel": "Currency type",
     "kind": {
       "soft": "Soft",

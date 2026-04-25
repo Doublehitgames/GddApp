@@ -11,6 +11,7 @@ const ID_PREFIX: Record<SectionAddonType, string> = {
   progressionTable: "progression",
   economyLink: "economy",
   currency: "currency",
+  currencyExchange: "currency-exchange",
   globalVariable: "gvar",
   inventory: "inventory",
   production: "production",

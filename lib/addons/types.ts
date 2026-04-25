@@ -81,6 +81,31 @@ export type CurrencyAddonDraft = {
   notes?: string;
 };
 
+/** Direction in which a currency exchange entry can be triggered. */
+export type CurrencyExchangeDirection = "oneWay" | "bidirectional";
+
+export type CurrencyExchangeEntry = {
+  id: string;
+  /** Section id of the currency the player spends. */
+  fromCurrencyRef?: string;
+  /** Amount of the source currency required. */
+  fromAmount: number;
+  /** Section id of the currency the player receives. */
+  toCurrencyRef?: string;
+  /** Amount of the target currency received. */
+  toAmount: number;
+  /** Whether the exchange can also be performed in reverse. */
+  direction: CurrencyExchangeDirection;
+  /** Optional designer-facing notes (limits, conditions, flavor). */
+  notes?: string;
+};
+
+export type CurrencyExchangeAddonDraft = {
+  id: string;
+  name: string;
+  entries: CurrencyExchangeEntry[];
+};
+
 export type GlobalVariableValueType = "percent" | "multiplier" | "flat" | "boolean";
 export type GlobalVariableScope = "global" | "mode" | "event" | "season";
 
@@ -445,6 +470,7 @@ export type SectionAddonType =
   | "fieldLibrary"
   | "exportSchema"
   | "richDoc"
+  | "currencyExchange"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -479,6 +505,14 @@ export type CurrencySectionAddon = {
   name: string;
   group?: string;
   data: CurrencyAddonDraft;
+};
+
+export type CurrencyExchangeSectionAddon = {
+  id: string;
+  type: "currencyExchange";
+  name: string;
+  group?: string;
+  data: CurrencyExchangeAddonDraft;
 };
 
 export type GlobalVariableSectionAddon = {
@@ -583,6 +617,7 @@ export type SectionAddon =
   | ProgressionTableSectionAddon
   | EconomyLinkSectionAddon
   | CurrencySectionAddon
+  | CurrencyExchangeSectionAddon
   | GlobalVariableSectionAddon
   | InventorySectionAddon
   | ProductionSectionAddon
@@ -670,6 +705,19 @@ export function createDefaultCurrencyAddon(addonId: string): CurrencySectionAddo
       displayName: "",
       kind: "soft",
       decimals: 0,
+    },
+  };
+}
+
+export function createDefaultCurrencyExchangeAddon(addonId: string): CurrencyExchangeSectionAddon {
+  return {
+    id: addonId,
+    type: "currencyExchange",
+    name: "Currency Exchange",
+    data: {
+      id: addonId,
+      name: "Currency Exchange",
+      entries: [],
     },
   };
 }

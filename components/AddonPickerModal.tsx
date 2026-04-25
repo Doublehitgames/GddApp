@@ -58,6 +58,7 @@ export function AddonPickerModal({ open, onClose, onPick, existingTypes }: Addon
     if (type === "progressionTable") return t("progressionTableAddon.addonTypeLabel", fallback);
     if (type === "economyLink") return t("economyLinkAddon.addonTypeLabel", fallback);
     if (type === "currency") return t("currencyAddon.addonTypeLabel", fallback);
+    if (type === "currencyExchange") return t("currencyExchangeAddon.addonTypeLabel", fallback);
     if (type === "globalVariable") return t("globalVariableAddon.addonTypeLabel", fallback);
     if (type === "inventory") return t("inventoryAddon.addonTypeLabel", fallback);
     if (type === "production") return t("productionAddon.addonTypeLabel", fallback);

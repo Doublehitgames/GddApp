@@ -13,6 +13,26 @@
     "copyTooltip": "Copiar enlace público",
     "copied": "¡Enlace copiado!"
   },
+  "currencyExchangeAddon": {
+    "addonTypeLabel": "Casa de Cambio",
+    "defaultName": "Currency Exchange",
+    "entriesTitle": "Conversiones",
+    "addEntryButton": "+ Conversión",
+    "removeEntryButton": "Quitar",
+    "emptyState": "Aún no hay conversión configurada. Agrega una para definir una tasa entre dos monedas.",
+    "fromLabel": "Gasta",
+    "toLabel": "Recibe",
+    "selectNone": "Selecciona la moneda",
+    "notesLabel": "Notas (límites, condiciones)",
+    "notesPlaceholder": "Ej.: hasta 5x por día",
+    "makeOneWay": "Una sola vía (solo De → A)",
+    "makeBidirectional": "Doble vía (A → De también funciona)",
+    "currencyEmptyHint": "Ninguna página con Moneda en este proyecto. Crea al menos dos para definir una conversión.",
+    "createCurrencyCta": "Crear página de Moneda",
+    "brokenCurrency": "Moneda eliminada",
+    "brokenLinkExplain": "Una de las monedas ya no existe. Elige otra o quita esta conversión.",
+    "readOnlyEmpty": "Sin conversiones configuradas."
+  },
   "linkedField": {
     "noLink": "Sin vínculo",
     "addLink": "Vincular a una tabla de progresión",
@@ -1336,6 +1356,7 @@
     "summaryTypePrefix": "tipo",
     "summaryDecimalsNone": "sin decimales",
     "summaryDecimalsSomeSuffix": "decimales",
+    "exchangesBlockLabel": "Conversiones disponibles",
     "kindLabel": "Tipo de moneda",
     "kind": {
       "soft": "Soft",

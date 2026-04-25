@@ -55,6 +55,11 @@ const ADDON_PROMPT_INFO: Record<Exclude<SectionAddonType, "genericStats">, Addon
     label: "Currency (Moeda)",
     whenToUse: "Moeda do jogo (ouro, gemas, energia). Uma por seção de tipo economy.",
   },
+  currencyExchange: {
+    label: "Currency Exchange (Casa de Câmbio)",
+    whenToUse:
+      "Página de conversões entre moedas. Define entradas como '100 GOLD → 1 GEM', com direção (mão única ou dupla) e notas opcionais.",
+  },
   globalVariable: {
     label: "Global Variable",
     whenToUse: "Variável global reutilizável (taxa de venda, bônus, multiplicador).",

@@ -23,6 +23,7 @@ export type PageTypeId =
   | "characters"
   | "attributeDefinitions"
   | "economy"
+  | "currencyExchange"
   | "progression"
   | "recipe"
   | "craftTable"
@@ -228,6 +229,22 @@ export const PAGE_TYPES: PageType[] = [
         nameOverride: "Moeda",
         nameOverrideKey: "pageTypes.addonNames.currency",
         customize: seedDefaultCurrency,
+      },
+    ],
+    tags: ["economy"],
+  },
+  {
+    id: "currencyExchange",
+    label: "Casa de Câmbio",
+    description: "Página de conversões entre moedas: define quanto de uma moeda compra outra (ex.: 100 GOLD ⇄ 1 GEM).",
+    emoji: "💱",
+    defaultSectionTitle: "Casa de Câmbio",
+    addons: [
+      {
+        type: "currencyExchange",
+        role: "primary",
+        nameOverride: "Casa de Câmbio",
+        nameOverrideKey: "pageTypes.addonNames.currencyExchange",
       },
     ],
     tags: ["economy"],

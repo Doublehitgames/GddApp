@@ -9,6 +9,7 @@ import type {
   CraftTableEntryField,
   CraftTableUnlock,
   CurrencyAddonDraft,
+  CurrencyExchangeAddonDraft,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
   ExportSchemaAddonDraft,
@@ -247,6 +248,47 @@ function normalizeCurrencyDraft(value: unknown): CurrencyAddonDraft | null {
     kind,
     decimals,
     notes: notes || undefined,
+  };
+}
+
+function normalizeCurrencyExchangeDraft(value: unknown): CurrencyExchangeAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+  const rawEntries = Array.isArray(value.entries) ? value.entries : [];
+  const entries: CurrencyExchangeAddonDraft["entries"] = [];
+  for (let index = 0; index < rawEntries.length; index += 1) {
+    const item = rawEntries[index];
+    if (!isObject(item)) continue;
+    const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `cex_${index + 1}`;
+    const fromCurrencyRef =
+      typeof item.fromCurrencyRef === "string" && item.fromCurrencyRef.trim()
+        ? item.fromCurrencyRef.trim()
+        : undefined;
+    const toCurrencyRef =
+      typeof item.toCurrencyRef === "string" && item.toCurrencyRef.trim()
+        ? item.toCurrencyRef.trim()
+        : undefined;
+    const fromAmountNum = asFiniteNumber(item.fromAmount);
+    const toAmountNum = asFiniteNumber(item.toAmount);
+    const fromAmount = fromAmountNum != null && fromAmountNum >= 0 ? fromAmountNum : 0;
+    const toAmount = toAmountNum != null && toAmountNum >= 0 ? toAmountNum : 0;
+    const direction = item.direction === "bidirectional" ? "bidirectional" : "oneWay";
+    const notes = typeof item.notes === "string" && item.notes.trim() ? item.notes : undefined;
+    entries.push({
+      id,
+      fromCurrencyRef,
+      fromAmount,
+      toCurrencyRef,
+      toAmount,
+      direction,
+      ...(notes ? { notes } : {}),
+    });
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    entries,
   };
 }
 
@@ -988,6 +1030,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "progressionTable" &&
     value.type !== "economyLink" &&
     value.type !== "currency" &&
+    value.type !== "currencyExchange" &&
     value.type !== "globalVariable" &&
     value.type !== "inventory" &&
     value.type !== "production" &&
@@ -1139,6 +1182,16 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
       }
       if (addon.type === "currency") {
         const draft = normalizeCurrencyDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "currencyExchange") {
+        const draft = normalizeCurrencyExchangeDraft(addon.data);
         if (!draft) continue;
         out.push({
           ...addon,
