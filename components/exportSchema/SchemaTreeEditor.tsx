@@ -621,10 +621,12 @@ export function BindingEditor({
     { value: "resolvedName", label: "resolved.name" },
     { value: "resolvedMode", label: "resolved.mode" },
     { value: "resolvedAttributeKey", label: "resolved.attributeKey" },
+    { value: "resolvedDefinitionsRef", label: "resolved.definitionsRef (dataId)" },
     { value: "resolvedValue", label: "resolved.value" },
     { value: "resolvedTemporary", label: "resolved.temporary" },
     { value: "resolvedDurationSeconds", label: "resolved.durationSeconds" },
     { value: "resolvedTickIntervalSeconds", label: "resolved.tickIntervalSeconds" },
+    { value: "resolvedStacking", label: "resolved.stacking" },
     { value: "resolvedCategory", label: "resolved.category" },
   ];
 

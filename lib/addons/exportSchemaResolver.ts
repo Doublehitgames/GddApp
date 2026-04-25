@@ -50,6 +50,12 @@ type ResolveContext = {
   /** Current Skill effect + the resolved AttributeModifier entry (set during `skillEffects` iteration). */
   currentSkillEffect?: SkillEffectRef;
   currentSkillEffectResolved?: AttributeModifierEntry;
+  /**
+   * `definitionsRef` (section ID) from the parent AttributeModifiers addon
+   * of the current effect. Stored as raw section id; resolved to dataId
+   * lazily when binding `resolvedDefinitionsRef` is read.
+   */
+  currentSkillEffectDefinitionsRef?: string;
   arrayFormat?: ExportSchemaArrayFormat;
   currentTable?: ProgressionTableAddonDraft;
   /** When provided, the resolver writes every node's computed value here
@@ -256,12 +262,15 @@ function findSkillsAddon(
 
 /**
  * Finds an AttributeModifier entry across the project by section id +
- * addon id + entry id. Used to resolve `skillEffects` references.
+ * addon id + entry id, and ALSO returns the parent addon's `definitionsRef`
+ * (the section ID of the AttributeDefinitions page that defines the
+ * attribute keys). Used by `skillEffects` to expose `resolvedDefinitionsRef`
+ * so consumers can identify WHICH attribute profile owns the key.
  */
 function findAttributeModifierEntry(
   effect: SkillEffectRef,
   lookup?: SectionLookup
-): AttributeModifierEntry | undefined {
+): { entry?: AttributeModifierEntry; definitionsRef?: string } | undefined {
   if (!lookup) return undefined;
   const meta = lookup.get(effect.attributeModifiersSectionId);
   if (!meta) return undefined;
@@ -269,7 +278,10 @@ function findAttributeModifierEntry(
     if (addon.type !== "attributeModifiers") continue;
     if (addon.id !== effect.attributeModifiersAddonId && addon.data?.id !== effect.attributeModifiersAddonId) continue;
     const data = addon.data as AttributeModifiersAddonDraft;
-    return (data.modifiers || []).find((m) => m.id === effect.modifierEntryId);
+    return {
+      entry: (data.modifiers || []).find((m) => m.id === effect.modifierEntryId),
+      definitionsRef: data.definitionsRef,
+    };
   }
   return undefined;
 }
@@ -369,7 +381,13 @@ function resolveSkillEffectField(
   effect: SkillEffectRef | undefined,
   resolved: AttributeModifierEntry | undefined,
   field: SkillEffectField,
-  lookup?: SectionLookup
+  lookup?: SectionLookup,
+  /**
+   * Section ID stored in the parent AttributeModifiers addon as
+   * `definitionsRef`. Resolved to the section's `dataId` here so the
+   * exported value points at a stable, human-curated identifier.
+   */
+  definitionsRef?: string
 ): string | number | boolean | null {
   if (!effect) {
     switch (field) {
@@ -398,6 +416,8 @@ function resolveSkillEffectField(
       return resolved?.mode ?? "";
     case "resolvedAttributeKey":
       return resolved?.attributeKey ?? "";
+    case "resolvedDefinitionsRef":
+      return resolveRefToDataId(definitionsRef, lookup);
     case "resolvedValue": {
       const v = resolved?.value;
       if (typeof v === "boolean") return v ? 1 : 0;
@@ -409,6 +429,8 @@ function resolveSkillEffectField(
       return resolved?.durationSeconds ?? 0;
     case "resolvedTickIntervalSeconds":
       return resolved?.tickIntervalSeconds ?? 0;
+    case "resolvedStacking":
+      return resolved?.stackingRule ?? "";
     case "resolvedCategory":
       return resolved?.category ?? "";
     default:
@@ -553,7 +575,8 @@ function resolveBinding(
         ctx.currentSkillEffect,
         ctx.currentSkillEffectResolved,
         binding.field,
-        ctx.sectionLookup
+        ctx.sectionLookup,
+        ctx.currentSkillEffectDefinitionsRef
       );
 
     default:
@@ -750,11 +773,12 @@ function buildSkillEffectsRowMajor(
   ctx: ResolveContext
 ): unknown[] {
   return effects.map((effect) => {
-    const resolved = findAttributeModifierEntry(effect, ctx.sectionLookup);
+    const found = findAttributeModifierEntry(effect, ctx.sectionLookup);
     const effectCtx: ResolveContext = {
       ...ctx,
       currentSkillEffect: effect,
-      currentSkillEffectResolved: resolved,
+      currentSkillEffectResolved: found?.entry,
+      currentSkillEffectDefinitionsRef: found?.definitionsRef,
     };
     const out: Record<string, unknown> = {};
     for (const tmpl of itemTemplate) {

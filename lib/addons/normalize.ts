@@ -1171,10 +1171,12 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
       "resolvedName",
       "resolvedMode",
       "resolvedAttributeKey",
+      "resolvedDefinitionsRef",
       "resolvedValue",
       "resolvedTemporary",
       "resolvedDurationSeconds",
       "resolvedTickIntervalSeconds",
+      "resolvedStacking",
       "resolvedCategory",
     ]);
     const field = typeof raw.field === "string" ? raw.field.trim() : "";

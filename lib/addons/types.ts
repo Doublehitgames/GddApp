@@ -519,10 +519,24 @@ export type SkillEffectField =
   | "resolvedName"
   | "resolvedMode"
   | "resolvedAttributeKey"
+  /**
+   * The dataId of the AttributeDefinitions section that the parent
+   * AttributeModifiers addon links to via `definitionsRef`. Useful in
+   * Remote Config so the consumer knows WHICH attribute profile owns
+   * the `attributeKey` (e.g. "hp"). Empty when the parent modifier addon
+   * has no definitionsRef set.
+   */
+  | "resolvedDefinitionsRef"
   | "resolvedValue"
   | "resolvedTemporary"
   | "resolvedDurationSeconds"
   | "resolvedTickIntervalSeconds"
+  /**
+   * Stacking rule from the source modifier ("unique" | "refresh" | "stack").
+   * Empty string when the modifier didn't set one (engine should fall back
+   * to its own default, typically "refresh").
+   */
+  | "resolvedStacking"
   | "resolvedCategory";
 
 export type ExportSchemaBinding =

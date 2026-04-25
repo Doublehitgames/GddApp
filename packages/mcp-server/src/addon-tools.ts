@@ -518,8 +518,9 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "unlockCurrencyRef|unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
       "skillCostField: id|type|amount|currencyRef|definitionsRef|attributeKey. " +
       "skillEffectField: id|attributeModifiersSectionId|attributeModifiersAddonId|" +
-      "modifierEntryId|resolvedName|resolvedMode|resolvedAttributeKey|resolvedValue|" +
-      "resolvedTemporary|resolvedDurationSeconds|resolvedTickIntervalSeconds|resolvedCategory."
+      "modifierEntryId|resolvedName|resolvedMode|resolvedAttributeKey|resolvedDefinitionsRef|" +
+      "resolvedValue|resolvedTemporary|resolvedDurationSeconds|resolvedTickIntervalSeconds|" +
+      "resolvedStacking|resolvedCategory."
     ),
   }).describe("Value binding");
 
