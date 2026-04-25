@@ -37,6 +37,11 @@ import {
 } from "@/lib/pageTypes/registry";
 import { CraftTableRecipePickerDialog } from "@/components/CraftTableRecipePickerDialog";
 import {
+  CurrencyExchangePairDialog,
+  type CurrencyExchangePairCandidate,
+  type CurrencyExchangePairResult,
+} from "@/components/CurrencyExchangePairDialog";
+import {
   AttributeDefinitionsSetupDialog,
   type AttributeDefinitionsSetupResult,
 } from "@/components/AttributeDefinitionsSetupDialog";
@@ -713,6 +718,14 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     title: string;
     parentSectionId: string | null;
   } | null>(null);
+  // Pending Casa de Câmbio create — captures the typed title until the
+  // dedicated pair dialog confirms (or cancels) and we know how to seed
+  // the addon's first conversion.
+  const [cambioPairPending, setCambioPairPending] = useState<{
+    title: string;
+    parentSectionId: string | null;
+    candidates: CurrencyExchangePairCandidate[];
+  } | null>(null);
   // Holds the fully-resolved PendingCreate while the user reviews the
   // summary dialog. Null when the review is not active.
   const [reviewPending, setReviewPending] = useState<PendingCreate | null>(null);
@@ -743,6 +756,20 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     if (pageType?.id === "craftTable") {
       const recipeCandidates = findRecipeCandidates(project?.sections || []);
       setCraftTablePending({ title, parentSectionId, candidates: recipeCandidates });
+      return;
+    }
+
+    // currencyExchange (Casa de Câmbio): always show the dedicated pair
+    // wizard so the user picks both currencies + the initial ratio in one
+    // shot. Standard requires flow can't express two-of-the-same-kind.
+    if (pageType?.id === "currencyExchange") {
+      const currencyCandidates = findCurrencyCandidates(project?.sections || []).map((c) => ({
+        sectionId: c.sectionId,
+        sectionTitle: c.sectionTitle,
+        code: c.currency?.code,
+        displayName: c.currency?.displayName,
+      }));
+      setCambioPairPending({ title, parentSectionId, candidates: currencyCandidates });
       return;
     }
 
@@ -1238,6 +1265,99 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
     resetAddInputs();
   };
 
+  const handleCambioPairConfirm = (result: CurrencyExchangePairResult) => {
+    if (!cambioPairPending) return;
+    const snap = cambioPairPending;
+    setCambioPairPending(null);
+    if (!projectId) return;
+
+    const ecoPT = getPageType("economy");
+    if (!ecoPT) return;
+
+    // Build a list of currency codes already in use so create-new picks
+    // don't collide. Updated as we create each new currency.
+    const usedCodes = new Set<string>();
+    for (const s of project?.sections || []) {
+      for (const a of s.addons || []) {
+        if (a.type !== "currency") continue;
+        const c = (a.data.code || "").trim().toUpperCase();
+        if (c) usedCodes.add(c);
+      }
+    }
+    const dedupeCode = (base: string): string => {
+      if (!base) return "COIN";
+      let candidate = base;
+      let suffix = 2;
+      while (usedCodes.has(candidate)) {
+        candidate = `${base}${suffix}`;
+        suffix += 1;
+      }
+      usedCodes.add(candidate);
+      return candidate;
+    };
+
+    const resolveOrCreate = (
+      pick: CurrencyExchangePairResult["first"]
+    ): { sectionId: string; addonId: string } | null => {
+      if (pick.mode === "link-existing") {
+        const live = useProjectStore
+          .getState()
+          .projects.find((p) => p.id === projectId);
+        const section = live?.sections?.find((s) => s.id === pick.sectionId);
+        const addon = section?.addons?.find((a) => a.type === "currency");
+        if (!section || !addon) return null;
+        return { sectionId: section.id, addonId: addon.id };
+      }
+      // create-new
+      const code = dedupeCode((pick.code || "").toUpperCase().replace(/[^A-Z0-9]+/g, "_"));
+      const seedAddons = buildPageTypeAddons("economy", {}, t).map((a) => {
+        if (a.type !== "currency") return a;
+        return {
+          ...a,
+          data: {
+            ...a.data,
+            displayName: pick.name.trim() || pick.code || "Currency",
+            code,
+          },
+        };
+      });
+      const ecoTitle = `${ecoPT.emoji} ${pick.name.trim() || getPageTypeDefaultSectionTitle(ecoPT, t)}`;
+      const newId = createSectionWithArgs(ecoTitle, null, "economy", seedAddons);
+      if (!newId) return null;
+      const live = useProjectStore.getState().projects.find((p) => p.id === projectId);
+      const section = live?.sections?.find((s) => s.id === newId);
+      const addon = section?.addons?.find((a) => a.type === "currency");
+      if (!section || !addon) return null;
+      return { sectionId: section.id, addonId: addon.id };
+    };
+
+    const firstResolved = resolveOrCreate(result.first);
+    const secondResolved = resolveOrCreate(result.second);
+    if (!firstResolved || !secondResolved) return;
+
+    const customAddons = buildPageTypeAddons(
+      "currencyExchange",
+      {
+        seedCurrencyExchange: {
+          fromCurrencyRef: firstResolved.sectionId,
+          fromAmount: result.fromAmount,
+          toCurrencyRef: secondResolved.sectionId,
+          toAmount: result.toAmount,
+          direction: result.direction,
+        },
+      },
+      t
+    );
+    const created = createSectionWithArgs(
+      snap.title,
+      snap.parentSectionId,
+      "currencyExchange",
+      customAddons.length ? customAddons : undefined
+    );
+    if (created === undefined) return;
+    resetAddInputs();
+  };
+
   if (!mounted || !project) return null;
 
   const isAtProjectHome = pathname === `/projects/${projectId}`;
@@ -1620,6 +1740,13 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
         candidates={craftTablePending?.candidates || []}
         onCancel={() => setCraftTablePending(null)}
         onConfirm={handleCraftTableConfirm}
+      />
+      <CurrencyExchangePairDialog
+        open={cambioPairPending !== null}
+        pageTitle={cambioPairPending?.title || ""}
+        candidates={cambioPairPending?.candidates || []}
+        onCancel={() => setCambioPairPending(null)}
+        onConfirm={handleCambioPairConfirm}
       />
       <AttributeDefinitionsSetupDialog
         open={attrSetupPending !== null}

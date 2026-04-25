@@ -13,6 +13,28 @@
     "copyTooltip": "Copy public link",
     "copied": "Link copied!"
   },
+  "currencyExchangePair": {
+    "title": "Set up Currency Exchange",
+    "titleFor": "Set up conversion for {name}",
+    "intro": "Pick the two currencies involved and the initial rate. You can add more conversions later.",
+    "useExisting": "Use an existing currency",
+    "createNewPlaceholder": "Create a new currency",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Gold",
+    "codeLabel": "Code",
+    "codePlaceholder": "GOLD",
+    "firstStep": "Currency 1 — what the player spends",
+    "firstHint": "Link an existing currency or create a new one (becomes its own project page).",
+    "secondStep": "Currency 2 — what the player receives",
+    "secondHint": "Link another existing currency or create a new one. Can't be the same as Currency 1.",
+    "ratioLabel": "Conversion rate",
+    "ratioHint": "How much of Currency 1 equals how much of Currency 2. Use ⇄ if the trade also works the other way.",
+    "fromAmount": "Spend",
+    "toAmount": "Receive",
+    "makeOneWay": "Make one-way",
+    "makeBidirectional": "Make two-way",
+    "confirm": "Confirm and create"
+  },
   "currencyExchangeAddon": {
     "addonTypeLabel": "Currency Exchange",
     "defaultName": "Currency Exchange",

@@ -13,6 +13,28 @@
     "copyTooltip": "Copiar link público",
     "copied": "Link copiado!"
   },
+  "currencyExchangePair": {
+    "title": "Configurar Casa de Câmbio",
+    "titleFor": "Configurar conversão para {name}",
+    "intro": "Escolha as duas moedas envolvidas e a taxa inicial. Você pode adicionar mais conversões depois.",
+    "useExisting": "Usar moeda existente",
+    "createNewPlaceholder": "Criar nova moeda",
+    "nameLabel": "Nome",
+    "namePlaceholder": "Ex.: Gold",
+    "codeLabel": "Código",
+    "codePlaceholder": "GOLD",
+    "firstStep": "Moeda 1 — a que o jogador gasta",
+    "firstHint": "Linka uma moeda existente ou crie uma nova (vira uma página própria do projeto).",
+    "secondStep": "Moeda 2 — a que o jogador recebe",
+    "secondHint": "Linka outra moeda existente ou crie uma nova. Não pode ser a mesma da Moeda 1.",
+    "ratioLabel": "Taxa de conversão",
+    "ratioHint": "Quanto da Moeda 1 vale quanto da Moeda 2. Use ⇄ se a troca também valer no sentido oposto.",
+    "fromAmount": "Gasta",
+    "toAmount": "Recebe",
+    "makeOneWay": "Tornar mão única",
+    "makeBidirectional": "Tornar mão dupla",
+    "confirm": "Confirmar e criar"
+  },
   "currencyExchangeAddon": {
     "addonTypeLabel": "Casa de Câmbio",
     "defaultName": "Currency Exchange",

@@ -122,6 +122,34 @@ const seedDefaultCurrency = (addon: SectionAddon): SectionAddon => {
   };
 };
 
+const seedCurrencyExchangeFromOptions = (
+  addon: SectionAddon,
+  options?: BuildPageTypeAddonsOptions
+): SectionAddon => {
+  if (addon.type !== "currencyExchange") return addon;
+  const seed = options?.seedCurrencyExchange;
+  if (!seed) return addon;
+  if (!seed.fromCurrencyRef || !seed.toCurrencyRef) return addon;
+  if (seed.fromCurrencyRef === seed.toCurrencyRef) return addon;
+  const entryId = `cex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  return {
+    ...addon,
+    data: {
+      ...addon.data,
+      entries: [
+        {
+          id: entryId,
+          fromCurrencyRef: seed.fromCurrencyRef,
+          fromAmount: Math.max(0, seed.fromAmount || 0),
+          toCurrencyRef: seed.toCurrencyRef,
+          toAmount: Math.max(0, seed.toAmount || 0),
+          direction: seed.direction === "bidirectional" ? "bidirectional" : "oneWay",
+        },
+      ],
+    },
+  };
+};
+
 const seedAttributeDefinitions = (
   addon: SectionAddon,
   options?: BuildPageTypeAddonsOptions
@@ -245,9 +273,9 @@ export const PAGE_TYPES: PageType[] = [
         role: "primary",
         nameOverride: "Casa de Câmbio",
         nameOverrideKey: "pageTypes.addonNames.currencyExchange",
+        customize: seedCurrencyExchangeFromOptions,
       },
     ],
-    requires: ["currency"],
     tags: ["economy"],
   },
   {
@@ -719,6 +747,18 @@ export type BuildPageTypeAddonsOptions = {
   /** Pre-populates a seeded `craftTable` addon with entries referencing recipe sections. */
   linkCraftTableRecipes?: {
     recipeSectionIds: string[];
+  };
+  /**
+   * Seeds a single first conversion entry into a `currencyExchange` addon.
+   * Used by the Casa de Câmbio create-wizard so the new page already has
+   * one ready-to-go conversion between the picked currencies.
+   */
+  seedCurrencyExchange?: {
+    fromCurrencyRef: string;
+    fromAmount: number;
+    toCurrencyRef: string;
+    toAmount: number;
+    direction: "oneWay" | "bidirectional";
   };
 };
 
