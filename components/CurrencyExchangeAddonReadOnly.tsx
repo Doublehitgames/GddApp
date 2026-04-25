@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { CurrencyExchangeAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { SectionAnchorLink } from "@/components/common/SectionAnchorLink";
 
 interface CurrencyExchangeAddonReadOnlyProps {
   addon: CurrencyExchangeAddonDraft;
@@ -62,12 +63,14 @@ export function CurrencyExchangeAddonReadOnly({
       );
     }
     return (
-      <span>
-        <strong>{meta.code}</strong>
-        <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
-          ({meta.displayName})
+      <SectionAnchorLink sectionId={ref} variant="inline" theme={theme}>
+        <span>
+          <strong>{meta.code}</strong>
+          <span className={`ml-1 text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+            ({meta.displayName})
+          </span>
         </span>
-      </span>
+      </SectionAnchorLink>
     );
   };
 

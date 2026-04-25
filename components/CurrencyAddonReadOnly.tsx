@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { CurrencyAddonDraft, CurrencyExchangeEntry } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { SectionAnchorLink } from "@/components/common/SectionAnchorLink";
 
 interface CurrencyAddonReadOnlyProps {
   addon: CurrencyAddonDraft;
@@ -78,10 +79,23 @@ export function CurrencyAddonReadOnly({ addon, theme = "dark", bare = false }: C
     return out;
   }, [ownerSectionId, projects]);
 
-  const renderRefLabel = (ref: string | undefined) => {
-    if (!ref) return "?";
+  const renderRefLink = (ref: string | undefined) => {
+    if (!ref) return <span className={isLight ? "text-rose-700" : "text-rose-300"}>?</span>;
     const meta = currencyByRef.get(ref);
-    return meta ? meta.code : `↯`;
+    if (!meta) {
+      return (
+        <span className={isLight ? "text-amber-700" : "text-amber-300"}>↯</span>
+      );
+    }
+    if (ref === ownerSectionId) {
+      // Don't link the current currency to itself.
+      return <strong>{meta.code}</strong>;
+    }
+    return (
+      <SectionAnchorLink sectionId={ref} variant="inline" theme={theme}>
+        <strong>{meta.code}</strong>
+      </SectionAnchorLink>
+    );
   };
 
   const outerClass = bare
@@ -118,10 +132,10 @@ export function CurrencyAddonReadOnly({ addon, theme = "dark", bare = false }: C
                   className={`flex flex-wrap items-baseline gap-1 text-xs ${isLight ? "text-gray-800" : "text-gray-200"}`}
                 >
                   <span className="font-mono">{formatAmount(entry.fromAmount)}</span>
-                  <strong>{renderRefLabel(entry.fromCurrencyRef)}</strong>
+                  {renderRefLink(entry.fromCurrencyRef)}
                   <span className={`mx-0.5 ${isLight ? "text-indigo-700" : "text-indigo-300"} font-bold`}>{arrow}</span>
                   <span className="font-mono">{formatAmount(entry.toAmount)}</span>
-                  <strong>{renderRefLabel(entry.toCurrencyRef)}</strong>
+                  {renderRefLink(entry.toCurrencyRef)}
                   <span className={`ml-1 text-[10px] ${isLight ? "text-gray-500" : "text-gray-500"}`}>· {addonName}</span>
                 </li>
               );

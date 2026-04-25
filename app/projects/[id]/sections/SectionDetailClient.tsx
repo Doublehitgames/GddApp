@@ -2074,6 +2074,9 @@ function SectionDetailContent({
     if (type === "currency") {
       return t("currencyAddon.addonTypeLabel", "Moeda");
     }
+    if (type === "currencyExchange") {
+      return t("currencyExchangeAddon.addonTypeLabel", "Casa de Câmbio");
+    }
     if (type === "globalVariable") {
       return t("globalVariableAddon.addonTypeLabel", "Variavel global");
     }
