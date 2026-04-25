@@ -308,6 +308,70 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
     updateEntry(entryId, { effects: (entry.effects || []).filter((e) => e.id !== effectId) });
   };
 
+  /** Toggle helper — adds the effect when checked, removes ALL effects matching the entry when unchecked. */
+  const toggleEffectByKey = (entryId: string, sectionId: string, addonId: string, modEntryId: string, checked: boolean) => {
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    if (checked) {
+      // Avoid duplicate effects pointing to the same entry.
+      const exists = (entry.effects || []).some(
+        (eff) =>
+          eff.attributeModifiersSectionId === sectionId &&
+          eff.attributeModifiersAddonId === addonId &&
+          eff.modifierEntryId === modEntryId
+      );
+      if (exists) return;
+      const next: SkillEffectRef = {
+        id: newId("eff"),
+        attributeModifiersSectionId: sectionId,
+        attributeModifiersAddonId: addonId,
+        modifierEntryId: modEntryId,
+      };
+      updateEntry(entryId, { effects: [...(entry.effects || []), next] });
+    } else {
+      const next = (entry.effects || []).filter(
+        (eff) =>
+          !(
+            eff.attributeModifiersSectionId === sectionId &&
+            eff.attributeModifiersAddonId === addonId &&
+            eff.modifierEntryId === modEntryId
+          )
+      );
+      updateEntry(entryId, { effects: next });
+    }
+  };
+
+  /** Bulk: add (or remove) ALL entries from a single AttributeModifiers addon at once. */
+  const toggleAllEffectsFromAddon = (entryId: string, sectionId: string, addonId: string, addAll: boolean) => {
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const groupItems = effectCatalog.filter((it) => it.sectionId === sectionId && it.addonId === addonId);
+    if (addAll) {
+      const have = new Set(
+        (entry.effects || [])
+          .filter((eff) => eff.attributeModifiersSectionId === sectionId && eff.attributeModifiersAddonId === addonId)
+          .map((eff) => eff.modifierEntryId)
+      );
+      const additions: SkillEffectRef[] = [];
+      for (const item of groupItems) {
+        if (have.has(item.entryId)) continue;
+        additions.push({
+          id: newId("eff"),
+          attributeModifiersSectionId: sectionId,
+          attributeModifiersAddonId: addonId,
+          modifierEntryId: item.entryId,
+        });
+      }
+      if (additions.length === 0) return;
+      updateEntry(entryId, { effects: [...(entry.effects || []), ...additions] });
+    } else {
+      const next = (entry.effects || []).filter(
+        (eff) => !(eff.attributeModifiersSectionId === sectionId && eff.attributeModifiersAddonId === addonId)
+      );
+      updateEntry(entryId, { effects: next });
+    }
+  };
+
   const toggleUnlockSection = (entryId: string, kind: "level" | "currency" | "item", enabled: boolean) => {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) return;
@@ -871,67 +935,115 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
                                 t("skillsAddon.createModifiersCta", "Criar página de Modificadores")
                               )
                             ) : (
-                              <>
-                                <div className="grid gap-2 sm:grid-cols-[1fr_auto] items-end">
-                                  <select
-                                    value=""
-                                    onChange={(e) => {
-                                      if (!e.target.value) return;
-                                      addEffect(entry.id, e.target.value);
-                                      e.currentTarget.value = "";
-                                    }}
-                                    className={INPUT_CLASS}
-                                  >
-                                    <option value="">
-                                      {t("skillsAddon.addEffectPlaceholder", "+ Vincular efeito de Attribute Modifiers...")}
-                                    </option>
-                                    {effectCatalog.map((item) => (
-                                      <option
-                                        key={`${item.sectionId}::${item.addonId}::${item.entryId}`}
-                                        value={`${item.sectionId}::${item.addonId}::${item.entryId}`}
-                                      >
-                                        {item.sectionTitle} · {item.addonName} · {item.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                {(entry.effects || []).length > 0 && (
-                                  <ul className="mt-2 space-y-1.5">
-                                    {(entry.effects || []).map((eff) => {
-                                      const meta = effectCatalog.find(
-                                        (i) =>
-                                          i.sectionId === eff.attributeModifiersSectionId &&
-                                          i.addonId === eff.attributeModifiersAddonId &&
-                                          i.entryId === eff.modifierEntryId
-                                      );
-                                      const broken = !meta;
-                                      return (
-                                        <li
-                                          key={eff.id}
-                                          className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-xs ${
-                                            broken
-                                              ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
-                                              : "border-gray-700 bg-gray-900/60 text-gray-200"
-                                          }`}
-                                        >
-                                          <span className="flex-1 truncate">
-                                            {broken
-                                              ? `${t("skillsAddon.brokenEffect", "Efeito quebrado")} ↯`
-                                              : `${meta!.sectionTitle} · ${meta!.addonName} · ${meta!.label}`}
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => removeEffect(entry.id, eff.id)}
-                                            className="text-rose-400 hover:text-rose-300 text-xs"
+                              (() => {
+                                // Group catalog by addon so the user can pick MULTIPLE entries
+                                // (and even all entries) of the same modifier addon at once.
+                                type Group = {
+                                  sectionId: string;
+                                  sectionTitle: string;
+                                  addonId: string;
+                                  addonName: string;
+                                  items: typeof effectCatalog;
+                                };
+                                const groups: Group[] = [];
+                                const groupKey = (i: typeof effectCatalog[number]) => `${i.sectionId}::${i.addonId}`;
+                                const indexByKey = new Map<string, number>();
+                                for (const item of effectCatalog) {
+                                  const k = groupKey(item);
+                                  let gi = indexByKey.get(k);
+                                  if (gi == null) {
+                                    gi = groups.length;
+                                    indexByKey.set(k, gi);
+                                    groups.push({
+                                      sectionId: item.sectionId,
+                                      sectionTitle: item.sectionTitle,
+                                      addonId: item.addonId,
+                                      addonName: item.addonName,
+                                      items: [],
+                                    });
+                                  }
+                                  groups[gi].items.push(item);
+                                }
+                                const linkedKeys = new Set(
+                                  (entry.effects || []).map(
+                                    (eff) =>
+                                      `${eff.attributeModifiersSectionId}::${eff.attributeModifiersAddonId}::${eff.modifierEntryId}`
+                                  )
+                                );
+                                return (
+                                  <>
+                                    <p className="mb-2 text-[11px] text-gray-400">
+                                      {t(
+                                        "skillsAddon.effectsHint",
+                                        "Marque os modificadores que esta habilidade aplica. Você pode escolher quantos quiser, inclusive de addons diferentes."
+                                      )}
+                                    </p>
+                                    <div className="space-y-2">
+                                      {groups.map((g) => {
+                                        const totalInGroup = g.items.length;
+                                        const checkedInGroup = g.items.filter((it) =>
+                                          linkedKeys.has(`${it.sectionId}::${it.addonId}::${it.entryId}`)
+                                        ).length;
+                                        const allChecked = totalInGroup > 0 && checkedInGroup === totalInGroup;
+                                        return (
+                                          <div
+                                            key={`${g.sectionId}::${g.addonId}`}
+                                            className="rounded-md border border-gray-700 bg-gray-900/40 p-2"
                                           >
-                                            {t("common.remove", "Remover")}
-                                          </button>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
-                                )}
-                              </>
+                                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                                              <span className="text-[11px] text-gray-300 truncate">
+                                                <strong>{g.sectionTitle}</strong>
+                                                <span className="ml-1 text-gray-500">· {g.addonName}</span>
+                                                <span className="ml-1 text-[10px] text-gray-500">
+                                                  ({checkedInGroup}/{totalInGroup})
+                                                </span>
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  toggleAllEffectsFromAddon(entry.id, g.sectionId, g.addonId, !allChecked)
+                                                }
+                                                className={BUTTON_TINY_CLASS}
+                                              >
+                                                {allChecked
+                                                  ? t("skillsAddon.deselectAll", "Desmarcar todos")
+                                                  : t("skillsAddon.selectAll", "Marcar todos")}
+                                              </button>
+                                            </div>
+                                            <ul className="space-y-1">
+                                              {g.items.map((it) => {
+                                                const itemKey = `${it.sectionId}::${it.addonId}::${it.entryId}`;
+                                                const checked = linkedKeys.has(itemKey);
+                                                return (
+                                                  <li key={itemKey}>
+                                                    <label className="flex items-center gap-2 rounded px-1.5 py-1 text-xs text-gray-200 hover:bg-gray-800/40 cursor-pointer">
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) =>
+                                                          toggleEffectByKey(
+                                                            entry.id,
+                                                            it.sectionId,
+                                                            it.addonId,
+                                                            it.entryId,
+                                                            e.target.checked
+                                                          )
+                                                        }
+                                                        className="h-3.5 w-3.5 accent-indigo-500"
+                                                      />
+                                                      <span className="flex-1">{it.label}</span>
+                                                    </label>
+                                                  </li>
+                                                );
+                                              })}
+                                            </ul>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                );
+                              })()
                             )}
                           </div>
 
