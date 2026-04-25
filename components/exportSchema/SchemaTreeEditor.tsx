@@ -268,8 +268,14 @@ export function getBindingIssue(
         (a) => a.type === "craftTable" && (a.id === src.addonId || a.data?.id === src.addonId)
       );
       if (!found) return "Craft Table referenciada não foi encontrada";
+    } else if (src.type === "skills") {
+      const found = sectionAddons.some(
+        (a) => a.type === "skills" && (a.id === src.addonId || a.data?.id === src.addonId)
+      );
+      if (!found) return "Skills referenciado não foi encontrado";
     }
-    // productionIngredients/productionOutputs are context-dependent; no static ref to break
+    // productionIngredients/productionOutputs/skillCosts/skillEffects are
+    // context-dependent; no static ref to break.
   }
 
   const binding = node.binding;
@@ -316,6 +322,12 @@ function bindingAccentClass(source?: ExportSchemaBinding["source"]): string {
       return "border-violet-500/70";
     case "itemField":
       return "border-amber-500/70";
+    case "skillField":
+      return "border-fuchsia-500/70";
+    case "skillCostField":
+      return "border-pink-500/70";
+    case "skillEffectField":
+      return "border-rose-500/70";
     default:
       return "border-gray-700";
   }
@@ -439,6 +451,14 @@ export function getCraftTableAddons(
     .map((a) => ({ id: a.id, name: a.name }));
 }
 
+export function getSkillsAddons(
+  addons: SectionAddon[]
+): Array<{ id: string; name: string }> {
+  return addons
+    .filter((a) => a.type === "skills")
+    .map((a) => ({ id: a.id, name: a.name }));
+}
+
 // ── immutable tree helpers ─────────────────────────────────────────
 
 export function updateNodeInList(nodes: ExportSchemaNode[], nodeId: string, updater: (n: ExportSchemaNode) => ExportSchemaNode): ExportSchemaNode[] {
@@ -493,7 +513,14 @@ export function duplicateInList(nodes: ExportSchemaNode[], nodeId: string): Expo
 
 // ── Binding Editor ─────────────────────────────────────────────────
 
-export type ArraySourceKind = "progressionTable" | "craftTable" | "productionIngredients" | "productionOutputs";
+export type ArraySourceKind =
+  | "progressionTable"
+  | "craftTable"
+  | "productionIngredients"
+  | "productionOutputs"
+  | "skills"
+  | "skillCosts"
+  | "skillEffects";
 
 export function BindingEditor({
   binding,
@@ -503,6 +530,7 @@ export function BindingEditor({
   arraySourceAddonId,
   arraySourceType,
   inCraftEntry,
+  inSkillEntry,
   readOnly,
 }: {
   binding?: ExportSchemaBinding;
@@ -513,6 +541,8 @@ export function BindingEditor({
   arraySourceType?: ArraySourceKind;
   /** True when any ancestor iteration is a craftTable (entry + currentProduction are in scope). */
   inCraftEntry?: boolean;
+  /** True when any ancestor iteration is a skills array (currentSkill is in scope). */
+  inSkillEntry?: boolean;
   readOnly?: boolean;
 }) {
   const source = binding?.source ?? "manual";
@@ -521,6 +551,9 @@ export function BindingEditor({
   const insideCraftArray = insideArray && arraySourceType === "craftTable";
   const insideProgressionArray = insideArray && (arraySourceType ?? "progressionTable") === "progressionTable";
   const insideProductionItemsArray = insideArray && (arraySourceType === "productionIngredients" || arraySourceType === "productionOutputs");
+  const insideSkillsArray = insideArray && arraySourceType === "skills";
+  const insideSkillCostsArray = insideArray && arraySourceType === "skillCosts";
+  const insideSkillEffectsArray = insideArray && arraySourceType === "skillEffects";
 
   const currentPT = useMemo(
     () => (arraySourceAddonId ? progressionTables.find((pt) => pt.id === arraySourceAddonId) : undefined),
@@ -544,8 +577,55 @@ export function BindingEditor({
       onChange({ source: "productionField", field: "name" });
     } else if (newSource === "itemField") {
       onChange({ source: "itemField", field: "itemRef" });
+    } else if (newSource === "skillField") {
+      onChange({ source: "skillField", field: "name" });
+    } else if (newSource === "skillCostField") {
+      onChange({ source: "skillCostField", field: "amount" });
+    } else if (newSource === "skillEffectField") {
+      onChange({ source: "skillEffectField", field: "resolvedAttributeKey" });
     }
   };
+
+  const skillEntryFields: Array<{ value: NonNullable<Extract<ExportSchemaBinding, { source: "skillField" }>>["field"]; label: string }> = [
+    { value: "id", label: "id" },
+    { value: "name", label: "name" },
+    { value: "kind", label: "kind" },
+    { value: "description", label: "description" },
+    { value: "cooldownSeconds", label: "cooldownSeconds" },
+    { value: "tagsCsv", label: "tags (CSV)" },
+    { value: "unlockLevelEnabled", label: "unlock.level.enabled" },
+    { value: "unlockLevel", label: "unlock.level.level" },
+    { value: "unlockLevelXpRef", label: "unlock.level.xpAddonRef (dataId)" },
+    { value: "unlockCurrencyEnabled", label: "unlock.currency.enabled" },
+    { value: "unlockCurrencyAmount", label: "unlock.currency.amount" },
+    { value: "unlockCurrencyRef", label: "unlock.currency.currencyAddonRef (dataId)" },
+    { value: "unlockItemEnabled", label: "unlock.item.enabled" },
+    { value: "unlockItemQuantity", label: "unlock.item.quantity" },
+    { value: "unlockItemRef", label: "unlock.item.itemRef (dataId)" },
+  ];
+
+  const skillCostFields: Array<{ value: NonNullable<Extract<ExportSchemaBinding, { source: "skillCostField" }>>["field"]; label: string }> = [
+    { value: "id", label: "id" },
+    { value: "type", label: "type" },
+    { value: "amount", label: "amount" },
+    { value: "currencyRef", label: "currencyRef (dataId)" },
+    { value: "definitionsRef", label: "definitionsRef (dataId)" },
+    { value: "attributeKey", label: "attributeKey" },
+  ];
+
+  const skillEffectFields: Array<{ value: NonNullable<Extract<ExportSchemaBinding, { source: "skillEffectField" }>>["field"]; label: string }> = [
+    { value: "id", label: "id" },
+    { value: "attributeModifiersSectionId", label: "attributeModifiersSectionId (dataId)" },
+    { value: "attributeModifiersAddonId", label: "attributeModifiersAddonId" },
+    { value: "modifierEntryId", label: "modifierEntryId" },
+    { value: "resolvedMode", label: "resolved.mode" },
+    { value: "resolvedAttributeKey", label: "resolved.attributeKey" },
+    { value: "resolvedValue", label: "resolved.value" },
+    { value: "resolvedTemporary", label: "resolved.temporary" },
+    { value: "resolvedDurationSeconds", label: "resolved.durationSeconds" },
+    { value: "resolvedTickIntervalSeconds", label: "resolved.tickIntervalSeconds" },
+    { value: "resolvedCategory", label: "resolved.category" },
+  ];
 
   const productionScalarFields: Array<{ value: "name" | "mode" | "craftTimeSeconds" | "minOutput" | "maxOutput" | "intervalSeconds" | "capacity" | "requiresCollection" | "outputRef"; label: string }> = [
     { value: "name", label: "name" },
@@ -585,6 +665,9 @@ export function BindingEditor({
         {insideCraftArray && <option value="entryField">Entry Field</option>}
         {(insideCraftArray || inCraftEntry) && <option value="productionField">Production Field</option>}
         {insideProductionItemsArray && <option value="itemField">Item Field</option>}
+        {(insideSkillsArray || inSkillEntry) && <option value="skillField">Skill Field</option>}
+        {insideSkillCostsArray && <option value="skillCostField">Skill Cost Field</option>}
+        {insideSkillEffectsArray && <option value="skillEffectField">Skill Effect Field</option>}
       </select>
 
       {source === "manual" && binding?.source === "manual" && (
@@ -752,6 +835,60 @@ export function BindingEditor({
           <option value="quantity">quantity</option>
         </select>
       )}
+
+      {source === "skillField" && binding?.source === "skillField" && (
+        <select
+          className={FIELD}
+          value={binding.field}
+          disabled={readOnly}
+          onChange={(e) => {
+            if (readOnly) return;
+            onChange({ source: "skillField", field: e.target.value as typeof binding.field });
+          }}
+        >
+          {skillEntryFields.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {source === "skillCostField" && binding?.source === "skillCostField" && (
+        <select
+          className={FIELD}
+          value={binding.field}
+          disabled={readOnly}
+          onChange={(e) => {
+            if (readOnly) return;
+            onChange({ source: "skillCostField", field: e.target.value as typeof binding.field });
+          }}
+        >
+          {skillCostFields.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {source === "skillEffectField" && binding?.source === "skillEffectField" && (
+        <select
+          className={FIELD}
+          value={binding.field}
+          disabled={readOnly}
+          onChange={(e) => {
+            if (readOnly) return;
+            onChange({ source: "skillEffectField", field: e.target.value as typeof binding.field });
+          }}
+        >
+          {skillEffectFields.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
@@ -768,7 +905,14 @@ function ResolvedKeyLabel({ binding, sectionAddons }: { binding: ExportSchemaBin
     label = entry?.key ?? binding.entryKey;
   } else if (binding.source === "rowColumn") {
     label = binding.columnId;
-  } else if (binding.source === "entryField" || binding.source === "productionField" || binding.source === "itemField") {
+  } else if (
+    binding.source === "entryField" ||
+    binding.source === "productionField" ||
+    binding.source === "itemField" ||
+    binding.source === "skillField" ||
+    binding.source === "skillCostField" ||
+    binding.source === "skillEffectField"
+  ) {
     label = binding.field;
   } else {
     label = "level";
@@ -794,6 +938,7 @@ export function SchemaNodeEditor({
   arraySourceAddonId,
   arraySourceType,
   inCraftEntry,
+  inSkillEntry,
   readOnly,
 }: {
   node: ExportSchemaNode;
@@ -808,10 +953,13 @@ export function SchemaNodeEditor({
   arraySourceAddonId?: string;
   /** True when any ancestor iteration is craftTable (or productionIngredients/Outputs nested in a craftTable). */
   inCraftEntry?: boolean;
+  /** True when any ancestor iteration is a skills array (currentSkill is in scope). */
+  inSkillEntry?: boolean;
   readOnly?: boolean;
 }) {
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
   const craftTables = useMemo(() => getCraftTableAddons(sectionAddons), [sectionAddons]);
+  const skillsAddons = useMemo(() => getSkillsAddons(sectionAddons), [sectionAddons]);
   const [collapsed, setCollapsed] = useState(true);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -855,7 +1003,11 @@ export function SchemaNodeEditor({
   };
 
   const resolvedArraySourceId =
-    node.nodeType === "array" && node.arraySource && (node.arraySource.type === "progressionTable" || node.arraySource.type === "craftTable")
+    node.nodeType === "array" &&
+    node.arraySource &&
+    (node.arraySource.type === "progressionTable" ||
+      node.arraySource.type === "craftTable" ||
+      node.arraySource.type === "skills")
       ? node.arraySource.addonId
       : arraySourceAddonId;
 
@@ -871,6 +1023,14 @@ export function SchemaNodeEditor({
     (node.nodeType === "array" && (node.arraySource?.type === "productionIngredients" || node.arraySource?.type === "productionOutputs"))
       ? true
       : inCraftEntry;
+
+  // inSkillEntry stays true once we enter a skills iteration; skillCosts/skillEffects
+  // inherit it since they only make sense inside a skills array.
+  const resolvedInSkillEntry =
+    (node.nodeType === "array" && node.arraySource?.type === "skills") ||
+    (node.nodeType === "array" && (node.arraySource?.type === "skillCosts" || node.arraySource?.type === "skillEffects"))
+      ? true
+      : inSkillEntry;
 
   const childInsideArray = node.nodeType === "array" ? true : insideArray;
   const childList = node.nodeType === "object" ? node.children ?? [] : node.nodeType === "array" ? node.itemTemplate ?? [] : [];
@@ -958,7 +1118,9 @@ export function SchemaNodeEditor({
             className={FIELD}
             value={
               node.arraySource
-                ? node.arraySource.type === "progressionTable" || node.arraySource.type === "craftTable"
+                ? node.arraySource.type === "progressionTable" ||
+                  node.arraySource.type === "craftTable" ||
+                  node.arraySource.type === "skills"
                   ? `${node.arraySource.type}:${node.arraySource.addonId}`
                   : node.arraySource.type
                 : ""
@@ -973,16 +1135,21 @@ export function SchemaNodeEditor({
               }
               const prevType = node.arraySource?.type;
               let nextSource: NonNullable<ExportSchemaNode["arraySource"]>;
-              if (raw === "productionIngredients" || raw === "productionOutputs") {
+              if (
+                raw === "productionIngredients" ||
+                raw === "productionOutputs" ||
+                raw === "skillCosts" ||
+                raw === "skillEffects"
+              ) {
                 nextSource = { type: raw };
               } else {
                 const [type, addonId] = raw.split(":");
-                if (type !== "progressionTable" && type !== "craftTable") return;
+                if (type !== "progressionTable" && type !== "craftTable" && type !== "skills") return;
                 nextSource = { type, addonId };
               }
               const next: ExportSchemaNode = { ...node, arraySource: nextSource };
               // When switching between incompatible source types, clear item template
-              // so stale bindings (rowColumn ↔ entryField ↔ itemField) don't leak.
+              // so stale bindings don't leak across types.
               if (prevType && prevType !== nextSource.type) {
                 next.itemTemplate = [];
               }
@@ -1008,10 +1175,25 @@ export function SchemaNodeEditor({
                 ))}
               </optgroup>
             )}
+            {skillsAddons.length > 0 && (
+              <optgroup label="Skills">
+                {skillsAddons.map((sk) => (
+                  <option key={sk.id} value={`skills:${sk.id}`}>
+                    {sk.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             {inCraftEntry && (
               <optgroup label="Da receita atual">
                 <option value="productionIngredients">Production Ingredients</option>
                 <option value="productionOutputs">Production Outputs</option>
+              </optgroup>
+            )}
+            {inSkillEntry && (
+              <optgroup label="Da habilidade atual">
+                <option value="skillCosts">Skill Costs</option>
+                <option value="skillEffects">Skill Effects</option>
               </optgroup>
             )}
           </select>
@@ -1083,6 +1265,7 @@ export function SchemaNodeEditor({
             arraySourceAddonId={arraySourceAddonId}
             arraySourceType={arraySourceType}
             inCraftEntry={inCraftEntry}
+            inSkillEntry={inSkillEntry}
             readOnly={readOnly}
           />
           <NodeValuePreview nodeId={node.id} />
@@ -1156,6 +1339,7 @@ export function SchemaNodeEditor({
                 arraySourceAddonId={resolvedArraySourceId}
                 arraySourceType={resolvedArraySourceType}
                 inCraftEntry={resolvedInCraftEntry}
+                inSkillEntry={resolvedInSkillEntry}
                 readOnly={readOnly}
               />
             )}

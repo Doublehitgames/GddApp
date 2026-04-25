@@ -102,10 +102,11 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
     return out;
   }, [projects, currentProjectId]);
 
-  const selectedAttributes = useMemo(() => {
-    const found = definitionOptions.find((d) => d.refId === addon.definitionsRef);
-    return found?.attributes || [];
-  }, [definitionOptions, addon.definitionsRef]);
+  const attributesByDefinitionRef = useMemo(() => {
+    const map = new Map<string, Array<{ key: string; label: string }>>();
+    for (const d of definitionOptions) map.set(d.refId, d.attributes);
+    return map;
+  }, [definitionOptions]);
 
   const currencyOptions = useMemo(() => {
     const out: Array<{ refId: string; label: string }> = [];
@@ -359,8 +360,159 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
   );
 
   const renderCostRow = (entry: SkillEntry, cost: SkillCost): ReactNode => {
-    const isCurrency = cost.type === "currency";
     const isAttribute = cost.type === "attribute";
+    const isCharges = cost.type === "charges";
+
+    if (isAttribute) {
+      const attrsForSelected = cost.definitionsRef
+        ? attributesByDefinitionRef.get(cost.definitionsRef) || []
+        : [];
+      return (
+        <div key={cost.id} className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-[120px_1fr_120px_auto] items-end">
+            <div>
+              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                {t("skillsAddon.costType", "Tipo")}
+              </span>
+              <select
+                value={cost.type}
+                onChange={(e) =>
+                  updateCost(entry.id, cost.id, {
+                    type: e.target.value as SkillCostType,
+                    currencyRef: e.target.value === "currency" ? cost.currencyRef : undefined,
+                    definitionsRef: e.target.value === "attribute" ? cost.definitionsRef : undefined,
+                    attributeKey: e.target.value === "attribute" ? cost.attributeKey : undefined,
+                  })
+                }
+                className={INPUT_CLASS}
+              >
+                <option value="currency">{t("skillsAddon.costTypeCurrency", "Moeda")}</option>
+                <option value="attribute">{t("skillsAddon.costTypeAttribute", "Atributo")}</option>
+                <option value="charges">{t("skillsAddon.costTypeCharges", "Cargas")}</option>
+              </select>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                  {t("skillsAddon.costDefinitionsRef", "Definição de Atributo")}
+                </span>
+                <select
+                  value={cost.definitionsRef || ""}
+                  onChange={(e) =>
+                    updateCost(entry.id, cost.id, {
+                      definitionsRef: e.target.value || undefined,
+                      // Clear stale attribute key when switching definitions.
+                      attributeKey: undefined,
+                    })
+                  }
+                  className={INPUT_CLASS}
+                  disabled={definitionOptions.length === 0}
+                >
+                  <option value="">{t("skillsAddon.selectNone", "Selecione")}</option>
+                  {definitionOptions.map((d) => (
+                    <option key={d.refId} value={d.refId}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                  {t("skillsAddon.costAttributeKey", "Atributo")}
+                </span>
+                <select
+                  value={cost.attributeKey || ""}
+                  onChange={(e) => updateCost(entry.id, cost.id, { attributeKey: e.target.value || undefined })}
+                  className={INPUT_CLASS}
+                  disabled={attrsForSelected.length === 0}
+                >
+                  <option value="">{t("skillsAddon.selectNone", "Selecione")}</option>
+                  {attrsForSelected.map((a) => (
+                    <option key={a.key} value={a.key}>
+                      {a.label} ({a.key})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                {t("skillsAddon.costAmount", "Quantidade")}
+              </span>
+              <CommitNumberInput
+                value={cost.amount}
+                onCommit={(next) => updateCost(entry.id, cost.id, { amount: next < 0 ? 0 : next })}
+                min={0}
+                step={1}
+                integer={false}
+                className={INPUT_CLASS}
+              />
+            </div>
+            <button type="button" onClick={() => removeCost(entry.id, cost.id)} className={BUTTON_DANGER_CLASS}>
+              {t("common.remove", "Remover")}
+            </button>
+          </div>
+          {definitionOptions.length === 0 && (
+            <p className="text-[11px] text-amber-300">
+              {t(
+                "skillsAddon.costNoDefinitionsHint",
+                "Nenhuma página de Atributos no projeto. Crie uma pra usar atributos como custo."
+              )}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    // Currency cost — full row with currencyRef in the middle.
+    if (isCharges) {
+      return (
+        <div key={cost.id} className="grid gap-2 sm:grid-cols-[120px_1fr_120px_auto] items-end">
+          <div>
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+              {t("skillsAddon.costType", "Tipo")}
+            </span>
+            <select
+              value={cost.type}
+              onChange={(e) =>
+                updateCost(entry.id, cost.id, {
+                  type: e.target.value as SkillCostType,
+                  currencyRef: e.target.value === "currency" ? cost.currencyRef : undefined,
+                  definitionsRef: e.target.value === "attribute" ? cost.definitionsRef : undefined,
+                  attributeKey: e.target.value === "attribute" ? cost.attributeKey : undefined,
+                })
+              }
+              className={INPUT_CLASS}
+            >
+              <option value="currency">{t("skillsAddon.costTypeCurrency", "Moeda")}</option>
+              <option value="attribute">{t("skillsAddon.costTypeAttribute", "Atributo")}</option>
+              <option value="charges">{t("skillsAddon.costTypeCharges", "Cargas")}</option>
+            </select>
+          </div>
+          <p className="text-[11px] text-gray-500 self-center">
+            {t("skillsAddon.chargesHelp", "Apenas a quantidade — sem referência cruzada.")}
+          </p>
+          <div>
+            <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+              {t("skillsAddon.costAmount", "Quantidade")}
+            </span>
+            <CommitNumberInput
+              value={cost.amount}
+              onCommit={(next) => updateCost(entry.id, cost.id, { amount: next < 0 ? 0 : next })}
+              min={0}
+              step={1}
+              integer={false}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <button type="button" onClick={() => removeCost(entry.id, cost.id)} className={BUTTON_DANGER_CLASS}>
+            {t("common.remove", "Remover")}
+          </button>
+        </div>
+      );
+    }
+
+    // Currency
     return (
       <div key={cost.id} className="grid gap-2 sm:grid-cols-[120px_1fr_120px_auto] items-end">
         <div>
@@ -369,7 +521,14 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
           </span>
           <select
             value={cost.type}
-            onChange={(e) => updateCost(entry.id, cost.id, { type: e.target.value as SkillCostType })}
+            onChange={(e) =>
+              updateCost(entry.id, cost.id, {
+                type: e.target.value as SkillCostType,
+                currencyRef: e.target.value === "currency" ? cost.currencyRef : undefined,
+                definitionsRef: e.target.value === "attribute" ? cost.definitionsRef : undefined,
+                attributeKey: e.target.value === "attribute" ? cost.attributeKey : undefined,
+              })
+            }
             className={INPUT_CLASS}
           >
             <option value="currency">{t("skillsAddon.costTypeCurrency", "Moeda")}</option>
@@ -379,45 +538,21 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
         </div>
         <div>
           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
-            {isCurrency
-              ? t("skillsAddon.costCurrencyRef", "Moeda")
-              : isAttribute
-              ? t("skillsAddon.costAttributeKey", "Atributo")
-              : t("skillsAddon.costChargesNote", "Cargas (sem ref)")}
+            {t("skillsAddon.costCurrencyRef", "Moeda")}
           </span>
-          {isCurrency ? (
-            <select
-              value={cost.currencyRef || ""}
-              onChange={(e) => updateCost(entry.id, cost.id, { currencyRef: e.target.value || undefined })}
-              className={INPUT_CLASS}
-              disabled={currencyOptions.length === 0}
-            >
-              <option value="">{t("skillsAddon.selectNone", "Selecione")}</option>
-              {currencyOptions.map((o) => (
-                <option key={o.refId} value={o.refId}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          ) : isAttribute ? (
-            <select
-              value={cost.attributeKey || ""}
-              onChange={(e) => updateCost(entry.id, cost.id, { attributeKey: e.target.value || undefined })}
-              className={INPUT_CLASS}
-              disabled={selectedAttributes.length === 0}
-            >
-              <option value="">{t("skillsAddon.selectNone", "Selecione")}</option>
-              {selectedAttributes.map((a) => (
-                <option key={a.key} value={a.key}>
-                  {a.label} ({a.key})
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="text-[11px] text-gray-500">
-              {t("skillsAddon.chargesHelp", "Apenas a quantidade — sem referência cruzada.")}
-            </p>
-          )}
+          <select
+            value={cost.currencyRef || ""}
+            onChange={(e) => updateCost(entry.id, cost.id, { currencyRef: e.target.value || undefined })}
+            className={INPUT_CLASS}
+            disabled={currencyOptions.length === 0}
+          >
+            <option value="">{t("skillsAddon.selectNone", "Selecione")}</option>
+            {currencyOptions.map((o) => (
+              <option key={o.refId} value={o.refId}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
@@ -576,41 +711,6 @@ export function SkillsAddonPanel({ addon, onChange }: SkillsAddonPanelProps) {
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="space-y-3">
-        <div className={PANEL_BLOCK_CLASS}>
-          <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
-            {t("skillsAddon.definitionsRefBlockLabel", "Atributos vinculados (opcional)")}
-          </p>
-          <p className="mb-2 text-xs text-gray-400">
-            {t(
-              "skillsAddon.definitionsRefHint",
-              "Vincule a página de Atributos pra que o seletor de custo do tipo 'atributo' liste os atributos certos (HP, Mana, etc)."
-            )}
-          </p>
-          <select
-            value={addon.definitionsRef || ""}
-            onChange={(e) => onChange({ ...addon, definitionsRef: e.target.value || undefined })}
-            className={INPUT_CLASS}
-          >
-            <option value="">{t("skillsAddon.selectNone", "Sem referência")}</option>
-            {definitionOptions.map((o) => (
-              <option key={o.refId} value={o.refId}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {definitionOptions.length === 0 && (
-            <div className="mt-2">
-              {renderEmptyHint(
-                t(
-                  "skillsAddon.noDefinitionsHint",
-                  "Nenhuma página com Atributos no projeto. Crie uma pra usar atributos como custo."
-                ),
-                t("skillsAddon.createDefinitionsCta", "Criar página de Atributos")
-              )}
-            </div>
-          )}
-        </div>
-
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-100">{t("skillsAddon.entriesTitle", "Habilidades")}</h4>
           <button type="button" onClick={addEntry} className={BUTTON_CLASS}>

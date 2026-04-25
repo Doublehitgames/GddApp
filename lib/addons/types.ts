@@ -119,6 +119,13 @@ export type SkillCost = {
   amount: number;
   /** Required when type === "currency". Section ID of a Currency addon. */
   currencyRef?: string;
+  /**
+   * Required when type === "attribute". Section ID of the AttributeDefinitions
+   * page that owns the chosen attribute key. Each cost can target a different
+   * definitions page, so a skill can spend (Mana from Combat Stats) AND
+   * (Stamina from Stamina Stats) at the same time.
+   */
+  definitionsRef?: string;
   /** Required when type === "attribute". Key from the linked AttributeDefinitions. */
   attributeKey?: string;
 };
@@ -152,11 +159,6 @@ export type SkillEntry = {
 export type SkillsAddonDraft = {
   id: string;
   name: string;
-  /**
-   * Optional shared link to an AttributeDefinitions section. When set, the
-   * cost picker for type === "attribute" gets a typed dropdown of attribute keys.
-   */
-  definitionsRef?: string;
   entries: SkillEntry[];
 };
 
@@ -434,7 +436,13 @@ export type ExportSchemaArraySource =
   /** Iterates the ingredients of the current craft table entry's Production addon. */
   | { type: "productionIngredients" }
   /** Iterates the outputs of the current craft table entry's Production addon. */
-  | { type: "productionOutputs" };
+  | { type: "productionOutputs" }
+  /** Iterates the entries of a Skills addon. */
+  | { type: "skills"; addonId: string; addonName?: string }
+  /** Iterates the costs of the current Skills entry. Context-dependent — only useful inside a `skills` array. */
+  | { type: "skillCosts" }
+  /** Iterates the effects of the current Skills entry. Context-dependent. */
+  | { type: "skillEffects" };
 
 export type ProductionScalarField =
   | "name"
@@ -464,6 +472,51 @@ export type CraftTableEntryField =
   | "unlockItemQuantity"
   | "unlockItemRef";
 
+/** Scalar fields exposed for a Skills entry (the row that the `skills` array iterates). */
+export type SkillEntryField =
+  | "id"
+  | "name"
+  | "kind"
+  | "description"
+  | "cooldownSeconds"
+  | "tagsCsv"
+  | "unlockLevelEnabled"
+  | "unlockLevel"
+  | "unlockLevelXpRef"
+  | "unlockCurrencyEnabled"
+  | "unlockCurrencyAmount"
+  | "unlockCurrencyRef"
+  | "unlockItemEnabled"
+  | "unlockItemQuantity"
+  | "unlockItemRef";
+
+/** Scalar fields exposed for a single SkillCost (inside the `skillCosts` array). */
+export type SkillCostField =
+  | "id"
+  | "type"
+  | "amount"
+  | "currencyRef"
+  | "definitionsRef"
+  | "attributeKey";
+
+/**
+ * Scalar fields exposed for a single SkillEffect (inside the `skillEffects` array).
+ * Fields prefixed with `resolved*` follow the ref into the source AttributeModifiers
+ * entry and inline its data, so the consumer doesn't have to cross-resolve.
+ */
+export type SkillEffectField =
+  | "id"
+  | "attributeModifiersSectionId"
+  | "attributeModifiersAddonId"
+  | "modifierEntryId"
+  | "resolvedMode"
+  | "resolvedAttributeKey"
+  | "resolvedValue"
+  | "resolvedTemporary"
+  | "resolvedDurationSeconds"
+  | "resolvedTickIntervalSeconds"
+  | "resolvedCategory";
+
 export type ExportSchemaBinding =
   | { source: "manual"; value: string | number | boolean; valueType: "string" | "number" | "boolean" }
   | { source: "dataSchema"; addonId: string; addonName?: string; entryKey: string; entryId?: string }
@@ -473,7 +526,13 @@ export type ExportSchemaBinding =
   /** Follows the current craft entry's productionRef and reads a scalar field from that Production addon. */
   | { source: "productionField"; field: ProductionScalarField }
   /** Reads a field from the current ingredient/output row (inside productionIngredients/productionOutputs array). */
-  | { source: "itemField"; field: ProductionItemField };
+  | { source: "itemField"; field: ProductionItemField }
+  /** Reads a scalar field from the current Skills entry (inside a `skills` array). */
+  | { source: "skillField"; field: SkillEntryField }
+  /** Reads a scalar field from the current Skill cost (inside a `skillCosts` array). */
+  | { source: "skillCostField"; field: SkillCostField }
+  /** Reads a scalar field from the current Skill effect (inside a `skillEffects` array). */
+  | { source: "skillEffectField"; field: SkillEffectField };
 
 export type ExportSchemaNode = {
   id: string;

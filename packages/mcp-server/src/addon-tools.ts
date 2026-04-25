@@ -481,11 +481,18 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "entryField",
       "productionField",
       "itemField",
+      // skills-scoped
+      "skillField",
+      "skillCostField",
+      "skillEffectField",
     ]).describe(
       "Binding source. 'rowLevel' / 'rowColumn' are valid only inside a " +
       "progressionTable array. 'entryField' is valid inside a craftTable array. " +
       "'productionField' is valid inside a craftTable array (follows entry.productionRef). " +
-      "'itemField' is valid inside productionIngredients/productionOutputs arrays."
+      "'itemField' is valid inside productionIngredients/productionOutputs arrays. " +
+      "'skillField' is valid inside a skills array (or any descendant of one). " +
+      "'skillCostField' is valid inside a skillCosts array. " +
+      "'skillEffectField' is valid inside a skillEffects array."
     ),
     // source: manual
     value: z.union([z.string(), z.number(), z.boolean()]).optional(),
@@ -497,14 +504,21 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     entryId: z.string().optional(),
     // source: rowColumn
     columnId: z.string().optional(),
-    // source: entryField | productionField | itemField
+    // source: entryField | productionField | itemField | skill*Field
     field: z.string().optional().describe(
       "entryField: order|productionRef|category|hidden|unlockLevelEnabled|unlockLevel|" +
       "unlockLevelXpRef|unlockCurrencyEnabled|unlockCurrencyAmount|unlockCurrencyRef|" +
       "unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
       "productionField: name|mode|craftTimeSeconds|minOutput|maxOutput|intervalSeconds|" +
       "capacity|requiresCollection|outputRef. " +
-      "itemField: itemRef|quantity."
+      "itemField: itemRef|quantity. " +
+      "skillField: id|name|kind|description|cooldownSeconds|tagsCsv|unlockLevelEnabled|" +
+      "unlockLevel|unlockLevelXpRef|unlockCurrencyEnabled|unlockCurrencyAmount|" +
+      "unlockCurrencyRef|unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
+      "skillCostField: id|type|amount|currencyRef|definitionsRef|attributeKey. " +
+      "skillEffectField: id|attributeModifiersSectionId|attributeModifiersAddonId|" +
+      "modifierEntryId|resolvedMode|resolvedAttributeKey|resolvedValue|resolvedTemporary|" +
+      "resolvedDurationSeconds|resolvedTickIntervalSeconds|resolvedCategory."
     ),
   }).describe("Value binding");
 
@@ -514,12 +528,17 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "craftTable",
       "productionIngredients",
       "productionOutputs",
+      "skills",
+      "skillCosts",
+      "skillEffects",
     ]).describe(
-      "'progressionTable' and 'craftTable' require addonId. " +
+      "'progressionTable', 'craftTable' and 'skills' require addonId. " +
       "'productionIngredients' and 'productionOutputs' follow the current craftTable entry's " +
-      "production and do not take an addonId (must be nested inside a craftTable array node)."
+      "production and do not take an addonId (must be nested inside a craftTable array node). " +
+      "'skillCosts' and 'skillEffects' follow the current skills entry and do not take an " +
+      "addonId (must be nested inside a skills array node)."
     ),
-    addonId: z.string().optional().describe("Section ID of the target addon (progressionTable or craftTable)"),
+    addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, craftTable or skills)"),
     addonName: z.string().optional().describe("Fallback match by name when used in templates"),
   }).describe("Array iteration source");
 

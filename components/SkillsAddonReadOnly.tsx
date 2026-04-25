@@ -55,22 +55,28 @@ export function SkillsAddonReadOnly({ addon, theme = "dark", bare = false }: Ski
   const projects = useProjectStore((state) => state.projects);
   const isLight = theme === "light";
 
-  const attrLabelByKey = useMemo(() => {
-    const map = new Map<string, string>();
-    if (!addon.definitionsRef) return map;
+  /**
+   * Per-section map of attribute key → label. Used to resolve attribute
+   * cost labels by the cost's own `definitionsRef` (each cost can target
+   * a different definitions page).
+   */
+  const attributeLabelByDefinitionAndKey = useMemo(() => {
+    const outer = new Map<string, Map<string, string>>();
     for (const project of projects) {
       for (const section of project.sections || []) {
-        if (section.id !== addon.definitionsRef) continue;
+        let inner: Map<string, string> | null = null;
         for (const sa of section.addons || []) {
           if (sa.type !== "attributeDefinitions") continue;
+          if (!inner) inner = new Map<string, string>();
           for (const a of sa.data.attributes || []) {
-            map.set(a.key, a.label || a.key);
+            inner.set(a.key, a.label || a.key);
           }
         }
+        if (inner) outer.set(section.id, inner);
       }
     }
-    return map;
-  }, [projects, addon.definitionsRef]);
+    return outer;
+  }, [projects]);
 
   const currencyByRef = useMemo(() => {
     const map = new Map<string, CurrencyMeta>();
@@ -165,11 +171,23 @@ export function SkillsAddonReadOnly({ addon, theme = "dark", bare = false }: Ski
       );
     }
     if (cost.type === "attribute") {
-      const label = cost.attributeKey ? attrLabelByKey.get(cost.attributeKey) || cost.attributeKey : "?";
+      const labels = cost.definitionsRef
+        ? attributeLabelByDefinitionAndKey.get(cost.definitionsRef)
+        : undefined;
+      const label = cost.attributeKey
+        ? labels?.get(cost.attributeKey) || cost.attributeKey
+        : "?";
+      const refLink = cost.definitionsRef ? (
+        <SectionAnchorLink sectionId={cost.definitionsRef} variant="inline" theme={theme}>
+          <strong>{label}</strong>
+        </SectionAnchorLink>
+      ) : (
+        <strong>{label}</strong>
+      );
       return (
         <span className="inline-flex items-baseline gap-1">
           <span>{formatAmount(cost.amount)}</span>
-          <strong>{label}</strong>
+          {refLink}
         </span>
       );
     }

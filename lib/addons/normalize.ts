@@ -307,6 +307,10 @@ function normalizeSkillCost(item: unknown, index: number): SkillCost | null {
     type === "currency" && typeof item.currencyRef === "string" && item.currencyRef.trim()
       ? item.currencyRef.trim()
       : undefined;
+  const definitionsRef =
+    type === "attribute" && typeof item.definitionsRef === "string" && item.definitionsRef.trim()
+      ? item.definitionsRef.trim()
+      : undefined;
   const attributeKey =
     type === "attribute" && typeof item.attributeKey === "string" && item.attributeKey.trim()
       ? item.attributeKey.trim()
@@ -316,6 +320,7 @@ function normalizeSkillCost(item: unknown, index: number): SkillCost | null {
     type,
     amount,
     ...(currencyRef ? { currencyRef } : {}),
+    ...(definitionsRef ? { definitionsRef } : {}),
     ...(attributeKey ? { attributeKey } : {}),
   };
 }
@@ -426,10 +431,6 @@ function normalizeSkillsDraft(value: unknown): SkillsAddonDraft | null {
   if (!isObject(value)) return null;
   if (typeof value.id !== "string") return null;
   if (typeof value.name !== "string") return null;
-  const definitionsRef =
-    typeof value.definitionsRef === "string" && value.definitionsRef.trim()
-      ? value.definitionsRef.trim()
-      : undefined;
   const rawEntries = Array.isArray(value.entries) ? value.entries : [];
   const entries: SkillEntry[] = [];
   for (let i = 0; i < rawEntries.length; i += 1) {
@@ -439,7 +440,6 @@ function normalizeSkillsDraft(value: unknown): SkillsAddonDraft | null {
   return {
     id: value.id,
     name: value.name,
-    ...(definitionsRef ? { definitionsRef } : {}),
     entries,
   };
 }

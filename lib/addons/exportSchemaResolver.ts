@@ -15,6 +15,15 @@ import type {
   ProductionScalarField,
   ProgressionTableAddonDraft,
   ProgressionTableRow,
+  SkillsAddonDraft,
+  SkillEntry,
+  SkillCost,
+  SkillEffectRef,
+  SkillEntryField,
+  SkillCostField,
+  SkillEffectField,
+  AttributeModifierEntry,
+  AttributeModifiersAddonDraft,
 } from "@/lib/addons/types";
 
 export type SectionLookupEntry = {
@@ -34,6 +43,13 @@ type ResolveContext = {
   currentProduction?: ProductionAddonDraft;
   /** Current ingredient/output row (inside productionIngredients/productionOutputs array). */
   currentItem?: ProductionIngredient | ProductionOutput;
+  /** Current Skills entry (set during a `skills` array iteration). */
+  currentSkill?: SkillEntry;
+  /** Current Skill cost (set during a `skillCosts` array iteration). */
+  currentSkillCost?: SkillCost;
+  /** Current Skill effect + the resolved AttributeModifier entry (set during `skillEffects` iteration). */
+  currentSkillEffect?: SkillEffectRef;
+  currentSkillEffectResolved?: AttributeModifierEntry;
   arrayFormat?: ExportSchemaArrayFormat;
   currentTable?: ProgressionTableAddonDraft;
   /** When provided, the resolver writes every node's computed value here
@@ -218,6 +234,186 @@ function resolveItemField(
   return resolveRefToDataId(item.itemRef, lookup);
 }
 
+/** Finds a Skills addon in the section by addon id (or fallback by name). */
+function findSkillsAddon(
+  addons: SectionAddon[],
+  addonId: string,
+  addonName?: string
+): SkillsAddonDraft | undefined {
+  for (const addon of addons) {
+    if (addon.type !== "skills") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) return addon.data as SkillsAddonDraft;
+  }
+  if (addonName) {
+    for (const addon of addons) {
+      if (addon.type === "skills" && addon.name === addonName) {
+        return addon.data as SkillsAddonDraft;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Finds an AttributeModifier entry across the project by section id +
+ * addon id + entry id. Used to resolve `skillEffects` references.
+ */
+function findAttributeModifierEntry(
+  effect: SkillEffectRef,
+  lookup?: SectionLookup
+): AttributeModifierEntry | undefined {
+  if (!lookup) return undefined;
+  const meta = lookup.get(effect.attributeModifiersSectionId);
+  if (!meta) return undefined;
+  for (const addon of meta.addons) {
+    if (addon.type !== "attributeModifiers") continue;
+    if (addon.id !== effect.attributeModifiersAddonId && addon.data?.id !== effect.attributeModifiersAddonId) continue;
+    const data = addon.data as AttributeModifiersAddonDraft;
+    return (data.modifiers || []).find((m) => m.id === effect.modifierEntryId);
+  }
+  return undefined;
+}
+
+function resolveSkillField(
+  skill: SkillEntry | undefined,
+  field: SkillEntryField,
+  lookup?: SectionLookup
+): string | number | boolean | null {
+  if (!skill) {
+    switch (field) {
+      case "id":
+      case "name":
+      case "kind":
+      case "description":
+      case "tagsCsv":
+      case "unlockLevelXpRef":
+      case "unlockCurrencyRef":
+      case "unlockItemRef":
+        return "";
+      case "unlockLevelEnabled":
+      case "unlockCurrencyEnabled":
+      case "unlockItemEnabled":
+        return false;
+      default:
+        return 0;
+    }
+  }
+  switch (field) {
+    case "id":
+      return skill.id ?? "";
+    case "name":
+      return skill.name ?? "";
+    case "kind":
+      return skill.kind ?? "active";
+    case "description":
+      return skill.description ?? "";
+    case "cooldownSeconds":
+      return skill.cooldownSeconds ?? 0;
+    case "tagsCsv":
+      return (skill.tags || []).join(",");
+    case "unlockLevelEnabled":
+      return Boolean(skill.unlock?.level?.enabled);
+    case "unlockLevel":
+      return skill.unlock?.level?.level ?? 0;
+    case "unlockLevelXpRef":
+      return resolveRefToDataId(skill.unlock?.level?.xpAddonRef, lookup);
+    case "unlockCurrencyEnabled":
+      return Boolean(skill.unlock?.currency?.enabled);
+    case "unlockCurrencyAmount":
+      return skill.unlock?.currency?.amount ?? 0;
+    case "unlockCurrencyRef":
+      return resolveRefToDataId(skill.unlock?.currency?.currencyAddonRef, lookup);
+    case "unlockItemEnabled":
+      return Boolean(skill.unlock?.item?.enabled);
+    case "unlockItemQuantity":
+      return skill.unlock?.item?.quantity ?? 0;
+    case "unlockItemRef":
+      return resolveRefToDataId(skill.unlock?.item?.itemRef, lookup);
+    default:
+      return null;
+  }
+}
+
+function resolveSkillCostField(
+  cost: SkillCost | undefined,
+  field: SkillCostField,
+  lookup?: SectionLookup
+): string | number | null {
+  if (!cost) {
+    switch (field) {
+      case "amount":
+        return 0;
+      default:
+        return "";
+    }
+  }
+  switch (field) {
+    case "id":
+      return cost.id ?? "";
+    case "type":
+      return cost.type ?? "";
+    case "amount":
+      return cost.amount ?? 0;
+    case "currencyRef":
+      return resolveRefToDataId(cost.currencyRef, lookup);
+    case "definitionsRef":
+      return resolveRefToDataId(cost.definitionsRef, lookup);
+    case "attributeKey":
+      return cost.attributeKey ?? "";
+    default:
+      return null;
+  }
+}
+
+function resolveSkillEffectField(
+  effect: SkillEffectRef | undefined,
+  resolved: AttributeModifierEntry | undefined,
+  field: SkillEffectField,
+  lookup?: SectionLookup
+): string | number | boolean | null {
+  if (!effect) {
+    switch (field) {
+      case "resolvedTemporary":
+        return false;
+      case "resolvedDurationSeconds":
+      case "resolvedTickIntervalSeconds":
+      case "resolvedValue":
+        return 0;
+      default:
+        return "";
+    }
+  }
+  switch (field) {
+    case "id":
+      return effect.id ?? "";
+    case "attributeModifiersSectionId":
+      return resolveRefToDataId(effect.attributeModifiersSectionId, lookup);
+    case "attributeModifiersAddonId":
+      return effect.attributeModifiersAddonId ?? "";
+    case "modifierEntryId":
+      return effect.modifierEntryId ?? "";
+    case "resolvedMode":
+      return resolved?.mode ?? "";
+    case "resolvedAttributeKey":
+      return resolved?.attributeKey ?? "";
+    case "resolvedValue": {
+      const v = resolved?.value;
+      if (typeof v === "boolean") return v ? 1 : 0;
+      return typeof v === "number" ? v : 0;
+    }
+    case "resolvedTemporary":
+      return Boolean(resolved?.temporary);
+    case "resolvedDurationSeconds":
+      return resolved?.durationSeconds ?? 0;
+    case "resolvedTickIntervalSeconds":
+      return resolved?.tickIntervalSeconds ?? 0;
+    case "resolvedCategory":
+      return resolved?.category ?? "";
+    default:
+      return null;
+  }
+}
+
 function findProgressionTableAddon(
   addons: SectionAddon[],
   addonId: string,
@@ -343,6 +539,20 @@ function resolveBinding(
 
     case "itemField":
       return resolveItemField(ctx.currentItem, binding.field, ctx.sectionLookup);
+
+    case "skillField":
+      return resolveSkillField(ctx.currentSkill, binding.field, ctx.sectionLookup);
+
+    case "skillCostField":
+      return resolveSkillCostField(ctx.currentSkillCost, binding.field, ctx.sectionLookup);
+
+    case "skillEffectField":
+      return resolveSkillEffectField(
+        ctx.currentSkillEffect,
+        ctx.currentSkillEffectResolved,
+        binding.field,
+        ctx.sectionLookup
+      );
 
     default:
       return null;
@@ -501,6 +711,57 @@ function buildProductionItemRowMajor(
   });
 }
 
+/** Row-major iteration over Skills entries. */
+function buildSkillsRowMajor(
+  skills: SkillsAddonDraft,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  return (skills.entries || []).map((skill) => {
+    const skillCtx: ResolveContext = { ...ctx, currentSkill: skill };
+    const out: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      out[resolveNodeKey(tmpl, skillCtx)] = resolveNode(tmpl, skillCtx);
+    }
+    return out;
+  });
+}
+
+function buildSkillCostsRowMajor(
+  costs: SkillCost[],
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  return costs.map((cost) => {
+    const costCtx: ResolveContext = { ...ctx, currentSkillCost: cost };
+    const out: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      out[resolveNodeKey(tmpl, costCtx)] = resolveNode(tmpl, costCtx);
+    }
+    return out;
+  });
+}
+
+function buildSkillEffectsRowMajor(
+  effects: SkillEffectRef[],
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  return effects.map((effect) => {
+    const resolved = findAttributeModifierEntry(effect, ctx.sectionLookup);
+    const effectCtx: ResolveContext = {
+      ...ctx,
+      currentSkillEffect: effect,
+      currentSkillEffectResolved: resolved,
+    };
+    const out: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      out[resolveNodeKey(tmpl, effectCtx)] = resolveNode(tmpl, effectCtx);
+    }
+    return out;
+  });
+}
+
 function resolveNode(
   node: ExportSchemaNode,
   ctx: ResolveContext
@@ -546,6 +807,23 @@ function resolveNodeInner(
       if (node.arraySource.type === "productionOutputs") {
         const items = ctx.currentProduction?.outputs || [];
         return buildProductionItemRowMajor(items, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "skills") {
+        const skills = findSkillsAddon(
+          ctx.sectionAddons,
+          node.arraySource.addonId,
+          node.arraySource.addonName
+        );
+        if (!skills) return [];
+        return buildSkillsRowMajor(skills, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "skillCosts") {
+        const costs = ctx.currentSkill?.costs || [];
+        return buildSkillCostsRowMajor(costs, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "skillEffects") {
+        const effects = ctx.currentSkill?.effects || [];
+        return buildSkillEffectsRowMajor(effects, node.itemTemplate, ctx);
       }
       const table = findProgressionTableAddon(
         ctx.sectionAddons,
