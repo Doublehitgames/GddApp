@@ -1,0 +1,30 @@
+---
+title: "Conceitos chave"
+description: "Page type, addon, wizard, Remote Config — o vocabulário do app."
+emoji: "🧩"
+order: 3
+---
+
+# Conceitos chave
+
+<Callout type="warning" title="Em breve">
+  Esta página é um stub — o conteúdo completo chega na próxima rodada.
+</Callout>
+
+Quatro conceitos voltam o tempo todo na documentação. Entender bem cada um destrava o resto.
+
+## Page Type
+
+O **tipo** de uma página decide quais addons ela traz pré-configurados. Ex.: uma página tipo `⚡ Habilidades` nasce com o addon de Skills + um addon de Modificadores de Atributos vinculado automaticamente.
+
+## Addon
+
+Bloco semântico dentro de uma página. Cada addon tem um schema próprio, painel de edição e modo somente-leitura. Hoje são 16+ tipos.
+
+## Wizard
+
+Quando uma page type tem **dependências semânticas** (uma página de Equipamento precisa de Moeda + Atributos), o wizard pergunta como resolver — vincular existente, criar novo ou pular — antes de criar a página.
+
+## Remote Config
+
+A camada de exportação. Define **o formato exato do JSON** que o motor de jogo recebe, com bindings que seguem refs pelo projeto inteiro até resolverem em valores escalares.

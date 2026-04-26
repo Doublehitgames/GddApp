@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { getLocaleLabel, useI18n } from "@/lib/i18n/provider";
@@ -53,6 +54,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+      {/* Persistent docs link — visible from the very first paint so visitors
+          can read about the product before/without creating an account. */}
+      <Link
+        href="/docs"
+        className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/80 px-3 py-1.5 text-xs text-gray-200 hover:border-indigo-500 hover:text-white transition-colors"
+      >
+        <span aria-hidden="true">📚</span>
+        <span>Documentação</span>
+      </Link>
       <div className="w-full max-w-md">
         {/* Logo / Título */}
         <div className="text-center mb-8">

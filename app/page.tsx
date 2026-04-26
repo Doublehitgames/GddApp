@@ -52,6 +52,17 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-3 items-center">
+            {/* Always-available docs entry point — same surface used by the
+                login screen, so the docs link is reachable from any state. */}
+            <Link
+              href="/docs"
+              aria-label="Documentação"
+              title="Documentação"
+              className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/70 px-3 text-sm text-gray-200 hover:border-indigo-500 hover:text-white transition-colors"
+            >
+              <span aria-hidden="true">📚</span>
+              <span className="hidden sm:inline">Docs</span>
+            </Link>
             <a
               href="https://discord.gg/cqPsj7DhEr"
               target="_blank"
