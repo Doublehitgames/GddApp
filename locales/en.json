@@ -2221,6 +2221,9 @@
     "attributeModifiers": { "description": "Buffs/debuffs that change attributes (+10 STR, x1.5 DEX)" },
     "fieldLibrary": { "description": "Reusable names/keys shared across pages" },
     "exportSchema": { "description": "Exports the final JSON consumed by the game" },
-    "richDoc": { "description": "Notion-style rich document with headings, lists, images, embeds, and columns" }
+    "richDoc": { "description": "Notion-style rich document with headings, lists, images, embeds, and columns" },
+    "skills": { "description": "Active/passive abilities with cooldown, costs, and effects linked to Modifiers" },
+    "craftTable": { "description": "Crafting station that aggregates recipes (forge, workbench, alchemy)" },
+    "currencyExchange": { "description": "Exchange house between two currencies with configurable rate" }
   }
 }

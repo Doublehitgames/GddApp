@@ -2221,6 +2221,9 @@
     "attributeModifiers": { "description": "Buffs/debuffs que alteran atributos (+10 STR, x1.5 DEX)" },
     "fieldLibrary": { "description": "Nombres/claves reutilizables compartidos entre páginas" },
     "exportSchema": { "description": "Exporta el JSON final consumido por el juego" },
-    "richDoc": { "description": "Documento enriquecido estilo Notion con títulos, listas, imágenes, embeds y columnas" }
+    "richDoc": { "description": "Documento enriquecido estilo Notion con títulos, listas, imágenes, embeds y columnas" },
+    "skills": { "description": "Habilidades activas/pasivas con cooldown, costos y efectos vinculados a Modificadores" },
+    "craftTable": { "description": "Mesa de producción que agrega recetas (forja, banco, alquimia)" },
+    "currencyExchange": { "description": "Casa de cambio entre dos monedas con tasa configurable" }
   }
 }
