@@ -342,7 +342,22 @@ export const PAGE_TYPES: PageType[] = [
         nameOverride: "Habilidades",
         nameOverrideKey: "pageTypes.addonNames.skills",
       },
+      // Effects scope to AttributeModifiers entries on the SAME page (singleton
+      // enforcement). Seeding the modifiers addon here means the skill effects
+      // checklist is usable from the first second — no cross-section hunting.
+      // `linkAttributeModifiers()` (registry helper) auto-fills `definitionsRef`
+      // from whatever attributeDefinitions the requires-dialog returns, so the
+      // user can immediately add modifier entries with a typed attribute key.
+      {
+        type: "attributeModifiers",
+        role: "recommended",
+        nameOverride: "Efeitos das Habilidades",
+      },
     ],
+    // Skills costs of type "attribute" need to know which definitions own the
+    // key. The wizard prompts the user once and propagates the chosen section
+    // ref to the seeded attributeModifiers addon above.
+    requires: ["attributeDefinitions"],
     tags: ["combat", "progression"],
   },
 ];
