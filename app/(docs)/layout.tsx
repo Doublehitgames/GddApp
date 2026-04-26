@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { DocsHeader } from "@/components/docs/DocsHeader";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 import { DocsTOC } from "@/components/docs/DocsTOC";
+import { DocsMobileMenu } from "@/components/docs/DocsMobileMenu";
 import { buildSidebarTree } from "@/lib/docs/tree";
 
 export const metadata: Metadata = {
@@ -22,6 +23,9 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <DocsHeader />
+      {/* Mobile-only nav: fixed hamburger + slide-in drawer wrapping the
+          same sidebar tree. Stays out of the desktop layout entirely. */}
+      <DocsMobileMenu tree={tree} />
       <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 md:px-6 lg:gap-8">
         <aside
           className="hidden w-60 shrink-0 lg:block"

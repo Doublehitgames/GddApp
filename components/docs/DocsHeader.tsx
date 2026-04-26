@@ -19,7 +19,10 @@ export function DocsHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-gray-800 bg-gray-950/85 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
+      {/* On mobile, the hamburger from DocsMobileMenu sits absolute at
+          top-left (pl-14 reserves room for it so the brand link doesn't
+          overlap). lg:pl-4 restores normal padding on desktop. */}
+      <div className="mx-auto flex max-w-7xl items-center justify-between pl-14 pr-4 py-3 md:pr-6 lg:pl-4 lg:pr-6">
         <Link
           href="/docs"
           className="flex items-center gap-2 text-sm font-semibold text-gray-100 hover:text-white"
