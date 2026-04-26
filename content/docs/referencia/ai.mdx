@@ -149,26 +149,27 @@ Roda heurísticas + IA pra apontar:
 
 Em qualquer richDoc, o botão **"Melhorar com IA"** envia o conteúdo atual + um pedido de refinamento (mais conciso, mais técnico, mais visual, etc.) e devolve uma versão revisada. Você compara lado a lado e aceita ou descarta.
 
-## MCP Integration
+## Conexão com outros assistentes de IA
 
-O GDD Manager também expõe um **MCP server** (`packages/mcp-server/`) que permite que **outros agentes de IA** (Claude Code, Cursor, etc.) leiam e modifiquem o seu projeto. Endpoints incluem:
+O GDD Manager pode ser **conectado a outros assistentes de IA** que você (ou seu time de programação) já usem — Claude Code, Cursor, e similares. Quando conectado, esses assistentes conseguem:
 
-- Listar projetos/seções/addons
-- Criar páginas e addons (com schemas tipados via Zod)
-- Atualizar campos específicos
-- Resolver Remote Config (gerar JSON sob demanda)
+- Listar e ler o conteúdo das suas páginas
+- Criar páginas novas e adicionar addons
+- Atualizar valores específicos
+- Gerar o JSON de exportação sob demanda
 
-Útil pra workflows tipo: o programador pede pro Claude Code abrir o GDD, ler a tabela de balanceamento, e gerar código C# que consome esses valores.
+Cenário comum: o programador do seu jogo abre o assistente dele, pede pra ler a tabela de balanceamento que você criou aqui e gerar o código que consome esses valores no motor. Você nem precisa exportar manualmente.
 
-<Callout type="info" title="MCP em construção">
-  O MCP server tem cobertura ampla mas ainda está em iteração. Veja o
-  diretório <code>packages/mcp-server/src/</code> pra schemas atuais.
+<Callout type="info" title="Integração ainda evoluindo">
+  Essa conexão está sendo expandida feature por feature. Quando o seu time
+  for usar pela primeira vez, vale conferir com a programação o que já está
+  disponível.
 </Callout>
 
 ## Privacidade
 
 - **API keys**: ficam só no seu navegador (localStorage). Nunca enviamos pra nossos servidores.
-- **Conteúdo enviado pra IA**: vai direto do seu browser pra o provedor. Nosso backend não vê.
+- **Conteúdo enviado pra IA**: vai direto do seu navegador pro provedor (Anthropic, OpenAI ou Groq). Os servidores do GDD Manager não veem nem armazenam isso.
 - **Histórico**: não armazenamos histórico de uso de IA.
 
 ## Veja também
