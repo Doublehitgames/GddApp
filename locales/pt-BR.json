@@ -260,11 +260,14 @@
       "attributeDefinitionsBase": "Atributos base",
       "fieldLibrary": "Biblioteca de Campos",
       "currency": "Moeda",
+      "currencyExchange": "Casa de Câmbio",
       "xpCurve": "Curva de XP",
       "equipmentEffects": "Efeitos",
       "variantModifiers": "Efeitos por personagem",
       "production": "Produção",
-      "craftTable": "Mesa de Produção"
+      "craftTable": "Mesa de Produção",
+      "skills": "Habilidades",
+      "skillEffects": "Efeitos das Habilidades"
     },
     "autoSections": {
       "buyDiscount": "📉 Desconto de Compra",
@@ -1447,6 +1450,7 @@
     "category_debuff": "Debuff",
     "category_neutral": "Neutro",
     "tickIntervalLabel": "Intervalo de tick (s)",
+    "tickIntervalTooltip": "Convenção: trailing tick — o primeiro tick dispara em t=N (não em t=0). Total = floor(duração / intervalo) ticks. Ex.: dur=10, tick=1 → 10 aplicações em t=1..10.",
     "tagsLabel": "Tags (separadas por vírgula)",
     "tagsPlaceholder": "ex: poison, magical"
   },

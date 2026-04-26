@@ -352,6 +352,7 @@ export const PAGE_TYPES: PageType[] = [
         type: "attributeModifiers",
         role: "recommended",
         nameOverride: "Efeitos das Habilidades",
+        nameOverrideKey: "pageTypes.addonNames.skillEffects",
       },
     ],
     // Skills costs of type "attribute" need to know which definitions own the

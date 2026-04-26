@@ -260,11 +260,14 @@
       "attributeDefinitionsBase": "Base attributes",
       "fieldLibrary": "Field Library",
       "currency": "Currency",
+      "currencyExchange": "Exchange House",
       "xpCurve": "XP Curve",
       "equipmentEffects": "Effects",
       "variantModifiers": "Character effects",
       "production": "Production",
-      "craftTable": "Crafting Table"
+      "craftTable": "Crafting Table",
+      "skills": "Skills",
+      "skillEffects": "Skill Effects"
     },
     "autoSections": {
       "buyDiscount": "📉 Buy Discount",
@@ -1447,6 +1450,7 @@
     "category_debuff": "Debuff",
     "category_neutral": "Neutral",
     "tickIntervalLabel": "Tick interval (s)",
+    "tickIntervalTooltip": "Convention: trailing tick — the first tick fires at t=N (not t=0). Total = floor(duration / interval) ticks. E.g. duration=10, tick=1 → 10 applications at t=1..10.",
     "tagsLabel": "Tags (comma-separated)",
     "tagsPlaceholder": "e.g. poison, magical"
   },
