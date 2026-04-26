@@ -36,8 +36,11 @@ export function FeatureCard({ emoji, title, href, children }: FeatureCardProps) 
               →
             </span>
           </h3>
+          {/* MDX wraps loose text inside JSX components in <p>, so we use a
+              <div> here instead of <p> to avoid the invalid <p><p> nesting
+              that triggers a React hydration error. */}
           {children ? (
-            <p className="mt-1 text-sm text-gray-400 leading-snug">{children}</p>
+            <div className="mt-1 text-sm text-gray-400 leading-snug">{children}</div>
           ) : null}
         </div>
       </div>

@@ -3,8 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { supabaseSafeFetch } from "@/lib/supabase/safeFetch";
 
-// Rotas que NÃO precisam de autenticação
-const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/"];
+// Rotas que NÃO precisam de autenticação. /docs/* é totalmente público —
+// a documentação fica acessível pra visitantes anônimos avaliarem o
+// produto antes de criar conta.
+const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/", "/docs"];
 const AUTH_TIMEOUT_MS = 4000;
 
 async function getUserWithTimeout(

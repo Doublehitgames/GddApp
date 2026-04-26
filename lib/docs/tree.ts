@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import path from "node:path";
-import { DOCS_ROOT, listAllDocs, type DocFrontmatter } from "./frontmatter";
+import { DOCS_ROOT, listAllDocs, readFrontmatter, type DocFrontmatter } from "./frontmatter";
 
 /**
  * Sidebar node — each is either a leaf (an .mdx page) or a folder
@@ -59,7 +59,10 @@ function nodeFromDoc(
   const last = slugSegments[slugSegments.length - 1] ?? "";
   return {
     href: `/docs${slugSegments.length > 0 ? "/" + slugSegments.join("/") : ""}`,
-    label: fm.title ?? humanise(last) ?? "Documentação",
+    // Sidebar prefers a short `sidebarLabel` over the page title — the
+    // title becomes the page H1, which often reads naturally as a phrase
+    // ("Documentação do GDD Manager") but feels heavy in nav.
+    label: fm.sidebarLabel ?? fm.title ?? humanise(last) ?? "Documentação",
     emoji: fm.emoji,
     order: typeof fm.order === "number" ? fm.order : 100,
     isFolder: false,
@@ -125,6 +128,18 @@ export function buildSidebarTree(): SidebarNode[] {
   const buildSubtree = (entry: FolderEntry, segs: string[]): SidebarNode[] => {
     const out: SidebarNode[] = [];
 
+    // Surface the root index.mdx as a "Home" entry at the top of the
+    // sidebar. Without this the landing is reachable only via the brand
+    // logo in the header — the sidebar wouldn't show "you are here" when
+    // the user is on /docs. Force `order: -Infinity` so Home always wins
+    // the sort tiebreaker against folders that also resolve to order 0.
+    if (entry === root && root.indexDoc) {
+      out.push({
+        ...nodeFromDoc(root.indexDoc.fm, root.indexDoc.slugSegments),
+        order: -Infinity,
+      });
+    }
+
     // Each leaf .mdx in this folder
     for (const leaf of entry.leafDocs) {
       out.push(nodeFromDoc(leaf.fm, leaf.slugSegments));
@@ -137,13 +152,20 @@ export function buildSidebarTree(): SidebarNode[] {
       const indexFm = child.indexDoc?.fm;
       const folderNode: SidebarNode = {
         href: child.indexDoc ? `/docs/${childSegs.join("/")}` : null,
-        label: indexFm?.title ?? childMeta.label ?? humanise(name),
-        emoji: indexFm?.emoji ?? childMeta.emoji,
+        // Prefer the folder-level _meta.json values for label/emoji/order —
+        // they describe the FOLDER's slot in its parent's sidebar. The
+        // index.mdx frontmatter describes the INDEX page itself (its title
+        // becomes the page H1, its `order` would only matter if the index
+        // showed up as a sibling row, which it doesn't). When _meta is
+        // absent, we fall back to the index frontmatter, then to a derived
+        // humanised name.
+        label: childMeta.label ?? indexFm?.title ?? humanise(name),
+        emoji: childMeta.emoji ?? indexFm?.emoji,
         order:
-          typeof indexFm?.order === "number"
-            ? indexFm.order
-            : typeof childMeta.order === "number"
+          typeof childMeta.order === "number"
             ? childMeta.order
+            : typeof indexFm?.order === "number"
+            ? indexFm.order
             : 100,
         isFolder: true,
         slugSegments: childSegs,
@@ -156,4 +178,79 @@ export function buildSidebarTree(): SidebarNode[] {
   };
 
   return buildSubtree(root, []);
+}
+
+/** A single segment of the breadcrumb trail above a doc page. */
+export type Crumb = {
+  label: string;
+  /**
+   * Target URL. Null when the folder has no `index.mdx` — clicking would
+   * 404. The renderer should fall back to plain text in that case.
+   */
+  href: string | null;
+  /** When true, this is the current page (rendered as plain text, not link). */
+  current: boolean;
+};
+
+/**
+ * Walks the slug segments and produces a breadcrumb trail. For each
+ * intermediate segment it reads the folder's `_meta.json` (preferred)
+ * or its `index.mdx` frontmatter for the label. The final crumb is the
+ * doc's own title and is flagged `current` so the renderer can disable
+ * the link.
+ *
+ * Returns an empty array for the root `/docs` (which has no parent path
+ * to walk back through).
+ */
+export function buildBreadcrumbs(slugSegments: string[]): Crumb[] {
+  if (slugSegments.length === 0) return [];
+  if (!fs.existsSync(DOCS_ROOT)) return [];
+
+  const crumbs: Crumb[] = [];
+  let absDir = DOCS_ROOT;
+  for (let i = 0; i < slugSegments.length; i += 1) {
+    const seg = slugSegments[i];
+    absDir = path.join(absDir, seg);
+    const isLeaf = i === slugSegments.length - 1;
+    const slugPath = slugSegments.slice(0, i + 1).join("/");
+
+    let label = humanise(seg);
+    let href: string | null = `/docs/${slugPath}`;
+
+    if (isLeaf) {
+      // Final crumb = the leaf .mdx itself. Always has a route.
+      const mdxPath = `${absDir}.mdx`;
+      if (fs.existsSync(mdxPath)) {
+        const fm = readFrontmatter(mdxPath);
+        label = fm.sidebarLabel ?? fm.title ?? label;
+      }
+    } else {
+      // Intermediate crumb = folder. Label preference: _meta.json then
+      // index.mdx then humanised folder name. Href is only set when the
+      // folder has an `index.mdx`; without it, /docs/<folder> would 404
+      // and the crumb falls back to plain text in the renderer.
+      const metaPath = path.join(absDir, "_meta.json");
+      if (fs.existsSync(metaPath)) {
+        try {
+          const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as { label?: string };
+          if (meta.label) label = meta.label;
+        } catch {
+          /* ignore malformed _meta.json */
+        }
+      }
+      const idxPath = path.join(absDir, "index.mdx");
+      if (fs.existsSync(idxPath)) {
+        const fm = readFrontmatter(idxPath);
+        // index.mdx label only used when _meta.json didn't already set one
+        if (label === humanise(seg) && (fm.sidebarLabel || fm.title)) {
+          label = (fm.sidebarLabel ?? fm.title)!;
+        }
+      } else {
+        href = null;
+      }
+    }
+
+    crumbs.push({ label, href, current: isLeaf });
+  }
+  return crumbs;
 }

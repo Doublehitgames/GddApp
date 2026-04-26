@@ -10,6 +10,11 @@ import matter from "gray-matter";
  */
 export type DocFrontmatter = {
   title?: string;
+  /**
+   * Optional label used in the sidebar when the page title would be too
+   * long or descriptive. Falls back to `title` when absent.
+   */
+  sidebarLabel?: string;
   description?: string;
   emoji?: string;
   /** Sort order inside the parent folder. Lower comes first; default 100. */

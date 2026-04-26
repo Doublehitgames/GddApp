@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SidebarNode } from "@/lib/docs/tree";
 
 interface DocsSidebarProps {
@@ -36,9 +36,22 @@ function SidebarItem({ node, depth }: { node: SidebarNode; depth: number }) {
     return pathname === prefix || pathname.startsWith(prefix + "/");
   }, [pathname, node.slugSegments]);
 
-  // Folders default to expanded if they contain the active page; otherwise
-  // collapsed at depth ≥1 to keep the sidebar scannable.
-  const [expanded, setExpanded] = useState(isActiveTrail || depth === 0);
+  // Folders default to collapsed unless they contain the active page.
+  // Top-level folders used to auto-expand for "scannability", but that
+  // hid the user's mental model of what's open vs closed when they
+  // landed on /docs — everything looked open, even sections they'd
+  // never seen. Now the sidebar is silent until the user clicks.
+  const [expanded, setExpanded] = useState(isActiveTrail);
+
+  // When the user navigates (pathname changes) into a page inside this
+  // folder, force-expand it so the active row is visible. Without this
+  // effect, the initial useState value sticks forever — even if the user
+  // jumps from a sibling section into this one via a FeatureCard, the
+  // folder stays collapsed and they can't see where they are. We don't
+  // auto-collapse on leaving (would feel jumpy).
+  useEffect(() => {
+    if (isActiveTrail) setExpanded(true);
+  }, [isActiveTrail]);
 
   if (!node.isFolder) {
     return (

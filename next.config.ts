@@ -1,19 +1,14 @@
 import type { NextConfig } from "next";
-import createMDX from "@next/mdx";
 
-const withMDX = createMDX({
-  // The bare loader — no remark/rehype plugins for now. We can layer GFM
-  // (tables/strikethrough) and shiki/prism (syntax highlighting) later
-  // without changing the route surface.
-});
-
+// We don't use `@next/mdx` anymore: Turbopack rejects function-typed
+// loader options (so remark plugins fail to serialise), and the runtime
+// `next-mdx-remote` evaluator uses `new Function()` which breaks under
+// React 19 + RSC. The docs page now compiles MDX server-side with
+// `@mdx-js/mdx` directly — see app/(docs)/docs/[[...slug]]/page.tsx.
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  // Treat .mdx files as page candidates so the dynamic [[...slug]] route
-  // can resolve them and the loader runs on import.
-  pageExtensions: ["ts", "tsx", "js", "jsx", "mdx"],
 };
 
-export default withMDX(nextConfig);
+export default nextConfig;
