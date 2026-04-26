@@ -45,10 +45,20 @@ DEF  5
 SPD  5
 ```
 
-<Callout type="tip" title="dataId estável">
-  Antes de seguir, abra **Configurações da página** (engrenagem) e defina o
-  `dataId` como `DATA_BASIC_ATTR`. Esse é o nome que o JSON exportado vai usar
-  pra referenciar esse perfil de atributos.
+<Callout type="tip" title="Defina um DataID — é importante">
+  **Logo abaixo do título da página** tem um campo discreto: clique em
+  **"+ DataID"**. O app sugere automaticamente algo como `DATA_ATRIBUTOS_BASE`
+  baseado no título — você pode aceitar ou editar pra `DATA_BASIC_ATTR`.
+
+  **Por que isso importa**: o DataID é o identificador **estável** que o motor
+  vai usar pra encontrar essa página no JSON exportado. Sem ele, refs apontam
+  pra UUIDs internos ilegíveis. Com ele, o JSON tem chaves humanas tipo
+  `DATA_BASIC_ATTR` que ficam estáveis mesmo quando você renomeia, move ou
+  reorganiza a página.
+
+  **Defina o DataID em todas as páginas que vão pro export.** Atributos,
+  moedas, itens, habilidades — todas. Demora 2 segundos por página e poupa
+  horas de debug depois.
 </Callout>
 
 ## Passo 3 — Página de Moeda
@@ -58,7 +68,7 @@ Em seguida, uma moeda pra economia funcionar.
 1. `+ Nova página` → tipo `🪙 Economia`.
 2. Nome: `Ouro`.
 3. Configure no painel: código `GOLD`, nome `Ouro`, ícone se quiser.
-4. dataId: `DATA_GOLD`.
+4. **Defina o DataID** clicando em "+ DataID" abaixo do título — sugestão padrão `DATA_OURO`, edite pra `DATA_GOLD` se preferir consistência.
 
 Pronto — agora tem uma moeda que outros addons podem referenciar.
 
@@ -70,7 +80,7 @@ Vamos criar um item: **Espada de Ferro**.
 2. **O wizard vai abrir** perguntando duas dependências:
    - **Moeda**: escolha `Ouro` (criada no passo 3).
    - **Atributos**: escolha `Atributos Base` (criada no passo 2).
-3. Nome da página: `Espada de Ferro`. dataId: `DATA_IRON_SWORD`.
+3. Nome da página: `Espada de Ferro`. Clique em "+ DataID" abaixo do título e edite pra `DATA_IRON_SWORD` (a sugestão automática vai ser algo tipo `DATA_ESPADA_DE_FERRO`).
 
 A página nasce com **3 addons** já configurados:
 
@@ -86,7 +96,7 @@ Agora a parte divertida: uma habilidade de fogo.
 
 1. `+ Nova página` → tipo `⚡ Habilidades`.
 2. **Wizard pergunta**: qual página de Atributos? Escolha `Atributos Base`.
-3. Nome: `Fireball`. dataId: `DATA_FIRE_BALL`.
+3. Nome: `Fireball`. DataID (clique abaixo do título): `DATA_FIRE_BALL`.
 
 A página nasce com 2 addons:
 

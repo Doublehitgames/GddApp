@@ -139,11 +139,52 @@ O Remote Config é poderoso o suficiente pra:
   com exemplos de cada formato em [Referência → Remote Config](/docs/referencia/remote-config).
 </Callout>
 
-## 7. dataId
+## 7. DataID
 
-Um **dataId** é o identificador estável que o motor usa pra reconhecer uma página/dado, independente do UUID interno.
+Um **DataID** é o identificador **estável e humano** que o motor usa pra reconhecer uma página, independente do UUID interno do app.
 
-Você define dataId manualmente: `DATA_FIRE_BALL`, `DATA_BASIC_ATTR`, `DATA_GOLD`. O Remote Config resolve refs pra esses dataIds, então o JSON exportado tem chaves humanas que ficam estáveis mesmo quando você reorganiza o projeto.
+### Por que importa
+
+O app gera UUIDs internos (`a8f3e9d2-7c1b-...`) pra cada página, mas eles:
+
+- mudam toda vez que você duplica/importa um projeto
+- são ilegíveis no JSON exportado
+- não dão pra um programador "memorizar" qual página é qual
+
+O DataID resolve isso: você decide `DATA_FIRE_BALL`, `DATA_BASIC_ATTR`, `DATA_GOLD`, e o Remote Config exporta esses nomes em vez dos UUIDs. Refs entre addons (cost vai pra moeda, efeito vai pro modifier, modifier vai pros atributos) também resolvem pros DataIDs.
+
+**Resultado**: o JSON do motor fica com chaves humanas e estáveis. Você pode renomear, mover ou reorganizar a página no GDD que o JSON continua usando o mesmo `DATA_FIRE_BALL`.
+
+### Como definir
+
+1. Abra qualquer página
+2. **Logo abaixo do título** tem um campo discreto:
+   - Quando vazio: aparece **"+ DataID"** em cinza
+   - Quando preenchido: aparece **"ID: DATA_..."** num pill clicável
+3. Clique no campo
+4. O app **sugere automaticamente** algo baseado no título — ex.: título "Espada de Ferro" → sugestão `DATA_ESPADA_DE_FERRO`
+5. Aceite ou edite (recomendo padronizar, ex.: tudo em inglês: `DATA_IRON_SWORD`)
+6. O app valida duplicatas dentro do projeto
+
+### Quando usar
+
+**Defina DataID em todas as páginas que vão pro Remote Config.** Isso normalmente inclui:
+
+- Atributos, perfis, modifiers
+- Moedas
+- Itens (inventory, equipment)
+- Habilidades
+- Receitas e mesas de produção
+- Variáveis globais
+
+Páginas puramente narrativas (lore, briefing, design notes) não precisam — elas não exportam dados pro motor.
+
+<Callout type="tip" title="Convenção de naming">
+  Recomendo prefixo <code>DATA_</code> + tipo + identificador, em UPPER_SNAKE.
+  Exemplos: <code>DATA_GOLD</code>, <code>DATA_FIRE_BALL</code>,
+  <code>DATA_ENEMY_GOBLIN</code>, <code>DATA_RECIPE_BOW</code>. Ajuda quem lê
+  o JSON a saber rapidamente do que se trata.
+</Callout>
 
 ## Próximos passos
 
