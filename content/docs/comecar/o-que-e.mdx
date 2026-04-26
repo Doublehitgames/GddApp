@@ -1,23 +1,92 @@
 ---
 title: "O que é o GDD Manager"
-description: "Visão geral do app em 5 minutos."
+description: "App que mantém seu Game Design Document vivo, conectado e exportável pro motor."
 emoji: "🚀"
 order: 1
 ---
 
 # O que é o GDD Manager
 
-<Callout type="warning" title="Em breve">
-  Esta página é um stub — o conteúdo completo chega na próxima rodada.
+Um app pra escrever Game Design Documents que **não morrem na primeira semana de produção**.
+
+Você descreve o jogo numa estrutura que entende **quais são habilidades, atributos, moedas, receitas**, e o app **exporta tudo pro JSON** que o seu motor consome. Doc e jogo passam a falar a mesma língua.
+
+## O problema
+
+Quase todo GDD que você já viu envelhece mal. O ciclo é sempre o mesmo:
+
+1. **Mês 1**: você escreve um doc lindo no Notion/Word/Confluence. Lista todas as armas, atributos, fórmulas.
+2. **Mês 3**: o programador implementa "Espada de Ferro = 50 dano, 100 ouro". O design original tinha 60. Ninguém atualiza o doc.
+3. **Mês 6**: o doc tem 80 páginas e **ninguém abre mais**. Toda decisão vive em Discord, no código, ou na cabeça de alguém.
+4. **Mês 12**: alguém novo entra no time. O onboarding é "pergunta no chat" porque o doc mente sobre 70% das mecânicas.
+
+<Callout type="warning" title="Esse não é problema do designer">
+  É problema da ferramenta. Notion não sabe que "atk = 10" virou "atk = 12" no código.
+  Word não sabe que aquela receita foi removida. Eles tratam tudo como texto solto, e
+  texto solto **não consegue** se sincronizar.
 </Callout>
 
-Um app pra escrever Game Design Documents que ficam **vivos** e **conectados** ao seu jogo.
+## A ideia central
 
-## Por que importa
+O GDD Manager inverte o fluxo: **o documento vira a fonte da verdade**, e o motor consome dados dele — não o contrário.
 
-Documentos de design tradicionais (Word, Notion, PDF) ficam desatualizados rápido porque vivem **separados** do código. O GDD Manager tenta fechar essa distância: você descreve o sistema **uma vez**, e o app exporta os dados que o motor consome.
+Quando você muda "Espada de Ferro: 50 → 60 dano" aqui, esse novo número entra no JSON exportado, que o jogo lê na próxima build. **Não tem espaço pra divergência** porque só existe um lugar onde o número vive.
+
+E como o app **entende** que aquilo é uma arma (não só texto), ele pode:
+
+- validar referências (a receita aponta pra um item que existe?)
+- mostrar dependências (quais skills usam esse atributo?)
+- avisar de quebras (você apagou a moeda, mas 3 itens ainda referenciam ela)
+
+## O que torna ele diferente
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📄" title="Páginas tipadas" href="/docs/comecar/conceitos-chave">
+    Você não cria "uma página em branco". Diz "isto é uma página de **Habilidade**" e ela nasce com os campos certos: cooldown, custo, efeitos.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Addons compostos" href="/docs/referencia/addons">
+    Cada página tem blocos especializados (Skills, Currency, Modificadores) que **se referenciam validados** entre si. Sem strings soltas.
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/remote-config">
+    Você **desenha o JSON exato** que o motor recebe. Suporta múltiplos formatos (row, column, matrix) e segue refs por todo o projeto.
+  </FeatureCard>
+  <FeatureCard emoji="🤖" title="AI integrada" href="/docs/referencia/ai">
+    Pode pedir pra completar atributos, sugerir balanço, ou esboçar páginas inteiras. Você sempre revisa antes de aceitar.
+  </FeatureCard>
+</div>
+
+## Pra quem foi feito
+
+| Você é... | O GDD Manager te ajuda com... |
+|---|---|
+| **Indie solo** | Sair do Notion bagunçado e ter um único arquivo de verdade |
+| **Game designer em estúdio** | Pré-produção rica + handoff técnico pro time de programação |
+| **Programador que faz tudo** | Escrever o doc UMA vez e usar o JSON direto no motor |
+| **Hobbysta aprendendo** | Templates tipados ensinam a estrutura típica de cada gênero |
+
+## O que ele **não é**
+
+Pra evitar mal entendido:
+
+- **Não é um gerenciador de tarefas** — use Trello, Linear, Jira pra sprints e issues.
+- **Não é wiki genérica** — Notion/Confluence cobrem melhor onboarding e processos do estúdio.
+- **Não é engine** — não cria gameplay, só descreve. Você ainda escreve o motor (Unity, Godot, Unreal, custom).
+- **Não é gerador de planilhas** — mas exporta dados que cabem em qualquer planilha ou tabela do seu motor.
+
+<Callout type="tip" title="Use junto, não no lugar">
+  O fluxo ideal pra um estúdio é: **roadmap no Linear/Jira**, **comunicação no Discord/Slack**,
+  **GDD aqui**, **código no GitHub**. O GDD Manager faz uma coisa só, mas faz bem.
+</Callout>
 
 ## Próximos passos
 
-- [Seu primeiro projeto](/docs/comecar/primeiro-projeto) — walkthrough prático
-- [Conceitos chave](/docs/comecar/conceitos-chave) — vocabulário do app
+Pronto pra começar?
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🌱" title="Seu primeiro projeto" href="/docs/comecar/primeiro-projeto">
+    Walkthrough criando um RPG mínimo do zero usando os wizards.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Conceitos chave" href="/docs/comecar/conceitos-chave">
+    Vocabulário do app: page type, addon, wizard, Remote Config.
+  </FeatureCard>
+</div>

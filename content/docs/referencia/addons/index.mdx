@@ -1,0 +1,102 @@
+---
+title: "Addons"
+description: "Os 16 tipos de blocos especializados que compõem qualquer página."
+emoji: "🧩"
+order: 0
+---
+
+# Addons
+
+Um **addon** é um bloco semântico dentro de uma página: tem schema próprio, painel de edição e contribui pro JSON exportado. A maioria é singleton (1 por página). As exceções são `richDoc` e `exportSchema`.
+
+Cada addon abaixo tem sua própria página de referência. Os links levam pra elas.
+
+## Atributos & Habilidades
+
+Tudo que envolve stats e abilities do jogo.
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎯" title="attributeDefinitions" href="/docs/referencia/addons/attribute-definitions">
+    Lista canônica de atributos (HP, ATK, DEF...) que outras páginas referenciam.
+  </FeatureCard>
+  <FeatureCard emoji="👤" title="attributeProfile" href="/docs/referencia/addons/attribute-profile">
+    Valores concretos dos atributos pra um personagem ou item.
+  </FeatureCard>
+  <FeatureCard emoji="✨" title="attributeModifiers" href="/docs/referencia/addons/attribute-modifiers">
+    Buffs/debuffs que alteram atributos (`+10 ATK`, `-5 HP/s por 6s`).
+  </FeatureCard>
+  <FeatureCard emoji="⚡" title="skills" href="/docs/referencia/addons/skills">
+    Habilidades ativas/passivas com custo, cooldown e efeitos referenciando Modifiers.
+  </FeatureCard>
+</div>
+
+## Progressão
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    Curva de XP por nível com presets e fórmulas. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Tabela de valores por nível em colunas (preço, dano, capacidade...). *(em breve)*
+  </FeatureCard>
+</div>
+
+## Economia
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Define uma moeda do jogo (ouro, gema, XP). *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="💱" title="currencyExchange" href="/docs/referencia/addons/currency-exchange">
+    Casa de câmbio entre duas moedas com taxa configurável. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Preços de compra, venda e desbloqueio de um item. *(em breve)*
+  </FeatureCard>
+</div>
+
+## Itens & Produção
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    Parâmetros de inventário: pilha, peso, categoria, durabilidade. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    Produção passiva ou receita (ingredientes → saída). *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="🛠️" title="craftTable" href="/docs/referencia/addons/craft-table">
+    Mesa de produção que agrega receitas. *(em breve)*
+  </FeatureCard>
+</div>
+
+## Dados & Variáveis
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    Campos livres (key-value) ligados à página. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="🌐" title="globalVariable" href="/docs/referencia/addons/global-variable">
+    Modificador global: % de venda, x2 XP em evento. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Nomes/chaves reutilizáveis compartilhados entre páginas. *(em breve)*
+  </FeatureCard>
+</div>
+
+## Conteúdo & Export
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📝" title="richDoc" href="/docs/referencia/addons/rich-doc">
+    Documento rico estilo Notion com títulos, listas, imagens, embeds. *(em breve)*
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="exportSchema" href="/docs/referencia/addons/export-schema">
+    Exporta o JSON final pro motor consumir. *(em breve)*
+  </FeatureCard>
+</div>
+
+<Callout type="info" title="Singleton vs múltiplos">
+  Quase todos os addons só permitem **1 instância por página**. Isso garante
+  que refs internas (Skills → Modifiers da mesma página) sempre tenham um
+  alvo único. As exceções são `richDoc` (você pode quebrar conteúdo em vários
+  blocos) e `exportSchema` (uma página pode produzir múltiplos arquivos JSON).
+</Callout>

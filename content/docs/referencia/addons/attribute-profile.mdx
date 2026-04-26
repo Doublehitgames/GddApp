@@ -1,0 +1,92 @@
+---
+title: "attributeProfile"
+description: "Valores concretos dos atributos para um personagem ou item específico."
+emoji: "👤"
+order: 20
+---
+
+# attributeProfile
+
+Atribui **valores específicos** dos atributos definidos em [`attributeDefinitions`](/docs/referencia/addons/attribute-definitions) a um personagem, classe ou item.
+
+## Por que importa
+
+Definições dizem *"existe HP, ATK, DEF"*. Perfis dizem *"o Mago Sombrio tem HP=80, ATK=15, DEF=3"*. Sem perfis você precisaria copiar a estrutura de stats em cada página, e qualquer mudança na definição (renomear `atk` pra `attack`) quebraria tudo.
+
+## Onde costuma viver
+
+- Página de tipo `👤 Personagens` (vem com perfil + xpBalance + progressionTable).
+- Páginas em branco quando você precisa de stats avulsos (ex.: NPC genérico, base de inimigo).
+
+Singleton — 1 perfil por página. Pra múltiplos personagens, crie múltiplas páginas.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno do addon." },
+  { name: "name", type: "string", required: "Sim", description: "Nome amigável (ex.: Mago Sombrio)." },
+  { name: "definitionsRef", type: "string (sectionId)", description: "Aponta pra seção que tem o addon attributeDefinitions. Define quais keys o perfil aceita." },
+  { name: "values", type: "AttributeProfileValueEntry[]", required: "Sim", description: "Lista de pares (attributeKey, value)." },
+]} />
+
+### `AttributeProfileValueEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "attributeKey", type: "string", required: "Sim", description: <>Key existente em <code>attributeDefinitions.attributes[].key</code>.</> },
+  { name: "value", type: "number | boolean", required: "Sim", description: "Valor concreto. Tipo deve bater com o valueType da definição." },
+]} />
+
+## Exemplo
+
+Perfil de um personagem:
+
+```json
+{
+  "id": "profile-mago",
+  "name": "Mago Sombrio",
+  "definitionsRef": "section-attrs-base",
+  "values": [
+    { "id": "v1", "attributeKey": "hp",  "value": 80 },
+    { "id": "v2", "attributeKey": "atk", "value": 15 },
+    { "id": "v3", "attributeKey": "def", "value": 3 }
+  ]
+}
+```
+
+A `definitionsRef` aponta pra seção que tem `attributeDefinitions`. O painel só permite escolher keys que existem lá — você não consegue colocar um valor pra `atributo_inexistente` por engano.
+
+## Validação cross-ref
+
+Se você renomear ou apagar uma key na `attributeDefinitions`, os perfis que usavam aquela key:
+
+- ficam visíveis no painel com aviso de "key órfã"
+- precisam ser corrigidos manualmente (escolher nova key ou remover)
+- **não** quebram a renderização — o addon degrada graciosamente
+
+## Wizard
+
+A page type `👤 Personagens` cria automaticamente:
+
+1. Este `attributeProfile` (vazio, com `definitionsRef` preenchido)
+2. Um `xpBalance` (curva de XP)
+3. Um `progressionTable` (valores por nível)
+4. Um `attributeModifiers` (efeitos específicos do personagem)
+
+Todos vinculados à mesma `attributeDefinitions` que você escolheu no diálogo do wizard.
+
+<Callout type="tip" title="Valores padrão automáticos">
+  Quando você cria o perfil via wizard, ele já vem com **todos os atributos da
+  definição** preenchidos com `defaultValue`. Você só edita o que difere do padrão.
+</Callout>
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎯" title="attributeDefinitions" href="/docs/referencia/addons/attribute-definitions">
+    Define as keys que este perfil pode preencher.
+  </FeatureCard>
+  <FeatureCard emoji="✨" title="attributeModifiers" href="/docs/referencia/addons/attribute-modifiers">
+    Aplica buffs/debuffs por cima do valor base do perfil.
+  </FeatureCard>
+</div>

@@ -1,29 +1,196 @@
 ---
 title: "Seu primeiro projeto"
-description: "Walkthrough criando um GDD do zero usando os wizards."
+description: "Crie um RPG mínimo do zero usando os wizards — em ~15 minutos."
 emoji: "🌱"
 order: 2
 ---
 
 # Seu primeiro projeto
 
-<Callout type="warning" title="Em breve">
-  Esta página é um stub — o walkthrough completo chega na próxima rodada com
-  screenshots de cada passo.
+Vamos criar um GDD pequeno (uma dezena de páginas) pra você sentir o fluxo. O exemplo é um **RPG de fantasia** com economia simples, atributos, uma habilidade e um item.
+
+<Callout type="info" title="Sem pressa">
+  Não precisa criar tudo de uma vez. O app salva sozinho a cada mudança e
+  você pode voltar aos passos quando quiser.
 </Callout>
 
-Vamos criar um GDD pequeno (10-15 páginas) pra você sentir o fluxo. O exemplo é um RPG de fantasia com economia simples.
+## Antes de começar
 
-## Pré-requisitos
+Pré-requisitos:
 
-- Conta no GDD Manager (cadastro grátis)
+- Conta no GDD Manager (cadastro grátis em <a href="/login">/login</a>)
 - 15 minutos
+- Vontade de inventar nomes legais (você vai precisar)
 
-## Passos previstos no walkthrough
+## Passo 1 — Crie o projeto
 
-1. Criar um projeto vazio
-2. Página de **Atributos** (HP, ATK, DEF) com o wizard
-3. Página de **Moeda** (Ouro)
-4. Página de **Habilidade** vinculando aos atributos
-5. Página de **Item** com efeito (Espada de Ferro)
-6. Configurar **Remote Config** pra exportar tudo
+Na página inicial (`/`), clique em **"+ Novo projeto"**.
+
+Dê um nome (ex.: `Tutorial Aventura`) e uma descrição curta. O projeto nasce vazio, com a estrutura padrão de **5 grupos** (Visão Geral, Design, Conteúdo, Apresentação, Produção) — você pode ignorar esses por enquanto.
+
+## Passo 2 — Página de Atributos
+
+A primeira página *real* é a de Atributos, porque tudo no jogo vai depender dela.
+
+1. No sidebar, clique no `+` ao lado de **Conteúdo** (ou outro grupo).
+2. No picker, escolha o tipo `🎯 Atributos`.
+3. Dê o nome `Atributos Base`.
+
+A página nasce com uma tabela de atributos pré-populada (HP, ATK, DEF, SPD). Edite os valores padrão se quiser:
+
+```
+HP   100
+ATK  10
+DEF  5
+SPD  5
+```
+
+<Callout type="tip" title="dataId estável">
+  Antes de seguir, abra **Configurações da página** (engrenagem) e defina o
+  `dataId` como `DATA_BASIC_ATTR`. Esse é o nome que o JSON exportado vai usar
+  pra referenciar esse perfil de atributos.
+</Callout>
+
+## Passo 3 — Página de Moeda
+
+Em seguida, uma moeda pra economia funcionar.
+
+1. `+ Nova página` → tipo `🪙 Economia`.
+2. Nome: `Ouro`.
+3. Configure no painel: código `GOLD`, nome `Ouro`, ícone se quiser.
+4. dataId: `DATA_GOLD`.
+
+Pronto — agora tem uma moeda que outros addons podem referenciar.
+
+## Passo 4 — Página de Item
+
+Vamos criar um item: **Espada de Ferro**.
+
+1. `+ Nova página` → tipo `⚔️ Itens com efeito`.
+2. **O wizard vai abrir** perguntando duas dependências:
+   - **Moeda**: escolha `Ouro` (criada no passo 3).
+   - **Atributos**: escolha `Atributos Base` (criada no passo 2).
+3. Nome da página: `Espada de Ferro`. dataId: `DATA_IRON_SWORD`.
+
+A página nasce com **3 addons** já configurados:
+
+- **Inventário** — peso, categoria, pilha
+- **Economia** — preço de compra (ex.: 100 GOLD), preço de venda (50 GOLD)
+- **Modificadores de Atributos** — `+5 ATK` quando equipada
+
+Configure os campos. Cada mudança salva automaticamente.
+
+## Passo 5 — Página de Habilidade
+
+Agora a parte divertida: uma habilidade de fogo.
+
+1. `+ Nova página` → tipo `⚡ Habilidades`.
+2. **Wizard pergunta**: qual página de Atributos? Escolha `Atributos Base`.
+3. Nome: `Fireball`. dataId: `DATA_FIRE_BALL`.
+
+A página nasce com 2 addons:
+
+- **Habilidades** (vazia)
+- **Efeitos das Habilidades** (Modificadores de Atributos, vazio)
+
+Vamos preencher:
+
+**No addon de Modificadores**, adicione uma entry:
+- Nome: `Fireball Impact`
+- Atributo: `hp`
+- Modo: `add`
+- Valor: `-30`
+
+**No addon de Habilidades**, adicione uma skill:
+- Nome: `Fireball`
+- Tipo: ativa
+- Recarga entre usos: `5` (segundos)
+- **Custos**: nada por enquanto
+- **Efeitos**: marque a checkbox `Fireball Impact` (do modifier acima)
+
+Pronto. Quando o jogo executar a Fireball, vai aplicar `-30` em `hp` do alvo.
+
+<Callout type="tip" title="Burst + DoT?">
+  Pra fazer uma Fireball mais rica (impacto + queimadura ao longo do tempo),
+  basta adicionar **2 entries** no Modificadores: uma instantânea (burst) e uma
+  com `temporary: true, durationSeconds: 6, tickIntervalSeconds: 1`. Marque
+  ambas no checklist de efeitos da skill.
+</Callout>
+
+## Passo 6 — Remote Config (export)
+
+O último passo: configurar o JSON que o motor consome.
+
+1. Em qualquer página (recomendo criar uma `📤 Configuração de Export`), adicione um addon **Remote Config**.
+2. No painel, monte uma árvore tipo:
+
+```json
+{
+  "skills": [        ← array, source: skills:DATA_FIRE_BALL
+    {
+      "id": "...",       ← skillField/id (resolve pra dataId)
+      "name": "...",     ← skillField/name
+      "cooldown": 0,     ← skillField/cooldownSeconds
+      "effects": [       ← array, source: skillEffects
+        {
+          "name": "",        ← skillEffectField/resolvedName
+          "attr_id": "",     ← skillEffectField/resolvedDefinitionsRef
+          "attr_key": "",    ← skillEffectField/resolvedAttributeKey
+          "attr_value": 0,   ← skillEffectField/resolvedValue
+          "attr_stack": ""   ← skillEffectField/resolvedStacking
+        }
+      ]
+    }
+  ]
+}
+```
+
+3. Clique em **Exportar** — o JSON pronto cai no seu clipboard ou arquivo.
+
+Resultado:
+
+```json
+{
+  "skills": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "name": "Fireball",
+      "cooldown": 5,
+      "effects": [
+        {
+          "name": "Fireball Impact",
+          "attr_id": "DATA_BASIC_ATTR",
+          "attr_key": "hp",
+          "attr_value": -30,
+          "attr_stack": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Esse JSON é o que o seu motor lê.** Ele tem identificadores estáveis (`DATA_*`), valores resolvidos, refs cross-section traduzidas — tudo pronto pra consumir sem cross-resolver no runtime.
+
+## E agora?
+
+Você fez:
+
+✅ Atributos · ✅ Moeda · ✅ Item com efeito · ✅ Habilidade · ✅ Remote Config
+
+Próximas direções:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📦" title="Referência de addons" href="/docs/referencia/addons">
+    Mergulhe em cada addon que você usou. Cada um tem mais opções do que mostramos aqui.
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="Remote Config completo" href="/docs/referencia/remote-config">
+    Aprenda os 4 formatos de export (row, column, matrix, keyed) e como importar de volta.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Conceitos chave" href="/docs/comecar/conceitos-chave">
+    Volte ao vocabulário se algum termo ficou confuso.
+  </FeatureCard>
+  <FeatureCard emoji="🍳" title="Cookbook" href="/docs/cookbook">
+    Snippets prontos pra cenários comuns *(em breve)*.
+  </FeatureCard>
+</div>
