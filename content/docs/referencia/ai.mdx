@@ -1,0 +1,183 @@
+---
+title: "AI"
+description: "Como funciona a integração de IA do app — geração de templates, chat com contexto, melhoria de seções."
+emoji: "🤖"
+order: 30
+---
+
+# AI
+
+O GDD Manager integra modelos de linguagem pra **acelerar tarefas tediosas** sem tirar o controle do designer. Você sempre revisa antes de aceitar — a IA propõe, você decide.
+
+## O que ela faz
+
+| Feature | Quando usa |
+|---|---|
+| **Geração de template** | "Quero um GDD inicial pra um RPG de fantasia" → IA gera estrutura completa com 5 grupos, atributos, personagens, economia, callouts didáticos |
+| **Chat com contexto** | "Sugira páginas pra esta seção" → IA olha o projeto inteiro (com tags) e propõe páginas coerentes com o tema |
+| **Conteúdo de seção** | "Preencha esta página de Núcleo de Combate" → IA escreve conteúdo respeitando o que já existe |
+| **Análise** | "Revise meu GDD" → IA aponta gaps, inconsistências, sugestões de melhoria |
+| **Melhoria de prosa** | Botão "Melhorar com IA" em qualquer richDoc — refina o texto sem mudar significado |
+
+## Provedores suportados
+
+O app suporta 3 provedores. Você escolhe em **Configurações → AI**:
+
+- **Anthropic Claude** (recomendado pra GDDs longos — tem context window grande)
+- **OpenAI GPT** (custo/velocidade balanceados)
+- **Groq** (mais rápido, modelos menores — bom pra prototipagem)
+
+Cada provedor precisa da sua **API key** (você cria no console do provedor e cola no app). As keys ficam **só no seu navegador** — nunca enviamos pra nossos servidores.
+
+<Callout type="info" title="Bring your own key">
+  O app não tem subscription embutida pra IA. Você usa sua própria API key e
+  paga direto pro provedor. Vantagem: controle total de custo e privacidade.
+  Custo típico: 1-3 centavos por geração de página, dependendo do modelo.
+</Callout>
+
+## Princípios de design
+
+A integração foi projetada com 3 regras:
+
+### 1. Você revisa antes de aceitar
+
+Toda geração da IA aparece em **modo preview**. Você lê, edita se quiser, e clica "Aceitar" pra commitar no projeto. **Nada entra automaticamente.** Se a sugestão não te convencer, descarta.
+
+### 2. A IA sabe que está num GDD Manager
+
+Os prompts foram afinados pra ela entender:
+
+- Que existem **page types** específicos (não inventar tipos)
+- Que page types vêm com **addons certos** (ex.: `attributeDefinitions` cria com 4 stats típicos pré-populados)
+- Que callouts têm **4 variants intencionais** (note/warning/design-decision/balance-note) — usar com critério
+- Que o doc é **fictício mas concreto** — inventa nomes, números, cenários (não placeholders genéricos tipo "Personagem 1")
+
+### 3. Não inventa sistemas fora do tema
+
+O guardrail mais forte do prompt é não adicionar mecânicas que o usuário não pediu. Pediu jogo de puzzle? Não tem crafting. Pediu visual novel? Não tem combate. A IA é forçada a respeitar o escopo descrito.
+
+## Geração de template completo
+
+A funcionalidade **mais poderosa** — você descreve o jogo em 3 frases e a IA gera o GDD inicial com:
+
+- **5 grupos hierárquicos** (Visão Geral, Design de Jogo, Conteúdo, Apresentação, Produção)
+- **Páginas tipadas** dentro de cada grupo (atributos, personagens, items, economia)
+- **richDocBlocks** preenchidos com 3-5 callouts por página
+- **`attributeDefinitionsOverrides`** com stats coerentes com o gênero (RPG: HP/ATK/DEF/MAG/SPD ~100/10/5/8/5; Platformer: HP/Speed/Jump ~3/1.0/1.5)
+- **`domainTags`** em cada seção (combat, economy, progression, etc.)
+- **`dataId`** sugerido por página
+
+Tempo típico: **30-60 segundos**. Você abre o GDD pronto e começa a editar.
+
+### Exemplo de input
+
+```
+Tipo: Roguelike top-down
+Descrição: Mago explorador desce 10 andares numa torre, gerando dungeons
+procedurais. Sistema de runas que combinam pra criar feitiços únicos.
+Morte é permanente, mas runas raras desbloqueiam permanente novas
+combinações pra próximas runs.
+Informações adicionais: Pixel art, single player, foco em build-craft.
+```
+
+### Exemplo de output (estrutura)
+
+```
+📖 Visão Geral — Spire of Echoes
+🎮 Design de Jogo
+  ├── Core Loop
+  ├── Mecânicas Centrais
+  └── Progressão
+📦 Conteúdo do Jogo
+  ├── 🎯 Atributos Base (HP, MP, Mana Regen, Speed, Crit%)
+  ├── 👤 Mago Explorador (perfil + xp curve + progression)
+  ├── 👤 Inimigo: Goblin de Andar (perfil)
+  ├── ⚔️ Runa de Fogo (item com efeito)
+  ├── ⚔️ Runa de Gelo
+  ├── ⚡ Feitiço: Bola de Fogo (skill)
+  ├── 🪙 Essência (moeda permanente)
+  └── 🛠️ Mesa de Runas (craft table)
+🎨 Apresentação
+  └── Estilo Visual / UX / Audio
+🏭 Produção
+  └── Tecnologia / Roadmap / Riscos / KPIs
+```
+
+Cada página vem com prosa rica, callouts explicando jargão, e estrutura de addon configurada.
+
+## Chat com contexto
+
+Modo conversacional que sabe **qual projeto/seção você está olhando** e responde considerando isso.
+
+### Capacidades
+
+- Sugerir páginas novas pra contexto existente
+- Editar conteúdo de seções (devolve Markdown)
+- Analisar e dar feedback construtivo
+- Sugerir relações entre seções via tags de domínio
+- Completar lacunas com conteúdo coerente
+
+### Como ele "vê" o projeto
+
+O chat recebe metadata de toda seção:
+
+```
+**Projeto:** Spire of Echoes
+**Descrição:** Roguelike top-down de mago...
+**Seções existentes (tags entre colchetes):**
+- Visão Geral [narrative] (320 chars)
+- Atributos Base [combat] (vazia)
+- Mago Explorador [characters, combat] (180 chars)
+- Goblin de Andar [characters, combat] (95 chars)
+- Runa de Fogo [items, combat] (vazia)
+...
+```
+
+Tags ajudam o chat a entender domínios — "sugira melhorias na economia" filtra seções com tag `economy`.
+
+## Análise de GDD
+
+Roda heurísticas + IA pra apontar:
+
+- **Páginas vazias** que deveriam ter conteúdo
+- **Refs quebradas** (skill aponta pra modifier deletado)
+- **Inconsistências** (atributo definido mas nunca usado, moeda sem economyLink)
+- **Gaps** estruturais (tem inimigos mas não tem curva de XP)
+- **Sugestões** específicas pra melhorar coverage
+
+## Melhoria de prosa
+
+Em qualquer richDoc, o botão **"Melhorar com IA"** envia o conteúdo atual + um pedido de refinamento (mais conciso, mais técnico, mais visual, etc.) e devolve uma versão revisada. Você compara lado a lado e aceita ou descarta.
+
+## MCP Integration
+
+O GDD Manager também expõe um **MCP server** (`packages/mcp-server/`) que permite que **outros agentes de IA** (Claude Code, Cursor, etc.) leiam e modifiquem o seu projeto. Endpoints incluem:
+
+- Listar projetos/seções/addons
+- Criar páginas e addons (com schemas tipados via Zod)
+- Atualizar campos específicos
+- Resolver Remote Config (gerar JSON sob demanda)
+
+Útil pra workflows tipo: o programador pede pro Claude Code abrir o GDD, ler a tabela de balanceamento, e gerar código C# que consome esses valores.
+
+<Callout type="info" title="MCP em construção">
+  O MCP server tem cobertura ampla mas ainda está em iteração. Veja o
+  diretório <code>packages/mcp-server/src/</code> pra schemas atuais.
+</Callout>
+
+## Privacidade
+
+- **API keys**: ficam só no seu navegador (localStorage). Nunca enviamos pra nossos servidores.
+- **Conteúdo enviado pra IA**: vai direto do seu browser pra o provedor. Nosso backend não vê.
+- **Histórico**: não armazenamos histórico de uso de IA.
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/export-schema">
+    Use a IA pra gerar páginas, depois exporte tudo pro motor.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="Seu primeiro projeto" href="/docs/comecar/primeiro-projeto">
+    Walkthrough manual — útil pra entender o que a IA faz por baixo.
+  </FeatureCard>
+</div>
