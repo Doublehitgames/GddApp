@@ -1,0 +1,99 @@
+---
+title: "richDoc"
+description: "Notion-style rich document editor (headings, lists, callouts, embeds, columns)."
+emoji: "📝"
+order: 160
+---
+
+# richDoc
+
+A **structured document** editor, Notion-style: headings, lists, colored callouts, images, embeds, tables, columns. For prose, lore, design notes — everything that **doesn't fit** in typed fields.
+
+## Why it matters
+
+Game design has a huge narrative component: character descriptions, world lore, tradeoff rationale, feature briefings. Forcing everything into plain paragraphs limits the document. Here you get a powerful editor (BlockNote under the hood) that accepts rich content without turning into Word.
+
+And since each page can have **multiple richDocs** (this is one of two exceptions to the singleton rule), you can mix prose and data on the same page: 1 doc at the top (briefing), typed addons in the middle, another doc at the bottom (notes).
+
+## Where it usually lives
+
+- `📖 Narrative` page type — comes as the main addon.
+- Most typed pages — comes as an optional extra block for context.
+- Containers (Overview, Game Design, Content, Presentation, Production) — almost always have 1 richDoc explaining what's inside.
+
+**Not a singleton** — you can have as many richDoc blocks as you want per page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name." },
+  { name: "blocks", type: "RichDocBlock[]", required: "Yes", description: "BlockNote blocks (opaque format — don't edit by hand, use the editor)." },
+  { name: "schemaVersion", type: "1", required: "Yes", description: "Schema version. Used for future migrations." },
+]} />
+
+### `RichDocBlock`
+
+The blocks follow the **BlockNote format**:
+
+```ts
+{
+  id?: string,
+  type?: string,            // "paragraph", "heading", "bulletListItem", "callout", etc.
+  props?: Record<string, unknown>,  // e.g., { level: 2 } for heading
+  content?: unknown,        // text + styled spans
+  children?: RichDocBlock[]
+}
+```
+
+Supported types (non-exhaustive):
+
+- `paragraph` — plain text
+- `heading` (level 1/2/3) — headings
+- `bulletListItem`, `numberedListItem`, `checkListItem` — lists
+- `quote` — blockquote
+- `codeBlock` — code block
+- `image`, `video`, `audio`, `file` — media
+- `table` — structured tables
+- `callout` (variant: `note`, `warning`, `design-decision`, `balance-note`) — colored boxes
+- `columnList` + `column` — column layout
+
+## Special callouts
+
+The app's custom version has 4 callout variants designed for GDDs:
+
+- **note** (💡) — contextual information, side note
+- **warning** (⚠️) — explain technical jargon OR remind "this is an example, replace it"
+- **design-decision** (🎯) — document a tradeoff you made
+- **balance-note** (⚖️) — playtest concern or tuning note
+
+Use them intentionally — the target density is 3–5 callouts per page.
+
+## Who points to richDoc
+
+Usually **no one** — it's a leaf. richDoc is not referenced by other addons. It's consumed by the engine (when rendering tooltips/codex) or by static exports (PDF, HTML).
+
+## Wizard
+
+The `📖 Narrative` page type creates the page with 1 empty richDoc + cursor ready to start typing.
+
+The integrated AI (`generateTemplatePrompt`) also knows how to populate `richDocBlocks` automatically when you ask AI to generate a GDD from scratch — each typed page comes with a rich block already containing 3–5 callouts.
+
+## Export
+
+richDoc is not typically exported to Remote Config (which targets structured data for the engine). It's more consumed by:
+
+- **In-app view** — read-only mode displays the content
+- **Static export** (future) — PDF, HTML, Markdown
+- **Backup** (current) — full project JSON dump
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
+    For structured data — not for prose.
+  </FeatureCard>
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    For adding typed fields that live alongside the prose.
+  </FeatureCard>
+</div>

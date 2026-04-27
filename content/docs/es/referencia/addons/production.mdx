@@ -1,0 +1,125 @@
+---
+title: "production"
+description: "Define producción pasiva (gallina → huevo cada 60s) o una receta (2 madera + 1 cuerda → 1 escudo)."
+emoji: "⚙️"
+order: 90
+---
+
+# production
+
+Define **cómo se produce un ítem**: de forma pasiva con el tiempo (modo `passive`) o mediante una receta con ingredientes (modo `recipe`). Cada temporizador/cantidad puede **vincularse a una tabla de progresión** para escalar con el nivel.
+
+## Por qué importa
+
+La producción es la columna vertebral de los juegos clicker, farming, crafting e idle. Sin un esquema dedicado, cada receta se convierte en un JSON ad-hoc en el código, y los cambios de balance requieren una nueva compilación. Aquí defines todo en el GDD, exportas a JSON y ajustas valores sin tocar código.
+
+## Dónde suele vivir
+
+- Páginas de tipo `📜 Receta` (una receta por página).
+- Páginas de tipo `📦 Ítem Producible` (poco común — para ítems de producción pasiva).
+
+Singleton — 1 production por página.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre del addon." },
+  { name: "mode", type: '"passive" | "recipe"', required: "Sí", description: <><strong>passive</strong>: produce X por intervalo (la gallina pone huevo). <strong>recipe</strong>: requiere ingredientes para producir.</> },
+  { name: "outputRef", type: "string (sectionId)", description: "Modo pasivo: qué ítem se produce." },
+  { name: "minOutput", type: "number", description: "Modo pasivo: cantidad mínima por ciclo." },
+  { name: "maxOutput", type: "number", description: "Modo pasivo: cantidad máxima por ciclo (se sortea entre min y max)." },
+  { name: "intervalSeconds", type: "number", description: "Modo pasivo: intervalo entre ciclos (acepta decimales)." },
+  { name: "requiresCollection", type: "boolean", description: "Modo pasivo: ¿el jugador necesita recoger activamente, o va directo al inventario?" },
+  { name: "capacity", type: "number", description: "Modo pasivo: stock máximo que puede acumularse antes de que el jugador recoja." },
+  { name: "ingredients", type: "ProductionIngredient[]", required: "Sí", description: "Modo receta: lista de itemRef + cantidad requerida." },
+  { name: "outputs", type: "ProductionOutput[]", required: "Sí", description: "Modo receta: lista de itemRef + cantidad producida." },
+  { name: "craftTimeSeconds", type: "number", description: "Modo receta: tiempo de crafteo en segundos (acepta decimales)." },
+  { name: "notes", type: "string", description: "Notas libres." },
+]} />
+
+### Vínculos con `progressionTable`
+
+Casi todos los campos numéricos pueden **vincularse a una columna de una tabla de progresión**:
+
+- `minOutputProgressionLink`, `maxOutputProgressionLink`
+- `intervalSecondsProgressionLink`, `craftTimeSecondsProgressionLink`
+- `capacityProgressionLink`
+
+Cuando están vinculados, el motor lee el valor de la tabla en el nivel actual del jugador, en lugar del valor estático del esquema. Esto permite que la producción y el crafteo escalen con la progresión del jugador.
+
+```json
+"intervalSecondsProgressionLink": {
+  "progressionAddonId": "section-prog-table",
+  "columnId": "col-craft-time",
+  "columnName": "Tiempo de Crafteo"
+}
+```
+
+## Ejemplo: producción pasiva
+
+Una gallina pone 1–3 huevos cada 60s, capacidad de 10 huevos:
+
+```json
+{
+  "id": "prod-chicken",
+  "name": "Gallina",
+  "mode": "passive",
+  "outputRef": "section-egg",
+  "minOutput": 1,
+  "maxOutput": 3,
+  "intervalSeconds": 60,
+  "requiresCollection": true,
+  "capacity": 10,
+  "ingredients": [],
+  "outputs": []
+}
+```
+
+## Ejemplo: receta
+
+2 Madera + 1 Cuerda → 1 Arco, en 30 segundos:
+
+```json
+{
+  "id": "prod-bow-recipe",
+  "name": "Receta: Arco",
+  "mode": "recipe",
+  "ingredients": [
+    { "itemRef": "section-wood", "quantity": 2 },
+    { "itemRef": "section-rope", "quantity": 1 }
+  ],
+  "outputs": [
+    { "itemRef": "section-bow", "quantity": 1 }
+  ],
+  "craftTimeSeconds": 30
+}
+```
+
+## Wizard
+
+El tipo de página `📜 Receta` crea automáticamente:
+
+1. Este addon `production` en modo `recipe`
+2. Pre-completado con 1 ingrediente vacío + 1 resultado vacío
+3. El wizard pide `craftTimeSeconds` en el diálogo inicial
+
+Completas las referencias de ítems después.
+
+## Quién referencia production
+
+- **`craftTable.entries[].productionRef`** — una craft table agrega múltiples recetas mediante referencias.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🛠️" title="craftTable" href="/docs/referencia/addons/craft-table">
+    Agrega múltiples recetas (production) en una única estación de producción.
+  </FeatureCard>
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Vincula temporizadores/cantidades a columnas para escalar con el nivel.
+  </FeatureCard>
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    Los ítems referenciados en ingredientes/resultados.
+  </FeatureCard>
+</div>

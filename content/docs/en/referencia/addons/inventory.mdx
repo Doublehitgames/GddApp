@@ -1,0 +1,117 @@
+---
+title: "inventory"
+description: "Inventory parameters for an item: stack, weight, category, durability, binding."
+emoji: "🎒"
+order: 80
+---
+
+# inventory
+
+Defines **how an item behaves in the player's inventory**: weight, max stack, durability, category, binding (none/on-pickup/on-equip), volume, and shop visibility.
+
+## Why it matters
+
+Almost every RPG/RTS/survival engine needs this same information for every item — and almost all of them implement it by hand, item by item. Here you define it once through the UI, export to JSON, and the engine reads it. Bonus: fields like `categoryLibraryRef` let you reuse a central category taxonomy (Field Library) instead of typing "Sword" 50 times.
+
+## Where it usually lives
+
+- Pages of type `🎒 Items` or `⚔️ Items with Effect`. Default.
+- Blank pages when you want to model exotic containers (wallets, fairy bags).
+
+Singleton — 1 inventory per item page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Addon name (default: Inventory)." },
+  { name: "weight", type: "number", required: "Yes", description: "Unit weight of the item (kg, lb, or whatever unit your engine uses)." },
+  { name: "stackable", type: "boolean", required: "Yes", description: "True if multiple of the same item can share 1 slot." },
+  { name: "maxStack", type: "number", required: "Yes", description: "Limit per slot when stackable=true (e.g. 99)." },
+  { name: "inventoryCategory", type: "string", required: "Yes", description: "Free-form category (Sword, Potion, Crafting). Used for filtering/grouping." },
+  { name: "categoryLibraryRef", type: "{ libraryAddonId, entryId }", description: "When you want to link the category to a Field Library entry (central taxonomy) instead of a loose string." },
+  { name: "slotSize", type: "number", required: "Yes", description: "Slots occupied (1 = normal; 2x1, 2x2 for Tetris-like inventories)." },
+  { name: "hasDurabilityConfig", type: "boolean", description: "Toggles durability fields on/off." },
+  { name: "durability", type: "number", required: "Yes", description: "Current durability (kept at 0 when hasDurabilityConfig=false)." },
+  { name: "maxDurability", type: "number", description: "Maximum durability (capacity)." },
+  { name: "hasVolumeConfig", type: "boolean", description: "Toggles volume field on/off." },
+  { name: "volume", type: "number", description: "Volume occupied (liters, or arbitrary unit)." },
+  { name: "bindType", type: '"none" | "onPickup" | "onEquip"', required: "Yes", description: <><strong>none</strong>: can be traded/sold. <strong>onPickup</strong>: binds on pickup (no trading). <strong>onEquip</strong>: binds on equip.</> },
+  { name: "showInShop", type: "boolean", required: "Yes", description: "Appears in engine shops? Useful for hiding exclusive loot." },
+  { name: "consumable", type: "boolean", required: "Yes", description: "Disappears on use? Potions = true, Sword = false." },
+  { name: "discardable", type: "boolean", required: "Yes", description: "Can the player discard it? False for quest items." },
+  { name: "notes", type: "string", description: "Free-form notes for the team." },
+]} />
+
+## Example
+
+Iron Sword — equippable, binds on equip, non-consumable:
+
+```json
+{
+  "id": "inv-iron-sword",
+  "name": "Inventory",
+  "weight": 5.0,
+  "stackable": false,
+  "maxStack": 1,
+  "inventoryCategory": "Sword",
+  "slotSize": 1,
+  "hasDurabilityConfig": true,
+  "durability": 100,
+  "maxDurability": 100,
+  "bindType": "onEquip",
+  "showInShop": true,
+  "consumable": false,
+  "discardable": true
+}
+```
+
+Health Potion — stackable, no durability, consumable:
+
+```json
+{
+  "id": "inv-hp-potion",
+  "name": "Inventory",
+  "weight": 0.2,
+  "stackable": true,
+  "maxStack": 99,
+  "inventoryCategory": "Consumable",
+  "slotSize": 1,
+  "durability": 0,
+  "bindType": "none",
+  "showInShop": true,
+  "consumable": true,
+  "discardable": true
+}
+```
+
+## categoryLibraryRef vs string
+
+Use `inventoryCategory` (loose string) for prototypes. Once the game matures and you have 30+ items, migrate to `categoryLibraryRef` pointing to a [`fieldLibrary`](/docs/referencia/addons/field-library) page — that way renaming "Sword" → "Blade" reflects across all items automatically.
+
+## Wizard
+
+No wizard of its own. Seeded by:
+
+- `🎒 Items` (together with economyLink)
+- `⚔️ Items with Effect` (together with economyLink + attributeModifiers)
+
+The wizard defaults are reasonable for a "generic item" — you just tweak the booleans (consumable, stackable, etc.) and you're good to go.
+
+## Who references inventory
+
+- **`production.ingredients[].itemRef`** and **`production.outputs[].itemRef`** — recipes reference item pages.
+- **`craftTable.unlock.item.itemRef`** — recipes that require a specific item to unlock.
+- **`skills.unlock.item.itemRef`** — skills that require a catalyst item.
+- **`economyLink.producedItemRef`** — a page that produces another item (chicken → egg).
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Usually lives on the same page — defines prices, production, and unlocking.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Use to centralize categories and avoid duplicate strings.
+  </FeatureCard>
+</div>

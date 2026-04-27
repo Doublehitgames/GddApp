@@ -1,0 +1,75 @@
+---
+title: "What is GDD Manager"
+description: "An app that keeps your Game Design Document alive, connected, and exportable to your engine."
+emoji: "🚀"
+order: 1
+---
+
+# What is GDD Manager
+
+An app for writing Game Design Documents that **don't die in the first week of production**.
+
+You describe your game in a structure that understands **what skills, attributes, currencies, and recipes are**, and the app **exports everything to the JSON** your engine consumes. Doc and game start speaking the same language.
+
+## The problem
+
+Almost every GDD you've ever seen ages badly. The cycle is always the same:
+
+1. **Month 1**: you write a beautiful doc in Notion/Word/Confluence. Lists all weapons, attributes, formulas.
+2. **Month 3**: the programmer implements "Iron Sword = 50 damage, 100 gold". The original design had 60. Nobody updates the doc.
+3. **Month 6**: the doc has 80 pages and **nobody opens it anymore**. Every decision lives in Discord, in the code, or in someone's head.
+4. **Month 12**: someone new joins the team. Onboarding is "just ask in chat" because the doc is wrong about 70% of the mechanics.
+
+<Callout type="warning" title="This isn't the designer's fault">
+  It's a tool problem. Notion doesn't know that "atk = 10" became "atk = 12" in the code.
+  Word doesn't know that recipe was removed. They treat everything as loose text, and
+  loose text **can't** stay in sync.
+</Callout>
+
+## The core idea
+
+GDD Manager flips the flow: **the document becomes the source of truth**, and the engine consumes data from it — not the other way around.
+
+When you change "Iron Sword: 50 → 60 damage" here, that new number goes into the exported JSON, which the game reads on the next build. **There's no room for divergence** because there's only one place where the number lives.
+
+And since the app **understands** that it's a weapon (not just text), it can:
+
+- validate references (does the recipe point to an item that exists?)
+- show dependencies (which skills use this attribute?)
+- warn about breakages (you deleted the currency, but 3 items still reference it)
+
+## Who it's made for
+
+| You are... | GDD Manager helps you with... |
+|---|---|
+| **Solo indie** | Getting out of the messy Notion and having one single source of truth |
+| **Game designer at a studio** | Rich pre-production + clean technical handoff to the programming team |
+| **Programmer who does everything** | Writing the doc ONCE and using the JSON directly in the engine |
+| **Hobbyist learning** | Typed templates that teach the typical structure for each genre |
+
+## What it is **not**
+
+To avoid misunderstandings:
+
+- **Not a task manager** — use Trello, Linear, Jira for sprints and issues.
+- **Not a generic wiki** — Notion/Confluence cover studio onboarding and processes better.
+- **Not an engine** — it doesn't create gameplay, just describes it. You still write the engine (Unity, Godot, Unreal, custom).
+- **Not a spreadsheet generator** — but it exports data that fits in any spreadsheet or table in your engine.
+
+<Callout type="tip" title="Use alongside, not instead of">
+  The ideal flow for a studio is: **roadmap in Linear/Jira**, **communication in Discord/Slack**,
+  **GDD here**, **code on GitHub**. GDD Manager does one thing, but does it well.
+</Callout>
+
+## Next steps
+
+Ready to get started?
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🌱" title="Your first project" href="/docs/comecar/primeiro-projeto">
+    Walkthrough for creating a minimal RPG from scratch using the wizards.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Key concepts" href="/docs/comecar/conceitos-chave">
+    App vocabulary: page type, addon, wizard, Remote Config.
+  </FeatureCard>
+</div>

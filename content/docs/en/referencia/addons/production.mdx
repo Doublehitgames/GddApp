@@ -1,0 +1,125 @@
+---
+title: "production"
+description: "Defines passive production (chicken → egg every 60s) or a recipe (2 wood + 1 rope → 1 shield)."
+emoji: "⚙️"
+order: 90
+---
+
+# production
+
+Defines **how an item is produced**: passively over time (mode `passive`) or through a recipe with ingredients (mode `recipe`). Each timer/quantity can be **linked to a progression table** to scale with level.
+
+## Why it matters
+
+Production is the backbone of clicker, farming, crafting, and idle games. Without a dedicated schema, every recipe becomes an ad-hoc JSON in the code, and balance changes require a rebuild. Here you define everything in the GDD, export to JSON, and adjust values without touching code.
+
+## Where it usually lives
+
+- Pages of type `📜 Recipe` (one recipe per page).
+- Pages of type `📦 Producible Item` (rare — for passive production items).
+
+Singleton — 1 production per page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Addon name." },
+  { name: "mode", type: '"passive" | "recipe"', required: "Yes", description: <><strong>passive</strong>: produces X per interval (chicken lays egg). <strong>recipe</strong>: requires ingredients to produce.</> },
+  { name: "outputRef", type: "string (sectionId)", description: "Passive mode: which item is produced." },
+  { name: "minOutput", type: "number", description: "Passive mode: minimum amount per cycle." },
+  { name: "maxOutput", type: "number", description: "Passive mode: maximum amount per cycle (rolled between min and max)." },
+  { name: "intervalSeconds", type: "number", description: "Passive mode: interval between cycles (accepts decimals)." },
+  { name: "requiresCollection", type: "boolean", description: "Passive mode: does the player need to collect actively, or does it go straight into inventory?" },
+  { name: "capacity", type: "number", description: "Passive mode: maximum stock that can accumulate before the player collects." },
+  { name: "ingredients", type: "ProductionIngredient[]", required: "Yes", description: "Recipe mode: list of itemRef + quantity required." },
+  { name: "outputs", type: "ProductionOutput[]", required: "Yes", description: "Recipe mode: list of itemRef + quantity produced." },
+  { name: "craftTimeSeconds", type: "number", description: "Recipe mode: crafting time in seconds (accepts decimals)." },
+  { name: "notes", type: "string", description: "Free-form notes." },
+]} />
+
+### Links with `progressionTable`
+
+Almost all numeric fields can be **linked to a column of a progression table**:
+
+- `minOutputProgressionLink`, `maxOutputProgressionLink`
+- `intervalSecondsProgressionLink`, `craftTimeSecondsProgressionLink`
+- `capacityProgressionLink`
+
+When linked, the engine reads the value from the table at the player's current level, instead of the static value in the schema. This lets production and crafting scale as the player progresses.
+
+```json
+"intervalSecondsProgressionLink": {
+  "progressionAddonId": "section-prog-table",
+  "columnId": "col-craft-time",
+  "columnName": "Craft Time"
+}
+```
+
+## Example: passive production
+
+Chicken lays 1–3 eggs every 60s, capacity of 10 eggs:
+
+```json
+{
+  "id": "prod-chicken",
+  "name": "Chicken",
+  "mode": "passive",
+  "outputRef": "section-egg",
+  "minOutput": 1,
+  "maxOutput": 3,
+  "intervalSeconds": 60,
+  "requiresCollection": true,
+  "capacity": 10,
+  "ingredients": [],
+  "outputs": []
+}
+```
+
+## Example: recipe
+
+2 Wood + 1 Rope → 1 Bow, in 30 seconds:
+
+```json
+{
+  "id": "prod-bow-recipe",
+  "name": "Recipe: Bow",
+  "mode": "recipe",
+  "ingredients": [
+    { "itemRef": "section-wood", "quantity": 2 },
+    { "itemRef": "section-rope", "quantity": 1 }
+  ],
+  "outputs": [
+    { "itemRef": "section-bow", "quantity": 1 }
+  ],
+  "craftTimeSeconds": 30
+}
+```
+
+## Wizard
+
+The `📜 Recipe` page type automatically creates:
+
+1. This `production` addon in `recipe` mode
+2. Pre-filled with 1 empty ingredient + 1 empty output
+3. The wizard asks for `craftTimeSeconds` in the initial dialog
+
+You fill in the item references afterwards.
+
+## Who references production
+
+- **`craftTable.entries[].productionRef`** — a craft table aggregates multiple recipes via refs.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🛠️" title="craftTable" href="/docs/referencia/addons/craft-table">
+    Aggregates multiple recipes (production) into a single production station.
+  </FeatureCard>
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Link timers/quantities to columns to scale with level.
+  </FeatureCard>
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    The items referenced in ingredients/outputs.
+  </FeatureCard>
+</div>

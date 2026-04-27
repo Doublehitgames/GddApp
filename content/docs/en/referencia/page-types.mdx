@@ -1,0 +1,184 @@
+---
+title: "Page Types"
+description: "The 12 page types available in the app, with their pre-configured addons and creation wizards."
+emoji: "📄"
+order: 20
+---
+
+# Page Types
+
+When you create a page, you choose a **type**. The type decides:
+
+1. Which **addons** already come pre-configured on the page (saves clicks)
+2. Which **dependencies** the wizard asks about before creating (links or creates them together)
+3. Which **domain tags** the page receives automatically
+
+There are currently **12 types**. The table below is the executive summary; each type has more details further down.
+
+| ID | Label | Emoji | Primary addons | Wizard asks for |
+|---|---|---|---|---|
+| `blank` | Blank | 📄 | None | — |
+| `narrative` | Narrative | 📖 | richDoc | — |
+| `items` | Items | 🎒 | inventory + economyLink | currency |
+| `equipmentItem` | Equipment Items | ⚔️ | inventory + economyLink + attributeModifiers | currency + attributeDefinitions |
+| `characters` | Characters | 👤 | attributeProfile + xpBalance + progressionTable + attributeModifiers | attributeDefinitions |
+| `attributeDefinitions` | Attributes | 🎯 | attributeDefinitions + fieldLibrary | — |
+| `economy` | Economy | 🪙 | currency | — |
+| `currencyExchange` | Currency Exchange | 💱 | currencyExchange | — *(special wizard: 2 currencies + rate)* |
+| `progression` | Progression | 📈 | xpBalance + progressionTable | — |
+| `recipe` | Recipe | 📜 | production | itemIngredient + itemOutput |
+| `craftTable` | Craft Table | 🏭 | craftTable | — *(special wizard: list of recipes)* |
+| `skills` | Skills | ⚡ | skills + attributeModifiers | attributeDefinitions |
+
+## Addon roles
+
+Each page type lists addons with a **role**:
+
+- **primary** — the page's "central addon". Defines its identity and can never be removed (the UI hides the button).
+- **recommended** — included by default but you can remove it. Useful when the wizard has a canonical combination but the user might only want part of it.
+
+## How the wizard works
+
+When you create a typed page, the app:
+
+1. Reads `requires[]` from the page type.
+2. If there are dependencies, it opens the **requires dialog**: "For Characters to work, we need Attributes. Already have one? Select it. If not, I'll create one for you."
+3. For each dependency you choose: **link an existing one**, **create a new page alongside**, or **continue without linking**.
+4. Creates the page with the primary + recommended addons.
+5. If you linked any dependency, it **propagates refs**: e.g., the `attributeModifiers` seeded by the skill gets `definitionsRef` automatically pointing to the chosen AttributeDefinitions.
+
+Result: you don't need to chase refs afterward. The page is born ready to use.
+
+---
+
+## Types in detail
+
+### `blank` — Blank
+
+📄 Empty page, no addons. Use when the right type doesn't exist yet (or never will) for your case.
+
+- **Addons**: none
+- **Wizard**: none
+- **When to use**: process documents (schedules, risks), loose content that doesn't fit any type
+
+### `narrative` — Narrative
+
+📖 Rich-text page — like a Notion/Word document.
+
+- **Primary addons**: `richDoc`
+- **Wizard**: none
+- **When to use**: lore, briefing, feature description, design notes, script
+
+Most pages in a well-structured GDD are `narrative`. The specialized types are the exception, not the rule.
+
+### `items` — Items 🎒
+
+Simple item with no active effect (wood, fruit, key, egg). Comes with inventory + economy.
+
+- **Primary addons**: [`inventory`](/docs/referencia/addons/inventory)
+- **Recommended**: [`economyLink`](/docs/referencia/addons/economy-link)
+- **Wizard asks for**: 1 [currency](/docs/referencia/addons/currency) (referenced as buy/sell currency)
+
+### `equipmentItem` — Equipment Items ⚔️
+
+Item that alters attributes when equipped/used (sword, armor, potion).
+
+- **Primary addons**: [`inventory`](/docs/referencia/addons/inventory)
+- **Recommended**: [`economyLink`](/docs/referencia/addons/economy-link), [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers)
+- **Wizard asks for**: 1 [currency](/docs/referencia/addons/currency) + 1 [attributes page](/docs/referencia/addons/attribute-definitions)
+
+The seeded `attributeModifiers` already comes with `definitionsRef` pointing to the chosen Attributes page. You just add entries (e.g., `+5 ATK on equip`).
+
+### `characters` — Characters 👤
+
+Character with stats + progression. Works for heroes, enemies, and NPCs.
+
+- **Primary addons**: [`attributeProfile`](/docs/referencia/addons/attribute-profile)
+- **Recommended**: [`xpBalance`](/docs/referencia/addons/xp-balance), [`progressionTable`](/docs/referencia/addons/progression-table), [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers)
+- **Wizard asks for**: 1 [attributes page](/docs/referencia/addons/attribute-definitions)
+
+The seeded profile already comes with `definitionsRef` AND **default values** filled in for each attribute from the definition. You only adjust what differs from the default.
+
+### `attributeDefinitions` — Attributes 🎯
+
+Canonical list of attributes (HP, ATK, DEF...) reused by other pages.
+
+- **Primary addons**: [`attributeDefinitions`](/docs/referencia/addons/attribute-definitions)
+- **Recommended**: [`fieldLibrary`](/docs/referencia/addons/field-library)
+- **Wizard asks for**: nothing generic, **but has its own slot picker** — check boxes for HP/ATK/DEF/SPD + add up to N custom attributes before creating
+
+### `economy` — Economy 🪙
+
+A game currency.
+
+- **Primary addons**: [`currency`](/docs/referencia/addons/currency)
+- **Wizard**: none (creates with defaults: code `COINS`, kind `soft`, decimals `0`)
+- **Default section title**: `Coin`
+
+### `currencyExchange` — Currency Exchange 💱
+
+Conversions between 2 currencies.
+
+- **Primary addons**: [`currencyExchange`](/docs/referencia/addons/currency-exchange)
+- **Special wizard**: asks for the **2 currencies** (can't be the same) + the **initial rate** + **direction** (oneWay/bidirectional). The first entry is already filled in.
+
+### `progression` — Progression 📈
+
+XP curve + table of values per level.
+
+- **Primary addons**: [`xpBalance`](/docs/referencia/addons/xp-balance)
+- **Recommended**: [`progressionTable`](/docs/referencia/addons/progression-table)
+- **Wizard**: none (creates with reasonable presets)
+
+### `recipe` — Recipe 📜
+
+A crafting recipe: ingredients → output.
+
+- **Primary addons**: [`production`](/docs/referencia/addons/production) (mode `recipe`)
+- **Wizard asks for**: 1+ **ingredient items** + 1+ **output items**. Smart wizard: if you give the page a title like "Iron Sword" and an item with that name already exists, the wizard automatically links it as the output. Otherwise, it creates the item alongside.
+
+### `craftTable` — Craft Table 🏭
+
+Station that aggregates multiple recipes (Forge, Workbench).
+
+- **Primary addons**: [`craftTable`](/docs/referencia/addons/craft-table)
+- **Special wizard**: lists all **existing recipes** in the project and you mark which ones this table will offer. Each marked recipe becomes a craftTable entry already configured.
+
+### `skills` — Skills ⚡
+
+Catalog of active/passive abilities.
+
+- **Primary addons**: [`skills`](/docs/referencia/addons/skills)
+- **Recommended**: [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers) (on the same page, to feed effects)
+- **Wizard asks for**: 1 [attributes page](/docs/referencia/addons/attribute-definitions)
+
+Singleton enforcement guarantees that **1 modifiers addon** exists right there, so the skill's effect checklist already has something to show from the very first skill.
+
+---
+
+## Page types vs manual creation
+
+You can always:
+
+- Create a `blank` page and add addons manually via "+ Add addon"
+- Remove recommended addons after creating via wizard
+- Add addons that aren't in the original page type (as long as you respect singletons)
+
+Page types are a **workflow optimization** — not restrictions. Use them when the canonical combination saves you time; use blank when your case is unique.
+
+<Callout type="info" title="Legacy IDs">
+  Internally the app accepts some old IDs as aliases (e.g., <code>charactersPlayable</code>
+  and <code>enemies</code> map to <code>characters</code>). Old documents
+  and saved exports keep working — you don't need to migrate manually.
+</Callout>
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🧩" title="Addons Reference" href="/docs/referencia/addons">
+    The 16 block types that page types are composed of.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="Your first project" href="/docs/comecar/primeiro-projeto">
+    Use several page types in sequence in a walkthrough.
+  </FeatureCard>
+</div>

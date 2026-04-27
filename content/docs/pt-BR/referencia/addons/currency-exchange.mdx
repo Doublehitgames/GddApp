@@ -1,0 +1,106 @@
+---
+title: "currencyExchange"
+description: "Casa de câmbio que define taxas entre duas moedas, uni- ou bidirecional."
+emoji: "💱"
+order: 60
+---
+
+# currencyExchange
+
+Define **trocas** entre moedas: 100 Gem → 5000 Gold, 10 Tickets → 1 Gem, etc. Suporta uma direção só ou os dois lados.
+
+## Por que importa
+
+Em jogos com múltiplas moedas (premium + soft + event), as conversões precisam ficar visíveis e auditáveis. Se "100 Gem = 5000 Gold" vive só no código do shop, o time de design não consegue iterar a economia sem pedir build pro programador. Aqui isso vira documento + JSON exportado.
+
+## Onde costuma viver
+
+- Página de tipo `💱 Casa de Câmbio`. Wizard pergunta as duas moedas e a taxa inicial.
+- Páginas em branco quando você quer juntar várias trocas relacionadas (ex.: "Banco Premium" com 5 conversões diferentes).
+
+Singleton — 1 addon por página, com **N trocas** (`entries[]`).
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "name", type: "string", required: "Sim", description: "Nome do addon." },
+  { name: "entries", type: "CurrencyExchangeEntry[]", required: "Sim", description: "Lista de trocas." },
+]} />
+
+### `CurrencyExchangeEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "fromCurrencyRef", type: "string (sectionId)", description: "Página da moeda que o jogador gasta." },
+  { name: "fromAmount", type: "number", required: "Sim", description: "Quanto da fromCurrency é gasto por troca." },
+  { name: "toCurrencyRef", type: "string (sectionId)", description: "Página da moeda que o jogador recebe." },
+  { name: "toAmount", type: "number", required: "Sim", description: "Quanto da toCurrency é recebido por troca." },
+  { name: "direction", type: '"oneWay" | "bidirectional"', required: "Sim", description: <><strong>oneWay</strong>: só from→to (Gem vira Gold, mas não o contrário). <strong>bidirectional</strong>: pode trocar nos dois sentidos pela mesma taxa.</> },
+  { name: "notes", type: "string", description: "Notas livres (limites diários, condições, flavor)." },
+]} />
+
+## Exemplo
+
+Banco Premium com 2 trocas: Gem → Gold (oneWay) e Tickets ↔ Gem (bidirectional).
+
+```json
+{
+  "id": "exchange-bank",
+  "name": "Banco Premium",
+  "entries": [
+    {
+      "id": "ex1",
+      "fromCurrencyRef": "section-gem",
+      "fromAmount": 100,
+      "toCurrencyRef": "section-gold",
+      "toAmount": 5000,
+      "direction": "oneWay",
+      "notes": "Taxa fixa. Não permite voltar."
+    },
+    {
+      "id": "ex2",
+      "fromCurrencyRef": "section-tickets",
+      "fromAmount": 10,
+      "toCurrencyRef": "section-gem",
+      "toAmount": 1,
+      "direction": "bidirectional",
+      "notes": "Disponível só durante eventos."
+    }
+  ]
+}
+```
+
+## Validação
+
+- **Mesma moeda dos dois lados**: o painel bloqueia (não faz sentido trocar Gold por Gold).
+- **Refs quebradas**: se você apagar uma das moedas, o painel mostra a entry com aviso e ela não exporta até você corrigir.
+- **Amounts ≤ 0**: rejeitados; troca grátis ou negativa não tem semântica clara.
+
+## Wizard
+
+A page type `💱 Casa de Câmbio` tem um wizard mais elaborado que o padrão:
+
+1. Dialog pergunta as **duas moedas** que essa casa troca (não pode ser a mesma).
+2. Pergunta a **direção** (oneWay/bidirectional).
+3. Pergunta a **taxa** (`fromAmount` ↔ `toAmount`).
+4. A página nasce com a entry inicial pronta.
+
+Depois você pode adicionar entries adicionais (ex.: troca em pacotes — 100 Gem → 5000 Gold, 500 Gem → 30000 Gold com bonus).
+
+<Callout type="info" title="Múltiplas casas, mesma moeda">
+  Não tem regra impedindo várias páginas de Casa de Câmbio referenciarem a
+  mesma moeda. Útil pra modelar diferentes vendedores (Banco Real,
+  Mercador Negro, NPC do Evento) com taxas diferentes.
+</Callout>
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Define as moedas que essa casa troca.
+  </FeatureCard>
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Vincula preços de compra/venda em itens individuais.
+  </FeatureCard>
+</div>

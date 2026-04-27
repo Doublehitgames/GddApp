@@ -1,0 +1,142 @@
+---
+title: "progressionTable"
+description: "Tabla de valores por nivel en columnas (precio, daño, capacidad) con generadores matemáticos."
+emoji: "📊"
+order: 120
+---
+
+# progressionTable
+
+Una tabla con **una fila por nivel** y **columnas personalizables**: precio, daño, capacidad, intervalo de producción — cualquier valor que escale con la progresión. Cada columna tiene un **generador matemático** o acepta valores manuales celda a celda.
+
+## Por qué importa
+
+Toda mecánica que crece con el nivel — costo de mejora, daño de torre, intervalo de producción, capacidad de inventario, costo de rango de habilidad — es una curva. En lugar de inventar 4 fórmulas separadas, modelas todo en la misma tabla y referencias columnas desde otros addons. Cambiar un solo parámetro reescala la columna entera.
+
+## Dónde suele vivir
+
+- Página de tipo `📊 Tabla de Balance`. Ese es el camino principal.
+- Página de `👤 Personajes` (viene junto con profile + xpBalance).
+
+Singleton — 1 tabla por página. Pero puedes tener varias páginas si necesitas separar (ej.: tabla de enemigos vs. tabla de torres).
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable." },
+  { name: "startLevel", type: "number", required: "Sí", description: "Primer nivel de la tabla (generalmente 1)." },
+  { name: "endLevel", type: "number", required: "Sí", description: "Último nivel (ej.: 100)." },
+  { name: "columns", type: "ProgressionTableColumn[]", required: "Sí", description: "Definición de cada columna (id, nombre, generador, formato)." },
+  { name: "rows", type: "ProgressionTableRow[]", required: "Sí", description: "Filas calculadas. Raramente las editas directamente — provienen de los generadores." },
+  { name: "overrides", type: "Record<string, Record<string, number>>", description: <>Sobrescrituras manuales por (nivel, columnId). Útil para romper la fórmula en niveles específicos sin perder toda la columna.</> },
+]} />
+
+### `ProgressionTableColumn`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno de la columna." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable (ej.: Costo, Daño, Tiempo de Crafting)." },
+  { name: "libraryRef", type: "{ libraryAddonId, entryId }", description: "Cuando quieres vincular el nombre+clave de la columna a una entrada de la Field Library (taxonomía central)." },
+  { name: "generator", type: "ProgressionColumnGenerator", description: "Generador matemático que llena los valores. Cuando está ausente, modo manual." },
+  { name: "decimals", type: "number", description: "Decimales al formatear." },
+  { name: "isPercentage", type: "boolean", description: "Cuando es true, los valores se formatean con % (ej.: 0.15 → 15%)." },
+  { name: "min", type: "number", description: "Piso aplicado a cada celda." },
+  { name: "max", type: "number", description: "Techo aplicado a cada celda." },
+]} />
+
+### Modos de generador
+
+```ts
+type ProgressionColumnGenerator =
+  | { mode: "manual" }
+  | { mode: "linear"; base: number; step: number; bias?: number }
+  | { mode: "exponential"; base: number; growth: number; bias?: number }
+  | { mode: "formula"; baseColumnId: string; baseManualValue?: number; expression: string };
+```
+
+- **manual**: escribes celda a celda.
+- **linear**: `base + (nivel − 1) × step + (bias || 0)`.
+- **exponential**: `base × growth^(nivel − 1) + (bias || 0)`.
+- **formula**: expresión tipo JS que puede referenciar **otra columna** de esta misma tabla. Permite columnas derivadas (ej.: "venta = compra × 0.5").
+
+### `ProgressionTableRow`
+
+```ts
+{ level: number, values: Record<string, number | string> }
+```
+
+Cada fila tiene `level` + un diccionario de `columnId → valor`. Generalmente se genera — no editar manualmente excepto mediante `overrides`.
+
+## Ejemplo
+
+Tabla de mejora de la Torre Arquera, 1–50, con 3 columnas:
+
+```json
+{
+  "id": "prog-archer-tower",
+  "name": "Torre Arquera",
+  "startLevel": 1,
+  "endLevel": 50,
+  "columns": [
+    {
+      "id": "col-cost",
+      "name": "Costo",
+      "generator": { "mode": "exponential", "base": 100, "growth": 1.5 },
+      "decimals": 0
+    },
+    {
+      "id": "col-damage",
+      "name": "Daño",
+      "generator": { "mode": "linear", "base": 10, "step": 5 },
+      "decimals": 0
+    },
+    {
+      "id": "col-fire-rate",
+      "name": "Disparos por segundo",
+      "generator": { "mode": "linear", "base": 1, "step": 0.05 },
+      "decimals": 2,
+      "max": 5
+    }
+  ],
+  "rows": []
+}
+```
+
+Después de generar (botón "Recalcular" en el panel), `rows` tendrá 50 entradas con los valores calculados.
+
+## overrides
+
+Para romper la fórmula en niveles específicos sin perder la columna generada:
+
+```json
+"overrides": {
+  "10": { "col-cost": 1500 },   // nivel 10 cuesta 1500 (no lo que daría la fórmula)
+  "25": { "col-damage": 200 }   // pico de balance en el nivel 25
+}
+```
+
+La fila 10 tiene `col-cost = 1500`, y el resto sigue siendo generado. Útil para picos de diseño.
+
+## Wizard
+
+El tipo de página `📊 Tabla de Balance` crea la tabla con valores predeterminados (3 columnas de ejemplo, niveles 1–100). Puedes personalizar en el panel.
+
+## Quién apunta a esta tabla
+
+- **`production.intervalSecondsProgressionLink`** y otros campos `*ProgressionLink` — las recetas escalan temporizadores/cantidades con la tabla.
+- **`craftTable.unlock`** (indirectamente, vía xpAddonRef) — los desbloqueos por nivel usan curvas, y las curvas frecuentemente alimentan tablas.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    Curva única (no tabular). Útil para XP por nivel, no para valores por columna.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Referencia nombres/claves de columnas de forma centralizada en lugar de duplicar strings.
+  </FeatureCard>
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    El mayor consumidor: las recetas vinculan temporizadores/cantidades a columnas de aquí.
+  </FeatureCard>
+</div>

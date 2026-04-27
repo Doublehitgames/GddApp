@@ -1,0 +1,35 @@
+---
+title: "Cookbook"
+description: "Recetas cortas y autocontenidas para escenarios comunes: burst + DoT, exportar a Unity, economía premium, y más."
+emoji: "🍳"
+order: 0
+---
+
+# Cookbook
+
+Recetas **cortas y autocontenidas** para escenarios que aparecen una y otra vez en los GDDs. Cada una resuelve un problema específico — la lees en 2 minutos, copias el patrón y lo adaptas.
+
+A diferencia de la [Referencia](/docs/referencia) (que describe **qué** hace cada feature), el Cookbook se enfoca en **cómo** combinar features para lograr un objetivo.
+
+## Recetas disponibles
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🔥" title="Burst + DoT en la misma skill" href="/docs/cookbook/burst-mais-dot">
+    Modela una Fireball con daño instantáneo de impacto + quemadura a lo largo del tiempo.
+  </FeatureCard>
+  <FeatureCard emoji="🎮" title="Exportar a Unity (skills)" href="/docs/cookbook/exportar-skills-unity">
+    Un schema completo de Remote Config que produce JSON listo para un reader en C#.
+  </FeatureCard>
+  <FeatureCard emoji="💎" title="Economía premium + soft + cambio" href="/docs/cookbook/economia-premium-soft">
+    3 monedas (Gold, Gem, Energy) con una casa de cambio entre Gem y Gold.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="Field Library para evitar duplicación" href="/docs/cookbook/field-library-categorias">
+    Centraliza categorías de ítem ("Espada", "Armadura", "Consumible") para no repetir strings.
+  </FeatureCard>
+</div>
+
+<Callout type="info" title="¿Falta alguna?">
+  El Cookbook crece según la demanda. Si estás modelando algo recurrente
+  en tu juego y no hay receta aquí, envía tu sugerencia — se convierte en
+  la próxima entrada.
+</Callout>

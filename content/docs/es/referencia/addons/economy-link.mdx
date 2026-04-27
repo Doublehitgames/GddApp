@@ -1,0 +1,117 @@
+---
+title: "economyLink"
+description: "Vincula precios de compra, venta, producción y desbloqueo a una página de ítem o habilidad."
+emoji: "💰"
+order: 70
+---
+
+# economyLink
+
+El addon que conecta un ítem o contenido del juego con las monedas y variables globales que manejan su economía. Define precios de compra, venta, producción y desbloqueo en **una estructura unificada**.
+
+## Por qué importa
+
+Ítem barato, ítem caro, ítem premium, ítem desbloqueable por evento — todo eso es "economía". Sin un addon dedicado, dispersas esos números en campos sueltos por toda la página del ítem, y cuando necesitas rebalancear el juego (subir todos los precios un 10%, dar un 50% de descuento durante un evento), tienes que buscar en 80 lugares diferentes.
+
+Este addon centraliza todo, y también referencia [`globalVariable`](/docs/referencia/addons/global-variable) para que puedas ajustarlo todo de una vez (ej.: una variable `item_buy_discount = 0.1` aplicada a todas las compras).
+
+## Dónde suele vivir
+
+- Páginas de tipo `🎒 Ítems` o `⚔️ Ítems con Efecto` — viene por defecto junto con Inventario.
+- Páginas en blanco que representan algo vendible (una skin, un capítulo, un slot extra).
+
+Singleton — 1 economyLink por página.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre del addon (por defecto: Economía)." },
+  { name: "hasBuyConfig", type: "boolean", description: "Activa/desactiva el bloque de compra. Permite ítems no comprables." },
+  { name: "buyCurrencyRef", type: "string (sectionId)", description: "Página de la moneda usada para comprar." },
+  { name: "buyValue", type: "number", description: "Precio base de compra." },
+  { name: "minBuyValue", type: "number", description: "Precio mínimo incluso con descuentos máximos." },
+  { name: "buyModifiers", type: "EconomyModifierRef[]", description: "Lista de globalVariables que ajustan el buyValue (ej.: descuento de temporada)." },
+  { name: "hasSellConfig", type: "boolean", description: "Activa/desactiva el bloque de venta." },
+  { name: "sellCurrencyRef", type: "string (sectionId)", description: "Moneda recibida en la venta (generalmente la misma que la de compra)." },
+  { name: "sellValue", type: "number", description: "Valor base de venta." },
+  { name: "maxSellValue", type: "number", description: "Techo de venta incluso con bonos máximos." },
+  { name: "sellModifiers", type: "EconomyModifierRef[]", description: "globalVariables que aumentan/disminuyen sellValue." },
+  { name: "hasProductionConfig", type: "boolean", description: "Activa/desactiva la producción. El ítem produce X unidades por intervalo." },
+  { name: "producedItemRef", type: "string (sectionId)", description: "Ítem que esta página produce cuando se coloca (ej.: una gallina produce huevos)." },
+  { name: "produceMin", type: "number", description: "Cantidad mínima producida por ciclo." },
+  { name: "produceMax", type: "number", description: "Cantidad máxima producida por ciclo." },
+  { name: "productionTimeSeconds", type: "number", description: "Intervalo entre ciclos. Acepta decimales." },
+  { name: "hasUnlockConfig", type: "boolean", description: "Activa/desactiva la puerta de desbloqueo." },
+  { name: "unlockRef", type: "string (sectionId)", description: "Moneda usada para desbloquear." },
+  { name: "unlockValue", type: "number", description: "Cuánto cuesta desbloquear por primera vez." },
+  { name: "notes", type: "string", description: "Notas libres." },
+]} />
+
+### `EconomyModifierRef`
+
+```ts
+{ refId: string }  // sectionId de una página globalVariable
+```
+
+Apunta a una `globalVariable` (ej.: `item_buy_discount`, `event_sell_markup`). El motor lee el valor de la variable en tiempo de ejecución y lo aplica sobre `buyValue`/`sellValue`.
+
+## Ejemplo
+
+Espada de Hierro — comprable y vendible, con descuento de temporada:
+
+```json
+{
+  "id": "econ-iron-sword",
+  "name": "Economía",
+  "hasBuyConfig": true,
+  "buyCurrencyRef": "section-gold",
+  "buyValue": 100,
+  "minBuyValue": 50,
+  "buyModifiers": [
+    { "refId": "section-buy-discount-var" }
+  ],
+  "hasSellConfig": true,
+  "sellCurrencyRef": "section-gold",
+  "sellValue": 50,
+  "maxSellValue": 80,
+  "sellModifiers": [
+    { "refId": "section-sell-markup-var" }
+  ],
+  "hasUnlockConfig": false
+}
+```
+
+## Bloques opcionales por defecto
+
+Cada bloque (Compra, Venta, Producción, Desbloqueo) tiene un booleano `has*Config` que lo activa/desactiva. Los ítems de solo venta (no comprables) o solo desbloqueo (sin economía) resultan en un JSON exportado más limpio.
+
+<Callout type="info" title="Modificadores globales creados automáticamente">
+  Cuando creas una página de Ítem mediante wizard, automáticamente crea
+  dos globalVariables (<code>item_buy_discount</code> e <code>item_sell_markup</code>)
+  y referencia ambas en el economyLink. Esa es la forma predeterminada de la app de
+  darte palancas de balance global sin que tengas que pensarlo.
+</Callout>
+
+## Wizard
+
+No tiene wizard propio. Lo inicializa:
+
+- `🎒 Ítems` (junto con Inventario)
+- `⚔️ Ítems con Efecto` (junto con Inventario + AttributeModifiers)
+
+El wizard pide una moneda en el diálogo de requisitos, y esa moneda se convierte automáticamente en `buyCurrencyRef` + `sellCurrencyRef`.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Define las monedas que economyLink referencia.
+  </FeatureCard>
+  <FeatureCard emoji="🌐" title="globalVariable" href="/docs/referencia/addons/global-variable">
+    Modificadores globales que escalan precios mediante descuentos/bonos.
+  </FeatureCard>
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    El otro addon que típicamente vive en la misma página.
+  </FeatureCard>
+</div>

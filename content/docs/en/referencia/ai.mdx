@@ -1,0 +1,184 @@
+---
+title: "AI"
+description: "How the app's AI integration works — template generation, context-aware chat, section improvement."
+emoji: "🤖"
+order: 30
+---
+
+# AI
+
+GDD Manager integrates language models to **speed up tedious tasks** without taking control away from the designer. You always review before accepting — the AI proposes, you decide.
+
+## What it does
+
+| Feature | When you use it |
+|---|---|
+| **Template generation** | "I want an initial GDD for a fantasy RPG" → AI generates a full structure with 5 groups, attributes, characters, economy, and didactic callouts |
+| **Context-aware chat** | "Suggest pages for this section" → AI looks at the whole project (with tags) and proposes pages that fit the theme |
+| **Section content** | "Fill in this Combat Core page" → AI writes content respecting what's already there |
+| **Analysis** | "Review my GDD" → AI points out gaps, inconsistencies, and improvement suggestions |
+| **Prose improvement** | "Improve with AI" button in any richDoc — refines the text without changing the meaning |
+
+## Supported providers
+
+The app supports 3 providers. You choose in **Settings → AI**:
+
+- **Anthropic Claude** (recommended for long GDDs — large context window)
+- **OpenAI GPT** (balanced cost/speed)
+- **Groq** (fastest, smaller models — great for prototyping)
+
+Each provider needs your **API key** (you create it in the provider's console and paste it into the app). Keys are stored **only in your browser** — we never send them to our servers.
+
+<Callout type="info" title="Bring your own key">
+  The app has no built-in AI subscription. You use your own API key and pay
+  the provider directly. The upside: full control over cost and privacy.
+  Typical cost: 1–3 cents per page generation, depending on the model.
+</Callout>
+
+## Design principles
+
+The integration was built around 3 rules:
+
+### 1. You review before accepting
+
+Every AI generation appears in **preview mode**. You read it, edit if you want, and click "Accept" to commit it to the project. **Nothing goes in automatically.** If the suggestion doesn't convince you, discard it.
+
+### 2. The AI knows it's inside a GDD Manager
+
+The prompts were tuned so it understands:
+
+- That there are specific **page types** (no inventing new ones)
+- That page types come with **the right addons** (e.g., `attributeDefinitions` is seeded with 4 typical pre-populated stats)
+- That callouts have **4 intentional variants** (note/warning/design-decision/balance-note) — to be used deliberately
+- That the doc is **fictional but concrete** — it invents names, numbers, and scenarios (no generic placeholders like "Character 1")
+
+### 3. It doesn't invent systems outside the theme
+
+The strongest guardrail in the prompt is not adding mechanics the user didn't ask for. Asked for a puzzle game? No crafting. Asked for a visual novel? No combat. The AI is forced to respect the described scope.
+
+## Full template generation
+
+The **most powerful** feature — describe your game in 3 sentences and the AI generates the initial GDD with:
+
+- **5 hierarchical groups** (Overview, Game Design, Content, Presentation, Production)
+- **Typed pages** inside each group (attributes, characters, items, economy)
+- **richDocBlocks** filled with 3–5 callouts per page
+- **`attributeDefinitionsOverrides`** with stats coherent with the genre (RPG: HP/ATK/DEF/MAG/SPD ~100/10/5/8/5; Platformer: HP/Speed/Jump ~3/1.0/1.5)
+- **`domainTags`** on each section (combat, economy, progression, etc.)
+- **`dataId`** suggested per page
+
+Typical time: **30–60 seconds**. You open a ready GDD and start editing.
+
+### Example input
+
+```
+Type: Top-down roguelike
+Description: A wizard explorer descends 10 floors of a tower with procedurally
+generated dungeons. A rune system where combinations create unique spells.
+Death is permanent, but rare runes permanently unlock new combinations
+for future runs.
+Additional info: Pixel art, single player, build-crafting focus.
+```
+
+### Example output (structure)
+
+```
+📖 Overview — Spire of Echoes
+🎮 Game Design
+  ├── Core Loop
+  ├── Core Mechanics
+  └── Progression
+📦 Game Content
+  ├── 🎯 Base Attributes (HP, MP, Mana Regen, Speed, Crit%)
+  ├── 👤 Explorer Wizard (profile + xp curve + progression)
+  ├── 👤 Enemy: Floor Goblin (profile)
+  ├── ⚔️ Fire Rune (item with effect)
+  ├── ⚔️ Ice Rune
+  ├── ⚡ Spell: Fireball (skill)
+  ├── 🪙 Essence (permanent currency)
+  └── 🛠️ Rune Table (craft table)
+🎨 Presentation
+  └── Visual Style / UX / Audio
+🏭 Production
+  └── Technology / Roadmap / Risks / KPIs
+```
+
+Each page comes with rich prose, callouts explaining jargon, and a configured addon structure.
+
+## Context-aware chat
+
+Conversational mode that knows **which project/section you're looking at** and responds with that in mind.
+
+### Capabilities
+
+- Suggest new pages for an existing context
+- Edit section content (returns Markdown)
+- Analyze and give constructive feedback
+- Suggest relationships between sections via domain tags
+- Fill in gaps with coherent content
+
+### How it "sees" the project
+
+The chat receives metadata from every section:
+
+```
+**Project:** Spire of Echoes
+**Description:** Top-down roguelike wizard...
+**Existing sections (tags in brackets):**
+- Overview [narrative] (320 chars)
+- Base Attributes [combat] (empty)
+- Explorer Wizard [characters, combat] (180 chars)
+- Floor Goblin [characters, combat] (95 chars)
+- Fire Rune [items, combat] (empty)
+...
+```
+
+Tags help the chat understand domains — "suggest improvements to the economy" filters sections tagged `economy`.
+
+## GDD Analysis
+
+Runs heuristics + AI to highlight:
+
+- **Empty pages** that should have content
+- **Broken refs** (a skill points to a deleted modifier)
+- **Inconsistencies** (attribute defined but never used, currency without an economyLink)
+- **Structural gaps** (has enemies but no XP curve)
+- **Specific suggestions** to improve coverage
+
+## Prose improvement
+
+In any richDoc, the **"Improve with AI"** button sends the current content plus a refinement request (more concise, more technical, more visual, etc.) and returns a revised version. You compare side by side and accept or discard.
+
+## Connecting to other AI assistants
+
+GDD Manager can be **connected to other AI assistants** that you (or your programming team) already use — Claude Code, Cursor, and similar tools. When connected, those assistants can:
+
+- List and read the content of your pages
+- Create new pages and add addons
+- Update specific values
+- Generate the export JSON on demand
+
+A common scenario: your game's programmer opens their assistant, asks it to read the balancing table you built here, and generates the code that consumes those values in the engine. You don't even need to export manually.
+
+<Callout type="info" title="Integration still evolving">
+  This connection is being expanded feature by feature. When your team uses it
+  for the first time, it's worth checking with your programmers what's
+  already available.
+</Callout>
+
+## Privacy
+
+- **API keys**: stored only in your browser (localStorage). Never sent to our servers.
+- **Content sent to the AI**: goes directly from your browser to the provider (Anthropic, OpenAI, or Groq). GDD Manager's servers never see or store it.
+- **History**: we don't store any AI usage history.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
+    Use AI to generate pages, then export everything to the engine.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="Your first project" href="/docs/comecar/primeiro-projeto">
+    Manual walkthrough — useful to understand what the AI does under the hood.
+  </FeatureCard>
+</div>

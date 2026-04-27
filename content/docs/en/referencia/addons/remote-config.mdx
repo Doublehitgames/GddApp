@@ -1,0 +1,257 @@
+---
+title: "Remote Config"
+description: "The JSON your game reads at runtime — you design the structure here and export it straight from the GDD."
+emoji: "📤"
+order: 170
+---
+
+# Remote Config
+
+**Remote Config** is the JSON file your game downloads and reads while it's running — without needing to recompile. This is where you put the values you want to be able to tweak after launch: item prices, ability damage, crafting time, seasonal event configuration.
+
+In GDD Manager, you **design the exact structure** of that JSON and connect each field to data already in your project. The app generates the updated file every time you export.
+
+## The problem it solves
+
+Without this, the usual flow goes like this:
+
+1. You adjust values in your spreadsheets or documents
+2. The programmer writes a script to read those values and generate the game's JSON
+3. You change something → the programmer needs to update the script
+
+With GDD Manager's Remote Config:
+
+1. The programmer defines the JSON structure **once** in the Remote Config block
+2. You adjust values in the project normally
+3. Export → JSON ready, with the exact structure the game expects
+
+You gain autonomy. The programmer doesn't need to step in every time you tweak a curve or adjust a price.
+
+## Where it usually lives
+
+- Page of type **📤 Remote Config** (most common option)
+- Any blank page when you want to separate by theme
+
+You can have **multiple Remote Config blocks on the same page** — one for each JSON file you need to generate. Not a singleton.
+
+## The node tree
+
+You build a tree that represents the final JSON. Each piece is one of three types:
+
+- **Object** — a group of fields, like `{ "damage": 10, "range": 5 }`
+- **List** — a sequence of items that comes from the project (all levels of a tower, all abilities, all crafting recipes)
+- **Value** — a specific field pointing to a piece of project data (a skill's name, a level's cost, a craft time)
+
+The app shows a **live preview** as you build — you see the JSON forming before you export anything.
+
+<Callout type="info" title="Multiple exports per project">
+  You can have multiple Remote Config blocks in the same project — one for
+  skills, one for items, one for economy. Each one generates a separate
+  JSON file.
+</Callout>
+
+## Creating your first export
+
+1. Create a page — it can be **📤 Remote Config** type or any blank page
+2. Add the **Remote Config** block and give it a name
+3. Click **+ Add node** and choose **List**
+4. Choose where the items come from (e.g., your progression table, your skills list)
+5. Inside the list, add a **Value** for each field you want to export
+6. Choose which data to read (name, cost, level, damage...)
+7. Click **Export** to download the JSON
+
+## Data sources
+
+When adding a **list**, you choose where the items come from:
+
+| Source | What it iterates |
+|---|---|
+| **Progression table** | One item per level in the table (level 1, 2, 3...) |
+| **Production table** | One recipe per entry in the table |
+| **Recipe ingredients** | One ingredient per row of the current recipe *(inside Production table)* |
+| **Recipe outputs** | One output per row of the current recipe *(inside Production table)* |
+| **Skills** | One skill per entry in the Skills addon |
+| **Skill costs** | One cost per entry of the current skill *(inside Skills)* |
+| **Skill effects** | One effect per entry of the current skill *(inside Skills)* |
+
+<Callout type="info" title="Contextual sources">
+  Ingredients, outputs, costs, and effects only appear when you are
+  **inside** a list of the corresponding parent source. The app hides
+  invalid options automatically.
+</Callout>
+
+## Available fields
+
+The fields you can read depend on the data source active in the current context:
+
+### Progression table
+
+| Field | What it brings |
+|---|---|
+| Level | The level number (1, 2, 3...) |
+| *Any column* | The calculated value of that column at that level |
+
+### Skills
+
+| Field | What it brings |
+|---|---|
+| ID | Unique identifier of the skill |
+| Name | Skill name |
+| Type | `active` or `passive` |
+| Cooldown (seconds) | Time between uses |
+| Tags | Comma-separated tags (e.g., `fire,magical,aoe`) |
+| Unlock condition | Level, currency, or item required to unlock |
+
+### Skill costs
+
+| Field | What it brings |
+|---|---|
+| ID | Cost identifier |
+| Type | `currency`, `attribute`, or `charges` |
+| Amount | Amount to pay |
+| Currency reference | Data ID of the currency page used |
+| Attribute key | Key of the consumed stat (e.g., `mana`) |
+
+### Skill effects
+
+| Field | What it brings |
+|---|---|
+| Resolved name | Name of the referenced modifier |
+| Attribute key | Key of the stat the effect modifies |
+| Attributes page (ID) | Data ID of the attributes page |
+| Value | Effect amount |
+| Duration (seconds) | Effect duration (for DoTs) |
+| Tick interval (seconds) | Application frequency (for DoTs) |
+| Stacking | Stack rule |
+
+### Production table
+
+| Field | What it brings |
+|---|---|
+| Recipe reference | Data ID of the page with the linked Production |
+| Category | Entry category in the table |
+| Unlock condition | Level, currency, or item to unlock |
+
+### Recipe ingredients / outputs
+
+| Field | What it brings |
+|---|---|
+| Item reference | Data ID of the item page |
+| Amount | Quantity of the ingredient or output |
+
+### Fixed value
+
+In any context you can type a value directly — text, number, or true/false. Useful for schema version, config flags, game name, etc.
+
+<Callout type="info" title="References export Data IDs">
+  Fields of type "reference" (currency, item, attributes) export the **Data ID**
+  of the page — e.g., `DATA_FIRE_BALL` — not the internal identifier. These IDs
+  are defined by you, are human-readable, and don't change when you reorganize
+  the project.
+</Callout>
+
+## List formats
+
+When you have a list of items with multiple fields, you choose how they appear in the JSON. The right format depends on how the game code will read that data — confirm with the programmer which they prefer.
+
+### One row per item *(default)*
+
+```json
+[
+  { "level": 1, "price": 100, "damage": 10 },
+  { "level": 2, "price": 200, "damage": 20 }
+]
+```
+
+The most common format — one object per level, with all fields together. Good choice when in doubt.
+
+### By column
+
+```json
+{
+  "level": [1, 2, 3],
+  "price": [100, 200, 300],
+  "damage": [10, 20, 30]
+}
+```
+
+Each field becomes a separate list. Useful when the engine processes data by column — for example, to calculate curves or feed charts.
+
+### Keyed by level
+
+```json
+{
+  "1": { "price": 100, "damage": 10 },
+  "2": { "price": 200, "damage": 20 }
+}
+```
+
+The level becomes the object key. Game code can access `data["3"]` directly, without iterating the whole list.
+
+### Compact table
+
+```json
+{
+  "headers": ["level", "price", "damage"],
+  "rows": [[1, 100, 10], [2, 200, 20]]
+}
+```
+
+The most compact of the four. Good when the file needs to be small or when the engine reads tabular data in bulk.
+
+## Example: exporting skills
+
+This block generates a list of skills, each with its effects nested inside.
+
+Generated JSON:
+
+```json
+{
+  "skills": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "name": "Fireball",
+      "effects": [
+        { "attributes_page": "DATA_BASIC_ATTR", "key": "hp", "value": -10 }
+      ]
+    }
+  ]
+}
+```
+
+The tree that generates this result:
+
+- **List** → source: Skills (Skills addon on the page)
+  - **Value** → Skill ID
+  - **Value** → Skill name
+  - **List** → source: Skill effects
+    - **Value** → Attributes page (ID)
+    - **Value** → Attribute key
+    - **Value** → Effect value
+
+## Updating values and re-importing
+
+If the programmer adjusts values directly in the exported JSON (for example, inside Unity or Unreal) and you want to keep the GDD up to date, the app accepts **re-importing** that JSON — it re-applies the values to the source blocks.
+
+<Callout type="warning" title="What re-imports and what doesn't">
+  Simple values (numbers, text, true/false) re-import without issues.
+  References between pages — like which currency is used in a skill cost
+  — may not re-import automatically and need to be adjusted by hand in the app.
+</Callout>
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📊" title="Progression Table" href="/docs/referencia/addons/progression-table">
+    The most common source in exports — level curves with prices, damage, and capacity.
+  </FeatureCard>
+  <FeatureCard emoji="⚡" title="Skills" href="/docs/referencia/addons/skills">
+    Has 3 dedicated sources in Remote Config — skills, costs, and effects.
+  </FeatureCard>
+  <FeatureCard emoji="🛠️" title="Production Table" href="/docs/referencia/addons/craft-table">
+    Export recipes with ingredients and outputs nested in the same JSON.
+  </FeatureCard>
+  <FeatureCard emoji="📄" title="Page types" href="/docs/referencia/page-types">
+    The 📤 Remote Config type creates the page already set up for this block.
+  </FeatureCard>
+</div>

@@ -1,0 +1,99 @@
+---
+title: "richDoc"
+description: "Editor de documento enriquecido estilo Notion (títulos, listas, callouts, embeds, columnas)."
+emoji: "📝"
+order: 160
+---
+
+# richDoc
+
+Editor de **documento estructurado** estilo Notion: títulos, listas, callouts de colores, imágenes, embeds, tablas, columnas. Para prosa, lore, notas de diseño — todo lo que **no cabe** en campos tipados.
+
+## Por qué importa
+
+El game design tiene un componente narrativo enorme: descripción de personajes, lore del mundo, justificación de decisiones de diseño, briefing de features. Forzar todo en párrafos simples limita el documento. Aquí tienes un editor potente (BlockNote por debajo) que acepta contenido enriquecido sin convertirse en Word.
+
+Y como cada página puede tener **múltiples richDocs** (esta es una de las dos excepciones al singleton), puedes mezclar prosa y datos en la misma página: 1 doc al inicio (briefing), addons tipados en el medio, otro doc al final (notas).
+
+## Dónde suele vivir
+
+- Tipo de página `📖 Narrativa` — viene como addon principal.
+- La mayoría de páginas tipadas — viene como bloque extra opcional para contexto.
+- Contenedores (Visión General, Diseño de Juego, Contenido, Presentación, Producción) — casi siempre tienen 1 richDoc explicando qué hay dentro.
+
+**No es singleton** — puedes tener tantos bloques richDoc como quieras por página.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable." },
+  { name: "blocks", type: "RichDocBlock[]", required: "Sí", description: "Bloques de BlockNote (formato opaco — no editar a mano, usar el editor)." },
+  { name: "schemaVersion", type: "1", required: "Sí", description: "Versión del esquema. Usado para migraciones futuras." },
+]} />
+
+### `RichDocBlock`
+
+Los bloques siguen el **formato BlockNote**:
+
+```ts
+{
+  id?: string,
+  type?: string,            // "paragraph", "heading", "bulletListItem", "callout", etc.
+  props?: Record<string, unknown>,  // ej.: { level: 2 } para heading
+  content?: unknown,        // texto + spans estilizados
+  children?: RichDocBlock[]
+}
+```
+
+Tipos soportados (no exhaustivo):
+
+- `paragraph` — texto común
+- `heading` (nivel 1/2/3) — títulos
+- `bulletListItem`, `numberedListItem`, `checkListItem` — listas
+- `quote` — cita
+- `codeBlock` — bloque de código
+- `image`, `video`, `audio`, `file` — media
+- `table` — tablas estructuradas
+- `callout` (variant: `note`, `warning`, `design-decision`, `balance-note`) — cajas de colores
+- `columnList` + `column` — diseño en columnas
+
+## Callouts especiales
+
+La versión personalizada de la app tiene 4 variantes de callout pensadas para GDDs:
+
+- **note** (💡) — información contextual, nota al margen
+- **warning** (⚠️) — explicar jerga técnica O recordar "esto es un ejemplo, reemplázalo"
+- **design-decision** (🎯) — documentar una decisión de diseño que tomaste
+- **balance-note** (⚖️) — preocupación de playtest o ajuste de balance
+
+Úsalos intencionalmente — la densidad objetivo es 3-5 callouts por página.
+
+## Quién apunta a richDoc
+
+Generalmente **nadie** — es una hoja. richDoc no es referenciado por otros addons. Lo consume el motor (al renderizar tooltips/codex) o los exports estáticos (PDF, HTML).
+
+## Wizard
+
+El tipo de página `📖 Narrativa` crea la página con 1 richDoc vacío + cursor listo para comenzar a escribir.
+
+La IA integrada (`generateTemplatePrompt`) también sabe poblar `richDocBlocks` automáticamente cuando le pides que genere un GDD desde cero — cada página tipada viene con un bloque rico que ya tiene 3-5 callouts.
+
+## Exportar
+
+richDoc típicamente no se exporta a Remote Config (que apunta a datos estructurados para el motor). Se consume más por:
+
+- **Vista en la app** — el modo solo lectura muestra el contenido
+- **Export estático** (futuro) — PDF, HTML, Markdown
+- **Backup** (actual) — volcado JSON del proyecto completo
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
+    Para datos estructurados — no para prosa.
+  </FeatureCard>
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    Para agregar campos tipados que viven junto a la prosa.
+  </FeatureCard>
+</div>

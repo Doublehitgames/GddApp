@@ -1,0 +1,94 @@
+---
+title: "attributeDefinitions"
+description: "The canonical list of game attributes (HP, ATK, DEF...) that other pages reference."
+emoji: "🎯"
+order: 10
+---
+
+# attributeDefinitions
+
+Defines the game's **attributes** in a single list that becomes the source of truth for every other page that deals with stats.
+
+## Why it matters
+
+Without this addon, each character page invents its own stats — and six months later you have 4 versions of "attack" (`atk`, `attack`, `dmg`, `Attack`). Here you define **once** that `hp`, `atk`, and `def` exist, and everything in the project references those keys.
+
+## Where it usually lives
+
+- A page of type `🎯 Attributes`. This is the most common setup.
+- Blank pages (created manually) also accept the addon.
+
+You typically have **just one** attributes page in the whole project. Multiple profiles (combat, social, magic) are also possible if you need to keep stat sets separate.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal addon ID (auto-generated)." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name for the addon (default: Attribute Definitions)." },
+  { name: "attributes", type: "AttributeDefinitionEntry[]", required: "Yes", description: "List of attributes. Each entry is a stat." },
+]} />
+
+### `AttributeDefinitionEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal entry ID." },
+  { name: "key", type: "string", required: "Yes", description: <>Technical key in <code>snake_case</code> (e.g. <code>hp</code>, <code>max_mana</code>). This is the key other pages reference.</> },
+  { name: "label", type: "string", required: "Yes", description: "Friendly name shown in the UI (e.g. HP, Max Mana)." },
+  { name: "valueType", type: '"int" | "float" | "percent" | "boolean"', required: "Yes", description: "Value type. Determines the input style in the panel and how values are normalized." },
+  { name: "defaultValue", type: "number | boolean", required: "Yes", description: "Default value used when a profile doesn't override it." },
+  { name: "min", type: "number", description: "Minimum acceptable value (optional). Useful for HP that can never go negative." },
+  { name: "max", type: "number", description: "Maximum value (optional). Useful for percentages between 0–100." },
+  { name: "unit", type: "string", description: <>Visual suffix (e.g. <code>s</code> for seconds, <code>%</code> for percent). Does not affect the exported value.</> },
+]} />
+
+## Example
+
+A classic RPG profile:
+
+```json
+{
+  "id": "attr-defs-1",
+  "name": "Base Attributes",
+  "attributes": [
+    { "id": "1", "key": "hp",  "label": "HP",  "valueType": "int", "defaultValue": 100, "min": 0 },
+    { "id": "2", "key": "atk", "label": "ATK", "valueType": "int", "defaultValue": 10,  "min": 0 },
+    { "id": "3", "key": "def", "label": "DEF", "valueType": "int", "defaultValue": 5,   "min": 0 },
+    { "id": "4", "key": "spd", "label": "SPD", "valueType": "int", "defaultValue": 5,   "min": 0 }
+  ]
+}
+```
+
+## Who points to this addon
+
+Almost every "attribute-aware" addon references an `attributeDefinitions` via the `definitionsRef` field:
+
+- `attributeProfile.definitionsRef` — defines which keys the profile can fill in
+- `attributeModifiers.definitionsRef` — defines which keys the modifier can change
+- `progressionTable` (when used to scale attributes) — references indirectly
+- `skills.SkillCost.definitionsRef` (when cost type is `attribute`) — which profile defines the key
+
+<Callout type="tip" title="Multiple profiles">
+  If your game has independent stat groups (e.g. combat vs social),
+  create **multiple** Attributes pages. Each modifier/skill points to
+  exactly one — there's no conflict.
+</Callout>
+
+## Wizard
+
+The `🎯 Attributes` page type creates this addon **pre-populated** with 4 common attributes (HP, ATK, DEF, SPD). You can accept, remove, or add more at creation time via the slot picker. Customization options:
+
+- **Default slots**: checkboxes to toggle HP/ATK/DEF/SPD on or off
+- **Custom slots**: up to N extra fields with `key` + `label` + `valueType`
+
+All of this becomes the `attributes[]` array of the final entry.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="👤" title="attributeProfile" href="/docs/referencia/addons/attribute-profile">
+    Assigns concrete values from these definitions to a character or item.
+  </FeatureCard>
+  <FeatureCard emoji="✨" title="attributeModifiers" href="/docs/referencia/addons/attribute-modifiers">
+    Modifies values from these definitions (buffs, debuffs).
+  </FeatureCard>
+</div>

@@ -1,0 +1,53 @@
+---
+title: "Documentación de GDD Manager"
+sidebarLabel: "🏠 Home"
+description: "Todo lo que necesitas para mantener tus Game Design Documents vivos y sincronizados con tu juego."
+order: 0
+---
+
+# Documentación
+
+**GDD Manager** convierte tu cuaderno caótico de ideas en un documento estructurado, exportable y que habla directamente con tu motor de juego. Esta documentación cubre cada función de la app, **por qué existe** y **cómo aprovecharla al máximo** en tu proyecto.
+
+## Por dónde empezar
+
+Si es tu primera vez aquí, sigue este camino **en orden**:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🚀" title="1. Qué es GDD Manager" href="/docs/comecar/o-que-e">
+    Un resumen de 5 minutos de la app — qué problema resuelve y cómo se compara con un Notion/Confluence común.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="2. Conceptos clave" href="/docs/comecar/conceitos-chave">
+    Entiende **page type**, **addon**, **wizard** y **Remote Config** — vocabulario que aparece en toda la documentación.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="3. Tu primer proyecto" href="/docs/comecar/primeiro-projeto">
+    Un recorrido paso a paso para crear un GDD desde cero usando los wizards de páginas tipadas.
+  </FeatureCard>
+  <FeatureCard emoji="📦" title="4. Referencia de addons" href="/docs/referencia/addons">
+    Una página por tipo de addon (Skills, Currency, Production, etc.) con schema, ejemplos y detalles importantes.
+  </FeatureCard>
+</div>
+
+## Qué hay en la app
+
+GDD Manager se organiza en tres capas:
+
+1. **Páginas** — cada una representa un concepto de tu juego (una clase, una habilidad, una economía). Tipadas (con wizard) o en blanco.
+2. **Addons** — bloques especializados dentro de una página. Skills, Currency, Modificadores de Atributos, Tabla de Progresión, etc. Hoy hay más de 16 tipos.
+3. **Remote Config** — exporta todo a JSON que tu motor puede consumir (Unity, Godot, Unreal, web). Schema flexible, múltiples formatos.
+
+La verdadera potencia está en la **integración entre capas**: una habilidad referencia un modificador de atributo, que apunta a una definición de atributo, que se convierte en un campo en el JSON exportado — todo navegable y validado.
+
+## Links rápidos
+
+- **Cobertura completa de addons** → [Referencia de addons](/docs/referencia/addons)
+- **Cómo exportar a tu motor** → [Remote Config](/docs/referencia/addons/remote-config)
+- **Modelando un RPG completo** → [Guías](/docs/guias) *(próximamente)*
+- **Snippets listos para copiar** → [Cookbook](/docs/cookbook)
+
+<Callout type="tip" title="Atajos de teclado">
+  Presiona <code>Ctrl + K</code> en cualquier página de la app para abrir el
+  buscador rápido (páginas, addons y más). Presiona <code>?</code> para ver la
+  lista flotante de **todos los atajos**, o consulta la página completa en
+  [Referencia → Atajos](/docs/referencia/atalhos).
+</Callout>

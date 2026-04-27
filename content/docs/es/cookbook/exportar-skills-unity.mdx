@@ -1,0 +1,171 @@
+---
+title: "Exportar skills a Unity"
+description: "Un schema de Remote Config que produce JSON listo para que un reader en C# lo consuma."
+emoji: "🎮"
+order: 20
+---
+
+# Exportar skills a Unity
+
+**Escenario**: modelaste skills en GDD Manager y necesitas que el juego Unity las cargue en runtime. Respuesta: monta un `exportSchema` que itere skills + efectos anidados, y usa `JsonUtility.FromJson` en C# para deserializar.
+
+## Schema del Remote Config
+
+Agrega un addon `exportSchema` en una página dedicada (ej.: "📤 Skills Export"). Construye este árbol:
+
+```
+{
+  "skills": [           ← array, source: skills:<DATA_ID_DEL_SKILLS_ADDON>
+    {                   ← objeto template
+      "id":          → skillField/id
+      "name":        → skillField/name
+      "kind":        → skillField/kind
+      "cooldown":    → skillField/cooldownSeconds
+      "tags":        → skillField/tagsCsv
+      "costs": [        ← array, source: skillCosts
+        {
+          "type":         → skillCostField/type
+          "amount":       → skillCostField/amount
+          "currency":     → skillCostField/currencyRef (resuelve dataId)
+          "attribute":    → skillCostField/attributeKey
+        }
+      ],
+      "effects": [      ← array, source: skillEffects
+        {
+          "name":         → skillEffectField/resolvedName
+          "profile":      → skillEffectField/resolvedDefinitionsRef
+          "key":          → skillEffectField/resolvedAttributeKey
+          "mode":         → skillEffectField/resolvedMode
+          "value":        → skillEffectField/resolvedValue
+          "duration":     → skillEffectField/resolvedDurationSeconds
+          "tick":         → skillEffectField/resolvedTickIntervalSeconds
+          "stacking":     → skillEffectField/resolvedStacking
+          "temporary":    → skillEffectField/resolvedTemporary
+        }
+      ]
+    }
+  ]
+}
+```
+
+## JSON exportado (ejemplo)
+
+```json
+{
+  "skills": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "name": "Fireball",
+      "kind": "active",
+      "cooldown": 5,
+      "tags": "fire,magical,aoe",
+      "costs": [
+        {
+          "type": "attribute",
+          "amount": 30,
+          "currency": "",
+          "attribute": "mana"
+        }
+      ],
+      "effects": [
+        {
+          "name": "Fireball Impact",
+          "profile": "DATA_BASIC_ATTR",
+          "key": "hp",
+          "mode": "add",
+          "value": -30,
+          "duration": 0,
+          "tick": 0,
+          "stacking": "stack",
+          "temporary": false
+        },
+        {
+          "name": "Fireball Burn",
+          "profile": "DATA_BASIC_ATTR",
+          "key": "hp",
+          "mode": "add",
+          "value": -2,
+          "duration": 6,
+          "tick": 1,
+          "stacking": "unique",
+          "temporary": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Reader en C# (Unity)
+
+Crea clases que reflejen el JSON:
+
+```csharp
+[System.Serializable]
+public class SkillData {
+    public string id;
+    public string name;
+    public string kind;       // "active" | "passive"
+    public float cooldown;
+    public string tags;       // CSV — separar en runtime
+    public CostData[] costs;
+    public EffectData[] effects;
+}
+
+[System.Serializable]
+public class CostData {
+    public string type;       // "currency" | "attribute" | "charges"
+    public float amount;
+    public string currency;   // dataId o "" cuando type != currency
+    public string attribute;  // clave del atributo o "" cuando type != attribute
+}
+
+[System.Serializable]
+public class EffectData {
+    public string name;
+    public string profile;    // DATA_BASIC_ATTR — qué perfil de atributos
+    public string key;        // hp / atk / mana
+    public string mode;       // "add" | "mult" | "set"
+    public float value;
+    public float duration;
+    public float tick;
+    public string stacking;   // "unique" | "refresh" | "stack" | ""
+    public bool temporary;
+}
+
+[System.Serializable]
+public class SkillsRoot {
+    public SkillData[] skills;
+}
+
+// Cargando
+public static SkillsRoot LoadSkills(string jsonText) {
+    return JsonUtility.FromJson<SkillsRoot>(jsonText);
+}
+```
+
+## Dónde poner el JSON
+
+3 opciones comunes:
+
+1. **`Resources/`** — bundle estático en el build, carga con `Resources.Load<TextAsset>`. Simple, pero requiere rebuild para actualizar.
+2. **`StreamingAssets/`** — archivo suelto en el build, carga con `File.ReadAllText`. Mejor para parches.
+3. **Servicio de Remote Config** (Firebase, PlayFab) — carga desde la nube, actualiza sin parche. Más infraestructura, más flexibilidad.
+
+Para prototipo: **Resources**. Para producción con live ops: **servicio de Remote Config**.
+
+## Checklist pre-export
+
+Antes de generar el JSON y enviarlo a Unity, valida:
+
+- [ ] Toda skill tiene `dataId` definido (si no, el `id` sale vacío)
+- [ ] Toda página de Atributos tiene `dataId`
+- [ ] Toda moneda tiene `dataId`
+- [ ] Los costos de tipo `attribute` tienen `definitionsRef` completado
+- [ ] Los efectos de la skill apuntan a modifiers que aún existen (sin refs huérfanas)
+
+## Ver también
+
+- [Remote Config](/docs/referencia/addons/remote-config) — referencia completa del bloque
+- [`skills`](/docs/referencia/addons/skills) — sources y bindings de skill en el schema
+- [Burst + DoT](/docs/cookbook/burst-mais-dot) — modela la Fireball que aparece en este ejemplo

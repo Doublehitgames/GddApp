@@ -1,0 +1,106 @@
+---
+title: "currencyExchange"
+description: "An exchange house that defines rates between two currencies, one-way or bidirectional."
+emoji: "💱"
+order: 60
+---
+
+# currencyExchange
+
+Defines **exchanges** between currencies: 100 Gems → 5000 Gold, 10 Tickets → 1 Gem, etc. Supports one direction only or both sides.
+
+## Why it matters
+
+In games with multiple currencies (premium + soft + event), conversions need to be visible and auditable. If "100 Gems = 5000 Gold" lives only in the shop's code, the design team can't iterate on the economy without asking a programmer for a build. Here it becomes both a document and an exported JSON.
+
+## Where it usually lives
+
+- A page of type `💱 Exchange House`. The wizard asks for the two currencies and the initial rate.
+- Blank pages when you want to group several related exchanges (e.g. "Premium Bank" with 5 different conversions).
+
+Singleton — 1 addon per page, with **N exchanges** (`entries[]`).
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Addon name." },
+  { name: "entries", type: "CurrencyExchangeEntry[]", required: "Yes", description: "List of exchanges." },
+]} />
+
+### `CurrencyExchangeEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "fromCurrencyRef", type: "string (sectionId)", description: "Page of the currency the player spends." },
+  { name: "fromAmount", type: "number", required: "Yes", description: "How much of fromCurrency is spent per exchange." },
+  { name: "toCurrencyRef", type: "string (sectionId)", description: "Page of the currency the player receives." },
+  { name: "toAmount", type: "number", required: "Yes", description: "How much of toCurrency is received per exchange." },
+  { name: "direction", type: '"oneWay" | "bidirectional"', required: "Yes", description: <><strong>oneWay</strong>: only from→to (Gems become Gold, but not the other way). <strong>bidirectional</strong>: can exchange in both directions at the same rate.</> },
+  { name: "notes", type: "string", description: "Free notes (daily limits, conditions, flavor text)." },
+]} />
+
+## Example
+
+Premium Bank with 2 exchanges: Gems → Gold (oneWay) and Tickets ↔ Gems (bidirectional).
+
+```json
+{
+  "id": "exchange-bank",
+  "name": "Premium Bank",
+  "entries": [
+    {
+      "id": "ex1",
+      "fromCurrencyRef": "section-gem",
+      "fromAmount": 100,
+      "toCurrencyRef": "section-gold",
+      "toAmount": 5000,
+      "direction": "oneWay",
+      "notes": "Fixed rate. Cannot be reversed."
+    },
+    {
+      "id": "ex2",
+      "fromCurrencyRef": "section-tickets",
+      "fromAmount": 10,
+      "toCurrencyRef": "section-gem",
+      "toAmount": 1,
+      "direction": "bidirectional",
+      "notes": "Only available during events."
+    }
+  ]
+}
+```
+
+## Validation
+
+- **Same currency on both sides**: the panel blocks this (exchanging Gold for Gold makes no sense).
+- **Broken refs**: if you delete one of the currencies, the panel shows the entry with a warning and it won't export until you fix it.
+- **Amounts ≤ 0**: rejected; a free or negative exchange has no clear meaning.
+
+## Wizard
+
+The `💱 Exchange House` page type has a more detailed wizard than usual:
+
+1. Dialog asks for the **two currencies** this house exchanges (cannot be the same).
+2. Asks for the **direction** (oneWay/bidirectional).
+3. Asks for the **rate** (`fromAmount` ↔ `toAmount`).
+4. The page is created with the initial entry already filled in.
+
+Afterward you can add more entries (e.g. bundle tiers — 100 Gems → 5000 Gold, 500 Gems → 30000 Gold with a bonus).
+
+<Callout type="info" title="Multiple houses, same currency">
+  Nothing prevents multiple Exchange House pages from referencing the same
+  currency. Useful for modeling different vendors (Royal Bank,
+  Black Market, Event NPC) with different rates.
+</Callout>
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Defines the currencies this house exchanges.
+  </FeatureCard>
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Links buy/sell prices on individual items.
+  </FeatureCard>
+</div>

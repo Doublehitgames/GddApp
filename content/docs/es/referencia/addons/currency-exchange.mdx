@@ -1,0 +1,106 @@
+---
+title: "currencyExchange"
+description: "Una casa de cambio que define tasas entre dos monedas, unidireccional o bidireccional."
+emoji: "💱"
+order: 60
+---
+
+# currencyExchange
+
+Define **cambios** entre monedas: 100 Gemas → 5000 Oro, 10 Tickets → 1 Gema, etc. Soporta solo una dirección o ambas.
+
+## Por qué importa
+
+En juegos con múltiples monedas (premium + soft + evento), las conversiones deben ser visibles y auditables. Si "100 Gemas = 5000 Oro" vive solo en el código de la tienda, el equipo de diseño no puede iterar la economía sin pedirle una build a un programador. Aquí se convierte tanto en un documento como en un JSON exportado.
+
+## Dónde suele vivir
+
+- Una página de tipo `💱 Casa de Cambio`. El wizard pide las dos monedas y la tasa inicial.
+- Páginas en blanco cuando quieres agrupar varios cambios relacionados (ej.: "Banco Premium" con 5 conversiones diferentes).
+
+Singleton — 1 addon por página, con **N cambios** (`entries[]`).
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre del addon." },
+  { name: "entries", type: "CurrencyExchangeEntry[]", required: "Sí", description: "Lista de cambios." },
+]} />
+
+### `CurrencyExchangeEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "fromCurrencyRef", type: "string (sectionId)", description: "Página de la moneda que el jugador gasta." },
+  { name: "fromAmount", type: "number", required: "Sí", description: "Cuánto de fromCurrency se gasta por cambio." },
+  { name: "toCurrencyRef", type: "string (sectionId)", description: "Página de la moneda que el jugador recibe." },
+  { name: "toAmount", type: "number", required: "Sí", description: "Cuánto de toCurrency se recibe por cambio." },
+  { name: "direction", type: '"oneWay" | "bidirectional"', required: "Sí", description: <><strong>oneWay</strong>: solo de→a (Gemas se convierten en Oro, pero no al revés). <strong>bidirectional</strong>: puede cambiar en ambas direcciones a la misma tasa.</> },
+  { name: "notes", type: "string", description: "Notas libres (límites diarios, condiciones, texto de sabor)." },
+]} />
+
+## Ejemplo
+
+Banco Premium con 2 cambios: Gemas → Oro (oneWay) y Tickets ↔ Gemas (bidirectional).
+
+```json
+{
+  "id": "exchange-bank",
+  "name": "Banco Premium",
+  "entries": [
+    {
+      "id": "ex1",
+      "fromCurrencyRef": "section-gem",
+      "fromAmount": 100,
+      "toCurrencyRef": "section-gold",
+      "toAmount": 5000,
+      "direction": "oneWay",
+      "notes": "Tasa fija. No se puede revertir."
+    },
+    {
+      "id": "ex2",
+      "fromCurrencyRef": "section-tickets",
+      "fromAmount": 10,
+      "toCurrencyRef": "section-gem",
+      "toAmount": 1,
+      "direction": "bidirectional",
+      "notes": "Solo disponible durante eventos."
+    }
+  ]
+}
+```
+
+## Validación
+
+- **Misma moneda en ambos lados**: el panel bloquea esto (cambiar Oro por Oro no tiene sentido).
+- **Referencias rotas**: si eliminas una de las monedas, el panel muestra la entrada con una advertencia y no exportará hasta que la corrijas.
+- **Cantidades ≤ 0**: rechazadas; un cambio gratuito o negativo no tiene un significado claro.
+
+## Wizard
+
+El tipo de página `💱 Casa de Cambio` tiene un wizard más detallado que el habitual:
+
+1. El diálogo pide las **dos monedas** que esta casa cambia (no pueden ser la misma).
+2. Pide la **dirección** (oneWay/bidirectional).
+3. Pide la **tasa** (`fromAmount` ↔ `toAmount`).
+4. La página se crea con la entrada inicial ya completada.
+
+Después puedes agregar más entradas (ej.: tiers de paquete — 100 Gemas → 5000 Oro, 500 Gemas → 30000 Oro con un bono).
+
+<Callout type="info" title="Múltiples casas, misma moneda">
+  Nada impide que múltiples páginas de Casa de Cambio referencien la misma
+  moneda. Útil para modelar diferentes vendedores (Banco Real,
+  Mercado Negro, NPC de Evento) con tasas diferentes.
+</Callout>
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Define las monedas que esta casa cambia.
+  </FeatureCard>
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Vincula precios de compra/venta en ítems individuales.
+  </FeatureCard>
+</div>

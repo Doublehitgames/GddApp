@@ -1,0 +1,137 @@
+---
+title: "craftTable"
+description: "Una estación de producción que agrupa múltiples recetas (forja, banco de trabajo, alquimia) con reglas de desbloqueo por entrada."
+emoji: "🛠️"
+order: 100
+---
+
+# craftTable
+
+Modela una **estación de producción** (forja, banco de trabajo, laboratorio de alquimia) que agrupa **múltiples recetas existentes**, cada una con su propia condición de desbloqueo (nivel, costo de moneda, ítem requerido).
+
+## Por qué importa
+
+En juegos con crafting maduro (Minecraft, Terraria, Stardew), las recetas no flotan sueltas — pertenecen a estaciones. Una "Forja" puede hacer espadas, hachas y armaduras. Un "Banco de trabajo" solo puede procesar madera. Sin este addon tendrías que modelar esa relación a mano (una página de Forja con una lista plana de nombres de recetas), perdiendo las referencias validadas.
+
+## Dónde suele vivir
+
+- Una página de tipo `🛠️ Estación de Producción`. El wizard pregunta qué recetas asociar.
+
+Singleton — 1 craftTable por página.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable (ej.: Forja del Herrero)." },
+  { name: "entries", type: "CraftTableEntry[]", required: "Sí", description: "Lista de recetas que ofrece esta estación." },
+]} />
+
+### `CraftTableEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "productionRef", type: "string (sectionId)", description: "Página de receta (addon de producción) que esta entrada agrega." },
+  { name: "category", type: "string", description: "Categoría libre para agrupación visual (ej.: Armas, Armaduras, Consumibles)." },
+  { name: "order", type: "number", required: "Sí", description: "Orden de visualización (menor = primero)." },
+  { name: "hidden", type: "boolean", description: "Cuando es true, la entrada está oculta en la UI hasta que se cumple alguna condición (el jugador la descubre, un disparador de evento)." },
+  { name: "unlock", type: "CraftTableUnlock", description: "Condiciones para desbloquear esta receta específica. Combina nivel + moneda + ítem." },
+]} />
+
+### `CraftTableUnlock`
+
+También se reutiliza en `skills.unlock`. Tres bloques opcionales que se combinan (todos deben cumplirse cuando están habilitados):
+
+```ts
+{
+  level?: { enabled: bool, xpAddonRef?: sectionId, level?: number },
+  currency?: { enabled: bool, currencyAddonRef?: sectionId, amount?: number },
+  item?: { enabled: bool, itemRef?: sectionId, quantity?: number },
+}
+```
+
+- **level**: el jugador debe estar en el nivel X de una curva de XP específica.
+- **currency**: pagar X de una moneda para desbloquear permanentemente.
+- **item**: debe tener X unidades de un ítem (puede consumirse o solo requerirse).
+
+## Ejemplo
+
+Una forja con 3 recetas — una desbloqueada desde el inicio, una por nivel, una por compra:
+
+```json
+{
+  "id": "ct-forge",
+  "name": "Forja del Herrero",
+  "entries": [
+    {
+      "id": "e1",
+      "productionRef": "section-recipe-iron-sword",
+      "category": "Armas",
+      "order": 1
+    },
+    {
+      "id": "e2",
+      "productionRef": "section-recipe-steel-sword",
+      "category": "Armas",
+      "order": 2,
+      "unlock": {
+        "level": {
+          "enabled": true,
+          "xpAddonRef": "section-xp-blacksmith",
+          "level": 5
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "productionRef": "section-recipe-mythril-sword",
+      "category": "Armas",
+      "order": 3,
+      "hidden": true,
+      "unlock": {
+        "currency": {
+          "enabled": true,
+          "currencyAddonRef": "section-gem",
+          "amount": 100
+        },
+        "item": {
+          "enabled": true,
+          "itemRef": "section-rare-recipe-paper",
+          "quantity": 1
+        }
+      }
+    }
+  ]
+}
+```
+
+La Espada de Mithril requiere 100 Gemas + 1 papel raro. Oculta por defecto.
+
+## Wizard
+
+El tipo de página `🛠️ Estación de Producción` abre un diálogo preguntando qué recetas (páginas de tipo `📜 Receta`) asociar con la estación. Puedes:
+
+- **Seleccionar existentes** del proyecto (selección múltiple).
+- **Omitir** y agregarlas manualmente después desde el panel.
+
+Cada receta seleccionada se convierte en una nueva entrada con un `order` secuencial. Ajustas las condiciones de desbloqueo y la categoría después.
+
+## Quién apunta a craftTable
+
+Generalmente **nadie** — es el consumidor final. Las páginas de recetas son las hojas; CraftTable las agrega; el motor lee el JSON.
+
+Puedes tener múltiples páginas de Estación de Producción apuntando a las mismas recetas (ej.: una receta de "Pan" agregada tanto en el Banco de Trabajo del Hogar como en el Horno del Panadero). No hay ninguna regla que lo impida.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    El addon que define cada receta individual referenciada aquí.
+  </FeatureCard>
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    Curvas de XP referenciadas en unlock.level.xpAddonRef.
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Monedas referenciadas en unlock.currency.currencyAddonRef.
+  </FeatureCard>
+</div>

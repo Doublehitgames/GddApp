@@ -1,0 +1,205 @@
+---
+title: "Your first project"
+description: "Create a minimal RPG from scratch using the wizards — in ~15 minutes."
+emoji: "🌱"
+order: 2
+---
+
+# Your first project
+
+Let's create a small GDD (about a dozen pages) so you can feel the flow. The example is a **fantasy RPG** with a simple economy, attributes, one skill, and one item.
+
+<Callout type="info" title="No rush">
+  You don't need to create everything at once. The app saves automatically on every change and
+  you can come back to any step whenever you want.
+</Callout>
+
+## Before you start
+
+Prerequisites:
+
+- A GDD Manager account (free signup at <a href="/login">/login</a>)
+- 15 minutes
+- A desire to invent cool names (you'll need it)
+
+## Step 1 — Create the project
+
+On the home page (`/`), click **"+ New project"**.
+
+Give it a name (e.g., `Adventure Tutorial`) and a short description. The project starts empty, with the default structure of **5 groups** (Overview, Design, Content, Presentation, Production) — you can ignore these for now.
+
+## Step 2 — Attributes page
+
+The first *real* page is the Attributes one, because everything in the game will depend on it.
+
+1. In the sidebar, click the `+` next to **Content** (or another group).
+2. In the picker, choose the type `🎯 Attributes`.
+3. Give it the name `Base Attributes`.
+
+The page is created with a pre-populated attribute table (HP, ATK, DEF, SPD). Edit the default values if you want:
+
+```
+HP   100
+ATK  10
+DEF  5
+SPD  5
+```
+
+<Callout type="tip" title="Set a DataID — it's important">
+  **Just below the page title** there's a subtle field: click
+  **"+ DataID"**. The app automatically suggests something like `DATA_BASE_ATTRIBUTES`
+  based on the title — you can accept it or edit it to `DATA_BASIC_ATTR`.
+
+  **Why it matters**: the DataID is the **stable** identifier the engine
+  will use to find this page in the exported JSON. Without it, refs point
+  to unreadable internal UUIDs. With it, the JSON has human-readable keys like
+  `DATA_BASIC_ATTR` that stay stable even when you rename, move, or reorganize the page.
+
+  **Set the DataID on every page that will go into the export.** Attributes,
+  currencies, items, skills — all of them. It takes 2 seconds per page and saves
+  hours of debugging later.
+</Callout>
+
+## Step 3 — Currency page
+
+Next, a currency to make the economy work.
+
+1. `+ New page` → type `🪙 Economy`.
+2. Name: `Gold`.
+3. Configure in the panel: code `GOLD`, name `Gold`, icon if you want.
+4. **Set the DataID** by clicking "+ DataID" below the title — the default suggestion is `DATA_GOLD`, edit if you prefer.
+
+Done — now there's a currency that other addons can reference.
+
+## Step 4 — Item page
+
+Let's create an item: **Iron Sword**.
+
+1. `+ New page` → type `⚔️ Effect Items`.
+2. **The wizard will open** asking about two dependencies:
+   - **Currency**: choose `Gold` (created in step 3).
+   - **Attributes**: choose `Base Attributes` (created in step 2).
+3. Page name: `Iron Sword`. Click "+ DataID" below the title and edit it to `DATA_IRON_SWORD` (the auto-suggestion will be something like `DATA_IRON_SWORD`).
+
+The page is created with **3 addons** already configured:
+
+- **Inventory** — weight, category, stack
+- **Economy** — buy price (e.g., 100 GOLD), sell price (50 GOLD)
+- **Attribute Modifiers** — `+5 ATK` when equipped
+
+Fill in the fields. Every change saves automatically.
+
+## Step 5 — Skill page
+
+Now the fun part: a fire skill.
+
+1. `+ New page` → type `⚡ Skills`.
+2. **Wizard asks**: which Attributes page? Choose `Base Attributes`.
+3. Name: `Fireball`. DataID (click below the title): `DATA_FIRE_BALL`.
+
+The page is created with 2 addons:
+
+- **Skills** (empty)
+- **Skill Effects** (Attribute Modifiers, empty)
+
+Let's fill them in:
+
+**In the Modifiers addon**, add an entry:
+- Name: `Fireball Impact`
+- Attribute: `hp`
+- Mode: `add`
+- Value: `-30`
+
+**In the Skills addon**, add a skill:
+- Name: `Fireball`
+- Type: active
+- Cooldown: `5` (seconds)
+- **Costs**: nothing for now
+- **Effects**: check the `Fireball Impact` checkbox (from the modifier above)
+
+Done. When the game triggers Fireball, it will apply `-30` to the target's `hp`.
+
+<Callout type="tip" title="Burst + DoT?">
+  To make a richer Fireball (impact + burn over time),
+  just add **2 entries** to Modifiers: one instant (burst) and one
+  with `temporary: true, durationSeconds: 6, tickIntervalSeconds: 1`. Check
+  both in the skill's effects checklist.
+</Callout>
+
+## Step 6 — Remote Config (export)
+
+The last step: setting up the JSON your engine will consume.
+
+1. On any page (I recommend creating an `📤 Export Configuration` one), add a **Remote Config** addon.
+2. In the panel, build a tree like:
+
+```json
+{
+  "skills": [        ← array, source: skills:DATA_FIRE_BALL
+    {
+      "id": "...",       ← skillField/id (resolves to dataId)
+      "name": "...",     ← skillField/name
+      "cooldown": 0,     ← skillField/cooldownSeconds
+      "effects": [       ← array, source: skillEffects
+        {
+          "name": "",        ← skillEffectField/resolvedName
+          "attr_id": "",     ← skillEffectField/resolvedDefinitionsRef
+          "attr_key": "",    ← skillEffectField/resolvedAttributeKey
+          "attr_value": 0,   ← skillEffectField/resolvedValue
+          "attr_stack": ""   ← skillEffectField/resolvedStacking
+        }
+      ]
+    }
+  ]
+}
+```
+
+3. Click **Export** — the ready JSON lands in your clipboard or a file.
+
+Result:
+
+```json
+{
+  "skills": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "name": "Fireball",
+      "cooldown": 5,
+      "effects": [
+        {
+          "name": "Fireball Impact",
+          "attr_id": "DATA_BASIC_ATTR",
+          "attr_key": "hp",
+          "attr_value": -30,
+          "attr_stack": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+**This JSON is what your engine reads.** It has stable identifiers (`DATA_*`), resolved values, cross-section refs translated — everything ready to consume without runtime cross-resolving.
+
+## What's next?
+
+You've done:
+
+✅ Attributes · ✅ Currency · ✅ Item with effect · ✅ Skill · ✅ Remote Config
+
+Next directions:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📦" title="Addon reference" href="/docs/referencia/addons">
+    Dive into every addon you used. Each one has more options than we showed here.
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="Full Remote Config" href="/docs/referencia/addons/remote-config">
+    Learn the 4 export formats (row, column, matrix, keyed) and how to import back.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Key concepts" href="/docs/comecar/conceitos-chave">
+    Go back to the vocabulary if any term was confusing.
+  </FeatureCard>
+  <FeatureCard emoji="🍳" title="Cookbook" href="/docs/cookbook">
+    Ready-made snippets for common scenarios *(coming soon)*.
+  </FeatureCard>
+</div>

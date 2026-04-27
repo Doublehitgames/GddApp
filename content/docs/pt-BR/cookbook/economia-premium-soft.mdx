@@ -1,0 +1,169 @@
+---
+title: "Economia premium + soft + câmbio"
+description: "3 moedas (Gold soft, Gem premium, Energy event) com casa de câmbio entre Gem e Gold."
+emoji: "💎"
+order: 30
+---
+
+# Economia premium + soft + câmbio
+
+**Cenário**: você quer modelar a economia clássica de mobile/free-to-play — 3 moedas com papéis diferentes + uma casa de câmbio que converte premium em soft.
+
+## As 3 moedas
+
+Crie **3 páginas** de tipo `🪙 Economia`, uma pra cada moeda:
+
+### Gold (soft)
+
+```json
+{
+  "code": "GOLD",
+  "displayName": "Ouro",
+  "kind": "soft",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_GOLD`
+
+Moeda ganha jogando — quests, vendas, drops. Sem limite de aquisição.
+
+### Gem (premium)
+
+```json
+{
+  "code": "GEM",
+  "displayName": "Gema",
+  "kind": "premium",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_GEM`
+
+Moeda comprada com dinheiro real. Usada em compras VIP, skip de timers, gachas.
+
+### Energy (event)
+
+```json
+{
+  "code": "ENERGY",
+  "displayName": "Energia",
+  "kind": "event",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_ENERGY`
+
+Limitada a eventos sazonais. Some quando o evento termina ou precisa de regeneração temporal.
+
+## Casa de Câmbio (Gem → Gold)
+
+Crie uma página de tipo `💱 Casa de Câmbio`. O wizard pede as 2 moedas + a taxa:
+
+- **From**: `Gem`
+- **To**: `Gold`
+- **fromAmount**: `100`
+- **toAmount**: `5000`
+- **direction**: `oneWay` (não permite voltar Gold → Gem — escassez de Gem)
+
+Resultado: **100 Gem → 5000 Gold**.
+
+Adicione **mais entries** pra pacotes maiores com bônus:
+
+| From | To | Notas |
+|---|---|---|
+| 100 Gem | 5000 Gold | base |
+| 500 Gem | 30 000 Gold | +20% bônus |
+| 2000 Gem | 150 000 Gold | +50% bônus |
+
+Cada entry é uma `CurrencyExchangeEntry` independente. UI agrupa todas no mesmo painel.
+
+## globalVariables pra balancing global
+
+Crie 2 páginas de `globalVariable` pra alavancas que ajustam **todos** os preços do jogo de uma vez:
+
+### Desconto de compra
+
+```json
+{
+  "key": "item_buy_discount",
+  "displayName": "Desconto de Compra",
+  "valueType": "percent",
+  "defaultValue": 0,
+  "scope": "global"
+}
+```
+
+Sobe pra `20` durante Black Friday → todos os itens ficam 20% mais baratos automaticamente. Volta pra `0` no fim do evento.
+
+### Bônus de venda
+
+```json
+{
+  "key": "item_sell_markup",
+  "displayName": "Bônus de Venda",
+  "valueType": "percent",
+  "defaultValue": 0,
+  "scope": "global"
+}
+```
+
+Sobe durante eventos pra incentivar venda de loot. Volta pra 0 depois.
+
+## economyLink referenciando tudo
+
+Cada item do jogo tem um `economyLink` que aponta:
+
+```json
+{
+  "buyCurrencyRef": "section-gold",   // ou "section-gem" pra itens premium
+  "buyValue": 100,
+  "buyModifiers": [
+    { "refId": "section-buy-discount-var" }
+  ],
+  "sellCurrencyRef": "section-gold",
+  "sellValue": 50,
+  "sellModifiers": [
+    { "refId": "section-sell-markup-var" }
+  ]
+}
+```
+
+O motor lê os modifiers no runtime — `buyValue × (1 - item_buy_discount/100)` durante eventos.
+
+## Wizard automático
+
+A boa notícia: **você não precisa criar manualmente** as 2 globalVariables nem ligar elas em cada item.
+
+Quando você cria a primeira página de `🎒 Itens` (ou `⚔️ Itens com Efeito`), o wizard automaticamente:
+
+1. Cria 2 páginas auxiliares: "📉 Desconto de Compra" e "📈 Bônus de Venda" com as globalVariables
+2. Conecta os refs no economyLink
+
+A partir da segunda página de item, ele só **reutiliza** as variáveis já existentes. Você só precisa setar `buyValue` e `sellValue` por item.
+
+## Estrutura final no GDD
+
+```
+📦 Conteúdo do Jogo
+├── 💎 Economia
+│   ├── 🪙 Ouro (DATA_GOLD)
+│   ├── 🪙 Gema (DATA_GEM)
+│   ├── 🪙 Energia (DATA_ENERGY)
+│   ├── 💱 Banco Premium (Gem → Gold)
+│   ├── 📉 Desconto de Compra (auto)
+│   └── 📈 Bônus de Venda (auto)
+└── 🎒 Itens
+    ├── ⚔️ Espada de Ferro (100 Gold)
+    ├── ⚔️ Espada Mythril (50 Gem)
+    └── ...
+```
+
+## Veja também
+
+- [`currency`](/docs/referencia/addons/currency) — schema da moeda
+- [`currencyExchange`](/docs/referencia/addons/currency-exchange) — schema da casa de câmbio
+- [`economyLink`](/docs/referencia/addons/economy-link) — refs de buyModifiers/sellModifiers
+- [`globalVariable`](/docs/referencia/addons/global-variable) — alavancas globais

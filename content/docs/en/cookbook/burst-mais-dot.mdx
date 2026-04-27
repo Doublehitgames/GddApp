@@ -1,0 +1,82 @@
+---
+title: "Burst + DoT on the same skill"
+description: "Model a Fireball with instant impact damage + burn over time."
+emoji: "🔥"
+order: 10
+---
+
+# Burst + DoT on the same skill
+
+**Scenario**: A Fireball that deals `-30 HP` on impact + burns for `-2 HP/s for 6s`.
+
+The key is how to break this down into `attributeModifiers` entries — because the schema allows **one effect per entry**, not two in a single one. Answer: **2 separate entries, both linked to the same skill**.
+
+## Setup
+
+On a `⚡ Skills` page, the wizard already creates an `attributeModifiers` on the same page. Add **2 entries**:
+
+### Entry 1 — Burst (impact)
+
+```json
+{
+  "name": "Fireball Impact",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -30,
+  "stackingRule": "stack"
+}
+```
+
+No `temporary`, so the damage is **permanent** (HP doesn't regenerate on its own). Stacking `stack` ensures repeated casts add up.
+
+### Entry 2 — DoT (burn)
+
+```json
+{
+  "name": "Fireball Burn",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -2,
+  "temporary": true,
+  "durationSeconds": 6,
+  "tickIntervalSeconds": 1,
+  "stackingRule": "unique",
+  "category": "debuff",
+  "tags": ["fire", "dot"]
+}
+```
+
+`unique` prevents spam-casting from stacking the burn — only one active burn at a time.
+
+## Link to the skill
+
+In the Fireball skill entry, under **Effects**, check **both checkboxes** (Fireball Impact + Fireball Burn). The panel shows both as linked, and the skill's visual timeline renders:
+
+- Caster bar: cooldown
+- Target bar: 6s burn with tick dividers
+- Hint: "Stacking 'unique': recasts before 6s are ignored for DoT (but burst stacks)."
+
+## Total damage per use
+
+| Component | Calculation | Total |
+|---|---|---|
+| Burst | `-30 × 1` | `-30 HP` |
+| DoT | `-2 × 6 ticks` | `-12 HP` |
+| **Total** | | **`-42 HP` per cast** |
+
+If the cooldown is less than 6s, subsequent casts only add burst damage (DoT is already active + unique).
+
+## Why split into 2 entries
+
+Because it allows:
+
+- **Different stacking** per component (burst stacks, DoT is unique)
+- **Different temporary** behavior (burst is permanent, DoT is temporary)
+- **Different tags** (future: dispel only the DoT, not the burst)
+- **Separate export** in Remote Config (the engine can handle burst and DoT on different paths)
+
+## See also
+
+- [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers) — full schema for each entry
+- [`skills`](/docs/referencia/addons/skills) — how skills reference modifiers
+- [Export skills to Unity](/docs/cookbook/exportar-skills-unity) — take this and send it to the engine

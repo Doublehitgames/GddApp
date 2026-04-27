@@ -1,0 +1,106 @@
+---
+title: "Field Library pra centralizar categorias"
+description: "Substitua strings duplicadas (Espada, Armadura, Consumível) por refs a uma biblioteca central."
+emoji: "📚"
+order: 40
+---
+
+# Field Library pra centralizar categorias
+
+**Cenário**: você tem 30+ itens no projeto e cada um tem uma `inventoryCategory` digitada à mão (`"Espada"`, `"Armadura"`, `"Consumível"`). Quando você decide renomear "Espada" pra "Lâmina", precisa caçar em 12 itens diferentes. Resposta: migre pra **`fieldLibrary`** com refs.
+
+## O problema (antes)
+
+Cada item tem um campo solto:
+
+```json
+// Espada de Ferro
+{ "inventoryCategory": "Espada" }
+
+// Espada de Aço
+{ "inventoryCategory": "Espada" }
+
+// Machado
+{ "inventoryCategory": "Machado" }
+
+// Poção de Vida
+{ "inventoryCategory": "Consumível" }
+```
+
+Renomear "Espada" → "Lâmina" exige editar 2 entradas (e alguma fica esquecida).
+
+## A solução
+
+### 1. Crie a Field Library
+
+Página em branco "Categorias de Item". Adicione um `fieldLibrary` com entries:
+
+```json
+{
+  "id": "lib-item-cats",
+  "name": "Categorias de Item",
+  "entries": [
+    { "id": "cat-sword",      "key": "sword",      "label": "Espada" },
+    { "id": "cat-axe",        "key": "axe",        "label": "Machado" },
+    { "id": "cat-armor",      "key": "armor",      "label": "Armadura" },
+    { "id": "cat-consumable", "key": "consumable", "label": "Consumível" }
+  ]
+}
+```
+
+### 2. Em cada item, troque a string por uma ref
+
+No painel do `inventory` de cada item, em vez de digitar string, escolha **"Vincular a Field Library"** e selecione a entry:
+
+```json
+// Espada de Ferro
+{
+  "categoryLibraryRef": {
+    "libraryAddonId": "lib-item-cats",
+    "entryId": "cat-sword"
+  }
+  // inventoryCategory agora é derivado — ignorado quando categoryLibraryRef tá set
+}
+```
+
+### 3. Renomear vira 1 lugar
+
+Pra renomear "Espada" → "Lâmina":
+
+1. Abra a página da Field Library
+2. Edite a entry `cat-sword` → label `"Lâmina"`
+3. **Pronto.** Todos os 12 itens com essa ref refletem automaticamente. JSON exportado também.
+
+## Quando vale a pena migrar
+
+Não force isso prematuramente. Use string solta enquanto você tem **menos de 5 itens** ou tá ainda no protótipo. Migra quando:
+
+- ✅ Você tem 10+ itens com categorias repetidas
+- ✅ Você decidiu renomear pelo menos uma categoria
+- ✅ Você quer um dropdown autocompletado em vez de texto livre (melhor UX no painel)
+
+## Outros usos da Field Library
+
+A library serve pra **qualquer taxonomia central** — não só categorias de inventário:
+
+| Library | Usada por |
+|---|---|
+| Categorias de Item | `inventory.categoryLibraryRef` |
+| Tipos de Atributo | `progressionTable.columns[].libraryRef` |
+| Slots de Equipamento | `dataSchema.entries[].libraryRef` |
+| Domínios de Skill | `dataSchema` em página de skill |
+| Tipos de Inimigo | `dataSchema` em página de NPC |
+
+Crie **uma library por taxonomia**. Page types tipados (Atributos, Items) opcionalmente já vêm com fieldLibrary recommended.
+
+## Validação
+
+- Se você apagar uma entry da library, todos os addons que referenciam ela mostram aviso na UI.
+- Keys duplicadas dentro da mesma library são bloqueadas.
+- Refs sobrevivem renomeações (porque usam `entryId` estável, não a string).
+
+## Veja também
+
+- [`fieldLibrary`](/docs/referencia/addons/field-library) — schema completo
+- [`inventory`](/docs/referencia/addons/inventory) — onde `categoryLibraryRef` é mais usado
+- [`progressionTable`](/docs/referencia/addons/progression-table) — colunas com `libraryRef`

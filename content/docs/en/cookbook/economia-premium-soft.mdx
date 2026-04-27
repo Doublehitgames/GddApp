@@ -1,0 +1,169 @@
+---
+title: "Premium + soft economy + exchange"
+description: "3 currencies (Gold soft, Gem premium, Energy event) with an exchange house between Gem and Gold."
+emoji: "💎"
+order: 30
+---
+
+# Premium + soft economy + exchange
+
+**Scenario**: you want to model the classic mobile/free-to-play economy — 3 currencies with different roles + an exchange house that converts premium into soft.
+
+## The 3 currencies
+
+Create **3 pages** of type `🪙 Economy`, one for each currency:
+
+### Gold (soft)
+
+```json
+{
+  "code": "GOLD",
+  "displayName": "Gold",
+  "kind": "soft",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_GOLD`
+
+Currency earned by playing — quests, sales, drops. No acquisition limit.
+
+### Gem (premium)
+
+```json
+{
+  "code": "GEM",
+  "displayName": "Gem",
+  "kind": "premium",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_GEM`
+
+Currency purchased with real money. Used for VIP purchases, timer skips, gachas.
+
+### Energy (event)
+
+```json
+{
+  "code": "ENERGY",
+  "displayName": "Energy",
+  "kind": "event",
+  "decimals": 0
+}
+```
+
+**DataID**: `DATA_ENERGY`
+
+Limited to seasonal events. Disappears when the event ends or requires time-based regeneration.
+
+## Exchange House (Gem → Gold)
+
+Create a page of type `💱 Exchange House`. The wizard asks for the 2 currencies + the rate:
+
+- **From**: `Gem`
+- **To**: `Gold`
+- **fromAmount**: `100`
+- **toAmount**: `5000`
+- **direction**: `oneWay` (no converting back Gold → Gem — keeps Gem scarce)
+
+Result: **100 Gem → 5000 Gold**.
+
+Add **more entries** for larger packages with bonuses:
+
+| From | To | Notes |
+|---|---|---|
+| 100 Gem | 5000 Gold | base |
+| 500 Gem | 30 000 Gold | +20% bonus |
+| 2000 Gem | 150 000 Gold | +50% bonus |
+
+Each entry is an independent `CurrencyExchangeEntry`. The UI groups all of them in the same panel.
+
+## globalVariables for global balancing
+
+Create 2 `globalVariable` pages for levers that adjust **all** game prices at once:
+
+### Purchase discount
+
+```json
+{
+  "key": "item_buy_discount",
+  "displayName": "Purchase Discount",
+  "valueType": "percent",
+  "defaultValue": 0,
+  "scope": "global"
+}
+```
+
+Set it to `20` during Black Friday → all items become 20% cheaper automatically. Back to `0` after the event.
+
+### Sell bonus
+
+```json
+{
+  "key": "item_sell_markup",
+  "displayName": "Sell Bonus",
+  "valueType": "percent",
+  "defaultValue": 0,
+  "scope": "global"
+}
+```
+
+Raise it during events to encourage selling loot. Back to 0 afterwards.
+
+## economyLink referencing everything
+
+Each game item has an `economyLink` that points to:
+
+```json
+{
+  "buyCurrencyRef": "section-gold",   // or "section-gem" for premium items
+  "buyValue": 100,
+  "buyModifiers": [
+    { "refId": "section-buy-discount-var" }
+  ],
+  "sellCurrencyRef": "section-gold",
+  "sellValue": 50,
+  "sellModifiers": [
+    { "refId": "section-sell-markup-var" }
+  ]
+}
+```
+
+The engine reads the modifiers at runtime — `buyValue × (1 - item_buy_discount/100)` during events.
+
+## Automatic wizard
+
+The good news: **you don't need to manually create** the 2 globalVariables or wire them to each item.
+
+When you create the first `🎒 Items` page (or `⚔️ Items with Effect`), the wizard automatically:
+
+1. Creates 2 helper pages: "📉 Purchase Discount" and "📈 Sell Bonus" with the globalVariables
+2. Connects the refs in the economyLink
+
+From the second item page onward, it just **reuses** the existing variables. You only need to set `buyValue` and `sellValue` per item.
+
+## Final GDD structure
+
+```
+📦 Game Content
+├── 💎 Economy
+│   ├── 🪙 Gold (DATA_GOLD)
+│   ├── 🪙 Gem (DATA_GEM)
+│   ├── 🪙 Energy (DATA_ENERGY)
+│   ├── 💱 Premium Bank (Gem → Gold)
+│   ├── 📉 Purchase Discount (auto)
+│   └── 📈 Sell Bonus (auto)
+└── 🎒 Items
+    ├── ⚔️ Iron Sword (100 Gold)
+    ├── ⚔️ Mythril Sword (50 Gem)
+    └── ...
+```
+
+## See also
+
+- [`currency`](/docs/referencia/addons/currency) — currency schema
+- [`currencyExchange`](/docs/referencia/addons/currency-exchange) — exchange house schema
+- [`economyLink`](/docs/referencia/addons/economy-link) — buyModifiers/sellModifiers refs
+- [`globalVariable`](/docs/referencia/addons/global-variable) — global levers
