@@ -1,0 +1,75 @@
+---
+title: "Qué es GDD Manager"
+description: "Una app que mantiene tu Game Design Document vivo, conectado y exportable a tu motor."
+emoji: "🚀"
+order: 1
+---
+
+# Qué es GDD Manager
+
+Una app para escribir Game Design Documents que **no mueren en la primera semana de producción**.
+
+Describes tu juego en una estructura que entiende **qué son habilidades, atributos, monedas y recetas**, y la app **exporta todo al JSON** que consume tu motor. El doc y el juego empiezan a hablar el mismo idioma.
+
+## El problema
+
+Casi todo GDD que hayas visto envejece mal. El ciclo siempre es el mismo:
+
+1. **Mes 1**: escribes un doc hermoso en Notion/Word/Confluence. Lista todas las armas, atributos, fórmulas.
+2. **Mes 3**: el programador implementa "Espada de Hierro = 50 de daño, 100 de oro". El diseño original tenía 60. Nadie actualiza el doc.
+3. **Mes 6**: el doc tiene 80 páginas y **nadie lo abre más**. Cada decisión vive en Discord, en el código o en la cabeza de alguien.
+4. **Mes 12**: alguien nuevo se une al equipo. El onboarding es "pregunta en el chat" porque el doc miente sobre el 70% de las mecánicas.
+
+<Callout type="warning" title="Esto no es culpa del diseñador">
+  Es un problema de la herramienta. Notion no sabe que "atk = 10" se convirtió en "atk = 12" en el código.
+  Word no sabe que esa receta fue eliminada. Tratan todo como texto suelto, y
+  el texto suelto **no puede** mantenerse sincronizado.
+</Callout>
+
+## La idea central
+
+GDD Manager invierte el flujo: **el documento se convierte en la fuente de verdad**, y el motor consume datos de él — no al revés.
+
+Cuando cambias "Espada de Hierro: 50 → 60 de daño" aquí, ese nuevo número entra en el JSON exportado, que el juego lee en el próximo build. **No hay espacio para divergencias** porque solo existe un lugar donde vive el número.
+
+Y como la app **entiende** que eso es un arma (no solo texto), puede:
+
+- validar referencias (¿la receta apunta a un ítem que existe?)
+- mostrar dependencias (¿qué skills usan este atributo?)
+- avisar de roturas (eliminaste la moneda, pero 3 ítems todavía la referencian)
+
+## Para quién fue hecho
+
+| Eres... | GDD Manager te ayuda con... |
+|---|---|
+| **Indie solo** | Salir del Notion caótico y tener un único archivo de verdad |
+| **Game designer en estudio** | Pre-producción rica + entrega técnica limpia al equipo de programación |
+| **Programador que hace todo** | Escribir el doc UNA VEZ y usar el JSON directamente en el motor |
+| **Hobbyista aprendiendo** | Plantillas tipadas que enseñan la estructura típica de cada género |
+
+## Lo que **no es**
+
+Para evitar malentendidos:
+
+- **No es un gestor de tareas** — usa Trello, Linear, Jira para sprints e issues.
+- **No es una wiki genérica** — Notion/Confluence cubren mejor el onboarding y los procesos del estudio.
+- **No es un motor** — no crea gameplay, solo lo describe. Tú sigues escribiendo el motor (Unity, Godot, Unreal, custom).
+- **No es un generador de hojas de cálculo** — pero exporta datos que caben en cualquier hoja de cálculo o tabla de tu motor.
+
+<Callout type="tip" title="Úsalo junto, no en lugar de">
+  El flujo ideal para un estudio es: **roadmap en Linear/Jira**, **comunicación en Discord/Slack**,
+  **GDD aquí**, **código en GitHub**. GDD Manager hace una sola cosa, pero la hace bien.
+</Callout>
+
+## Próximos pasos
+
+¿Listo para empezar?
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🌱" title="Tu primer proyecto" href="/docs/comecar/primeiro-projeto">
+    Recorrido para crear un RPG mínimo desde cero usando los wizards.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Conceptos clave" href="/docs/comecar/conceitos-chave">
+    Vocabulario de la app: page type, addon, wizard, Remote Config.
+  </FeatureCard>
+</div>

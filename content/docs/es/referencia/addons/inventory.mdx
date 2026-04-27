@@ -1,0 +1,117 @@
+---
+title: "inventory"
+description: "Parámetros de inventario para un ítem: apilado, peso, categoría, durabilidad, vinculación."
+emoji: "🎒"
+order: 80
+---
+
+# inventory
+
+Define **cómo se comporta un ítem en el inventario del jugador**: peso, apilado máximo, durabilidad, categoría, vinculación (ninguna/al recoger/al equipar), volumen y visibilidad en tienda.
+
+## Por qué importa
+
+Casi todos los motores de RPG/RTS/survival necesitan esta misma información para cada ítem — y casi todos la implementan a mano, ítem por ítem. Aquí la defines una vez a través de la UI, exportas a JSON y el motor la lee. Bonus: campos como `categoryLibraryRef` te permiten reutilizar una taxonomía central de categorías (Field Library) en lugar de escribir "Espada" 50 veces.
+
+## Dónde suele vivir
+
+- Páginas de tipo `🎒 Ítems` o `⚔️ Ítems con Efecto`. Por defecto.
+- Páginas en blanco cuando quieres modelar contenedores exóticos (billeteras, bolsas mágicas).
+
+Singleton — 1 inventario por página de ítem.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre del addon (por defecto: Inventario)." },
+  { name: "weight", type: "number", required: "Sí", description: "Peso unitario del ítem (kg, lb, o cualquier unidad que use tu motor)." },
+  { name: "stackable", type: "boolean", required: "Sí", description: "True si múltiples del mismo ítem pueden compartir 1 slot." },
+  { name: "maxStack", type: "number", required: "Sí", description: "Límite por slot cuando stackable=true (ej.: 99)." },
+  { name: "inventoryCategory", type: "string", required: "Sí", description: "Categoría libre (Espada, Poción, Crafteo). Usada para filtrar/agrupar." },
+  { name: "categoryLibraryRef", type: "{ libraryAddonId, entryId }", description: "Cuando quieres vincular la categoría a una entrada de Field Library (taxonomía central) en lugar de un string suelto." },
+  { name: "slotSize", type: "number", required: "Sí", description: "Slots ocupados (1 = normal; 2x1, 2x2 para inventarios tipo Tetris)." },
+  { name: "hasDurabilityConfig", type: "boolean", description: "Activa/desactiva los campos de durabilidad." },
+  { name: "durability", type: "number", required: "Sí", description: "Durabilidad actual (se mantiene en 0 cuando hasDurabilityConfig=false)." },
+  { name: "maxDurability", type: "number", description: "Durabilidad máxima (capacidad)." },
+  { name: "hasVolumeConfig", type: "boolean", description: "Activa/desactiva el campo de volumen." },
+  { name: "volume", type: "number", description: "Volumen ocupado (litros, o unidad arbitraria)." },
+  { name: "bindType", type: '"none" | "onPickup" | "onEquip"', required: "Sí", description: <><strong>none</strong>: puede comerciarse/venderse. <strong>onPickup</strong>: se vincula al recoger (sin comercio). <strong>onEquip</strong>: se vincula al equipar.</> },
+  { name: "showInShop", type: "boolean", required: "Sí", description: "¿Aparece en tiendas del motor? Útil para ocultar botín exclusivo." },
+  { name: "consumable", type: "boolean", required: "Sí", description: "¿Desaparece al usarse? Pociones = true, Espada = false." },
+  { name: "discardable", type: "boolean", required: "Sí", description: "¿Puede el jugador descartarlo? False para ítems de misión." },
+  { name: "notes", type: "string", description: "Notas libres para el equipo." },
+]} />
+
+## Ejemplo
+
+Espada de Hierro — equipable, se vincula al equipar, no consumible:
+
+```json
+{
+  "id": "inv-iron-sword",
+  "name": "Inventario",
+  "weight": 5.0,
+  "stackable": false,
+  "maxStack": 1,
+  "inventoryCategory": "Espada",
+  "slotSize": 1,
+  "hasDurabilityConfig": true,
+  "durability": 100,
+  "maxDurability": 100,
+  "bindType": "onEquip",
+  "showInShop": true,
+  "consumable": false,
+  "discardable": true
+}
+```
+
+Poción de Vida — apilable, sin durabilidad, consumible:
+
+```json
+{
+  "id": "inv-hp-potion",
+  "name": "Inventario",
+  "weight": 0.2,
+  "stackable": true,
+  "maxStack": 99,
+  "inventoryCategory": "Consumible",
+  "slotSize": 1,
+  "durability": 0,
+  "bindType": "none",
+  "showInShop": true,
+  "consumable": true,
+  "discardable": true
+}
+```
+
+## categoryLibraryRef vs string
+
+Usa `inventoryCategory` (string suelto) para prototipos. Cuando el juego madure y tengas 30 o más ítems, migra a `categoryLibraryRef` apuntando a una página de [`fieldLibrary`](/docs/referencia/addons/field-library) — así renombrar "Espada" → "Hoja" se refleja en todos los ítems automáticamente.
+
+## Wizard
+
+No tiene wizard propio. Lo inicializan:
+
+- `🎒 Ítems` (junto con economyLink)
+- `⚔️ Ítems con Efecto` (junto con economyLink + attributeModifiers)
+
+Los valores por defecto del wizard son razonables para un "ítem genérico" — solo ajustas los booleanos (consumible, apilable, etc.) y listo.
+
+## Quién referencia inventory
+
+- **`production.ingredients[].itemRef`** y **`production.outputs[].itemRef`** — las recetas referencian páginas de ítem.
+- **`craftTable.unlock.item.itemRef`** — recetas que requieren un ítem específico para desbloquearse.
+- **`skills.unlock.item.itemRef`** — habilidades que requieren un ítem catalizador.
+- **`economyLink.producedItemRef`** — una página que produce otro ítem (gallina → huevo).
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Generalmente vive en la misma página — define precios, producción y desbloqueo.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Úsala para centralizar categorías y evitar strings duplicados.
+  </FeatureCard>
+</div>

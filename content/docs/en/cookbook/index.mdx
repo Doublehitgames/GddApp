@@ -1,0 +1,35 @@
+---
+title: "Cookbook"
+description: "Short, self-contained recipes for common scenarios: burst + DoT, exporting to Unity, premium economy, and more."
+emoji: "🍳"
+order: 0
+---
+
+# Cookbook
+
+**Short, self-contained** recipes for scenarios that come up again and again in GDDs. Each one solves a specific problem — read it in 2 minutes, copy the pattern, adapt it to your game.
+
+Unlike the [Reference](/docs/referencia) (which describes **what** each feature does), the Cookbook focuses on **how** to combine features to reach a goal.
+
+## Available recipes
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🔥" title="Burst + DoT on the same skill" href="/docs/cookbook/burst-mais-dot">
+    Model a Fireball that deals instant impact damage + burn over time.
+  </FeatureCard>
+  <FeatureCard emoji="🎮" title="Export to Unity (skills)" href="/docs/cookbook/exportar-skills-unity">
+    A complete Remote Config schema that produces JSON ready for a C# reader.
+  </FeatureCard>
+  <FeatureCard emoji="💎" title="Premium + soft economy + exchange" href="/docs/cookbook/economia-premium-soft">
+    3 currencies (Gold, Gem, Energy) with an exchange house between Gem and Gold.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="Field Library to avoid duplication" href="/docs/cookbook/field-library-categorias">
+    Centralize item categories ("Sword", "Armor", "Consumable") so you never repeat strings.
+  </FeatureCard>
+</div>
+
+<Callout type="info" title="Missing a recipe?">
+  The Cookbook grows on demand. If you're modeling something recurring
+  in your game and there's no recipe here yet, send your suggestion — it
+  becomes the next entry.
+</Callout>

@@ -1,0 +1,82 @@
+---
+title: "Burst + DoT en la misma skill"
+description: "Modela una Fireball con daño instantáneo de impacto + quemadura a lo largo del tiempo."
+emoji: "🔥"
+order: 10
+---
+
+# Burst + DoT en la misma skill
+
+**Escenario**: Una Fireball que hace `-30 HP` al impacto + quema por `-2 HP/s durante 6s`.
+
+La clave está en cómo descomponer esto en entradas de `attributeModifiers` — porque el schema permite **un efecto por entrada**, no dos en una sola. Respuesta: **2 entradas separadas, ambas vinculadas a la misma skill**.
+
+## Setup
+
+En una página `⚡ Habilidades`, el wizard ya crea un `attributeModifiers` en la misma página. Agrega **2 entradas**:
+
+### Entrada 1 — Burst (impacto)
+
+```json
+{
+  "name": "Fireball Impact",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -30,
+  "stackingRule": "stack"
+}
+```
+
+Sin `temporary`, el daño es **permanente** (el HP no se regenera solo). El stacking `stack` asegura que los lanzamientos repetidos acumulen daño.
+
+### Entrada 2 — DoT (quemadura)
+
+```json
+{
+  "name": "Fireball Burn",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -2,
+  "temporary": true,
+  "durationSeconds": 6,
+  "tickIntervalSeconds": 1,
+  "stackingRule": "unique",
+  "category": "debuff",
+  "tags": ["fire", "dot"]
+}
+```
+
+`unique` impide que el spam de lanzamientos multiplique la quemadura — solo hay una quemadura activa a la vez.
+
+## Vincular a la skill
+
+En la entrada de la skill Fireball, en **Efectos**, marca **ambas casillas** (Fireball Impact + Fireball Burn). El panel muestra las dos como vinculadas y la línea de tiempo visual de la skill renderiza:
+
+- Barra del caster: cooldown
+- Barra del objetivo: quemadura de 6s con divisores de tick
+- Hint: "Stacking 'unique': los relanzamientos antes de 6s se ignoran para el DoT (pero el burst se acumula)."
+
+## Daño total por uso
+
+| Componente | Cálculo | Total |
+|---|---|---|
+| Burst | `-30 × 1` | `-30 HP` |
+| DoT | `-2 × 6 ticks` | `-12 HP` |
+| **Total** | | **`-42 HP` por lanzamiento** |
+
+Si el cooldown es menor a 6s, los lanzamientos siguientes solo suman el burst (el DoT ya está activo + unique).
+
+## Por qué separar en 2 entradas
+
+Porque permite:
+
+- **Stacking diferente** por componente (burst acumula, DoT es único)
+- **Comportamiento temporary diferente** (burst es permanente, DoT es temporal)
+- **Tags diferentes** (futuro: dispel solo en el DoT, no en el burst)
+- **Export separado** en Remote Config (el motor puede manejar burst y DoT en paths distintos)
+
+## Ver también
+
+- [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers) — schema completo de cada entrada
+- [`skills`](/docs/referencia/addons/skills) — cómo las skills referencian los modifiers
+- [Exportar skills a Unity](/docs/cookbook/exportar-skills-unity) — toma esto y envíalo al motor

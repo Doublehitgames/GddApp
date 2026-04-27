@@ -1,0 +1,206 @@
+---
+title: "Tu primer proyecto"
+description: "Crea un RPG mínimo desde cero usando los wizards — en ~15 minutos."
+emoji: "🌱"
+order: 2
+---
+
+# Tu primer proyecto
+
+Vamos a crear un GDD pequeño (una decena de páginas) para que sientas el flujo. El ejemplo es un **RPG de fantasía** con economía simple, atributos, una habilidad y un ítem.
+
+<Callout type="info" title="Sin apuro">
+  No hace falta crear todo de una vez. La app guarda automáticamente con cada
+  cambio y puedes volver a los pasos cuando quieras.
+</Callout>
+
+## Antes de comenzar
+
+Requisitos previos:
+
+- Cuenta en GDD Manager (registro gratuito en <a href="/login">/login</a>)
+- 15 minutos
+- Ganas de inventar buenos nombres (los vas a necesitar)
+
+## Paso 1 — Crea el proyecto
+
+En la página principal (`/`), haz clic en **"+ Nuevo proyecto"**.
+
+Dale un nombre (ej.: `Tutorial Aventura`) y una descripción corta. El proyecto nace vacío, con la estructura estándar de **5 grupos** (Visión General, Diseño, Contenido, Presentación, Producción) — puedes ignorarlos por ahora.
+
+## Paso 2 — Página de Atributos
+
+La primera página *real* es la de Atributos, porque todo en el juego va a depender de ella.
+
+1. En el sidebar, haz clic en el `+` al lado de **Contenido** (u otro grupo).
+2. En el selector, elige el tipo `🎯 Atributos`.
+3. Dale el nombre `Atributos Base`.
+
+La página nace con una tabla de atributos pre-poblada (HP, ATK, DEF, SPD). Edita los valores por defecto si quieres:
+
+```
+HP   100
+ATK  10
+DEF  5
+SPD  5
+```
+
+<Callout type="tip" title="Define un DataID — es importante">
+  **Justo debajo del título de la página** hay un campo discreto: haz clic en
+  **"+ DataID"**. La app sugiere automáticamente algo como `DATA_ATRIBUTOS_BASE`
+  basado en el título — puedes aceptarlo o editarlo a `DATA_BASIC_ATTR`.
+
+  **Por qué importa**: el DataID es el identificador **estable** que el motor
+  usará para encontrar esa página en el JSON exportado. Sin él, las referencias
+  apuntan a UUIDs internos ilegibles. Con él, el JSON tiene claves legibles como
+  `DATA_BASIC_ATTR` que se mantienen estables aunque renombres, muevas o
+  reorganices la página.
+
+  **Define el DataID en todas las páginas que vayan al export.** Atributos,
+  monedas, ítems, habilidades — todas. Toma 2 segundos por página y te ahorra
+  horas de debug después.
+</Callout>
+
+## Paso 3 — Página de Moneda
+
+A continuación, una moneda para que la economía funcione.
+
+1. `+ Nueva página` → tipo `🪙 Economía`.
+2. Nombre: `Oro`.
+3. Configura en el panel: código `GOLD`, nombre `Oro`, ícono si quieres.
+4. **Define el DataID** haciendo clic en "+ DataID" debajo del título — la sugerencia por defecto es `DATA_ORO`, edítala a `DATA_GOLD` si prefieres consistencia.
+
+Listo — ahora tienes una moneda que otros addons pueden referenciar.
+
+## Paso 4 — Página de Ítem
+
+Vamos a crear un ítem: **Espada de Hierro**.
+
+1. `+ Nueva página` → tipo `⚔️ Ítems con efecto`.
+2. **El wizard se abrirá** preguntando por dos dependencias:
+   - **Moneda**: elige `Oro` (creada en el paso 3).
+   - **Atributos**: elige `Atributos Base` (creada en el paso 2).
+3. Nombre de la página: `Espada de Hierro`. Haz clic en "+ DataID" debajo del título y edítalo a `DATA_IRON_SWORD` (la sugerencia automática será algo como `DATA_ESPADA_DE_HIERRO`).
+
+La página nace con **3 addons** ya configurados:
+
+- **Inventario** — peso, categoría, apilado
+- **Economía** — precio de compra (ej.: 100 GOLD), precio de venta (50 GOLD)
+- **Modificadores de Atributos** — `+5 ATK` al equipar
+
+Configura los campos. Cada cambio se guarda automáticamente.
+
+## Paso 5 — Página de Habilidad
+
+Ahora la parte divertida: una habilidad de fuego.
+
+1. `+ Nueva página` → tipo `⚡ Habilidades`.
+2. **El wizard pregunta**: ¿qué página de Atributos? Elige `Atributos Base`.
+3. Nombre: `Fireball`. DataID (haz clic debajo del título): `DATA_FIRE_BALL`.
+
+La página nace con 2 addons:
+
+- **Habilidades** (vacío)
+- **Efectos de Habilidades** (Modificadores de Atributos, vacío)
+
+Vamos a completarlos:
+
+**En el addon de Modificadores**, agrega una entrada:
+- Nombre: `Fireball Impact`
+- Atributo: `hp`
+- Modo: `add`
+- Valor: `-30`
+
+**En el addon de Habilidades**, agrega una habilidad:
+- Nombre: `Fireball`
+- Tipo: activa
+- Cooldown: `5` (segundos)
+- **Costos**: ninguno por ahora
+- **Efectos**: marca el checkbox `Fireball Impact` (del modificador de arriba)
+
+Listo. Cuando el juego ejecute Fireball, aplicará `-30` en el `hp` del objetivo.
+
+<Callout type="tip" title="¿Burst + DoT?">
+  Para hacer una Fireball más rica (impacto + quemadura a lo largo del tiempo),
+  solo agrega **2 entradas** en Modificadores: una instantánea (burst) y una
+  con `temporary: true, durationSeconds: 6, tickIntervalSeconds: 1`. Marca
+  ambas en el checklist de efectos de la habilidad.
+</Callout>
+
+## Paso 6 — Remote Config (export)
+
+El último paso: configurar el JSON que consume el motor.
+
+1. En cualquier página (recomiendo crear una `📤 Configuración de Export`), agrega un addon **Remote Config**.
+2. En el panel, construye un árbol como este:
+
+```json
+{
+  "skills": [        ← array, source: skills:DATA_FIRE_BALL
+    {
+      "id": "...",       ← skillField/id (resuelve al dataId)
+      "name": "...",     ← skillField/name
+      "cooldown": 0,     ← skillField/cooldownSeconds
+      "effects": [       ← array, source: skillEffects
+        {
+          "name": "",        ← skillEffectField/resolvedName
+          "attr_id": "",     ← skillEffectField/resolvedDefinitionsRef
+          "attr_key": "",    ← skillEffectField/resolvedAttributeKey
+          "attr_value": 0,   ← skillEffectField/resolvedValue
+          "attr_stack": ""   ← skillEffectField/resolvedStacking
+        }
+      ]
+    }
+  ]
+}
+```
+
+3. Haz clic en **Exportar** — el JSON listo cae en tu portapapeles o archivo.
+
+Resultado:
+
+```json
+{
+  "skills": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "name": "Fireball",
+      "cooldown": 5,
+      "effects": [
+        {
+          "name": "Fireball Impact",
+          "attr_id": "DATA_BASIC_ATTR",
+          "attr_key": "hp",
+          "attr_value": -30,
+          "attr_stack": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Este JSON es lo que lee tu motor.** Tiene identificadores estables (`DATA_*`), valores resueltos, referencias cross-section traducidas — todo listo para consumir sin resolver en tiempo de ejecución.
+
+## ¿Y ahora?
+
+Hiciste:
+
+✅ Atributos · ✅ Moneda · ✅ Ítem con efecto · ✅ Habilidad · ✅ Remote Config
+
+Próximas direcciones:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📦" title="Referencia de addons" href="/docs/referencia/addons">
+    Profundiza en cada addon que usaste. Cada uno tiene más opciones de las que mostramos aquí.
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="Remote Config completo" href="/docs/referencia/addons/remote-config">
+    Aprende los 4 formatos de export (row, column, matrix, keyed) y cómo reimportar.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="Conceptos clave" href="/docs/comecar/conceitos-chave">
+    Vuelve al vocabulario si algún término quedó confuso.
+  </FeatureCard>
+  <FeatureCard emoji="🍳" title="Cookbook" href="/docs/cookbook">
+    Snippets listos para escenarios comunes *(próximamente)*.
+  </FeatureCard>
+</div>

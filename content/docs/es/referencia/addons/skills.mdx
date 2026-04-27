@@ -1,0 +1,158 @@
+---
+title: "skills"
+description: "Habilidades activas/pasivas con cooldowns, costos múltiples y efectos vinculados a Modificadores."
+emoji: "⚡"
+order: 40
+---
+
+# skills
+
+Modela las **habilidades** del juego: hechizos, ataques especiales, pasivas, ultimates. Cada habilidad conoce su propio cooldown, costos (moneda/atributo/cargas), efectos (referencias a Modificadores en la misma página) y condiciones de desbloqueo.
+
+## Por qué importa
+
+Las habilidades son una de las estructuras más densas de cualquier GDD: tocan economía (costo), atributos (efecto), progresión (desbloqueo), tiempo (cooldown, duración de DoT) y a veces ítems (costo en consumible). Sin un esquema dedicado terminas duplicando esta información en prosa suelta y el motor implementa cada una a mano.
+
+## Dónde suele vivir
+
+- Página de tipo `⚡ Habilidades` (incluye Skills + AttributeModifiers vinculados).
+- Páginas en blanco cuando quieres agrupar habilidades de otra manera.
+
+Singleton — 1 addon por página. Múltiples habilidades viven en los `entries[]` del mismo addon.
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno del addon." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable (ej.: Habilidades de Combate)." },
+  { name: "entries", type: "SkillEntry[]", required: "Sí", description: "Lista de habilidades." },
+]} />
+
+### `SkillEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable (ej.: Fireball)." },
+  { name: "description", type: "string", description: "Descripción de la habilidad (tooltip de UI)." },
+  { name: "kind", type: '"active" | "passive"', required: "Sí", description: <><strong>active</strong>: debe activarse (Fireball). <strong>passive</strong>: efecto permanente (Iron Skin).</> },
+  { name: "cooldownSeconds", type: "number", description: <>Tiempo mínimo entre usos. Sub-segundo permitido (0.5s). Vacío = sin límite (autofire).</> },
+  { name: "costs", type: "SkillCost[]", description: "Costos pagados en cada uso. Vacío = gratis." },
+  { name: "effects", type: "SkillEffectRef[]", description: <>Referencias a entradas del <code>attributeModifiers</code> en la <strong>misma página</strong>.</> },
+  { name: "unlock", type: "SkillUnlock", description: "Condiciones para desbloquear (nivel + moneda + ítem). Reutiliza el tipo CraftTableUnlock." },
+  { name: "tags", type: "string[]", description: "Etiquetas libres (fire, single-target, magical)." },
+]} />
+
+### `SkillCost`
+
+Cada entrada de la lista de costos:
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "type", type: '"currency" | "attribute" | "charges"', required: "Sí", description: <><strong>currency</strong>: paga una moneda del proyecto. <strong>attribute</strong>: paga un stat (ej.: mana). <strong>charges</strong>: cargas locales (sin referencia externa).</> },
+  { name: "amount", type: "number", required: "Sí", description: "Cantidad a pagar." },
+  { name: "currencyRef", type: "string (sectionId)", description: "Cuando type=currency. Apunta a la página de la moneda." },
+  { name: "definitionsRef", type: "string (sectionId)", description: "Cuando type=attribute. Página de Atributos que define la clave. Cada costo puede usar una página diferente." },
+  { name: "attributeKey", type: "string", description: "Cuando type=attribute. Clave existente en definitionsRef." },
+]} />
+
+### `SkillEffectRef`
+
+Cada entrada de la lista de efectos:
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "attributeModifiersSectionId", type: "string (sectionId)", required: "Sí", description: "Sección que tiene el addon de modificadores. Generalmente la misma página de la habilidad." },
+  { name: "attributeModifiersAddonId", type: "string", required: "Sí", description: "ID del addon de modificadores en esa sección." },
+  { name: "modifierEntryId", type: "string", required: "Sí", description: "ID de la entrada específica dentro de los modificadores." },
+]} />
+
+<Callout type="info" title="Los efectos son same-page">
+  El selector de efectos solo lista modificadores de la <strong>misma página</strong> que
+  la habilidad. El singleton garantiza que siempre haya 1 addon de Modifiers
+  al lado, y su checklist alimenta los efectos disponibles.
+</Callout>
+
+## Ejemplo: Fireball completo
+
+```json
+{
+  "id": "skill-fireball",
+  "name": "Fireball",
+  "description": "Bola de fuego que causa impacto + quemadura.",
+  "kind": "active",
+  "cooldownSeconds": 5,
+  "costs": [
+    {
+      "id": "c1",
+      "type": "attribute",
+      "amount": 30,
+      "definitionsRef": "section-attrs",
+      "attributeKey": "mana"
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "attributeModifiersSectionId": "section-fireball",
+      "attributeModifiersAddonId": "mods-fireball",
+      "modifierEntryId": "mod-impact"
+    },
+    {
+      "id": "e2",
+      "attributeModifiersSectionId": "section-fireball",
+      "attributeModifiersAddonId": "mods-fireball",
+      "modifierEntryId": "mod-burn"
+    }
+  ],
+  "unlock": {
+    "level": { "enabled": true, "level": 5 }
+  },
+  "tags": ["fire", "magical", "aoe"]
+}
+```
+
+Se lee como: habilidad activa, 5s de cooldown, cuesta 30 de mana, activa 2 modificadores (impacto + quemadura), se desbloquea en el nivel 5, etiquetada como fuego/magia/área.
+
+## Wizard
+
+El tipo de página `⚡ Habilidades` crea automáticamente:
+
+1. Este addon `skills` (vacío)
+2. Un `attributeModifiers` (vacío, con `definitionsRef` completado)
+
+El AttributeDefinitions utilizado viene del diálogo de requisitos que se abre al crear la página. Puedes elegir uno existente o crear uno nuevo en el mismo flujo.
+
+## Detalle de UX: panel de cooldown enriquecido
+
+El panel de cooldown de cada habilidad muestra:
+
+- **Etiqueta derivada en vivo**: al escribir `1.5` aparece "≈ 0.67 usos por segundo (autofire limitado)"
+- **Presets**: chips clicables (Sin límite / Ataque 1s / Habilidad 5s / Ultimate 60s)
+- **Línea de tiempo**: barra del lanzador (recarga) y barra del objetivo (efecto), proporcional. Muestra divisores de tick cuando el efecto es un DoT.
+- **Aviso de stacking**: alerta si la regla de apilamiento de los modificadores vinculados puede causar comportamiento inesperado (ej.: stack con cooldown corto = potencialmente roto).
+
+## Exportar a Remote Config
+
+Skills tiene 3 fuentes dedicadas en Remote Config:
+
+- `source: "skills"` — itera todas las habilidades del addon
+- `source: "skillCosts"` (dentro de skills) — itera los costos de la habilidad actual
+- `source: "skillEffects"` (dentro de skills) — itera los efectos de la habilidad actual
+
+Y 3 fuentes de binding correspondientes (`skillField`, `skillCostField`, `skillEffectField`) con **docenas de campos resueltos** (resolvedName, resolvedAttributeKey, resolvedDefinitionsRef, resolvedDurationSeconds, resolvedStacking, etc.) que siguen referencias y devuelven datos listos para el motor.
+
+Consulta [Remote Config](/docs/referencia/addons/remote-config) para ejemplos completos.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="✨" title="attributeModifiers" href="/docs/referencia/addons/attribute-modifiers">
+    El addon que define las entradas que las habilidades referencian como efectos.
+  </FeatureCard>
+  <FeatureCard emoji="🎯" title="attributeDefinitions" href="/docs/referencia/addons/attribute-definitions">
+    Define las claves usadas en costos de tipo atributo.
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Monedas referenciadas en costos de tipo moneda.
+  </FeatureCard>
+</div>

@@ -1,0 +1,137 @@
+---
+title: "craftTable"
+description: "A production station that aggregates multiple recipes (forge, workbench, alchemy) with per-entry unlock rules."
+emoji: "🛠️"
+order: 100
+---
+
+# craftTable
+
+Models a **production station** (forge, workbench, alchemy lab) that aggregates **multiple existing recipes**, each with its own unlock condition (level, currency cost, required item).
+
+## Why it matters
+
+In games with mature crafting (Minecraft, Terraria, Stardew), recipes don't float loose — they belong to stations. A "Forge" can make swords, axes, and armor. A "Workbench" can only process wood. Without this addon you'd model that relationship by hand (a Forge page with a plain list of recipe names), losing validated references.
+
+## Where it usually lives
+
+- A page of type `🛠️ Production Station`. The wizard asks which recipes to associate.
+
+Singleton — 1 craftTable per page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g. Blacksmith's Forge)." },
+  { name: "entries", type: "CraftTableEntry[]", required: "Yes", description: "List of recipes this station offers." },
+]} />
+
+### `CraftTableEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "productionRef", type: "string (sectionId)", description: "Recipe page (production addon) that this entry aggregates." },
+  { name: "category", type: "string", description: "Free-form category for visual grouping (e.g. Weapons, Armor, Consumables)." },
+  { name: "order", type: "number", required: "Yes", description: "Display order (lower = first)." },
+  { name: "hidden", type: "boolean", description: "When true, entry is hidden in the UI until some condition is met (player discovers it, event trigger)." },
+  { name: "unlock", type: "CraftTableUnlock", description: "Conditions to unlock this specific recipe. Combines level + currency + item." },
+]} />
+
+### `CraftTableUnlock`
+
+Also reused in `skills.unlock`. Three optional blocks that combine together (all must be satisfied when enabled):
+
+```ts
+{
+  level?: { enabled: bool, xpAddonRef?: sectionId, level?: number },
+  currency?: { enabled: bool, currencyAddonRef?: sectionId, amount?: number },
+  item?: { enabled: bool, itemRef?: sectionId, quantity?: number },
+}
+```
+
+- **level**: the player must be at level X of a specific XP curve.
+- **currency**: pay X of a currency to unlock permanently.
+- **item**: must have X units of an item (can be consumed or just required).
+
+## Example
+
+A forge with 3 recipes — one unlocked from the start, one by level, one by purchase:
+
+```json
+{
+  "id": "ct-forge",
+  "name": "Blacksmith's Forge",
+  "entries": [
+    {
+      "id": "e1",
+      "productionRef": "section-recipe-iron-sword",
+      "category": "Weapons",
+      "order": 1
+    },
+    {
+      "id": "e2",
+      "productionRef": "section-recipe-steel-sword",
+      "category": "Weapons",
+      "order": 2,
+      "unlock": {
+        "level": {
+          "enabled": true,
+          "xpAddonRef": "section-xp-blacksmith",
+          "level": 5
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "productionRef": "section-recipe-mythril-sword",
+      "category": "Weapons",
+      "order": 3,
+      "hidden": true,
+      "unlock": {
+        "currency": {
+          "enabled": true,
+          "currencyAddonRef": "section-gem",
+          "amount": 100
+        },
+        "item": {
+          "enabled": true,
+          "itemRef": "section-rare-recipe-paper",
+          "quantity": 1
+        }
+      }
+    }
+  ]
+}
+```
+
+The Mythril Sword requires 100 Gems + 1 rare paper. Hidden by default.
+
+## Wizard
+
+The `🛠️ Production Station` page type opens a dialog asking which recipes (pages of type `📜 Recipe`) to associate with the station. You can:
+
+- **Select existing ones** from the project (multi-select).
+- **Skip** and add them manually later via the panel.
+
+Each selected recipe becomes a new entry with a sequential `order`. You adjust unlock conditions and category afterward.
+
+## Who points to craftTable
+
+Generally, **nobody** — it's the final consumer. Recipe pages are the leaves; CraftTable aggregates them; the engine reads the JSON.
+
+You can have multiple Production Station pages pointing to the same recipes (e.g. a "Bread" recipe aggregated in both the Home Workbench and the Baker's Oven). There's no rule preventing that.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    The addon that defines each individual recipe referenced here.
+  </FeatureCard>
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    XP curves referenced in unlock.level.xpAddonRef.
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Currencies referenced in unlock.currency.currencyAddonRef.
+  </FeatureCard>
+</div>

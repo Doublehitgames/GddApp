@@ -1,0 +1,185 @@
+---
+title: "AI"
+description: "Cómo funciona la integración de IA del app — generación de plantillas, chat con contexto, mejora de secciones."
+emoji: "🤖"
+order: 30
+---
+
+# AI
+
+GDD Manager integra modelos de lenguaje para **acelerar tareas tediosas** sin quitarle el control al diseñador. Siempre revisas antes de aceptar — la IA propone, tú decides.
+
+## Qué hace
+
+| Función | Cuándo se usa |
+|---|---|
+| **Generación de plantilla** | "Quiero un GDD inicial para un RPG de fantasía" → la IA genera una estructura completa con 5 grupos, atributos, personajes, economía y callouts didácticos |
+| **Chat con contexto** | "Sugiere páginas para esta sección" → la IA revisa el proyecto completo (con etiquetas) y propone páginas coherentes con el tema |
+| **Contenido de sección** | "Rellena esta página de Núcleo de Combate" → la IA escribe contenido respetando lo que ya existe |
+| **Análisis** | "Revisa mi GDD" → la IA señala vacíos, inconsistencias y sugerencias de mejora |
+| **Mejora de prosa** | Botón "Mejorar con IA" en cualquier richDoc — refina el texto sin cambiar el significado |
+
+## Proveedores compatibles
+
+El app admite 3 proveedores. Los eliges en **Configuración → AI**:
+
+- **Anthropic Claude** (recomendado para GDDs largos — ventana de contexto grande)
+- **OpenAI GPT** (equilibrio entre costo y velocidad)
+- **Groq** (el más rápido, modelos más pequeños — ideal para prototipos)
+
+Cada proveedor necesita tu **API key** (la creas en la consola del proveedor y la pegas en el app). Las keys se guardan **solo en tu navegador** — nunca las enviamos a nuestros servidores.
+
+<Callout type="info" title="Bring your own key">
+  El app no incluye una suscripción de IA integrada. Usas tu propia API key
+  y pagas directamente al proveedor. La ventaja: control total sobre el costo
+  y la privacidad. Costo típico: 1–3 centavos por generación de página,
+  según el modelo.
+</Callout>
+
+## Principios de diseño
+
+La integración se construyó con 3 reglas:
+
+### 1. Revisas antes de aceptar
+
+Toda generación de la IA aparece en **modo vista previa**. Lo lees, editas si quieres y haces clic en "Aceptar" para confirmarlo en el proyecto. **Nada entra de forma automática.** Si la sugerencia no te convence, la descartas.
+
+### 2. La IA sabe que está en un GDD Manager
+
+Los prompts fueron ajustados para que entienda:
+
+- Que existen **tipos de página** específicos (no inventa tipos nuevos)
+- Que los tipos de página vienen con **los addons correctos** (p. ej., `attributeDefinitions` se crea con 4 stats típicos pre-cargados)
+- Que los callouts tienen **4 variantes intencionales** (note/warning/design-decision/balance-note) — que se usan con criterio
+- Que el doc es **ficticio pero concreto** — inventa nombres, números y escenarios (sin placeholders genéricos como "Personaje 1")
+
+### 3. No inventa sistemas fuera del tema
+
+La restricción más fuerte del prompt es no añadir mecánicas que el usuario no pidió. ¿Pediste un juego de puzzles? Sin crafting. ¿Pediste una novela visual? Sin combate. La IA está obligada a respetar el alcance descrito.
+
+## Generación de plantilla completa
+
+La función **más poderosa** — describes tu juego en 3 frases y la IA genera el GDD inicial con:
+
+- **5 grupos jerárquicos** (Visión General, Diseño de Juego, Contenido, Presentación, Producción)
+- **Páginas tipadas** dentro de cada grupo (atributos, personajes, ítems, economía)
+- **richDocBlocks** con 3–5 callouts por página
+- **`attributeDefinitionsOverrides`** con stats coherentes con el género (RPG: HP/ATK/DEF/MAG/SPD ~100/10/5/8/5; Plataformas: HP/Speed/Jump ~3/1.0/1.5)
+- **`domainTags`** en cada sección (combat, economy, progression, etc.)
+- **`dataId`** sugerido por página
+
+Tiempo típico: **30–60 segundos**. Abres el GDD listo y empiezas a editar.
+
+### Ejemplo de entrada
+
+```
+Tipo: Roguelike top-down
+Descripción: Un mago explorador desciende 10 pisos de una torre con mazmorras
+procedurales. Sistema de runas que se combinan para crear hechizos únicos.
+La muerte es permanente, pero las runas raras desbloquean permanentemente
+nuevas combinaciones para futuras partidas.
+Información adicional: Pixel art, un jugador, enfoque en construcción de build.
+```
+
+### Ejemplo de salida (estructura)
+
+```
+📖 Visión General — Spire of Echoes
+🎮 Diseño de Juego
+  ├── Bucle Central
+  ├── Mecánicas Principales
+  └── Progresión
+📦 Contenido del Juego
+  ├── 🎯 Atributos Base (HP, MP, Mana Regen, Speed, Crit%)
+  ├── 👤 Mago Explorador (perfil + curva de xp + progresión)
+  ├── 👤 Enemigo: Goblin de Piso (perfil)
+  ├── ⚔️ Runa de Fuego (ítem con efecto)
+  ├── ⚔️ Runa de Hielo
+  ├── ⚡ Hechizo: Bola de Fuego (habilidad)
+  ├── 🪙 Esencia (moneda permanente)
+  └── 🛠️ Mesa de Runas (craft table)
+🎨 Presentación
+  └── Estilo Visual / UX / Audio
+🏭 Producción
+  └── Tecnología / Roadmap / Riesgos / KPIs
+```
+
+Cada página viene con prosa rica, callouts que explican el vocabulario y la estructura de addon configurada.
+
+## Chat con contexto
+
+Modo conversacional que sabe **qué proyecto/sección estás viendo** y responde teniendo eso en cuenta.
+
+### Capacidades
+
+- Sugerir páginas nuevas para un contexto existente
+- Editar el contenido de secciones (devuelve Markdown)
+- Analizar y dar retroalimentación constructiva
+- Sugerir relaciones entre secciones mediante etiquetas de dominio
+- Completar vacíos con contenido coherente
+
+### Cómo "ve" el proyecto
+
+El chat recibe metadatos de cada sección:
+
+```
+**Proyecto:** Spire of Echoes
+**Descripción:** Roguelike top-down de mago...
+**Secciones existentes (etiquetas entre corchetes):**
+- Visión General [narrative] (320 chars)
+- Atributos Base [combat] (vacía)
+- Mago Explorador [characters, combat] (180 chars)
+- Goblin de Piso [characters, combat] (95 chars)
+- Runa de Fuego [items, combat] (vacía)
+...
+```
+
+Las etiquetas ayudan al chat a entender los dominios — "sugiere mejoras en la economía" filtra las secciones con la etiqueta `economy`.
+
+## Análisis de GDD
+
+Ejecuta heurísticas + IA para señalar:
+
+- **Páginas vacías** que deberían tener contenido
+- **Referencias rotas** (una habilidad apunta a un modificador eliminado)
+- **Inconsistencias** (atributo definido pero nunca usado, moneda sin economyLink)
+- **Vacíos estructurales** (hay enemigos pero no hay curva de XP)
+- **Sugerencias específicas** para mejorar la cobertura
+
+## Mejora de prosa
+
+En cualquier richDoc, el botón **"Mejorar con IA"** envía el contenido actual más una solicitud de refinamiento (más conciso, más técnico, más visual, etc.) y devuelve una versión revisada. Comparas ambas versiones y aceptas o descartas.
+
+## Conexión con otros asistentes de IA
+
+GDD Manager puede **conectarse a otros asistentes de IA** que tú (o tu equipo de programación) ya uses — Claude Code, Cursor y similares. Cuando está conectado, esos asistentes pueden:
+
+- Listar y leer el contenido de tus páginas
+- Crear páginas nuevas y añadir addons
+- Actualizar valores específicos
+- Generar el JSON de exportación bajo demanda
+
+Un escenario común: el programador de tu juego abre su asistente, le pide que lea la tabla de balanceo que creaste aquí y genera el código que consume esos valores en el motor. Ni siquiera necesitas exportar manualmente.
+
+<Callout type="info" title="Integración en evolución">
+  Esta conexión se está expandiendo función por función. Cuando tu equipo
+  la use por primera vez, vale la pena consultar con los programadores qué
+  está disponible ya.
+</Callout>
+
+## Privacidad
+
+- **API keys**: se guardan solo en tu navegador (localStorage). Nunca se envían a nuestros servidores.
+- **Contenido enviado a la IA**: va directamente desde tu navegador al proveedor (Anthropic, OpenAI o Groq). Los servidores de GDD Manager no lo ven ni lo almacenan.
+- **Historial**: no almacenamos ningún historial de uso de la IA.
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
+    Usa la IA para generar páginas y luego exporta todo al motor.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="Tu primer proyecto" href="/docs/comecar/primeiro-projeto">
+    Guía manual — útil para entender qué hace la IA por dentro.
+  </FeatureCard>
+</div>

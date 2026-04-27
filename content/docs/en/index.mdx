@@ -1,0 +1,53 @@
+---
+title: "GDD Manager Documentation"
+sidebarLabel: "🏠 Home"
+description: "Everything you need to keep your Game Design Documents alive and in sync with your game."
+order: 0
+---
+
+# Documentation
+
+**GDD Manager** turns your messy notebook of ideas into a structured, exportable document that talks directly to your game engine. This documentation covers every feature in the app, **why it exists**, and **how to get the most out of it** in your project.
+
+## Where to start
+
+If this is your first time here, follow this path **in order**:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🚀" title="1. What is GDD Manager" href="/docs/comecar/o-que-e">
+    A 5-minute overview of the app — what problem it solves and how it compares to a regular Notion/Confluence doc.
+  </FeatureCard>
+  <FeatureCard emoji="🧩" title="2. Key concepts" href="/docs/comecar/conceitos-chave">
+    Understand **page type**, **addon**, **wizard**, and **Remote Config** — vocabulary that comes up everywhere in the docs.
+  </FeatureCard>
+  <FeatureCard emoji="🌱" title="3. Your first project" href="/docs/comecar/primeiro-projeto">
+    A walkthrough for creating a GDD from scratch using typed page wizards.
+  </FeatureCard>
+  <FeatureCard emoji="📦" title="4. Addon reference" href="/docs/referencia/addons">
+    One page per addon type (Skills, Currency, Production, etc.) with schema, examples, and gotchas.
+  </FeatureCard>
+</div>
+
+## What's in the app
+
+GDD Manager is organized into three layers:
+
+1. **Pages** — each one represents a concept in your game (a class, a skill, an economy). Typed (with wizard) or blank.
+2. **Addons** — specialized blocks inside a page. Skills, Currency, Attribute Modifiers, Progression Table, etc. There are 16+ types today.
+3. **Remote Config** — exports everything to JSON that your engine can consume (Unity, Godot, Unreal, web). Flexible schema, multiple formats.
+
+The real power comes from the **integration between layers**: a skill references an attribute modifier, which points to an attribute definition, which becomes a field in an exported JSON — all navigable and validated.
+
+## Quick links
+
+- **Full addon coverage** → [Addon reference](/docs/referencia/addons)
+- **How to export to your engine** → [Remote Config](/docs/referencia/addons/remote-config)
+- **Modeling a full RPG** → [Guides](/docs/guias) *(coming soon)*
+- **Ready-to-copy snippets** → [Cookbook](/docs/cookbook)
+
+<Callout type="tip" title="Keyboard shortcuts">
+  Press <code>Ctrl + K</code> on any page in the app to open the quick search
+  (pages, addons, and more). Press <code>?</code> to see a floating list of
+  **all shortcuts**, or check the full reference at
+  [Reference → Shortcuts](/docs/referencia/atalhos).
+</Callout>

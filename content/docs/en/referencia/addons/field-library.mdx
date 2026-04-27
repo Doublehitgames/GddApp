@@ -1,0 +1,119 @@
+---
+title: "fieldLibrary"
+description: "Central library of reusable keys/labels to avoid duplication across pages."
+emoji: "📚"
+order: 150
+---
+
+# fieldLibrary
+
+Defines **a central library** of `(key, label, description)` triplets that other addons reference instead of typing strings manually. It's the "source of truth" for any **shared taxonomy** in the project.
+
+## Why it matters
+
+In medium to large projects you end up with dozens of repeated "fields": `craftTimeSeconds` appears in 50 recipes, "Sword" as a category on 30 items, "buy price" on 80 economy blocks. Without a central library, every place invents its own name — and when you decide to rename "Sword" to "Blade" you have to hunt through 30 places.
+
+The Field Library lets you **rename in one place** and the change propagates everywhere.
+
+## Where it usually lives
+
+- A dedicated blank page: "Libraries" or "Taxonomy".
+- The `🎯 Attributes` page type creates an optional Field Library alongside `attributeDefinitions` (to reuse attribute names across progression tables).
+
+Singleton — 1 library per page, but you can have **multiple pages** with different libraries (e.g. "Item Types", "Skill Categories", "Equipment Slots").
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g. Item Categories, Equipment Slots)." },
+  { name: "entries", type: "FieldLibraryEntry[]", required: "Yes", description: "List of shareable fields." },
+]} />
+
+### `FieldLibraryEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID (stable). External refs use this id." },
+  { name: "key", type: "string", required: "Yes", description: <>Technical key (snake_case). Goes into the JSON when applicable.</> },
+  { name: "label", type: "string", required: "Yes", description: "Friendly name shown in the UI." },
+  { name: "description", type: "string", description: "Free-form description of the field's intent (notes, examples)." },
+]} />
+
+## Example
+
+Item Categories library:
+
+```json
+{
+  "id": "lib-item-categories",
+  "name": "Item Categories",
+  "entries": [
+    {
+      "id": "cat-weapon",
+      "key": "weapon",
+      "label": "Weapon",
+      "description": "Equippable items that increase ATK or apply an offensive effect."
+    },
+    {
+      "id": "cat-armor",
+      "key": "armor",
+      "label": "Armor",
+      "description": "Equippable items that increase DEF."
+    },
+    {
+      "id": "cat-consumable",
+      "key": "consumable",
+      "label": "Consumable",
+      "description": "Single-use items (potions, food, scrolls)."
+    },
+    {
+      "id": "cat-quest",
+      "key": "quest",
+      "label": "Quest Item",
+      "description": "Not sellable, not discardable, bound to a quest."
+    }
+  ]
+}
+```
+
+Now each `inventory.categoryLibraryRef` points to `{libraryAddonId, entryId}` instead of repeating the string "Sword" / "Weapon".
+
+## Who references fieldLibrary
+
+- **`inventory.categoryLibraryRef`** — item category.
+- **`progressionTable.columns[].libraryRef`** — column name.
+- **`dataSchema.entries[].libraryRef`** — field key and label.
+
+When you rename a library entry, all refs propagate automatically — you won't see the old label anywhere.
+
+## Validation
+
+- **Broken refs**: if you delete an entry, all addons that referenced it will show a warning.
+- **Duplicate keys**: the panel prevents two entries with the same key within a library.
+- **Persistent order**: entries have a manual order (drag-and-drop), exported in that order.
+
+## Wizard
+
+No wizard of its own, but:
+
+- The `🎯 Attributes` page type optionally includes a `fieldLibrary` alongside `attributeDefinitions` — useful when attributes will also feed columns in progression tables.
+
+<Callout type="tip" title="When to create a new library">
+  Create one when you notice the same concept appearing on 3+ pages. Before
+  that it's over-engineering. Start with loose strings and migrate when
+  duplication becomes painful.
+</Callout>
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    The biggest use case: categoryLibraryRef for shared categories.
+  </FeatureCard>
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Table columns can use libraryRef to centralize names.
+  </FeatureCard>
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    Schema entries can be pulled from the library.
+  </FeatureCard>
+</div>

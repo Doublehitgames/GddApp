@@ -1,0 +1,195 @@
+---
+title: "Key concepts"
+description: "Page type, addon, wizard, Remote Config — the vocabulary that comes up everywhere in the docs."
+emoji: "🧩"
+order: 3
+---
+
+# Key concepts
+
+Five words come up again and again in this documentation. Understanding each one well saves hours down the road.
+
+<Callout type="tip" title="How to read this page">
+  No need to memorize anything — just know what each term means. When you see
+  "wizard" or "addon" on another page, come back here as a quick reference.
+</Callout>
+
+## 1. Project
+
+The highest-level unit of work. A **project** represents **one game**.
+
+Everything you create (pages, addons, exports) lives inside a project. You can have as many projects as you want on your account — one per game, one per experiment, one per client.
+
+## 2. Page (Section)
+
+A **page** is a concept in your game. E.g.: "Iron Sword", "Shadow Mage", "Main Economy", "Potion Recipe".
+
+Pages are organized in a tree — every page can have sub-pages. Typically a GDD has 5 top-level groups (Overview, Design, Content, Presentation, Production) and dozens or hundreds of children.
+
+## 3. Page Type
+
+The **type** of a page determines which blocks it comes pre-configured with when it's created.
+
+There are 10 page types today, each with its own wizard when applicable:
+
+| Page Type | When to use | What comes inside |
+|---|---|---|
+| `📖 Narrative` | Rich text (lore, descriptions) | Rich document block |
+| `🎯 Attributes` | List of stats (HP, ATK, DEF) | Attribute table |
+| `🪙 Economy` | A game currency (gold, gem) | Configurable currency |
+| `📈 Progression` | XP curve per level | Progression table |
+| `👤 Characters` | Character with attributes + level | Profile + XP + progression |
+| `🎒 Items` | Simple item (wood, fruit) | Inventory + economy |
+| `⚔️ Effect Items` | Equipment that changes attributes | Inventory + economy + effects |
+| `📜 Recipe` | Craft recipe (2 wood → 1 plank) | Production addon |
+| `🛠️ Production Station` | Station that aggregates recipes | Craft table + recipes |
+| `⚡ Skills` | Active/passive abilities | Skills + modifiers |
+
+You can also create a **blank** page (no type) and add addons manually — but typed page types save a lot of time during initial setup.
+
+## 4. Addon
+
+An **addon** is a semantic block inside a page. Each addon has its own schema, edit panel, read-only mode, and contributes to the exported JSON.
+
+There are 16 addon types today. They are grouped by purpose:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎯" title="Attributes" href="/docs/referencia/addons">
+    `attributeDefinitions`, `attributeProfile`, `attributeModifiers`, `skills`
+  </FeatureCard>
+  <FeatureCard emoji="📈" title="Progression" href="/docs/referencia/addons">
+    `xpBalance`, `progressionTable`
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="Economy" href="/docs/referencia/addons">
+    `currency`, `currencyExchange`, `economyLink`
+  </FeatureCard>
+  <FeatureCard emoji="🎒" title="Items & Production" href="/docs/referencia/addons">
+    `inventory`, `production`, `craftTable`
+  </FeatureCard>
+  <FeatureCard emoji="📦" title="Data & Variables" href="/docs/referencia/addons">
+    `dataSchema`, `globalVariable`, `fieldLibrary`
+  </FeatureCard>
+  <FeatureCard emoji="📤" title="Content & Export" href="/docs/referencia/addons">
+    `richDoc`, `exportSchema`
+  </FeatureCard>
+</div>
+
+The vast majority are **singletons**: you can only have one addon of the same type per page. The exceptions are `richDoc` and `exportSchema` (both make sense in multiple instances).
+
+<Callout type="tip" title="Refs between addons">
+  Addons reference each other: a skill points to an attribute modifier,
+  which points to an attribute definition. The app **validates** these
+  refs and warns you when one breaks (e.g., you deleted the item that was
+  an ingredient in a recipe).
+</Callout>
+
+## 5. Wizard
+
+When a page type has **semantic dependencies**, the wizard asks how to resolve them before creating the page.
+
+Concrete example: you create an `⚔️ Effect Items` page. This type needs:
+- A **Currency** page (to have a price)
+- An **Attributes** page (to know which stats the effect modifies)
+
+The wizard opens a dialog and asks, for each dependency:
+
+1. **Link to an existing page** — choose from the dropdown
+2. **Create a new page** — the wizard creates it alongside yours, already linked
+3. **Continue without linking** — your page is created without a ref; you can link it later
+
+All of this prevents you from creating an Item page, discovering the currency is missing, creating the currency, going back to edit the item, and redoing the link manually.
+
+## 6. Remote Config
+
+The **export** layer. Defines the **exact JSON format** that the game engine receives.
+
+You design a tree of properties — it can be an object, array, or value — and each leaf **binds to a real field** in the project:
+
+```json
+{
+  "id": "DATA_FIRE_BALL",
+  "Skill": [{
+    "name": "Fireball",
+    "cooldown": 1,
+    "effect": [
+      {
+        "attr_id": "DATA_BASIC_ATTR",
+        "attr_key": "hp",
+        "attr_value": -10
+      }
+    ]
+  }]
+}
+```
+
+Remote Config is powerful enough to:
+
+- Iterate arrays (all skills, all recipes, all effects)
+- Follow cross-section refs (effect → modifier → parent section → dataId)
+- Support 4 different formats (row-major, column-major, keyed-by-level, matrix)
+- Import back the exported JSON (round-trip)
+
+<Callout type="info" title="See the reference">
+  Remote Config is the heart of the app on the technical side. It has a dedicated page
+  with examples for each format at [Reference → Remote Config](/docs/referencia/addons/remote-config).
+</Callout>
+
+## 7. DataID
+
+A **DataID** is the **stable, human-readable** identifier that the engine uses to recognize a page, independent of the app's internal UUID.
+
+### Why it matters
+
+The app generates internal UUIDs (`a8f3e9d2-7c1b-...`) for each page, but they:
+
+- change every time you duplicate or import a project
+- are unreadable in the exported JSON
+- can't be "memorized" by a programmer to know which page is which
+
+DataID solves this: you decide `DATA_FIRE_BALL`, `DATA_BASIC_ATTR`, `DATA_GOLD`, and Remote Config exports those names instead of UUIDs. Refs between addons (cost goes to currency, effect goes to modifier, modifier goes to attributes) also resolve to DataIDs.
+
+**Result**: the engine's JSON has human-readable, stable keys. You can rename, move, or reorganize the page in the GDD and the JSON keeps using the same `DATA_FIRE_BALL`.
+
+### How to set it
+
+1. Open any page
+2. **Just below the title** there's a subtle field:
+   - When empty: shows **"+ DataID"** in gray
+   - When filled: shows **"ID: DATA_..."** in a clickable pill
+3. Click the field
+4. The app **automatically suggests** something based on the title — e.g.: title "Iron Sword" → suggestion `DATA_IRON_SWORD`
+5. Accept or edit (I recommend standardizing, e.g., everything in English: `DATA_IRON_SWORD`)
+6. The app validates for duplicates within the project
+
+### When to use it
+
+**Set a DataID on every page that will go into Remote Config.** This usually includes:
+
+- Attributes, profiles, modifiers
+- Currencies
+- Items (inventory, equipment)
+- Skills
+- Recipes and production stations
+- Global variables
+
+Purely narrative pages (lore, briefing, design notes) don't need one — they don't export data to the engine.
+
+<Callout type="tip" title="Naming convention">
+  I recommend the prefix <code>DATA_</code> + type + identifier, in UPPER_SNAKE.
+  Examples: <code>DATA_GOLD</code>, <code>DATA_FIRE_BALL</code>,
+  <code>DATA_ENEMY_GOBLIN</code>, <code>DATA_RECIPE_BOW</code>. It helps anyone
+  reading the JSON quickly understand what it refers to.
+</Callout>
+
+## Next steps
+
+Now that the vocabulary is clear:
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🌱" title="Your first project" href="/docs/comecar/primeiro-projeto">
+    Apply all of this in practice with a from-scratch walkthrough.
+  </FeatureCard>
+  <FeatureCard emoji="📦" title="Addon reference" href="/docs/referencia/addons">
+    Dive into each of the 16 addons.
+  </FeatureCard>
+</div>

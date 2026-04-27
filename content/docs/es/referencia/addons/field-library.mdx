@@ -1,0 +1,119 @@
+---
+title: "fieldLibrary"
+description: "Biblioteca central de claves/labels reutilizables para evitar duplicaciones entre páginas."
+emoji: "📚"
+order: 150
+---
+
+# fieldLibrary
+
+Define **una biblioteca central** de tripletas `(clave, label, descripción)` que otros addons referencian en lugar de escribir strings manualmente. Es la "fuente de verdad" para cualquier **taxonomía compartida** en el proyecto.
+
+## Por qué importa
+
+En proyectos medianos a grandes terminas con docenas de "campos" repetidos: `craftTimeSeconds` aparece en 50 recetas, "Espada" como categoría en 30 ítems, "precio de compra" en 80 bloques de economía. Sin una biblioteca central, cada lugar inventa su propio nombre — y cuando decides renombrar "Espada" a "Hoja" tienes que buscar en 30 lugares.
+
+La Field Library te permite **renombrar en un solo lugar** y el cambio se propaga a todos lados.
+
+## Dónde suele vivir
+
+- Una página en blanco dedicada: "Bibliotecas" o "Taxonomía".
+- El tipo de página `🎯 Atributos` crea opcionalmente una Field Library junto a `attributeDefinitions` (para reutilizar nombres de atributos en tablas de progresión).
+
+Singleton — 1 biblioteca por página, pero puedes tener **múltiples páginas** con diferentes bibliotecas (ej.: "Tipos de Ítem", "Categorías de Habilidad", "Slots de Equipo").
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre amigable (ej.: Categorías de Ítem, Slots de Equipo)." },
+  { name: "entries", type: "FieldLibraryEntry[]", required: "Sí", description: "Lista de campos compartibles." },
+]} />
+
+### `FieldLibraryEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno (estable). Las referencias externas usan este id." },
+  { name: "key", type: "string", required: "Sí", description: <>Clave técnica (snake_case). Va al JSON cuando corresponde.</> },
+  { name: "label", type: "string", required: "Sí", description: "Nombre amigable mostrado en la UI." },
+  { name: "description", type: "string", description: "Descripción libre del propósito del campo (notas, ejemplos)." },
+]} />
+
+## Ejemplo
+
+Biblioteca de Categorías de Ítem:
+
+```json
+{
+  "id": "lib-item-categories",
+  "name": "Categorías de Ítem",
+  "entries": [
+    {
+      "id": "cat-weapon",
+      "key": "weapon",
+      "label": "Arma",
+      "description": "Ítems equipables que aumentan ATK o aplican un efecto ofensivo."
+    },
+    {
+      "id": "cat-armor",
+      "key": "armor",
+      "label": "Armadura",
+      "description": "Ítems equipables que aumentan DEF."
+    },
+    {
+      "id": "cat-consumable",
+      "key": "consumable",
+      "label": "Consumible",
+      "description": "Ítems de un solo uso (pociones, comida, pergaminos)."
+    },
+    {
+      "id": "cat-quest",
+      "key": "quest",
+      "label": "Ítem de Misión",
+      "description": "No vendible, no descartable, vinculado a una misión."
+    }
+  ]
+}
+```
+
+Ahora cada `inventory.categoryLibraryRef` apunta a `{libraryAddonId, entryId}` en lugar de repetir el string "Espada" / "Arma".
+
+## Quién referencia fieldLibrary
+
+- **`inventory.categoryLibraryRef`** — categoría del ítem.
+- **`progressionTable.columns[].libraryRef`** — nombre de columna.
+- **`dataSchema.entries[].libraryRef`** — clave y label del campo.
+
+Cuando renombras una entrada de biblioteca, todas las referencias se propagan automáticamente — no verás el label antiguo en ningún lugar.
+
+## Validación
+
+- **Referencias rotas**: si eliminas una entrada, todos los addons que la referencian mostrarán una advertencia.
+- **Claves duplicadas**: el panel impide dos entradas con la misma clave dentro de una biblioteca.
+- **Orden persistente**: las entradas tienen un orden manual (arrastrar y soltar), exportado en ese orden.
+
+## Wizard
+
+No tiene wizard propio, pero:
+
+- El tipo de página `🎯 Atributos` incluye opcionalmente una `fieldLibrary` junto a `attributeDefinitions` — útil cuando los atributos también alimentarán columnas en tablas de progresión.
+
+<Callout type="tip" title="Cuándo crear una nueva biblioteca">
+  Crea una cuando notes que el mismo concepto aparece en 3 o más páginas. Antes
+  de eso es sobre-ingeniería. Empieza con strings sueltos y migra cuando la
+  duplicación se vuelva dolorosa.
+</Callout>
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    El caso de uso más grande: categoryLibraryRef para categorías compartidas.
+  </FeatureCard>
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Las columnas de tablas pueden usar libraryRef para centralizar nombres.
+  </FeatureCard>
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    Las entradas de schema pueden obtenerse de la biblioteca.
+  </FeatureCard>
+</div>

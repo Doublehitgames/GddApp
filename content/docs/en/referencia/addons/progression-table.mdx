@@ -1,0 +1,142 @@
+---
+title: "progressionTable"
+description: "Per-level value table with columns (price, damage, capacity) and math generators."
+emoji: "📊"
+order: 120
+---
+
+# progressionTable
+
+A table with **one row per level** and **customizable columns**: price, damage, capacity, production interval — any value that scales with progression. Each column has a **math generator** or accepts manual values cell by cell.
+
+## Why it matters
+
+Every mechanic that grows with level — upgrade cost, tower damage, production interval, inventory capacity, skill rank cost — is a curve. Instead of inventing 4 separate formulas, you model everything in the same table and reference columns from other addons. Changing a single parameter rescales the entire column.
+
+## Where it usually lives
+
+- Page of type `📊 Balance Table`. That's the main path.
+- `👤 Characters` page (comes alongside profile + xpBalance).
+
+Singleton — 1 table per page. But you can have multiple pages if you need to separate (e.g., enemy table vs. tower table).
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name." },
+  { name: "startLevel", type: "number", required: "Yes", description: "First level in the table (usually 1)." },
+  { name: "endLevel", type: "number", required: "Yes", description: "Last level (e.g., 100)." },
+  { name: "columns", type: "ProgressionTableColumn[]", required: "Yes", description: "Definition of each column (id, name, generator, formatting)." },
+  { name: "rows", type: "ProgressionTableRow[]", required: "Yes", description: "Calculated rows. You rarely edit directly — they come from generators." },
+  { name: "overrides", type: "Record<string, Record<string, number>>", description: <>Manual overrides per (level, columnId). Useful for breaking the formula at specific levels without losing the whole column.</> },
+]} />
+
+### `ProgressionTableColumn`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal column ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g., Cost, Damage, Craft Time)." },
+  { name: "libraryRef", type: "{ libraryAddonId, entryId }", description: "When you want to link the column's name+key to a Field Library entry (central taxonomy)." },
+  { name: "generator", type: "ProgressionColumnGenerator", description: "Math generator that fills the values. When absent, manual mode." },
+  { name: "decimals", type: "number", description: "Decimal places when formatting." },
+  { name: "isPercentage", type: "boolean", description: "When true, values are formatted with % (e.g., 0.15 → 15%)." },
+  { name: "min", type: "number", description: "Floor applied to each cell." },
+  { name: "max", type: "number", description: "Ceiling applied to each cell." },
+]} />
+
+### Generator modes
+
+```ts
+type ProgressionColumnGenerator =
+  | { mode: "manual" }
+  | { mode: "linear"; base: number; step: number; bias?: number }
+  | { mode: "exponential"; base: number; growth: number; bias?: number }
+  | { mode: "formula"; baseColumnId: string; baseManualValue?: number; expression: string };
+```
+
+- **manual**: you type cell by cell.
+- **linear**: `base + (level − 1) × step + (bias || 0)`.
+- **exponential**: `base × growth^(level − 1) + (bias || 0)`.
+- **formula**: JS-like expression that can reference **another column** in this same table. Allows derived columns (e.g., "sell = buy × 0.5").
+
+### `ProgressionTableRow`
+
+```ts
+{ level: number, values: Record<string, number | string> }
+```
+
+Each row has `level` + a dict of `columnId → value`. Usually generated — don't edit manually except via `overrides`.
+
+## Example
+
+Archer Tower upgrade table, 1–50, with 3 columns:
+
+```json
+{
+  "id": "prog-archer-tower",
+  "name": "Archer Tower",
+  "startLevel": 1,
+  "endLevel": 50,
+  "columns": [
+    {
+      "id": "col-cost",
+      "name": "Cost",
+      "generator": { "mode": "exponential", "base": 100, "growth": 1.5 },
+      "decimals": 0
+    },
+    {
+      "id": "col-damage",
+      "name": "Damage",
+      "generator": { "mode": "linear", "base": 10, "step": 5 },
+      "decimals": 0
+    },
+    {
+      "id": "col-fire-rate",
+      "name": "Shots per second",
+      "generator": { "mode": "linear", "base": 1, "step": 0.05 },
+      "decimals": 2,
+      "max": 5
+    }
+  ],
+  "rows": []
+}
+```
+
+After generating (the "Recalculate" button in the panel), `rows` will have 50 entries with the calculated values.
+
+## overrides
+
+To break the formula at specific levels without losing the generated column:
+
+```json
+"overrides": {
+  "10": { "col-cost": 1500 },   // level 10 costs 1500 (not what the formula would give)
+  "25": { "col-damage": 200 }   // balance spike at level 25
+}
+```
+
+Row 10 gets `col-cost = 1500`, and the rest keeps being generated. Useful for design spikes.
+
+## Wizard
+
+The `📊 Balance Table` page type creates the table with defaults (3 example columns, levels 1–100). You customize in the panel.
+
+## Who points to this table
+
+- **`production.intervalSecondsProgressionLink`** and other `*ProgressionLink` fields — recipes scale timers/quantities with the table.
+- **`craftTable.unlock`** (indirectly, via xpAddonRef) — level-based unlocks use curves, and curves often feed into tables.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    Single curve (non-tabular). Useful for XP per level, not for per-column values.
+  </FeatureCard>
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Reference column names/keys centrally instead of duplicate strings.
+  </FeatureCard>
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    The biggest consumer: recipes link timers/quantities to columns here.
+  </FeatureCard>
+</div>

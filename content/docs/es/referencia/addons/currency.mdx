@@ -1,0 +1,82 @@
+---
+title: "currency"
+description: "Define una moneda del juego (oro, gema, XP) con tipo, código y decimales."
+emoji: "🪙"
+order: 50
+---
+
+# currency
+
+Define una **moneda** en tu juego. Cada moneda tiene su propia página — no agrupas "oro + gemas + tickets" en el mismo addon. Por diseño, una moneda vive en una página.
+
+## Por qué importa
+
+Las monedas son referenciadas por muchos otros addons (precios de ítems, costos de habilidades, tasas de cambio, recompensas de recetas). Sin un addon dedicado, cada referencia sería un string suelto como `"oro"` — y cuando renombras la moneda a "monedas" todo el juego se rompe. Defínela aquí una sola vez y las referencias validadas hacen el resto.
+
+## Dónde suele vivir
+
+- Una página de tipo `🪙 Economía`. Wizard para Oro, Gemas, Tickets, etc.
+- Páginas en blanco cuando quieres agrupar monedas atípicas.
+
+Singleton — 1 moneda por página. Para múltiples monedas, crea múltiples páginas (una por moneda).
+
+## Esquema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sí", description: "ID interno." },
+  { name: "name", type: "string", required: "Sí", description: "Nombre del addon (por defecto el título de la página)." },
+  { name: "code", type: "string", required: "Sí", description: <>Código corto en <code>UPPER_SNAKE</code> que va al JSON exportado (ej.: <code>GOLD</code>, <code>GEM</code>). Debe ser único en el proyecto.</> },
+  { name: "displayName", type: "string", required: "Sí", description: "Nombre amigable mostrado en la UI (ej.: Oro, Gema)." },
+  { name: "kind", type: '"soft" | "premium" | "event" | "other"', required: "Sí", description: <><strong>soft</strong>: se gana jugando (oro). <strong>premium</strong>: se compra (gemas). <strong>event</strong>: evento de tiempo limitado (tickets de Halloween). <strong>other</strong>: comodín.</> },
+  { name: "decimals", type: "number", required: "Sí", description: "Decimales (0 para enteros). Útil para monedas que aceptan fracciones (créditos de suscripción, fracciones de XP)." },
+  { name: "notes", type: "string", description: "Notas libres para el equipo (reglas de balance, historial, etc.)." },
+]} />
+
+## Ejemplo
+
+```json
+{
+  "id": "currency-gold",
+  "name": "Oro",
+  "code": "GOLD",
+  "displayName": "Oro",
+  "kind": "soft",
+  "decimals": 0,
+  "notes": "Moneda principal. Se gana en misiones, drops de enemigos, vendido en tienda."
+}
+```
+
+## Quién apunta a esta moneda
+
+- **`economyLink`** — precios de compra/venta en ítems.
+- **`skills.SkillCost`** — cuando el tipo de costo de habilidad es `currency`.
+- **`currencyExchange.CurrencyExchangeEntry`** — `fromCurrencyRef`/`toCurrencyRef` apuntan a monedas.
+- **`craftTable.unlock.currency`** — desbloquear recetas/habilidades mediante un costo de moneda.
+
+## Wizard
+
+El tipo de página `🪙 Economía` crea este addon vacío con un relleno amigable:
+
+- `code: "COINS"` (renombra según necesites)
+- `displayName: "Coins"`
+- `kind: "soft"`
+- `decimals: 0`
+
+Solo edítalo para que refleje la moneda real de tu juego.
+
+<Callout type="tip" title="Convención de nombres">
+  Usa <code>code</code> en UPPER_SNAKE para que sea un identificador estable en
+  el JSON. Recomiendo prefijar las monedas premium (<code>GEM_PREMIUM</code>) y
+  las de eventos (<code>EVENT_HALLOWEEN_TICKET</code>) — facilita filtrarlas en el motor.
+</Callout>
+
+## Ver también
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="💱" title="currencyExchange" href="/docs/referencia/addons/currency-exchange">
+    Casa de cambio entre dos monedas con tasa configurable.
+  </FeatureCard>
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    Vincula precios de compra/venta a monedas en una página de ítem.
+  </FeatureCard>
+</div>

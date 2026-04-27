@@ -5,11 +5,6 @@ import { Callout } from "@/components/docs/mdx/Callout";
 import { FeatureCard } from "@/components/docs/mdx/FeatureCard";
 import { PropertyTable } from "@/components/docs/mdx/PropertyTable";
 
-/**
- * Generates a stable slug for heading anchors. Mirrors the simple
- * "lowercase, strip non-word, dashify" rule most docs use — good enough
- * for our content (no emoji-leading headings, no clashing siblings).
- */
 function slugify(value: string): string {
   return value
     .toString()
@@ -30,11 +25,6 @@ function extractText(node: ReactNode): string {
   return "";
 }
 
-/**
- * Heading factory: each heading registers its own `id` so the right-side
- * Table of Contents can deep-link to it. Hover reveals a `#` anchor for
- * easy URL sharing.
- */
 function makeHeading(level: 1 | 2 | 3 | 4) {
   const Tag = (`h${level}` as const);
   const sizes: Record<number, string> = {
@@ -62,11 +52,50 @@ function makeHeading(level: 1 | 2 | 3 | 4) {
   return Heading;
 }
 
-/**
- * Anchor: internal links (start with `/`) route through Next's <Link>;
- * external links open in a new tab and get a subtle visual marker.
- */
-function MdxAnchor({ href = "#", children, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+/** Rewrites `/docs/foo` → `/docs/[locale]/foo` for internal doc links. */
+function prefixLocale(href: string, locale: string): string {
+  if (href.startsWith("/docs/") && !href.startsWith(`/docs/${locale}/`)) {
+    return `/docs/${locale}/${href.slice("/docs/".length)}`;
+  }
+  return href;
+}
+
+function makeMdxAnchor(locale: string) {
+  return function MdxAnchor({ href = "#", children, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+    const resolved = prefixLocale(href, locale);
+    const isInternal = resolved.startsWith("/") || resolved.startsWith("#");
+    if (isInternal) {
+      return (
+        <Link
+          href={resolved}
+          className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/40 hover:decoration-indigo-300"
+        >
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <a
+        href={resolved}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 decoration-indigo-400/40 hover:decoration-indigo-300"
+        {...rest}
+      >
+        {children}
+        <span aria-hidden="true" className="ml-0.5 text-[0.85em] opacity-70">↗</span>
+      </a>
+    );
+  };
+}
+
+function makeLocaleFeatureCard(locale: string) {
+  return function LocaleFeatureCard(props: Parameters<typeof FeatureCard>[0]) {
+    return <FeatureCard {...props} href={prefixLocale(props.href, locale)} />;
+  };
+}
+
+function MdxAnchorDefault({ href = "#", children, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement>) {
   const isInternal = href.startsWith("/") || href.startsWith("#");
   if (isInternal) {
     return (
@@ -93,13 +122,14 @@ function MdxAnchor({ href = "#", children, ...rest }: AnchorHTMLAttributes<HTMLA
 }
 
 function MdxImage({ src, alt = "", ...rest }: ImgHTMLAttributes<HTMLImageElement>) {
-  // We don't want next/image's strict requirements for docs assets — the
-  // tradeoff is fine here (prose width is bounded, screenshots are small).
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={alt} className="rounded-lg border border-gray-800 my-4" {...rest} />;
 }
 
-export function useMDXComponents(components: MDXComponents): MDXComponents {
+export function useMDXComponents(components: MDXComponents, locale?: string): MDXComponents {
+  const AnchorComponent = locale ? makeMdxAnchor(locale) : MdxAnchorDefault;
+  const FeatureCardComponent = locale ? makeLocaleFeatureCard(locale) : FeatureCard;
+
   return {
     h1: makeHeading(1),
     h2: makeHeading(2),
@@ -108,7 +138,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     p: ({ children }) => (
       <p className="text-gray-300 leading-relaxed my-4">{children}</p>
     ),
-    a: MdxAnchor as MDXComponents["a"],
+    a: AnchorComponent as MDXComponents["a"],
     ul: ({ children }) => (
       <ul className="list-disc list-outside pl-6 my-4 space-y-1.5 text-gray-300">{children}</ul>
     ),
@@ -152,9 +182,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       <td className="border-b border-gray-800/60 px-3 py-2 text-gray-300 align-top">{children}</td>
     ),
     img: MdxImage as MDXComponents["img"],
-    // Custom MDX components made available without explicit imports inside .mdx
     Callout,
-    FeatureCard,
+    FeatureCard: FeatureCardComponent as MDXComponents[string],
     PropertyTable,
     ...components,
   };

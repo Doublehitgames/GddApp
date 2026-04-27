@@ -1,0 +1,117 @@
+---
+title: "xpBalance"
+description: "XP curve per level with math presets, custom expressions, and simulation."
+emoji: "📈"
+order: 110
+---
+
+# xpBalance
+
+Defines the **XP curve** governing the player's level progression (or any entity with progression). Supports common **math presets** (linear, exponential, soft-cap, plateau) or **custom expressions** for unique formulas.
+
+## Why it matters
+
+The XP curve is one of the **hardest design decisions to iterate** without a tool — you change `growth` from 1.15 to 1.20 and need to simulate 100 levels in your head. Here the app generates the curve, shows cumulative value, average step, plateaus, and balance highlights. Editing is trivial.
+
+And since the result becomes `BalancePoint[]` (an array of `{level, value}`), other tables/skills/items can **reference this curve** to scale values alongside it.
+
+## Where it usually lives
+
+- Page of type `📈 XP Balance`. That's the main path.
+- `👤 Characters` page (comes as a recommended addon, alongside Profile).
+
+Singleton — 1 curve per page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g., Hero XP Curve)." },
+  { name: "mode", type: '"preset" | "advanced"', required: "Yes", description: <><strong>preset</strong>: uses one of 7 templates. <strong>advanced</strong>: you write the expression.</> },
+  { name: "preset", type: '"linear" | "exponential" | "tiered" | "softCap" | "hardCap" | "diminishingReturns" | "piecewise"', required: "Yes", description: "Which preset, when mode=preset." },
+  { name: "expression", type: "string", required: "Yes", description: <>Math expression when mode=advanced. Supports <code>level</code>, basic operators, <code>pow()</code>, <code>min()</code>, <code>max()</code>.</> },
+  { name: "startLevel", type: "number", required: "Yes", description: "First level of the curve (usually 1)." },
+  { name: "endLevel", type: "number", required: "Yes", description: "Last level." },
+  { name: "decimals", type: "number", required: "Yes", description: "Decimal places when rounding generated values." },
+  { name: "clampMin", type: "number", description: "Absolute minimum floor (optional)." },
+  { name: "clampMax", type: "number", description: "Absolute maximum ceiling (optional)." },
+  { name: "params", type: "BalanceFormulaParams", required: "Yes", description: "Preset parameters (base, growth, offset, tierStep, etc.)." },
+  { name: "profile", type: '"rpg" | "idle" | "roguelite" | "casual"', description: "Genre profile — pre-configures sensible defaults when you switch." },
+  { name: "comparisonBaseline", type: "BalancePoint[]", description: "Comparison curve (e.g., from the studio's previous game) rendered behind the current curve in the chart." },
+  { name: "simulationInput", type: "BalanceSimulationInput", description: "Inputs to simulate time to each level given XP/min, win rate, match duration." },
+  { name: "target", type: "BalanceTargetInput", description: "Intended goal (e.g., player reaches level 50 in 20h). The panel suggests adjustments to hit it." },
+]} />
+
+### The 7 presets
+
+| Preset | Formula |
+|---|---|
+| `linear` | `base + (level − 1) × step` |
+| `exponential` | `base × growth^(level − 1)` |
+| `tiered` | Linear until `tierStep`, multiplied by `tierMultiplier` per tier |
+| `softCap` | Grows normally until `capValue`, then grows slowly |
+| `hardCap` | Grows normally until `capValue`, then stops |
+| `diminishingReturns` | Grows with diminishing returns |
+| `piecewise` | Linear with a plateau in the middle (`plateauStartLevel`, `plateauFactor`) |
+
+## Example: classic exponential curve
+
+XP for level N = 100 × 1.15^(N−1), from level 1 to 100:
+
+```json
+{
+  "id": "xp-hero",
+  "name": "Hero XP Curve",
+  "mode": "preset",
+  "preset": "exponential",
+  "expression": "",
+  "startLevel": 1,
+  "endLevel": 100,
+  "decimals": 0,
+  "params": {
+    "base": 100,
+    "growth": 1.15,
+    "offset": 0,
+    "tierStep": 0,
+    "tierMultiplier": 1,
+    "capValue": 0,
+    "capStrength": 0,
+    "plateauStartLevel": 0,
+    "plateauFactor": 1
+  },
+  "profile": "rpg"
+}
+```
+
+Result: level 1 = 100 XP, level 10 = 351, level 50 = 108k, level 100 = 117M XP. (Probably too high — you'd adjust `growth` to 1.10 or use `softCap`.)
+
+## Simulation
+
+If you fill in `simulationInput`, the app automatically calculates:
+
+- **Minutes per level** — how long the player takes to level up given the input
+- **Hours to milestones** — cumulative time to reach levels 10, 25, 50, 100
+- **Calendar days** — useful for games that cap XP per session
+
+Lets you answer "how many days does the player take to reach level 50 playing 1h/day?" without manual calculation.
+
+## Wizard
+
+The `📈 XP Balance` page type creates this addon with sensible defaults (preset `exponential`, growth `1.15`, levels 1–100). You adjust in the panel.
+
+## Who points to xpBalance
+
+- **`craftTable.unlock.level.xpAddonRef`** — recipes unlocked by level.
+- **`skills.unlock.level.xpAddonRef`** — skills unlocked by level.
+- **`progressionTable`** (indirectly) — when your columns scale with level, the reference curve is often an XP one.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📊" title="progressionTable" href="/docs/referencia/addons/progression-table">
+    Tables with columns that can use the same math curve as xpBalance.
+  </FeatureCard>
+  <FeatureCard emoji="👤" title="attributeProfile" href="/docs/referencia/addons/attribute-profile">
+    On a Character page, xpBalance sits alongside the profile.
+  </FeatureCard>
+</div>

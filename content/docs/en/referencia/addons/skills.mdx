@@ -1,0 +1,158 @@
+---
+title: "skills"
+description: "Active/passive abilities with cooldowns, multiple costs, and effects linked to Modifiers."
+emoji: "⚡"
+order: 40
+---
+
+# skills
+
+Models game **abilities**: spells, special attacks, passives, ultimates. Each skill knows its own cooldown, costs (currency/attribute/charges), effects (references to Modifiers on the same page), and unlock conditions.
+
+## Why it matters
+
+Skills are one of the densest structures in any GDD — they touch economy (cost), attributes (effect), progression (unlock), time (cooldown, DoT duration), and sometimes items (consumable cost). Without a dedicated schema you end up duplicating this information in loose prose and the engine implements each one by hand.
+
+## Where it usually lives
+
+- Page of type `⚡ Skills` (comes with Skills + linked AttributeModifiers).
+- Blank pages when you want to group skills differently.
+
+Singleton — 1 addon per page. Multiple skills live in the `entries[]` of the same addon.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal addon ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g., Combat Skills)." },
+  { name: "entries", type: "SkillEntry[]", required: "Yes", description: "List of skills." },
+]} />
+
+### `SkillEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Friendly name (e.g., Fireball)." },
+  { name: "description", type: "string", description: "Skill description (UI tooltip)." },
+  { name: "kind", type: '"active" | "passive"', required: "Yes", description: <><strong>active</strong>: must be triggered (Fireball). <strong>passive</strong>: permanent effect (Iron Skin).</> },
+  { name: "cooldownSeconds", type: "number", description: <>Minimum time between uses. Sub-second OK (0.5s). Empty = no limit (autofire).</> },
+  { name: "costs", type: "SkillCost[]", description: "Costs paid on each use. Empty = free." },
+  { name: "effects", type: "SkillEffectRef[]", description: <>Refs to entries in the <code>attributeModifiers</code> on the <strong>same page</strong>.</> },
+  { name: "unlock", type: "SkillUnlock", description: "Conditions to unlock (level + currency + item). Reuses the CraftTableUnlock type." },
+  { name: "tags", type: "string[]", description: "Free-form tags (fire, single-target, magical)." },
+]} />
+
+### `SkillCost`
+
+Each entry in the cost list:
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "type", type: '"currency" | "attribute" | "charges"', required: "Yes", description: <><strong>currency</strong>: pays a project currency. <strong>attribute</strong>: pays a stat (e.g., mana). <strong>charges</strong>: local charges (no external ref).</> },
+  { name: "amount", type: "number", required: "Yes", description: "Amount to pay." },
+  { name: "currencyRef", type: "string (sectionId)", description: "When type=currency. Points to the currency page." },
+  { name: "definitionsRef", type: "string (sectionId)", description: "When type=attribute. Attributes page that defines the key. Each cost can use a different page." },
+  { name: "attributeKey", type: "string", description: "When type=attribute. Existing key in definitionsRef." },
+]} />
+
+### `SkillEffectRef`
+
+Each entry in the effects list:
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "attributeModifiersSectionId", type: "string (sectionId)", required: "Yes", description: "Section that has the modifiers addon. Usually the same page as the skill." },
+  { name: "attributeModifiersAddonId", type: "string", required: "Yes", description: "ID of the modifiers addon in that section." },
+  { name: "modifierEntryId", type: "string", required: "Yes", description: "ID of the specific entry inside the modifiers." },
+]} />
+
+<Callout type="info" title="Effects are same-page">
+  The effects picker only lists modifiers from the <strong>same page</strong> as the
+  skill. Singleton enforcement ensures there is always 1 Modifiers addon
+  right there, and its checklist feeds the available effects.
+</Callout>
+
+## Example: complete Fireball
+
+```json
+{
+  "id": "skill-fireball",
+  "name": "Fireball",
+  "description": "Fire ball that causes impact + burn.",
+  "kind": "active",
+  "cooldownSeconds": 5,
+  "costs": [
+    {
+      "id": "c1",
+      "type": "attribute",
+      "amount": 30,
+      "definitionsRef": "section-attrs",
+      "attributeKey": "mana"
+    }
+  ],
+  "effects": [
+    {
+      "id": "e1",
+      "attributeModifiersSectionId": "section-fireball",
+      "attributeModifiersAddonId": "mods-fireball",
+      "modifierEntryId": "mod-impact"
+    },
+    {
+      "id": "e2",
+      "attributeModifiersSectionId": "section-fireball",
+      "attributeModifiersAddonId": "mods-fireball",
+      "modifierEntryId": "mod-burn"
+    }
+  ],
+  "unlock": {
+    "level": { "enabled": true, "level": 5 }
+  },
+  "tags": ["fire", "magical", "aoe"]
+}
+```
+
+Read as: active skill, 5s cooldown, costs 30 mana, triggers 2 modifiers (impact + burn), unlocks at level 5, tagged as fire/magic/area.
+
+## Wizard
+
+The `⚡ Skills` page type automatically creates:
+
+1. This `skills` addon (empty)
+2. An `attributeModifiers` (empty, with `definitionsRef` filled in)
+
+The AttributeDefinitions used comes from the requires dialog that opens when you create the page. You can pick an existing one or create a new one in the same flow.
+
+## UX highlight: rich cooldown panel
+
+The cooldown panel for each skill shows:
+
+- **Live-derived label**: typing `1.5` shows "≈ 0.67 uses per second (limited autofire)"
+- **Presets**: clickable chips (No limit / Attack 1s / Skill 5s / Ultimate 60s)
+- **Timeline**: caster bar (recharge) and target bar (effect), proportional. Shows tick dividers when the effect is a DoT.
+- **Stacking hint**: warns if the stacking rule of linked modifiers may cause unexpected behavior (e.g., stack with short cooldown = potentially broken).
+
+## Export to Remote Config
+
+Skills has 3 dedicated sources in Remote Config:
+
+- `source: "skills"` — iterates all skills in the addon
+- `source: "skillCosts"` (inside skills) — iterates the costs of the current skill
+- `source: "skillEffects"` (inside skills) — iterates the effects of the current skill
+
+And 3 corresponding binding sources (`skillField`, `skillCostField`, `skillEffectField`) with **dozens of resolved fields** (resolvedName, resolvedAttributeKey, resolvedDefinitionsRef, resolvedDurationSeconds, resolvedStacking, etc.) that follow refs and return data ready for the engine.
+
+See [Remote Config](/docs/referencia/addons/remote-config) for complete examples.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="✨" title="attributeModifiers" href="/docs/referencia/addons/attribute-modifiers">
+    The addon that defines the entries skills reference as effects.
+  </FeatureCard>
+  <FeatureCard emoji="🎯" title="attributeDefinitions" href="/docs/referencia/addons/attribute-definitions">
+    Defines the keys used in attribute-type costs.
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Currencies referenced in currency-type costs.
+  </FeatureCard>
+</div>

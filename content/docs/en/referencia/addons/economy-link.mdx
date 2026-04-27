@@ -1,0 +1,117 @@
+---
+title: "economyLink"
+description: "Links buy, sell, production, and unlock prices to an item or skill page."
+emoji: "💰"
+order: 70
+---
+
+# economyLink
+
+The addon that connects an in-game item or piece of content to the currencies and global variables that run its economy. Defines buy, sell, production, and unlock prices in **one unified structure**.
+
+## Why it matters
+
+Cheap item, expensive item, premium item, event-unlockable item — all of that is "economy". Without a dedicated addon, you scatter those numbers in loose fields all over the item page, and when you need to rebalance the game (raise all prices by 10%, give a 50% discount during an event), you have to hunt through 80 different places.
+
+This addon centralizes everything, and it also references [`globalVariable`](/docs/referencia/addons/global-variable) so you can adjust everything at once (e.g. a variable `item_buy_discount = 0.1` applied to all purchases).
+
+## Where it usually lives
+
+- Pages of type `🎒 Items` or `⚔️ Items with Effect` — comes by default along with Inventory.
+- Blank pages that represent something sellable (a skin, a chapter, an extra slot).
+
+Singleton — 1 economyLink per page.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Yes", description: "Internal ID." },
+  { name: "name", type: "string", required: "Yes", description: "Addon name (default: Economy)." },
+  { name: "hasBuyConfig", type: "boolean", description: "Toggles the buy block on/off. Allows non-purchasable items." },
+  { name: "buyCurrencyRef", type: "string (sectionId)", description: "Page of the currency used for buying." },
+  { name: "buyValue", type: "number", description: "Base buy price." },
+  { name: "minBuyValue", type: "number", description: "Price floor even with maximum discounts." },
+  { name: "buyModifiers", type: "EconomyModifierRef[]", description: "List of globalVariables that adjust the buyValue (e.g. seasonal discount)." },
+  { name: "hasSellConfig", type: "boolean", description: "Toggles the sell block on/off." },
+  { name: "sellCurrencyRef", type: "string (sectionId)", description: "Currency received on sale (usually the same as the buy currency)." },
+  { name: "sellValue", type: "number", description: "Base sell value." },
+  { name: "maxSellValue", type: "number", description: "Sell ceiling even with maximum bonuses." },
+  { name: "sellModifiers", type: "EconomyModifierRef[]", description: "globalVariables that increase/decrease sellValue." },
+  { name: "hasProductionConfig", type: "boolean", description: "Toggles production on/off. Item produces X units per interval." },
+  { name: "producedItemRef", type: "string (sectionId)", description: "Item this page produces when placed (e.g. a chicken produces eggs)." },
+  { name: "produceMin", type: "number", description: "Minimum amount produced per cycle." },
+  { name: "produceMax", type: "number", description: "Maximum amount produced per cycle." },
+  { name: "productionTimeSeconds", type: "number", description: "Interval between cycles. Accepts decimals." },
+  { name: "hasUnlockConfig", type: "boolean", description: "Toggles unlock gate on/off." },
+  { name: "unlockRef", type: "string (sectionId)", description: "Currency used to unlock." },
+  { name: "unlockValue", type: "number", description: "How much it costs to unlock for the first time." },
+  { name: "notes", type: "string", description: "Free-form notes." },
+]} />
+
+### `EconomyModifierRef`
+
+```ts
+{ refId: string }  // sectionId of a globalVariable page
+```
+
+Points to a `globalVariable` (e.g. `item_buy_discount`, `event_sell_markup`). The engine reads the variable's value at runtime and applies it on top of `buyValue`/`sellValue`.
+
+## Example
+
+Iron Sword — buyable and sellable, with a seasonal discount:
+
+```json
+{
+  "id": "econ-iron-sword",
+  "name": "Economy",
+  "hasBuyConfig": true,
+  "buyCurrencyRef": "section-gold",
+  "buyValue": 100,
+  "minBuyValue": 50,
+  "buyModifiers": [
+    { "refId": "section-buy-discount-var" }
+  ],
+  "hasSellConfig": true,
+  "sellCurrencyRef": "section-gold",
+  "sellValue": 50,
+  "maxSellValue": 80,
+  "sellModifiers": [
+    { "refId": "section-sell-markup-var" }
+  ],
+  "hasUnlockConfig": false
+}
+```
+
+## Optional blocks by default
+
+Each block (Buy, Sell, Production, Unlock) has a `has*Config` boolean that toggles it on/off. Sell-only items (non-purchasable) or unlock-only items (no economy) result in a cleaner exported JSON.
+
+<Callout type="info" title="Auto-created global modifiers">
+  When you create an Item page via wizard, it automatically creates
+  two globalVariables (<code>item_buy_discount</code> and <code>item_sell_markup</code>)
+  and references both in the economyLink. That's the app's default way of
+  giving you global balancing levers without you having to think about it.
+</Callout>
+
+## Wizard
+
+No wizard of its own. Seeded by:
+
+- `🎒 Items` (together with Inventory)
+- `⚔️ Items with Effect` (together with Inventory + AttributeModifiers)
+
+The wizard asks for a currency in the requires-dialog, and that currency becomes `buyCurrencyRef` + `sellCurrencyRef` automatically.
+
+## See also
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Defines the currencies that economyLink references.
+  </FeatureCard>
+  <FeatureCard emoji="🌐" title="globalVariable" href="/docs/referencia/addons/global-variable">
+    Global modifiers that scale prices through discounts/bonuses.
+  </FeatureCard>
+  <FeatureCard emoji="🎒" title="inventory" href="/docs/referencia/addons/inventory">
+    The other addon that typically lives on the same page.
+  </FeatureCard>
+</div>
