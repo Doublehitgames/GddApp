@@ -24,6 +24,16 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(days / 365)}a atrás`;
 }
 
+function getProjectIcon(project: Project): string | null {
+  // Ícone da Ficha Técnica (spotlight) do projeto
+  const spotlightIconUrl = project.mindMapSettings?.documentView?.spotlight?.titleIconUrl;
+  if (spotlightIconUrl) {
+    const candidates = getDriveImageDisplayCandidates(spotlightIconUrl);
+    if (candidates.length > 0) return candidates[0];
+  }
+  return null;
+}
+
 function ProjectCard({
   project,
   showSettings = true,
@@ -36,9 +46,10 @@ function ProjectCard({
   const totalSec = sections.length;
   const coverUrl =
     getDriveImageDisplayCandidates(project.coverImageUrl || "")[0] ?? null;
+  const iconUrl = getProjectIcon(project);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-700/80 bg-gray-800/70 hover:border-indigo-500/50 hover:bg-gray-800 transition-all group min-h-[90px]">
+    <div className="relative overflow-hidden rounded-xl border border-gray-700/80 bg-gray-800/70 hover:border-indigo-500/50 hover:bg-gray-800 transition-all group min-h-[90px] flex flex-col">
       {coverUrl && (
         <>
           <div
@@ -56,18 +67,29 @@ function ProjectCard({
       {/* Main link area */}
       <Link
         href={`/projects/${project.id}`}
-        className="relative z-10 block px-4 pt-4 pb-3"
+        className="relative z-10 flex flex-1 items-center gap-3 px-4 py-4"
         prefetch={false}
       >
-        <h3 className="text-base font-semibold leading-tight truncate pr-16">
-          {project.title}
-        </h3>
-        <p className="mt-1.5 text-xs text-gray-400">
-          {totalSec} {totalSec === 1 ? "página" : "páginas"}
-          {project.updatedAt && (
-            <> · editado {timeAgo(project.updatedAt)}</>
-          )}
-        </p>
+        {iconUrl && (
+          <img
+            src={iconUrl}
+            alt=""
+            aria-hidden="true"
+            className="w-10 h-10 rounded-lg object-cover shrink-0"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-semibold leading-tight truncate pr-14">
+            {project.title}
+          </h3>
+          <p className="mt-1.5 text-xs text-gray-400">
+            {totalSec} {totalSec === 1 ? "página" : "páginas"}
+            {project.updatedAt && (
+              <> · editado {timeAgo(project.updatedAt)}</>
+            )}
+          </p>
+        </div>
       </Link>
 
       {/* Actions — top-right corner */}
