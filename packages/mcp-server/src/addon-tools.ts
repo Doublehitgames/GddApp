@@ -367,6 +367,10 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     "sellValue",
     "maxSellValue",
     "unlockValue",
+    "buyCurrencyRef",
+    "sellCurrencyRef",
+    "buyCurrencyKey",
+    "sellCurrencyKey",
   ]);
   const productionFieldEnum = z.enum([
     "minOutput",

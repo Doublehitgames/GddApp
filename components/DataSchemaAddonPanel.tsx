@@ -219,6 +219,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     { key: "sellValue", label: "Valor de Venda" },
     { key: "maxSellValue", label: "Valor de Venda Max" },
     { key: "unlockValue", label: "Nível de Desbloqueio" },
+    { key: "buyCurrencyRef", label: "Moeda de Compra (dataId)" },
+    { key: "sellCurrencyRef", label: "Moeda de Venda (dataId)" },
+    { key: "buyCurrencyKey", label: "Moeda de Compra (chave)" },
+    { key: "sellCurrencyKey", label: "Moeda de Venda (chave)" },
   ];
 
   // Only show Economy Link addons from the same section as this Data Schema
@@ -249,9 +253,39 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     return out;
   }, [projects, addon.id, myGroup]);
 
-  const getEconomyLinkValue = (refId: string, field: EconomyLinkFieldKey): number | undefined => {
+  const getSectionDataId = (sectionId: string): string | undefined => {
+    for (const project of projects) {
+      const sec = (project.sections || []).find((s: any) => s.id === sectionId);
+      if (sec) return (sec as any).dataId as string | undefined;
+    }
+    return undefined;
+  };
+
+  const getSectionCurrencyCode = (sectionId: string): string | undefined => {
+    for (const project of projects) {
+      const sec = (project.sections || []).find((s: any) => s.id === sectionId);
+      if (!sec) continue;
+      const currAddon = ((sec as any).addons || []).find((a: any) => a.type === "currency");
+      if (currAddon) return (currAddon.data as any)?.code as string | undefined;
+    }
+    return undefined;
+  };
+
+  const getEconomyLinkValue = (refId: string, field: EconomyLinkFieldKey): number | string | undefined => {
     const found = economyLinkRefOptions.find((opt) => opt.refId === refId);
     if (!found) return undefined;
+    if (field === "buyCurrencyRef" || field === "sellCurrencyRef") {
+      const refField = field === "buyCurrencyRef" ? "buyCurrencyRef" : "sellCurrencyRef";
+      const currencySecId = found.data[refField] as string | undefined;
+      if (!currencySecId) return undefined;
+      return getSectionDataId(currencySecId);
+    }
+    if (field === "buyCurrencyKey" || field === "sellCurrencyKey") {
+      const refField = field === "buyCurrencyKey" ? "buyCurrencyRef" : "sellCurrencyRef";
+      const currencySecId = found.data[refField] as string | undefined;
+      if (!currencySecId) return undefined;
+      return getSectionCurrencyCode(currencySecId);
+    }
     return found.data[field] as number | undefined;
   };
 
@@ -547,12 +581,13 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                 const isLinkedToProduction = Boolean(entry.productionRef && entry.productionField);
                 const isLinkedToPageDataId = Boolean(entry.usePageDataId);
                 const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToPageDataId;
+                const isCurrencyRefField = entry.economyLinkField === "buyCurrencyRef" || entry.economyLinkField === "sellCurrencyRef" || entry.economyLinkField === "buyCurrencyKey" || entry.economyLinkField === "sellCurrencyKey";
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
                     ? "float"
                     : "int"
                   : null;
-                const effectiveValueType = isLinkedToPageDataId ? "string" : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
+                const effectiveValueType = (isLinkedToPageDataId || isCurrencyRefField) ? "string" : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
                 const supportsBoundsByType = effectiveValueType !== "boolean" && effectiveValueType !== "string";
                 const useBounds = supportsBoundsByType && (entry.min != null || entry.max != null);
                 const effectiveLabel = resolveEntryLabel(entry, availableLibraryFields);
@@ -876,9 +911,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                         const nextRef = event.target.value;
                                         const field = entry.economyLinkField ?? "buyValue";
                                         const linkedValue = getEconomyLinkValue(nextRef, field);
+                                        const isCurrRef = field === "buyCurrencyRef" || field === "sellCurrencyRef" || field === "buyCurrencyKey" || field === "sellCurrencyKey";
                                         updateEntry(entry.id, {
                                           economyLinkRef: nextRef,
-                                          value: linkedValue ?? 0,
+                                          value: linkedValue ?? (isCurrRef ? "" : 0),
                                         });
                                       }}
                                       className={INPUT_CLASS}
@@ -896,10 +932,12 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                       value={entry.economyLinkField ?? "buyValue"}
                                       onChange={(event) => {
                                         const field = event.target.value as EconomyLinkFieldKey;
+                                        const isCurrRef = field === "buyCurrencyRef" || field === "sellCurrencyRef" || field === "buyCurrencyKey" || field === "sellCurrencyKey";
                                         const linkedValue = getEconomyLinkValue(entry.economyLinkRef!, field);
                                         updateEntry(entry.id, {
                                           economyLinkField: field,
-                                          value: linkedValue ?? 0,
+                                          valueType: isCurrRef ? "string" : "int",
+                                          value: linkedValue ?? (isCurrRef ? "" : 0),
                                         });
                                       }}
                                       className={INPUT_CLASS}
@@ -967,7 +1005,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             {isReadOnlyValue ? (
                               <div className="flex items-center gap-3 py-1">
                                 <span className="text-xs text-gray-400">Tipo:</span>
-                                <span className="text-xs font-mono text-gray-300">{isLinkedToPageDataId ? "string" : "int"}</span>
+                                <span className="text-xs font-mono text-gray-300">{(isLinkedToPageDataId || isCurrencyRefField) ? "string" : "int"}</span>
                                 <span className="text-xs text-gray-400">Valor:</span>
                                 <span className="text-sm font-mono font-medium text-indigo-300">
                                   {isLinkedToPageDataId

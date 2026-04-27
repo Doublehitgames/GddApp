@@ -314,7 +314,11 @@ export type EconomyLinkFieldKey =
   | "minBuyValue"
   | "sellValue"
   | "maxSellValue"
-  | "unlockValue";
+  | "unlockValue"
+  | "buyCurrencyRef"
+  | "sellCurrencyRef"
+  | "buyCurrencyKey"
+  | "sellCurrencyKey";
 
 export type ProductionFieldKey =
   | "minOutput"

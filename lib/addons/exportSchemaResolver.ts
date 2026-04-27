@@ -483,7 +483,8 @@ function findDataSchemaEntry(
 function resolveEntryEffectiveValue(
   entry: DataSchemaEntry,
   allAddons: SectionAddon[],
-  sectionDataId?: string
+  sectionDataId?: string,
+  sectionLookup?: SectionLookup
 ): string | number | boolean {
   // Page DataID binding
   if (entry.usePageDataId) {
@@ -495,7 +496,22 @@ function resolveEntryEffectiveValue(
     const elAddon = allAddons.find((a) => a.type === "economyLink" && a.id === entry.economyLinkRef);
     if (elAddon) {
       const el = elAddon.data as EconomyLinkAddonDraft;
-      const directValue = el[entry.economyLinkField as keyof EconomyLinkAddonDraft];
+      const field = entry.economyLinkField;
+      if (field === "buyCurrencyRef" || field === "sellCurrencyRef") {
+        const refField = field === "buyCurrencyRef" ? "buyCurrencyRef" : "sellCurrencyRef";
+        const currencySecId = el[refField] as string | undefined;
+        return resolveRefToDataId(currencySecId, sectionLookup);
+      }
+      if (field === "buyCurrencyKey" || field === "sellCurrencyKey") {
+        const refField = field === "buyCurrencyKey" ? "buyCurrencyRef" : "sellCurrencyRef";
+        const currencySecId = el[refField] as string | undefined;
+        if (!currencySecId || !sectionLookup) return entry.value;
+        const secEntry = sectionLookup.get(currencySecId);
+        if (!secEntry) return entry.value;
+        const currAddon = secEntry.addons.find((a) => a.type === "currency");
+        return (currAddon?.data as any)?.code ?? entry.value;
+      }
+      const directValue = el[field as keyof EconomyLinkAddonDraft];
       if (typeof directValue === "number") return directValue;
     }
   }
@@ -544,7 +560,7 @@ function resolveBinding(
     case "dataSchema": {
       const entry = findDataSchemaEntry(ctx.sectionAddons, binding);
       if (!entry) return null;
-      return resolveEntryEffectiveValue(entry, ctx.sectionAddons, ctx.sectionDataId);
+      return resolveEntryEffectiveValue(entry, ctx.sectionAddons, ctx.sectionDataId, ctx.sectionLookup);
     }
 
     case "rowLevel":

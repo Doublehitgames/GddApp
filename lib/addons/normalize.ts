@@ -766,7 +766,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
     const economyLinkRef = typeof rawEntry.economyLinkRef === "string" && rawEntry.economyLinkRef.trim() ? rawEntry.economyLinkRef.trim() : undefined;
     const rawEconomyField = typeof rawEntry.economyLinkField === "string" ? rawEntry.economyLinkField : undefined;
     const economyLinkField =
-      rawEconomyField === "buyValue" || rawEconomyField === "minBuyValue" || rawEconomyField === "sellValue" || rawEconomyField === "maxSellValue" || rawEconomyField === "unlockValue"
+      rawEconomyField === "buyValue" || rawEconomyField === "minBuyValue" || rawEconomyField === "sellValue" || rawEconomyField === "maxSellValue" || rawEconomyField === "unlockValue" || rawEconomyField === "buyCurrencyRef" || rawEconomyField === "sellCurrencyRef" || rawEconomyField === "buyCurrencyKey" || rawEconomyField === "sellCurrencyKey"
         ? rawEconomyField
         : undefined;
     const productionRef = typeof rawEntry.productionRef === "string" && rawEntry.productionRef.trim() ? rawEntry.productionRef.trim() : undefined;
