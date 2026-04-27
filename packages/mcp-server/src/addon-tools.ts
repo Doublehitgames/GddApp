@@ -133,15 +133,26 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   // ── 3. Economy Link ─────────────────────────────────────────────
 
+  const progressionLinkSchema = z.object({
+    progressionAddonId: z.string(),
+    columnId: z.string(),
+    columnName: z.string(),
+  }).optional();
+
   const economyLinkFields = {
     hasBuyConfig: z.boolean().optional().default(true).describe("Enable buy configuration"),
     buyCurrencyRef: z.string().optional().describe("Currency section ID for buy price"),
     buyValue: z.number().optional().describe("Buy price"),
+    buyValueProgressionLink: progressionLinkSchema.describe("Link buyValue to a progression table column (resolved by unlockValue)"),
     minBuyValue: z.number().optional().describe("Minimum buy price"),
+    minBuyValueProgressionLink: progressionLinkSchema.describe("Link minBuyValue to a progression table column"),
     hasSellConfig: z.boolean().optional().default(true).describe("Enable sell configuration"),
     sellCurrencyRef: z.string().optional().describe("Currency section ID for sell price"),
     sellValue: z.number().optional().describe("Sell price"),
+    sellValueProgressionLink: progressionLinkSchema.describe("Link sellValue to a progression table column"),
     maxSellValue: z.number().optional().describe("Maximum sell price"),
+    maxSellValueProgressionLink: progressionLinkSchema.describe("Link maxSellValue to a progression table column"),
+    priceMultiplier: z.number().optional().describe("Multiplier applied to all buy/sell values (table or fixed). Default 1."),
     hasProductionConfig: z.boolean().optional().default(false).describe("Enable production config"),
     hasUnlockConfig: z.boolean().optional().default(false).describe("Enable unlock config"),
     unlockRef: z.string().optional().describe("Reference to unlock requirement"),

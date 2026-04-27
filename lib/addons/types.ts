@@ -209,13 +209,19 @@ export type EconomyLinkAddonDraft = {
   hasBuyConfig?: boolean;
   buyCurrencyRef?: string;
   buyValue?: number;
+  buyValueProgressionLink?: ProductionProgressionLink;
   minBuyValue?: number;
+  minBuyValueProgressionLink?: ProductionProgressionLink;
   buyModifiers: EconomyModifierRef[];
   hasSellConfig?: boolean;
   sellCurrencyRef?: string;
   sellValue?: number;
+  sellValueProgressionLink?: ProductionProgressionLink;
   maxSellValue?: number;
+  maxSellValueProgressionLink?: ProductionProgressionLink;
   sellModifiers: EconomyModifierRef[];
+  /** Multiplies all buy and sell values (from fixed or table). Default 1. */
+  priceMultiplier?: number;
   hasProductionConfig?: boolean;
   producedItemRef?: string;
   produceMin?: number;
