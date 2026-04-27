@@ -432,8 +432,8 @@
   "auth": {
     "login": {
       "title": "Sign in to your account",
-      "subtitleLogin": "Sign in to your account",
-      "subtitleSignup": "Create your free account",
+      "subtitleLogin": "Doc and game finally speak the same language.",
+      "subtitleSignup": "A GDD that doesn't die in the first week of production.",
       "tabLogin": "Sign in",
       "tabSignup": "Create account",
       "name": "Name",
@@ -458,7 +458,7 @@
   },
   "home": {
     "workspaceTag": "Game Design Workspace",
-    "subtitle": "Organize your projects quickly with AI and manual editing.",
+    "subtitle": "A GDD that doesn't die in the first week of production.",
     "actions": {
       "aiSettings": "AI settings",
       "persistence": "Persistence"

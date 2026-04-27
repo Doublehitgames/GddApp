@@ -432,8 +432,8 @@
   "auth": {
     "login": {
       "title": "Entre na sua conta",
-      "subtitleLogin": "Entre na sua conta",
-      "subtitleSignup": "Crie sua conta grátis",
+      "subtitleLogin": "Doc e jogo passam a falar a mesma língua.",
+      "subtitleSignup": "GDD que não morre na primeira semana de produção.",
       "tabLogin": "Entrar",
       "tabSignup": "Criar conta",
       "name": "Nome",
@@ -458,7 +458,7 @@
   },
   "home": {
     "workspaceTag": "Game Design Workspace",
-    "subtitle": "Organize seus projetos de forma rápida com IA e edição manual.",
+    "subtitle": "GDD que não morre na primeira semana de produção.",
     "actions": {
       "aiSettings": "Configurações de IA",
       "persistence": "Persistência"
