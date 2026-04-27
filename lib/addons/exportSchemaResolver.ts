@@ -523,7 +523,13 @@ function resolveEntryEffectiveValue(
         const multiplier = typeof el.priceMultiplier === "number" && el.priceMultiplier > 0 ? el.priceMultiplier : 1;
         const link = el[linkField] as { progressionAddonId: string; columnId: string } | undefined;
         if (link && el.unlockValue != null) {
-          const progAddon = allAddons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+          let progAddon = allAddons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+          if (!progAddon && sectionLookup) {
+            for (const secEntry of sectionLookup.values()) {
+              const found = secEntry.addons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+              if (found) { progAddon = found; break; }
+            }
+          }
           if (progAddon) {
             const row = ((progAddon.data as any).rows || []).find((r: any) => r.level === el.unlockValue);
             if (row) {

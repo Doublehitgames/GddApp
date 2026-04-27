@@ -51,6 +51,7 @@ type ProgressionColumnOption = {
   columnId: string;
   columnName: string;
   label: string;
+  sectionName: string;
   startLevel: number;
   endLevel: number;
   rowsByLevel: Map<number, number>;
@@ -258,32 +259,55 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   const progressionColumnOptions = useMemo<ProgressionColumnOption[]>(() => {
     const out: ProgressionColumnOption[] = [];
     if (!currentSection) return out;
-    for (const sa of currentSection.addons || []) {
-      if (sa.type !== "progressionTable") continue;
-      const name = sa.name?.trim() || "Progression";
-      const startLevel = Math.max(1, Math.floor(sa.data.startLevel || 1));
-      const endLevel = Math.max(startLevel, Math.floor(sa.data.endLevel || startLevel));
-      for (const col of sa.data.columns || []) {
-        const rowsByLevel = new Map<number, number>(
-          (sa.data.rows || []).map((row: any) => [
-            row.level,
-            typeof row.values?.[col.id] === "number" ? row.values[col.id] : 0,
-          ])
-        );
-        out.push({
-          key: `${sa.id}::${col.id}`,
-          progressionAddonId: sa.id,
-          columnId: col.id,
-          columnName: col.name || col.id,
-          label: `${name} → ${col.name || col.id}`,
-          startLevel,
-          endLevel,
-          rowsByLevel,
-        });
+
+    // Allow own section + direct parent only (not grandparent or siblings)
+    const ownId: string = currentSection.id;
+    const parentId: string | undefined = currentSection.parentId;
+
+    for (const project of scopedProjects) {
+      // Build a map of section id → name for parent label
+      const sectionNameById = new Map<string, string>(
+        (project.sections || []).map((s: any) => [s.id as string, (s.name as string | undefined)?.trim() || "Seção"])
+      );
+
+      for (const section of project.sections || [] as any[]) {
+        const secId: string = (section as any).id;
+        const isOwn = secId === ownId;
+        const isParent = parentId != null && secId === parentId;
+        if (!isOwn && !isParent) continue;
+
+        const sectionName = sectionNameById.get(secId) || "Seção";
+        const hint = isParent ? `↑ ${sectionName}` : undefined;
+
+        for (const sa of (section.addons || []) as any[]) {
+          if (sa.type !== "progressionTable") continue;
+          const tableName = sa.name?.trim() || "Progression";
+          const startLevel = Math.max(1, Math.floor(sa.data.startLevel || 1));
+          const endLevel = Math.max(startLevel, Math.floor(sa.data.endLevel || startLevel));
+          for (const col of sa.data.columns || []) {
+            const rowsByLevel = new Map<number, number>(
+              (sa.data.rows || []).map((row: any) => [
+                row.level,
+                typeof row.values?.[col.id] === "number" ? row.values[col.id] : 0,
+              ])
+            );
+            out.push({
+              key: `${sa.id}::${col.id}`,
+              progressionAddonId: sa.id,
+              columnId: col.id,
+              columnName: col.name || col.id,
+              label: `${tableName} → ${col.name || col.id}`,
+              sectionName: hint ?? sectionName,
+              startLevel,
+              endLevel,
+              rowsByLevel,
+            });
+          }
+        }
       }
     }
     return out;
-  }, [currentSection]);
+  }, [scopedProjects, currentSection]);
 
   const progressionColumnOptionByKey = useMemo(
     () => new Map(progressionColumnOptions.map((o) => [o.key, o])),
@@ -291,7 +315,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   );
 
   const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
-    () => progressionColumnOptions.map((o) => ({ key: o.key, label: o.label })),
+    () => progressionColumnOptions.map((o) => ({ key: o.key, label: o.label, hint: o.sectionName })),
     [progressionColumnOptions]
   );
 
