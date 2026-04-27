@@ -7,7 +7,7 @@ order: 0
 
 # Addons
 
-Um **addon** é um bloco semântico dentro de uma página: tem schema próprio, painel de edição e contribui pro JSON exportado. A maioria é singleton (1 por página). As exceções são `richDoc` e `exportSchema`.
+Um **addon** é um bloco semântico dentro de uma página: tem schema próprio, painel de edição e contribui pro JSON exportado. A maioria é singleton (1 por página). As exceções são `richDoc` e `remote-config`.
 
 Cada addon abaixo tem sua própria página de referência. Os links levam pra elas.
 
@@ -89,8 +89,8 @@ Tudo que envolve stats e abilities do jogo.
   <FeatureCard emoji="📝" title="richDoc" href="/docs/referencia/addons/rich-doc">
     Documento rico estilo Notion com títulos, listas, imagens, embeds. *(em breve)*
   </FeatureCard>
-  <FeatureCard emoji="📤" title="exportSchema" href="/docs/referencia/addons/export-schema">
-    Exporta o JSON final pro motor consumir. *(em breve)*
+  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
+    Desenha o JSON que o motor vai receber e exporta direto do GDD.
   </FeatureCard>
 </div>
 
@@ -98,5 +98,5 @@ Tudo que envolve stats e abilities do jogo.
   Quase todos os addons só permitem **1 instância por página**. Isso garante
   que refs internas (Skills → Modifiers da mesma página) sempre tenham um
   alvo único. As exceções são `richDoc` (você pode quebrar conteúdo em vários
-  blocos) e `exportSchema` (uma página pode produzir múltiplos arquivos JSON).
+  blocos) e `remote-config` (uma página pode produzir múltiplos arquivos JSON).
 </Callout>
