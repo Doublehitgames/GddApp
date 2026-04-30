@@ -176,9 +176,14 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
   if (typeof value.name !== "string") return null;
 
   const buyValue = asPositiveIntegerOrUndefined(value.buyValue);
+  const buyValueProgressionLink = normalizeProductionProgressionLink(value.buyValueProgressionLink);
   const minBuyValue = asPositiveIntegerOrUndefined(value.minBuyValue);
+  const minBuyValueProgressionLink = normalizeProductionProgressionLink(value.minBuyValueProgressionLink);
   const sellValue = asPositiveIntegerOrUndefined(value.sellValue);
+  const sellValueProgressionLink = normalizeProductionProgressionLink(value.sellValueProgressionLink);
   const maxSellValue = asPositiveIntegerOrUndefined(value.maxSellValue);
+  const maxSellValueProgressionLink = normalizeProductionProgressionLink(value.maxSellValueProgressionLink);
+  const rawPriceMultiplier = typeof value.priceMultiplier === "number" && Number.isFinite(value.priceMultiplier) && value.priceMultiplier > 0 ? value.priceMultiplier : undefined;
   const produceMin = asPositiveIntegerOrUndefined(value.produceMin);
   const produceMax = asPositiveIntegerOrUndefined(value.produceMax);
   const normalizedProduceMin = produceMin == null ? undefined : produceMin;
@@ -225,13 +230,18 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     hasBuyConfig,
     buyCurrencyRef: buyCurrencyRef || undefined,
     buyValue,
+    buyValueProgressionLink,
     minBuyValue,
+    minBuyValueProgressionLink,
     buyModifiers,
     hasSellConfig,
     sellCurrencyRef: sellCurrencyRef || undefined,
     sellValue,
+    sellValueProgressionLink,
     maxSellValue,
+    maxSellValueProgressionLink,
     sellModifiers,
+    priceMultiplier: rawPriceMultiplier,
     hasProductionConfig,
     producedItemRef: producedItemRef || undefined,
     produceMin: normalizedProduceMin,

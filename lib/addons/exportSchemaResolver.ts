@@ -511,6 +511,36 @@ function resolveEntryEffectiveValue(
         const currAddon = secEntry.addons.find((a) => a.type === "currency");
         return (currAddon?.data as any)?.code ?? entry.value;
       }
+      // Numeric fields: resolve progression link then apply priceMultiplier
+      const progressionLinkMap: Partial<Record<string, keyof EconomyLinkAddonDraft>> = {
+        buyValue: "buyValueProgressionLink",
+        minBuyValue: "minBuyValueProgressionLink",
+        sellValue: "sellValueProgressionLink",
+        maxSellValue: "maxSellValueProgressionLink",
+      };
+      const linkField = progressionLinkMap[field];
+      if (linkField) {
+        const multiplier = typeof el.priceMultiplier === "number" && el.priceMultiplier > 0 ? el.priceMultiplier : 1;
+        const link = el[linkField] as { progressionAddonId: string; columnId: string } | undefined;
+        if (link && el.unlockValue != null) {
+          let progAddon = allAddons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+          if (!progAddon && sectionLookup) {
+            for (const secEntry of sectionLookup.values()) {
+              const found = secEntry.addons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+              if (found) { progAddon = found; break; }
+            }
+          }
+          if (progAddon) {
+            const row = ((progAddon.data as any).rows || []).find((r: any) => r.level === el.unlockValue);
+            if (row) {
+              const colVal = row.values?.[link.columnId];
+              if (typeof colVal === "number") return Math.floor(colVal * multiplier);
+            }
+          }
+        }
+        const directValue = el[field as keyof EconomyLinkAddonDraft];
+        if (typeof directValue === "number") return multiplier !== 1 ? Math.floor(directValue * multiplier) : directValue;
+      }
       const directValue = el[field as keyof EconomyLinkAddonDraft];
       if (typeof directValue === "number") return directValue;
     }

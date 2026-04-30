@@ -271,6 +271,15 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     return undefined;
   };
 
+  const getEconomyLinkSectionAddons = (addonId: string): any[] => {
+    for (const project of projects) {
+      for (const sec of project.sections || []) {
+        if (((sec as any).addons || []).some((a: any) => a.id === addonId)) return (sec as any).addons || [];
+      }
+    }
+    return [];
+  };
+
   const getEconomyLinkValue = (refId: string, field: EconomyLinkFieldKey): number | string | undefined => {
     const found = economyLinkRefOptions.find((opt) => opt.refId === refId);
     if (!found) return undefined;
@@ -286,7 +295,32 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       if (!currencySecId) return undefined;
       return getSectionCurrencyCode(currencySecId);
     }
-    return found.data[field] as number | undefined;
+    // Numeric fields: resolve progression link then apply priceMultiplier
+    const progressionLinkMap: Partial<Record<EconomyLinkFieldKey, keyof typeof found.data>> = {
+      buyValue: "buyValueProgressionLink",
+      minBuyValue: "minBuyValueProgressionLink",
+      sellValue: "sellValueProgressionLink",
+      maxSellValue: "maxSellValueProgressionLink",
+    };
+    const linkField = progressionLinkMap[field];
+    if (linkField) {
+      const multiplier = typeof found.data.priceMultiplier === "number" && found.data.priceMultiplier > 0 ? found.data.priceMultiplier : 1;
+      const link = (found.data as any)[linkField] as { progressionAddonId: string; columnId: string } | undefined;
+      if (link && found.data.unlockValue != null) {
+        const sectionAddons = getEconomyLinkSectionAddons(refId);
+        const progAddon = sectionAddons.find((a: any) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+        if (progAddon) {
+          const row = (progAddon.data.rows || []).find((r: any) => r.level === found.data.unlockValue);
+          if (row) {
+            const colVal = row.values?.[link.columnId];
+            if (typeof colVal === "number") return Math.floor(colVal * multiplier);
+          }
+        }
+      }
+      const direct = found.data[field as keyof typeof found.data] as number | undefined;
+      if (typeof direct === "number") return multiplier !== 1 ? Math.floor(direct * multiplier) : direct;
+    }
+    return found.data[field as keyof typeof found.data] as number | undefined;
   };
 
   const PRODUCTION_FIELDS_BASE: Array<{ key: ProductionFieldKey; label: string; requiresOutput?: "buy" | "sell" | "unlock" }> = [

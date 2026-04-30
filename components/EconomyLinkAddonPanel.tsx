@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-import type { EconomyLinkAddonDraft } from "@/lib/addons/types";
+import { useEffect, useMemo, type ReactNode } from "react";
+import type { EconomyLinkAddonDraft, ProductionProgressionLink } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
-import { CommitOptionalNumberInput } from "@/components/common/CommitInput";
+import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
+import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
 
 interface EconomyLinkAddonPanelProps {
   addon: EconomyLinkAddonDraft;
@@ -43,6 +44,18 @@ function formatDisplayNumber(value: number): string {
   if (Number.isInteger(value)) return String(value);
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
+
+type ProgressionColumnOption = {
+  key: string;
+  progressionAddonId: string;
+  columnId: string;
+  columnName: string;
+  label: string;
+  sectionName: string;
+  startLevel: number;
+  endLevel: number;
+  rowsByLevel: Map<number, number>;
+};
 
 type GlobalVariableCalcMeta = {
   valueType: "percent" | "multiplier" | "flat" | "boolean";
@@ -234,6 +247,125 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     return map;
   }, [scopedProjects]);
 
+  const currentSection = useMemo(() => {
+    for (const project of scopedProjects) {
+      for (const section of project.sections || []) {
+        if ((section.addons || []).some((a: any) => a.id === addon.id)) return section as any;
+      }
+    }
+    return null;
+  }, [scopedProjects, addon.id]);
+
+  const progressionColumnOptions = useMemo<ProgressionColumnOption[]>(() => {
+    const out: ProgressionColumnOption[] = [];
+    if (!currentSection) return out;
+
+    // Allow own section + direct parent only (not grandparent or siblings)
+    const ownId: string = currentSection.id;
+    const parentId: string | undefined = currentSection.parentId;
+
+    for (const project of scopedProjects) {
+      // Build a map of section id → name for parent label
+      const sectionNameById = new Map<string, string>(
+        (project.sections || []).map((s: any) => [s.id as string, (s.name as string | undefined)?.trim() || "Seção"])
+      );
+
+      for (const section of project.sections || [] as any[]) {
+        const secId: string = (section as any).id;
+        const isOwn = secId === ownId;
+        const isParent = parentId != null && secId === parentId;
+        if (!isOwn && !isParent) continue;
+
+        const sectionName = sectionNameById.get(secId) || "Seção";
+        const hint = isParent ? `↑ ${sectionName}` : undefined;
+
+        for (const sa of (section.addons || []) as any[]) {
+          if (sa.type !== "progressionTable") continue;
+          const tableName = sa.name?.trim() || "Progression";
+          const startLevel = Math.max(1, Math.floor(sa.data.startLevel || 1));
+          const endLevel = Math.max(startLevel, Math.floor(sa.data.endLevel || startLevel));
+          for (const col of sa.data.columns || []) {
+            const rowsByLevel = new Map<number, number>(
+              (sa.data.rows || []).map((row: any) => [
+                row.level,
+                typeof row.values?.[col.id] === "number" ? row.values[col.id] : 0,
+              ])
+            );
+            out.push({
+              key: `${sa.id}::${col.id}`,
+              progressionAddonId: sa.id,
+              columnId: col.id,
+              columnName: col.name || col.id,
+              label: `${tableName} → ${col.name || col.id}`,
+              sectionName: hint ?? sectionName,
+              startLevel,
+              endLevel,
+              rowsByLevel,
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }, [scopedProjects, currentSection]);
+
+  const progressionColumnOptionByKey = useMemo(
+    () => new Map(progressionColumnOptions.map((o) => [o.key, o])),
+    [progressionColumnOptions]
+  );
+
+  const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
+    () => progressionColumnOptions.map((o) => ({ key: o.key, label: o.label, hint: o.sectionName })),
+    [progressionColumnOptions]
+  );
+
+  const handleLinkChange = (
+    field: "buyValueProgressionLink" | "minBuyValueProgressionLink" | "sellValueProgressionLink" | "maxSellValueProgressionLink",
+    option: LinkedFieldOption | undefined
+  ) => {
+    if (!option) {
+      commit({ [field]: undefined } as Partial<EconomyLinkAddonDraft>);
+      return;
+    }
+    const found = progressionColumnOptionByKey.get(option.key);
+    if (!found) return;
+    commit({
+      [field]: { progressionAddonId: found.progressionAddonId, columnId: found.columnId, columnName: found.columnName },
+    } as Partial<EconomyLinkAddonDraft>);
+  };
+
+  const buildLevelBadges = (
+    link: ProductionProgressionLink | undefined,
+    multiplier: number
+  ): Array<{ level: number; value: string }> | null => {
+    if (!link) return null;
+    const opt = progressionColumnOptionByKey.get(`${link.progressionAddonId}::${link.columnId}`);
+    if (!opt) return null;
+    const { startLevel, endLevel, rowsByLevel } = opt;
+    const midLevel = Math.floor((startLevel + endLevel) / 2);
+    const levels = [startLevel, midLevel, endLevel].filter((l, i, arr) => arr.indexOf(l) === i);
+    return levels.map((lv) => ({
+      level: lv,
+      value: String(Math.floor((rowsByLevel.get(lv) ?? 0) * multiplier)),
+    }));
+  };
+
+  const renderLevelBadges = (badges: ReturnType<typeof buildLevelBadges>, prefix: string): ReactNode => {
+    if (!badges) return null;
+    return (
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {badges.map((b) => (
+          <span key={`${prefix}-lv-${b.level}`} className="rounded-full border border-gray-500 bg-gray-800 px-2 py-0.5 text-[10px] text-gray-100">
+            Lv{b.level}: {b.value}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  const getLinkKey = (link: ProductionProgressionLink | undefined) =>
+    link ? `${link.progressionAddonId}::${link.columnId}` : "";
+
   const validationMessages = useMemo(() => {
     const messages: string[] = [];
     const hasBuyConfig =
@@ -292,20 +424,63 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     }
     return { min, max };
   }, [addon.unlockRef, xpRefOptions]);
-  const buyEffectiveValue = useMemo(
-    () =>
-      computeEffectiveValue(addon.buyValue, addon.buyModifiers || [], globalVariableByRefId, {
-        min: addon.minBuyValue,
-      }),
-    [addon.buyModifiers, addon.buyValue, addon.minBuyValue, globalVariableByRefId]
+  const resolveLinkedValue = (
+    link: ProductionProgressionLink | undefined,
+    unlockValue: number | undefined,
+    fallback: number | undefined,
+    multiplier: number
+  ): number | undefined => {
+    if (link && unlockValue != null) {
+      const opt = progressionColumnOptionByKey.get(`${link.progressionAddonId}::${link.columnId}`);
+      if (opt) {
+        const tableVal = opt.rowsByLevel.get(unlockValue);
+        if (tableVal != null) return Math.floor(tableVal * multiplier);
+      }
+    }
+    if (fallback != null) return multiplier !== 1 ? Math.floor(fallback * multiplier) : fallback;
+    return undefined;
+  };
+
+  const effectiveMultiplier = addon.priceMultiplier ?? 1;
+  const hasAnyProgressionLink = !!(
+    addon.buyValueProgressionLink ||
+    addon.minBuyValueProgressionLink ||
+    addon.sellValueProgressionLink ||
+    addon.maxSellValueProgressionLink
   );
-  const sellEffectiveValue = useMemo(
-    () =>
-      computeEffectiveValue(addon.sellValue, addon.sellModifiers || [], globalVariableByRefId, {
-        max: addon.maxSellValue,
-      }),
-    [addon.sellModifiers, addon.sellValue, addon.maxSellValue, globalVariableByRefId]
-  );
+
+  const buyEffectiveValue = useMemo(() => {
+    if (addon.buyValueProgressionLink) {
+      return resolveLinkedValue(addon.buyValueProgressionLink, addon.unlockValue, addon.buyValue, effectiveMultiplier);
+    }
+    return computeEffectiveValue(addon.buyValue, addon.buyModifiers || [], globalVariableByRefId, { min: addon.minBuyValue });
+  }, [addon.buyValueProgressionLink, addon.unlockValue, addon.buyValue, addon.priceMultiplier, addon.buyModifiers, addon.minBuyValue, globalVariableByRefId, progressionColumnOptionByKey]);
+
+  const sellEffectiveValue = useMemo(() => {
+    if (addon.sellValueProgressionLink) {
+      return resolveLinkedValue(addon.sellValueProgressionLink, addon.unlockValue, addon.sellValue, effectiveMultiplier);
+    }
+    const computed = computeEffectiveValue(addon.sellValue, addon.sellModifiers || [], globalVariableByRefId, { max: addon.maxSellValue });
+    if (computed != null) return effectiveMultiplier !== 1 ? Math.floor(computed * effectiveMultiplier) : computed;
+    if (addon.sellValue != null) return effectiveMultiplier !== 1 ? Math.floor(addon.sellValue * effectiveMultiplier) : addon.sellValue;
+    return undefined;
+  }, [addon.sellValueProgressionLink, addon.unlockValue, addon.sellValue, addon.priceMultiplier, addon.sellModifiers, addon.maxSellValue, globalVariableByRefId, progressionColumnOptionByKey]);
+
+  // Sync resolved progression-link values back to the store so the summary and
+  // other addons always read the current effective value, not the old stored one.
+  useEffect(() => {
+    if (addon.buyValueProgressionLink && buyEffectiveValue != null && buyEffectiveValue !== addon.buyValue) {
+      commit({ buyValue: buyEffectiveValue });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyEffectiveValue, addon.buyValueProgressionLink]);
+
+  useEffect(() => {
+    if (addon.sellValueProgressionLink && sellEffectiveValue != null && sellEffectiveValue !== addon.sellValue) {
+      commit({ sellValue: sellEffectiveValue });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellEffectiveValue, addon.sellValueProgressionLink]);
 
   return (
     <section className={PANEL_SHELL_CLASS}>
@@ -338,67 +513,85 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
           <div className="space-y-2">
             {hasBuyConfig && (
               <>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.buyCurrency", "Moeda de compra")}</span>
-                    <select
-                      value={
-                        addon.buyCurrencyRef
-                          ? buySelectedKnown
-                            ? addon.buyCurrencyRef
-                            : "__invalid__"
-                          : ""
-                      }
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        if (next === "__invalid__") return;
-                        commit({ buyCurrencyRef: next || undefined });
-                      }}
-                      className={`${INPUT_CLASS} mb-2`}
-                    >
-                      <option value="">{t("economyLinkAddon.selectNone", "Sem referencia")}</option>
-                      {addon.buyCurrencyRef && !buySelectedKnown && (
-                        <option value="__invalid__">
-                          {t("economyLinkAddon.invalidBuyCurrencyRef", "Referencia invalida (moeda nao encontrada)")}
-                        </option>
-                      )}
-                      {currencyRefOptions.map((option) => (
-                        <option key={option.refId} value={option.refId}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-gray-400">
-                      {buyEffectiveValue != null
-                        ? `${t("economyLinkAddon.buyValue", "Valor de compra")}: ${formatDisplayNumber(buyEffectiveValue)}`
-                        : t("economyLinkAddon.buyValue", "Valor de compra")}
-                    </span>
-                    <CommitOptionalNumberInput
-                      value={addon.buyValue}
-                      onCommit={(next) => commit({ buyValue: next })}
-                      placeholder="0"
-                      min={0}
-                      integer
-                      step={1}
-                      className={INPUT_CLASS}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-gray-400">
-                      {t("economyLinkAddon.minBuyValue", "Minimo de compra")}
-                    </span>
-                    <CommitOptionalNumberInput
-                      value={addon.minBuyValue}
-                      onCommit={(next) => commit({ minBuyValue: next })}
-                      placeholder="0"
-                      min={0}
-                      integer
-                      step={1}
-                      className={INPUT_CLASS}
-                    />
-                  </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.buyCurrency", "Moeda de compra")}</span>
+                  <select
+                    value={
+                      addon.buyCurrencyRef
+                        ? buySelectedKnown
+                          ? addon.buyCurrencyRef
+                          : "__invalid__"
+                        : ""
+                    }
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (next === "__invalid__") return;
+                      commit({ buyCurrencyRef: next || undefined });
+                    }}
+                    className={`${INPUT_CLASS} mb-2`}
+                  >
+                    <option value="">{t("economyLinkAddon.selectNone", "Sem referencia")}</option>
+                    {addon.buyCurrencyRef && !buySelectedKnown && (
+                      <option value="__invalid__">
+                        {t("economyLinkAddon.invalidBuyCurrencyRef", "Referencia invalida (moeda nao encontrada)")}
+                      </option>
+                    )}
+                    {currencyRefOptions.map((option) => (
+                      <option key={option.refId} value={option.refId}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <LinkedFieldRow
+                    label={buyEffectiveValue != null ? `${t("economyLinkAddon.buyValue", "Valor de compra")}: ${formatDisplayNumber(buyEffectiveValue)}` : t("economyLinkAddon.buyValue", "Valor de compra")}
+                    selectedKey={getLinkKey(addon.buyValueProgressionLink)}
+                    options={linkedFieldOptions}
+                    invalidLabelFallback={addon.buyValueProgressionLink?.columnName}
+                    onChange={(opt) => handleLinkChange("buyValueProgressionLink", opt)}
+                    badges={renderLevelBadges(buildLevelBadges(addon.buyValueProgressionLink, addon.priceMultiplier ?? 1), "buy-val")}
+                  >
+                    {addon.buyValueProgressionLink ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                        {buyEffectiveValue != null ? formatDisplayNumber(buyEffectiveValue) : "—"}
+                      </div>
+                    ) : (
+                      <CommitOptionalNumberInput
+                        value={addon.buyValue}
+                        onCommit={(next) => commit({ buyValue: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    )}
+                  </LinkedFieldRow>
+                  <LinkedFieldRow
+                    label={t("economyLinkAddon.minBuyValue", "Minimo de compra")}
+                    selectedKey={getLinkKey(addon.minBuyValueProgressionLink)}
+                    options={linkedFieldOptions}
+                    invalidLabelFallback={addon.minBuyValueProgressionLink?.columnName}
+                    onChange={(opt) => handleLinkChange("minBuyValueProgressionLink", opt)}
+                    badges={renderLevelBadges(buildLevelBadges(addon.minBuyValueProgressionLink, addon.priceMultiplier ?? 1), "min-buy")}
+                  >
+                    {addon.minBuyValueProgressionLink ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                        {resolveLinkedValue(addon.minBuyValueProgressionLink, addon.unlockValue, addon.minBuyValue, effectiveMultiplier) ?? "—"}
+                      </div>
+                    ) : (
+                      <CommitOptionalNumberInput
+                        value={addon.minBuyValue}
+                        onCommit={(next) => commit({ minBuyValue: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    )}
+                  </LinkedFieldRow>
                 </div>
             <label className="block">
               <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.buyModifiers", "Variaveis de compra (refs, separadas por virgula)")}</span>
@@ -464,70 +657,85 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
           <div className="space-y-2">
             {hasSellConfig && (
               <>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.sellCurrency", "Moeda de venda")}</span>
-                    <select
-                      value={
-                        addon.sellCurrencyRef
-                          ? sellSelectedKnown
-                            ? addon.sellCurrencyRef
-                            : "__invalid__"
-                          : ""
-                      }
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        if (next === "__invalid__") return;
-                        commit({ sellCurrencyRef: next || undefined });
-                      }}
-                      className={`${INPUT_CLASS} mb-2`}
-                    >
-                      <option value="">{t("economyLinkAddon.selectNone", "Sem referencia")}</option>
-                      {addon.sellCurrencyRef && !sellSelectedKnown && (
-                        <option value="__invalid__">
-                          {t("economyLinkAddon.invalidSellCurrencyRef", "Referencia invalida (moeda nao encontrada)")}
-                        </option>
-                      )}
-                      {currencyRefOptions.map((option) => (
-                        <option key={option.refId} value={option.refId}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-2 text-xs text-gray-400">
-                      <span>{t("economyLinkAddon.sellValue", "Valor de venda")}</span>
-                      {sellEffectiveValue != null && (
-                        <span className="rounded-full border border-emerald-500/40 bg-emerald-900/25 px-2 py-0.5 text-[10px] text-emerald-200">
-                          $ {formatDisplayNumber(sellEffectiveValue)}
-                        </span>
-                      )}
-                    </span>
-                    <CommitOptionalNumberInput
-                      value={addon.sellValue}
-                      onCommit={(next) => commit({ sellValue: next })}
-                      placeholder="0"
-                      min={0}
-                      integer
-                      step={1}
-                      className={INPUT_CLASS}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-gray-400">
-                      {t("economyLinkAddon.maxSellValue", "Maximo de venda")}
-                    </span>
-                    <CommitOptionalNumberInput
-                      value={addon.maxSellValue}
-                      onCommit={(next) => commit({ maxSellValue: next })}
-                      placeholder="0"
-                      min={0}
-                      integer
-                      step={1}
-                      className={INPUT_CLASS}
-                    />
-                  </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.sellCurrency", "Moeda de venda")}</span>
+                  <select
+                    value={
+                      addon.sellCurrencyRef
+                        ? sellSelectedKnown
+                          ? addon.sellCurrencyRef
+                          : "__invalid__"
+                        : ""
+                    }
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (next === "__invalid__") return;
+                      commit({ sellCurrencyRef: next || undefined });
+                    }}
+                    className={`${INPUT_CLASS} mb-2`}
+                  >
+                    <option value="">{t("economyLinkAddon.selectNone", "Sem referencia")}</option>
+                    {addon.sellCurrencyRef && !sellSelectedKnown && (
+                      <option value="__invalid__">
+                        {t("economyLinkAddon.invalidSellCurrencyRef", "Referencia invalida (moeda nao encontrada)")}
+                      </option>
+                    )}
+                    {currencyRefOptions.map((option) => (
+                      <option key={option.refId} value={option.refId}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <LinkedFieldRow
+                    label={sellEffectiveValue != null ? `${t("economyLinkAddon.sellValue", "Valor de venda")}: ${formatDisplayNumber(sellEffectiveValue)}` : t("economyLinkAddon.sellValue", "Valor de venda")}
+                    selectedKey={getLinkKey(addon.sellValueProgressionLink)}
+                    options={linkedFieldOptions}
+                    invalidLabelFallback={addon.sellValueProgressionLink?.columnName}
+                    onChange={(opt) => handleLinkChange("sellValueProgressionLink", opt)}
+                    badges={renderLevelBadges(buildLevelBadges(addon.sellValueProgressionLink, addon.priceMultiplier ?? 1), "sell-val")}
+                  >
+                    {addon.sellValueProgressionLink ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                        {sellEffectiveValue != null ? formatDisplayNumber(sellEffectiveValue) : "—"}
+                      </div>
+                    ) : (
+                      <CommitOptionalNumberInput
+                        value={addon.sellValue}
+                        onCommit={(next) => commit({ sellValue: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    )}
+                  </LinkedFieldRow>
+                  <LinkedFieldRow
+                    label={t("economyLinkAddon.maxSellValue", "Maximo de venda")}
+                    selectedKey={getLinkKey(addon.maxSellValueProgressionLink)}
+                    options={linkedFieldOptions}
+                    invalidLabelFallback={addon.maxSellValueProgressionLink?.columnName}
+                    onChange={(opt) => handleLinkChange("maxSellValueProgressionLink", opt)}
+                    badges={renderLevelBadges(buildLevelBadges(addon.maxSellValueProgressionLink, addon.priceMultiplier ?? 1), "max-sell")}
+                  >
+                    {addon.maxSellValueProgressionLink ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                        {resolveLinkedValue(addon.maxSellValueProgressionLink, addon.unlockValue, addon.maxSellValue, effectiveMultiplier) ?? "—"}
+                      </div>
+                    ) : (
+                      <CommitOptionalNumberInput
+                        value={addon.maxSellValue}
+                        onCommit={(next) => commit({ maxSellValue: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    )}
+                  </LinkedFieldRow>
                 </div>
             <label className="block">
               {sellModifierOptions.length > 0 && (
@@ -563,6 +771,34 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
             )}
           </div>
         </div>
+        {(addon.buyValueProgressionLink || addon.minBuyValueProgressionLink || addon.sellValueProgressionLink || addon.maxSellValueProgressionLink) && (
+          <div className={PANEL_BLOCK_CLASS}>
+            <h4 className="mb-2 text-xs uppercase tracking-wide text-gray-400">
+              {t("economyLinkAddon.priceMultiplierTitle", "Multiplicador de Preço")}
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2 items-end">
+              <label className="block">
+                <span className="mb-1 block text-xs text-gray-400">
+                  {t("economyLinkAddon.priceMultiplierLabel", "Multiplicador")}
+                  {addon.priceMultiplier != null && addon.priceMultiplier !== 1
+                    ? ` (×${formatDisplayNumber(addon.priceMultiplier)})`
+                    : ` (${t("economyLinkAddon.priceMultiplierDefault", "padrão: ×1")})`}
+                </span>
+                <CommitNumberInput
+                  value={addon.priceMultiplier ?? 1}
+                  onCommit={(next) => commit({ priceMultiplier: next === 1 ? undefined : next })}
+                  min={0.01}
+                  step={0.05}
+                  className={INPUT_CLASS}
+                />
+              </label>
+              <p className="text-[11px] text-gray-500 pb-2">
+                Aplica um fator a todos os valores de compra e venda (tabela ou fixo). Use para diferenciar itens na mesma curva global.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className={PANEL_BLOCK_CLASS}>
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs uppercase tracking-wide text-gray-400">
@@ -657,7 +893,23 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     />
                   </label>
                 </div>
+                {hasAnyProgressionLink && (
+                  <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-900/20 px-3 py-2 text-xs text-blue-200">
+                    <span className="mt-0.5 shrink-0">ℹ</span>
+                    <span>
+                      {t("economyLinkAddon.unlockProgressionHint", "Este nível está sendo usado como índice nas curvas de preço vinculadas. Altere o nível para ver os valores atualizados automaticamente.")}
+                    </span>
+                  </div>
+                )}
               </>
+            )}
+            {hasAnyProgressionLink && !hasUnlockConfig && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+                <span className="mt-0.5 shrink-0">⚠</span>
+                <span>
+                  {t("economyLinkAddon.unlockProgressionWarning", "Há curvas de preço vinculadas, mas o Desbloqueio está desativado. Ative-o e defina um nível para que os vínculos possam resolver os valores.")}
+                </span>
+              </div>
             )}
           </div>
         </div>

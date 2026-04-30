@@ -873,6 +873,34 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     setClampSummaryByColumnId({});
   };
 
+  const duplicateColumn = (columnId: string) => {
+    const source = columns.find((column) => column.id === columnId);
+    if (!source) return;
+    const newId = `col_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const copy = { ...source, id: newId, name: `${source.name} (cópia)`, libraryRef: undefined };
+    const sourceIndex = columns.findIndex((column) => column.id === columnId);
+    const nextColumns = [
+      ...columns.slice(0, sourceIndex + 1),
+      copy,
+      ...columns.slice(sourceIndex + 1),
+    ];
+    // Copy row values from source column to the new column
+    const nextRows = rows.map((row) => ({
+      ...row,
+      values: { ...row.values, [newId]: row.values[columnId] ?? 0 },
+    }));
+    // Copy overrides from source column to the new column
+    const nextOverrides: Record<string, Record<string, number>> = {};
+    for (const [levelKey, colMap] of Object.entries(currentOverrides)) {
+      nextOverrides[levelKey] = columnId in colMap
+        ? { ...colMap, [newId]: colMap[columnId] }
+        : { ...colMap };
+    }
+    commit({ columns: nextColumns, rows: nextRows, overrides: nextOverrides });
+    setLastGeneratedColumnId(null);
+    setClampSummaryByColumnId({});
+  };
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -1410,6 +1438,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               )}
                             </div>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => duplicateColumn(column.id)}
+                            className="rounded-lg border border-gray-600 bg-gray-800/60 px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-700/60"
+                          >
+                            {t("progressionTableAddon.duplicateColumnButton", "Duplicar")}
+                          </button>
                           <button
                             type="button"
                             onClick={() => removeColumn(column.id)}
