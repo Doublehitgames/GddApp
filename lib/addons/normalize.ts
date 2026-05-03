@@ -652,17 +652,21 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   const maxOutputRaw = asPositiveIntegerOrUndefined(value.maxOutput);
   const maxOutput = maxOutputRaw == null ? undefined : minOutput == null ? maxOutputRaw : Math.max(minOutput, maxOutputRaw);
   const minOutputProgressionLink = normalizeProductionProgressionLink(value.minOutputProgressionLink);
+  const minOutputSheetsRef = normalizeSheetsCellRef(value.minOutputSheetsRef);
   const maxOutputProgressionLink = normalizeProductionProgressionLink(value.maxOutputProgressionLink);
+  const maxOutputSheetsRef = normalizeSheetsCellRef(value.maxOutputSheetsRef);
   // Time fields keep sub-second precision so e.g. fast-tick recipes (0.5s)
   // and decimal craft timers (1.5s) survive the round-trip.
   const intervalSeconds = asPositiveFloatOrUndefined(value.intervalSeconds);
+  const intervalSecondsProgressionLink = normalizeProductionProgressionLink(value.intervalSecondsProgressionLink);
+  const intervalSecondsSheetsRef = normalizeSheetsCellRef(value.intervalSecondsSheetsRef);
   const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
   const capacity = asPositiveIntegerOrUndefined(value.capacity);
   const capacityProgressionLink = normalizeProductionProgressionLink(value.capacityProgressionLink);
+  const capacitySheetsRef = normalizeSheetsCellRef(value.capacitySheetsRef);
   const ingredients = normalizeProductionItems(value.ingredients);
   const outputs = normalizeProductionItems(value.outputs);
   const craftTimeSeconds = asPositiveFloatOrUndefined(value.craftTimeSeconds);
-  const intervalSecondsProgressionLink = normalizeProductionProgressionLink(value.intervalSecondsProgressionLink);
   const craftTimeSecondsProgressionLink = normalizeProductionProgressionLink(value.craftTimeSecondsProgressionLink);
   const notes = typeof value.notes === "string" ? value.notes : "";
 
@@ -673,13 +677,17 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
     outputRef: outputRef || undefined,
     minOutput,
     minOutputProgressionLink,
+    minOutputSheetsRef,
     maxOutput,
     maxOutputProgressionLink,
+    maxOutputSheetsRef,
     intervalSeconds,
     intervalSecondsProgressionLink,
+    intervalSecondsSheetsRef,
     requiresCollection,
     capacity,
     capacityProgressionLink,
+    capacitySheetsRef,
     ingredients,
     outputs,
     craftTimeSeconds,

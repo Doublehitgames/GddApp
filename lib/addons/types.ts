@@ -281,13 +281,17 @@ export type ProductionAddonDraft = {
   outputRef?: string;
   minOutput?: number;
   minOutputProgressionLink?: ProductionProgressionLink;
+  minOutputSheetsRef?: SheetsCellRef;
   maxOutput?: number;
   maxOutputProgressionLink?: ProductionProgressionLink;
+  maxOutputSheetsRef?: SheetsCellRef;
   intervalSeconds?: number;
   intervalSecondsProgressionLink?: ProductionProgressionLink;
+  intervalSecondsSheetsRef?: SheetsCellRef;
   requiresCollection?: boolean;
   capacity?: number;
   capacityProgressionLink?: ProductionProgressionLink;
+  capacitySheetsRef?: SheetsCellRef;
   // Recipe mode
   ingredients: ProductionIngredient[];
   outputs: ProductionOutput[];

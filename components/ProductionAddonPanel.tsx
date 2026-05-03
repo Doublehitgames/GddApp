@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon } from "@/lib/addons/types";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon, SheetsCellRef } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
@@ -10,6 +10,8 @@ import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
 import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
 import { openQuickNewPage } from "@/components/QuickNewPageModal";
+import { getGoogleSheetsToken, fetchSheetCellValue, parseCellNumber } from "@/lib/googleSheets";
+import { getGoogleClientId } from "@/lib/googleDrivePicker";
 
 interface ProductionAddonPanelProps {
   addon: ProductionAddonDraft;
@@ -159,6 +161,13 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     };
     updateSectionAddon(ownerLocation.projectId, target.sectionId, target.addonId, nextAddon, sectionAuditBy);
   };
+
+  const linkedSpreadsheets = useMemo(() => {
+    if (!currentProjectId) return [];
+    const project = projects.find((p) => p.id === currentProjectId);
+    return project?.linkedSpreadsheets ?? [];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, currentProjectId]);
 
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<
     { sectionId: string; title: string; shortDescription: string } | null
@@ -392,6 +401,49 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     );
   };
 
+  const handleBindSheetsRef = useCallback(
+    async (
+      field: "minOutput" | "maxOutput" | "intervalSeconds" | "capacity",
+      ref: SheetsCellRef
+    ): Promise<void> => {
+      let finalRef = ref;
+      const clientId = await getGoogleClientId();
+      const token = clientId ? await getGoogleSheetsToken(clientId) : null;
+      if (token) {
+        const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
+        if (raw !== null) {
+          const num = parseCellNumber(raw);
+          if (num !== null) {
+            finalRef = { ...ref, cachedValue: num, syncedAt: new Date().toISOString() };
+          } else {
+            throw new Error(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
+          }
+        } else {
+          throw new Error(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
+        }
+      } else {
+        throw new Error("Não foi possível obter autorização do Google.");
+      }
+      const patch: Partial<ProductionAddonDraft> = {
+        [`${field}SheetsRef`]: finalRef,
+      } as Partial<ProductionAddonDraft>;
+      if (finalRef.cachedValue !== null && finalRef.cachedValue !== undefined) {
+        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, finalRef.cachedValue));
+      }
+      commit(patch);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addon],
+  );
+
+  const handleUnbindSheetsRef = useCallback(
+    (field: "minOutput" | "maxOutput" | "intervalSeconds" | "capacity") => {
+      commit({ [`${field}SheetsRef`]: undefined } as Partial<ProductionAddonDraft>);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addon],
+  );
+
   const handleLinkChange = (
     field:
       | "minOutputProgressionLink"
@@ -592,6 +644,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   onChange={(option) => handleLinkChange("minOutputProgressionLink", option)}
                   emptyStateCta={renderEmptyOptionsCta()}
                   badges={renderLevelBadges(minOutputLevelBadges, "min-output")}
+                  sheetsBinding={{
+                    current: addon.minOutputSheetsRef,
+                    onBind: (ref) => handleBindSheetsRef("minOutput", ref),
+                    onUnbind: () => handleUnbindSheetsRef("minOutput"),
+                  }}
+                  spreadsheetRegistry={linkedSpreadsheets}
                 >
                   <CommitOptionalNumberInput
                     value={addon.minOutput}
@@ -600,6 +658,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     step={1}
                     integer
                     className={INPUT_CLASS}
+                    readOnly={!!addon.minOutputSheetsRef}
                   />
                 </LinkedFieldRow>
                 <LinkedFieldRow
@@ -610,6 +669,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   onChange={(option) => handleLinkChange("maxOutputProgressionLink", option)}
                   emptyStateCta={renderEmptyOptionsCta()}
                   badges={renderLevelBadges(maxOutputLevelBadges, "max-output")}
+                  sheetsBinding={{
+                    current: addon.maxOutputSheetsRef,
+                    onBind: (ref) => handleBindSheetsRef("maxOutput", ref),
+                    onUnbind: () => handleUnbindSheetsRef("maxOutput"),
+                  }}
+                  spreadsheetRegistry={linkedSpreadsheets}
                 >
                   <CommitOptionalNumberInput
                     value={addon.maxOutput}
@@ -618,6 +683,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     step={1}
                     integer
                     className={INPUT_CLASS}
+                    readOnly={!!addon.maxOutputSheetsRef}
                   />
                 </LinkedFieldRow>
               </div>
@@ -629,6 +695,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 onChange={(option) => handleLinkChange("intervalSecondsProgressionLink", option)}
                 emptyStateCta={renderEmptyOptionsCta()}
                 badges={renderLevelBadges(intervalLevelBadges, "interval")}
+                sheetsBinding={{
+                  current: addon.intervalSecondsSheetsRef,
+                  onBind: (ref) => handleBindSheetsRef("intervalSeconds", ref),
+                  onUnbind: () => handleUnbindSheetsRef("intervalSeconds"),
+                }}
+                spreadsheetRegistry={linkedSpreadsheets}
               >
                 <CommitOptionalNumberInput
                   value={addon.intervalSeconds}
@@ -636,6 +708,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   min={0}
                   step={0.1}
                   className={INPUT_CLASS}
+                  readOnly={!!addon.intervalSecondsSheetsRef}
                 />
               </LinkedFieldRow>
 
@@ -657,6 +730,12 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     onChange={(option) => handleLinkChange("capacityProgressionLink", option)}
                     emptyStateCta={renderEmptyOptionsCta()}
                     badges={renderLevelBadges(capacityLevelBadges, "capacity")}
+                    sheetsBinding={{
+                      current: addon.capacitySheetsRef,
+                      onBind: (ref) => handleBindSheetsRef("capacity", ref),
+                      onUnbind: () => handleUnbindSheetsRef("capacity"),
+                    }}
+                    spreadsheetRegistry={linkedSpreadsheets}
                   >
                     <CommitOptionalNumberInput
                       value={addon.capacity}
@@ -665,6 +744,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                       step={1}
                       integer
                       className={INPUT_CLASS}
+                      readOnly={!!addon.capacitySheetsRef}
                     />
                   </LinkedFieldRow>
                 </div>
