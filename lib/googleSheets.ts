@@ -132,6 +132,37 @@ export async function fetchSpreadsheetSheets(
 }
 
 /**
+ * Fetches all values from a column range in a Google Sheet.
+ * Range format: "B2:B51" — returns one value per row in the range.
+ * Returns null if the request fails.
+ */
+export async function fetchSheetRangeValues(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+  range: string
+): Promise<(string | number | null)[] | null> {
+  const fullRange = `${sheetName}!${range}`;
+  const encodedRange = encodeURIComponent(fullRange);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodedRange}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // data.values: array of rows; each row is an array of cell values
+    const rawRows: unknown[][] = data.values ?? [];
+    // For a column range, each row has one element (the cell value)
+    return rawRows.map((row) => {
+      const cell = Array.isArray(row) ? row[0] : undefined;
+      if (cell == null || cell === "") return null;
+      return cell as string | number;
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parses a raw cell string value to a number.
  * Handles values like "150", "1,500", "1.500,00" (pt-BR) etc.
  */

@@ -15,8 +15,12 @@ import type {
   ProgressionColumnGenerator,
   ProgressionTableAddonDraft,
   ProgressionTableColumn,
+  ProgressionTableColumnSheetsBinding,
   ProgressionTableRow,
 } from "@/lib/addons/types";
+import { getGoogleSheetsToken, fetchSheetRangeValues, parseSpreadsheetId, parseCellNumber } from "@/lib/googleSheets";
+import { getGoogleClientId } from "@/lib/googleDrivePicker";
+import type { LinkedSpreadsheet } from "@/store/slices/types";
 import { buildProgressionRowsFromRange } from "@/lib/addons/types";
 import {
   applyColumnClamp,
@@ -40,6 +44,29 @@ import {
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
+
+/** Module-level helper: fetches a sheets range and maps raw values to per-row numbers. */
+async function fetchAndMapSheetsValues(
+  binding: ProgressionTableColumnSheetsBinding,
+  rows: ProgressionTableRow[],
+  columnId: string,
+  token: string
+): Promise<{ cachedValues: number[]; rowValues: Record<number, number> } | null> {
+  const rawValues = await fetchSheetRangeValues(token, binding.spreadsheetId, binding.sheetName, binding.range);
+  if (!rawValues) return null;
+  const cachedValues: number[] = [];
+  const rowValues: Record<number, number> = {};
+  rows.forEach((row, i) => {
+    const raw = i < rawValues.length ? rawValues[i] : null;
+    let num: number | null = null;
+    if (typeof raw === "number") num = raw;
+    else if (typeof raw === "string") num = parseCellNumber(raw);
+    const val = num ?? Number(row.values[columnId] ?? 0);
+    cachedValues.push(val);
+    if (num !== null) rowValues[row.level] = num;
+  });
+  return { cachedValues, rowValues };
+}
 const FORMULA_ALLOWED_VARIABLES = new Set(["base", "level", "delta"]);
 const FORMULA_ALLOWED_FUNCTIONS = new Set(["min", "max", "round", "floor", "ceil", "abs", "pow"]);
 const PANEL_SHELL_CLASS = "rounded-2xl border border-gray-700/80 bg-gray-900/70 p-4 md:p-5";
@@ -399,6 +426,15 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [libraryPickerOpenColumnId, setLibraryPickerOpenColumnId] = useState<string | null>(null);
   const libraryPickerRef = useRef<HTMLDivElement | null>(null);
 
+  // ── Sheets binding state ─────────────────────────────────────────────
+  const [syncingColumnIds, setSyncingColumnIds] = useState<Record<string, boolean>>({});
+  const [sheetsSyncErrors, setSheetsSyncErrors] = useState<Record<string, string>>({});
+  const [bindingFormColumnId, setBindingFormColumnId] = useState<string | null>(null);
+  const [sheetsFormRegistryId, setSheetsFormRegistryId] = useState<string>("");
+  const [sheetsFormSheetName, setSheetsFormSheetName] = useState<string>("");
+  const [sheetsFormRange, setSheetsFormRange] = useState<string>("");
+  const [sheetsFormUrl, setSheetsFormUrl] = useState<string>("");
+
   // ── Library linking: collect entries from every fieldLibrary addon in the project ──
   const projects = useProjectStore((state) => state.projects);
   const currentProjectId = useCurrentProjectId();
@@ -435,6 +471,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       }
     }
     return out;
+  }, [projects, currentProjectId]);
+
+  // ── Linked spreadsheets registry (project-level) ──────────────────────
+  const linkedSpreadsheets = useMemo<LinkedSpreadsheet[]>(() => {
+    const project = projects.find((p) => p.id === currentProjectId);
+    return (project as unknown as { linkedSpreadsheets?: LinkedSpreadsheet[] })?.linkedSpreadsheets ?? [];
   }, [projects, currentProjectId]);
 
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
@@ -1170,6 +1212,199 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     setCurveSuggestion((prev) => ({ ...prev, [columnId]: { suggested: false } }));
   };
 
+  // ── Sheets binding handlers ──────────────────────────────────────────
+
+  const openBindingForm = (columnId: string, existingBinding?: ProgressionTableColumnSheetsBinding) => {
+    setBindingFormColumnId(columnId);
+    if (existingBinding) {
+      setSheetsFormSheetName(existingBinding.sheetName);
+      setSheetsFormRange(existingBinding.range);
+      const matchEntry = linkedSpreadsheets.find(
+        (s) => s.spreadsheetId === existingBinding.spreadsheetId
+      );
+      if (matchEntry) {
+        setSheetsFormRegistryId(matchEntry.id);
+        setSheetsFormUrl("");
+      } else {
+        setSheetsFormRegistryId("");
+        setSheetsFormUrl(existingBinding.spreadsheetId);
+      }
+    } else {
+      setSheetsFormRegistryId(linkedSpreadsheets[0]?.id ?? "");
+      setSheetsFormSheetName("");
+      setSheetsFormRange("");
+      setSheetsFormUrl("");
+    }
+    setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
+  };
+
+  const handleUnbindColumn = (columnId: string) => {
+    const nextColumns = columns.map((c) =>
+      c.id === columnId ? { ...c, sheetsBinding: undefined } : c
+    );
+    const nextOverrides = removeColumnOverrides(columnId);
+    commit({ columns: nextColumns, overrides: nextOverrides });
+    setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
+  };
+
+  const handleSyncColumn = async (columnId: string) => {
+    const column = columns.find((c) => c.id === columnId);
+    if (!column?.sheetsBinding) return;
+    setSyncingColumnIds((prev) => ({ ...prev, [columnId]: true }));
+    setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
+    try {
+      const clientId = await getGoogleClientId();
+      if (!clientId) throw new Error(t("progressionTableAddon.sheets.errorNoClientId", "Google Client ID não configurado."));
+      const token = await getGoogleSheetsToken(clientId);
+      if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
+      const result = await fetchAndMapSheetsValues(column.sheetsBinding, rows, columnId, token);
+      if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
+      const { cachedValues, rowValues } = result;
+      let nextOverrides = { ...currentOverrides };
+      Object.entries(rowValues).forEach(([level, val]) => {
+        nextOverrides = {
+          ...nextOverrides,
+          [level]: { ...(nextOverrides[level] ?? {}), [columnId]: val },
+        };
+      });
+      const nextColumns = columns.map((c) =>
+        c.id === columnId
+          ? { ...c, sheetsBinding: { ...c.sheetsBinding!, cachedValues, syncedAt: new Date().toISOString() } }
+          : c
+      );
+      const nextRows = rows.map((row, i) => ({
+        ...row,
+        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? 0 },
+      }));
+      commit({ columns: nextColumns, rows: nextRows, overrides: nextOverrides });
+    } catch (err) {
+      setSheetsSyncErrors((prev) => ({
+        ...prev,
+        [columnId]: err instanceof Error ? err.message : t("progressionTableAddon.sheets.errorSyncGeneric", "Erro inesperado ao sincronizar."),
+      }));
+    } finally {
+      setSyncingColumnIds((prev) => ({ ...prev, [columnId]: false }));
+    }
+  };
+
+  const handleSyncAllColumns = async () => {
+    const boundColumns = columns.filter((c) => c.sheetsBinding);
+    if (boundColumns.length === 0) return;
+    const syncMap: Record<string, boolean> = {};
+    boundColumns.forEach((c) => { syncMap[c.id] = true; });
+    setSyncingColumnIds(syncMap);
+    setSheetsSyncErrors({});
+    let finalColumns = [...columns];
+    let finalRows = [...rows];
+    let finalOverrides = { ...currentOverrides };
+    const errors: Record<string, string> = {};
+    try {
+      const clientId = await getGoogleClientId();
+      if (!clientId) {
+        boundColumns.forEach((c) => { errors[c.id] = t("progressionTableAddon.sheets.errorNoClientId", "Google Client ID não configurado."); });
+        setSheetsSyncErrors(errors);
+        return;
+      }
+      const token = await getGoogleSheetsToken(clientId);
+      if (!token) {
+        boundColumns.forEach((c) => { errors[c.id] = t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."); });
+        setSheetsSyncErrors(errors);
+        return;
+      }
+      for (const col of boundColumns) {
+        if (!col.sheetsBinding) continue;
+        const result = await fetchAndMapSheetsValues(col.sheetsBinding, finalRows, col.id, token);
+        if (!result) { errors[col.id] = t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."); continue; }
+        const { cachedValues, rowValues } = result;
+        Object.entries(rowValues).forEach(([level, val]) => {
+          finalOverrides = {
+            ...finalOverrides,
+            [level]: { ...(finalOverrides[level] ?? {}), [col.id]: val },
+          };
+        });
+        finalColumns = finalColumns.map((c) =>
+          c.id === col.id
+            ? { ...c, sheetsBinding: { ...col.sheetsBinding!, cachedValues, syncedAt: new Date().toISOString() } }
+            : c
+        );
+        finalRows = finalRows.map((row, i) => ({
+          ...row,
+          values: { ...row.values, [col.id]: cachedValues[i] ?? row.values[col.id] ?? 0 },
+        }));
+      }
+      commit({ columns: finalColumns, rows: finalRows, overrides: finalOverrides });
+      if (Object.keys(errors).length > 0) setSheetsSyncErrors(errors);
+    } catch {
+      boundColumns.forEach((c) => { errors[c.id] = t("progressionTableAddon.sheets.errorSyncGeneric", "Erro inesperado ao sincronizar."); });
+      setSheetsSyncErrors(errors);
+    } finally {
+      setSyncingColumnIds({});
+    }
+  };
+
+  const handleBindAndSyncColumn = async (columnId: string) => {
+    let spreadsheetId: string | null = null;
+    if (sheetsFormRegistryId) {
+      const entry = linkedSpreadsheets.find((s) => s.id === sheetsFormRegistryId);
+      if (entry) spreadsheetId = entry.spreadsheetId;
+    }
+    if (!spreadsheetId && sheetsFormUrl.trim()) {
+      spreadsheetId = parseSpreadsheetId(sheetsFormUrl.trim());
+    }
+    if (!spreadsheetId) {
+      setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorInvalidUrl", "URL de planilha inválida.") }));
+      return;
+    }
+    if (!sheetsFormSheetName.trim()) {
+      setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoSheet", "Informe o nome da aba.") }));
+      return;
+    }
+    if (!sheetsFormRange.trim()) {
+      setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoRange", "Informe o intervalo (ex: B2:B51).") }));
+      return;
+    }
+    const binding: ProgressionTableColumnSheetsBinding = {
+      spreadsheetId,
+      sheetName: sheetsFormSheetName.trim(),
+      range: sheetsFormRange.trim(),
+    };
+    setSyncingColumnIds((prev) => ({ ...prev, [columnId]: true }));
+    setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
+    try {
+      const clientId = await getGoogleClientId();
+      if (!clientId) throw new Error(t("progressionTableAddon.sheets.errorNoClientId", "Google Client ID não configurado."));
+      const token = await getGoogleSheetsToken(clientId);
+      if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
+      const result = await fetchAndMapSheetsValues(binding, rows, columnId, token);
+      if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
+      const { cachedValues, rowValues } = result;
+      let nextOverrides = { ...currentOverrides };
+      Object.entries(rowValues).forEach(([level, val]) => {
+        nextOverrides = {
+          ...nextOverrides,
+          [level]: { ...(nextOverrides[level] ?? {}), [columnId]: val },
+        };
+      });
+      const finalBinding = { ...binding, cachedValues, syncedAt: new Date().toISOString() };
+      const nextColumns = columns.map((c) =>
+        c.id === columnId ? { ...c, sheetsBinding: finalBinding } : c
+      );
+      const nextRows = rows.map((row, i) => ({
+        ...row,
+        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? 0 },
+      }));
+      commit({ columns: nextColumns, rows: nextRows, overrides: nextOverrides });
+      setBindingFormColumnId(null);
+    } catch (err) {
+      setSheetsSyncErrors((prev) => ({
+        ...prev,
+        [columnId]: err instanceof Error ? err.message : t("progressionTableAddon.sheets.errorBindGeneric", "Erro inesperado ao vincular."),
+      }));
+    } finally {
+      setSyncingColumnIds((prev) => ({ ...prev, [columnId]: false }));
+    }
+  };
+
   const toggleColumnCollapsed = (columnId: string) => {
     setCollapsedColumns((prev) => ({
       ...prev,
@@ -1239,6 +1474,16 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs text-gray-300">{t("progressionTableAddon.columnsByLevel", "Colunas de atributos por level")}</p>
         <div className="flex items-center gap-2">
+          {columns.some((c) => c.sheetsBinding) && (
+            <button
+              type="button"
+              onClick={handleSyncAllColumns}
+              disabled={Object.values(syncingColumnIds).some(Boolean)}
+              className={`${BUTTON_SECONDARY_CLASS} disabled:opacity-60`}
+            >
+              {Object.values(syncingColumnIds).some(Boolean) ? t("progressionTableAddon.sheets.syncingButton", "⟳ Sincronizando...") : t("progressionTableAddon.sheets.syncAllButton", "⟳ Sincronizar Sheets")}
+            </button>
+          )}
           <button
             type="button"
             onClick={generateAllColumns}
@@ -1315,6 +1560,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                         resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")
                       )}
                       {column.libraryRef && <span className="ml-1 text-[10px] text-sky-400/80" aria-hidden>📎</span>}
+                      {column.sheetsBinding?.syncedAt && (
+                        <span className="ml-1 text-[10px] text-emerald-400/80" aria-hidden title={t("progressionTableAddon.sheets.chipSynced", "Vinculada ao Google Sheets")}>📊</span>
+                      )}
+                      {column.sheetsBinding && !column.sheetsBinding.syncedAt && (
+                        <span className="ml-1 text-[10px] text-yellow-400/80" aria-hidden title={t("progressionTableAddon.sheets.chipNotSynced", "Vinculada ao Sheets — ainda não sincronizada")}>📊</span>
+                      )}
                     </span>
                     <span className="text-[10px] text-gray-400">
                       {t("progressionTableAddon.levelPrefix", "Lv")} {startLevel} {"->"} {t("progressionTableAddon.levelPrefix", "Lv")}{" "}
@@ -1455,6 +1706,150 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </button>
                         </div>
 
+                        {/* ── Sheets binding section ── */}
+                        {column.sheetsBinding ? (
+                          <div className="rounded-lg border border-emerald-700/40 bg-emerald-900/10 p-2.5 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300">
+                                <span aria-hidden>📊</span>
+                                <span>{t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")}</span>
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSyncColumn(column.id)}
+                                  disabled={syncingColumnIds[column.id]}
+                                  className="rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-2.5 py-1 text-[11px] text-emerald-200 hover:bg-emerald-900/40 disabled:opacity-60"
+                                >
+                                  {syncingColumnIds[column.id] ? t("progressionTableAddon.sheets.syncingButton", "⟳ Sincronizando...") : t("progressionTableAddon.sheets.syncButton", "⟳ Sincronizar")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnbindColumn(column.id)}
+                                  className="rounded-lg border border-rose-700/60 bg-rose-900/20 px-2.5 py-1 text-[11px] text-rose-200 hover:bg-rose-900/40"
+                                >
+                                  {t("progressionTableAddon.sheets.unbindButton", "Desvincular")}
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400">
+                              <span className="text-gray-300">{column.sheetsBinding.sheetName}</span>
+                              <span className="mx-1 text-gray-600">·</span>
+                              <span className="font-mono text-gray-300">{column.sheetsBinding.range}</span>
+                            </p>
+                            <p className="text-[10px] text-gray-500">
+                              {column.sheetsBinding.syncedAt
+                                ? t("progressionTableAddon.sheets.lastSyncLabel", "Última sincronização: {date}").replace("{date}", new Date(column.sheetsBinding.syncedAt).toLocaleString())
+                                : t("progressionTableAddon.sheets.neverSynced", "Nunca sincronizado — clique em Sincronizar")}
+                            </p>
+                            {sheetsSyncErrors[column.id] && (
+                              <p className="text-[10px] text-rose-300">{sheetsSyncErrors[column.id]}</p>
+                            )}
+                          </div>
+                        ) : bindingFormColumnId === column.id ? (
+                          <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-2.5 space-y-2">
+                            <p className="text-[11px] font-semibold text-gray-200">📊 {t("progressionTableAddon.sheets.formTitle", "Vincular ao Google Sheets")}</p>
+                            {linkedSpreadsheets.length > 0 && (
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.spreadsheetLabel", "Planilha")}</span>
+                                <select
+                                  value={sheetsFormRegistryId}
+                                  onChange={(e) => { setSheetsFormRegistryId(e.target.value); setSheetsFormSheetName(""); }}
+                                  className={INPUT_CLASS}
+                                >
+                                  {linkedSpreadsheets.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))}
+                                  <option value="">{t("progressionTableAddon.sheets.customUrlOption", "URL personalizada...")}</option>
+                                </select>
+                              </label>
+                            )}
+                            {(!sheetsFormRegistryId || linkedSpreadsheets.length === 0) && (
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.urlLabel", "URL da Planilha")}</span>
+                                <input
+                                  type="text"
+                                  value={sheetsFormUrl}
+                                  onChange={(e) => setSheetsFormUrl(e.target.value)}
+                                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                            )}
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.sheetLabel", "Aba")}</span>
+                                {(() => {
+                                  const registrySheets = linkedSpreadsheets.find((s) => s.id === sheetsFormRegistryId)?.sheets ?? [];
+                                  return registrySheets.length > 0 ? (
+                                    <select
+                                      value={sheetsFormSheetName}
+                                      onChange={(e) => setSheetsFormSheetName(e.target.value)}
+                                      className={INPUT_CLASS}
+                                    >
+                                      <option value="">{t("progressionTableAddon.sheets.sheetSelectPlaceholder", "Selecione...")}</option>
+                                      {registrySheets.map((sh) => (
+                                        <option key={sh} value={sh}>{sh}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={sheetsFormSheetName}
+                                      onChange={(e) => setSheetsFormSheetName(e.target.value)}
+                                      placeholder="Sheet1"
+                                      className={INPUT_CLASS}
+                                    />
+                                  );
+                                })()}
+                              </label>
+                              <label className="block">
+                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.rangeLabel", "Intervalo")}</span>
+                                <input
+                                  type="text"
+                                  value={sheetsFormRange}
+                                  onChange={(e) => setSheetsFormRange(e.target.value)}
+                                  placeholder={t("progressionTableAddon.sheets.rangePlaceholder", "B2:B51")}
+                                  className={INPUT_CLASS}
+                                />
+                              </label>
+                            </div>
+                            {sheetsSyncErrors[column.id] && (
+                              <p className="text-[10px] text-rose-300">{sheetsSyncErrors[column.id]}</p>
+                            )}
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBindingFormColumnId(null);
+                                  setSheetsSyncErrors((prev) => ({ ...prev, [column.id]: "" }));
+                                }}
+                                className={BUTTON_SECONDARY_CLASS}
+                              >
+                                {t("progressionTableAddon.sheets.cancelButton", "Cancelar")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleBindAndSyncColumn(column.id)}
+                                disabled={syncingColumnIds[column.id]}
+                                className="rounded-lg border border-emerald-600 bg-emerald-700/50 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-700 disabled:opacity-60"
+                              >
+                                {syncingColumnIds[column.id] ? t("progressionTableAddon.sheets.bindingButton", "⟳ Vinculando...") : t("progressionTableAddon.sheets.bindButton", "Vincular e Sincronizar")}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openBindingForm(column.id)}
+                            className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800/40 px-2.5 py-1.5 text-[11px] text-gray-400 hover:border-emerald-700/40 hover:bg-emerald-900/10 hover:text-emerald-300 transition-colors"
+                          >
+                            <span aria-hidden>📊</span>
+                            <span>{t("progressionTableAddon.sheets.openFormButton", "Vincular ao Google Sheets")}</span>
+                          </button>
+                        )}
+
+                        {!column.sheetsBinding && (<>
                         <div>
                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                             {t("progressionTableAddon.modeLabel", "Modo")}
@@ -2040,6 +2435,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                             ))}
                           </div>
                         )}
+                        </>)}
                       </div>
 
                       {pasteByColumnId[column.id] != null && (
@@ -2136,7 +2532,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                     <span>{resolveColumnDisplayName(column, availableLibraryColumns) || t("progressionTableAddon.columnFallback", "Coluna")}</span>
                                     {(() => {
                                       const count = getOverrideCount(column.id);
-                                      if (count === 0 || (column.generator?.mode ?? "manual") === "manual") return null;
+                                      if (count === 0 || (column.generator?.mode ?? "manual") === "manual" || column.sheetsBinding) return null;
                                       return (
                                         <span className="flex items-center gap-1.5">
                                           <span className="rounded-full bg-amber-900/40 px-1.5 py-0.5 text-[10px] text-amber-200">
@@ -2176,10 +2572,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                         <CommitNumberInput
                                           value={Number(row.values[column.id] ?? 0)}
                                           onCommit={(next) => updateCell(row.level, column.id, String(next))}
+                                          readOnly={!!column.sheetsBinding}
                                           className={`${INPUT_CLASS} w-64 ${
                                             column.isPercentage ? "pr-6" : ""
                                           } ${
-                                            cellHasOverride
+                                            column.sheetsBinding
+                                              ? "cursor-default border-emerald-600/40 bg-emerald-900/10 text-emerald-100/80 select-none"
+                                              : cellHasOverride
                                               ? "border-amber-600/40 bg-amber-900/10"
                                               : ""
                                           }`}
@@ -2190,7 +2589,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                           </span>
                                         )}
                                       </div>
-                                      {cellHasOverride && (
+                                      {cellHasOverride && !column.sheetsBinding && (
                                         <button
                                           type="button"
                                           onClick={() => resetCellOverride(row.level, column.id)}

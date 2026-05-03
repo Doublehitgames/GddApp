@@ -1,5 +1,15 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
 
+export type ProgressionTableColumnSheetsBinding = {
+  spreadsheetId: string;
+  sheetName: string;
+  /** Cell range, e.g. "B2:B51" — must cover exactly (endLevel - startLevel + 1) cells. */
+  range: string;
+  /** Last synced values, one per level row (index 0 = startLevel). */
+  cachedValues?: number[];
+  syncedAt?: string | null;
+};
+
 export type ProgressionTableColumn = {
   id: string;
   name: string;
@@ -7,6 +17,8 @@ export type ProgressionTableColumn = {
     libraryAddonId: string;
     entryId: string;
   };
+  /** When set, column values come from Google Sheets instead of the generator. */
+  sheetsBinding?: ProgressionTableColumnSheetsBinding;
   generator?: ProgressionColumnGenerator;
   decimals?: number;
   isPercentage?: boolean;

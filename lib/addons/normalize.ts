@@ -27,6 +27,7 @@ import type {
   ProductionFieldKey,
   ProgressionTableAddonDraft,
   ProgressionTableColumn,
+  ProgressionTableColumnSheetsBinding,
   ProgressionTableRow,
   RichDocAddonDraft,
   RichDocBlock,
@@ -91,10 +92,31 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
       }
     }
 
+    // Preserve sheetsBinding if valid
+    let sheetsBinding: ProgressionTableColumnSheetsBinding | undefined;
+    if (
+      isObject(rawColumn.sheetsBinding) &&
+      typeof (rawColumn.sheetsBinding as Record<string, unknown>).spreadsheetId === "string" &&
+      typeof (rawColumn.sheetsBinding as Record<string, unknown>).sheetName === "string" &&
+      typeof (rawColumn.sheetsBinding as Record<string, unknown>).range === "string"
+    ) {
+      const sb = rawColumn.sheetsBinding as Record<string, unknown>;
+      sheetsBinding = {
+        spreadsheetId: (sb.spreadsheetId as string).trim(),
+        sheetName: (sb.sheetName as string).trim(),
+        range: (sb.range as string).trim(),
+        cachedValues: Array.isArray(sb.cachedValues)
+          ? (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
+          : undefined,
+        syncedAt: typeof sb.syncedAt === "string" ? sb.syncedAt : null,
+      };
+    }
+
     const column: ProgressionTableColumn = {
       id,
       name,
       ...(libraryRef ? { libraryRef } : {}),
+      ...(sheetsBinding ? { sheetsBinding } : {}),
       generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" },
       decimals: decimalsValue == null ? 0 : Math.max(0, Math.min(6, Math.floor(decimalsValue))),
       isPercentage,
