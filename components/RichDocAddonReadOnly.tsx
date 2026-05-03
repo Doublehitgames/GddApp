@@ -11,6 +11,7 @@ import {
   transformRichDocRefs,
   type SectionLike,
 } from "@/lib/richDoc/transformRefs";
+import { sectionPathById } from "@/lib/utils/slug";
 
 const RichDocEditor = dynamic(() => import("@/components/RichDocEditor"), {
   ssr: false,
@@ -38,6 +39,7 @@ export function RichDocAddonReadOnly({ addon, theme = "dark", bare = false }: Ri
   // React Compiler memoize it; explicit useMemo here trips the
   // "Existing memoization could not be preserved" rule.
   let ownership: { projectId: string; sections: SectionLike[] } | null = null;
+  let ownerProject: { title: string; sections: any[] } | null = null;
   for (const project of projects) {
     for (const section of project.sections || []) {
       const matches = (section.addons || []).some((a: { id?: string }) => a.id === addon.id);
@@ -49,6 +51,7 @@ export function RichDocAddonReadOnly({ addon, theme = "dark", bare = false }: Ri
             title: s.title,
           })),
         };
+        ownerProject = project;
         break;
       }
     }
@@ -60,7 +63,6 @@ export function RichDocAddonReadOnly({ addon, theme = "dark", bare = false }: Ri
     : blocks;
 
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const ownershipProjectId = ownership?.projectId;
 
   const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null;
@@ -90,8 +92,8 @@ export function RichDocAddonReadOnly({ addon, theme = "dark", bare = false }: Ri
       return;
     }
     // Manager mode: navigate to the section page.
-    if (ownershipProjectId) {
-      router.push(`/projects/${ownershipProjectId}/sections/${sectionId}`);
+    if (ownerProject) {
+      router.push(sectionPathById(ownerProject, sectionId));
     }
   };
 

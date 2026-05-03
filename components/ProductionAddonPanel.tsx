@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon, SheetsCellRef } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById, toSlug } from "@/lib/utils/slug";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
@@ -90,6 +91,13 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     }
     return null;
   }, [projects, addon.id]);
+
+  const getSectionUrl = (pId: string | undefined, sId: string | undefined): string => {
+    if (!pId || !sId) return "#";
+    const p = allProjects.find((proj) => proj.id === pId);
+    if (!p) return "#";
+    return sectionPathById(p, sId);
+  };
 
   const craftTables = useMemo(() => {
     if (!ownerLocation) return [] as Array<{
@@ -198,7 +206,14 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
     if (!targetElement) {
       const match = window.location.pathname.match(/\/projects\/([^/]+)/);
-      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      if (match) {
+        let sectionSlug = sectionId;
+        for (const p of allProjects) {
+          const found = (p.sections || []).find((s: any) => s.id === sectionId);
+          if (found) { sectionSlug = toSlug(found.title ?? "") || sectionId; break; }
+        }
+        window.location.href = `/projects/${match[1]}/sections/${sectionSlug}`;
+      }
       return;
     }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;
@@ -585,7 +600,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                             ) : null}
                           </span>
                           <a
-                            href={`/projects/${ownerLocation.projectId}/sections/${ct.sectionId}`}
+                            href={getSectionUrl(ownerLocation?.projectId, ct.sectionId)}
                             onClick={(e) => e.stopPropagation()}
                             className="text-xs text-indigo-300 hover:text-indigo-200"
                             title={t("productionAddon.openCraftTable", "Abrir mesa de produção")}
@@ -610,7 +625,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   <span>{t("productionAddon.outputRefLabel", "Item produzido")}</span>
                   {selectedOutputOption ? (
                     <a
-                      href={`/projects/${selectedOutputOption.projectId}/sections/${selectedOutputOption.sectionId}`}
+                      href={getSectionUrl(selectedOutputOption.projectId, selectedOutputOption.sectionId)}
                       className="text-blue-300 hover:text-blue-200 underline"
                       title={t("productionAddon.openItemLinkTitle", "Abrir pagina do item")}
                       aria-label={t("productionAddon.openItemLinkLabel", "Abrir item")}
@@ -815,7 +830,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                         </select>
                         {ingredient.itemRef && inventoryBySectionId.get(ingredient.itemRef) ? (
                           <a
-                            href={`/projects/${inventoryBySectionId.get(ingredient.itemRef)?.projectId}/sections/${inventoryBySectionId.get(ingredient.itemRef)?.sectionId}`}
+                            href={getSectionUrl(inventoryBySectionId.get(ingredient.itemRef)?.projectId, inventoryBySectionId.get(ingredient.itemRef)?.sectionId)}
                             className="text-blue-300 hover:text-blue-200 underline text-xs whitespace-nowrap"
                             title={t("productionAddon.openItemLinkTitle", "Abrir pagina do item")}
                             aria-label={t("productionAddon.openItemLinkLabel", "Abrir item")}
@@ -875,7 +890,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                         </select>
                         {output.itemRef && inventoryBySectionId.get(output.itemRef) ? (
                           <a
-                            href={`/projects/${inventoryBySectionId.get(output.itemRef)?.projectId}/sections/${inventoryBySectionId.get(output.itemRef)?.sectionId}`}
+                            href={getSectionUrl(inventoryBySectionId.get(output.itemRef)?.projectId, inventoryBySectionId.get(output.itemRef)?.sectionId)}
                             className="text-blue-300 hover:text-blue-200 underline text-xs whitespace-nowrap"
                             title={t("productionAddon.openItemLinkTitle", "Abrir pagina do item")}
                             aria-label={t("productionAddon.openItemLinkLabel", "Abrir item")}

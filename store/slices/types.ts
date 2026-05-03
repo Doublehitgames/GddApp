@@ -360,6 +360,9 @@ export interface ProjectStore {
   // Mutations
   addProject: (name: string, description: string) => string;
   getProject: (id: UUID) => Project | undefined;
+  getProjectBySlug: (slug: string) => Project | undefined;
+  getSectionById: (projectId: UUID, sectionId: UUID) => Section | undefined;
+  getSectionBySlug: (projectId: UUID, slug: string) => Section | undefined;
   addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
   addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
   duplicateSection: (

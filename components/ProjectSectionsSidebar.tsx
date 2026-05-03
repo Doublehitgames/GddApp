@@ -8,6 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
 import { getSectionSearchText } from "@/utils/sectionSearchText";
+import { projectPath, sectionPath } from "@/lib/utils/slug";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
   BUY_DISCOUNT_VAR_KEY,
@@ -1370,7 +1371,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
       />
 
       <Link
-        href={`/projects/${projectId}`}
+        href={project ? projectPath(project) : "/"}
         aria-current={isAtProjectHome ? "page" : undefined}
         className={`relative mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-150 ${
           isAtProjectHome
@@ -2190,7 +2191,7 @@ function SortableRootItem({
   };
   const handleCardClick = () => {
     if (shouldBlockClickRef.current) return;
-    router.push(`/projects/${projectId}/sections/${section.id}`);
+    router.push(project ? sectionPath(project, section) : "/");
   };
 
   return (

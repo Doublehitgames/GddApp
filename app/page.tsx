@@ -12,6 +12,7 @@ import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimi
 import type { Project } from "@/store/projectStore";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { PublicShareButton } from "@/components/PublicShareButton";
+import { projectPath } from "@/lib/utils/slug";
 
 function timeAgo(dateStr: string): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -66,7 +67,7 @@ function ProjectCard({
 
       {/* Main link area */}
       <Link
-        href={`/projects/${project.id}`}
+        href={projectPath(project)}
         className="relative z-10 flex flex-1 items-center gap-3 px-4 py-4"
         prefetch={false}
       >
@@ -101,7 +102,7 @@ function ProjectCard({
             variant="card"
           />
           <Link
-            href={`/projects/${project.id}/settings`}
+            href={`${projectPath(project)}/settings`}
             className="p-1.5 rounded-lg bg-gray-800/90 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
             title={t("home.projects.settings")}
             aria-label={t("home.projects.settings")}

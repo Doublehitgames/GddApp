@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById, projectPath } from "@/lib/utils/slug";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
@@ -542,11 +543,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
   
   const [mounted, setMounted] = useState(false);
   const [project, setProject] = useState<any>(null);
+  const realProjectId = project?.id ?? "";
   const [showWelcome, setShowWelcome] = useState(false);
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -643,7 +645,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
   useEffect(() => {
     if (mounted && !isPublicMode) {
-      const p = getProject(projectId);
+      const p = getProjectBySlug(projectId);
       setProject(p);
       
       // Check if coming from creation flow
@@ -656,7 +658,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         return () => clearTimeout(timer);
       }
     }
-  }, [mounted, projectId, projects, getProject, searchParams, isPublicMode]);
+  }, [mounted, projectId, projects, getProjectBySlug, searchParams, isPublicMode]);
 
   useEffect(() => {
     if (!mounted || !isPublicMode || !publicToken) return;
@@ -829,7 +831,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     if (isPublicMode) {
       return `/s/${encodeURIComponent(publicToken || "")}?mode=diagramas&sectionId=${encodeURIComponent(sectionId)}`;
     }
-    return `/projects/${projectId}/sections/${sectionId}/diagramas`;
+    return `${sectionPathById(project ?? { title: "", sections: [] }, sectionId)}/diagramas`;
   };
 
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1017,7 +1019,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                         type="button"
                         onClick={() => {
                           setOpenSectionMenuId(null);
-                          router.push(`/projects/${projectId}/sections/${node.id}`);
+                          router.push(sectionPathById(project ?? { title: "", sections: [] }, node.id));
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                       >
@@ -1064,7 +1066,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 <SectionHeroThumb src={node.thumbImageUrl} alt={t("sectionDetail.thumbnail.alt")} width={heroThumbWidth} />
                 {!isPublicMode ? (
                   <button
-                    onClick={() => router.push(`/projects/${projectId}/sections/${node.id}`)}
+                    onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, node.id))}
                     className="text-blue-600 hover:text-blue-800 underline"
                   >
                     {t("view.emptyContent")}
@@ -1320,7 +1322,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                       type="button"
                       onClick={() => {
                         setShowActionsMenu(false);
-                        router.push(`/projects/${projectId}`);
+                        router.push(project ? projectPath(project) : "/");
                       }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                     >

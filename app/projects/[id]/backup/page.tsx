@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project } from '@/store/projectStore';
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n/provider';
+import { toSlug, projectPath } from '@/lib/utils/slug';
 
 export default function BackupPage() {
   const params = useParams();
@@ -15,7 +16,7 @@ export default function BackupPage() {
   const projectId = params.id as string;
   
   const project = useProjectStore((state) =>
-    state.projects.find((p) => p.id === projectId)
+    state.projects.find((p) => toSlug(p.title) === projectId)
   );
   const sections = project?.sections || [];
   const importProject = useProjectStore((state) => state.importProject);
@@ -122,7 +123,7 @@ export default function BackupPage() {
 
       setRestoreMessage(tr('✅ Projeto restaurado com sucesso!', '✅ Project restored successfully!'));
       setTimeout(() => {
-        router.push(`/projects/${restoredProject.id}`);
+        router.push(projectPath(restoredProject));
       }, 2000);
     } catch (error) {
       console.error(tr('Erro ao restaurar backup:', 'Error restoring backup:'), error);

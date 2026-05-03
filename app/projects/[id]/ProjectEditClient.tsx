@@ -16,6 +16,7 @@ import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadshee
 import { pushProjectLinkedSpreadsheets } from "@/lib/supabase/projectSync";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
 import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
+import { toSlug, projectPath } from "@/lib/utils/slug";
 import {
   convertYouTubeEmbedsToEditorPlaceholders,
   convertYouTubeEditorPlaceholdersToEmbeds,
@@ -28,7 +29,8 @@ interface Props {
 export default function ProjectEditClient({ projectId }: Props) {
   const { t } = useI18n();
   const router = useRouter();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const projects = useProjectStore((s) => s.projects);
   const editProject = useProjectStore((s) => s.editProject);
   const updateProjectLinkedSpreadsheets = useProjectStore((s) => s.updateProjectLinkedSpreadsheets);
 
@@ -37,6 +39,7 @@ export default function ProjectEditClient({ projectId }: Props) {
   const [aiInstructions, setAiInstructions] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [saveError, setSaveError] = useState<string>("");
   const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
@@ -44,12 +47,13 @@ export default function ProjectEditClient({ projectId }: Props) {
   const [editorHeight, setEditorHeight] = useState("400px");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const project = getProject(projectId);
+  const project = getProjectBySlug(projectId);
+  const realProjectId = project?.id ?? "";
   const sections = project?.sections || [];
   const { AutocompleteDropdown } = useMarkdownAutocomplete({ sections, containerRef });
 
   useEffect(() => {
-    const p = getProject(projectId);
+    const p = getProjectBySlug(projectId);
     if (p) {
       setName(p.title);
       // Convert IDs back to names for user-friendly editing
@@ -138,15 +142,23 @@ export default function ProjectEditClient({ projectId }: Props) {
   }, [isFullscreen]);
 
   function handleSave() {
-    if (!notFound && projectId) {
-      const md = editorRef.current?.getMarkdown?.() || description;
-      const restoredMd = convertYouTubeEditorPlaceholdersToEmbeds(md);
-      const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
-      const project = getProject(projectId);
-      const sections = project?.sections || [];
-      const convertedMd = convertReferencesToIds(normalizedMd, sections);
-      editProject(projectId, name, convertedMd, aiInstructions);
-      router.push(`/projects/${projectId}`);
+    if (!notFound && realProjectId) {
+      try {
+        const md = editorRef.current?.getMarkdown?.() || description;
+        const restoredMd = convertYouTubeEditorPlaceholdersToEmbeds(md);
+        const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
+        const sections = project?.sections || [];
+        const convertedMd = convertReferencesToIds(normalizedMd, sections);
+        editProject(realProjectId, name, convertedMd, aiInstructions);
+        setSaveError("");
+        router.push(`/projects/${toSlug(name)}`);
+      } catch (e) {
+        if (e instanceof Error && e.message === "duplicate_project_name") {
+          setSaveError(t("projectEdit.duplicateNameError", "Já existe um projeto com esse nome. Escolha um nome diferente."));
+        } else {
+          throw e;
+        }
+      }
     }
   }
 
@@ -253,11 +265,11 @@ export default function ProjectEditClient({ projectId }: Props) {
             {t("settings.linkedSheets.description")}
           </p>
           <LinkedSpreadsheetsSettings
-            projectId={projectId}
-            spreadsheets={getProject(projectId)?.linkedSpreadsheets ?? []}
+            projectId={realProjectId}
+            spreadsheets={project?.linkedSpreadsheets ?? []}
             onChange={async (next: LinkedSpreadsheet[]) => {
-              updateProjectLinkedSpreadsheets(projectId, next);
-              await pushProjectLinkedSpreadsheets(projectId, next);
+              updateProjectLinkedSpreadsheets(realProjectId, next);
+              await pushProjectLinkedSpreadsheets(realProjectId, next);
             }}
           />
         </div>
@@ -280,6 +292,10 @@ export default function ProjectEditClient({ projectId }: Props) {
           />
         </div>
 
+        {saveError && (
+          <p className="text-sm text-red-600 font-medium" role="alert">{saveError}</p>
+        )}
+
         <div className="flex gap-2 items-center">
           <button
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -287,7 +303,7 @@ export default function ProjectEditClient({ projectId }: Props) {
           >{t('common.save')}</button>
           <button
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-            onClick={() => projectId ? router.push(`/projects/${projectId}`) : router.push("/")}
+            onClick={() => project ? router.push(projectPath(project)) : router.push("/")}
           >{t('common.cancel')}</button>
           <button
             className="bg-gray-700 text-white px-3 py-2 rounded text-sm hover:bg-gray-800 ml-auto"

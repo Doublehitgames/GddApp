@@ -13,13 +13,14 @@ interface Props {
 export default function RelationsClient({ projectId }: Props) {
   const { t } = useI18n();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const lastRelationsAnalysisByProject = useProjectStore((s) => s.lastRelationsAnalysisByProject);
   const setLastRelationsAnalysis = useProjectStore((s) => s.setLastRelationsAnalysis);
 
   const [mounted, setMounted] = useState(false);
-  const project = getProject(projectId as import("@/store/projectStore").UUID);
-  const lastAnalysis = lastRelationsAnalysisByProject[projectId];
+  const project = getProjectBySlug(projectId);
+  const realProjectId = project?.id ?? "";
+  const lastAnalysis = lastRelationsAnalysisByProject[realProjectId];
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +83,7 @@ export default function RelationsClient({ projectId }: Props) {
         suggestions: data.suggestions || [],
         runAt: new Date().toISOString(),
       };
-      setLastRelationsAnalysis(projectId, payload);
+      setLastRelationsAnalysis(realProjectId, payload);
     } catch (e) {
       console.error("Suggest relations:", e);
       setError(t("projectDetail.aiMenu.errorGeneric"));

@@ -39,7 +39,7 @@ export default function SettingsClient({ projectId }: Props) {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const {
-    getProject,
+    getProjectBySlug,
     updateProjectSettings,
     updateProjectMindMapSettingsOnly,
     updateProjectLinkedSpreadsheets,
@@ -48,7 +48,8 @@ export default function SettingsClient({ projectId }: Props) {
     refreshQuotaStatus,
     setProjectOwnerLocally,
   } = useProjectStore();
-  const project = getProject(projectId);
+  const project = getProjectBySlug(projectId);
+  const realProjectId = project?.id ?? "";
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set()); // Todos colapsados por padrão
@@ -76,10 +77,10 @@ export default function SettingsClient({ projectId }: Props) {
   const [heroThumbWidthDraft, setHeroThumbWidthDraft] = useState<string | null>(null);
 
   const fetchMembers = useCallback(async () => {
-    if (!projectId) return;
+    if (!realProjectId) return;
     setMembersLoading(true);
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, { credentials: "include" });
+      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/members`, { credentials: "include" });
       const data = await res.json().catch(() => ({}));
       if (res.ok && Array.isArray(data.members)) setMembers(data.members);
       else setMembers([]);
@@ -88,11 +89,11 @@ export default function SettingsClient({ projectId }: Props) {
     } finally {
       setMembersLoading(false);
     }
-  }, [projectId]);
+  }, [realProjectId]);
 
   useEffect(() => {
-    if (projectId) void fetchMembers();
-  }, [projectId, fetchMembers]);
+    if (realProjectId) void fetchMembers();
+  }, [realProjectId, fetchMembers]);
 
   useEffect(() => {
     if (!transferSuccess) return;
@@ -109,7 +110,7 @@ export default function SettingsClient({ projectId }: Props) {
     setInviteError(null);
     setInviteLoading(true);
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, {
+      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -149,7 +150,7 @@ export default function SettingsClient({ projectId }: Props) {
     setRemovingUserId(userId);
     try {
       const res = await fetch(
-        `/api/projects/${encodeURIComponent(projectId)}/members?userId=${encodeURIComponent(userId)}`,
+        `/api/projects/${encodeURIComponent(realProjectId)}/members?userId=${encodeURIComponent(userId)}`,
         { method: "DELETE", credentials: "include" }
       );
       const data = await res.json().catch(() => ({}));
@@ -184,7 +185,7 @@ export default function SettingsClient({ projectId }: Props) {
     setTransferError(null);
     setTransferLoading(true);
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`, {
+      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/members`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -203,14 +204,14 @@ export default function SettingsClient({ projectId }: Props) {
         return;
       }
 
-      setProjectOwnerLocally(projectId, memberDialog.userId);
+      setProjectOwnerLocally(realProjectId, memberDialog.userId);
       setTransferSuccess(t("settings.mindmapShareMembers.transfer.success"));
       setTransferModalOpen(false);
       setMemberDialog(null);
       setTransferConfirmValue("");
       await fetchMembers();
       await loadFromSupabase();
-      await refreshQuotaStatus(projectId);
+      await refreshQuotaStatus(realProjectId);
     } catch {
       setTransferError(t("settings.mindmapShareMembers.transfer.errorNetwork"));
     } finally {
@@ -493,19 +494,19 @@ export default function SettingsClient({ projectId }: Props) {
   };
 
   const handleSave = () => {
-    updateProjectMindMapSettingsOnly(projectId, settings);
+    updateProjectMindMapSettingsOnly(realProjectId,settings);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
     // Envia só mindmap_settings para o Supabase (sem custo, sem usar sync de seções)
-    void pushProjectMindMapSettings(projectId, settings);
+    void pushProjectMindMapSettings(realProjectId,settings);
   };
   const handleReset = () => {
     if (confirm(t("settings.messages.resetAllConfirm", "Reset all settings?"))) {
-      updateProjectMindMapSettingsOnly(projectId, {});
+      updateProjectMindMapSettingsOnly(realProjectId,{});
       setSettings({});
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-      void pushProjectMindMapSettings(projectId, {});
+      void pushProjectMindMapSettings(realProjectId,{});
     }
   };
 
@@ -514,7 +515,7 @@ export default function SettingsClient({ projectId }: Props) {
     if (deleteBackupChecked) {
       try { downloadProjectBackup(project); } catch (e) { console.error(e); }
     }
-    removeProject(projectId);
+    removeProject(realProjectId);
     setDeleteModalOpen(false);
     setDeleteConfirmValue("");
     setDeleteBackupChecked(false);
@@ -577,11 +578,11 @@ export default function SettingsClient({ projectId }: Props) {
             <h2 className="text-xl font-bold mb-1">{t("settings.linkedSheets.title")}</h2>
             <p className="text-sm text-gray-400 mb-4">{t("settings.linkedSheets.description")}</p>
             <LinkedSpreadsheetsSettings
-              projectId={projectId}
+              projectId={realProjectId}
               spreadsheets={project.linkedSpreadsheets ?? []}
               onChange={async (next: LinkedSpreadsheet[]) => {
-                updateProjectLinkedSpreadsheets(projectId, next);
-                await pushProjectLinkedSpreadsheets(projectId, next);
+                updateProjectLinkedSpreadsheets(realProjectId, next);
+                await pushProjectLinkedSpreadsheets(realProjectId, next);
               }}
             />
           </div>

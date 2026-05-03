@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react
 import type { EconomyLinkAddonDraft, ProductionProgressionLink, SheetsCellRef } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
@@ -151,6 +152,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   const [syncError, setSyncError] = useState<string | null>(null);
   const projects = useProjectStore((state) => state.projects);
   const currentProjectId = useCurrentProjectId();
+  const getSectionUrl = (pId: string | undefined, sId: string | undefined): string => {
+    if (!pId || !sId) return "#";
+    const p = projects.find((proj) => proj.id === pId);
+    if (!p) return "#";
+    return sectionPathById(p, sId);
+  };
   const linkedSpreadsheets = useMemo(() => {
     if (!currentProjectId) return [];
     const project = projects.find((p) => p.id === currentProjectId);
@@ -740,7 +747,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           ariaLabel={option.label}
                         />
                         <a
-                          href={`/projects/${option.projectId}/sections/${option.sectionId}`}
+                          href={getSectionUrl(option.projectId, option.sectionId)}
                           className="text-blue-300 hover:text-blue-200 underline"
                           title={t("economyLinkAddon.openVariableLinkTitle", "Abrir variavel global")}
                         >
@@ -894,7 +901,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           ariaLabel={option.label}
                         />
                         <a
-                          href={`/projects/${option.projectId}/sections/${option.sectionId}`}
+                          href={getSectionUrl(option.projectId, option.sectionId)}
                           className="text-blue-300 hover:text-blue-200 underline"
                           title={t("economyLinkAddon.openVariableLinkTitle", "Abrir variavel global")}
                         >

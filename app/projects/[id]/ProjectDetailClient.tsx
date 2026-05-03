@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
+import { sectionPath } from "@/lib/utils/slug";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useAuthStore } from "@/store/authStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
@@ -293,7 +294,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const router = useRouter();
     const pathname = usePathname();
-    const getProject = useProjectStore((s) => s.getProject);
+    const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
     const addSection = useProjectStore((s) => s.addSection);
     const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
     const reorderSections = useProjectStore((s) => s.reorderSections);
@@ -303,6 +304,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const [mounted, setMounted] = useState(false);
     const [project, setProject] = useState<Project | null>(null);
+    const realProjectId = project?.id ?? "";
     const [chatOpen, setChatOpen] = useState(false);
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
@@ -343,7 +345,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     useEffect(() => {
         if (mounted) {
-            const p = getProject(projectId);
+            const p = getProjectBySlug(projectId);
             setProject(p ?? null);
         }
     }, [mounted, projectId, projects]);
@@ -410,7 +412,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
         if (!sectionTitle.trim() || nameError) return;
 
         try {
-            addSection(projectId, sectionTitle.trim(), undefined, sectionAuditBy);
+            addSection(realProjectId, sectionTitle.trim(), undefined, sectionAuditBy);
             setSectionTitle("");
             setNameError("");
         } catch (e) {
@@ -434,7 +436,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             }
             const picked = await openGoogleDriveImagePicker(googleClientId);
             if (!picked?.id) return;
-            setProjectCoverImage(projectId, driveFileIdToImageUrl(picked.id));
+            setProjectCoverImage(realProjectId, driveFileIdToImageUrl(picked.id));
             setCoverImageCandidateIndex(0);
         } catch {
             setCoverImageError(t("projectDetail.cover.pickFailed"));
@@ -535,7 +537,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
             delete (nextDocumentView as { spotlight?: unknown }).spotlight;
         }
 
-        updateProjectSettings(projectId, {
+        updateProjectSettings(realProjectId, {
             ...currentSettings,
             documentView: nextDocumentView,
         });
@@ -1302,7 +1304,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
 
         const newRoots = arrayMove(roots, oldIndex, newIndex);
         const newOrder = newRoots.map((r) => r.id);
-        reorderSections(projectId, newOrder);
+        reorderSections(realProjectId, newOrder);
     }
 
     return (
@@ -1439,7 +1441,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <Link
-                    href={`/projects/${projectId}/sections/${section.id}`}
+                    href={project ? sectionPath(project, section) : "#"}
                     className={`relative flex-1 min-w-0 truncate text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset rounded px-0.5 ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
                     prefetch={false}
                 >
@@ -1590,7 +1592,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                             )}
                             {!hasChildren && <span className="w-5" />}
                             <Link
-                                href={`/projects/${projectId}/sections/${sec.id}`}
+                                href={project ? sectionPath(project, sec) : "#"}
                                 className={`flex-1 min-w-0 truncate text-sm transition-colors ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
                                 prefetch={false}
                             >

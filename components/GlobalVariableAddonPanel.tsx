@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 
 interface GlobalVariableAddonPanelProps {
   addon: GlobalVariableAddonDraft;
@@ -34,6 +35,12 @@ function toSlugKey(raw: string): string {
 export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVariableAddonPanelProps) {
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
+  const getSectionUrl = (pId: string | undefined, sId: string | undefined): string => {
+    if (!pId || !sId) return "#";
+    const p = projects.find((proj) => proj.id === pId);
+    if (!p) return "#";
+    return sectionPathById(p, sId);
+  };
 
   const commit = (patch: Partial<GlobalVariableAddonDraft>) => {
     onChange({
@@ -204,7 +211,7 @@ export function GlobalVariableAddonPanel({ addon, onChange, onRemove }: GlobalVa
             {usedBySections.map((usage) => (
               <p key={usage.sectionId} className="text-xs text-gray-200">
                 <a
-                  href={`/projects/${usage.projectId}/sections/${usage.sectionId}`}
+                  href={getSectionUrl(usage.projectId, usage.sectionId)}
                   className="text-blue-300 hover:text-blue-200 underline"
                   title={t("globalVariableAddon.openUsageLinkTitle", "Abrir secao que usa esta variavel")}
                 >

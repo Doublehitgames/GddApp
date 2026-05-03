@@ -8,6 +8,7 @@ import { GlobalPagePicker } from "@/components/GlobalPagePicker";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
+import { toSlug, sectionPath } from "@/lib/utils/slug";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
 
@@ -113,12 +114,13 @@ function BreadcrumbsMindMapSearch() {
 export default function ProjectLayoutShell({ children, projectId }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  const project = useMemo(() => getProject(projectId), [getProject, projectId, projects]);
+  const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const realProjectId = project?.id ?? "";
 
   const normalizedPathname = useMemo(() => {
     if (!pathname) return "";
@@ -146,14 +148,16 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
-    const rawId = match?.[1] ?? null;
-    if (!rawId) return null;
+    const rawSlug = match?.[1] ?? null;
+    if (!rawSlug) return null;
+    let slug: string;
     try {
-      return decodeURIComponent(rawId);
+      slug = decodeURIComponent(rawSlug);
     } catch {
-      return rawId;
+      slug = rawSlug;
     }
-  }, [pathname]);
+    return project?.sections?.find((s) => toSlug(s.title) === slug)?.id ?? null;
+  }, [pathname, project]);
   const isSectionDiagramRoute = useMemo(() => {
     if (!pathname) return false;
     return /^\/projects\/[^/]+\/sections\/[^/]+\/diagramas(?:\/|$)/.test(pathname);
@@ -202,7 +206,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   return (
     <MindMapSearchProvider>
-    <GlobalPagePicker projectId={projectId} />
+    <GlobalPagePicker projectId={realProjectId} />
     <div className="min-h-screen bg-gray-900 pb-14">
       {!isDocumentViewRoute && (
       <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
@@ -232,7 +236,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                   </span>
                 ) : (
                   <Link
-                    href={`/projects/${projectId}/sections/${section.id}`}
+                    href={project ? sectionPath(project, section) : "#"}
                     className="min-w-0 truncate rounded-md px-1.5 py-1 text-gray-200 hover:text-white hover:bg-gray-800/90 transition-colors"
                     title={section.title}
                   >
@@ -320,7 +324,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 id="global-project-sections-sidebar"
                 className="lg:-ml-4 xl:-ml-5 lg:sticky lg:top-6 lg:self-start lg:h-[calc(100vh-6.5rem)]"
               >
-                <ProjectSectionsSidebar projectId={projectId} />
+                <ProjectSectionsSidebar projectId={realProjectId} />
               </div>
             )}
           </div>
@@ -337,7 +341,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 id="global-project-sections-sidebar"
                 className="absolute right-0 top-0 h-full w-full max-w-sm p-3"
               >
-                <ProjectSectionsSidebar projectId={projectId} />
+                <ProjectSectionsSidebar projectId={realProjectId} />
               </div>
             </div>
           )}

@@ -6,6 +6,8 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
+import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 import { resolveProjectSpecialTokens, type ProjectTokenSource } from "@/lib/addons/projectSpecialTokens";
 import { convertYouTubeEditorPlaceholdersToEmbeds } from "@/utils/youtubeEmbeds";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
@@ -208,6 +210,8 @@ export function MarkdownWithReferences({
 }: MarkdownWithReferencesProps) {
   const router = useRouter();
   const { t } = useI18n();
+  const projects = useProjectStore((s) => s.projects);
+  const project = projects.find((p) => p.id === projectId);
   const isDocumentMode = referenceLinkMode === "document";
   const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
   const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
@@ -282,7 +286,7 @@ export function MarkdownWithReferences({
         const href =
           referenceLinkMode === "document"
             ? `#section-${target.id}`
-            : `/projects/${projectId}/sections/${target.id}`;
+            : sectionPathById(project ?? { title: "", sections: [] }, target.id);
         result += `<a href="${escapeHtml(href)}">${escapeHtml(target.title)}</a>`;
       } else {
         const missingRef = encodeURIComponent(ref.refValue);
@@ -442,7 +446,7 @@ export function MarkdownWithReferences({
 
                     // Fallback: direct navigation
                     if (referenceLinkMode === "manager") {
-                      router.push(`/projects/${projectId}/sections/${refSectionId}`);
+                      router.push(sectionPathById(project ?? { title: "", sections: [] }, refSectionId));
                     } else {
                       navigateToDocumentAnchor(href, `section-${refSectionId}`, refSectionId);
                     }
@@ -516,7 +520,7 @@ export function MarkdownWithReferences({
                 autoFocus
                 onClick={() => {
                   if (referenceLinkMode === "manager") {
-                    router.push(`/projects/${projectId}/sections/${pendingAnchorNavigation.rawSectionId}`);
+                    router.push(sectionPathById(project ?? { title: "", sections: [] }, pendingAnchorNavigation.rawSectionId));
                   } else {
                     navigateToDocumentAnchor(
                       pendingAnchorNavigation.href,

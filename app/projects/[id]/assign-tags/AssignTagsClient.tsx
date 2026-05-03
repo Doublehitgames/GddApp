@@ -16,11 +16,12 @@ interface Props {
 export default function AssignTagsClient({ projectId }: Props) {
   const { t } = useI18n();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const editSection = useProjectStore((s) => s.editSection);
 
   const [mounted, setMounted] = useState(false);
-  const project = getProject(projectId as import("@/store/projectStore").UUID);
+  const project = getProjectBySlug(projectId);
+  const realProjectId = project?.id ?? "";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function AssignTagsClient({ projectId }: Props) {
           const section = project.sections?.find((sec) => sec.id === sectionId);
           if (!section) continue;
           editSection(
-            projectId,
+            realProjectId,
             sectionId as import("@/store/projectStore").UUID,
             section.title,
             section.content ?? "",

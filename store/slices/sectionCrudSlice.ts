@@ -1,5 +1,6 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
 import type { SectionAddon } from "@/lib/addons/types";
+import { toSlug } from "@/lib/utils/slug";
 import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
@@ -540,15 +541,26 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return countChildren(sectionId, 0);
     },
 
+    getSectionById: (projectId: UUID, sectionId: UUID) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      return project?.sections?.find((s) => s.id === sectionId);
+    },
+
+    getSectionBySlug: (projectId: UUID, slug: string) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      return project?.sections?.find((s) => toSlug(s.title) === slug);
+    },
+
     hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => {
       const project = get().projects.find((p) => p.id === projectId);
       if (!project) return false;
 
+      const newSlug = toSlug(title);
       const siblings = (project.sections || []).filter(
         (s) => s.parentId === parentId && s.id !== excludeId
       );
 
-      return siblings.some((s) => s.title.toLowerCase() === title.toLowerCase());
+      return siblings.some((s) => toSlug(s.title) === newSlug);
     },
 
     hasDuplicateDataId: (projectId: UUID, dataId: string, excludeId?: UUID) => {

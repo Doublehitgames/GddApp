@@ -9,6 +9,7 @@ import AIConfigWarning from "@/components/AIConfigWarning";
 import { useI18n } from "@/lib/i18n/provider";
 import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
 import { adaptAIGeneratedTemplate } from "@/lib/projects/adaptAIGeneratedTemplate";
+import { toSlug } from "@/lib/utils/slug";
 
 export default function AICreateSimple() {
   const { hasValidConfig, getAIHeaders } = useAIConfig();
@@ -435,7 +436,7 @@ ${mechanicsText}
       // Reuse the manual-template path so page types + richDocBlocks +
       // hierarchy work the same way whether the user came via wizard or AI.
       const resolved = adaptAIGeneratedTemplate(template);
-      const projectId = createProjectFromTemplate({
+      createProjectFromTemplate({
         template: resolved,
         addProject,
         addSection,
@@ -443,7 +444,7 @@ ${mechanicsText}
         t,
       });
 
-      router.push(`/projects/${projectId}/view?new=true`);
+      router.push(`/projects/${toSlug(resolved.projectTitle)}/view?new=true`);
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("structural_limit")) {
         const msg =

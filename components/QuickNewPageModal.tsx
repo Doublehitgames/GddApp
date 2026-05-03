@@ -7,6 +7,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { PAGE_TYPES } from "@/lib/pageTypes/registry";
 import type { PageTypeId } from "@/lib/pageTypes/registry";
+import { toSlug, sectionPathById } from "@/lib/utils/slug";
 
 export const QUICK_NEW_PAGE_EVENT = "gdd:open-new-page";
 
@@ -38,6 +39,7 @@ export function QuickNewPageModal() {
   const projects = useProjectStore((s) => s.projects);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
+  const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const { user, profile } = useAuthStore();
   const sectionAuditBy = user
     ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null }
@@ -52,9 +54,10 @@ export function QuickNewPageModal() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const project = useMemo(
-    () => (projectId ? projects.find((p) => p.id === projectId) : null),
+    () => (projectId ? projects.find((p) => toSlug(p.title) === projectId) : null),
     [projectId, projects]
   );
+  const realProjectId = project?.id ?? "";
 
   const sectionOptions = useMemo(() => {
     const sections = project?.sections || [];
@@ -115,21 +118,26 @@ export function QuickNewPageModal() {
 
   const handleSubmit = (event?: React.FormEvent) => {
     event?.preventDefault();
-    if (!projectId) return;
+    if (!realProjectId) return;
     const trimmed = title.trim();
     if (!trimmed) {
       setError(t("quickNewPage.errors.titleRequired", "Digite um nome para a página."));
       inputRef.current?.focus();
       return;
     }
+    if (hasDuplicateName(realProjectId, trimmed, parentId || undefined)) {
+      setError(t("quickNewPage.errors.duplicateName", "Já existe uma página com esse nome neste nível. Escolha um nome diferente."));
+      inputRef.current?.focus();
+      return;
+    }
     setBusy(true);
     try {
       const newId = parentId
-        ? addSubsection(projectId, parentId, trimmed, "", sectionAuditBy, pageTypeId)
-        : addSection(projectId, trimmed, "", sectionAuditBy, pageTypeId);
+        ? addSubsection(realProjectId, parentId, trimmed, "", sectionAuditBy, pageTypeId)
+        : addSection(realProjectId, trimmed, "", sectionAuditBy, pageTypeId);
       if (!newId) throw new Error("create_failed");
       setOpen(false);
-      router.push(`/projects/${projectId}/sections/${newId}`);
+      router.push(sectionPathById(project ?? { title: "", sections: [] }, newId));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("sections_per_project")) {

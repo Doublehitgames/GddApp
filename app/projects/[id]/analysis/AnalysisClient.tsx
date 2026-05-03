@@ -16,13 +16,14 @@ export default function AnalysisClient({ projectId }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const lastConsistencyAnalysisByProject = useProjectStore((s) => s.lastConsistencyAnalysisByProject);
   const setLastConsistencyAnalysis = useProjectStore((s) => s.setLastConsistencyAnalysis);
 
   const [mounted, setMounted] = useState(false);
-  const project = getProject(projectId as import("@/store/projectStore").UUID);
-  const lastAnalysis = lastConsistencyAnalysisByProject[projectId];
+  const project = getProjectBySlug(projectId);
+  const realProjectId = project?.id ?? "";
+  const lastAnalysis = lastConsistencyAnalysisByProject[realProjectId];
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export default function AnalysisClient({ projectId }: Props) {
         simulation: data.simulation || null,
         runAt: new Date().toISOString(),
       };
-      setLastConsistencyAnalysis(projectId, payload);
+      setLastConsistencyAnalysis(realProjectId, payload);
     } catch (e) {
       console.error("Analyze consistency:", e);
       setError(t("projectDetail.aiMenu.errorGeneric"));

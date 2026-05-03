@@ -5,6 +5,7 @@ import type { InventoryAddonDraft, InventoryBindType } from "@/lib/addons/types"
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
@@ -34,6 +35,12 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const currentProjectId = useCurrentProjectId();
+  const getSectionUrl = (pId: string | undefined, sId: string | undefined): string => {
+    if (!pId || !sId) return "#";
+    const p = projects.find((proj) => proj.id === pId);
+    if (!p) return "#";
+    return sectionPathById(p, sId);
+  };
   const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
   const libraryPickerRef = useRef<HTMLDivElement | null>(null);
 
@@ -501,7 +508,7 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span key={entry.id}>
                   {index > 0 ? ", " : ""}
                   <a
-                    href={`/projects/${entry.projectId}/sections/${entry.id}`}
+                    href={getSectionUrl(entry.projectId, entry.id)}
                     className="text-blue-300 hover:text-blue-200 underline"
                     title={t("inventoryAddon.openSectionLinkTitle", "Abrir secao")}
                   >
@@ -527,7 +534,7 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
                 <span key={entry.id}>
                   {index > 0 ? ", " : ""}
                   <a
-                    href={`/projects/${entry.projectId}/sections/${entry.id}`}
+                    href={getSectionUrl(entry.projectId, entry.id)}
                     className="text-blue-300 hover:text-blue-200 underline"
                     title={t("inventoryAddon.openSectionLinkTitle", "Abrir secao")}
                   >

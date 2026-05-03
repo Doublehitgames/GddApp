@@ -1,6 +1,7 @@
 "use client";
 
 import { useProjectStore } from "@/store/projectStore";
+import { toSlug, projectPath, sectionPath, sectionPathById } from "@/lib/utils/slug";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
@@ -84,7 +85,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const getProject = useProjectStore((s) => s.getProject);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const removeSection = useProjectStore((s) => s.removeSection);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
@@ -110,6 +111,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
   const [section, setSection] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
+  const realProjectId = project?.id ?? "";
+  const realSectionId = section?.id ?? "";
   const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [nameError, setNameError] = useState<string>("");
@@ -319,7 +322,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     if (!section) return;
     
     // Aplica o conteúdo melhorado
-    editSection(projectId, sectionId, section.title, previewContent, undefined, undefined, sectionAuditBy);
+    editSection(realProjectId, realSectionId,section.title, previewContent, undefined, undefined, sectionAuditBy);
     setSection({ ...section, content: previewContent });
     
     // Fecha o preview
@@ -348,7 +351,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   function handleDuplicateSection() {
     if (!section || !project) return;
     const suffix = t("sectionDetail.duplicate.copySuffix", " (cópia)");
-    const outcome = duplicateSection(projectId, sectionId, suffix, sectionAuditBy);
+    const outcome = duplicateSection(realProjectId, realSectionId,suffix, sectionAuditBy);
 
     if (!outcome.newRootId) {
       const max =
@@ -385,7 +388,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       );
     }
 
-    router.push(`/projects/${projectId}/sections/${outcome.newRootId}`);
+    router.push(sectionPathById(project ?? { title: "", sections: [] }, outcome.newRootId));
   }
 
   duplicateRef.current = handleDuplicateSection;
@@ -412,7 +415,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     }
 
     // Atualizar o parentId (não mexe em title, content e color)
-    editSection(projectId, sectionId, section.title, section.content, newParentId, section.color, sectionAuditBy);
+    editSection(realProjectId, realSectionId,section.title, section.content, newParentId, section.color, sectionAuditBy);
 
     // Fechar modal
     setShowMoveModal(false);
@@ -431,7 +434,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       const picked = await openGoogleDriveImagePicker(googleClientId);
       if (!picked?.id) return;
       const nextThumb = driveFileIdToImageUrl(picked.id);
-      setSectionThumbImage(projectId, sectionId, nextThumb);
+      setSectionThumbImage(realProjectId, realSectionId,nextThumb);
       setSectionThumbCandidateIndex(0);
       setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: nextThumb } : prev));
     } catch {
@@ -442,9 +445,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   }
 
   useEffect(() => {
-    const proj = getProject(projectId);
+    const proj = getProjectBySlug(projectId);
     setProject(proj || null);
-    const sec = proj?.sections?.find((s: any) => s.id === sectionId);
+    const sec = proj?.sections?.find((s: any) => toSlug(s.title) === sectionId);
     setSection(sec || null);
     setEditedTitle(sec?.title || "");
     
@@ -465,7 +468,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setBreadcrumbs(trail);
     setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
-  }, [projectId, sectionId, getProject, projects]);
+  }, [projectId, sectionId, getProjectBySlug, projects]);
 
   useEffect(() => {
     setShowAddonMenu(false);
@@ -477,10 +480,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
   // Buscar histórico de versões da seção (após carregar)
   useEffect(() => {
-    if (!loaded || !projectId || !sectionId) return;
+    if (!loaded || !realProjectId || !realSectionId) return;
     let cancelled = false;
     setSectionVersionsLoading(true);
-    fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" })
+    fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : { versions: [] }))
       .then((data) => {
         if (!cancelled && Array.isArray(data?.versions)) setSectionVersions(data.versions);
@@ -488,20 +491,20 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       .catch(() => { if (!cancelled) setSectionVersions([]); })
       .finally(() => { if (!cancelled) setSectionVersionsLoading(false); });
     return () => { cancelled = true; };
-  }, [loaded, projectId, sectionId]);
+  }, [loaded, realProjectId, realSectionId]);
 
   // Atualizar histórico quando um sync deste projeto termina (novo ponto de versão pode ter sido criado)
   useEffect(() => {
-    if (!loaded || !projectId || !sectionId || !lastSyncedAt || !lastSyncStats || lastSyncStats.projectId !== projectId) return;
+    if (!loaded || !realProjectId || !realSectionId || !lastSyncedAt || !lastSyncStats || lastSyncStats.projectId !== realProjectId) return;
     let cancelled = false;
-    fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" })
+    fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : { versions: [] }))
       .then((data) => {
         if (!cancelled && Array.isArray(data?.versions)) setSectionVersions(data.versions);
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [loaded, projectId, sectionId, lastSyncedAt, lastSyncStats]);
+  }, [loaded, realProjectId, realSectionId, lastSyncedAt, lastSyncStats]);
 
   // Inicializa/destroi o editor WYSIWYG inline quando modo de edição é ativado
   useEffect(() => {
@@ -512,7 +515,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       const mod: any = await import("@toast-ui/editor");
       if (cancelled) return;
       const ToastEditor = mod.default || mod;
-      const project = getProject(projectId);
+      const project = getProjectBySlug(projectId);
       const sections = project?.sections || [];
       const contentForEditor = normalizeDriveUrlsInMarkdown(
         convertYouTubeEmbedsToEditorPlaceholders(
@@ -633,7 +636,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
     const reordered = arrayMove(directChildren, oldIndex, newIndex);
     const newOrder = reordered.map((c: any) => c.id);
-    reorderSections(projectId, newOrder);
+    reorderSections(realProjectId, newOrder);
   }
 
   // Verifica recursivamente se uma seção ou QUALQUER descendente corresponde à busca
@@ -759,7 +762,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
                 {!hasChildren && <span className="w-4"></span>}
                 <button
                   className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
-                  onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
+                  onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
                 >
                   {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
                 </button>
@@ -781,7 +784,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   }
 
   if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
-  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push(`/projects/${projectId}`)}>{t('common.back')}</button></div>;
+  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => project ? router.push(projectPath(project)) : router.push("/")}>{t('common.back')}</button></div>;
 
   const addAddon = (type: SectionAddon["type"], group?: string) => {
     const entry = ADDON_REGISTRY.find((item) => item.type === type);
@@ -790,32 +793,32 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     if (group && group !== "A") {
       (newAddon as any).group = group;
     }
-    addSectionAddon(projectId, sectionId, newAddon, sectionAuditBy);
+    addSectionAddon(realProjectId, realSectionId,newAddon, sectionAuditBy);
     setShowAddonMenu(false);
   };
 
   const updateAddon = (addonId: string, nextAddon: SectionAddon) => {
-    updateSectionAddon(projectId, sectionId, addonId, nextAddon, sectionAuditBy);
+    updateSectionAddon(realProjectId, realSectionId,addonId, nextAddon, sectionAuditBy);
   };
 
   const removeAddon = (addonId: string) => {
-    removeSectionAddon(projectId, sectionId, addonId, sectionAuditBy);
+    removeSectionAddon(realProjectId, realSectionId,addonId, sectionAuditBy);
   };
 
   const reorderAddons = (nextAddons: SectionAddon[]) => {
-    setSectionAddons(projectId, sectionId, nextAddons, sectionAuditBy);
+    setSectionAddons(realProjectId, realSectionId,nextAddons, sectionAuditBy);
   };
 
   const copyAddonToSectionHandler = (toSectionId: string, addonId: string) => {
-    copyAddonToSection(projectId, sectionId, toSectionId, addonId, sectionAuditBy);
+    copyAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy);
   };
 
   const moveAddonToSectionHandler = (toSectionId: string, addonId: string): { reverseRefsUpdated: number } => {
-    return moveAddonToSection(projectId, sectionId, toSectionId, addonId, sectionAuditBy);
+    return moveAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy);
   };
 
   const moveAddonsToSectionHandler = (toSectionId: string, addonIds: string[]): { reverseRefsUpdated: number } => {
-    return moveAddonsToSection(projectId, sectionId, toSectionId, addonIds, sectionAuditBy);
+    return moveAddonsToSection(realProjectId, realSectionId, toSectionId, addonIds, sectionAuditBy);
   };
 
   return (
@@ -1035,7 +1038,7 @@ function UnresolvedRefsPanel({
   };
 
   const possibleParents = chooseParentFor
-    ? sections.filter((s) => !hasDuplicateName(projectId, chooseParentFor, s.id))
+    ? sections.filter((s) => !hasDuplicateName(realProjectId, chooseParentFor, s.id))
     : [];
 
   const findSectionByTitleUnderParent = (title: string, parentId: string | undefined) =>
@@ -1084,8 +1087,8 @@ function UnresolvedRefsPanel({
         } else {
           try {
             parentId = parentId === undefined
-              ? addSection(projectId, segment, "")
-              : addSubsection(projectId, parentId, segment, "");
+              ? addSection(realProjectId, segment, "")
+              : addSubsection(realProjectId, parentId, segment, "");
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
               onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
@@ -1097,7 +1100,7 @@ function UnresolvedRefsPanel({
           }
         }
       }
-      if (parentId) router.push(`/projects/${projectId}/sections/${parentId}`);
+      if (parentId) router.push(sectionPathById(project ?? { title: "", sections: [] }, parentId));
     } catch (err) {
       onAiError?.(err instanceof Error ? err.message : "Erro ao usar IA");
     } finally {
@@ -1116,8 +1119,8 @@ function UnresolvedRefsPanel({
       <p className="text-xs text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
       <div className="space-y-2">
         {unresolvedNames.map((name) => {
-          const existsHere = hasDuplicateName(projectId, name, sectionId);
-          const existsAtRoot = hasDuplicateName(projectId, name);
+          const existsHere = hasDuplicateName(realProjectId, name, realSectionId);
+          const existsAtRoot = hasDuplicateName(realProjectId, name);
           const anyExists = existsHere || existsAtRoot;
           return (
             <div key={name} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
@@ -1139,14 +1142,14 @@ function UnresolvedRefsPanel({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
-                        onClick={() => runWithLimitCheck(() => addSubsection(projectId, sectionId, name, ""))}
+                        onClick={() => runWithLimitCheck(() => addSubsection(realProjectId, realSectionId, name, ""))}
                       >
                         {t("sectionDetail.ai.createHere")}
                       </button>
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
-                        onClick={() => runWithLimitCheck(() => addSection(projectId, name, ""))}
+                        onClick={() => runWithLimitCheck(() => addSection(realProjectId, name, ""))}
                       >
                         {t("sectionDetail.ai.createAtRoot")}
                       </button>
@@ -1213,7 +1216,7 @@ function UnresolvedRefsPanel({
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700"
-                onClick={() => runWithLimitCheck(() => addSection(projectId, chooseParentFor, ""))}
+                onClick={() => runWithLimitCheck(() => addSection(realProjectId, chooseParentFor, ""))}
               >
                 📁 {t("sectionDetail.ai.createAtRoot")}
               </button>
@@ -1226,7 +1229,7 @@ function UnresolvedRefsPanel({
                     type="button"
                     className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700 truncate"
                     title={pathStr}
-                    onClick={() => runWithLimitCheck(() => addSubsection(projectId, s.id, chooseParentFor, ""))}
+                    onClick={() => runWithLimitCheck(() => addSubsection(realProjectId, s.id, chooseParentFor, ""))}
                   >
                     {pathStr}
                   </button>
@@ -1308,7 +1311,7 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
         {!hasChildren && <span className="w-4"></span>}
         <button
           className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
-          onClick={() => router.push(`/projects/${projectId}/sections/${sub.id}`)}
+          onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
         >
           {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
         </button>
@@ -1840,7 +1843,7 @@ function SectionDetailContent({
     if (addonGroups.includes(trimmed)) { setEditingGroupName(null); return; } // duplicate name
     const updated = addons.map((a: any) => ((a as any).group || "A") === oldName ? { ...a, group: trimmed } : a);
     onReorderAddons(updated);
-    renameSectionAddonGroup(projectId, sectionId, oldName, trimmed);
+    renameSectionAddonGroup(realProjectId, realSectionId, oldName, trimmed);
     if (activeGroup === oldName) setActiveGroup(trimmed);
     setEditingGroupName(null);
   };
@@ -1973,7 +1976,7 @@ function SectionDetailContent({
             onChange={(e) => {
               const val = e.target.value;
               setNewSubTitle(val);
-              if (val.trim() && hasDuplicateName(projectId, val.trim(), sectionId)) {
+              if (val.trim() && hasDuplicateName(realProjectId, val.trim(), realSectionId)) {
                 setNameError(t('sectionDetail.subsections.duplicate'));
               } else {
                 setNameError("");
@@ -1989,7 +1992,7 @@ function SectionDetailContent({
               const trimmed = newSubTitle.trim();
               if (!trimmed || nameError) return;
               try {
-                addSubsection(projectId, sectionId, trimmed, "");
+                addSubsection(realProjectId, realSectionId, trimmed, "");
                 setNewSubTitle("");
                 setNameError("");
               } catch (e) {
@@ -2173,7 +2176,7 @@ function SectionDetailContent({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setSectionThumbImage(projectId, sectionId, undefined);
+                  setSectionThumbImage(realProjectId, realSectionId,undefined);
                   setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: undefined } : prev));
                   setSectionThumbCandidateIndex(0);
                 }}
@@ -2202,7 +2205,7 @@ function SectionDetailContent({
                     if (e.key === 'Enter' && editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent, undefined, undefined);
+                      editSection(realProjectId, realSectionId,editedTitle.trim(), convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
                     } else if (e.key === 'Escape') {
                       setEditedTitle(section.title);
@@ -2220,7 +2223,7 @@ function SectionDetailContent({
                     if (editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(projectId, sectionId, editedTitle.trim(), convertedContent, undefined, undefined);
+                      editSection(realProjectId, realSectionId,editedTitle.trim(), convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
                     }
                   }}
@@ -2247,7 +2250,7 @@ function SectionDetailContent({
                     onChange={(e) => {
                       const newColor = e.target.value;
                       setSectionColor(newColor);
-                      editSection(projectId, sectionId, section.title, section.content, undefined, newColor);
+                      editSection(realProjectId, realSectionId,section.title, section.content, undefined, newColor);
                     }}
                     className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900/90"
                     title={t("sectionDetail.actions.mapColor")}
@@ -2256,7 +2259,7 @@ function SectionDetailContent({
                     <button
                       onClick={() => {
                         setSectionColor("#3b82f6");
-                        editSection(projectId, sectionId, section.title, section.content, undefined, undefined);
+                        editSection(realProjectId, realSectionId,section.title, section.content, undefined, undefined);
                       }}
                       className="h-8 px-2 text-xs bg-gray-700/90 hover:bg-gray-600 text-white rounded border border-gray-500/40 transition-colors"
                       title={t("sectionDetail.actions.resetLevelColor")}
@@ -2330,11 +2333,11 @@ function SectionDetailContent({
                           }}
                           onBlur={() => {
                             const trimmed = dataIdDraft.trim();
-                            if (trimmed && hasDuplicateDataId(projectId, trimmed, sectionId)) {
+                            if (trimmed && hasDuplicateDataId(realProjectId, trimmed, realSectionId)) {
                               setDataIdError(t("sectionDetail.dataId.duplicate"));
                               return;
                             }
-                            setSectionDataId(projectId, sectionId, trimmed || undefined);
+                            setSectionDataId(realProjectId, realSectionId, trimmed || undefined);
                             setDataIdError(null);
                             setIsEditingDataId(false);
                           }}
@@ -2417,7 +2420,7 @@ function SectionDetailContent({
                   )}
                 </button>
                 <button
-                  onClick={() => router.push(`/projects/${projectId}/mindmap?focus=${sectionId}`)}
+                  onClick={() => router.push(`${projectPath(project)}/mindmap?focus=${realSectionId}`)}
                   className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg border border-blue-400/40 hover:bg-blue-700 transition-colors"
                   title={t("sectionDetail.actions.goToMindMap")}
                 >
@@ -2426,7 +2429,7 @@ function SectionDetailContent({
                   </svg>
                 </button>
                 <button
-                  onClick={() => router.push(`/projects/${projectId}/view?focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
+                  onClick={() => router.push(`${projectPath(project)}/view?focus=${encodeURIComponent(realSectionId)}#section-${realSectionId}`)}
                   className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-lg border border-indigo-400/40 hover:bg-indigo-700 transition-colors"
                   title={t('sectionDetail.actions.goToDocument')}
                 >
@@ -2460,17 +2463,17 @@ function SectionDetailContent({
               <button
                 className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded-lg border border-red-400/40 hover:bg-red-700 transition-colors"
                 onClick={() => {
-                  const count = countDescendants(projectId, sectionId);
+                  const count = countDescendants(realProjectId, realSectionId);
                   const msg = count > 0 
                     ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
                     : t('sectionDetail.confirmDelete');
                   if (window.confirm(msg)) {
                     const parentId = section?.parentId;
-                    removeSection(projectId, sectionId);
+                    removeSection(realProjectId, realSectionId);
                     if (parentId) {
-                      router.push(`/projects/${projectId}/sections/${parentId}`);
+                      router.push(sectionPathById(project ?? { title: "", sections: [] }, parentId));
                     } else {
-                      router.push(`/projects/${projectId}`);
+                      router.push(project ? projectPath(project) : "/");
                     }
                   }
                 }}
@@ -2507,7 +2510,7 @@ function SectionDetailContent({
                   const next = isSelected
                     ? current.filter((t: string) => t !== id)
                     : normalizeDomainTags([...current, id]);
-                  editSection(projectId, sectionId, section.title, section.content ?? "", undefined, undefined, next);
+                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
                   setSection({ ...section, domainTags: next.length ? next : undefined });
                 }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
@@ -2541,7 +2544,7 @@ function SectionDetailContent({
                 const data = await res.json();
                 if (res.ok && Array.isArray(data.suggestedTags) && data.suggestedTags.length > 0) {
                   const next = normalizeDomainTags(data.suggestedTags);
-                  editSection(projectId, sectionId, section.title, section.content ?? "", undefined, undefined, next);
+                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
                   setSection({ ...section, domainTags: next });
                 }
               } catch (e) {
@@ -2924,13 +2927,13 @@ function SectionDetailContent({
                 ariaLabel={t("sectionDetail.flowchart.switchAria")}
                 onChange={(nextEnabled) => {
                   if (nextEnabled) {
-                    setSectionFlowchartEnabled(projectId, sectionId, true);
+                    setSectionFlowchartEnabled(realProjectId, realSectionId, true);
                     setSection({ ...section, flowchartEnabled: true });
                     return;
                   }
                   const confirmed = window.confirm(t("sectionDetail.flowchart.disableConfirm"));
                   if (!confirmed) return;
-                  disableSectionFlowchartAndClearDiagram(projectId, sectionId);
+                  disableSectionFlowchartAndClearDiagram(realProjectId, realSectionId);
                   setSection({ ...section, flowchartEnabled: false });
                 }}
               />
@@ -2940,7 +2943,7 @@ function SectionDetailContent({
             <div className="mt-3">
               <button
                 type="button"
-                onClick={() => router.push(`/projects/${projectId}/sections/${sectionId}/diagramas`)}
+                onClick={() => router.push(`${sectionPath(project, section)}/diagramas`)}
                 className="h-9 px-3.5 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-teal-600 transition-all text-xs font-semibold"
                 title={t("sectionDetail.flowchart.open")}
               >
@@ -3098,7 +3101,7 @@ function SectionDetailContent({
               <button
                 type="button"
                 onClick={() => {
-                  setSectionAddonGroupNote(projectId, sectionId, activeGroup, groupNotesDraft);
+                  setSectionAddonGroupNote(realProjectId, realSectionId, activeGroup, groupNotesDraft);
                   setShowGroupNotes(false);
                 }}
                 className="rounded-lg border border-indigo-600 bg-indigo-700 px-4 py-1.5 text-xs text-white hover:bg-indigo-600"
@@ -3175,16 +3178,16 @@ function SectionDetailContent({
                     if (!v.id) return;
                     setRestoreVersionId(v.id);
                     try {
-                      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/restore`, {
+                      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/restore`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ versionId: v.id }),
                         credentials: "include",
                       });
                       if (res.ok) {
-                        editSection(projectId, sectionId, v.title, v.content, undefined, v.color ?? undefined);
+                        editSection(realProjectId, realSectionId, v.title, v.content, undefined, v.color ?? undefined);
                         setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
-                        const data = await fetch(`/api/projects/${encodeURIComponent(projectId)}/sections/${encodeURIComponent(sectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
+                        const data = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
                         if (Array.isArray(data?.versions)) setSectionVersions(data.versions);
                       }
                     } finally {
@@ -3215,7 +3218,7 @@ function SectionDetailContent({
             if (!section?.content || !projectTitle) return;
             const re = new RegExp(`\\$\\[${escapeRegExp(projectTitle)}\\]`, "gi");
             const newContent = section.content.replace(re, projectTitle);
-            editSection(projectId, sectionId, section.title, newContent, undefined, undefined);
+            editSection(realProjectId, realSectionId,section.title, newContent, undefined, undefined);
             setSection({ ...section, content: newContent });
           }}
           projectId={projectId}
@@ -3298,7 +3301,7 @@ function SectionDetailContent({
                 const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
                 const sections = project?.sections || [];
                 const convertedMd = convertReferencesToIds(normalizedMd, sections);
-                editSection(projectId, sectionId, section.title, convertedMd, undefined, undefined);
+                editSection(realProjectId, realSectionId,section.title, convertedMd, undefined, undefined);
                 setInlineEdit(false);
               }}
             >{t("common.save")}</button>
@@ -3684,7 +3687,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
         {backlinks.map((link, index) => (
           <span key={link.id} className="inline-flex items-center">
             <button
-              onClick={() => router.push(`/projects/${projectId}/sections/${link.id}`)}
+              onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, link.id))}
               className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
             >
               {link.title}

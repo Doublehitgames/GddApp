@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useProjectStore, Project } from '@/store/projectStore';
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n/provider';
+import { projectPath } from '@/lib/utils/slug';
 
 export default function GlobalBackupPage() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function GlobalBackupPage() {
 
         setRestoreMessage(tr(`✅ Projeto "${restoredProject.title}" restaurado com sucesso!`, `✅ Project "${restoredProject.title}" restored successfully!`, `✅ ¡Proyecto "${restoredProject.title}" restaurado con éxito!`));
         setTimeout(() => {
-          router.push(`/projects/${restoredProject.id}`);
+          router.push(projectPath(restoredProject));
         }, 2000);
       } else if (data.projects) {
         // All projects backup

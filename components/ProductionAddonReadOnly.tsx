@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ProductionAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { toSlug } from "@/lib/utils/slug";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 
 interface ProductionAddonReadOnlyProps {
@@ -246,7 +247,7 @@ export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }:
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
     if (!targetElement) {
       const match = window.location.pathname.match(/\/projects\/([^/]+)/);
-      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      if (match) window.location.href = `/projects/${match[1]}/sections/${toSlug(sectionsById.get(sectionId)?.title ?? "") || sectionId}`;
       return;
     }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;

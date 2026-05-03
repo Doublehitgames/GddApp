@@ -9,6 +9,7 @@ import { useProjectStore } from '@/store/projectStore';
 import { useAIConfig } from '@/hooks/useAIConfig';
 import AIConfigWarning from '@/components/AIConfigWarning';
 import { useI18n } from '@/lib/i18n/provider';
+import { toSlug } from '@/lib/utils/slug';
 
 interface ImportedSection {
   title: string;
@@ -209,7 +210,7 @@ export default function ImportProjectPage() {
       const createSections = (sections: ImportedSection[], parentId?: string) => {
         sections.forEach(section => {
           let sectionId: string;
-          
+
           if (parentId) {
             // É uma subseção
             sectionId = addSubsection(projectId, parentId, section.title, section.content);
@@ -228,7 +229,7 @@ export default function ImportProjectPage() {
       createSections(previewData.sections);
 
       // Redirecionar para o projeto criado
-      router.push(`/projects/${projectId}`);
+      router.push(`/projects/${toSlug(previewData.title)}`);
     } catch (err) {
       if (err instanceof Error && err.message.startsWith('structural_limit')) {
         const msg = err.message === 'structural_limit_projects' ? t('limits.projects')

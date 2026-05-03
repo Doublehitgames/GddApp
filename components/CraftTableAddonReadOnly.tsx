@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CraftTableAddonDraft, CraftTableEntry } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { toSlug } from "@/lib/utils/slug";
 
 interface CraftTableAddonReadOnlyProps {
   addon: CraftTableAddonDraft;
@@ -86,7 +87,7 @@ export function CraftTableAddonReadOnly({
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
     if (!targetElement) {
       const match = window.location.pathname.match(/\/projects\/([^/]+)/);
-      if (match) window.location.href = `/projects/${match[1]}/sections/${sectionId}`;
+      if (match) window.location.href = `/projects/${match[1]}/sections/${toSlug(sectionsById.get(sectionId)?.title ?? "") || sectionId}`;
       return;
     }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;

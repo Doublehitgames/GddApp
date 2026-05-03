@@ -20,6 +20,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
+import { sectionPathById, projectPath } from "@/lib/utils/slug";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
@@ -925,11 +926,13 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     },
     [t]
   );
-  const { getProject } = useProjectStore();
+  const { getProjectBySlug } = useProjectStore();
+  const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
-  const projectFromStore = getProject(projectId);
+  const projectFromStore = getProjectBySlug(projectId);
   const project: Project | undefined = publicProject || projectFromStore;
+  const realProjectId = project?.id ?? "";
   const isPublicMode = Boolean(publicToken);
   const { setCenter, fitView } = useReactFlow(); // Agora funciona porque está dentro do ReactFlow
 
@@ -1869,7 +1872,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     if (isPublicMode) {
       return `/s/${encodeURIComponent(publicToken || "")}?mode=diagramas&sectionId=${encodeURIComponent(sectionId)}`;
     }
-    return `/projects/${projectId}/sections/${sectionId}/diagramas`;
+    return `${sectionPathById(project ?? { title: "", sections: [] }, sectionId)}/diagramas`;
   };
 
   if (!project) {
@@ -2167,7 +2170,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               <div className="mt-6 flex gap-2">
                 {selectedNode.id !== 'project' && (
                   <button
-                    onClick={() => router.push(`/projects/${projectId}/sections/${selectedNode.id}`)}
+                    onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     {tr("Ver Detalhes", "View Details", "Ver detalles")}
@@ -2175,7 +2178,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 )}
                 {selectedNode.id === 'project' && (
                   <button
-                    onClick={() => router.push(`/projects/${projectId}/edit`)}
+                    onClick={() => router.push(project ? `${projectPath(project)}/edit` : "/")}
                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     {tr("Editar Projeto", "Edit Project", "Editar proyecto")}

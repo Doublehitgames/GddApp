@@ -6,6 +6,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import type { AppLocale } from "@/lib/i18n/config";
 import { createProjectFromTemplate } from "@/lib/projects/createProjectFromTemplate";
+import { toSlug } from "@/lib/utils/slug";
 import {
   getWizardGenreOptions,
   getWizardPlatformOptions,
@@ -237,7 +238,7 @@ export default function ProjectsPage() {
     setIsCreating(true);
 
     try {
-      const projectId = createProjectFromTemplate({
+      createProjectFromTemplate({
         template: {
           ...resolvedTemplate,
           projectTitle: projectName.trim(),
@@ -248,9 +249,11 @@ export default function ProjectsPage() {
         selectedRootSectionIds,
         t,
       });
-      router.push(`/projects/${projectId}`);
+      router.push(`/projects/${toSlug(projectName.trim())}`);
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith("structural_limit_")) {
+      if (e instanceof Error && e.message === "duplicate_project_name") {
+        setError(t("projectsPage.wizard.errors.duplicateName", "Já existe um projeto com esse nome. Escolha um nome diferente."));
+      } else if (e instanceof Error && e.message.startsWith("structural_limit_")) {
         setError(getStructuralLimitMessage(e.message, t));
       } else {
         setError(t("projectsPage.wizard.errors.createFailed"));
@@ -270,10 +273,12 @@ export default function ProjectsPage() {
     setIsCreating(true);
 
     try {
-      const projectId = addProject(projectName.trim(), blankDescription.trim());
-      router.push(`/projects/${projectId}`);
+      addProject(projectName.trim(), blankDescription.trim());
+      router.push(`/projects/${toSlug(projectName.trim())}`);
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith("structural_limit_")) {
+      if (e instanceof Error && e.message === "duplicate_project_name") {
+        setError(t("projectsPage.wizard.errors.duplicateName", "Já existe um projeto com esse nome. Escolha um nome diferente."));
+      } else if (e instanceof Error && e.message.startsWith("structural_limit_")) {
         setError(getStructuralLimitMessage(e.message, t));
       } else {
         setError(t("projectsPage.wizard.errors.createFailed"));

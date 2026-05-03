@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 
 type Pending = { sectionId: string; title: string; shortDescription: string };
 
@@ -48,19 +49,22 @@ export function SectionAnchorLink({
   const [pending, setPending] = useState<Pending | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const meta = (() => {
+  const { meta, ownerProject } = (() => {
     for (const project of projects) {
       for (const section of project.sections || []) {
         if (section.id === sectionId) {
           return {
-            projectId: project.id,
-            title: section.title || section.id,
-            content: section.content || "",
+            meta: {
+              projectId: project.id,
+              title: section.title || section.id,
+              content: section.content || "",
+            },
+            ownerProject: project,
           };
         }
       }
     }
-    return null;
+    return { meta: null, ownerProject: null };
   })();
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export function SectionAnchorLink({
       (document.getElementById(targetId) as HTMLElement | null) ||
       (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
     if (!targetElement) {
-      window.location.href = `/projects/${meta.projectId}/sections/${sectionId}`;
+      if (ownerProject) window.location.href = sectionPathById(ownerProject, sectionId);
       return;
     }
     const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - 180;

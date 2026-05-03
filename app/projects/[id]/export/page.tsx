@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project, Section } from '@/store/projectStore';
 import { useI18n } from '@/lib/i18n/provider';
@@ -20,18 +20,14 @@ export default function ExportPage() {
   const router = useRouter();
   const projectId = params.id as string;
 
-  const getProject = useProjectStore((s) => s.getProject);
-  const [project, setProject] = useState<Project | null>(null);
+  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const projects = useProjectStore((s) => s.projects);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [includeEmptySections, setIncludeEmptySections] = useState(false);
 
-  useEffect(() => {
-    const proj = getProject(projectId);
-    if (proj) {
-      setProject(proj);
-    }
-  }, [projectId, getProject]);
+  const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const realProjectId = project?.id ?? "";
 
   if (!project) {
     return (

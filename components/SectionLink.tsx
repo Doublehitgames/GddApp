@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useProjectStore } from "@/store/projectStore";
+import { sectionPathById } from "@/lib/utils/slug";
 
 interface SectionLinkProps {
   sectionName: string;
@@ -15,11 +17,13 @@ interface SectionLinkProps {
  */
 export function SectionLink({ sectionName, projectId, sectionId, children }: SectionLinkProps) {
   const router = useRouter();
+  const projects = useProjectStore((s) => s.projects);
+  const project = projects.find((p) => p.id === projectId);
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (sectionId) {
-      router.push(`/projects/${projectId}/sections/${sectionId}`);
+    if (sectionId && project) {
+      router.push(sectionPathById(project, sectionId));
     }
   };
 
