@@ -145,8 +145,45 @@
     "editLink": "Editar vínculo",
     "popoverTitle": "Vincular a una tabla de progresión",
     "invalid": "Vínculo roto",
+    "invalidOption": "Vínculo inválido (columna eliminada)",
     "invalidExplain": "La columna vinculada ya no existe. Elige otra o limpia el vínculo.",
-    "emptyOptions": "Ninguna tabla de progresión en esta sección. Crea una para vincular."
+    "emptyOptions": "Ninguna tabla de progresión en esta sección. Crea una para vincular.",
+    "sheets": {
+      "sectionTitle": "Google Sheets",
+      "removeSheetsToBind": "Elimina el vínculo con Google Sheets para vincular a una tabla de progresión.",
+      "unbind": "Desvincular",
+      "choosePlaceholder": "Elige una hoja de cálculo…",
+      "otherOption": "Otra (URL manual)…",
+      "urlPlaceholder": "URL de la hoja de cálculo",
+      "chooseSheetPlaceholder": "Elige una hoja…",
+      "sheetNamePlaceholder": "Nombre de la hoja",
+      "bindButton": "Vincular",
+      "updateButton": "Actualizar vínculo",
+      "bindingButton": "Vinculando…",
+      "errorInvalidUrl": "URL o ID de hoja de cálculo inválido.",
+      "errorNoSheet": "Ingresa el nombre de la hoja.",
+      "errorInvalidCell": "Celda inválida. Usa el formato A1, B12, etc.",
+      "errorGeneric": "Error al vincular."
+    }
+  },
+  "linkedSpreadsheetsSettings": {
+    "editButton": "Editar",
+    "removeButton": "Eliminar",
+    "urlPlaceholder": "URL de la hoja de cálculo de Google Sheets",
+    "fetchingSheets": "Buscando hojas…",
+    "fetchButton": "Buscar hojas (OAuth)",
+    "sheetFoundSingular": "hoja encontrada",
+    "sheetFoundPlural": "hojas encontradas",
+    "refetchButton": "Buscar de nuevo",
+    "namePlaceholder": "Nombre amigable (ej.: Balance Sheet)",
+    "saveButton": "Guardar cambios",
+    "addButton": "Agregar hoja de cálculo",
+    "cancelButton": "Cancelar",
+    "errorInvalidUrl": "URL o ID de hoja de cálculo inválido.",
+    "errorNoClientId": "Google Client ID no configurado.",
+    "errorNoAuth": "No se pudo obtener autorización de Google.",
+    "errorNoSheets": "No se encontraron hojas. Verifica la URL y los permisos.",
+    "errorGeneric": "Error al buscar hojas."
   },
   "quickNewPage": {
     "modalTitle": "Nueva página",
@@ -193,7 +230,8 @@
       "nextResult": "Siguiente resultado",
       "prevResult": "Resultado anterior",
       "jumpResult": "Ir al resultado (Shift+Enter = anterior)"
-    }
+    },
+    "docsLink": "Ver documentación completa"
   },
   "common": {
     "appName": "GDD Manager",
@@ -662,6 +700,7 @@
     "sectionsSubtitle": "Busca, navega y reordena las secciones principales con arrastrar y soltar.",
     "showSectionsMenu": "Mostrar menú de secciones",
     "hideSectionsMenu": "Ocultar menú de secciones",
+    "settingsLabel": "Configuración del proyecto",
     "searchPlaceholder": "🔍 Buscar secciones por título o contenido...",
     "rootSectionDuplicate": "Ya existe una sección raíz con este nombre.",
     "newSectionPlaceholder": "Nueva sección",
@@ -1820,6 +1859,10 @@
     "language": "Idioma",
     "ai": "Configuración de IA",
     "persistence": "Persistencia",
+    "linkedSheets": {
+      "title": "🔗 Hojas de cálculo vinculadas",
+      "description": "Registra hojas de Google Sheets una vez y reutilízalas en cualquier vínculo de campo — sin necesidad de pegar la URL cada vez."
+    },
     "actions": {
       "backToProject": "Volver",
       "save": "Guardar",

@@ -203,6 +203,14 @@ export type InventoryAddonDraft = {
   notes?: string;
 };
 
+export type SheetsCellRef = {
+  spreadsheetId: string;
+  sheetName: string;
+  cellRef: string;
+  cachedValue: number | null;
+  syncedAt: string | null;
+};
+
 export type EconomyLinkAddonDraft = {
   id: string;
   name: string;
@@ -210,6 +218,7 @@ export type EconomyLinkAddonDraft = {
   buyCurrencyRef?: string;
   buyValue?: number;
   buyValueProgressionLink?: ProductionProgressionLink;
+  buyValueSheetsRef?: SheetsCellRef;
   minBuyValue?: number;
   minBuyValueProgressionLink?: ProductionProgressionLink;
   buyModifiers: EconomyModifierRef[];
@@ -217,6 +226,7 @@ export type EconomyLinkAddonDraft = {
   sellCurrencyRef?: string;
   sellValue?: number;
   sellValueProgressionLink?: ProductionProgressionLink;
+  sellValueSheetsRef?: SheetsCellRef;
   maxSellValue?: number;
   maxSellValueProgressionLink?: ProductionProgressionLink;
   sellModifiers: EconomyModifierRef[];

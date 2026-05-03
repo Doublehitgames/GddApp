@@ -12,6 +12,9 @@ import { useI18n } from "@/lib/i18n/provider";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
+import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadsheetsSettings";
+import { pushProjectLinkedSpreadsheets } from "@/lib/supabase/projectSync";
+import type { LinkedSpreadsheet } from "@/store/slices/types";
 import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
 import {
   convertYouTubeEmbedsToEditorPlaceholders,
@@ -27,6 +30,7 @@ export default function ProjectEditClient({ projectId }: Props) {
   const router = useRouter();
   const getProject = useProjectStore((s) => s.getProject);
   const editProject = useProjectStore((s) => s.editProject);
+  const updateProjectLinkedSpreadsheets = useProjectStore((s) => s.updateProjectLinkedSpreadsheets);
 
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -238,6 +242,24 @@ export default function ProjectEditClient({ projectId }: Props) {
               onInsertToken={insertSpecialToken}
             />
           </div>
+        </div>
+
+        {/* Planilhas Vinculadas */}
+        <div>
+          <label className="block text-sm font-semibold mb-1">
+            {t("settings.linkedSheets.title")}
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            {t("settings.linkedSheets.description")}
+          </p>
+          <LinkedSpreadsheetsSettings
+            projectId={projectId}
+            spreadsheets={getProject(projectId)?.linkedSpreadsheets ?? []}
+            onChange={async (next: LinkedSpreadsheet[]) => {
+              updateProjectLinkedSpreadsheets(projectId, next);
+              await pushProjectLinkedSpreadsheets(projectId, next);
+            }}
+          />
         </div>
 
         {/* AI Instructions */}

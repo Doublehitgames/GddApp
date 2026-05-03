@@ -6,7 +6,9 @@ import { useProjectStore, LevelConfig, type Project } from "@/store/projectStore
 import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
-import { pushProjectMindMapSettings } from "@/lib/supabase/projectSync";
+import { pushProjectMindMapSettings, pushProjectLinkedSpreadsheets } from "@/lib/supabase/projectSync";
+import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadsheetsSettings";
+import type { LinkedSpreadsheet } from "@/store/slices/types";
 import {
   DOCUMENT_THEME_OPTIONS,
   normalizeDocumentTheme,
@@ -40,6 +42,7 @@ export default function SettingsClient({ projectId }: Props) {
     getProject,
     updateProjectSettings,
     updateProjectMindMapSettingsOnly,
+    updateProjectLinkedSpreadsheets,
     removeProject,
     loadFromSupabase,
     refreshQuotaStatus,
@@ -547,7 +550,7 @@ export default function SettingsClient({ projectId }: Props) {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-5xl mx-auto p-6">
         <div className="mb-8">
-          <button onClick={() => router.push(`/projects/${projectId}`)} className="text-gray-400 hover:text-white mb-4">← {t("settings.actions.backToProject", "Back")}</button>
+          <button onClick={() => router.back()} className="text-gray-400 hover:text-white mb-4">← {t("settings.actions.backToProject", "Back")}</button>
           <h1 className="text-3xl font-bold mb-2">⚙️ {t("settings.pageTitle")}</h1>
           <p className="text-gray-400">{project.title}</p>
         </div>
@@ -569,6 +572,20 @@ export default function SettingsClient({ projectId }: Props) {
           <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {t("settings.actions.import", "Import")}</button>
         </div>
         <div className="space-y-8">
+          {/* Planilhas Vinculadas */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-1">{t("settings.linkedSheets.title")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.linkedSheets.description")}</p>
+            <LinkedSpreadsheetsSettings
+              projectId={projectId}
+              spreadsheets={project.linkedSpreadsheets ?? []}
+              onChange={async (next: LinkedSpreadsheet[]) => {
+                updateProjectLinkedSpreadsheets(projectId, next);
+                await pushProjectLinkedSpreadsheets(projectId, next);
+              }}
+            />
+          </div>
+
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-2">{t("settings.documentThemes.title")}</h2>
             <p className="text-sm text-gray-400 mb-4">{t("settings.documentThemes.description")}</p>

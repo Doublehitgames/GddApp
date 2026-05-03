@@ -145,8 +145,45 @@
     "editLink": "Edit link",
     "popoverTitle": "Link to a progression table",
     "invalid": "Broken link",
+    "invalidOption": "Invalid link (column removed)",
     "invalidExplain": "The linked column no longer exists. Pick another or clear the link.",
-    "emptyOptions": "No progression table in this section. Create one to link."
+    "emptyOptions": "No progression table in this section. Create one to link.",
+    "sheets": {
+      "sectionTitle": "Google Sheets",
+      "removeSheetsToBind": "Remove the Google Sheets binding to link to a progression table.",
+      "unbind": "Unlink",
+      "choosePlaceholder": "Choose a spreadsheet…",
+      "otherOption": "Other (manual URL)…",
+      "urlPlaceholder": "Spreadsheet URL",
+      "chooseSheetPlaceholder": "Choose a sheet…",
+      "sheetNamePlaceholder": "Sheet name",
+      "bindButton": "Link",
+      "updateButton": "Update link",
+      "bindingButton": "Linking…",
+      "errorInvalidUrl": "Invalid spreadsheet URL or ID.",
+      "errorNoSheet": "Please enter the sheet name.",
+      "errorInvalidCell": "Invalid cell. Use format A1, B12, etc.",
+      "errorGeneric": "Failed to link."
+    }
+  },
+  "linkedSpreadsheetsSettings": {
+    "editButton": "Edit",
+    "removeButton": "Remove",
+    "urlPlaceholder": "Google Sheets spreadsheet URL",
+    "fetchingSheets": "Fetching sheets…",
+    "fetchButton": "Fetch sheets (OAuth)",
+    "sheetFoundSingular": "sheet found",
+    "sheetFoundPlural": "sheets found",
+    "refetchButton": "Fetch again",
+    "namePlaceholder": "Friendly name (e.g. Balance Sheet)",
+    "saveButton": "Save changes",
+    "addButton": "Add spreadsheet",
+    "cancelButton": "Cancel",
+    "errorInvalidUrl": "Invalid spreadsheet URL or ID.",
+    "errorNoClientId": "Google Client ID not configured.",
+    "errorNoAuth": "Could not obtain Google authorization.",
+    "errorNoSheets": "No sheets found. Check the URL and permissions.",
+    "errorGeneric": "Error fetching sheets."
   },
   "quickNewPage": {
     "modalTitle": "New page",
@@ -193,7 +230,8 @@
       "nextResult": "Next result",
       "prevResult": "Previous result",
       "jumpResult": "Jump to result (Shift+Enter = previous)"
-    }
+    },
+    "docsLink": "View full documentation"
   },
   "common": {
     "appName": "GDD Manager",
@@ -662,6 +700,7 @@
     "sectionsSubtitle": "Search, browse, and reorder top-level sections with drag and drop.",
     "showSectionsMenu": "Show sections menu",
     "hideSectionsMenu": "Hide sections menu",
+    "settingsLabel": "Project settings",
     "searchPlaceholder": "🔍 Search sections by title or content...",
     "rootSectionDuplicate": "A root section with this name already exists.",
     "newSectionPlaceholder": "New section",
@@ -1820,6 +1859,10 @@
     "language": "Language",
     "ai": "AI settings",
     "persistence": "Persistence",
+    "linkedSheets": {
+      "title": "🔗 Linked Spreadsheets",
+      "description": "Register Google Sheets once and reuse them in any field binding — no need to paste the URL every time."
+    },
     "actions": {
       "backToProject": "Back",
       "save": "Save",

@@ -288,6 +288,20 @@ export type Section = {
   updated_by_name?: string | null;
 };
 
+/** Uma planilha do Google Sheets cadastrada no projeto para reutilização em vínculos. */
+export type LinkedSpreadsheet = {
+  /** UUID gerado no cliente. */
+  id: string;
+  /** Nome amigável exibido nos selects (ex.: "Balance Sheet"). */
+  name: string;
+  /** ID extraído da URL da planilha. */
+  spreadsheetId: string;
+  /** URL original (para exibição e edição). */
+  url: string;
+  /** Nomes das abas, buscados via API ao cadastrar. */
+  sheets: string[];
+};
+
 //Definição do Projeto. Um projeto pode ter várias seções.
 export type Project = {
   id: UUID;
@@ -302,6 +316,8 @@ export type Project = {
   ownerId?: string | null;
   /** Instruções específicas do projeto para a IA (convenções de addons, estrutura de dados, etc). */
   aiInstructions?: string;
+  /** Planilhas do Google Sheets cadastradas para reutilização em vínculos de campos. */
+  linkedSpreadsheets?: LinkedSpreadsheet[];
 };
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -357,6 +373,7 @@ export interface ProjectStore {
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
+  updateProjectLinkedSpreadsheets: (id: UUID, linkedSpreadsheets: LinkedSpreadsheet[]) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;
   editSection: (
     projectId: UUID,

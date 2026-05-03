@@ -17,11 +17,20 @@ export async function PATCH(
 
     const body = await request.json().catch(() => ({}));
     const mindmap_settings = body.mindmap_settings;
-    if (mindmap_settings === undefined || typeof mindmap_settings !== "object") {
+    const linked_spreadsheets = body.linked_spreadsheets;
+
+    // At least one recognised field must be present
+    if (mindmap_settings === undefined && linked_spreadsheets === undefined) {
       return NextResponse.json(
-        { error: "mindmap_settings (object) required" },
+        { error: "mindmap_settings or linked_spreadsheets required" },
         { status: 400 }
       );
+    }
+    if (mindmap_settings !== undefined && typeof mindmap_settings !== "object") {
+      return NextResponse.json({ error: "mindmap_settings must be an object" }, { status: 400 });
+    }
+    if (linked_spreadsheets !== undefined && !Array.isArray(linked_spreadsheets)) {
+      return NextResponse.json({ error: "linked_spreadsheets must be an array" }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -46,9 +55,13 @@ export async function PATCH(
     }
 
     const updated_at = new Date().toISOString();
+    const updateFields: Record<string, unknown> = { updated_at };
+    if (mindmap_settings !== undefined) updateFields.mindmap_settings = mindmap_settings;
+    if (linked_spreadsheets !== undefined) updateFields.linked_spreadsheets = linked_spreadsheets;
+
     const { error: updateErr } = await supabase
       .from("projects")
-      .update({ mindmap_settings, updated_at })
+      .update(updateFields)
       .eq("id", projectId)
       .eq("owner_id", user.id);
 

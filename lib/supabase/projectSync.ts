@@ -171,6 +171,28 @@ export async function fetchQuotaStatus(projectId: string): Promise<CloudSyncQuot
   }
 }
 
+/** Envia apenas linked_spreadsheets para o Supabase (sem seções, sem consumir créditos). */
+export async function pushProjectLinkedSpreadsheets(
+  projectId: string,
+  linkedSpreadsheets: unknown[]
+): Promise<{ error: string | null }> {
+  try {
+    const base = getSyncRouteBase();
+    const response = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linked_spreadsheets: linkedSpreadsheets }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return { error: (body?.error as string) || `settings_push_failed_${response.status}` };
+    }
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "settings_push_exception" };
+  }
+}
+
 /** Envia apenas mindmap_settings para o Supabase (sem seções, sem consumir créditos). Usado ao salvar Configurações do Mapa Mental. */
 export async function pushProjectMindMapSettings(
   projectId: string,
@@ -318,6 +340,9 @@ function dbProjectToStore(
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
     ownerId: (row.owner_id as string) || undefined,
     aiInstructions: (row.ai_instructions as string) || undefined,
+    linkedSpreadsheets: Array.isArray(row.linked_spreadsheets)
+      ? (row.linked_spreadsheets as Project["linkedSpreadsheets"])
+      : undefined,
     sections: sections
       .filter((s) => s.project_id === row.id)
       .map(dbSectionToStore),

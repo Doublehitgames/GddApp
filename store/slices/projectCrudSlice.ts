@@ -1,4 +1,4 @@
-import type { ProjectStore, UUID } from "./types";
+import type { ProjectStore, UUID, LinkedSpreadsheet } from "./types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
 import { FREE_MAX_PROJECTS } from "@/lib/structuralLimits";
 import { buildSectionDiagramKey, persistDiagrams, persist, logInfo } from "./storageHelpers";
@@ -79,6 +79,17 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         persist(next);
       } catch {}
       engine.persistSyncState();
+    },
+
+    updateProjectLinkedSpreadsheets: (id: UUID, linkedSpreadsheets: LinkedSpreadsheet[]) => {
+      engine.wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, linkedSpreadsheets, updatedAt: new Date().toISOString() }
+            : p
+        )
+      );
+      try { persist(get().projects); } catch {}
     },
 
     setProjectCoverImage: (id: UUID, coverImageUrl?: string) => {

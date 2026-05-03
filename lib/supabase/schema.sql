@@ -57,6 +57,7 @@ create table public.projects (
   cover_image_url text,
   mindmap_settings jsonb default '{}'::jsonb,
   ai_instructions text default '',
+  linked_spreadsheets jsonb default '[]'::jsonb,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null
 );
