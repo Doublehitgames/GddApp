@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
-import type { EconomyLinkAddonDraft, ProductionProgressionLink } from "@/lib/addons/types";
+import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
+import type { EconomyLinkAddonDraft, ProductionProgressionLink, SheetsCellRef } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
 import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
+import { getGoogleSheetsToken, fetchSheetCellValue, parseCellNumber } from "@/lib/googleSheets";
+import { getGoogleClientId } from "@/lib/googleDrivePicker";
 
 interface EconomyLinkAddonPanelProps {
   addon: EconomyLinkAddonDraft;
@@ -126,10 +128,36 @@ function formatModifierPreview(meta: GlobalVariableCalcMeta): string | null {
   return null;
 }
 
+function SheetsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+    </svg>
+  );
+}
+
+function formatSyncedAt(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso));
+  } catch {
+    return "";
+  }
+}
+
 export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLinkAddonPanelProps) {
   const { t } = useI18n();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const projects = useProjectStore((state) => state.projects);
   const currentProjectId = useCurrentProjectId();
+  const linkedSpreadsheets = useMemo(() => {
+    if (!currentProjectId) return [];
+    const project = projects.find((p) => p.id === currentProjectId);
+    return project?.linkedSpreadsheets ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, currentProjectId]);
+
   const scopedProjects = useMemo(
     () => (currentProjectId ? projects.filter((p) => p.id === currentProjectId) : projects),
     [projects, currentProjectId]
@@ -386,11 +414,103 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   }, [addon, t]);
 
   const commit = (patch: Partial<EconomyLinkAddonDraft>) => {
-    onChange({
-      ...addon,
-      ...patch,
-    });
+    onChange({ ...addon, ...patch });
   };
+
+  const handleBindSheetsRef = useCallback(
+    async (field: "buyValue" | "sellValue", ref: SheetsCellRef): Promise<void> => {
+      setSyncing(true);
+      setSyncError(null);
+      let finalRef = ref;
+      try {
+        const clientId = await getGoogleClientId();
+        const token = clientId ? await getGoogleSheetsToken(clientId) : null;
+        if (token) {
+          const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
+          if (raw !== null) {
+            const num = parseCellNumber(raw);
+            if (num !== null) {
+              finalRef = { ...ref, cachedValue: num, syncedAt: new Date().toISOString() };
+            } else {
+              throw new Error(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
+            }
+          } else {
+            throw new Error(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
+          }
+        } else {
+          throw new Error("Não foi possível obter autorização do Google.");
+        }
+      } finally {
+        setSyncing(false);
+      }
+      const patch: Partial<EconomyLinkAddonDraft> = {
+        [`${field}SheetsRef`]: finalRef,
+      } as Partial<EconomyLinkAddonDraft>;
+      if (finalRef.cachedValue !== null && finalRef.cachedValue !== undefined) {
+        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, finalRef.cachedValue));
+      }
+      commit(patch);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addon],
+  );
+
+  const handleUnbindSheetsRef = useCallback(
+    (field: "buyValue" | "sellValue") => {
+      commit({ [`${field}SheetsRef`]: undefined } as Partial<EconomyLinkAddonDraft>);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addon],
+  );
+
+  const handleSyncSheets = useCallback(async () => {
+    const bindings: Array<{ field: "buyValue" | "sellValue"; ref: SheetsCellRef }> = [];
+    if (addon.buyValueSheetsRef) bindings.push({ field: "buyValue", ref: addon.buyValueSheetsRef });
+    if (addon.sellValueSheetsRef) bindings.push({ field: "sellValue", ref: addon.sellValueSheetsRef });
+    if (bindings.length === 0) return;
+
+    setSyncing(true);
+    setSyncError(null);
+
+    try {
+      const clientId = await getGoogleClientId();
+      if (!clientId) {
+        setSyncError("Google Client ID não configurado.");
+        return;
+      }
+      const token = await getGoogleSheetsToken(clientId);
+      if (!token) {
+        setSyncError("Não foi possível obter autorização do Google.");
+        return;
+      }
+
+      const patch: Partial<EconomyLinkAddonDraft> = {};
+      const syncedAt = new Date().toISOString();
+
+      for (const { field, ref } of bindings) {
+        const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
+        if (raw === null) {
+          setSyncError(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
+          return;
+        }
+        const num = parseCellNumber(raw);
+        if (num === null) {
+          setSyncError(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
+          return;
+        }
+        const refKey = `${field}SheetsRef` as keyof EconomyLinkAddonDraft;
+        patch[refKey] = { ...ref, cachedValue: num, syncedAt } as never;
+        patch[field] = Math.floor(Math.max(0, num)) as never;
+      }
+
+      commit(patch);
+    } catch {
+      setSyncError("Erro inesperado ao sincronizar.");
+    } finally {
+      setSyncing(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addon]);
 
   const toggleModifier = (field: "buyModifiers" | "sellModifiers", refId: string, enabled: boolean) => {
     const current = field === "buyModifiers" ? addon.buyModifiers || [] : addon.sellModifiers || [];
@@ -466,8 +586,6 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     return undefined;
   }, [addon.sellValueProgressionLink, addon.unlockValue, addon.sellValue, addon.priceMultiplier, addon.sellModifiers, addon.maxSellValue, globalVariableByRefId, progressionColumnOptionByKey]);
 
-  // Sync resolved progression-link values back to the store so the summary and
-  // other addons always read the current effective value, not the old stored one.
   useEffect(() => {
     if (addon.buyValueProgressionLink && buyEffectiveValue != null && buyEffectiveValue !== addon.buyValue) {
       commit({ buyValue: buyEffectiveValue });
@@ -481,6 +599,10 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sellEffectiveValue, addon.sellValueProgressionLink]);
+
+  const hasBuyBinding = Boolean(addon.buyValueSheetsRef);
+  const hasSellBinding = Boolean(addon.sellValueSheetsRef);
+  const hasAnyBinding = hasBuyBinding || hasSellBinding;
 
   return (
     <section className={PANEL_SHELL_CLASS}>
@@ -501,6 +623,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           hasBuyConfig: false,
                           buyCurrencyRef: undefined,
                           buyValue: undefined,
+                          buyValueSheetsRef: undefined,
                           minBuyValue: undefined,
                           buyModifiers: [],
                         }
@@ -551,8 +674,18 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     invalidLabelFallback={addon.buyValueProgressionLink?.columnName}
                     onChange={(opt) => handleLinkChange("buyValueProgressionLink", opt)}
                     badges={renderLevelBadges(buildLevelBadges(addon.buyValueProgressionLink, addon.priceMultiplier ?? 1), "buy-val")}
+                    sheetsBinding={{
+                      current: addon.buyValueSheetsRef,
+                      onBind: (ref) => handleBindSheetsRef("buyValue", ref),
+                      onUnbind: () => handleUnbindSheetsRef("buyValue"),
+                    }}
+                    spreadsheetRegistry={linkedSpreadsheets}
                   >
-                    {addon.buyValueProgressionLink ? (
+                    {hasBuyBinding ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                        {addon.buyValueSheetsRef!.cachedValue != null ? formatDisplayNumber(addon.buyValueSheetsRef!.cachedValue) : "—"}
+                      </div>
+                    ) : addon.buyValueProgressionLink ? (
                       <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
                         {buyEffectiveValue != null ? formatDisplayNumber(buyEffectiveValue) : "—"}
                       </div>
@@ -645,6 +778,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           hasSellConfig: false,
                           sellCurrencyRef: undefined,
                           sellValue: undefined,
+                          sellValueSheetsRef: undefined,
                           maxSellValue: undefined,
                           sellModifiers: [],
                         }
@@ -695,8 +829,18 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     invalidLabelFallback={addon.sellValueProgressionLink?.columnName}
                     onChange={(opt) => handleLinkChange("sellValueProgressionLink", opt)}
                     badges={renderLevelBadges(buildLevelBadges(addon.sellValueProgressionLink, addon.priceMultiplier ?? 1), "sell-val")}
+                    sheetsBinding={{
+                      current: addon.sellValueSheetsRef,
+                      onBind: (ref) => handleBindSheetsRef("sellValue", ref),
+                      onUnbind: () => handleUnbindSheetsRef("sellValue"),
+                    }}
+                    spreadsheetRegistry={linkedSpreadsheets}
                   >
-                    {addon.sellValueProgressionLink ? (
+                    {hasSellBinding ? (
+                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                        {addon.sellValueSheetsRef!.cachedValue != null ? formatDisplayNumber(addon.sellValueSheetsRef!.cachedValue) : "—"}
+                      </div>
+                    ) : addon.sellValueProgressionLink ? (
                       <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
                         {sellEffectiveValue != null ? formatDisplayNumber(sellEffectiveValue) : "—"}
                       </div>
@@ -920,6 +1064,32 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
           {validationMessages.map((message) => (
             <p key={message}>{message}</p>
           ))}
+        </div>
+      )}
+
+      {hasAnyBinding && (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex-1">
+            {syncError && (
+              <p className="text-xs text-rose-400">{syncError}</p>
+            )}
+            {!syncError && (
+              <p className="text-xs text-gray-500">
+                {addon.buyValueSheetsRef?.syncedAt || addon.sellValueSheetsRef?.syncedAt
+                  ? `Última sync: ${formatSyncedAt(addon.buyValueSheetsRef?.syncedAt ?? addon.sellValueSheetsRef?.syncedAt ?? null)}`
+                  : "Ainda não sincronizado"}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleSyncSheets}
+            disabled={syncing}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-50"
+          >
+            <SheetsIcon className="h-3.5 w-3.5" />
+            {syncing ? "Sincronizando..." : "Sincronizar Sheets"}
+          </button>
         </div>
       )}
 

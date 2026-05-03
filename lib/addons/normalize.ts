@@ -16,6 +16,7 @@ import type {
   SkillEffectRef,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
+  SheetsCellRef,
   ExportSchemaAddonDraft,
   ExportSchemaBinding,
   ExportSchemaNode,
@@ -177,10 +178,12 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
 
   const buyValue = asPositiveIntegerOrUndefined(value.buyValue);
   const buyValueProgressionLink = normalizeProductionProgressionLink(value.buyValueProgressionLink);
+  const buyValueSheetsRef = normalizeSheetsCellRef(value.buyValueSheetsRef);
   const minBuyValue = asPositiveIntegerOrUndefined(value.minBuyValue);
   const minBuyValueProgressionLink = normalizeProductionProgressionLink(value.minBuyValueProgressionLink);
   const sellValue = asPositiveIntegerOrUndefined(value.sellValue);
   const sellValueProgressionLink = normalizeProductionProgressionLink(value.sellValueProgressionLink);
+  const sellValueSheetsRef = normalizeSheetsCellRef(value.sellValueSheetsRef);
   const maxSellValue = asPositiveIntegerOrUndefined(value.maxSellValue);
   const maxSellValueProgressionLink = normalizeProductionProgressionLink(value.maxSellValueProgressionLink);
   const rawPriceMultiplier = typeof value.priceMultiplier === "number" && Number.isFinite(value.priceMultiplier) && value.priceMultiplier > 0 ? value.priceMultiplier : undefined;
@@ -231,6 +234,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     buyCurrencyRef: buyCurrencyRef || undefined,
     buyValue,
     buyValueProgressionLink,
+    buyValueSheetsRef,
     minBuyValue,
     minBuyValueProgressionLink,
     buyModifiers,
@@ -238,6 +242,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     sellCurrencyRef: sellCurrencyRef || undefined,
     sellValue,
     sellValueProgressionLink,
+    sellValueSheetsRef,
     maxSellValue,
     maxSellValueProgressionLink,
     sellModifiers,
@@ -585,6 +590,17 @@ function normalizeProductionItems(raw: unknown): Array<{ itemRef: string; quanti
     out.push({ itemRef, quantity });
   }
   return out;
+}
+
+function normalizeSheetsCellRef(value: unknown): SheetsCellRef | undefined {
+  if (!isObject(value)) return undefined;
+  const spreadsheetId = typeof value.spreadsheetId === "string" ? value.spreadsheetId.trim() : "";
+  const sheetName = typeof value.sheetName === "string" ? value.sheetName.trim() : "";
+  const cellRef = typeof value.cellRef === "string" ? value.cellRef.trim() : "";
+  if (!spreadsheetId || !sheetName || !cellRef) return undefined;
+  const cachedValue = typeof value.cachedValue === "number" && Number.isFinite(value.cachedValue) ? value.cachedValue : null;
+  const syncedAt = typeof value.syncedAt === "string" ? value.syncedAt : null;
+  return { spreadsheetId, sheetName, cellRef, cachedValue, syncedAt };
 }
 
 function normalizeProductionProgressionLink(

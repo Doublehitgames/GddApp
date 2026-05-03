@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
+import type { SheetsCellRef } from "@/lib/addons/types";
+import type { LinkedSpreadsheet } from "@/store/slices/types";
+import { parseSpreadsheetId } from "@/lib/googleSheets";
 
 export type LinkedFieldOption = {
   /** Stable unique key for this option (e.g. `${addonId}::${columnId}`). */
@@ -31,6 +34,16 @@ interface LinkedFieldRowProps {
   invalidLabelFallback?: string;
   /** Optional custom CTA shown inside the popover when options is empty. */
   emptyStateCta?: ReactNode;
+  /** Optional element rendered inline after the label (e.g. a bind icon button). */
+  labelAdornment?: ReactNode;
+  /** When provided, adds a Google Sheets section inside the popover. */
+  sheetsBinding?: {
+    current: SheetsCellRef | undefined;
+    onBind: (ref: SheetsCellRef) => Promise<void>;
+    onUnbind: () => void;
+  };
+  /** Planilhas cadastradas no projeto — quando fornecido, o formulário usa selects em vez de input livre. */
+  spreadsheetRegistry?: LinkedSpreadsheet[];
 }
 
 export function LinkedFieldRow({
@@ -43,9 +56,19 @@ export function LinkedFieldRow({
   onChange,
   invalidLabelFallback,
   emptyStateCta,
+  labelAdornment,
+  sheetsBinding,
+  spreadsheetRegistry,
 }: LinkedFieldRowProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [sheetsUrl, setSheetsUrl] = useState("");
+  const [sheetsSheetName, setSheetsSheetName] = useState("");
+  const [sheetsCellRef, setSheetsCellRef] = useState("");
+  const [sheetsError, setSheetsError] = useState<string | null>(null);
+  const [sheetsLoading, setSheetsLoading] = useState(false);
+  // registry mode
+  const [selectedRegistryId, setSelectedRegistryId] = useState("");
   const popoverId = useId();
   // Stable ids so the label <span> can be referenced via aria-labelledby on
   // the trigger button. Without this, screen-readers (and accessibility-aware
@@ -75,13 +98,67 @@ export function LinkedFieldRow({
     };
   }, [open]);
 
-  const chipText = selected
+  useEffect(() => {
+    if (!open || !sheetsBinding) return;
+    const cur = sheetsBinding.current;
+    setSheetsUrl(cur ? `https://docs.google.com/spreadsheets/d/${cur.spreadsheetId}/edit` : "");
+    setSheetsSheetName(cur?.sheetName ?? "");
+    setSheetsCellRef(cur?.cellRef ?? "");
+    setSheetsError(null);
+    // Init registry selection from current binding
+    if (cur && spreadsheetRegistry) {
+      const match = spreadsheetRegistry.find((s) => s.spreadsheetId === cur.spreadsheetId);
+      setSelectedRegistryId(match?.id ?? "__other__");
+    } else {
+      setSelectedRegistryId(spreadsheetRegistry && spreadsheetRegistry.length > 0 ? "" : "__other__");
+    }
+  }, [open]);
+
+  async function handleSheetsBind() {
+    setSheetsError(null);
+    const spreadsheetId = parseSpreadsheetId(sheetsUrl);
+    if (!spreadsheetId) {
+      setSheetsError(t("linkedField.sheets.errorInvalidUrl"));
+      return;
+    }
+    const sheet = sheetsSheetName.trim();
+    if (!sheet) { setSheetsError(t("linkedField.sheets.errorNoSheet")); return; }
+    const cell = sheetsCellRef.trim().toUpperCase();
+    if (!cell || !/^[A-Z]+\d+$/.test(cell)) {
+      setSheetsError(t("linkedField.sheets.errorInvalidCell"));
+      return;
+    }
+    const cur = sheetsBinding?.current;
+    setSheetsLoading(true);
+    try {
+      await sheetsBinding?.onBind({
+        spreadsheetId,
+        sheetName: sheet,
+        cellRef: cell,
+        cachedValue: cur?.spreadsheetId === spreadsheetId ? (cur?.cachedValue ?? null) : null,
+        syncedAt: cur?.spreadsheetId === spreadsheetId ? (cur?.syncedAt ?? null) : null,
+      });
+      setOpen(false);
+    } catch (err) {
+      setSheetsError(err instanceof Error ? err.message : t("linkedField.sheets.errorGeneric"));
+    } finally {
+      setSheetsLoading(false);
+    }
+  }
+
+  const hasSheetsBinding = Boolean(sheetsBinding?.current);
+
+  const chipText = hasSheetsBinding
+    ? `${sheetsBinding!.current!.sheetName}!${sheetsBinding!.current!.cellRef}`
+    : selected
     ? selected.label
     : hasInvalidLink
     ? invalidLabelFallback || t("linkedField.invalid", "Vínculo quebrado")
     : t("linkedField.noLink", "Sem vínculo");
 
-  const chipClass = selected
+  const chipClass = hasSheetsBinding
+    ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-100 hover:bg-emerald-600/30"
+    : selected
     ? "border-indigo-400/60 bg-indigo-600/20 text-indigo-100 hover:bg-indigo-600/30"
     : hasInvalidLink
     ? "border-amber-500/60 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25"
@@ -90,7 +167,10 @@ export function LinkedFieldRow({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <span id={labelId} className="text-xs text-gray-400">{label}</span>
+        <span className="flex items-center gap-1">
+          <span id={labelId} className="text-xs text-gray-400">{label}</span>
+          {labelAdornment}
+        </span>
         {hint ? <span className="text-[10px] text-gray-500">{hint}</span> : null}
       </div>
       <div className="flex items-stretch gap-2">
@@ -124,8 +204,8 @@ export function LinkedFieldRow({
             {/* Active-link bullet indicator. Hidden visually when there's no
                 link, kept in markup as " " so test queries that assert on the
                 presence of "•" in the chip can run a single comparison. */}
-            {selected ? (
-              <span aria-hidden="true" className="text-indigo-300">
+            {selected || hasSheetsBinding ? (
+              <span aria-hidden="true" className={hasSheetsBinding ? "text-emerald-300" : "text-indigo-300"}>
                 •
               </span>
             ) : null}
@@ -193,6 +273,10 @@ export function LinkedFieldRow({
                   </p>
                   {emptyStateCta}
                 </div>
+              ) : hasSheetsBinding ? (
+                <div className="mx-1 mb-1 rounded-md border border-gray-700/60 bg-gray-800/40 px-2 py-2 text-[11px] text-gray-500">
+                  {t("linkedField.sheets.removeSheetsToBind")}
+                </div>
               ) : (
                 <ul className="mt-0.5">
                   {options.map((option) => {
@@ -228,6 +312,156 @@ export function LinkedFieldRow({
                   })}
                 </ul>
               )}
+
+              {sheetsBinding ? (
+                <>
+                  <div className="my-1.5 border-t border-gray-700/60" />
+                  <div className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-gray-500 flex items-center gap-1">
+                    <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+                    </svg>
+                    Google Sheets
+                  </div>
+                  {sheetsBinding.current ? (
+                    <div className="mx-1 mb-1 flex items-center justify-between rounded-md border border-emerald-700/40 bg-emerald-900/15 px-2 py-1.5">
+                      <span className="text-[10px] font-mono text-emerald-300 truncate">
+                        {sheetsBinding.current.sheetName}!{sheetsBinding.current.cellRef}
+                        {sheetsBinding.current.cachedValue != null ? (
+                          <span className="ml-1.5 text-emerald-500">= {sheetsBinding.current.cachedValue}</span>
+                        ) : null}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { sheetsBinding.onUnbind(); setOpen(false); }}
+                        className="ml-2 shrink-0 text-[10px] text-rose-400 hover:text-rose-300"
+                      >
+                        {t("linkedField.sheets.unbind")}
+                      </button>
+                    </div>
+                  ) : null}
+                  <div className="mx-1 mb-1 space-y-1">
+                    {/* Seletor de planilha — modo registry ou input livre */}
+                    {spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
+                      <>
+                        <select
+                          value={selectedRegistryId}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            setSelectedRegistryId(id);
+                            if (id !== "__other__") {
+                              const reg = spreadsheetRegistry.find((s) => s.id === id);
+                              if (reg) {
+                                setSheetsUrl(reg.url);
+                                setSheetsSheetName("");
+                              }
+                            } else {
+                              setSheetsUrl("");
+                              setSheetsSheetName("");
+                            }
+                            setSheetsError(null);
+                          }}
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
+                        >
+                          <option value="">{t("linkedField.sheets.choosePlaceholder")}</option>
+                          {spreadsheetRegistry.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                          <option value="__other__">{t("linkedField.sheets.otherOption")}</option>
+                        </select>
+
+                        {selectedRegistryId === "__other__" && (
+                          <input
+                            type="url"
+                            value={sheetsUrl}
+                            onChange={(e) => setSheetsUrl(e.target.value)}
+                            placeholder={t("linkedField.sheets.urlPlaceholder")}
+                            className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                          />
+                        )}
+
+                        {/* Aba: select quando registry tem sheets, input quando "Outra" */}
+                        {selectedRegistryId && selectedRegistryId !== "__other__" ? (
+                          <div className="flex gap-1">
+                            <select
+                              value={sheetsSheetName}
+                              onChange={(e) => setSheetsSheetName(e.target.value)}
+                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
+                            >
+                              <option value="">{t("linkedField.sheets.chooseSheetPlaceholder")}</option>
+                              {(spreadsheetRegistry.find((s) => s.id === selectedRegistryId)?.sheets ?? []).map((sh) => (
+                                <option key={sh} value={sh}>{sh}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={sheetsCellRef}
+                              onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
+                              placeholder="A1"
+                              className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                            />
+                          </div>
+                        ) : selectedRegistryId === "__other__" ? (
+                          <div className="flex gap-1">
+                            <input
+                              type="text"
+                              value={sheetsSheetName}
+                              onChange={(e) => setSheetsSheetName(e.target.value)}
+                              placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
+                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                            />
+                            <input
+                              type="text"
+                              value={sheetsCellRef}
+                              onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
+                              placeholder="A1"
+                              className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                            />
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      /* Modo input livre (sem registry) */
+                      <>
+                        <input
+                          type="url"
+                          value={sheetsUrl}
+                          onChange={(e) => setSheetsUrl(e.target.value)}
+                          placeholder={t("linkedField.sheets.urlPlaceholder")}
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                        />
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={sheetsSheetName}
+                            onChange={(e) => setSheetsSheetName(e.target.value)}
+                            placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
+                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                          />
+                          <input
+                            type="text"
+                            value={sheetsCellRef}
+                            onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
+                            placeholder="A1"
+                            className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {sheetsError ? (
+                      <p className="text-[10px] text-rose-400">{sheetsError}</p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={handleSheetsBind}
+                      disabled={sheetsLoading}
+                      className="w-full rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-2 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-50"
+                    >
+                      {sheetsLoading ? t("linkedField.sheets.bindingButton") : sheetsBinding.current ? t("linkedField.sheets.updateButton") : t("linkedField.sheets.bindButton")}
+                    </button>
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>

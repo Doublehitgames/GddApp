@@ -145,8 +145,45 @@
     "editLink": "Editar vínculo",
     "popoverTitle": "Vincular a tabela de progressão",
     "invalid": "Vínculo quebrado",
+    "invalidOption": "Vínculo inválido (coluna removida)",
     "invalidExplain": "A coluna vinculada não existe mais. Escolha outra ou limpe o vínculo.",
-    "emptyOptions": "Nenhuma tabela de progressão nesta seção. Crie uma para vincular."
+    "emptyOptions": "Nenhuma tabela de progressão nesta seção. Crie uma para vincular.",
+    "sheets": {
+      "sectionTitle": "Google Sheets",
+      "removeSheetsToBind": "Remova o vínculo com o Google Sheets para vincular a uma tabela de progressão.",
+      "unbind": "Desvincular",
+      "choosePlaceholder": "Escolha uma planilha…",
+      "otherOption": "Outra (URL manual)…",
+      "urlPlaceholder": "URL da planilha",
+      "chooseSheetPlaceholder": "Escolha uma aba…",
+      "sheetNamePlaceholder": "Nome da aba",
+      "bindButton": "Vincular",
+      "updateButton": "Atualizar vínculo",
+      "bindingButton": "Vinculando…",
+      "errorInvalidUrl": "URL ou ID da planilha inválido.",
+      "errorNoSheet": "Informe o nome da aba.",
+      "errorInvalidCell": "Célula inválida. Use o formato A1, B12, etc.",
+      "errorGeneric": "Erro ao vincular."
+    }
+  },
+  "linkedSpreadsheetsSettings": {
+    "editButton": "Editar",
+    "removeButton": "Remover",
+    "urlPlaceholder": "URL da planilha do Google Sheets",
+    "fetchingSheets": "Buscando abas…",
+    "fetchButton": "Buscar abas (OAuth)",
+    "sheetFoundSingular": "aba encontrada",
+    "sheetFoundPlural": "abas encontradas",
+    "refetchButton": "Buscar novamente",
+    "namePlaceholder": "Nome amigável (ex.: Balance Sheet)",
+    "saveButton": "Salvar alterações",
+    "addButton": "Adicionar planilha",
+    "cancelButton": "Cancelar",
+    "errorInvalidUrl": "URL ou ID da planilha inválido.",
+    "errorNoClientId": "Google Client ID não configurado.",
+    "errorNoAuth": "Não foi possível obter autorização do Google.",
+    "errorNoSheets": "Nenhuma aba encontrada. Verifique a URL e as permissões.",
+    "errorGeneric": "Erro ao buscar abas."
   },
   "quickNewPage": {
     "modalTitle": "Nova página",
@@ -193,7 +230,8 @@
       "nextResult": "Próximo resultado",
       "prevResult": "Resultado anterior",
       "jumpResult": "Ir para resultado (Shift+Enter = anterior)"
-    }
+    },
+    "docsLink": "Ver documentação completa"
   },
   "common": {
     "appName": "GDD Manager",
@@ -662,6 +700,7 @@
     "sectionsSubtitle": "Busque, navegue e reordene as seções principais com arrastar e soltar.",
     "showSectionsMenu": "Mostrar menu de seções",
     "hideSectionsMenu": "Ocultar menu de seções",
+    "settingsLabel": "Configurações do projeto",
     "searchPlaceholder": "🔍 Buscar seções por título ou conteúdo...",
     "rootSectionDuplicate": "Já existe uma seção raiz com este nome.",
     "newSectionPlaceholder": "Nova seção",
@@ -1820,6 +1859,10 @@
     "language": "Idioma",
     "ai": "Configurações de IA",
     "persistence": "Persistência",
+    "linkedSheets": {
+      "title": "🔗 Planilhas Vinculadas",
+      "description": "Cadastre planilhas do Google Sheets aqui uma vez e reutilize em qualquer vínculo de campo — sem precisar colar a URL toda vez."
+    },
     "actions": {
       "backToProject": "Voltar",
       "save": "Salvar",

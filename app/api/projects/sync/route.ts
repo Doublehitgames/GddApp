@@ -730,6 +730,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: mergedMindmapSettings,
         ai_instructions: project.aiInstructions || "",
+        linked_spreadsheets: project.linkedSpreadsheets ?? [],
         updated_at: project.updatedAt,
       };
       let { error: pErr } = await supabase
@@ -754,6 +755,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: project.mindMapSettings || {},
         ai_instructions: project.aiInstructions || "",
+        linked_spreadsheets: project.linkedSpreadsheets ?? [],
         created_at: project.createdAt,
         updated_at: project.updatedAt,
       };
