@@ -545,8 +545,6 @@ export default function SettingsClient({ projectId }: Props) {
   const shareToken = (getValue("sharing.shareToken") || "") as string;
   const isPublicShareEnabled = Boolean(getValue("sharing.isPublic"));
   const publicShareUrl = shareToken ? `${shareBaseUrl}/s/${encodeURIComponent(shareToken)}` : "";
-  const publicShareVersion = encodeURIComponent(project.updatedAt || project.createdAt || "v1");
-  const publicShareUrlForSocial = publicShareUrl ? `${publicShareUrl}?v=${publicShareVersion}` : "";
   const selectedDocumentTheme = normalizeDocumentTheme(getValue("documentView.theme"));
   const heroThumbWidthRaw = getValue("documentView.heroThumbWidth");
   const heroThumbWidth =
@@ -805,8 +803,8 @@ export default function SettingsClient({ projectId }: Props) {
                   {isPublicShareEnabled && shareToken && (
                     <div className="space-y-2">
                       <div className="flex gap-2 items-center">
-                        <input readOnly value={publicShareUrlForSocial} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
-                        <button type="button" onClick={() => void copyToClipboard(publicShareUrlForSocial)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
+                        <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
                       </div>
                       <p className="text-xs text-gray-500">{t("settings.settingsClient.publicLinkHelp")}</p>
                     </div>
@@ -823,8 +821,8 @@ export default function SettingsClient({ projectId }: Props) {
                     <>
                       <p className="text-sm text-gray-300 mt-2">{t("settings.mindmapShareMembers.publicLinkLabel")}</p>
                       <div className="flex gap-2 items-center">
-                        <input readOnly value={publicShareUrlForSocial} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
-                        <button type="button" onClick={() => void copyToClipboard(publicShareUrlForSocial)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
+                        <input readOnly value={publicShareUrl} className="flex-1 bg-gray-700 rounded px-3 py-2 text-sm" />
+                        <button type="button" onClick={() => void copyToClipboard(publicShareUrl)} className="bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded text-sm font-semibold">{t("settings.settingsClient.copy")}</button>
                       </div>
                       <p className="text-xs text-gray-500">{t("settings.mindmapShareMembers.publicLinkMemberHint")}</p>
                     </>
