@@ -500,6 +500,21 @@ export default function SettingsClient({ projectId }: Props) {
     // Envia só mindmap_settings para o Supabase (sem custo, sem usar sync de seções)
     void pushProjectMindMapSettings(realProjectId,settings);
   };
+
+  const handleGenerateToken = () => {
+    const newToken = generateShareToken();
+    // Compute new settings synchronously (don't rely on async setState)
+    const keys = "sharing.shareToken".split(".");
+    const newSettings = { ...settings } as any;
+    let obj: any = newSettings;
+    for (let i = 0; i < keys.length - 1; i++) { obj[keys[i]] = obj[keys[i]] ? { ...obj[keys[i]] } : {}; obj = obj[keys[i]]; }
+    obj[keys[keys.length - 1]] = newToken;
+    // Update React state
+    setSettings(newSettings);
+    // Persist immediately so the link works right away
+    updateProjectMindMapSettingsOnly(realProjectId, newSettings);
+    void pushProjectMindMapSettings(realProjectId, newSettings);
+  };
   const handleReset = () => {
     if (confirm(t("settings.messages.resetAllConfirm", "Reset all settings?"))) {
       updateProjectMindMapSettingsOnly(realProjectId,{});
@@ -780,7 +795,7 @@ export default function SettingsClient({ projectId }: Props) {
                     />
                     <button
                       type="button"
-                      onClick={() => setValue("sharing.shareToken", generateShareToken())}
+                      onClick={handleGenerateToken}
                       className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded font-semibold"
                     >
                       {t("settings.settingsClient.generateToken")}
