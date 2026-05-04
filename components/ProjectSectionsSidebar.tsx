@@ -8,7 +8,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { useI18n } from "@/lib/i18n/provider";
 import { getSectionSearchText } from "@/utils/sectionSearchText";
-import { projectPath, sectionPath } from "@/lib/utils/slug";
+import { projectPath, sectionPath, toSlug } from "@/lib/utils/slug";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
   BUY_DISCOUNT_VAR_KEY,
@@ -2191,7 +2191,7 @@ function SortableRootItem({
   };
   const handleCardClick = () => {
     if (shouldBlockClickRef.current) return;
-    router.push(project ? sectionPath(project, section) : "/");
+    router.push(`/projects/${projectId}/sections/${toSlug(section.title ?? "")}`);
   };
 
   return (

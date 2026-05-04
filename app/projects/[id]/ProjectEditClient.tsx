@@ -66,7 +66,7 @@ export default function ProjectEditClient({ projectId }: Props) {
       setNotFound(true);
     }
     setLoaded(true);
-  }, [projectId, getProject]);
+  }, [projectId, getProjectBySlug]);
 
   // Inicializa/destroi o editor WYSIWYG
   useEffect(() => {

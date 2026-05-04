@@ -425,7 +425,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   };
 
   const handleBindSheetsRef = useCallback(
-    async (field: "buyValue" | "sellValue", ref: SheetsCellRef): Promise<void> => {
+    async (field: "buyValue" | "sellValue" | "unlockValue", ref: SheetsCellRef): Promise<void> => {
       setSyncing(true);
       setSyncError(null);
       let finalRef = ref;
@@ -463,7 +463,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   );
 
   const handleUnbindSheetsRef = useCallback(
-    (field: "buyValue" | "sellValue") => {
+    (field: "buyValue" | "sellValue" | "unlockValue") => {
       commit({ [`${field}SheetsRef`]: undefined } as Partial<EconomyLinkAddonDraft>);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1018,15 +1018,23 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                       </p>
                     )}
                   </label>
-                  <label className="block">
-                    <span className="mb-1 flex items-center gap-2 text-xs text-gray-400">
-                      <span>{t("economyLinkAddon.unlockValue", "LV de desbloqueio")}</span>
-                      {unlockSelectedKnown && unlockBounds.min != null && unlockBounds.max != null && (
-                        <span className="rounded-full border border-blue-500/40 bg-blue-900/25 px-2 py-0.5 text-[10px] text-blue-200">
-                          {t("economyLinkAddon.unlockRangeLabel", "LV permitido")}: {unlockBounds.min}-{unlockBounds.max}
-                        </span>
-                      )}
-                    </span>
+                  <LinkedFieldRow
+                    label={t("economyLinkAddon.unlockValue", "LV de desbloqueio")}
+                    selectedKey=""
+                    options={[]}
+                    onChange={() => {}}
+                    hint={
+                      unlockSelectedKnown && unlockBounds.min != null && unlockBounds.max != null
+                        ? `${t("economyLinkAddon.unlockRangeLabel", "LV permitido")}: ${unlockBounds.min}-${unlockBounds.max}`
+                        : undefined
+                    }
+                    sheetsBinding={{
+                      current: addon.unlockValueSheetsRef,
+                      onBind: (ref) => handleBindSheetsRef("unlockValue", ref),
+                      onUnbind: () => handleUnbindSheetsRef("unlockValue"),
+                    }}
+                    spreadsheetRegistry={linkedSpreadsheets}
+                  >
                     <CommitOptionalNumberInput
                       value={addon.unlockValue}
                       onCommit={(next) =>
@@ -1041,8 +1049,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                       integer
                       step={1}
                       className={INPUT_CLASS}
+                      readOnly={!!addon.unlockValueSheetsRef}
                     />
-                  </label>
+                  </LinkedFieldRow>
                 </div>
                 {hasAnyProgressionLink && (
                   <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-900/20 px-3 py-2 text-xs text-blue-200">

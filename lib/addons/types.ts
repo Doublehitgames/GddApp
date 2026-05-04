@@ -252,6 +252,7 @@ export type EconomyLinkAddonDraft = {
   hasUnlockConfig?: boolean;
   unlockRef?: string;
   unlockValue?: number;
+  unlockValueSheetsRef?: SheetsCellRef;
   notes?: string;
 };
 

@@ -1038,7 +1038,7 @@ function UnresolvedRefsPanel({
   };
 
   const possibleParents = chooseParentFor
-    ? sections.filter((s) => !hasDuplicateName(realProjectId, chooseParentFor, s.id))
+    ? sections.filter((s) => !hasDuplicateName(projectId, chooseParentFor, s.id))
     : [];
 
   const findSectionByTitleUnderParent = (title: string, parentId: string | undefined) =>
@@ -1087,8 +1087,8 @@ function UnresolvedRefsPanel({
         } else {
           try {
             parentId = parentId === undefined
-              ? addSection(realProjectId, segment, "")
-              : addSubsection(realProjectId, parentId, segment, "");
+              ? addSection(projectId, segment, "")
+              : addSubsection(projectId, parentId, segment, "");
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
               onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
@@ -1100,7 +1100,7 @@ function UnresolvedRefsPanel({
           }
         }
       }
-      if (parentId) router.push(sectionPathById(project ?? { title: "", sections: [] }, parentId));
+      if (parentId) router.push(sectionPathById({ title: projectTitle ?? "", sections: sections.map((s) => ({ id: s.id, title: s.title ?? "" })) }, parentId));
     } catch (err) {
       onAiError?.(err instanceof Error ? err.message : "Erro ao usar IA");
     } finally {
@@ -1119,8 +1119,8 @@ function UnresolvedRefsPanel({
       <p className="text-xs text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
       <div className="space-y-2">
         {unresolvedNames.map((name) => {
-          const existsHere = hasDuplicateName(realProjectId, name, realSectionId);
-          const existsAtRoot = hasDuplicateName(realProjectId, name);
+          const existsHere = hasDuplicateName(projectId, name, sectionId);
+          const existsAtRoot = hasDuplicateName(projectId, name);
           const anyExists = existsHere || existsAtRoot;
           return (
             <div key={name} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
@@ -1142,14 +1142,14 @@ function UnresolvedRefsPanel({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
-                        onClick={() => runWithLimitCheck(() => addSubsection(realProjectId, realSectionId, name, ""))}
+                        onClick={() => runWithLimitCheck(() => addSubsection(projectId, sectionId, name, ""))}
                       >
                         {t("sectionDetail.ai.createHere")}
                       </button>
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
-                        onClick={() => runWithLimitCheck(() => addSection(realProjectId, name, ""))}
+                        onClick={() => runWithLimitCheck(() => addSection(projectId, name, ""))}
                       >
                         {t("sectionDetail.ai.createAtRoot")}
                       </button>
@@ -1216,7 +1216,7 @@ function UnresolvedRefsPanel({
               <button
                 type="button"
                 className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700"
-                onClick={() => runWithLimitCheck(() => addSection(realProjectId, chooseParentFor, ""))}
+                onClick={() => runWithLimitCheck(() => addSection(projectId, chooseParentFor, ""))}
               >
                 📁 {t("sectionDetail.ai.createAtRoot")}
               </button>
@@ -1229,7 +1229,7 @@ function UnresolvedRefsPanel({
                     type="button"
                     className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700 truncate"
                     title={pathStr}
-                    onClick={() => runWithLimitCheck(() => addSubsection(realProjectId, s.id, chooseParentFor, ""))}
+                    onClick={() => runWithLimitCheck(() => addSubsection(projectId, s.id, chooseParentFor, ""))}
                   >
                     {pathStr}
                   </button>
@@ -1679,6 +1679,8 @@ function SectionDetailContent({
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
+  const realProjectId: string = project?.id ?? projectId ?? "";
+  const realSectionId: string = section?.id ?? sectionId ?? "";
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
   const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
@@ -3687,7 +3689,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
         {backlinks.map((link, index) => (
           <span key={link.id} className="inline-flex items-center">
             <button
-              onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, link.id))}
+              onClick={() => { const sec = sections.find((s: any) => s.id === link.id); router.push(sec ? `/projects/${projectId}/sections/${toSlug(sec.title ?? "")}` : `/projects/${projectId}`); }}
               className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
             >
               {link.title}

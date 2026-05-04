@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
-import { sectionPath } from "@/lib/utils/slug";
+import { sectionPath, toSlug } from "@/lib/utils/slug";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useAuthStore } from "@/store/authStore";
 import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
@@ -1304,7 +1304,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
 
         const newRoots = arrayMove(roots, oldIndex, newIndex);
         const newOrder = newRoots.map((r) => r.id);
-        reorderSections(realProjectId, newOrder);
+        reorderSections(projectId, newOrder);
     }
 
     return (
@@ -1441,7 +1441,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <Link
-                    href={project ? sectionPath(project, section) : "#"}
+                    href={`/projects/${projectId}/sections/${toSlug(section.title)}`}
                     className={`relative flex-1 min-w-0 truncate text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset rounded px-0.5 ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
                     prefetch={false}
                 >
@@ -1592,7 +1592,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                             )}
                             {!hasChildren && <span className="w-5" />}
                             <Link
-                                href={project ? sectionPath(project, sec) : "#"}
+                                href={`/projects/${projectId}/sections/${toSlug(sec.title)}`}
                                 className={`flex-1 min-w-0 truncate text-sm transition-colors ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
                                 prefetch={false}
                             >

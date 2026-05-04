@@ -51,7 +51,7 @@ export function RichDocAddonReadOnly({ addon, theme = "dark", bare = false }: Ri
             title: s.title,
           })),
         };
-        ownerProject = project;
+        ownerProject = { ...project, sections: project.sections ?? [] };
         break;
       }
     }

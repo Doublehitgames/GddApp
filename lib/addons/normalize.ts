@@ -244,6 +244,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
             asPositiveFloatOrUndefined(value.productionTimeSeconds) != null
         );
   const unlockValue = asPositiveIntegerOrUndefined(value.unlockValue);
+  const unlockValueSheetsRef = normalizeSheetsCellRef(value.unlockValueSheetsRef);
   const hasUnlockConfig =
     typeof value.hasUnlockConfig === "boolean"
       ? value.hasUnlockConfig
@@ -277,6 +278,7 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     hasUnlockConfig,
     unlockRef: unlockRef || undefined,
     unlockValue,
+    unlockValueSheetsRef,
     notes: notes || undefined,
   };
 }
