@@ -98,6 +98,7 @@ function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (ou
 export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }: Props) {
   const [openOutcomeId, setOpenOutcomeId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [expandedHypothesisId, setExpandedHypothesisId] = useState<string | null>(null);
 
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -115,13 +116,28 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
         const bench = GENRE_BENCHMARKS[entry.genre];
         const isOpen = openOutcomeId === entry.id;
         const isConfirmDelete = confirmDeleteId === entry.id;
+        const isHypothesisExpanded = expandedHypothesisId === entry.id;
+        const isPendingOutcome = !!entry.hypothesis && !entry.outcome;
 
         return (
-          <div key={entry.id} className="rounded-xl border border-gray-700/60 bg-gray-900/60 px-4 py-3">
+          <div
+            key={entry.id}
+            className={`rounded-xl border bg-gray-900/60 px-4 py-3 ${
+              isPendingOutcome
+                ? "border-amber-700/50"
+                : "border-gray-700/60"
+            }`}
+          >
             {/* Header row */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400">{formatDate(entry.date)}</span>
+                {isPendingOutcome && (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-700/50 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    resultado pendente
+                  </span>
+                )}
                 <MetricChip label="D1" value={entry.metrics.d1} metrics={entry.metrics} entry={entry} />
                 <MetricChip label="D7" value={entry.metrics.d7} metrics={entry.metrics} entry={entry} />
                 <MetricChip label="D30" value={entry.metrics.d30} metrics={entry.metrics} entry={entry} />
@@ -162,8 +178,19 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
             {/* Hypothesis */}
             {entry.hypothesis && (
               <div className="mt-2">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-0.5">Hipótese</p>
-                <p className="text-sm text-gray-300 line-clamp-2">{entry.hypothesis}</p>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-1">Hipótese</p>
+                <p className={`text-sm text-gray-300 ${isHypothesisExpanded ? "" : "line-clamp-2"}`}>
+                  {entry.hypothesis}
+                </p>
+                {entry.hypothesis.length > 120 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedHypothesisId(isHypothesisExpanded ? null : entry.id)}
+                    className="mt-0.5 text-xs text-sky-500 hover:text-sky-300 transition-colors"
+                  >
+                    {isHypothesisExpanded ? "ver menos ↑" : "ver mais ↓"}
+                  </button>
+                )}
               </div>
             )}
 
