@@ -224,3 +224,46 @@ export function persistAgendaTasks(data: Record<string, AgendaTask[]>): void {
     logWarn("Could not persist agenda tasks", e);
   }
 }
+
+// ---------------------------------------------------------------------------
+// KPI entries persistence
+// ---------------------------------------------------------------------------
+
+const KPI_ENTRIES_KEY = "gdd_kpi_entries_v1";
+const KPI_CONFIGS_KEY = "gdd_kpi_configs_v1";
+
+export function loadKpiEntries(): Record<string, import("@/lib/kpi/types").KpiEntry[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(KPI_ENTRIES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistKpiEntries(data: Record<string, import("@/lib/kpi/types").KpiEntry[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(KPI_ENTRIES_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist KPI entries", e); }
+}
+
+export function loadKpiConfigs(): Record<string, import("@/lib/kpi/types").KpiProjectConfig> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(KPI_CONFIGS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistKpiConfigs(data: Record<string, import("@/lib/kpi/types").KpiProjectConfig>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(KPI_CONFIGS_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist KPI configs", e); }
+}

@@ -133,7 +133,8 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       !normalizedPathname.endsWith("/mindmap") &&
       !normalizedPathname.endsWith("/view") &&
       !normalizedPathname.endsWith("/diagramas") &&
-      !normalizedPathname.endsWith("/agenda")
+      !normalizedPathname.endsWith("/agenda") &&
+      !normalizedPathname.endsWith("/kpi")
     );
   }, [normalizedPathname]);
 

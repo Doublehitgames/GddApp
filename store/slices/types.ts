@@ -481,6 +481,13 @@ export interface ProjectStore {
   finishAgendaTask: (projectId: string, taskId: string) => void;
   getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
   loadAgendaFromSupabase: () => Promise<void>;
+  // ── KPI tracker ───────────────────────────────────────────────────────────
+  kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
+  kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
+  setKpiGenre: (projectId: string, genre: import("@/lib/kpi/types").GameGenre) => void;
+  addKpiEntry: (projectId: string, entry: Omit<import("@/lib/kpi/types").KpiEntry, "id" | "createdAt">) => string;
+  updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<import("@/lib/kpi/types").KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
+  deleteKpiEntry: (projectId: string, entryId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
