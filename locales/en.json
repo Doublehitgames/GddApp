@@ -2367,6 +2367,14 @@
       "planning": "Planning",
       "docs": "Documentation",
       "research": "Research"
+    },
+    "widget": {
+      "title": "Today's Diary",
+      "open": "Open",
+      "allDone": "All done!",
+      "noTasks": "No tasks for today — open Diary",
+      "progress": "{done} of {total} tasks",
+      "registered": "logged"
     }
   }
 }

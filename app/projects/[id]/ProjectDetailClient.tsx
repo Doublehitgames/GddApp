@@ -27,6 +27,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import AIChat from "@/components/AIChat";
+import AgendaWidget from "@/components/agenda/AgendaWidget";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
@@ -1181,6 +1182,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 })}
                             </div>
                         </section>
+
+                        <AgendaWidget projectId={projectId} realProjectId={realProjectId} />
 
                         <section className="ui-card-premium">
                             <div className="mb-4">

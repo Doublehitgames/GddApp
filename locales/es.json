@@ -2367,6 +2367,14 @@
       "planning": "Planificación",
       "docs": "Documentación",
       "research": "Investigación"
+    },
+    "widget": {
+      "title": "Diario de Hoy",
+      "open": "Abrir",
+      "allDone": "¡Todo listo!",
+      "noTasks": "Sin tareas para hoy — abrir Diario",
+      "progress": "{done} de {total} tareas",
+      "registered": "registradas"
     }
   }
 }
