@@ -1,31 +1,27 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { GameGenre, KpiEntry, KpiMetrics } from "@/lib/kpi/types";
+import type { GameGenre, KpiEntry, KpiMetrics, KpiGameProfile, KpiCustomBenchmarks, KpiProjectConfig } from "@/lib/kpi/types";
 import { GENRE_BENCHMARKS, diagnose } from "@/lib/kpi/benchmarks";
+import type { GenreBenchmark } from "@/lib/kpi/benchmarks";
 import MetricInputBar from "./MetricInputBar";
 import DiagnosisBlock from "./DiagnosisBlock";
 import RetentionChart from "./RetentionChart";
 import KpiHistoryList from "./KpiHistoryList";
+import KpiConfigPanel from "./KpiConfigPanel";
 
 interface Props {
   projectId: string;
   genre: GameGenre;
+  profile?: KpiGameProfile;
+  customBenchmarks?: KpiCustomBenchmarks;
   entries: KpiEntry[];
   onSetGenre: (genre: GameGenre) => void;
+  onUpdateConfig: (patch: Partial<Omit<KpiProjectConfig, "genre">>) => void;
   onAddEntry: (entry: Omit<KpiEntry, "id" | "createdAt">) => string;
   onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   onDeleteEntry: (id: string) => void;
 }
-
-const GENRES: { id: GameGenre; label: string }[] = [
-  { id: "farm",    label: "Farm" },
-  { id: "casual",  label: "Casual" },
-  { id: "rpg",     label: "RPG" },
-  { id: "puzzle",  label: "Puzzle" },
-  { id: "idle",    label: "Idle" },
-  { id: "shooter", label: "Shooter" },
-];
 
 const HYPOTHESIS_AREAS: { id: KpiEntry["hypothesisArea"]; label: string }[] = [
   { id: "tutorial",     label: "Tutorial" },
@@ -40,8 +36,24 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAddEntry, onUpdateEntry, onDeleteEntry }: Props) {
-  const bench = GENRE_BENCHMARKS[genre];
+function effectiveBench(base: GenreBenchmark, custom?: KpiCustomBenchmarks): GenreBenchmark {
+  if (!custom) return base;
+  return {
+    ...base,
+    d1: custom.d1 ?? base.d1,
+    d7: custom.d7 ?? base.d7,
+    d30: custom.d30 ?? base.d30,
+    sessionsPerDay: custom.sessionsPerDay ?? base.sessionsPerDay,
+    sessionDuration: custom.sessionDuration ?? base.sessionDuration,
+    conversionRate: custom.conversionRate ?? base.conversionRate,
+  };
+}
+
+export default function KpiMainTab({
+  projectId, genre, profile, customBenchmarks, entries,
+  onSetGenre, onUpdateConfig, onAddEntry, onUpdateEntry, onDeleteEntry,
+}: Props) {
+  const bench = effectiveBench(GENRE_BENCHMARKS[genre], customBenchmarks);
 
   const [date, setDate] = useState(todayISO);
   const [d1, setD1] = useState<number | undefined>(undefined);
@@ -55,7 +67,15 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
   const [saved, setSaved] = useState(false);
 
   const currentMetrics: KpiMetrics = { d1, d7, d30, sessionsPerDay, sessionDuration, conversionRate };
-  const diagnosis = useMemo(() => diagnose(currentMetrics, genre), [d1, d7, d30, conversionRate, genre]);
+  const diagnosis = useMemo(
+    () => diagnose(currentMetrics, genre, profile),
+    [d1, d7, d30, conversionRate, genre, profile]
+  );
+
+  const showConversion =
+    !profile ||
+    profile.monetization === "iap" ||
+    profile.monetization === "iap_ads";
 
   function handleSave() {
     const entry: Omit<KpiEntry, "id" | "createdAt"> = {
@@ -82,30 +102,18 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
   const hasData = d1 !== undefined || d7 !== undefined || d30 !== undefined;
 
   return (
-    <div className="space-y-6">
-      {/* Genre selector */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Gênero do jogo</p>
-        <div className="flex flex-wrap gap-2">
-          {GENRES.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => onSetGenre(g.id)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-                genre === g.id
-                  ? "border-emerald-500 bg-emerald-500/20 text-emerald-300"
-                  : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1 text-xs text-gray-600">{bench.label}</p>
-      </div>
+    <div className="space-y-5">
+      {/* Config panel */}
+      <KpiConfigPanel
+        genre={genre}
+        profile={profile}
+        customBenchmarks={customBenchmarks}
+        onSetGenre={onSetGenre}
+        onUpdateProfile={(p) => onUpdateConfig({ profile: p })}
+        onUpdateCustomBenchmarks={(b) => onUpdateConfig({ customBenchmarks: b })}
+      />
 
-      {/* Form */}
+      {/* Entry form */}
       <div className="rounded-xl border border-gray-700/60 bg-gray-900/60 p-4 space-y-5">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold text-white">Nova entrada</p>
@@ -117,7 +125,7 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
           />
         </div>
 
-        {/* All metrics as cards */}
+        {/* Metric cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <MetricInputBar
             label="D1 Retenção"
@@ -125,7 +133,7 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
             onChange={setD1}
             benchmark={bench.d1}
             unit="%"
-            helpText="% dos jogadores que voltam no 2º dia. Indica se o jogo causou boa primeira impressão. Problemas aqui quase sempre estão no tutorial."
+            helpText="% dos jogadores que voltam no 2º dia. Indica se o jogo causou boa primeira impressão. Problemas aqui quase sempre estão no tutorial ou na primeira sessão."
           />
           <MetricInputBar
             label="D7 Retenção"
@@ -159,20 +167,20 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
             unit="min"
             helpText="Tempo médio de cada sessão em minutos. Muito curto pode indicar sessões frustrantes ou conteúdo escasso. Muito longo pode cansar o jogador."
           />
-          <MetricInputBar
-            label="Conversão"
-            value={conversionRate}
-            onChange={setConversionRate}
-            benchmark={bench.conversionRate}
-            unit="%"
-            helpText="% dos jogadores que fizeram ao menos uma compra (moeda, skin, passe de batalha...). É o principal indicador de saúde da monetização do jogo."
-          />
+          {showConversion && (
+            <MetricInputBar
+              label="Conversão"
+              value={conversionRate}
+              onChange={setConversionRate}
+              benchmark={bench.conversionRate}
+              unit="%"
+              helpText="% dos jogadores que fizeram ao menos uma compra (moeda, skin, passe de batalha...). É o principal indicador de saúde da monetização do jogo."
+            />
+          )}
         </div>
 
-        {/* Diagnosis (real time) */}
-        {hasData && (
-          <DiagnosisBlock diagnosis={diagnosis} />
-        )}
+        {/* Diagnosis */}
+        {hasData && <DiagnosisBlock diagnosis={diagnosis} />}
 
         {/* Retention chart */}
         {hasData && (
@@ -210,7 +218,7 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
           />
         </div>
 
-        {/* Save button */}
+        {/* Save */}
         <div className="flex items-center gap-3">
           <button
             type="button"

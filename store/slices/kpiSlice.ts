@@ -1,4 +1,4 @@
-import type { KpiEntry, KpiState, KpiActions, KpiProjectConfig, GameGenre } from "@/lib/kpi/types";
+import type { KpiEntry, KpiState, KpiActions, KpiProjectConfig, GameGenre, KpiGameProfile, KpiCustomBenchmarks } from "@/lib/kpi/types";
 import { persistKpiEntries, persistKpiConfigs, loadKpiEntries, loadKpiConfigs } from "./storageHelpers";
 
 type StoreSet = (partial: Partial<KpiState & KpiActions> | ((state: KpiState & KpiActions) => Partial<KpiState & KpiActions>)) => void;
@@ -18,8 +18,23 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
 
     setKpiGenre: (projectId: string, genre: GameGenre) => {
       sp(set, get, (state) => ({
-        kpiConfigByProject: { ...state.kpiConfigByProject, [projectId]: { genre } },
+        kpiConfigByProject: {
+          ...state.kpiConfigByProject,
+          [projectId]: { ...(state.kpiConfigByProject[projectId] ?? {}), genre },
+        },
       }));
+    },
+
+    updateKpiConfig: (projectId: string, patch: Partial<Omit<KpiProjectConfig, "genre">>) => {
+      sp(set, get, (state) => {
+        const existing = state.kpiConfigByProject[projectId] ?? { genre: "farm" as GameGenre };
+        return {
+          kpiConfigByProject: {
+            ...state.kpiConfigByProject,
+            [projectId]: { ...existing, ...patch },
+          },
+        };
+      });
     },
 
     addKpiEntry: (projectId: string, entry: Omit<KpiEntry, "id" | "createdAt">): string => {

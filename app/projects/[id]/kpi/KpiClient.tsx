@@ -25,6 +25,7 @@ export default function KpiClient({ projectId }: Props) {
   const kpiEntriesByProject = useProjectStore((s) => s.kpiEntriesByProject);
   const kpiConfigByProject = useProjectStore((s) => s.kpiConfigByProject);
   const setKpiGenre = useProjectStore((s) => s.setKpiGenre);
+  const updateKpiConfig = useProjectStore((s) => s.updateKpiConfig);
   const addKpiEntry = useProjectStore((s) => s.addKpiEntry);
   const updateKpiEntry = useProjectStore((s) => s.updateKpiEntry);
   const deleteKpiEntry = useProjectStore((s) => s.deleteKpiEntry);
@@ -37,7 +38,10 @@ export default function KpiClient({ projectId }: Props) {
   const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
   const realProjectId = project?.id ?? projectId;
 
-  const genre: GameGenre = kpiConfigByProject[realProjectId]?.genre ?? "farm";
+  const config = kpiConfigByProject[realProjectId];
+  const genre: GameGenre = config?.genre ?? "farm";
+  const profile = config?.profile;
+  const customBenchmarks = config?.customBenchmarks;
   const entries = kpiEntriesByProject[realProjectId] ?? [];
 
   if (!mounted) {
@@ -84,8 +88,11 @@ export default function KpiClient({ projectId }: Props) {
           <KpiMainTab
             projectId={realProjectId}
             genre={genre}
+            profile={profile}
+            customBenchmarks={customBenchmarks}
             entries={entries}
             onSetGenre={(g) => setKpiGenre(realProjectId, g)}
+            onUpdateConfig={(patch) => updateKpiConfig(realProjectId, patch)}
             onAddEntry={(entry) => addKpiEntry(realProjectId, entry)}
             onUpdateEntry={(id, patch) => updateKpiEntry(realProjectId, id, patch)}
             onDeleteEntry={(id) => deleteKpiEntry(realProjectId, id)}
