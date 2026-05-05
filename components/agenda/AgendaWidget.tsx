@@ -151,9 +151,19 @@ export default function AgendaWidget({ projectId, realProjectId }: Props) {
               {/* Linha principal */}
               <div className="flex items-center gap-3">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-sky-400 animate-pulse" />
-                <span className="flex-1 min-w-0 text-sm text-white font-medium truncate">
-                  {runningTask.title}
-                </span>
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <span className="text-sm text-white font-medium truncate">
+                    {runningTask.title}
+                  </span>
+                  {runningTask.sectionTitle && (
+                    <span className="flex items-center gap-1 text-[11px] text-violet-400 truncate">
+                      <svg className="h-2.5 w-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {runningTask.sectionTitle}
+                    </span>
+                  )}
+                </div>
                 <span className="shrink-0 font-mono text-xs tabular-nums text-sky-300">
                   {formatTimerLive(runningMs)}
                 </span>

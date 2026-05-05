@@ -1,13 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import type { AgendaTask, TaskPriority, SubTask } from "@/lib/agenda/types";
 import { useI18n } from "@/lib/i18n/provider";
+import { toSlug } from "@/lib/utils/slug";
 
 interface Props {
   task: AgendaTask;
   isActive: boolean;
   readOnly?: boolean;
+  /** Slug do projeto — necessário para montar o link de navegação até a seção vinculada */
+  projectSlug?: string;
   onClose: () => void;
   onPlay: () => void;
   onPause: () => void;
@@ -76,7 +80,7 @@ function formatDuration(ms: number): string {
 }
 
 export default function TaskDetailDrawer({
-  task, isActive, readOnly, onClose,
+  task, isActive, readOnly, projectSlug, onClose,
   onPlay, onPause, onFinish, onDelete,
   onRenameTitle, onUpdateDetail,
   onAddSubTask, onToggleSubTask, onDeleteSubTask,
@@ -324,6 +328,35 @@ export default function TaskDetailDrawer({
               className={`w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/20 ${readOnly ? "opacity-60 cursor-default" : ""}`}
             />
           </div>
+
+          {/* Seção vinculada */}
+          {task.sectionTitle && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{t("agenda.sectionPanel.sectionBadge")}</p>
+              {projectSlug ? (
+                <Link
+                  href={`/projects/${projectSlug}/sections/${toSlug(task.sectionTitle)}`}
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-violet-700/40 bg-violet-900/20 px-3 py-1.5 text-sm font-medium text-violet-300 hover:bg-violet-900/40 hover:text-violet-200 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {task.sectionTitle}
+                  <svg className="h-3 w-3 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-700/40 bg-violet-900/20 px-3 py-1.5 text-sm font-medium text-violet-300">
+                  <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {task.sectionTitle}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Description */}
           <div className="space-y-2">

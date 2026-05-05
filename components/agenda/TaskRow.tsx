@@ -214,9 +214,17 @@ export default function TaskRow({ task, isActive, readOnly, onPlay, onPause, onF
         )}
       </div>
 
-      {/* Metadata row: category + description preview + subtasks */}
-      {(task.category || task.description || subtasks.length > 0) && (
+      {/* Metadata row: section + category + description preview + subtasks */}
+      {(task.sectionTitle || task.category || task.description || subtasks.length > 0) && (
         <div className="flex items-center gap-2 pl-8 flex-wrap">
+          {task.sectionTitle && (
+            <span className="flex items-center gap-1 rounded-full border border-violet-700/40 bg-violet-900/20 px-2 py-0.5 text-[11px] font-medium text-violet-400">
+              <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              {task.sectionTitle}
+            </span>
+          )}
           {task.category && (
             <span className="rounded-full border border-sky-700/40 bg-sky-900/20 px-2 py-0.5 text-[11px] font-medium text-sky-400">
               {task.category}

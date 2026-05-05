@@ -35,6 +35,10 @@ export type AgendaTask = {
   subtasks?: SubTask[];
   /** True when this task was carried over to another day — hides it from the carry-over banner */
   carriedOver?: boolean;
+  /** ID da seção do projeto à qual esta tarefa está vinculada */
+  sectionId?: string;
+  /** Título da seção (snapshot no momento da criação) */
+  sectionTitle?: string;
 };
 
 export type AgendaState = {
@@ -45,7 +49,7 @@ export type AgendaState = {
 };
 
 export type AgendaActions = {
-  addAgendaTask: (projectId: string, date: string, title: string) => string;
+  addAgendaTask: (projectId: string, date: string, title: string, opts?: { sectionId?: string; sectionTitle?: string }) => string;
   updateAgendaTask: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "title" | "date" | "order">>) => void;
   updateAgendaTaskDetail: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "description" | "priority" | "category">>) => void;
   addSubTask: (projectId: string, taskId: string, title: string) => void;

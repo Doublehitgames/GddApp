@@ -2375,6 +2375,13 @@
       "noTasks": "Sin tareas para hoy — abrir Diario",
       "progress": "{done} de {total} tareas",
       "registered": "registradas"
+    },
+    "sectionPanel": {
+      "title": "Tareas de esta página",
+      "empty": "Aún no hay tareas vinculadas a esta página.",
+      "placeholder": "Nueva tarea para hoy...",
+      "add": "Agregar",
+      "sectionBadge": "Página"
     }
   }
 }

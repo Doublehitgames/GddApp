@@ -44,7 +44,7 @@ export function createAgendaSlice(set: StoreSet, get: StoreGet) {
     tasksByProject: {} as Record<string, AgendaTask[]>,
     activeTaskId: null as string | null,
 
-    addAgendaTask: (projectId: string, date: string, title: string): string => {
+    addAgendaTask: (projectId: string, date: string, title: string, opts?: { sectionId?: string; sectionTitle?: string }): string => {
       const id = crypto.randomUUID();
       const now = new Date().toISOString();
       const existing = get().tasksByProject[projectId] ?? [];
@@ -59,6 +59,7 @@ export function createAgendaSlice(set: StoreSet, get: StoreGet) {
         totalMs: 0,
         createdAt: now,
         order: dayTasks.length,
+        ...(opts?.sectionId ? { sectionId: opts.sectionId, sectionTitle: opts.sectionTitle } : {}),
       };
       sp(set, get, (state) => ({
         tasksByProject: {
@@ -101,6 +102,7 @@ export function createAgendaSlice(set: StoreSet, get: StoreGet) {
         priority: sourceTask.priority,
         category: sourceTask.category,
         subtasks: sourceTask.subtasks ? sourceTask.subtasks.map((s) => ({ ...s })) : undefined,
+        ...(sourceTask.sectionId ? { sectionId: sourceTask.sectionId, sectionTitle: sourceTask.sectionTitle } : {}),
       };
       // Mark the source task as carried over so the banner never shows it again,
       // then append the new task — both in one atomic sp() call

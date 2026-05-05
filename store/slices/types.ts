@@ -468,7 +468,7 @@ export interface ProjectStore {
   // ── Agenda ────────────────────────────────────────────────────────────────
   tasksByProject: Record<string, AgendaTask[]>;
   activeTaskId: string | null;
-  addAgendaTask: (projectId: string, date: string, title: string) => string;
+  addAgendaTask: (projectId: string, date: string, title: string, opts?: { sectionId?: string; sectionTitle?: string }) => string;
   carryOverAgendaTask: (projectId: string, sourceTask: AgendaTask, targetDate: string) => string;
   updateAgendaTask: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "title" | "date" | "order">>) => void;
   updateAgendaTaskDetail: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "description" | "priority" | "category">>) => void;

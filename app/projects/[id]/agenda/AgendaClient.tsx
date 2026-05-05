@@ -304,6 +304,7 @@ export default function AgendaClient({ projectId }: Props) {
           task={drawerTask}
           isActive={activeTaskId === drawerTask.id}
           readOnly={drawerTask.date < todayStr}
+          projectSlug={projectId}
           onClose={() => setDrawerTaskId(null)}
           onPlay={() => playAgendaTask(realProjectId, drawerTask.id)}
           onPause={() => pauseAgendaTask(realProjectId, drawerTask.id)}

@@ -2375,6 +2375,13 @@
       "noTasks": "No tasks for today — open Diary",
       "progress": "{done} of {total} tasks",
       "registered": "logged"
+    },
+    "sectionPanel": {
+      "title": "Tasks for this page",
+      "empty": "No tasks linked to this page yet.",
+      "placeholder": "New task for today...",
+      "add": "Add",
+      "sectionBadge": "Page"
     }
   }
 }

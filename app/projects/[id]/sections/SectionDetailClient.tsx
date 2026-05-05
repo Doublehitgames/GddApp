@@ -24,6 +24,7 @@ import {
   openGoogleDriveImagePicker,
 } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
+import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
 import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
@@ -2562,6 +2563,15 @@ function SectionDetailContent({
         </div>
       )}
       
+      {/* Tarefas vinculadas a esta seção */}
+      {!inlineEdit && project?.id && section?.id && (
+        <SectionTasksPanel
+          projectId={project.id}
+          sectionId={section.id}
+          sectionTitle={section.title ?? ""}
+        />
+      )}
+
       {/* Mensagem de erro/aviso da IA */}
       {improveError && (
         <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-xl text-amber-200 text-sm">
@@ -3329,13 +3339,14 @@ function SectionDetailContent({
 
       {/* Backlinks Section */}
       {!(inlineEdit && isFullscreen) && (
-        <BacklinksSection 
+        <BacklinksSection
           projectId={projectId}
           sectionId={sectionId}
           sections={project?.sections || []}
           router={router}
         />
       )}
+
 
 
       {/* Modal de Preview da IA */}
