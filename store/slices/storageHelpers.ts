@@ -5,9 +5,10 @@ import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import type { Project, LastConsistencyAnalysis, LastRelationsAnalysis, DiagramState, PersistenceConfig } from "./types";
 import {
   STORAGE_KEY, PERSISTENCE_CONFIG_KEY, LAST_ANALYSES_KEY, LAST_RELATIONS_KEY,
-  DIAGRAMS_KEY, MAX_IMAGE_SRC_LENGTH, DATA_IMAGE_URI_RE, DEFAULT_PERSISTENCE_CONFIG,
+  DIAGRAMS_KEY, AGENDA_KEY, MAX_IMAGE_SRC_LENGTH, DATA_IMAGE_URI_RE, DEFAULT_PERSISTENCE_CONFIG,
   SYNC_STATS_HISTORY_LIMIT, SYNC_STATE_KEY,
 } from "./types";
+import type { AgendaTask } from "@/lib/agenda/types";
 import type { PersistedSyncState } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -196,4 +197,30 @@ export function persistDiagrams(data: Record<string, DiagramState>): void {
 
 export function buildSectionDiagramKey(projectId: string, sectionId: string): string {
   return `${projectId}:${sectionId}`;
+}
+
+// ---------------------------------------------------------------------------
+// Agenda tasks
+// ---------------------------------------------------------------------------
+
+export function loadAgendaTasks(): Record<string, AgendaTask[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(AGENDA_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, AgendaTask[]>;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+export function persistAgendaTasks(data: Record<string, AgendaTask[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(AGENDA_KEY, JSON.stringify(data));
+  } catch (e) {
+    logWarn("Could not persist agenda tasks", e);
+  }
 }

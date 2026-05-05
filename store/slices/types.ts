@@ -5,6 +5,7 @@ import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync
 import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { SectionAddon } from "@/lib/addons/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
+import type { AgendaTask } from "@/lib/agenda/types";
 
 export type UUID = string;
 
@@ -464,6 +465,22 @@ export interface ProjectStore {
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
   /** Atualiza só mindMapSettings no store e persiste (sem marcar dirty nem disparar sync). Usado com pushProjectMindMapSettings. */
   updateProjectMindMapSettingsOnly: (projectId: UUID, settings: MindMapSettings) => void;
+  // ── Agenda ────────────────────────────────────────────────────────────────
+  tasksByProject: Record<string, AgendaTask[]>;
+  activeTaskId: string | null;
+  addAgendaTask: (projectId: string, date: string, title: string) => string;
+  carryOverAgendaTask: (projectId: string, sourceTask: AgendaTask, targetDate: string) => string;
+  updateAgendaTask: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "title" | "date" | "order">>) => void;
+  updateAgendaTaskDetail: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "description" | "priority" | "category">>) => void;
+  addSubTask: (projectId: string, taskId: string, title: string) => void;
+  toggleSubTask: (projectId: string, taskId: string, subTaskId: string) => void;
+  deleteSubTask: (projectId: string, taskId: string, subTaskId: string) => void;
+  deleteAgendaTask: (projectId: string, taskId: string) => void;
+  playAgendaTask: (projectId: string, taskId: string) => void;
+  pauseAgendaTask: (projectId: string, taskId: string) => void;
+  finishAgendaTask: (projectId: string, taskId: string) => void;
+  getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
+  loadAgendaFromSupabase: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +493,7 @@ export const SYNC_STATE_KEY = "gdd_sync_state_v1";
 export const LAST_ANALYSES_KEY = "gdd_last_analyses_v1";
 export const LAST_RELATIONS_KEY = "gdd_last_relations_v1";
 export const DIAGRAMS_KEY = "gdd_diagrams_by_section_v1";
+export const AGENDA_KEY = "gdd_agenda_tasks_v1";
 export const MAX_IMAGE_SRC_LENGTH = 2048;
 export const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
 export const SYNC_FAILURE_WINDOW_MS = 120000;

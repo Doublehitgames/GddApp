@@ -1,9 +1,11 @@
 import type { ProjectStore, UUID, Project, PersistenceConfig, MindMapSettings } from "./types";
 import { STORAGE_KEY } from "./types";
+import type { AgendaTask } from "@/lib/agenda/types";
 import {
   loadLastAnalyses,
   loadLastRelations,
   loadDiagrams,
+  loadAgendaTasks,
   parseProjectsFromStorage,
   persist,
   persistPersistenceConfig,
@@ -42,6 +44,15 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         const diagrams = loadDiagrams();
         if (Object.keys(diagrams).length > 0) {
           set({ diagramsBySection: diagrams });
+        }
+        const agendaTasks = loadAgendaTasks();
+        if (Object.keys(agendaTasks).length > 0) {
+          set({ tasksByProject: agendaTasks });
+          // Restore activeTaskId: find any task that was running when browser closed
+          for (const tasks of Object.values(agendaTasks)) {
+            const running = tasks.find((t) => t.status === "running");
+            if (running) { set({ activeTaskId: running.id }); break; }
+          }
         }
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
@@ -132,6 +143,36 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
             : p
         )
       );
+    },
+
+    loadAgendaFromSupabase: async () => {
+      try {
+        const userId = (get() as ProjectStore & { userId?: string }).userId;
+        if (!userId) return;
+        const projectIds = get().projects.map((p: { id: string }) => p.id);
+        if (projectIds.length === 0) return;
+
+        const { fetchAgendaTasks } = await import("@/lib/supabase/agendaSync");
+        const { persistAgendaTasks } = await import("./storageHelpers");
+
+        const updates: Record<string, AgendaTask[]> = {};
+        await Promise.all(
+          projectIds.map(async (projectId: string) => {
+            const tasks = await fetchAgendaTasks(userId, projectId);
+            if (tasks && tasks.length > 0) {
+              updates[projectId] = tasks;
+            }
+          })
+        );
+
+        if (Object.keys(updates).length > 0) {
+          const merged = { ...get().tasksByProject, ...updates };
+          set({ tasksByProject: merged });
+          persistAgendaTasks(merged);
+        }
+      } catch (e) {
+        console.warn("[agendaSync] loadAgendaFromSupabase failed", e);
+      }
     },
   };
 }
