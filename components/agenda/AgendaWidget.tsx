@@ -140,17 +140,42 @@ export default function AgendaWidget({ projectId, realProjectId }: Props) {
       {/* Corpo */}
       <div className="px-4 py-3 flex flex-col gap-3">
         {/* Tarefa em execução */}
-        {runningTask && (
-          <div className="flex items-center gap-3 rounded-xl border border-sky-700/40 bg-sky-950/40 px-3 py-2.5">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-sky-400 animate-pulse" />
-            <span className="flex-1 min-w-0 text-sm text-white font-medium truncate">
-              {runningTask.title}
-            </span>
-            <span className="shrink-0 font-mono text-xs tabular-nums text-sky-300">
-              {formatTimerLive(runningMs)}
-            </span>
-          </div>
-        )}
+        {runningTask && (() => {
+          const subs = runningTask.subtasks ?? [];
+          const doneSubs = subs.filter((s) => s.done).length;
+          const hasSubs = subs.length > 0;
+          const subProgress = hasSubs ? doneSubs / subs.length : 0;
+
+          return (
+            <div className="rounded-xl border border-sky-700/40 bg-sky-950/40 px-3 py-2.5 flex flex-col gap-2">
+              {/* Linha principal */}
+              <div className="flex items-center gap-3">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-sky-400 animate-pulse" />
+                <span className="flex-1 min-w-0 text-sm text-white font-medium truncate">
+                  {runningTask.title}
+                </span>
+                <span className="shrink-0 font-mono text-xs tabular-nums text-sky-300">
+                  {formatTimerLive(runningMs)}
+                </span>
+              </div>
+
+              {/* Progresso de subtarefas */}
+              {hasSubs && (
+                <div className="flex items-center gap-2 pl-5">
+                  <div className="flex-1 h-1 rounded-full bg-sky-900/60 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-sky-400 transition-all duration-300"
+                      style={{ width: `${Math.max(subProgress * 100, doneSubs > 0 ? 4 : 0)}%` }}
+                    />
+                  </div>
+                  <span className="shrink-0 text-[11px] tabular-nums text-sky-500">
+                    {doneSubs}/{subs.length}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Estado vazio */}
         {todayTasks.length === 0 && (
