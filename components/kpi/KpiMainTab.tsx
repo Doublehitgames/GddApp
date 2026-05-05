@@ -117,18 +117,56 @@ export default function KpiMainTab({ projectId, genre, entries, onSetGenre, onAd
           />
         </div>
 
-        {/* Main retention inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <MetricInputBar label="D1 Retenção" value={d1} onChange={setD1} benchmark={bench.d1} unit="%" />
-          <MetricInputBar label="D7 Retenção" value={d7} onChange={setD7} benchmark={bench.d7} unit="%" />
-          <MetricInputBar label="D30 Retenção" value={d30} onChange={setD30} benchmark={bench.d30} unit="%" />
-        </div>
-
-        {/* Secondary metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <MetricInputBar label="Sessões / dia" value={sessionsPerDay} onChange={setSessionsPerDay} benchmark={bench.sessionsPerDay} unit="x" />
-          <MetricInputBar label="Duração média" value={sessionDuration} onChange={setSessionDuration} benchmark={bench.sessionDuration} unit="min" />
-          <MetricInputBar label="Conversão" value={conversionRate} onChange={setConversionRate} benchmark={bench.conversionRate} unit="%" />
+        {/* All metrics as cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <MetricInputBar
+            label="D1 Retenção"
+            value={d1}
+            onChange={setD1}
+            benchmark={bench.d1}
+            unit="%"
+            helpText="% dos jogadores que voltam no 2º dia. Indica se o jogo causou boa primeira impressão. Problemas aqui quase sempre estão no tutorial."
+          />
+          <MetricInputBar
+            label="D7 Retenção"
+            value={d7}
+            onChange={setD7}
+            benchmark={bench.d7}
+            unit="%"
+            helpText="% dos jogadores ainda ativos após 7 dias. Mede se o loop principal engaja. Uma queda brusca de D1 para D7 geralmente significa que o loop não prende."
+          />
+          <MetricInputBar
+            label="D30 Retenção"
+            value={d30}
+            onChange={setD30}
+            benchmark={bench.d30}
+            unit="%"
+            helpText="% dos jogadores ainda ativos após 30 dias. Reflete se o mid-game tem profundidade suficiente para manter o interesse a longo prazo."
+          />
+          <MetricInputBar
+            label="Sessões / dia"
+            value={sessionsPerDay}
+            onChange={setSessionsPerDay}
+            benchmark={bench.sessionsPerDay}
+            unit="x"
+            helpText="Quantas vezes por dia o jogador médio abre o jogo. Valores altos indicam boa compulsividade e hooks de retorno (notificações, energia, eventos)."
+          />
+          <MetricInputBar
+            label="Duração média"
+            value={sessionDuration}
+            onChange={setSessionDuration}
+            benchmark={bench.sessionDuration}
+            unit="min"
+            helpText="Tempo médio de cada sessão em minutos. Muito curto pode indicar sessões frustrantes ou conteúdo escasso. Muito longo pode cansar o jogador."
+          />
+          <MetricInputBar
+            label="Conversão"
+            value={conversionRate}
+            onChange={setConversionRate}
+            benchmark={bench.conversionRate}
+            unit="%"
+            helpText="% dos jogadores que fizeram ao menos uma compra (moeda, skin, passe de batalha...). É o principal indicador de saúde da monetização do jogo."
+          />
         </div>
 
         {/* Diagnosis (real time) */}
