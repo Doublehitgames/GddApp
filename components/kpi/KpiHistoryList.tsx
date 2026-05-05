@@ -212,14 +212,17 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                 </button>
               </div>
             ) : (
-              <div className="mt-2">
+              <div className="mt-2 flex flex-col gap-1.5">
                 <button
                   type="button"
                   onClick={() => setOpenOutcomeId(isOpen ? null : entry.id)}
-                  className="rounded-lg border border-dashed border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-500 hover:border-sky-600 hover:text-sky-400 transition-colors"
+                  className="self-start rounded-lg border border-dashed border-amber-700/60 px-3 py-1.5 text-xs font-medium text-amber-500 hover:border-amber-500 hover:text-amber-300 transition-colors"
                 >
                   + Registrar resultado
                 </button>
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  Volte aqui após 1–2 semanas, quando tiver novos dados para comparar com esta entrada.
+                </p>
               </div>
             )}
 
