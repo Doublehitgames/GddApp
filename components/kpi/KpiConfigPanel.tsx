@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { GameGenre, KpiGameProfile, KpiCustomBenchmarks, MonetizationType, LoopType } from "@/lib/kpi/types";
 import type { GenreBenchmark } from "@/lib/kpi/benchmarks";
 import { GENRE_BENCHMARKS } from "@/lib/kpi/benchmarks";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   genre: GameGenre;
@@ -14,29 +15,17 @@ interface Props {
   onUpdateCustomBenchmarks: (b: KpiCustomBenchmarks) => void;
 }
 
-const GENRES: { id: GameGenre; label: string; emoji: string }[] = [
-  { id: "farm",    label: "Farm",    emoji: "🌾" },
-  { id: "casual",  label: "Casual",  emoji: "🎮" },
-  { id: "rpg",     label: "RPG",     emoji: "⚔️" },
-  { id: "puzzle",  label: "Puzzle",  emoji: "🧩" },
-  { id: "idle",    label: "Idle",    emoji: "⏱" },
-  { id: "shooter", label: "Shooter", emoji: "🎯" },
+const GENRE_IDS: { id: GameGenre; emoji: string }[] = [
+  { id: "farm",    emoji: "🌾" },
+  { id: "casual",  emoji: "🎮" },
+  { id: "rpg",     emoji: "⚔️" },
+  { id: "puzzle",  emoji: "🧩" },
+  { id: "idle",    emoji: "⏱" },
+  { id: "shooter", emoji: "🎯" },
 ];
 
-const MONETIZATION: { id: MonetizationType; label: string }[] = [
-  { id: "iap",     label: "Compras (IAP)" },
-  { id: "ads",     label: "Anúncios" },
-  { id: "iap_ads", label: "IAP + Ads" },
-  { id: "premium", label: "Premium" },
-  { id: "none",    label: "Nenhuma" },
-];
-
-const LOOP_TYPES: { id: LoopType; label: string }[] = [
-  { id: "levels",      label: "Fases / Níveis" },
-  { id: "sandbox",     label: "Sandbox" },
-  { id: "pvp",         label: "PvP" },
-  { id: "progression", label: "Progressão" },
-];
+const MONETIZATION_IDS: MonetizationType[] = ["iap", "ads", "iap_ads", "premium", "none"];
+const LOOP_TYPE_IDS: LoopType[] = ["levels", "sandbox", "pvp", "progression"];
 
 const DEFAULT_PROFILE: KpiGameProfile = {
   hasTutorial: true,
@@ -45,13 +34,16 @@ const DEFAULT_PROFILE: KpiGameProfile = {
 };
 
 function BenchmarkField({
-  label, unit, defaultValue, customValue, onChange,
+  label, unit, defaultValue, customValue, onChange, goalLabel, minLabel, resetLabel,
 }: {
   label: string;
   unit: string;
   defaultValue: { good: number; ok: number };
   customValue?: { good: number; ok: number };
   onChange: (v: { good: number; ok: number } | undefined) => void;
+  goalLabel: string;
+  minLabel: string;
+  resetLabel: string;
 }) {
   const isCustom = !!customValue;
   const current = customValue ?? defaultValue;
@@ -66,13 +58,13 @@ function BenchmarkField({
             onClick={() => onChange(undefined)}
             className="text-[10px] text-gray-600 hover:text-rose-400 transition-colors"
           >
-            resetar
+            {resetLabel}
           </button>
         )}
       </div>
       <div className="flex items-center gap-2">
         <div className="flex flex-col gap-0.5 flex-1">
-          <span className="text-[10px] text-gray-600">meta (bom)</span>
+          <span className="text-[10px] text-gray-600">{goalLabel}</span>
           <input
             type="number"
             min={0}
@@ -86,7 +78,7 @@ function BenchmarkField({
           />
         </div>
         <div className="flex flex-col gap-0.5 flex-1">
-          <span className="text-[10px] text-gray-600">mínimo (ok)</span>
+          <span className="text-[10px] text-gray-600">{minLabel}</span>
           <input
             type="number"
             min={0}
@@ -105,24 +97,25 @@ function BenchmarkField({
   );
 }
 
-function summarize(genre: GameGenre, profile?: KpiGameProfile): string {
-  const g = GENRES.find((x) => x.id === genre)?.label ?? genre;
-  if (!profile) return g;
-  const m = MONETIZATION.find((x) => x.id === profile.monetization)?.label ?? profile.monetization;
-  const l = LOOP_TYPES.find((x) => x.id === profile.loopType)?.label ?? profile.loopType;
-  const t = profile.hasTutorial ? "Com tutorial" : "Sem tutorial";
-  return `${g} · ${m} · ${t} · ${l}`;
-}
-
 export default function KpiConfigPanel({
   genre, profile, customBenchmarks,
   onSetGenre, onUpdateProfile, onUpdateCustomBenchmarks,
 }: Props) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(!profile); // open by default until first config
   const [benchOpen, setBenchOpen] = useState(false);
 
   const p = profile ?? DEFAULT_PROFILE;
   const baseBench = GENRE_BENCHMARKS[genre];
+
+  function summarize(): string {
+    const g = t("kpi.config.genres." + genre);
+    if (!profile) return g;
+    const m = t("kpi.config.monetization." + profile.monetization);
+    const l = t("kpi.config.loop." + profile.loopType);
+    const tutLabel = profile.hasTutorial ? t("kpi.config.hasTutorial") : t("kpi.config.noTutorial");
+    return `${g} · ${m} · ${tutLabel} · ${l}`;
+  }
 
   function patchProfile(patch: Partial<KpiGameProfile>) {
     onUpdateProfile({ ...p, ...patch });
@@ -153,9 +146,9 @@ export default function KpiConfigPanel({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-sm font-semibold text-white">Configurar jogo</span>
+          <span className="text-sm font-semibold text-white">{t("kpi.config.title")}</span>
           {!open && (
-            <span className="text-xs text-gray-500 truncate max-w-[260px]">{summarize(genre, profile)}</span>
+            <span className="text-xs text-gray-500 truncate max-w-[260px]">{summarize()}</span>
           )}
         </div>
         <svg
@@ -171,9 +164,9 @@ export default function KpiConfigPanel({
 
           {/* Gênero */}
           <div className="pt-4">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Gênero do jogo</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">{t("kpi.config.genreSection")}</p>
             <div className="flex flex-wrap gap-2">
-              {GENRES.map((g) => (
+              {GENRE_IDS.map((g) => (
                 <button
                   key={g.id}
                   type="button"
@@ -185,16 +178,16 @@ export default function KpiConfigPanel({
                   }`}
                 >
                   <span>{g.emoji}</span>
-                  {g.label}
+                  {t("kpi.config.genres." + g.id)}
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-gray-600">{baseBench.label}</p>
+            <p className="mt-1.5 text-xs text-gray-600">{t("kpi.config.genreLabels." + genre)}</p>
           </div>
 
           {/* Tutorial */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Tutorial</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">{t("kpi.config.tutorialSection")}</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -205,7 +198,7 @@ export default function KpiConfigPanel({
                     : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
                 }`}
               >
-                ✅ Tem tutorial
+                {t("kpi.config.hasTutorial")}
               </button>
               <button
                 type="button"
@@ -216,27 +209,27 @@ export default function KpiConfigPanel({
                     : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
                 }`}
               >
-                ⚡ Sem tutorial formal
+                {t("kpi.config.noTutorial")}
               </button>
             </div>
           </div>
 
           {/* Monetização */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Monetização</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">{t("kpi.config.monetizationSection")}</p>
             <div className="flex flex-wrap gap-2">
-              {MONETIZATION.map((m) => (
+              {MONETIZATION_IDS.map((id) => (
                 <button
-                  key={m.id}
+                  key={id}
                   type="button"
-                  onClick={() => patchProfile({ monetization: m.id })}
+                  onClick={() => patchProfile({ monetization: id })}
                   className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                    p.monetization === m.id
+                    p.monetization === id
                       ? "border-sky-500 bg-sky-500/20 text-sky-300"
                       : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  {m.label}
+                  {t("kpi.config.monetization." + id)}
                 </button>
               ))}
             </div>
@@ -244,20 +237,20 @@ export default function KpiConfigPanel({
 
           {/* Loop */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Loop principal</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">{t("kpi.config.loopSection")}</p>
             <div className="flex flex-wrap gap-2">
-              {LOOP_TYPES.map((l) => (
+              {LOOP_TYPE_IDS.map((id) => (
                 <button
-                  key={l.id}
+                  key={id}
                   type="button"
-                  onClick={() => patchProfile({ loopType: l.id })}
+                  onClick={() => patchProfile({ loopType: id })}
                   className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                    p.loopType === l.id
+                    p.loopType === id
                       ? "border-violet-500 bg-violet-500/20 text-violet-300"
                       : "border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  {l.label}
+                  {t("kpi.config.loop." + id)}
                 </button>
               ))}
             </div>
@@ -271,10 +264,10 @@ export default function KpiConfigPanel({
               className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-gray-800/30 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-400">Benchmarks de referência</span>
+                <span className="text-xs font-semibold text-gray-400">{t("kpi.config.benchmarksTitle")}</span>
                 {hasCustom && (
                   <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
-                    personalizados
+                    {t("kpi.config.benchmarksCustomized")}
                   </span>
                 )}
               </div>
@@ -289,15 +282,15 @@ export default function KpiConfigPanel({
             {benchOpen && (
               <div className="px-3 pb-3 border-t border-gray-800/40">
                 <p className="py-2 text-xs text-gray-600">
-                  Os valores padrão são médias da indústria mobile. Você pode sobrescrever qualquer um com os números do seu segmento específico.
+                  {t("kpi.config.benchmarksHint")}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <BenchmarkField label="D1" unit="%" defaultValue={baseBench.d1} customValue={customBenchmarks?.d1} onChange={(v) => patchBenchmark("d1", v)} />
-                  <BenchmarkField label="D7" unit="%" defaultValue={baseBench.d7} customValue={customBenchmarks?.d7} onChange={(v) => patchBenchmark("d7", v)} />
-                  <BenchmarkField label="D30" unit="%" defaultValue={baseBench.d30} customValue={customBenchmarks?.d30} onChange={(v) => patchBenchmark("d30", v)} />
-                  <BenchmarkField label="Sessões/dia" unit="x" defaultValue={baseBench.sessionsPerDay} customValue={customBenchmarks?.sessionsPerDay} onChange={(v) => patchBenchmark("sessionsPerDay", v)} />
-                  <BenchmarkField label="Duração" unit="min" defaultValue={baseBench.sessionDuration} customValue={customBenchmarks?.sessionDuration} onChange={(v) => patchBenchmark("sessionDuration", v)} />
-                  <BenchmarkField label="Conversão" unit="%" defaultValue={baseBench.conversionRate} customValue={customBenchmarks?.conversionRate} onChange={(v) => patchBenchmark("conversionRate", v)} />
+                  <BenchmarkField label="D1" unit="%" defaultValue={baseBench.d1} customValue={customBenchmarks?.d1} onChange={(v) => patchBenchmark("d1", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
+                  <BenchmarkField label="D7" unit="%" defaultValue={baseBench.d7} customValue={customBenchmarks?.d7} onChange={(v) => patchBenchmark("d7", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
+                  <BenchmarkField label="D30" unit="%" defaultValue={baseBench.d30} customValue={customBenchmarks?.d30} onChange={(v) => patchBenchmark("d30", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
+                  <BenchmarkField label={t("kpi.metrics.sessionsLabel")} unit="x" defaultValue={baseBench.sessionsPerDay} customValue={customBenchmarks?.sessionsPerDay} onChange={(v) => patchBenchmark("sessionsPerDay", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
+                  <BenchmarkField label={t("kpi.metrics.durationLabel")} unit="min" defaultValue={baseBench.sessionDuration} customValue={customBenchmarks?.sessionDuration} onChange={(v) => patchBenchmark("sessionDuration", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
+                  <BenchmarkField label={t("kpi.metrics.conversionLabel")} unit="%" defaultValue={baseBench.conversionRate} customValue={customBenchmarks?.conversionRate} onChange={(v) => patchBenchmark("conversionRate", v)} goalLabel={t("kpi.config.benchmarkGoal")} minLabel={t("kpi.config.benchmarkMin")} resetLabel={t("kpi.config.benchmarkReset")} />
                 </div>
                 {hasCustom && (
                   <button
@@ -305,7 +298,7 @@ export default function KpiConfigPanel({
                     onClick={() => onUpdateCustomBenchmarks({})}
                     className="mt-3 text-xs text-gray-600 hover:text-rose-400 transition-colors"
                   >
-                    Resetar todos para o padrão da indústria
+                    {t("kpi.config.benchmarkResetAll")}
                   </button>
                 )}
               </div>

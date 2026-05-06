@@ -9,6 +9,7 @@ import DiagnosisBlock from "./DiagnosisBlock";
 import RetentionChart from "./RetentionChart";
 import KpiHistoryList from "./KpiHistoryList";
 import KpiConfigPanel from "./KpiConfigPanel";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
@@ -23,13 +24,7 @@ interface Props {
   onDeleteEntry: (id: string) => void;
 }
 
-const HYPOTHESIS_AREAS: { id: KpiEntry["hypothesisArea"]; label: string }[] = [
-  { id: "tutorial",     label: "Tutorial" },
-  { id: "loop",         label: "Loop de jogo" },
-  { id: "midgame",      label: "Mid-game" },
-  { id: "monetization", label: "Monetização" },
-  { id: "other",        label: "Outro" },
-];
+const HYPOTHESIS_AREA_IDS: KpiEntry["hypothesisArea"][] = ["tutorial", "loop", "midgame", "monetization", "other"];
 
 function todayISO(): string {
   const d = new Date();
@@ -53,6 +48,7 @@ export default function KpiMainTab({
   projectId, genre, profile, customBenchmarks, entries,
   onSetGenre, onUpdateConfig, onAddEntry, onUpdateEntry, onDeleteEntry,
 }: Props) {
+  const { t } = useI18n();
   const bench = effectiveBench(GENRE_BENCHMARKS[genre], customBenchmarks);
 
   const [date, setDate] = useState(todayISO);
@@ -116,7 +112,7 @@ export default function KpiMainTab({
       {/* Entry form */}
       <div className="rounded-xl border border-gray-700/60 bg-gray-900/60 p-4 space-y-5">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-white">Nova entrada</p>
+          <p className="text-sm font-semibold text-white">{t("kpi.main.newEntry")}</p>
           <input
             type="date"
             value={date}
@@ -128,53 +124,53 @@ export default function KpiMainTab({
         {/* Metric cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <MetricInputBar
-            label="D1 Retenção"
+            label={t("kpi.metrics.d1Label")}
             value={d1}
             onChange={setD1}
             benchmark={bench.d1}
             unit="%"
-            helpText="% dos jogadores que voltam no 2º dia. Indica se o jogo causou boa primeira impressão. Problemas aqui quase sempre estão no tutorial ou na primeira sessão."
+            helpText={t("kpi.metrics.d1Help")}
           />
           <MetricInputBar
-            label="D7 Retenção"
+            label={t("kpi.metrics.d7Label")}
             value={d7}
             onChange={setD7}
             benchmark={bench.d7}
             unit="%"
-            helpText="% dos jogadores ainda ativos após 7 dias. Mede se o loop principal engaja. Uma queda brusca de D1 para D7 geralmente significa que o loop não prende."
+            helpText={t("kpi.metrics.d7Help")}
           />
           <MetricInputBar
-            label="D30 Retenção"
+            label={t("kpi.metrics.d30Label")}
             value={d30}
             onChange={setD30}
             benchmark={bench.d30}
             unit="%"
-            helpText="% dos jogadores ainda ativos após 30 dias. Reflete se o mid-game tem profundidade suficiente para manter o interesse a longo prazo."
+            helpText={t("kpi.metrics.d30Help")}
           />
           <MetricInputBar
-            label="Sessões / dia"
+            label={t("kpi.metrics.sessionsLabel")}
             value={sessionsPerDay}
             onChange={setSessionsPerDay}
             benchmark={bench.sessionsPerDay}
             unit="x"
-            helpText="Quantas vezes por dia o jogador médio abre o jogo. Valores altos indicam boa compulsividade e hooks de retorno (notificações, energia, eventos)."
+            helpText={t("kpi.metrics.sessionsHelp")}
           />
           <MetricInputBar
-            label="Duração média"
+            label={t("kpi.metrics.durationLabel")}
             value={sessionDuration}
             onChange={setSessionDuration}
             benchmark={bench.sessionDuration}
             unit="min"
-            helpText="Tempo médio de cada sessão em minutos. Muito curto pode indicar sessões frustrantes ou conteúdo escasso. Muito longo pode cansar o jogador."
+            helpText={t("kpi.metrics.durationHelp")}
           />
           {showConversion && (
             <MetricInputBar
-              label="Conversão"
+              label={t("kpi.metrics.conversionLabel")}
               value={conversionRate}
               onChange={setConversionRate}
               benchmark={bench.conversionRate}
               unit="%"
-              helpText="% dos jogadores que fizeram ao menos uma compra (moeda, skin, passe de batalha...). É o principal indicador de saúde da monetização do jogo."
+              helpText={t("kpi.metrics.conversionHelp")}
             />
           )}
         </div>
@@ -185,34 +181,34 @@ export default function KpiMainTab({
         {/* Retention chart */}
         {hasData && (
           <div className="rounded-xl border border-gray-700/40 bg-gray-950/50 p-3">
-            <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-widest">Curva de retenção</p>
+            <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-widest">{t("kpi.main.retentionChart")}</p>
             <RetentionChart metrics={currentMetrics} benchmark={bench} />
           </div>
         )}
 
         {/* Hypothesis */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Hipótese desta semana</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">{t("kpi.main.hypothesisTitle")}</p>
           <div className="flex flex-wrap gap-2 mb-2">
-            {HYPOTHESIS_AREAS.map((area) => (
+            {HYPOTHESIS_AREA_IDS.map((areaId) => (
               <button
-                key={area.id}
+                key={areaId}
                 type="button"
-                onClick={() => setHypothesisArea(area.id)}
+                onClick={() => setHypothesisArea(areaId)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  hypothesisArea === area.id
+                  hypothesisArea === areaId
                     ? "border-sky-500 bg-sky-500/20 text-sky-300"
                     : "border-gray-600 text-gray-500 hover:border-gray-400 hover:text-gray-300"
                 }`}
               >
-                {area.label}
+                {t("kpi.main.areas." + areaId)}
               </button>
             ))}
           </div>
           <textarea
             value={hypothesis}
             onChange={(e) => setHypothesis(e.target.value)}
-            placeholder="Vou mudar X porque acredito que Y vai melhorar..."
+            placeholder={t("kpi.main.hypothesisPlaceholder")}
             rows={3}
             className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-sky-500 focus:outline-none resize-none"
           />
@@ -226,16 +222,16 @@ export default function KpiMainTab({
             disabled={!hasData}
             className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Salvar entrada
+            {t("kpi.main.save")}
           </button>
-          {saved && <span className="text-sm text-emerald-400">Salvo!</span>}
+          {saved && <span className="text-sm text-emerald-400">{t("kpi.main.saved")}</span>}
         </div>
       </div>
 
       {/* History */}
       {entries.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Histórico</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">{t("kpi.main.historyTitle")}</p>
           <KpiHistoryList
             entries={entries}
             onUpdateEntry={onUpdateEntry}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { MetricStatus } from "@/lib/kpi/benchmarks";
 import { getMetricStatus } from "@/lib/kpi/benchmarks";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   label: string;
@@ -13,11 +14,11 @@ interface Props {
   helpText?: string;
 }
 
-const STATUS_COLORS: Record<MetricStatus, { bar: string; text: string; label: string }> = {
-  great:    { bar: "bg-emerald-500", text: "text-emerald-400", label: "acima da meta" },
-  ok:       { bar: "bg-sky-500",     text: "text-sky-400",     label: "ok" },
-  low:      { bar: "bg-amber-500",   text: "text-amber-400",   label: "abaixo" },
-  critical: { bar: "bg-rose-500",    text: "text-rose-400",    label: "muito abaixo" },
+const STATUS_COLORS: Record<MetricStatus, { bar: string; text: string; statusKey: string }> = {
+  great:    { bar: "bg-emerald-500", text: "text-emerald-400", statusKey: "kpi.status.great" },
+  ok:       { bar: "bg-sky-500",     text: "text-sky-400",     statusKey: "kpi.status.ok" },
+  low:      { bar: "bg-amber-500",   text: "text-amber-400",   statusKey: "kpi.status.low" },
+  critical: { bar: "bg-rose-500",    text: "text-rose-400",    statusKey: "kpi.status.critical" },
 };
 
 function HelpTooltip({ text }: { text: string }) {
@@ -47,6 +48,7 @@ function HelpTooltip({ text }: { text: string }) {
 }
 
 export default function MetricInputBar({ label, value, onChange, benchmark, unit = "%", helpText }: Props) {
+  const { t } = useI18n();
   const status: MetricStatus = value !== undefined ? getMetricStatus(value, benchmark) : "critical";
   const colors = STATUS_COLORS[status];
   const maxBar = Math.max(benchmark.good * 1.5, 100);
@@ -96,14 +98,14 @@ export default function MetricInputBar({ label, value, onChange, benchmark, unit
         {value !== undefined ? (
           <>
             <span className={`text-xs font-medium ${colors.text}`}>
-              {colors.label} {status === "great" ? "↑" : status === "ok" ? "→" : "↓"}
+              {t(colors.statusKey)} {status === "great" ? "↑" : status === "ok" ? "→" : "↓"}
             </span>
             <span className="text-xs text-gray-600 tabular-nums">
-              meta ≥ {benchmark.good}{unit}
+              {t("kpi.status.goal")} ≥ {benchmark.good}{unit}
             </span>
           </>
         ) : (
-          <span className="text-xs text-gray-600">não preenchido</span>
+          <span className="text-xs text-gray-600">{t("kpi.status.notFilled")}</span>
         )}
       </div>
     </div>

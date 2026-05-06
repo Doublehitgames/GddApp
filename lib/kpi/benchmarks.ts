@@ -127,117 +127,10 @@ export function getMetricStatus(value: number, benchmark: { good: number; ok: nu
 
 export type Diagnosis = {
   priority: "great" | "warning" | "critical";
-  headline: string;
-  detail: string;
-  area: "tutorial" | "loop" | "midgame" | "monetization" | "general";
-  tips: string[];
+  textKey: string;
   ratioD7D1?: number;
   ratioD30D7?: number;
 };
-
-// ─── Tip pools por área e perfil ─────────────────────────────────────────────
-
-function getTutorialTips(profile?: KpiGameProfile): string[] {
-  if (!profile?.hasTutorial) {
-    return [
-      "Sem tutorial formal, a primeira sessão precisa ser autoexplicativa",
-      "Coloque o jogador fazendo algo satisfatório nos primeiros 60 segundos",
-      "Use UI hints contextuais para guiar sem interromper",
-      "Dê uma recompensa clara após a primeira ação bem-sucedida",
-      "Teste com alguém que nunca viu o jogo — observe onde ela trava",
-    ];
-  }
-  return [
-    "Encurte o tutorial — o ideal é menos de 3 minutos",
-    "Dê uma recompensa satisfatória antes de terminar o tutorial",
-    "Mostre o loop principal na primeira sessão, sem enrolação",
-    "Remova barreiras de entrada: sem tempo de espera nos primeiros 10 minutos",
-    "Deixe o jogador errar e corrigir — não bloqueie o progresso por falha",
-  ];
-}
-
-function getLoopTips(profile?: KpiGameProfile): string[] {
-  const base: string[] = [
-    "Adicione uma recompensa pendente que só pode ser coletada no dia seguinte",
-    "Crie um objetivo de curto prazo que não termina na primeira sessão",
-    "Notificação push no D1 com algo concreto esperando pelo jogador",
-  ];
-
-  if (profile?.loopType === "pvp") {
-    return [
-      ...base,
-      "Loop PvP precisa de progressão visível mesmo em derrota (XP, ranking, shard)",
-      "Verifique matchmaking — desequilíbrio excessivo destrói a retenção",
-      "Cada partida deve terminar com um ganho perceptível (skin, moeda, progresso)",
-    ];
-  }
-  if (profile?.loopType === "sandbox") {
-    return [
-      ...base,
-      "Em sandbox, o loop inicial deve mostrar possibilidades, não obrigações",
-      "Dê um objetivo sugerido (não forçado) para guiar os primeiros dias",
-      "Estrutura social (ver criações de outros) cria motivação externa poderosa",
-    ];
-  }
-  if (profile?.loopType === "progression") {
-    return [
-      ...base,
-      "A curva de progressão deve ter picos de satisfação a cada 2–3 sessões",
-      "Deixe o jogador perceber sua evolução com comparações visuais (antes/depois)",
-      "Desbloqueios de conteúdo são mais motivadores que aumentos de número puro",
-    ];
-  }
-  // levels (default)
-  return [
-    ...base,
-    "Revise o loop básico — está claro o que fazer a seguir?",
-    "A curva de dificuldade das fases deve ser suave nos primeiros 10 níveis",
-  ];
-}
-
-function getMidgameTips(profile?: KpiGameProfile): string[] {
-  const base = [
-    "Eventos sazonais ou conteúdo novo mantêm jogadores veteranos engajados",
-    "Revise a progressão de dificuldade — está travada por paywall?",
-  ];
-  if (profile?.loopType === "pvp") {
-    return [
-      "Liga ou temporada com recompensas exclusivas cria urgência de longo prazo",
-      "Clãs e guilds criam compromisso social que segura o jogador no mid-game",
-      ...base,
-    ];
-  }
-  return [
-    "Verifique se há objetivos de médio prazo — metas de construção, coleção, progressão",
-    "Features sociais (amigos, cooperativas) criam loop externo de motivação",
-    ...base,
-  ];
-}
-
-function getMonetizationTips(profile?: KpiGameProfile): string[] {
-  if (profile?.monetization === "ads") {
-    return [
-      "Com modelo de anúncios, foco deve ser em sessões frequentes e duração média alta",
-      "Rewarded ads (assistir para ganhar) têm aceitação muito maior que banners forçados",
-      "Limite a frequência de interstitials — muitos anúncios destroem a retenção",
-      "Ofereça opção de remover anúncios como único IAP — converte bem",
-    ];
-  }
-  if (profile?.monetization === "premium") {
-    return [
-      "Jogo premium não tem conversão recorrente — foco em avaliações e boca a boca",
-      "DLCs e expansões são o principal vetor de receita adicional",
-      "Alta retenção gera reviews positivos que alimentam aquisição orgânica",
-    ];
-  }
-  // iap or iap_ads
-  return [
-    "Revise os gatilhos de oferta — aparecem num momento de frustração ou desejo?",
-    "A primeira oferta (starter pack) precisa parecer um absurdo de vantagem",
-    "Teste preços menores com mais frequência vs preço alto e raro",
-    "Verifique se há pain points claros sem solução gratuita razoável",
-  ];
-}
 
 // ─── Diagnose principal ───────────────────────────────────────────────────────
 
@@ -258,12 +151,7 @@ export function diagnose(
     const hasTutorial = profile?.hasTutorial ?? true;
     return {
       priority: "critical",
-      headline: hasTutorial ? "Tutorial quebrando" : "Primeira sessão não convence",
-      detail: hasTutorial
-        ? "Jogador não está chegando nem no D7. Provavelmente sai antes de sentir a graça do jogo."
-        : "Sem tutorial formal, o jogador não está entendendo o que fazer logo de início e abandona cedo.",
-      area: "tutorial",
-      tips: getTutorialTips(profile),
+      textKey: hasTutorial ? "kpi.diag.tutorial.withTutorial" : "kpi.diag.tutorial.noTutorial",
       ratioD7D1,
       ratioD30D7,
     };
@@ -271,16 +159,14 @@ export function diagnose(
 
   // ── D1 ok mas D7 caiu muito → loop não prende ─────────────────────────────
   if (d7 !== undefined && d7 < bench.d7.ok * 0.7 && (ratioD7D1 === undefined || ratioD7D1 < 0.4)) {
-    const loopLabel =
-      profile?.loopType === "pvp" ? "PvP não mantém engajamento entre partidas" :
-      profile?.loopType === "sandbox" ? "Sandbox sem direção perde o jogador rápido" :
-      "Loop não prende";
+    const loopKey =
+      profile?.loopType === "pvp" ? "kpi.diag.loop.pvp" :
+      profile?.loopType === "sandbox" ? "kpi.diag.loop.sandbox" :
+      profile?.loopType === "progression" ? "kpi.diag.loop.progression" :
+      "kpi.diag.loop.default";
     return {
       priority: "critical",
-      headline: loopLabel,
-      detail: "Jogador chega no D1 mas não volta. Não tem motivo concreto para abrir o jogo no D2, D3...",
-      area: "loop",
-      tips: getLoopTips(profile),
+      textKey: loopKey,
       ratioD7D1,
       ratioD30D7,
     };
@@ -288,12 +174,10 @@ export function diagnose(
 
   // ── D7 ok mas D30 caiu → mid-game vazio ───────────────────────────────────
   if (d30 !== undefined && d30 < bench.d30.ok * 0.7 && (ratioD30D7 === undefined || ratioD30D7 < 0.4)) {
+    const midgameKey = profile?.loopType === "pvp" ? "kpi.diag.midgame.pvp" : "kpi.diag.midgame.default";
     return {
       priority: "warning",
-      headline: "Mid-game vazio",
-      detail: "Jogador fica sem o que fazer por volta dos níveis intermediários. Retenção de longo prazo está caindo.",
-      area: "midgame",
-      tips: getMidgameTips(profile),
+      textKey: midgameKey,
       ratioD7D1,
       ratioD30D7,
     };
@@ -310,10 +194,7 @@ export function diagnose(
   ) {
     return {
       priority: "warning",
-      headline: "Monetização fraca",
-      detail: "Retenção boa, mas jogadores não estão convertendo para pagantes.",
-      area: "monetization",
-      tips: getMonetizationTips(profile),
+      textKey: "kpi.diag.monetization.default",
       ratioD7D1,
       ratioD30D7,
     };
@@ -327,10 +208,7 @@ export function diagnose(
     ) {
       return {
         priority: "warning",
-        headline: monetization === "ads" ? "Engajamento baixo afeta receita de anúncios" : "Engajamento abaixo do esperado",
-        detail: "Com modelo baseado em sessões, a frequência e duração do jogo são seu principal indicador de receita.",
-        area: "loop",
-        tips: getMonetizationTips(profile),
+        textKey: monetization === "ads" ? "kpi.diag.sessionEngagement.ads" : "kpi.diag.sessionEngagement.default",
         ratioD7D1,
         ratioD30D7,
       };
@@ -340,13 +218,7 @@ export function diagnose(
   // Tudo ok
   return {
     priority: "great",
-    headline: "Números saudáveis",
-    detail: "Seu jogo está dentro ou acima do benchmark para esse gênero. Continue monitorando.",
-    area: "general",
-    tips: [
-      "Mantenha o ritmo de análise semanal mesmo quando está bem",
-      "Hora de pensar em expansão — novos canais de aquisição ou features de engajamento",
-    ],
+    textKey: "kpi.diag.great",
     ratioD7D1,
     ratioD30D7,
   };

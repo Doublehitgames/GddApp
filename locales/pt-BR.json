@@ -2383,5 +2383,405 @@
       "add": "Adicionar",
       "sectionBadge": "Página"
     }
+  },
+  "kpi": {
+    "pageTitle": "Análise do Jogo",
+    "tabs": {
+      "main": "KPIs principais",
+      "funnel": "Funil de saída",
+      "routine": "Rotina semanal",
+      "questions": "Perguntas-guia"
+    },
+    "config": {
+      "title": "Configurar jogo",
+      "genreSection": "Gênero do jogo",
+      "tutorialSection": "Tutorial",
+      "hasTutorial": "✅ Tem tutorial",
+      "noTutorial": "⚡ Sem tutorial formal",
+      "monetizationSection": "Monetização",
+      "loopSection": "Loop principal",
+      "benchmarksTitle": "Benchmarks de referência",
+      "benchmarksCustomized": "personalizados",
+      "benchmarksHint": "Os valores padrão são médias da indústria mobile. Você pode sobrescrever qualquer um com os números do seu segmento específico.",
+      "benchmarkGoal": "meta (bom)",
+      "benchmarkMin": "mínimo (ok)",
+      "benchmarkReset": "resetar",
+      "benchmarkResetAll": "Resetar todos para o padrão da indústria",
+      "genres": {
+        "farm": "Farm",
+        "casual": "Casual",
+        "rpg": "RPG",
+        "puzzle": "Puzzle",
+        "idle": "Idle",
+        "shooter": "Shooter"
+      },
+      "genreLabels": {
+        "farm": "Farm / Simulação",
+        "casual": "Casual / Hyper-casual",
+        "rpg": "RPG / Mid-core",
+        "puzzle": "Puzzle",
+        "idle": "Idle / Clicker",
+        "shooter": "Shooter / Action"
+      },
+      "monetization": {
+        "iap": "Compras (IAP)",
+        "ads": "Anúncios",
+        "iap_ads": "IAP + Ads",
+        "premium": "Premium",
+        "none": "Nenhuma"
+      },
+      "loop": {
+        "levels": "Fases / Níveis",
+        "sandbox": "Sandbox",
+        "pvp": "PvP",
+        "progression": "Progressão"
+      }
+    },
+    "main": {
+      "newEntry": "Nova entrada",
+      "hypothesisTitle": "Hipótese desta semana",
+      "hypothesisPlaceholder": "Vou mudar X porque acredito que Y vai melhorar...",
+      "save": "Salvar entrada",
+      "saved": "Salvo!",
+      "historyTitle": "Histórico",
+      "retentionChart": "Curva de retenção",
+      "areas": {
+        "tutorial": "Tutorial",
+        "loop": "Loop de jogo",
+        "midgame": "Mid-game",
+        "monetization": "Monetização",
+        "other": "Outro"
+      }
+    },
+    "metrics": {
+      "d1Label": "D1 Retenção",
+      "d7Label": "D7 Retenção",
+      "d30Label": "D30 Retenção",
+      "sessionsLabel": "Sessões / dia",
+      "durationLabel": "Duração média",
+      "conversionLabel": "Conversão",
+      "d1Help": "% dos jogadores que voltam no 2º dia. Indica se o jogo causou boa primeira impressão. Problemas aqui quase sempre estão no tutorial ou na primeira sessão.",
+      "d7Help": "% dos jogadores ainda ativos após 7 dias. Mede se o loop principal engaja. Uma queda brusca de D1 para D7 geralmente significa que o loop não prende.",
+      "d30Help": "% dos jogadores ainda ativos após 30 dias. Reflete se o mid-game tem profundidade suficiente para manter o interesse a longo prazo.",
+      "sessionsHelp": "Quantas vezes por dia o jogador médio abre o jogo. Valores altos indicam boa compulsividade e hooks de retorno (notificações, energia, eventos).",
+      "durationHelp": "Tempo médio de cada sessão em minutos. Muito curto pode indicar sessões frustrantes ou conteúdo escasso. Muito longo pode cansar o jogador.",
+      "conversionHelp": "% dos jogadores que fizeram ao menos uma compra (moeda, skin, passe de batalha...). É o principal indicador de saúde da monetização do jogo."
+    },
+    "status": {
+      "great": "acima da meta",
+      "ok": "ok",
+      "low": "abaixo",
+      "critical": "muito abaixo",
+      "notFilled": "não preenchido",
+      "goal": "meta"
+    },
+    "diag": {
+      "fillHint": "Preencha D1, D7 ou D30 acima para ver o diagnóstico.",
+      "whatToDo": "O que fazer",
+      "ratioD7D1Label": "Ratio D7/D1",
+      "ratioD30D7Label": "Ratio D30/D7",
+      "ratioIdeal": "ideal ≥ 0.5",
+      "tutorial": {
+        "withTutorial": {
+          "headline": "Tutorial quebrando",
+          "detail": "Jogador não está chegando nem no D7. Provavelmente sai antes de sentir a graça do jogo.",
+          "tips": [
+            "Encurte o tutorial — o ideal é menos de 3 minutos",
+            "Dê uma recompensa satisfatória antes de terminar o tutorial",
+            "Mostre o loop principal na primeira sessão, sem enrolação",
+            "Remova barreiras de entrada: sem tempo de espera nos primeiros 10 minutos",
+            "Deixe o jogador errar e corrigir — não bloqueie o progresso por falha"
+          ]
+        },
+        "noTutorial": {
+          "headline": "Primeira sessão não convence",
+          "detail": "Sem tutorial formal, o jogador não está entendendo o que fazer logo de início e abandona cedo.",
+          "tips": [
+            "Sem tutorial formal, a primeira sessão precisa ser autoexplicativa",
+            "Coloque o jogador fazendo algo satisfatório nos primeiros 60 segundos",
+            "Use UI hints contextuais para guiar sem interromper",
+            "Dê uma recompensa clara após a primeira ação bem-sucedida",
+            "Teste com alguém que nunca viu o jogo — observe onde ela trava"
+          ]
+        }
+      },
+      "loop": {
+        "default": {
+          "headline": "Loop não prende",
+          "detail": "Jogador chega no D1 mas não volta. Não tem motivo concreto para abrir o jogo no D2, D3...",
+          "tips": [
+            "Adicione uma recompensa pendente que só pode ser coletada no dia seguinte",
+            "Crie um objetivo de curto prazo que não termina na primeira sessão",
+            "Notificação push no D1 com algo concreto esperando pelo jogador",
+            "Revise o loop básico — está claro o que fazer a seguir?",
+            "A curva de dificuldade das fases deve ser suave nos primeiros 10 níveis"
+          ]
+        },
+        "pvp": {
+          "headline": "PvP não mantém engajamento entre partidas",
+          "detail": "Jogador chega no D1 mas não volta. Não tem motivo concreto para abrir o jogo no D2, D3...",
+          "tips": [
+            "Adicione uma recompensa pendente que só pode ser coletada no dia seguinte",
+            "Crie um objetivo de curto prazo que não termina na primeira sessão",
+            "Notificação push no D1 com algo concreto esperando pelo jogador",
+            "Loop PvP precisa de progressão visível mesmo em derrota (XP, ranking, shard)",
+            "Verifique matchmaking — desequilíbrio excessivo destrói a retenção",
+            "Cada partida deve terminar com um ganho perceptível (skin, moeda, progresso)"
+          ]
+        },
+        "sandbox": {
+          "headline": "Sandbox sem direção perde o jogador rápido",
+          "detail": "Jogador chega no D1 mas não volta. Não tem motivo concreto para abrir o jogo no D2, D3...",
+          "tips": [
+            "Adicione uma recompensa pendente que só pode ser coletada no dia seguinte",
+            "Crie um objetivo de curto prazo que não termina na primeira sessão",
+            "Notificação push no D1 com algo concreto esperando pelo jogador",
+            "Em sandbox, o loop inicial deve mostrar possibilidades, não obrigações",
+            "Dê um objetivo sugerido (não forçado) para guiar os primeiros dias",
+            "Estrutura social (ver criações de outros) cria motivação externa poderosa"
+          ]
+        },
+        "progression": {
+          "headline": "Loop não prende",
+          "detail": "Jogador chega no D1 mas não volta. Não tem motivo concreto para abrir o jogo no D2, D3...",
+          "tips": [
+            "Adicione uma recompensa pendente que só pode ser coletada no dia seguinte",
+            "Crie um objetivo de curto prazo que não termina na primeira sessão",
+            "Notificação push no D1 com algo concreto esperando pelo jogador",
+            "A curva de progressão deve ter picos de satisfação a cada 2–3 sessões",
+            "Deixe o jogador perceber sua evolução com comparações visuais (antes/depois)",
+            "Desbloqueios de conteúdo são mais motivadores que aumentos de número puro"
+          ]
+        }
+      },
+      "midgame": {
+        "default": {
+          "headline": "Mid-game vazio",
+          "detail": "Jogador fica sem o que fazer por volta dos níveis intermediários. Retenção de longo prazo está caindo.",
+          "tips": [
+            "Verifique se há objetivos de médio prazo — metas de construção, coleção, progressão",
+            "Features sociais (amigos, cooperativas) criam loop externo de motivação",
+            "Eventos sazonais ou conteúdo novo mantêm jogadores veteranos engajados",
+            "Revise a progressão de dificuldade — está travada por paywall?"
+          ]
+        },
+        "pvp": {
+          "headline": "Mid-game vazio",
+          "detail": "Jogador fica sem o que fazer por volta dos níveis intermediários. Retenção de longo prazo está caindo.",
+          "tips": [
+            "Liga ou temporada com recompensas exclusivas cria urgência de longo prazo",
+            "Clãs e guilds criam compromisso social que segura o jogador no mid-game",
+            "Eventos sazonais ou conteúdo novo mantêm jogadores veteranos engajados",
+            "Revise a progressão de dificuldade — está travada por paywall?"
+          ]
+        }
+      },
+      "monetization": {
+        "default": {
+          "headline": "Monetização fraca",
+          "detail": "Retenção boa, mas jogadores não estão convertendo para pagantes.",
+          "tips": [
+            "Revise os gatilhos de oferta — aparecem num momento de frustração ou desejo?",
+            "A primeira oferta (starter pack) precisa parecer um absurdo de vantagem",
+            "Teste preços menores com mais frequência vs preço alto e raro",
+            "Verifique se há pain points claros sem solução gratuita razoável"
+          ]
+        },
+        "ads": {
+          "headline": "Engajamento baixo afeta receita de anúncios",
+          "detail": "Com modelo baseado em sessões, a frequência e duração do jogo são seu principal indicador de receita.",
+          "tips": [
+            "Com modelo de anúncios, foco deve ser em sessões frequentes e duração média alta",
+            "Rewarded ads (assistir para ganhar) têm aceitação muito maior que banners forçados",
+            "Limite a frequência de interstitials — muitos anúncios destroem a retenção",
+            "Ofereça opção de remover anúncios como único IAP — converte bem"
+          ]
+        },
+        "premium": {
+          "headline": "Engajamento abaixo do esperado",
+          "detail": "Com modelo baseado em sessões, a frequência e duração do jogo são seu principal indicador de receita.",
+          "tips": [
+            "Jogo premium não tem conversão recorrente — foco em avaliações e boca a boca",
+            "DLCs e expansões são o principal vetor de receita adicional",
+            "Alta retenção gera reviews positivos que alimentam aquisição orgânica"
+          ]
+        }
+      },
+      "sessionEngagement": {
+        "ads": {
+          "headline": "Engajamento baixo afeta receita de anúncios",
+          "detail": "Com modelo baseado em sessões, a frequência e duração do jogo são seu principal indicador de receita.",
+          "tips": [
+            "Com modelo de anúncios, foco deve ser em sessões frequentes e duração média alta",
+            "Rewarded ads têm aceitação muito maior que banners forçados",
+            "Limite a frequência de interstitials — muitos anúncios destroem a retenção",
+            "Ofereça opção de remover anúncios como único IAP — converte bem"
+          ]
+        },
+        "default": {
+          "headline": "Engajamento abaixo do esperado",
+          "detail": "Com modelo baseado em sessões, a frequência e duração do jogo são seu principal indicador de receita.",
+          "tips": [
+            "Revise os hooks de retorno diários (energia, recompensas, notificações)",
+            "A curva de sessão deve ter um claro ponto de parada natural (não frustração)",
+            "Teste sessões menores e mais frequentes vs sessões longas e raras"
+          ]
+        }
+      },
+      "great": {
+        "headline": "Números saudáveis",
+        "detail": "Seu jogo está dentro ou acima do benchmark para esse gênero. Continue monitorando.",
+        "tips": [
+          "Mantenha o ritmo de análise semanal mesmo quando está bem",
+          "Hora de pensar em expansão — novos canais de aquisição ou features de engajamento"
+        ]
+      }
+    },
+    "history": {
+      "outcomeTitle": "Resultado da hipótese",
+      "hypothesisLabel": "Hipótese",
+      "recordOutcome": "+ Registrar resultado",
+      "outcomeHint": "Volte aqui após 1–2 semanas, quando tiver novos dados para comparar com esta entrada.",
+      "editOutcome": "Editar resultado",
+      "saveOutcome": "Salvar resultado",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "empty": "Nenhuma entrada ainda. Preencha os dados acima e salve.",
+      "today": "hoje",
+      "daysAgo1": "há 1 dia",
+      "daysAgoN": "há {count} dias",
+      "learningPlaceholder": "O que você aprendeu com isso?",
+      "outcomes": {
+        "confirmed": "Confirmou",
+        "refuted": "Refutou",
+        "inconclusive": "Inconclusivo"
+      }
+    },
+    "funnel": {
+      "howToUseTitle": "Como usar esse funil",
+      "howToUseText": "Você precisa mapear onde o seu funil quebra. Abaixo é o padrão do setor para {genre} — compare e identifique onde vocês estão abaixo.",
+      "typicalFunnel": "Funil típico",
+      "d1CausesTitle": "Causas comuns de queda no D1",
+      "d7d30CausesTitle": "Causas comuns de queda D7–D30",
+      "tips": {
+        "farm": {
+          "d1": [
+            "Tutorial longo ou entediante antes de sentir o loop",
+            "Tempo de espera muito cedo (culturas demoram horas)",
+            "Falta de recompensa clara na primeira sessão"
+          ],
+          "d7d30": [
+            "Falta de objetivo de médio prazo (ex.: construir algo grande)",
+            "Loop repetitivo sem novidade a partir do nível 15",
+            "Ausência de eventos ou conteúdo sazonal"
+          ]
+        },
+        "casual": {
+          "d1": [
+            "Tutorial muito restritivo — jogador quer jogar logo",
+            "Primeira fase muito fácil e sem graça",
+            "Onboarding com muito texto"
+          ],
+          "d7d30": [
+            "Falta de novas mecânicas após os primeiros 20 níveis",
+            "Dificuldade empaca o jogador sem explicação",
+            "Sem streak ou recompensa diária visível"
+          ]
+        },
+        "rpg": {
+          "d1": [
+            "Cutscene ou intro longa antes da ação",
+            "Sistema de stats confuso para quem não é do gênero",
+            "Primeiro combate chato ou desequilibrado"
+          ],
+          "d7d30": [
+            "Progressão de personagem freia por paywall",
+            "Falta de narrativa contínua para engajar",
+            "Guild / social inexistente na fase inicial"
+          ]
+        },
+        "puzzle": {
+          "d1": [
+            "Primeiros níveis fáceis demais — sem desafio nem satisfação",
+            "Mecânica principal não explicada com clareza visual",
+            "Interface confusa"
+          ],
+          "d7d30": [
+            "Curva de dificuldade irregular — picos frustrantes",
+            "Falta de variação de mecânica após alguns níveis",
+            "Sem recompensa de progresso visível (mapas, mundos)"
+          ]
+        },
+        "idle": {
+          "d1": [
+            "Primeira sessão não demonstra o loop idle com clareza",
+            "Números crescem muito devagar no início",
+            "Sem evento de prestige ou loop mais longo visível"
+          ],
+          "d7d30": [
+            "Jogo fica parado — sem novidade para voltar e ver",
+            "Sem notificação ou incentivo para reabrir",
+            "Falta de nova camada de automação ou mecânica"
+          ]
+        },
+        "shooter": {
+          "d1": [
+            "Tutorial de controle muito lento para o gênero",
+            "Primeiro match desbalanceado (jogador toma muita porrada)",
+            "Falta de personalização de personagem cedo"
+          ],
+          "d7d30": [
+            "Progressão de armas trava por falta de moeda/farm",
+            "Modos de jogo repetitivos",
+            "Sem conteúdo de temporada ou novidade periódica"
+          ]
+        }
+      }
+    },
+    "routine": {
+      "title": "Rotina semanal de dados",
+      "subtitle": "Consistência bate talento. Esses blocos de tempo por semana são suficientes pra tomar boas decisões de produto.",
+      "dayCol": "Dia",
+      "timeCol": "Tempo",
+      "taskCol": "O que fazer",
+      "footer": "Esses tempos são estimativas para times pequenos. Com mais dados e automação (dashboards, alertas), o diário pode cair pra 2 minutos.",
+      "rows": [
+        { "day": "Diário", "time": "5 min", "task": "Abrir analytics, verificar D1 do dia anterior, sessões/dia e churn por nível. Se algo sair fora do padrão, anota pra investigar." },
+        { "day": "Segunda", "time": "30 min", "task": "Revisão profunda: curva D1/D7/D30 por coorte da semana. Comparar com a semana anterior." },
+        { "day": "Quarta", "time": "20 min", "task": "Checar A/B tests ativos. Há significância estatística? Continua, encerra ou ajusta?" },
+        { "day": "Quinta", "time": "30 min", "task": "Levantar hipóteses pro relatório semanal. Montar a narrativa: o que mudou, por que, o que testar." },
+        { "day": "Sexta", "time": "45 min", "task": "Escrever relatório semanal: números → hipóteses → aprendizados → próximos experimentos." }
+      ]
+    },
+    "questions": {
+      "whyTitle": "Por que essas perguntas?",
+      "whyText": "Dados sem perguntas são só números. Essas perguntas transformam os KPIs em ações de produto.",
+      "retentionTitle": "Sobre retenção",
+      "experimentsTitle": "Sobre experimentos",
+      "footer": "Lembre de registrar o aprendizado de cada semana aqui na aba \"KPIs principais\" — o histórico de decisões é mais valioso que qualquer dashboard.",
+      "retention": [
+        { "q": "D1 abaixo do esperado?", "a": "Problema no tutorial ou na primeira sessão. Jogador não sentiu a graça antes de sair." },
+        { "q": "D7 cai muito em relação ao D1?", "a": "Loop de curto prazo não está retendo. Faltam objetivos que levem o jogador de volta no dia 2 e 3." },
+        { "q": "D30 muito baixo?", "a": "Mid-game vazio. Ficou sem o que fazer entre o nível 20 e 50." },
+        { "q": "Qual nível tem mais churn?", "a": "É o seu ponto de intervenção prioritária. Pode ser um spike de dificuldade ou um vazio de conteúdo." }
+      ],
+      "experiments": [
+        { "q": "O que testamos esta semana?", "a": "Sempre 1 hipótese ativa. Nunca teste tudo ao mesmo tempo — você não vai saber o que funcionou." },
+        { "q": "O resultado confirmou?", "a": "Sim → implementa. Não → descarta ou reformula. Inconclusivo → mais dados ou hipótese mais clara." },
+        { "q": "O que aprendemos?", "a": "Este é o valor real do relatório semanal. Sem learning registrado, você vai repetir os mesmos erros." },
+        { "q": "Qual é a próxima hipótese?", "a": "Sempre saia com pelo menos 1 experimento definido. Sem hipótese ativa, a semana é perdida." }
+      ]
+    },
+    "widget": {
+      "title": "Análise do Jogo",
+      "open": "Abrir",
+      "pendingBadge": "hipótese pendente",
+      "lastEntry": "· última entrada",
+      "pendingLabel": "Hipótese em aberto",
+      "today": "hoje",
+      "daysAgo1": "há 1 dia",
+      "daysAgoN": "há {count} dias",
+      "empty": "Registre os KPIs do seu jogo publicado"
+    }
   }
 }

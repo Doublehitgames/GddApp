@@ -2383,5 +2383,405 @@
       "add": "Add",
       "sectionBadge": "Page"
     }
+  },
+  "kpi": {
+    "pageTitle": "Game Analytics",
+    "tabs": {
+      "main": "Main KPIs",
+      "funnel": "Drop-off Funnel",
+      "routine": "Weekly Routine",
+      "questions": "Guiding Questions"
+    },
+    "config": {
+      "title": "Configure game",
+      "genreSection": "Game genre",
+      "tutorialSection": "Tutorial",
+      "hasTutorial": "✅ Has tutorial",
+      "noTutorial": "⚡ No formal tutorial",
+      "monetizationSection": "Monetization",
+      "loopSection": "Core loop",
+      "benchmarksTitle": "Reference benchmarks",
+      "benchmarksCustomized": "customized",
+      "benchmarksHint": "Default values are mobile industry averages. You can override any of them with numbers from your specific segment.",
+      "benchmarkGoal": "target (good)",
+      "benchmarkMin": "minimum (ok)",
+      "benchmarkReset": "reset",
+      "benchmarkResetAll": "Reset all to industry defaults",
+      "genres": {
+        "farm": "Farm",
+        "casual": "Casual",
+        "rpg": "RPG",
+        "puzzle": "Puzzle",
+        "idle": "Idle",
+        "shooter": "Shooter"
+      },
+      "genreLabels": {
+        "farm": "Farm / Simulation",
+        "casual": "Casual / Hyper-casual",
+        "rpg": "RPG / Mid-core",
+        "puzzle": "Puzzle",
+        "idle": "Idle / Clicker",
+        "shooter": "Shooter / Action"
+      },
+      "monetization": {
+        "iap": "Purchases (IAP)",
+        "ads": "Ads",
+        "iap_ads": "IAP + Ads",
+        "premium": "Premium",
+        "none": "None"
+      },
+      "loop": {
+        "levels": "Levels / Stages",
+        "sandbox": "Sandbox",
+        "pvp": "PvP",
+        "progression": "Progression"
+      }
+    },
+    "main": {
+      "newEntry": "New entry",
+      "hypothesisTitle": "This week's hypothesis",
+      "hypothesisPlaceholder": "I'll change X because I believe Y will improve...",
+      "save": "Save entry",
+      "saved": "Saved!",
+      "historyTitle": "History",
+      "retentionChart": "Retention curve",
+      "areas": {
+        "tutorial": "Tutorial",
+        "loop": "Game loop",
+        "midgame": "Mid-game",
+        "monetization": "Monetization",
+        "other": "Other"
+      }
+    },
+    "metrics": {
+      "d1Label": "D1 Retention",
+      "d7Label": "D7 Retention",
+      "d30Label": "D30 Retention",
+      "sessionsLabel": "Sessions / day",
+      "durationLabel": "Avg. duration",
+      "conversionLabel": "Conversion",
+      "d1Help": "% of players who return on day 2. Indicates whether the game made a good first impression. Problems here almost always lie in the tutorial or first session.",
+      "d7Help": "% of players still active after 7 days. Measures whether the core loop engages. A sharp drop from D1 to D7 usually means the loop doesn't hook players.",
+      "d30Help": "% of players still active after 30 days. Reflects whether the mid-game has enough depth to maintain long-term interest.",
+      "sessionsHelp": "How many times per day the average player opens the game. High values indicate good compulsiveness and return hooks (notifications, energy, events).",
+      "durationHelp": "Average session length in minutes. Too short may indicate frustrating sessions or scarce content. Too long may tire the player.",
+      "conversionHelp": "% of players who made at least one purchase (currency, skin, battle pass...). It's the primary health indicator for game monetization."
+    },
+    "status": {
+      "great": "above target",
+      "ok": "ok",
+      "low": "below",
+      "critical": "way below",
+      "notFilled": "not filled",
+      "goal": "target"
+    },
+    "diag": {
+      "fillHint": "Fill in D1, D7 or D30 above to see the diagnosis.",
+      "whatToDo": "What to do",
+      "ratioD7D1Label": "D7/D1 Ratio",
+      "ratioD30D7Label": "D30/D7 Ratio",
+      "ratioIdeal": "ideal ≥ 0.5",
+      "tutorial": {
+        "withTutorial": {
+          "headline": "Tutorial breaking",
+          "detail": "Player isn't even reaching D7. They're probably leaving before feeling the fun of the game.",
+          "tips": [
+            "Shorten the tutorial — the ideal is under 3 minutes",
+            "Give a satisfying reward before the tutorial ends",
+            "Show the core loop in the first session, no delays",
+            "Remove entry barriers: no wait times in the first 10 minutes",
+            "Let the player fail and recover — don't block progress on failure"
+          ]
+        },
+        "noTutorial": {
+          "headline": "First session doesn't convince",
+          "detail": "Without a formal tutorial, the player doesn't understand what to do right away and leaves early.",
+          "tips": [
+            "Without a formal tutorial, the first session must be self-explanatory",
+            "Get the player doing something satisfying in the first 60 seconds",
+            "Use contextual UI hints to guide without interrupting",
+            "Give a clear reward after the first successful action",
+            "Test with someone who's never seen the game — watch where they get stuck"
+          ]
+        }
+      },
+      "loop": {
+        "default": {
+          "headline": "Loop doesn't hook",
+          "detail": "Player arrives on D1 but doesn't come back. There's no concrete reason to open the game on D2, D3...",
+          "tips": [
+            "Add a pending reward that can only be collected the next day",
+            "Create a short-term goal that doesn't end in the first session",
+            "Push notification on D1 with something concrete waiting for the player",
+            "Review the core loop — is it clear what to do next?",
+            "The level difficulty curve should be gentle in the first 10 levels"
+          ]
+        },
+        "pvp": {
+          "headline": "PvP doesn't maintain engagement between matches",
+          "detail": "Player arrives on D1 but doesn't come back. There's no concrete reason to open the game on D2, D3...",
+          "tips": [
+            "Add a pending reward that can only be collected the next day",
+            "Create a short-term goal that doesn't end in the first session",
+            "Push notification on D1 with something concrete waiting for the player",
+            "PvP loop needs visible progression even in defeat (XP, ranking, shards)",
+            "Check matchmaking — excessive imbalance destroys retention",
+            "Each match should end with a perceptible gain (skin, currency, progress)"
+          ]
+        },
+        "sandbox": {
+          "headline": "Directionless sandbox loses players fast",
+          "detail": "Player arrives on D1 but doesn't come back. There's no concrete reason to open the game on D2, D3...",
+          "tips": [
+            "Add a pending reward that can only be collected the next day",
+            "Create a short-term goal that doesn't end in the first session",
+            "Push notification on D1 with something concrete waiting for the player",
+            "In sandbox, the initial loop should show possibilities, not obligations",
+            "Offer a suggested (not forced) goal to guide the first few days",
+            "Social structure (seeing others' creations) creates powerful external motivation"
+          ]
+        },
+        "progression": {
+          "headline": "Loop doesn't hook",
+          "detail": "Player arrives on D1 but doesn't come back. There's no concrete reason to open the game on D2, D3...",
+          "tips": [
+            "Add a pending reward that can only be collected the next day",
+            "Create a short-term goal that doesn't end in the first session",
+            "Push notification on D1 with something concrete waiting for the player",
+            "The progression curve should have satisfaction peaks every 2–3 sessions",
+            "Let players perceive their evolution through visual comparisons (before/after)",
+            "Content unlocks are more motivating than pure number increases"
+          ]
+        }
+      },
+      "midgame": {
+        "default": {
+          "headline": "Empty mid-game",
+          "detail": "Player runs out of things to do around the mid levels. Long-term retention is dropping.",
+          "tips": [
+            "Check if there are medium-term goals — building targets, collections, progression",
+            "Social features (friends, guilds) create external motivation loops",
+            "Seasonal events or new content keep veteran players engaged",
+            "Review difficulty progression — is it blocked by a paywall?"
+          ]
+        },
+        "pvp": {
+          "headline": "Empty mid-game",
+          "detail": "Player runs out of things to do around the mid levels. Long-term retention is dropping.",
+          "tips": [
+            "A league or season with exclusive rewards creates long-term urgency",
+            "Clans and guilds create social commitment that keeps players in the mid-game",
+            "Seasonal events or new content keep veteran players engaged",
+            "Review difficulty progression — is it blocked by a paywall?"
+          ]
+        }
+      },
+      "monetization": {
+        "default": {
+          "headline": "Weak monetization",
+          "detail": "Good retention, but players aren't converting to paying customers.",
+          "tips": [
+            "Review offer triggers — do they appear at a moment of frustration or desire?",
+            "The first offer (starter pack) needs to feel like an incredible deal",
+            "Test lower prices with more frequency vs high price and rare",
+            "Check if there are clear pain points without a reasonable free solution"
+          ]
+        },
+        "ads": {
+          "headline": "Low engagement affects ad revenue",
+          "detail": "With a session-based model, game frequency and duration are your main revenue indicator.",
+          "tips": [
+            "With an ads model, focus should be on frequent sessions and high average duration",
+            "Rewarded ads (watch to earn) have much higher acceptance than forced banners",
+            "Limit interstitial frequency — too many ads destroy retention",
+            "Offer an ad-removal option as the sole IAP — it converts well"
+          ]
+        },
+        "premium": {
+          "headline": "Engagement below expectations",
+          "detail": "With a session-based model, game frequency and duration are your main revenue indicator.",
+          "tips": [
+            "Premium games have no recurring conversion — focus on reviews and word of mouth",
+            "DLCs and expansions are the main vector for additional revenue",
+            "High retention generates positive reviews that fuel organic acquisition"
+          ]
+        }
+      },
+      "sessionEngagement": {
+        "ads": {
+          "headline": "Low engagement affects ad revenue",
+          "detail": "With a session-based model, game frequency and duration are your main revenue indicator.",
+          "tips": [
+            "With an ads model, focus should be on frequent sessions and high average duration",
+            "Rewarded ads have much higher acceptance than forced banners",
+            "Limit interstitial frequency — too many ads destroy retention",
+            "Offer an ad-removal option as the sole IAP — it converts well"
+          ]
+        },
+        "default": {
+          "headline": "Engagement below expectations",
+          "detail": "With a session-based model, game frequency and duration are your main revenue indicator.",
+          "tips": [
+            "Review daily return hooks (energy, rewards, notifications)",
+            "The session curve should have a clear natural stopping point (not frustration)",
+            "Test shorter, more frequent sessions vs long and rare sessions"
+          ]
+        }
+      },
+      "great": {
+        "headline": "Healthy numbers",
+        "detail": "Your game is within or above the benchmark for this genre. Keep monitoring.",
+        "tips": [
+          "Keep the weekly analysis rhythm even when things are going well",
+          "Time to think about expansion — new acquisition channels or engagement features"
+        ]
+      }
+    },
+    "history": {
+      "outcomeTitle": "Hypothesis outcome",
+      "hypothesisLabel": "Hypothesis",
+      "recordOutcome": "+ Record outcome",
+      "outcomeHint": "Come back after 1–2 weeks, when you have new data to compare with this entry.",
+      "editOutcome": "Edit outcome",
+      "saveOutcome": "Save outcome",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "empty": "No entries yet. Fill in the data above and save.",
+      "today": "today",
+      "daysAgo1": "1 day ago",
+      "daysAgoN": "{count} days ago",
+      "learningPlaceholder": "What did you learn from this?",
+      "outcomes": {
+        "confirmed": "Confirmed",
+        "refuted": "Refuted",
+        "inconclusive": "Inconclusive"
+      }
+    },
+    "funnel": {
+      "howToUseTitle": "How to use this funnel",
+      "howToUseText": "You need to map where your funnel breaks. Below is the industry standard for {genre} — compare and identify where you fall short.",
+      "typicalFunnel": "Typical funnel",
+      "d1CausesTitle": "Common causes of D1 drop-off",
+      "d7d30CausesTitle": "Common causes of D7–D30 drop-off",
+      "tips": {
+        "farm": {
+          "d1": [
+            "Long or boring tutorial before feeling the loop",
+            "Wait times too early (crops take hours)",
+            "No clear reward in the first session"
+          ],
+          "d7d30": [
+            "Lack of medium-term goal (e.g.: building something big)",
+            "Repetitive loop with no novelty after level 15",
+            "Absence of seasonal events or content"
+          ]
+        },
+        "casual": {
+          "d1": [
+            "Overly restrictive tutorial — player wants to play immediately",
+            "First level too easy and dull",
+            "Onboarding with too much text"
+          ],
+          "d7d30": [
+            "Lack of new mechanics after the first 20 levels",
+            "Difficulty spikes block the player without explanation",
+            "No streak or visible daily reward"
+          ]
+        },
+        "rpg": {
+          "d1": [
+            "Long cutscene or intro before action",
+            "Confusing stats system for non-genre players",
+            "First combat boring or unbalanced"
+          ],
+          "d7d30": [
+            "Character progression blocked by paywall",
+            "Lack of ongoing narrative to engage",
+            "Guild / social absent in the early phase"
+          ]
+        },
+        "puzzle": {
+          "d1": [
+            "First levels too easy — no challenge or satisfaction",
+            "Core mechanic not explained with visual clarity",
+            "Confusing interface"
+          ],
+          "d7d30": [
+            "Irregular difficulty curve — frustrating spikes",
+            "Lack of mechanic variation after a few levels",
+            "No visible progress reward (maps, worlds)"
+          ]
+        },
+        "idle": {
+          "d1": [
+            "First session doesn't demonstrate the idle loop clearly",
+            "Numbers grow too slowly at the start",
+            "No prestige event or longer loop visible"
+          ],
+          "d7d30": [
+            "Game stalls — nothing new to come back and see",
+            "No notification or incentive to reopen",
+            "Lack of new automation layer or mechanic"
+          ]
+        },
+        "shooter": {
+          "d1": [
+            "Controls tutorial too slow for the genre",
+            "First match unbalanced (player takes too much damage)",
+            "Lack of early character customization"
+          ],
+          "d7d30": [
+            "Weapon progression blocked by currency/farm shortage",
+            "Repetitive game modes",
+            "No seasonal content or periodic novelty"
+          ]
+        }
+      }
+    },
+    "routine": {
+      "title": "Weekly data routine",
+      "subtitle": "Consistency beats talent. These weekly time blocks are enough to make good product decisions.",
+      "dayCol": "Day",
+      "timeCol": "Time",
+      "taskCol": "What to do",
+      "footer": "These times are estimates for small teams. With more data and automation (dashboards, alerts), the daily check can drop to 2 minutes.",
+      "rows": [
+        { "day": "Daily", "time": "5 min", "task": "Open analytics, check previous day's D1, sessions/day and churn by level. If something is out of pattern, note it for investigation." },
+        { "day": "Monday", "time": "30 min", "task": "Deep review: D1/D7/D30 curve by weekly cohort. Compare with the previous week." },
+        { "day": "Wednesday", "time": "20 min", "task": "Check active A/B tests. Is there statistical significance? Continue, end or adjust?" },
+        { "day": "Thursday", "time": "30 min", "task": "Raise hypotheses for the weekly report. Build the narrative: what changed, why, what to test." },
+        { "day": "Friday", "time": "45 min", "task": "Write weekly report: numbers → hypotheses → learnings → next experiments." }
+      ]
+    },
+    "questions": {
+      "whyTitle": "Why these questions?",
+      "whyText": "Data without questions is just numbers. These questions turn KPIs into product actions.",
+      "retentionTitle": "About retention",
+      "experimentsTitle": "About experiments",
+      "footer": "Remember to log each week's learning here in the \"Main KPIs\" tab — the decision history is more valuable than any dashboard.",
+      "retention": [
+        { "q": "D1 below expectations?", "a": "Problem in the tutorial or first session. Player didn't feel the fun before leaving." },
+        { "q": "D7 drops a lot compared to D1?", "a": "Short-term loop isn't retaining. Missing goals to bring the player back on day 2 and 3." },
+        { "q": "D30 very low?", "a": "Empty mid-game. Ran out of things to do between levels 20 and 50." },
+        { "q": "Which level has the most churn?", "a": "That's your priority intervention point. Could be a difficulty spike or a content void." }
+      ],
+      "experiments": [
+        { "q": "What did we test this week?", "a": "Always 1 active hypothesis. Never test everything at once — you won't know what worked." },
+        { "q": "Did the result confirm?", "a": "Yes → implement. No → discard or reformulate. Inconclusive → more data or clearer hypothesis." },
+        { "q": "What did we learn?", "a": "This is the real value of the weekly report. Without recorded learning, you'll repeat the same mistakes." },
+        { "q": "What's the next hypothesis?", "a": "Always leave with at least 1 defined experiment. Without an active hypothesis, the week is lost." }
+      ]
+    },
+    "widget": {
+      "title": "Game Analytics",
+      "open": "Open",
+      "pendingBadge": "pending hypothesis",
+      "lastEntry": "· last entry",
+      "pendingLabel": "Open hypothesis",
+      "today": "today",
+      "daysAgo1": "1 day ago",
+      "daysAgoN": "{count} days ago",
+      "empty": "Log your published game's KPIs"
+    }
   }
 }

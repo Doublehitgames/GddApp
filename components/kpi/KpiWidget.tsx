@@ -6,6 +6,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { GENRE_BENCHMARKS, getMetricStatus, diagnose } from "@/lib/kpi/benchmarks";
 import type { MetricStatus } from "@/lib/kpi/benchmarks";
 import type { KpiEntry } from "@/lib/kpi/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   projectId: string;
@@ -23,11 +24,6 @@ const DIAG_STYLE = {
   great:   { dot: "bg-emerald-400", text: "text-emerald-300", border: "border-emerald-700/40 bg-emerald-950/30" },
   warning: { dot: "bg-amber-400",   text: "text-amber-300",   border: "border-amber-700/40 bg-amber-950/30" },
   critical:{ dot: "bg-rose-400",    text: "text-rose-300",    border: "border-rose-700/40 bg-rose-950/30" },
-};
-
-const GENRE_LABELS: Record<string, string> = {
-  farm: "Farm", casual: "Casual", rpg: "RPG",
-  puzzle: "Puzzle", idle: "Idle", shooter: "Shooter",
 };
 
 function daysAgo(isoDate: string): number {
@@ -53,6 +49,7 @@ function MetricChip({ label, value, entry }: { label: "d1" | "d7" | "d30"; value
 }
 
 export default function KpiWidget({ projectId, realProjectId }: Props) {
+  const { t } = useI18n();
   const kpiEntriesByProject = useProjectStore((s) => s.kpiEntriesByProject);
   const kpiConfigByProject  = useProjectStore((s) => s.kpiConfigByProject);
 
@@ -76,6 +73,12 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
 
   const href = `/projects/${projectId}/kpi`;
 
+  function formatDaysAgo(n: number): string {
+    if (n === 0) return t("kpi.widget.today");
+    if (n === 1) return t("kpi.widget.daysAgo1");
+    return t("kpi.widget.daysAgoN").replace("{count}", String(n));
+  }
+
   return (
     <section className="ui-card-premium p-0 overflow-hidden">
       {/* Header */}
@@ -86,11 +89,11 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-white">Análise do Jogo</span>
+          <span className="text-sm font-semibold text-white">{t("kpi.widget.title")}</span>
           {pending && (
             <span className="flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-700/50 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              hipótese pendente
+              {t("kpi.widget.pendingBadge")}
             </span>
           )}
         </div>
@@ -98,7 +101,7 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
           href={href}
           className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-200 transition-colors"
         >
-          Abrir
+          {t("kpi.widget.open")}
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
@@ -117,7 +120,7 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
             <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span className="text-sm">Registre os KPIs do seu jogo publicado</span>
+            <span className="text-sm">{t("kpi.widget.empty")}</span>
           </Link>
         )}
 
@@ -128,9 +131,9 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">{formatDate(last.date)}</span>
               <span className="rounded-full border border-emerald-700/40 bg-emerald-900/20 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                {GENRE_LABELS[last.genre] ?? last.genre}
+                {t("kpi.config.genres." + last.genre)}
               </span>
-              <span className="text-xs text-gray-600">· última entrada</span>
+              <span className="text-xs text-gray-600">{t("kpi.widget.lastEntry")}</span>
             </div>
 
             {/* Metric chips */}
@@ -146,7 +149,7 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
               return (
                 <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${s.border}`}>
                   <span className={`h-2 w-2 shrink-0 rounded-full ${s.dot}`} />
-                  <span className={`text-sm font-medium ${s.text}`}>{diagnosis.headline}</span>
+                  <span className={`text-sm font-medium ${s.text}`}>{t(diagnosis.textKey + ".headline")}</span>
                 </div>
               );
             })()}
@@ -155,13 +158,9 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
             {pending && (
               <div className="flex flex-col gap-1 rounded-lg border border-amber-700/40 bg-amber-950/20 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-widest">Hipótese em aberto</span>
+                  <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-widest">{t("kpi.widget.pendingLabel")}</span>
                   <span className="text-[11px] text-gray-600">
-                    {daysAgo(pending.date) === 0
-                      ? "hoje"
-                      : daysAgo(pending.date) === 1
-                      ? "há 1 dia"
-                      : `há ${daysAgo(pending.date)} dias`}
+                    {formatDaysAgo(daysAgo(pending.date))}
                   </span>
                 </div>
                 <p className="text-xs text-amber-200/70 line-clamp-2">{pending.hypothesis}</p>

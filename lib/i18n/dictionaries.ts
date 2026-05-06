@@ -3,7 +3,7 @@ import en from "@/locales/en.json";
 import es from "@/locales/es.json";
 import { AppLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
-type DictionaryValue = string | number | boolean | null | DictionaryTree;
+type DictionaryValue = string | number | boolean | null | DictionaryTree | DictionaryValue[];
 type DictionaryTree = { [key: string]: DictionaryValue };
 
 const dictionaries: Record<AppLocale, DictionaryTree> = {
@@ -33,4 +33,12 @@ export function translate(locale: AppLocale, key: string, fallback?: string): st
   if (typeof fromDefault === "string") return fromDefault;
 
   return fallback ?? key;
+}
+
+export function translateArray(locale: AppLocale, key: string): string[] {
+  const current = getByPath(getDictionary(locale), key);
+  if (Array.isArray(current)) return current.filter((v): v is string => typeof v === "string");
+  const fromDefault = getByPath(getDictionary(DEFAULT_LOCALE), key);
+  if (Array.isArray(fromDefault)) return fromDefault.filter((v): v is string => typeof v === "string");
+  return [];
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Diagnosis } from "@/lib/kpi/benchmarks";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   diagnosis: Diagnosis | null;
@@ -14,17 +15,21 @@ const PRIORITY_STYLES = {
 };
 
 export default function DiagnosisBlock({ diagnosis }: Props) {
+  const { t, tArr } = useI18n();
   const [tipsOpen, setTipsOpen] = useState(false);
 
   if (!diagnosis) {
     return (
       <div className="rounded-xl border border-gray-700/60 bg-gray-900/40 px-4 py-5 text-center">
-        <p className="text-sm text-gray-500">Preencha D1, D7 ou D30 acima para ver o diagnóstico.</p>
+        <p className="text-sm text-gray-500">{t("kpi.diag.fillHint")}</p>
       </div>
     );
   }
 
   const styles = PRIORITY_STYLES[diagnosis.priority];
+  const headline = t(diagnosis.textKey + ".headline");
+  const detail = t(diagnosis.textKey + ".detail");
+  const tips = tArr(diagnosis.textKey + ".tips");
 
   return (
     <div className={`rounded-xl border px-4 py-4 ${styles.card}`}>
@@ -36,8 +41,8 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
           </svg>
         </div>
         <div>
-          <p className="font-semibold text-white text-base leading-tight">{diagnosis.headline}</p>
-          <p className="text-sm text-gray-300 mt-0.5">{diagnosis.detail}</p>
+          <p className="font-semibold text-white text-base leading-tight">{headline}</p>
+          <p className="text-sm text-gray-300 mt-0.5">{detail}</p>
         </div>
       </div>
 
@@ -46,7 +51,7 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
         <div className="mt-3 flex flex-wrap gap-3 border-t border-gray-700/50 pt-3">
           {diagnosis.ratioD7D1 !== undefined && (
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">Ratio D7/D1</span>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">{t("kpi.diag.ratioD7D1Label")}</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm text-white">{diagnosis.ratioD7D1.toFixed(2)}</span>
                 <div className="h-1.5 w-20 rounded-full bg-gray-800">
@@ -55,13 +60,13 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
                     style={{ width: `${Math.min(diagnosis.ratioD7D1 * 100, 100)}%` }}
                   />
                 </div>
-                <span className="text-[11px] text-gray-600">ideal ≥ 0.5</span>
+                <span className="text-[11px] text-gray-600">{t("kpi.diag.ratioIdeal")}</span>
               </div>
             </div>
           )}
           {diagnosis.ratioD30D7 !== undefined && (
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">Ratio D30/D7</span>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">{t("kpi.diag.ratioD30D7Label")}</span>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm text-white">{diagnosis.ratioD30D7.toFixed(2)}</span>
                 <div className="h-1.5 w-20 rounded-full bg-gray-800">
@@ -70,7 +75,7 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
                     style={{ width: `${Math.min(diagnosis.ratioD30D7 * 100, 100)}%` }}
                   />
                 </div>
-                <span className="text-[11px] text-gray-600">ideal ≥ 0.5</span>
+                <span className="text-[11px] text-gray-600">{t("kpi.diag.ratioIdeal")}</span>
               </div>
             </div>
           )}
@@ -78,14 +83,14 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
       )}
 
       {/* Tips */}
-      {diagnosis.tips.length > 0 && (
+      {tips.length > 0 && (
         <div className="mt-3 border-t border-gray-700/50 pt-3">
           <button
             type="button"
             onClick={() => setTipsOpen((prev) => !prev)}
             className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-gray-200 transition-colors"
           >
-            <span>O que fazer</span>
+            <span>{t("kpi.diag.whatToDo")}</span>
             <svg
               className={`h-3.5 w-3.5 transition-transform ${tipsOpen ? "rotate-180" : ""}`}
               fill="none"
@@ -97,7 +102,7 @@ export default function DiagnosisBlock({ diagnosis }: Props) {
           </button>
           {tipsOpen && (
             <ul className="mt-2 space-y-1.5">
-              {diagnosis.tips.map((tip, i) => (
+              {tips.map((tip, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-500" />
                   {tip}

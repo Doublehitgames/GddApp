@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { KpiEntry, KpiMetrics } from "@/lib/kpi/types";
 import type { MetricStatus } from "@/lib/kpi/benchmarks";
 import { GENRE_BENCHMARKS, getMetricStatus } from "@/lib/kpi/benchmarks";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   entries: KpiEntry[];
@@ -18,10 +19,10 @@ const STATUS_CHIP: Record<MetricStatus, { bg: string; text: string; arrow: strin
   critical: { bg: "bg-rose-500/20 border-rose-700/60",       text: "text-rose-300",    arrow: "↓↓" },
 };
 
-const OUTCOME_BADGES = {
-  confirmed:    { bg: "bg-emerald-500/20 border-emerald-700/60", text: "text-emerald-300", label: "Confirmou" },
-  refuted:      { bg: "bg-rose-500/20 border-rose-700/60",       text: "text-rose-300",    label: "Refutou" },
-  inconclusive: { bg: "bg-gray-700/60 border-gray-600/60",       text: "text-gray-400",    label: "Inconclusivo" },
+const OUTCOME_STYLES = {
+  confirmed:    { bg: "bg-emerald-500/20 border-emerald-700/60", text: "text-emerald-300" },
+  refuted:      { bg: "bg-rose-500/20 border-rose-700/60",       text: "text-rose-300" },
+  inconclusive: { bg: "bg-gray-700/60 border-gray-600/60",       text: "text-gray-400" },
 };
 
 function formatDate(iso: string): string {
@@ -48,30 +49,32 @@ function MetricChip({ label, value, metrics, entry }: { label: string; value: nu
 }
 
 function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (outcome: KpiEntry["outcome"], learning: string) => void; onCancel: () => void }) {
+  const { t } = useI18n();
   const [outcome, setOutcome] = useState<KpiEntry["outcome"]>(entry.outcome ?? "confirmed");
   const [learning, setLearning] = useState(entry.learning ?? "");
+  const OUTCOME_KEYS = ["confirmed", "refuted", "inconclusive"] as const;
 
   return (
     <div className="mt-3 space-y-3 border-t border-gray-700/50 pt-3">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Resultado da hipótese</p>
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("kpi.history.outcomeTitle")}</p>
       <div className="flex gap-2 flex-wrap">
-        {(["confirmed", "refuted", "inconclusive"] as const).map((opt) => (
+        {OUTCOME_KEYS.map((opt) => (
           <button
             key={opt}
             type="button"
             onClick={() => setOutcome(opt)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              outcome === opt ? OUTCOME_BADGES[opt].bg + " " + OUTCOME_BADGES[opt].text : "border-gray-600 text-gray-500 hover:text-gray-300"
+              outcome === opt ? OUTCOME_STYLES[opt].bg + " " + OUTCOME_STYLES[opt].text : "border-gray-600 text-gray-500 hover:text-gray-300"
             }`}
           >
-            {OUTCOME_BADGES[opt].label}
+            {t("kpi.history.outcomes." + opt)}
           </button>
         ))}
       </div>
       <textarea
         value={learning}
         onChange={(e) => setLearning(e.target.value)}
-        placeholder="O que você aprendeu com isso?"
+        placeholder={t("kpi.history.learningPlaceholder")}
         rows={2}
         className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-sky-500 focus:outline-none resize-none"
       />
@@ -81,14 +84,14 @@ function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (ou
           onClick={() => onSave(outcome, learning)}
           className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 transition-colors"
         >
-          Salvar resultado
+          {t("kpi.history.saveOutcome")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-gray-200 transition-colors"
         >
-          Cancelar
+          {t("kpi.history.cancel")}
         </button>
       </div>
     </div>
@@ -96,16 +99,25 @@ function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (ou
 }
 
 export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }: Props) {
+  const { t } = useI18n();
   const [openOutcomeId, setOpenOutcomeId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedHypothesisId, setExpandedHypothesisId] = useState<string | null>(null);
 
   const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
 
+  function formatDaysAgo(isoDate: string): string {
+    const d = new Date(isoDate + "T00:00:00");
+    const n = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+    if (n === 0) return t("kpi.history.today");
+    if (n === 1) return t("kpi.history.daysAgo1");
+    return t("kpi.history.daysAgoN").replace("{count}", String(n));
+  }
+
   if (sorted.length === 0) {
     return (
       <div className="rounded-xl border border-gray-700/60 bg-gray-900/40 px-4 py-6 text-center">
-        <p className="text-sm text-gray-500">Nenhuma entrada ainda. Preencha os dados acima e salve.</p>
+        <p className="text-sm text-gray-500">{t("kpi.history.empty")}</p>
       </div>
     );
   }
@@ -113,7 +125,6 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
   return (
     <div className="space-y-3">
       {sorted.map((entry) => {
-        const bench = GENRE_BENCHMARKS[entry.genre];
         const isOpen = openOutcomeId === entry.id;
         const isConfirmDelete = confirmDeleteId === entry.id;
         const isHypothesisExpanded = expandedHypothesisId === entry.id;
@@ -148,7 +159,7 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                     type="button"
                     onClick={() => setConfirmDeleteId(entry.id)}
                     className="rounded p-1 text-gray-600 hover:text-rose-400 transition-colors"
-                    title="Excluir entrada"
+                    title={t("kpi.history.delete")}
                   >
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -161,14 +172,14 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                       onClick={() => { onDeleteEntry(entry.id); setConfirmDeleteId(null); }}
                       className="rounded-lg bg-rose-600 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-500"
                     >
-                      Excluir
+                      {t("kpi.history.delete")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(null)}
                       className="rounded-lg border border-gray-600 px-2 py-1 text-xs text-gray-400 hover:text-gray-200"
                     >
-                      Cancelar
+                      {t("kpi.history.cancel")}
                     </button>
                   </div>
                 )}
@@ -178,7 +189,7 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
             {/* Hypothesis */}
             {entry.hypothesis && (
               <div className="mt-2">
-                <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-1">Hipótese</p>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-1">{t("kpi.history.hypothesisLabel")}</p>
                 <p className={`text-sm text-gray-300 ${isHypothesisExpanded ? "" : "line-clamp-2"}`}>
                   {entry.hypothesis}
                 </p>
@@ -197,8 +208,8 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
             {/* Outcome / learning */}
             {entry.outcome ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${OUTCOME_BADGES[entry.outcome].bg} ${OUTCOME_BADGES[entry.outcome].text}`}>
-                  {OUTCOME_BADGES[entry.outcome].label}
+                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${OUTCOME_STYLES[entry.outcome].bg} ${OUTCOME_STYLES[entry.outcome].text}`}>
+                  {t("kpi.history.outcomes." + entry.outcome)}
                 </span>
                 {entry.learning && (
                   <p className="text-xs text-gray-400 line-clamp-1">{entry.learning}</p>
@@ -208,7 +219,7 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                   onClick={() => setOpenOutcomeId(isOpen ? null : entry.id)}
                   className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
                 >
-                  Editar resultado
+                  {t("kpi.history.editOutcome")}
                 </button>
               </div>
             ) : (
@@ -218,10 +229,10 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                   onClick={() => setOpenOutcomeId(isOpen ? null : entry.id)}
                   className="self-start rounded-lg border border-dashed border-amber-700/60 px-3 py-1.5 text-xs font-medium text-amber-500 hover:border-amber-500 hover:text-amber-300 transition-colors"
                 >
-                  + Registrar resultado
+                  {t("kpi.history.recordOutcome")}
                 </button>
                 <p className="text-[11px] text-gray-600 leading-relaxed">
-                  Volte aqui após 1–2 semanas, quando tiver novos dados para comparar com esta entrada.
+                  {t("kpi.history.outcomeHint")}
                 </p>
               </div>
             )}

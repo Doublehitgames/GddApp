@@ -7,19 +7,15 @@ import KpiFunnelTab from "@/components/kpi/KpiFunnelTab";
 import KpiRoutineTab from "@/components/kpi/KpiRoutineTab";
 import KpiQuestionsTab from "@/components/kpi/KpiQuestionsTab";
 import type { GameGenre } from "@/lib/kpi/types";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface Props { projectId: string; }
 
-const TABS = [
-  { id: "main", label: "KPIs principais" },
-  { id: "funnel", label: "Funil de saída" },
-  { id: "routine", label: "Rotina semanal" },
-  { id: "questions", label: "Perguntas-guia" },
-] as const;
-
-type TabId = typeof TABS[number]["id"];
+const TAB_IDS = ["main", "funnel", "routine", "questions"] as const;
+type TabId = typeof TAB_IDS[number];
 
 export default function KpiClient({ projectId }: Props) {
+  const { t } = useI18n();
   const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
   const kpiEntriesByProject = useProjectStore((s) => s.kpiEntriesByProject);
@@ -58,25 +54,25 @@ export default function KpiClient({ projectId }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h1 className="text-base font-semibold text-white">Análise do Jogo</h1>
+          <h1 className="text-base font-semibold text-white">{t("kpi.pageTitle")}</h1>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-800 bg-gray-950/70 px-4 sm:px-6">
         <div className="mx-auto max-w-3xl flex gap-1 overflow-x-auto">
-          {TABS.map((tab) => (
+          {TAB_IDS.map((id) => (
             <button
-              key={tab.id}
+              key={id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(id)}
               className={`shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
+                activeTab === id
                   ? "border-emerald-400 text-emerald-300"
                   : "border-transparent text-gray-500 hover:text-gray-300"
               }`}
             >
-              {tab.label}
+              {t("kpi.tabs." + id)}
             </button>
           ))}
         </div>

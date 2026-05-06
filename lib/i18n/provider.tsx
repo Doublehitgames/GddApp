@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LOCALE, isSupportedLocale, SUPPORTED_LOCALES, type AppLocale } from "@/lib/i18n/config";
-import { getDictionary, translate } from "@/lib/i18n/dictionaries";
+import { getDictionary, translate, translateArray } from "@/lib/i18n/dictionaries";
 
 const LOCALE_STORAGE_KEY = "gdd_locale";
 
@@ -10,6 +10,7 @@ type I18nContextValue = {
   locale: AppLocale;
   setLocale: (next: AppLocale) => void;
   t: (key: string, fallback?: string) => string;
+  tArr: (key: string) => string[];
   supportedLocales: readonly AppLocale[];
 };
 
@@ -39,6 +40,7 @@ export function I18nProvider({
         setLocaleState(next);
       },
       t: (key, fallback) => translate(locale, key, fallback),
+      tArr: (key) => translateArray(locale, key),
       supportedLocales: SUPPORTED_LOCALES,
     }),
     [locale]
