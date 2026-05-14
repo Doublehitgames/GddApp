@@ -12,6 +12,7 @@ import { createCloudSyncSlice } from "./slices/cloudSyncSlice";
 import { createPersistenceSlice } from "./slices/persistenceSlice";
 import { createAgendaSlice } from "./slices/agendaSlice";
 import { createKpiSlice } from "./slices/kpiSlice";
+import { createRoadmapSlice } from "./slices/roadmapSlice";
 
 // Re-export ALL types for backward compatibility (zero breaking changes for consumers)
 export type {
@@ -66,5 +67,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     ...createPersistenceSlice(set, get, engine),
     ...createAgendaSlice(set, get),
     ...createKpiSlice(set, get),
+    ...createRoadmapSlice(set, get),
   };
 });

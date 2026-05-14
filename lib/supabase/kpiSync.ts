@@ -40,7 +40,7 @@ export async function fetchKpiEntries(userId: string, projectId: string): Promis
         .select("entries")
         .eq("user_id", userId)
         .eq("project_id", projectId)
-        .single(),
+        .maybeSingle(),
       SUPABASE_QUERY_TIMEOUT_MS
     );
 
@@ -114,7 +114,7 @@ export async function fetchKpiConfig(userId: string, projectId: string): Promise
         .select("config")
         .eq("user_id", userId)
         .eq("project_id", projectId)
-        .single(),
+        .maybeSingle(),
       SUPABASE_QUERY_TIMEOUT_MS
     );
 

@@ -490,6 +490,28 @@ export interface ProjectStore {
   addKpiEntry: (projectId: string, entry: Omit<import("@/lib/kpi/types").KpiEntry, "id" | "createdAt">) => string;
   updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<import("@/lib/kpi/types").KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   deleteKpiEntry: (projectId: string, entryId: string) => void;
+  // ── Roadmap ───────────────────────────────────────────────────────────────
+  roadmapsByProject: Record<string, import("@/lib/roadmap/types").Roadmap[]>;
+  phasesByProject:   Record<string, import("@/lib/roadmap/types").RoadmapPhase[]>;
+  themesByProject:   Record<string, import("@/lib/roadmap/types").RoadmapTheme[]>;
+  itemsByProject:    Record<string, import("@/lib/roadmap/types").RoadmapItem[]>;
+  createRoadmap: (projectId: string, name: string) => string;
+  updateRoadmap: (projectId: string, roadmapId: string, patch: Partial<Pick<import("@/lib/roadmap/types").Roadmap, "name" | "status">>) => void;
+  getRoadmaps: (projectId: string) => import("@/lib/roadmap/types").Roadmap[];
+  getActiveRoadmapId: (projectId: string) => string | null;
+  addRoadmapPhase: (projectId: string, roadmapId: string, name: string, opts?: Partial<Pick<import("@/lib/roadmap/types").RoadmapPhase, "headerType" | "targetDate" | "isPublic">>) => string;
+  updateRoadmapPhase: (projectId: string, phaseId: string, patch: Partial<Pick<import("@/lib/roadmap/types").RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "order" | "isPublic">>) => void;
+  deleteRoadmapPhase: (projectId: string, phaseId: string) => void;
+  getRoadmapPhases: (projectId: string, roadmapId: string) => import("@/lib/roadmap/types").RoadmapPhase[];
+  addRoadmapTheme: (projectId: string, roadmapId: string, name: string, opts?: Partial<Pick<import("@/lib/roadmap/types").RoadmapTheme, "color">>) => string;
+  updateRoadmapTheme: (projectId: string, themeId: string, patch: Partial<Pick<import("@/lib/roadmap/types").RoadmapTheme, "name" | "color" | "order">>) => void;
+  deleteRoadmapTheme: (projectId: string, themeId: string) => void;
+  getRoadmapThemes: (projectId: string, roadmapId: string) => import("@/lib/roadmap/types").RoadmapTheme[];
+  addRoadmapItem: (projectId: string, roadmapId: string, phaseId: string, themeId: string, title: string) => string;
+  updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<import("@/lib/roadmap/types").RoadmapItem, "title" | "description" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
+  deleteRoadmapItem: (projectId: string, itemId: string) => void;
+  getRoadmapItems: (projectId: string, roadmapId: string, phaseId?: string, themeId?: string) => import("@/lib/roadmap/types").RoadmapItem[];
+  loadRoadmapFromSupabase: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

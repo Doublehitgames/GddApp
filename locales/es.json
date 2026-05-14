@@ -2783,5 +2783,103 @@
       "daysAgoN": "hace {count} días",
       "empty": "Registra los KPIs de tu juego publicado"
     }
+  },
+  "roadmap": {
+    "pageTitle": "Roadmap",
+    "navLabel": "Roadmap",
+    "empty": {
+      "title": "Aún no hay fases creadas",
+      "subtitle": "Crea la primera fase de tu roadmap — Alpha, Beta, v1.0 o cualquier hito que tenga sentido para tu juego."
+    },
+    "timeline": {
+      "addPhase": "Nueva Fase",
+      "phaseName": "Nombre de la fase...",
+      "noItems": "Sin ítems",
+      "itemsProgress": "{done}/{total} ítems"
+    },
+    "phase": {
+      "namePlaceholder": "Nombre de la fase",
+      "descriptionPlaceholder": "Describe el objetivo de esta fase...",
+      "target": "Meta",
+      "targetDate": "Fecha objetivo",
+      "public": "Público",
+      "private": "Interno",
+      "headerType": "Tipo de encabezado",
+      "delete": "Eliminar fase",
+      "progress": "{done} de {total} ítems completados",
+      "emptyItems": "Sin ítems en esta fase. Agrega el primero abajo."
+    },
+    "phaseStatus": {
+      "planned": "Planificada",
+      "active": "En progreso",
+      "completed": "Completada",
+      "cancelled": "Cancelada"
+    },
+    "item": {
+      "add": "Agregar ítem",
+      "newPlaceholder": "Nombre del ítem... (Enter para confirmar)",
+      "titlePlaceholder": "Título del ítem",
+      "addDescription": "Agregar descripción",
+      "descriptionPlaceholder": "Descripción corta para jugadores o el equipo...",
+      "public": "Público",
+      "private": "Interno",
+      "delete": "Eliminar ítem"
+    },
+    "categories": {
+      "gameplay": "Gameplay",
+      "ui": "Interfaz",
+      "monetization": "Monetización",
+      "content": "Contenido",
+      "fix": "Corrección",
+      "tech": "Tech",
+      "art": "Arte",
+      "audio": "Audio"
+    },
+    "status": {
+      "planned": "Planificado",
+      "in_progress": "En progreso",
+      "done": "Listo",
+      "cut": "Cortado"
+    },
+    "widget": {
+      "title": "Roadmap",
+      "open": "Ver roadmap",
+      "empty": "Planifica las próximas fases de tu juego",
+      "activeBadge": "En progreso",
+      "progress": "{done} de {total} ítems",
+      "phases": "{count} fases",
+      "completedPhases": "{count} completada(s)"
+    },
+    "grid": {
+      "themes": "Temas",
+      "phasesCount": "fases",
+      "themesCount": "temas"
+    },
+    "theme": {
+      "add": "Nuevo tema",
+      "namePlaceholder": "Nombre del tema...",
+      "delete": "Eliminar tema"
+    },
+    "headerType": {
+      "title": "Título",
+      "month": "Mes",
+      "quarter": "Quarter",
+      "semester": "Semestre",
+      "year": "Año"
+    },
+    "multiRoadmap": {
+      "defaultName": "Roadmap v1",
+      "statusActive": "Activo",
+      "statusArchived": "Archivado",
+      "endAction": "Cerrar y crear nuevo",
+      "endTitle": "Cerrar Roadmap Activo",
+      "endDescription": "El roadmap actual será archivado. ¿Cómo se llamará el próximo?",
+      "endConfirm": "Archivar e iniciar nuevo",
+      "endCancel": "Cancelar",
+      "readOnlyBanner": "Roadmap archivado — solo lectura.",
+      "reactivate": "Reactivar",
+      "rename": "Renombrar",
+      "newPlaceholder": "Nombre del nuevo roadmap"
+    }
   }
 }

@@ -2783,5 +2783,103 @@
       "daysAgoN": "{count} days ago",
       "empty": "Log your published game's KPIs"
     }
+  },
+  "roadmap": {
+    "pageTitle": "Roadmap",
+    "navLabel": "Roadmap",
+    "empty": {
+      "title": "No phases created yet",
+      "subtitle": "Create your first roadmap phase — Alpha, Beta, v1.0, or any milestone that makes sense for your game."
+    },
+    "timeline": {
+      "addPhase": "New Phase",
+      "phaseName": "Phase name...",
+      "noItems": "No items",
+      "itemsProgress": "{done}/{total} items"
+    },
+    "phase": {
+      "namePlaceholder": "Phase name",
+      "descriptionPlaceholder": "Describe the goal of this phase...",
+      "target": "Target",
+      "targetDate": "Target date",
+      "public": "Public",
+      "private": "Internal",
+      "headerType": "Header type",
+      "delete": "Delete phase",
+      "progress": "{done} of {total} items completed",
+      "emptyItems": "No items in this phase. Add the first one below."
+    },
+    "phaseStatus": {
+      "planned": "Planned",
+      "active": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "item": {
+      "add": "Add item",
+      "newPlaceholder": "Item name... (Enter to confirm)",
+      "titlePlaceholder": "Item title",
+      "addDescription": "Add description",
+      "descriptionPlaceholder": "Short description for players or the team...",
+      "public": "Public",
+      "private": "Internal",
+      "delete": "Delete item"
+    },
+    "categories": {
+      "gameplay": "Gameplay",
+      "ui": "UI",
+      "monetization": "Monetization",
+      "content": "Content",
+      "fix": "Fix",
+      "tech": "Tech",
+      "art": "Art",
+      "audio": "Audio"
+    },
+    "status": {
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "done": "Done",
+      "cut": "Cut"
+    },
+    "widget": {
+      "title": "Roadmap",
+      "open": "View roadmap",
+      "empty": "Plan the next phases of your game",
+      "activeBadge": "In progress",
+      "progress": "{done} of {total} items",
+      "phases": "{count} phases",
+      "completedPhases": "{count} completed"
+    },
+    "grid": {
+      "themes": "Themes",
+      "phasesCount": "phases",
+      "themesCount": "themes"
+    },
+    "theme": {
+      "add": "New theme",
+      "namePlaceholder": "Theme name...",
+      "delete": "Delete theme"
+    },
+    "headerType": {
+      "title": "Title",
+      "month": "Month",
+      "quarter": "Quarter",
+      "semester": "Semester",
+      "year": "Year"
+    },
+    "multiRoadmap": {
+      "defaultName": "Roadmap v1",
+      "statusActive": "Active",
+      "statusArchived": "Archived",
+      "endAction": "Close and create new",
+      "endTitle": "Close Active Roadmap",
+      "endDescription": "The current roadmap will be archived. What should the next one be called?",
+      "endConfirm": "Archive and start new",
+      "endCancel": "Cancel",
+      "readOnlyBanner": "Archived roadmap — read only.",
+      "reactivate": "Reactivate",
+      "rename": "Rename",
+      "newPlaceholder": "New roadmap name"
+    }
   }
 }

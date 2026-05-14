@@ -29,6 +29,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import AIChat from "@/components/AIChat";
 import AgendaWidget from "@/components/agenda/AgendaWidget";
 import KpiWidget from "@/components/kpi/KpiWidget";
+import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
@@ -581,6 +582,16 @@ export default function ProjectDetailClient({ projectId }: Props) {
             icon: (
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            ),
+        },
+        {
+            href: `/projects/${projectId}/roadmap`,
+            label: t("roadmap.navLabel"),
+            accentClass: "from-violet-400/25 to-purple-500/10",
+            icon: (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                 </svg>
             ),
         },
@@ -1196,6 +1207,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
                         <AgendaWidget projectId={projectId} realProjectId={realProjectId} />
                         <KpiWidget projectId={projectId} realProjectId={realProjectId} />
+                        <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />
 
                         <section className="ui-card-premium">
                             <div className="mb-4">

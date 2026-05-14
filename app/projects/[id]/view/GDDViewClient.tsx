@@ -8,6 +8,7 @@ import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
+import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { resolveProjectSpecialTokensForProject } from "@/lib/addons/projectSpecialTokens";
 import {
@@ -545,10 +546,19 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const searchParams = useSearchParams();
   const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
+  const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
+  const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
+  const roadmapsByProject  = useProjectStore((s) => s.roadmapsByProject);
   
   const [mounted, setMounted] = useState(false);
   const [project, setProject] = useState<any>(null);
   const realProjectId = project?.id ?? "";
+  const hasPublicRoadmap = useMemo(() => {
+    if (!realProjectId) return false;
+    const activeId = getActiveRoadmapId(realProjectId);
+    if (!activeId) return false;
+    return getRoadmapPhases(realProjectId, activeId).some((p) => p.isPublic);
+  }, [getRoadmapPhases, getActiveRoadmapId, realProjectId, roadmapsByProject]);
   const [showWelcome, setShowWelcome] = useState(false);
   const [documentSearch, setDocumentSearch] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
@@ -1379,6 +1389,17 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     <h2 className="text-sm font-semibold tracking-wide text-slate-500 uppercase">📑 {t("view.navigation")}</h2>
                   </div>
                   <div className="space-y-1.5">
+                    {hasPublicRoadmap && (
+                      <a
+                        href="#roadmap-section"
+                        className="group flex items-start gap-2 rounded-lg transition-all border px-3 py-2.5 text-sm font-semibold text-slate-800 bg-white/80 border-slate-200 hover:bg-slate-50"
+                      >
+                        <svg className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span className="leading-5">{t("roadmap.pageTitle")}</span>
+                      </a>
+                    )}
                     {renderTocNodes(sectionsWithHierarchy)}
                   </div>
                 </div>
@@ -1418,6 +1439,18 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                       <h2 className="text-xs font-semibold tracking-wide text-slate-500 uppercase">📑 {t("view.navigation")}</h2>
                     </div>
                     <div className="space-y-1.5">
+                      {hasPublicRoadmap && (
+                        <a
+                          href="#roadmap-section"
+                          onClick={() => setShowMobileToc(false)}
+                          className="group flex items-start gap-2 rounded-lg transition-all border px-3 py-2.5 text-sm font-semibold text-slate-800 bg-white/80 border-slate-200 hover:bg-slate-50"
+                        >
+                          <svg className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <span className="leading-5">{t("roadmap.pageTitle")}</span>
+                        </a>
+                      )}
                       {renderTocNodes(sectionsWithHierarchy, 0, () => setShowMobileToc(false))}
                     </div>
                   </div>
@@ -1593,6 +1626,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Roadmap */}
+            {realProjectId && <RoadmapDocView projectId={realProjectId} />}
 
             {/* Sections Content */}
             <div className="space-y-10 md:space-y-12">

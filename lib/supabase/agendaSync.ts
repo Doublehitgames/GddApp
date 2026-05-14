@@ -42,7 +42,7 @@ export async function fetchAgendaTasks(userId: string, projectId: string): Promi
         .select("tasks")
         .eq("user_id", userId)
         .eq("project_id", projectId)
-        .single(),
+        .maybeSingle(),
       SUPABASE_QUERY_TIMEOUT_MS
     );
 

@@ -267,3 +267,85 @@ export function persistKpiConfigs(data: Record<string, import("@/lib/kpi/types")
     localStorage.setItem(KPI_CONFIGS_KEY, JSON.stringify(data));
   } catch (e) { logWarn("Could not persist KPI configs", e); }
 }
+
+// ---------------------------------------------------------------------------
+// Roadmap persistence
+// ---------------------------------------------------------------------------
+
+const ROADMAP_PHASES_KEY  = "gdd_roadmap_phases_v1";
+const ROADMAP_THEMES_KEY  = "gdd_roadmap_themes_v1";
+const ROADMAP_ITEMS_KEY   = "gdd_roadmap_items_v1";
+
+export function loadRoadmapPhases(): Record<string, import("@/lib/roadmap/types").RoadmapPhase[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(ROADMAP_PHASES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistRoadmapPhases(data: Record<string, import("@/lib/roadmap/types").RoadmapPhase[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(ROADMAP_PHASES_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist roadmap phases", e); }
+}
+
+export function loadRoadmapThemes(): Record<string, import("@/lib/roadmap/types").RoadmapTheme[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(ROADMAP_THEMES_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistRoadmapThemes(data: Record<string, import("@/lib/roadmap/types").RoadmapTheme[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(ROADMAP_THEMES_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist roadmap themes", e); }
+}
+
+export function loadRoadmapItems(): Record<string, import("@/lib/roadmap/types").RoadmapItem[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(ROADMAP_ITEMS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistRoadmapItems(data: Record<string, import("@/lib/roadmap/types").RoadmapItem[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(ROADMAP_ITEMS_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist roadmap items", e); }
+}
+
+const ROADMAP_ROADMAPS_KEY = "gdd_roadmaps_v1";
+
+export function loadRoadmaps(): Record<string, import("@/lib/roadmap/types").Roadmap[]> {
+  try {
+    if (typeof window === "undefined") return {};
+    const raw = localStorage.getItem(ROADMAP_ROADMAPS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch { return {}; }
+}
+
+export function persistRoadmaps(data: Record<string, import("@/lib/roadmap/types").Roadmap[]>): void {
+  try {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(ROADMAP_ROADMAPS_KEY, JSON.stringify(data));
+  } catch (e) { logWarn("Could not persist roadmaps", e); }
+}

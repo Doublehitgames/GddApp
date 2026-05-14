@@ -1,0 +1,142 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { RoadmapItem, ItemStatus } from "@/lib/roadmap/types";
+import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
+import { useI18n } from "@/lib/i18n/provider";
+
+interface Props {
+  item: RoadmapItem;
+  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "status" | "isPublic">>) => void;
+  onDelete: () => void;
+}
+
+const STATUS_CYCLE: ItemStatus[] = ["planned", "in_progress", "done", "cut"];
+
+export const STATUS_STYLES: Record<ItemStatus, { dot: string; chip: string; text: string }> = {
+  planned:     { dot: "bg-slate-500",   chip: "border-slate-700/60 bg-slate-800/60",         text: "text-slate-300" },
+  in_progress: { dot: "bg-sky-400",     chip: "border-sky-700/50 bg-sky-950/60",              text: "text-sky-200" },
+  done:        { dot: "bg-emerald-400", chip: "border-emerald-800/50 bg-emerald-950/50",      text: "text-emerald-300 line-through opacity-60" },
+  cut:         { dot: "bg-rose-500",    chip: "border-rose-800/40 bg-rose-950/30",            text: "text-rose-400 line-through opacity-50" },
+};
+
+export default function ItemChip({ item, onUpdate, onDelete }: Props) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const style = STATUS_STYLES[item.status];
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  function cycleStatus(e: React.MouseEvent) {
+    e.stopPropagation();
+    const idx = STATUS_CYCLE.indexOf(item.status);
+    onUpdate({ status: STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length] });
+  }
+
+  return (
+    <div ref={popoverRef} className="relative">
+      {/* Chip row */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+        className={`group w-full flex items-start gap-1.5 rounded-lg border px-2 py-1.5 cursor-pointer transition-all duration-150 hover:brightness-110 ${style.chip}`}
+      >
+        {/* Status dot (click cycles status) */}
+        <button
+          type="button"
+          onClick={cycleStatus}
+          className={`mt-0.5 h-2 w-2 shrink-0 rounded-full transition-transform hover:scale-125 ${style.dot}`}
+          title={t("roadmap.item.cycleStatus")}
+        />
+        <span className={`flex-1 min-w-0 text-xs leading-snug truncate ${style.text}`}>
+          {item.title || t("roadmap.item.titlePlaceholder")}
+        </span>
+        {!item.isPublic && (
+          <svg className="mt-0.5 h-2.5 w-2.5 shrink-0 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+          </svg>
+        )}
+      </div>
+
+      {/* Detail popover */}
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+          {/* Title */}
+          <CommitTextInput
+            value={item.title}
+            onCommit={(v) => onUpdate({ title: v })}
+            autoFocus
+            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
+            placeholder={t("roadmap.item.titlePlaceholder")}
+          />
+
+          {/* Status buttons */}
+          <div className="flex flex-wrap gap-1">
+            {STATUS_CYCLE.map((s) => {
+              const ss = STATUS_STYLES[s];
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => onUpdate({ status: s })}
+                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    item.status === s ? ss.chip + " " + ss.text.split(" ")[0] : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${ss.dot}`} />
+                  {t("roadmap.status." + s)}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Description */}
+          <CommitTextarea
+            value={item.description ?? ""}
+            onCommit={(v) => onUpdate({ description: v || undefined })}
+            rows={2}
+            placeholder={t("roadmap.item.descriptionPlaceholder")}
+            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-none leading-relaxed"
+          />
+
+          {/* Footer: public toggle + delete */}
+          <div className="flex items-center justify-between pt-0.5">
+            <button
+              type="button"
+              onClick={() => onUpdate({ isPublic: !item.isPublic })}
+              className={`flex items-center gap-1.5 text-xs transition-colors ${item.isPublic ? "text-emerald-400 hover:text-emerald-200" : "text-gray-600 hover:text-gray-400"}`}
+            >
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {item.isPublic
+                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                }
+              </svg>
+              {item.isPublic ? t("roadmap.item.public") : t("roadmap.item.private")}
+            </button>
+            <button
+              type="button"
+              onClick={() => { onDelete(); setOpen(false); }}
+              className="flex items-center gap-1 text-xs text-gray-600 hover:text-rose-400 transition-colors"
+            >
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              {t("roadmap.item.delete")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
