@@ -1,8 +1,42 @@
-import type { KpiEntry, KpiState, KpiActions, KpiProjectConfig, GameGenre, KpiGameProfile, KpiCustomBenchmarks } from "@/lib/kpi/types";
+import type { KpiEntry, KpiState, KpiActions, KpiProjectConfig, GameGenre } from "@/lib/kpi/types";
 import { persistKpiEntries, persistKpiConfigs, loadKpiEntries, loadKpiConfigs } from "./storageHelpers";
 
 type StoreSet = (partial: Partial<KpiState & KpiActions> | ((state: KpiState & KpiActions) => Partial<KpiState & KpiActions>)) => void;
-type StoreGet = () => KpiState & KpiActions & { kpiEntriesByProject: Record<string, KpiEntry[]>; kpiConfigByProject: Record<string, KpiProjectConfig> };
+type StoreGet = () => KpiState & KpiActions & {
+  kpiEntriesByProject: Record<string, KpiEntry[]>;
+  kpiConfigByProject: Record<string, KpiProjectConfig>;
+  userId?: string | null;
+};
+
+// ─── Debounced sync timers ────────────────────────────────────────────────────
+
+const entrySyncTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+const configSyncTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+function scheduleSyncEntries(projectId: string, get: StoreGet) {
+  clearTimeout(entrySyncTimers[projectId]);
+  entrySyncTimers[projectId] = setTimeout(async () => {
+    const state = get();
+    if (!state.userId) return;
+    const entries = state.kpiEntriesByProject[projectId] ?? [];
+    const { upsertKpiEntries } = await import("@/lib/supabase/kpiSync");
+    await upsertKpiEntries(state.userId, projectId, entries);
+  }, 2000);
+}
+
+function scheduleSyncConfig(projectId: string, get: StoreGet) {
+  clearTimeout(configSyncTimers[projectId]);
+  configSyncTimers[projectId] = setTimeout(async () => {
+    const state = get();
+    if (!state.userId) return;
+    const config = state.kpiConfigByProject[projectId];
+    if (!config) return;
+    const { upsertKpiConfig } = await import("@/lib/supabase/kpiSync");
+    await upsertKpiConfig(state.userId, projectId, config);
+  }, 2000);
+}
+
+// ─── Helper: atualiza store + persiste no localStorage ───────────────────────
 
 function sp(set: StoreSet, get: StoreGet, updater: (state: KpiState & KpiActions) => Partial<KpiState & KpiActions>) {
   set(updater);
@@ -10,6 +44,8 @@ function sp(set: StoreSet, get: StoreGet, updater: (state: KpiState & KpiActions
   persistKpiEntries(state.kpiEntriesByProject);
   persistKpiConfigs(state.kpiConfigByProject);
 }
+
+// ─── Slice ───────────────────────────────────────────────────────────────────
 
 export function createKpiSlice(set: StoreSet, get: StoreGet) {
   return {
@@ -23,6 +59,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
           [projectId]: { ...(state.kpiConfigByProject[projectId] ?? {}), genre },
         },
       }));
+      scheduleSyncConfig(projectId, get);
     },
 
     updateKpiConfig: (projectId: string, patch: Partial<Omit<KpiProjectConfig, "genre">>) => {
@@ -35,6 +72,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
           },
         };
       });
+      scheduleSyncConfig(projectId, get);
     },
 
     addKpiEntry: (projectId: string, entry: Omit<KpiEntry, "id" | "createdAt">): string => {
@@ -47,6 +85,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
           [projectId]: [...(state.kpiEntriesByProject[projectId] ?? []), newEntry],
         },
       }));
+      scheduleSyncEntries(projectId, get);
       return id;
     },
 
@@ -59,6 +98,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
           ),
         },
       }));
+      scheduleSyncEntries(projectId, get);
     },
 
     deleteKpiEntry: (projectId: string, entryId: string) => {
@@ -68,6 +108,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
           [projectId]: (state.kpiEntriesByProject[projectId] ?? []).filter((e) => e.id !== entryId),
         },
       }));
+      scheduleSyncEntries(projectId, get);
     },
   };
 }

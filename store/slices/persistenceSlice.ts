@@ -174,5 +174,63 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         console.warn("[agendaSync] loadAgendaFromSupabase failed", e);
       }
     },
+
+    loadKpiFromSupabase: async () => {
+      try {
+        const userId = (get() as ProjectStore & { userId?: string }).userId;
+        if (!userId) return;
+        const projectIds = get().projects.map((p: { id: string }) => p.id);
+        if (projectIds.length === 0) return;
+
+        const { fetchKpiEntries, fetchKpiConfig } = await import("@/lib/supabase/kpiSync");
+        const { persistKpiEntries, persistKpiConfigs } = await import("./storageHelpers");
+
+        const entryUpdates: Record<string, import("@/lib/kpi/types").KpiEntry[]> = {};
+        const configUpdates: Record<string, import("@/lib/kpi/types").KpiProjectConfig> = {};
+
+        await Promise.all(
+          projectIds.map(async (projectId: string) => {
+            const [entries, config] = await Promise.all([
+              fetchKpiEntries(userId, projectId),
+              fetchKpiConfig(userId, projectId),
+            ]);
+            if (entries && entries.length > 0) {
+              entryUpdates[projectId] = entries;
+            }
+            if (config) {
+              configUpdates[projectId] = config;
+            }
+          })
+        );
+
+        const hasEntries = Object.keys(entryUpdates).length > 0;
+        const hasConfigs = Object.keys(configUpdates).length > 0;
+
+        if (hasEntries || hasConfigs) {
+          const state = get() as ProjectStore & {
+            kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
+            kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
+          };
+
+          const mergedEntries = hasEntries
+            ? { ...state.kpiEntriesByProject, ...entryUpdates }
+            : state.kpiEntriesByProject;
+
+          const mergedConfigs = hasConfigs
+            ? { ...state.kpiConfigByProject, ...configUpdates }
+            : state.kpiConfigByProject;
+
+          set({
+            kpiEntriesByProject: mergedEntries,
+            kpiConfigByProject: mergedConfigs,
+          } as Partial<ProjectStore>);
+
+          if (hasEntries) persistKpiEntries(mergedEntries);
+          if (hasConfigs) persistKpiConfigs(mergedConfigs);
+        }
+      } catch (e) {
+        console.warn("[kpiSync] loadKpiFromSupabase failed", e);
+      }
+    },
   };
 }

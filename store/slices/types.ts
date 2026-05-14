@@ -481,6 +481,7 @@ export interface ProjectStore {
   finishAgendaTask: (projectId: string, taskId: string) => void;
   getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
   loadAgendaFromSupabase: () => Promise<void>;
+  loadKpiFromSupabase: () => Promise<void>;
   // ── KPI tracker ───────────────────────────────────────────────────────────
   kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
   kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
