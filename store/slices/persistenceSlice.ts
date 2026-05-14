@@ -188,17 +188,39 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         const entryUpdates: Record<string, import("@/lib/kpi/types").KpiEntry[]> = {};
         const configUpdates: Record<string, import("@/lib/kpi/types").KpiProjectConfig> = {};
 
+        const state = get() as ProjectStore & {
+          kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
+          kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
+        };
+
+        const { upsertKpiEntries, upsertKpiConfig } = await import("@/lib/supabase/kpiSync");
+
         await Promise.all(
           projectIds.map(async (projectId: string) => {
-            const [entries, config] = await Promise.all([
+            const [remoteEntries, remoteConfig] = await Promise.all([
               fetchKpiEntries(userId, projectId),
               fetchKpiConfig(userId, projectId),
             ]);
-            if (entries && entries.length > 0) {
-              entryUpdates[projectId] = entries;
+
+            // Supabase tem dados → usa o remoto (fonte de verdade na nuvem)
+            if (remoteEntries && remoteEntries.length > 0) {
+              entryUpdates[projectId] = remoteEntries;
+            } else {
+              // Supabase vazio → migra dados locais existentes para a nuvem
+              const localEntries = state.kpiEntriesByProject[projectId];
+              if (localEntries && localEntries.length > 0) {
+                void upsertKpiEntries(userId, projectId, localEntries);
+              }
             }
-            if (config) {
-              configUpdates[projectId] = config;
+
+            if (remoteConfig) {
+              configUpdates[projectId] = remoteConfig;
+            } else {
+              // Supabase vazio → migra config local para a nuvem
+              const localConfig = state.kpiConfigByProject[projectId];
+              if (localConfig) {
+                void upsertKpiConfig(userId, projectId, localConfig);
+              }
             }
           })
         );
@@ -207,11 +229,6 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         const hasConfigs = Object.keys(configUpdates).length > 0;
 
         if (hasEntries || hasConfigs) {
-          const state = get() as ProjectStore & {
-            kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
-            kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
-          };
-
           const mergedEntries = hasEntries
             ? { ...state.kpiEntriesByProject, ...entryUpdates }
             : state.kpiEntriesByProject;
