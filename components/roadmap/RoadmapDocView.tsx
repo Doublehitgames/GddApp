@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
-import type { PhaseStatus, ItemStatus, RoadmapItem, RoadmapPhase } from "@/lib/roadmap/types";
-import { ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
+import type { PhaseStatus, ItemStatus, RoadmapItem, RoadmapPhase, RoadmapItemTag } from "@/lib/roadmap/types";
+import { ITEM_TAG_CONFIG, ITEM_TAGS } from "@/lib/roadmap/types";
 
 const ITEM_STATUS_DOT: Record<ItemStatus, string> = {
   planned:     "bg-slate-400",
@@ -259,6 +259,19 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
   const [showNavMenu, setShowNavMenu]     = useState(false);
   const navMenuRef                        = useRef<HTMLDivElement>(null);
 
+  // ── Filters ───────────────────────────────────────────────────────────────
+  const [filterStatuses, setFilterStatuses] = useState<ItemStatus[]>([]);
+  const [filterTags, setFilterTags]         = useState<RoadmapItemTag[]>([]);
+
+  const activeFilterCount = filterStatuses.length + filterTags.length;
+
+  function toggleStatus(s: ItemStatus) {
+    setFilterStatuses((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  }
+  function toggleTag(tag: RoadmapItemTag) {
+    setFilterTags((prev) => prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]);
+  }
+
   useEffect(() => {
     if (!showNavMenu) return;
     const handler = (e: MouseEvent) => {
@@ -280,6 +293,13 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
   if (phases.length === 0) return null;
 
   const itemStatuses: ItemStatus[] = ["planned", "in_progress", "done", "cut"];
+
+  // Apply filters
+  const filteredItems = items.filter((i) => {
+    if (filterStatuses.length > 0 && !filterStatuses.includes(i.status)) return false;
+    if (filterTags.length > 0 && (!i.tag || !filterTags.includes(i.tag))) return false;
+    return true;
+  });
 
   return (
     <div id="roadmap-section" className="mt-10 pt-8 border-t-2 border-gray-200">
@@ -318,6 +338,61 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
+        {/* Status chips */}
+        {itemStatuses.map((s) => {
+          const active = filterStatuses.includes(s);
+          const dotCls = ITEM_STATUS_DOT[s];
+          const activeCls = ITEM_STATUS_BADGE[s];
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => toggleStatus(s)}
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                active ? activeCls : "border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotCls}`} />
+              {t("roadmap.status." + s)}
+            </button>
+          );
+        })}
+
+        {/* Separator */}
+        {ITEM_TAGS.length > 0 && <div className="h-4 w-px bg-gray-200" />}
+
+        {/* Tag chips */}
+        {ITEM_TAGS.map((tag) => {
+          const cfg = ITEM_TAG_CONFIG[tag];
+          const active = filterTags.includes(tag);
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`rounded border px-2 py-0.5 text-[11px] font-bold transition-colors ${
+                active ? cfg.docStyle : "border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-500"
+              }`}
+            >
+              {cfg.label}
+            </button>
+          );
+        })}
+
+        {/* Clear */}
+        {activeFilterCount > 0 && (
+          <button
+            type="button"
+            onClick={() => { setFilterStatuses([]); setFilterTags([]); }}
+            className="ml-1 text-xs text-gray-400 hover:text-rose-500 transition-colors"
+          >
+            {t("roadmap.filter.clear")}
+          </button>
+        )}
       </div>
 
       {/* Grid */}
@@ -360,7 +435,7 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
                   </span>
                 </td>
                 {phases.map((phase) => {
-                  const cellItems = items.filter((i) => i.phaseId === phase.id && i.themeId === theme.id);
+                  const cellItems = filteredItems.filter((i) => i.phaseId === phase.id && i.themeId === theme.id);
                   return (
                     <td key={phase.id} className="border-r border-gray-200 px-4 py-3 align-top last:border-r-0">
                       {cellItems.length === 0 ? (
