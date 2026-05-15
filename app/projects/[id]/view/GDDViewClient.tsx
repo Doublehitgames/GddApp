@@ -1628,7 +1628,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             </div>
 
             {/* Roadmap */}
-            {realProjectId && <RoadmapDocView projectId={realProjectId} />}
+            {realProjectId && <RoadmapDocView projectId={realProjectId} projectSlug={projectId} />}
 
             {/* Sections Content */}
             <div className="space-y-10 md:space-y-12">

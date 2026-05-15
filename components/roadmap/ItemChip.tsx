@@ -1,30 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { RoadmapItem, ItemStatus } from "@/lib/roadmap/types";
+import type { RoadmapItem, ItemStatus, RoadmapItemTag } from "@/lib/roadmap/types";
+import { ITEM_TAGS, ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
 import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
 import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   item: RoadmapItem;
-  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "status" | "isPublic">>) => void;
+  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
   onDelete: () => void;
+  /** DnD drag handle — passed from SortableItemWrapper in RoadmapGrid */
+  dragHandleListeners?: Record<string, unknown>;
+  dragHandleAttributes?: Record<string, unknown>;
 }
 
 const STATUS_CYCLE: ItemStatus[] = ["planned", "in_progress", "done", "cut"];
 
 export const STATUS_STYLES: Record<ItemStatus, { dot: string; chip: string; text: string }> = {
-  planned:     { dot: "bg-slate-500",   chip: "border-slate-700/60 bg-slate-800/60",         text: "text-slate-300" },
-  in_progress: { dot: "bg-sky-400",     chip: "border-sky-700/50 bg-sky-950/60",              text: "text-sky-200" },
-  done:        { dot: "bg-emerald-400", chip: "border-emerald-800/50 bg-emerald-950/50",      text: "text-emerald-300 line-through opacity-60" },
-  cut:         { dot: "bg-rose-500",    chip: "border-rose-800/40 bg-rose-950/30",            text: "text-rose-400 line-through opacity-50" },
+  planned:     { dot: "bg-slate-500",   chip: "border-slate-700/60 bg-slate-800/60",       text: "text-slate-300" },
+  in_progress: { dot: "bg-sky-400",     chip: "border-sky-700/50 bg-sky-950/60",            text: "text-sky-200" },
+  done:        { dot: "bg-emerald-400", chip: "border-emerald-800/50 bg-emerald-950/50",    text: "text-emerald-300 line-through opacity-60" },
+  cut:         { dot: "bg-rose-500",    chip: "border-rose-800/40 bg-rose-950/30",          text: "text-rose-400 line-through opacity-50" },
 };
 
-export default function ItemChip({ item, onUpdate, onDelete }: Props) {
+export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners, dragHandleAttributes }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const style = STATUS_STYLES[item.status];
+  const tagCfg = item.tag ? ITEM_TAG_CONFIG[item.tag] : null;
 
   useEffect(() => {
     if (!open) return;
@@ -51,16 +56,43 @@ export default function ItemChip({ item, onUpdate, onDelete }: Props) {
         onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
         className={`group w-full flex items-start gap-1.5 rounded-lg border px-2 py-1.5 cursor-pointer transition-all duration-150 hover:brightness-110 ${style.chip}`}
       >
-        {/* Status dot (click cycles status) */}
+        {/* Drag handle */}
+        {dragHandleListeners && (
+          <button
+            type="button"
+            {...(dragHandleListeners as React.HTMLAttributes<HTMLButtonElement>)}
+            {...(dragHandleAttributes as React.HTMLAttributes<HTMLButtonElement>)}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-500 touch-none"
+            tabIndex={-1}
+          >
+            <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"/>
+            </svg>
+          </button>
+        )}
+
+        {/* Status dot */}
         <button
           type="button"
           onClick={cycleStatus}
           className={`mt-0.5 h-2 w-2 shrink-0 rounded-full transition-transform hover:scale-125 ${style.dot}`}
           title={t("roadmap.item.cycleStatus")}
         />
+
+        {/* Tag badge */}
+        {tagCfg && (
+          <span className={`shrink-0 inline-flex items-center rounded px-1 text-[9px] font-bold leading-4 ${tagCfg.chipStyle}`}>
+            {tagCfg.label}
+          </span>
+        )}
+
+        {/* Title */}
         <span className={`flex-1 min-w-0 text-xs leading-snug truncate ${style.text}`}>
           {item.title || t("roadmap.item.titlePlaceholder")}
         </span>
+
+        {/* Private icon */}
         {!item.isPublic && (
           <svg className="mt-0.5 h-2.5 w-2.5 shrink-0 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -70,7 +102,8 @@ export default function ItemChip({ item, onUpdate, onDelete }: Props) {
 
       {/* Detail popover */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 w-80 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+
           {/* Title */}
           <CommitTextInput
             value={item.title}
@@ -100,13 +133,49 @@ export default function ItemChip({ item, onUpdate, onDelete }: Props) {
             })}
           </div>
 
+          {/* Tag picker */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+              {t("roadmap.item.tagLabel")}
+            </label>
+            <div className="flex flex-wrap gap-1">
+              {/* No tag */}
+              <button
+                type="button"
+                onClick={() => onUpdate({ tag: undefined })}
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  !item.tag
+                    ? "border-gray-500 bg-gray-700 text-gray-200"
+                    : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                }`}
+              >
+                —
+              </button>
+              {ITEM_TAGS.map((tag) => {
+                const cfg = ITEM_TAG_CONFIG[tag];
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => onUpdate({ tag: item.tag === tag ? undefined : tag })}
+                    className={`rounded border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
+                      item.tag === tag ? cfg.style : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                    }`}
+                  >
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Description */}
           <CommitTextarea
             value={item.description ?? ""}
             onCommit={(v) => onUpdate({ description: v || undefined })}
-            rows={2}
+            rows={5}
             placeholder={t("roadmap.item.descriptionPlaceholder")}
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-none leading-relaxed"
+            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
           />
 
           {/* Footer: public toggle + delete */}

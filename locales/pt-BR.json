@@ -2787,6 +2787,8 @@
   "roadmap": {
     "pageTitle": "Roadmap",
     "navLabel": "Roadmap",
+    "openManager": "Abrir no gerenciador",
+    "viewDocument": "Ver documento",
     "empty": {
       "title": "Nenhuma fase criada ainda",
       "subtitle": "Crie a primeira fase do seu roadmap — Alpha, Beta, v1.0 ou qualquer marco que faça sentido para o seu jogo."
@@ -2821,6 +2823,7 @@
       "titlePlaceholder": "Título do item",
       "addDescription": "Adicionar descrição",
       "descriptionPlaceholder": "Descrição curta para players ou para o time...",
+      "tagLabel": "Tipo",
       "public": "Público",
       "private": "Interno",
       "delete": "Excluir item"

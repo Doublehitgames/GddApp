@@ -212,6 +212,19 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
     getRoadmapPhases: (projectId: string, roadmapId: string): RoadmapPhase[] =>
       [...(get().phasesByProject[projectId] ?? []).filter((p) => p.roadmapId === roadmapId)].sort((a, b) => a.order - b.order),
 
+    reorderRoadmapPhases: (projectId: string, roadmapId: string, orderedIds: string[]) => {
+      sp(set, get, (s) => ({
+        phasesByProject: {
+          ...s.phasesByProject,
+          [projectId]: (s.phasesByProject[projectId] ?? []).map((p) => {
+            const idx = orderedIds.indexOf(p.id);
+            return idx !== -1 && p.roadmapId === roadmapId ? { ...p, order: idx } : p;
+          }),
+        },
+      }));
+      scheduleSyncPhases(projectId, get);
+    },
+
     // ── Themes ────────────────────────────────────────────────────────────────
 
     addRoadmapTheme: (projectId: string, roadmapId: string, name: string, opts?: Partial<Pick<RoadmapTheme, "color">>): string => {
@@ -259,6 +272,19 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
     getRoadmapThemes: (projectId: string, roadmapId: string): RoadmapTheme[] =>
       [...(get().themesByProject[projectId] ?? []).filter((t) => t.roadmapId === roadmapId)].sort((a, b) => a.order - b.order),
 
+    reorderRoadmapThemes: (projectId: string, roadmapId: string, orderedIds: string[]) => {
+      sp(set, get, (s) => ({
+        themesByProject: {
+          ...s.themesByProject,
+          [projectId]: (s.themesByProject[projectId] ?? []).map((t) => {
+            const idx = orderedIds.indexOf(t.id);
+            return idx !== -1 && t.roadmapId === roadmapId ? { ...t, order: idx } : t;
+          }),
+        },
+      }));
+      scheduleSyncThemes(projectId, get);
+    },
+
     // ── Items ─────────────────────────────────────────────────────────────────
 
     addRoadmapItem: (projectId: string, roadmapId: string, phaseId: string, themeId: string, title: string): string => {
@@ -279,7 +305,7 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
       return id;
     },
 
-    updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => {
+    updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => {
       sp(set, get, (s) => ({
         itemsByProject: {
           ...s.itemsByProject,
@@ -304,6 +330,19 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
       if (phaseId) items = items.filter((i) => i.phaseId === phaseId);
       if (themeId) items = items.filter((i) => i.themeId === themeId);
       return [...items].sort((a, b) => a.order - b.order);
+    },
+
+    reorderRoadmapItems: (projectId: string, phaseId: string, themeId: string, orderedIds: string[]) => {
+      sp(set, get, (s) => ({
+        itemsByProject: {
+          ...s.itemsByProject,
+          [projectId]: (s.itemsByProject[projectId] ?? []).map((i) => {
+            const idx = orderedIds.indexOf(i.id);
+            return idx !== -1 && i.phaseId === phaseId && i.themeId === themeId ? { ...i, order: idx } : i;
+          }),
+        },
+      }));
+      scheduleSyncItems(projectId, get);
     },
 
     loadRoadmapFromSupabase: async () => {},

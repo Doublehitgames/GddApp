@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { RoadmapPhase, RoadmapTheme, RoadmapItem, PhaseStatus, PhaseHeaderType, ThemeColor } from "@/lib/roadmap/types";
+import {
+  DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type {
+  RoadmapPhase, RoadmapTheme, RoadmapItem,
+  PhaseStatus, PhaseHeaderType, ThemeColor,
+} from "@/lib/roadmap/types";
 import { THEME_COLORS } from "@/lib/roadmap/types";
 import ItemChip from "./ItemChip";
 import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
@@ -9,8 +20,8 @@ import { useI18n } from "@/lib/i18n/provider";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const THEME_LABEL_W = "w-36";   // 144px — sticky left column
-const PHASE_COL_W   = "w-52";   // 208px — each phase column
+const THEME_LABEL_W = "w-36";
+const PHASE_COL_W   = "w-52";
 
 const THEME_COLOR_STYLES: Record<ThemeColor, { border: string; dot: string; label: string; text: string; row: string }> = {
   sky:     { border: "border-l-sky-400",     dot: "bg-sky-400",     label: "bg-sky-900/50 border-sky-600/60",         text: "text-sky-200",     row: "bg-sky-950/30" },
@@ -24,34 +35,48 @@ const THEME_COLOR_STYLES: Record<ThemeColor, { border: string; dot: string; labe
 };
 
 const PHASE_STATUS_STYLES: Record<PhaseStatus, { dot: string; badge: string; text: string }> = {
-  planned:   { dot: "bg-slate-500",           badge: "border-slate-700/50 bg-slate-800/50",         text: "text-slate-400" },
-  active:    { dot: "bg-emerald-400 animate-pulse", badge: "border-emerald-700/50 bg-emerald-950/50", text: "text-emerald-300" },
-  completed: { dot: "bg-gray-600",            badge: "border-gray-700/40 bg-gray-800/40",           text: "text-gray-500" },
-  cancelled: { dot: "bg-rose-500",            badge: "border-rose-700/40 bg-rose-950/30",           text: "text-rose-400" },
+  planned:   { dot: "bg-slate-500",                badge: "border-slate-700/50 bg-slate-800/50",          text: "text-slate-400" },
+  active:    { dot: "bg-emerald-400 animate-pulse", badge: "border-emerald-700/50 bg-emerald-950/50",     text: "text-emerald-300" },
+  completed: { dot: "bg-gray-600",                 badge: "border-gray-700/40 bg-gray-800/40",            text: "text-gray-500" },
+  cancelled: { dot: "bg-rose-500",                 badge: "border-rose-700/40 bg-rose-950/30",            text: "text-rose-400" },
 };
 
 const HEADER_TYPE_OPTIONS: PhaseHeaderType[] = ["title", "month", "quarter", "semester", "year"];
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
-function formatPhaseHeader(phase: RoadmapPhase, locale = "pt-BR"): string {
+function formatPhaseHeader(phase: RoadmapPhase): string {
   if (phase.headerType === "title" || !phase.targetDate) return phase.name;
   const [y, m] = phase.targetDate.split("-").map(Number);
   switch (phase.headerType) {
-    case "month":    return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "short", year: "numeric" });
+    case "month":    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
     case "quarter":  return `Q${Math.ceil(m / 3)} ${y}`;
     case "semester": return `S${m <= 6 ? 1 : 2} ${y}`;
     case "year":     return String(y);
   }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── GripIcon ─────────────────────────────────────────────────────────────────
 
-function PhaseHeaderCell({ phase, onUpdate, onDelete, t }: {
+function GripIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
+      <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"/>
+    </svg>
+  );
+}
+
+// ─── PhaseHeaderCell ──────────────────────────────────────────────────────────
+
+function PhaseHeaderCell({
+  phase, onUpdate, onDelete, t, dragListeners, dragAttributes,
+}: {
   phase: RoadmapPhase;
   onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
   onDelete: () => void;
   t: (key: string) => string;
+  dragListeners?: Record<string, unknown>;
+  dragAttributes?: Record<string, unknown>;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -67,11 +92,11 @@ function PhaseHeaderCell({ phase, onUpdate, onDelete, t }: {
   }, [open]);
 
   return (
-    <div ref={ref} className={`${PHASE_COL_W} shrink-0 relative`}>
+    <div ref={ref} className="relative w-full">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex flex-col items-start gap-1 px-3 py-3 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 hover:bg-gray-800/80 transition-colors text-left"
+        className="w-full flex flex-col items-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 hover:bg-gray-800/80 transition-colors text-left"
       >
         <div className="flex items-center gap-2 w-full">
           <span className={`h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
@@ -87,8 +112,22 @@ function PhaseHeaderCell({ phase, onUpdate, onDelete, t }: {
         )}
       </button>
 
+      {/* Drag handle — top-right corner of header */}
+      {dragListeners && (
+        <button
+          type="button"
+          {...(dragListeners as React.HTMLAttributes<HTMLButtonElement>)}
+          {...(dragAttributes as React.HTMLAttributes<HTMLButtonElement>)}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-2 right-1.5 p-1 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
+          tabIndex={-1}
+        >
+          <GripIcon className="h-3 w-3 rotate-90" />
+        </button>
+      )}
+
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
           {/* Name */}
           <CommitTextInput
             value={phase.name}
@@ -102,9 +141,9 @@ function PhaseHeaderCell({ phase, onUpdate, onDelete, t }: {
           <CommitTextarea
             value={phase.description ?? ""}
             onCommit={(v) => onUpdate({ description: v || undefined })}
-            rows={2}
+            rows={5}
             placeholder={t("roadmap.phase.descriptionPlaceholder")}
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-none leading-relaxed"
+            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
           />
 
           {/* Header type */}
@@ -188,7 +227,221 @@ function PhaseHeaderCell({ phase, onUpdate, onDelete, t }: {
   );
 }
 
-// ─── Main Grid ────────────────────────────────────────────────────────────────
+// ─── SortablePhaseHeader ──────────────────────────────────────────────────────
+
+function SortablePhaseHeader({
+  phase, onUpdate, onDelete, t,
+}: {
+  phase: RoadmapPhase;
+  onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
+  onDelete: () => void;
+  t: (k: string) => string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: phase.id,
+    data: { type: "phase" },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`${PHASE_COL_W} shrink-0 border-b border-r border-gray-800/60 ${isDragging ? "opacity-40 z-50" : ""}`}
+    >
+      <PhaseHeaderCell
+        phase={phase}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        t={t}
+        dragListeners={listeners as Record<string, unknown>}
+        dragAttributes={attributes as Record<string, unknown>}
+      />
+    </div>
+  );
+}
+
+// ─── SortableItemWrapper ──────────────────────────────────────────────────────
+
+function SortableItemWrapper({
+  item, onUpdate, onDelete,
+}: {
+  item: RoadmapItem;
+  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+    data: { type: "item", phaseId: item.phaseId, themeId: item.themeId },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "opacity-40 scale-95" : ""}
+    >
+      <ItemChip
+        item={item}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        dragHandleListeners={listeners as Record<string, unknown>}
+        dragHandleAttributes={attributes as Record<string, unknown>}
+      />
+    </div>
+  );
+}
+
+// ─── SortableThemeRow ─────────────────────────────────────────────────────────
+
+function SortableThemeRow({
+  theme, phases, items,
+  onUpdateTheme, onDeleteTheme,
+  onAddItem, onUpdateItem, onDeleteItem,
+  editingThemeId, setEditingThemeId,
+  addingItem, setAddingItem,
+  itemDraft, setItemDraft,
+  handleAddItem, t,
+}: {
+  theme: RoadmapTheme;
+  phases: RoadmapPhase[];
+  items: RoadmapItem[];
+  onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
+  onDeleteTheme: (themeId: string) => void;
+  onAddItem: (phaseId: string, themeId: string, title: string) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
+  onDeleteItem: (itemId: string) => void;
+  editingThemeId: string | null;
+  setEditingThemeId: (id: string | null) => void;
+  addingItem: { phaseId: string; themeId: string } | null;
+  setAddingItem: (v: { phaseId: string; themeId: string } | null) => void;
+  itemDraft: string;
+  setItemDraft: (v: string) => void;
+  handleAddItem: () => void;
+  t: (k: string) => string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: theme.id,
+    data: { type: "theme" },
+  });
+  const cs = THEME_COLOR_STYLES[theme.color];
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex border-b border-gray-800/40 ${cs.row} ${isDragging ? "opacity-40" : ""}`}
+    >
+      {/* Theme label — sticky left */}
+      <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 border-r border-l-[6px] border-gray-800/60 ${cs.border} bg-gray-950/95 px-2 py-3 flex flex-col gap-1 justify-center`}>
+        {/* Drag handle + name row */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
+            {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
+            className="shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
+            tabIndex={-1}
+          >
+            <GripIcon className="h-2.5 w-2.5" />
+          </button>
+
+          {editingThemeId === theme.id ? (
+            <CommitTextInput
+              value={theme.name}
+              onCommit={(v) => { onUpdateTheme(theme.id, { name: v }); setEditingThemeId(null); }}
+              autoFocus
+              className="flex-1 bg-gray-800 rounded border border-gray-700 px-1.5 py-0.5 text-xs text-white outline-none"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingThemeId(theme.id)}
+              className={`flex-1 text-xs font-semibold text-left leading-snug ${cs.text} hover:opacity-80 transition-opacity truncate`}
+            >
+              {theme.name}
+            </button>
+          )}
+        </div>
+
+        {/* Color dots */}
+        <div className="flex items-center gap-1 flex-wrap pl-3.5">
+          {THEME_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onUpdateTheme(theme.id, { color: c })}
+              className={`h-2 w-2 rounded-full transition-transform hover:scale-125 ${THEME_COLOR_STYLES[c].dot}`}
+              style={{ opacity: theme.color === c ? 1 : 0.35 }}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => onDeleteTheme(theme.id)}
+            className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
+            title={t("roadmap.theme.delete")}
+          >
+            <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Phase cells */}
+      {phases.map((phase) => {
+        const cellItems = items.filter((i) => i.phaseId === phase.id && i.themeId === theme.id);
+        const isAddingHere = addingItem?.phaseId === phase.id && addingItem?.themeId === theme.id;
+
+        return (
+          <div
+            key={phase.id}
+            className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/30 px-2 py-2 flex flex-col gap-1.5 min-h-[72px]`}
+          >
+            <SortableContext items={cellItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              {cellItems.map((item) => (
+                <SortableItemWrapper
+                  key={item.id}
+                  item={item}
+                  onUpdate={(patch) => onUpdateItem(item.id, patch)}
+                  onDelete={() => onDeleteItem(item.id)}
+                />
+              ))}
+            </SortableContext>
+
+            {isAddingHere ? (
+              <div className="flex items-center gap-1 rounded-lg border border-emerald-700/50 bg-emerald-950/20 px-2 py-1">
+                <input
+                  autoFocus
+                  value={itemDraft}
+                  onChange={(e) => setItemDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddItem();
+                    if (e.key === "Escape") { setItemDraft(""); setAddingItem(null); }
+                  }}
+                  onBlur={handleAddItem}
+                  placeholder={t("roadmap.item.newPlaceholder")}
+                  className="flex-1 min-w-0 bg-transparent text-xs text-white placeholder-gray-500 outline-none"
+                />
+              </div>
+            ) : (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => { setAddingItem({ phaseId: phase.id, themeId: theme.id }); setItemDraft(""); }}
+                onKeyDown={(e) => e.key === "Enter" && (setAddingItem({ phaseId: phase.id, themeId: theme.id }), setItemDraft(""))}
+                className="flex-1 min-h-[28px] w-full rounded border border-dashed border-gray-700/40 flex items-center justify-center cursor-pointer hover:border-violet-700/50 hover:bg-violet-950/10 transition-all group/add"
+              >
+                <svg className="h-3 w-3 text-gray-700 group-hover/add:text-violet-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   projectId: string;
@@ -202,28 +455,35 @@ interface Props {
   onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
   onDeleteTheme: (themeId: string) => void;
   onAddItem: (phaseId: string, themeId: string, title: string) => void;
-  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "status" | "isPublic">>) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
   onDeleteItem: (itemId: string) => void;
+  onReorderPhases: (orderedIds: string[]) => void;
+  onReorderThemes: (orderedIds: string[]) => void;
+  onReorderItems: (phaseId: string, themeId: string, orderedIds: string[]) => void;
 }
+
+// ─── Main Grid ────────────────────────────────────────────────────────────────
 
 export default function RoadmapGrid({
   phases, themes, items,
   onAddPhase, onUpdatePhase, onDeletePhase,
   onAddTheme, onUpdateTheme, onDeleteTheme,
   onAddItem, onUpdateItem, onDeleteItem,
+  onReorderPhases, onReorderThemes, onReorderItems,
 }: Props) {
   const { t } = useI18n();
 
-  // Adding states
-  const [addingPhase, setAddingPhase]   = useState(false);
-  const [phaseDraft, setPhaseDraft]     = useState("");
-  const [addingTheme, setAddingTheme]   = useState(false);
-  const [themeDraft, setThemeDraft]     = useState("");
-  const [addingItem, setAddingItem]     = useState<{ phaseId: string; themeId: string } | null>(null);
-  const [itemDraft, setItemDraft]       = useState("");
-
-  // Theme editing
+  const [addingPhase, setAddingPhase] = useState(false);
+  const [phaseDraft, setPhaseDraft]   = useState("");
+  const [addingTheme, setAddingTheme] = useState(false);
+  const [themeDraft, setThemeDraft]   = useState("");
+  const [addingItem, setAddingItem]   = useState<{ phaseId: string; themeId: string } | null>(null);
+  const [itemDraft, setItemDraft]     = useState("");
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
   function handleAddPhase() {
     const name = phaseDraft.trim();
@@ -245,6 +505,30 @@ export default function RoadmapGrid({
     setAddingItem(null);
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const type = active.data.current?.type as string;
+
+    if (type === "phase") {
+      const oldIdx = phases.findIndex((p) => p.id === active.id);
+      const newIdx = phases.findIndex((p) => p.id === over.id);
+      if (oldIdx !== newIdx) onReorderPhases(arrayMove(phases, oldIdx, newIdx).map((p) => p.id));
+    } else if (type === "theme") {
+      const oldIdx = themes.findIndex((t) => t.id === active.id);
+      const newIdx = themes.findIndex((t) => t.id === over.id);
+      if (oldIdx !== newIdx) onReorderThemes(arrayMove(themes, oldIdx, newIdx).map((t) => t.id));
+    } else if (type === "item") {
+      const { phaseId, themeId } = active.data.current as { phaseId: string; themeId: string };
+      // Only reorder within same cell
+      if (over.data.current?.phaseId !== phaseId || over.data.current?.themeId !== themeId) return;
+      const cellItems = items.filter((i) => i.phaseId === phaseId && i.themeId === themeId);
+      const oldIdx = cellItems.findIndex((i) => i.id === active.id);
+      const newIdx = cellItems.findIndex((i) => i.id === over.id);
+      if (oldIdx !== newIdx) onReorderItems(phaseId, themeId, arrayMove(cellItems, oldIdx, newIdx).map((i) => i.id));
+    }
+  }
+
   // ── Empty state ────────────────────────────────────────────────────────────
   if (phases.length === 0 && themes.length === 0) {
     return (
@@ -261,7 +545,7 @@ export default function RoadmapGrid({
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => { setAddingPhase(true); }}
+            onClick={() => setAddingPhase(true)}
             className="flex items-center gap-2 rounded-xl border border-violet-700/50 bg-violet-950/30 px-4 py-2 text-sm text-violet-300 hover:bg-violet-950/50 transition-colors"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,199 +573,124 @@ export default function RoadmapGrid({
 
   // ── Grid ───────────────────────────────────────────────────────────────────
   return (
-    <div className="h-full overflow-auto rounded-xl border border-gray-800/60">
-      <div className="min-w-max">
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="h-full overflow-auto rounded-xl border border-gray-800/60">
+        <div className="min-w-max">
 
-        {/* ── Header row ────────────────────────────────────────────────── */}
-        <div className="flex">
-          {/* Corner cell */}
-          <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-20 bg-gray-950 border-b border-r border-gray-800/60 px-3 py-3 flex items-end`}>
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">{t("roadmap.grid.themes")}</span>
-          </div>
-
-          {/* Phase header cells */}
-          {phases.map((phase) => (
-            <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-b border-r border-gray-800/60`}>
-              <PhaseHeaderCell
-                phase={phase}
-                onUpdate={(patch) => onUpdatePhase(phase.id, patch)}
-                onDelete={() => onDeletePhase(phase.id)}
-                t={t}
-              />
+          {/* ── Header row ────────────────────────────────────────────────── */}
+          <div className="flex">
+            {/* Corner cell */}
+            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-20 bg-gray-950 border-b border-r border-gray-800/60 px-3 py-3 flex items-end`}>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">{t("roadmap.grid.themes")}</span>
             </div>
-          ))}
 
-          {/* Add phase cell */}
-          <div className="shrink-0 border-b border-gray-800/60 px-2 py-3 flex items-end">
-            {addingPhase ? (
-              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/20 px-2 py-1.5">
-                <input
-                  autoFocus
-                  value={phaseDraft}
-                  onChange={(e) => setPhaseDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddPhase(); if (e.key === "Escape") { setPhaseDraft(""); setAddingPhase(false); }}}
-                  onBlur={handleAddPhase}
-                  placeholder={t("roadmap.timeline.phaseName")}
-                  className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-32"
+            {/* Sortable phase headers */}
+            <SortableContext items={phases.map((p) => p.id)} strategy={horizontalListSortingStrategy}>
+              {phases.map((phase) => (
+                <SortablePhaseHeader
+                  key={phase.id}
+                  phase={phase}
+                  onUpdate={(patch) => onUpdatePhase(phase.id, patch)}
+                  onDelete={() => onDeletePhase(phase.id)}
+                  t={t}
                 />
-                <button type="button" onClick={handleAddPhase} className="text-emerald-400 hover:text-emerald-200">
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAddingPhase(true)}
-                className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-700 px-3 py-1.5 text-xs text-gray-500 hover:border-violet-700/50 hover:text-violet-400 transition-colors whitespace-nowrap"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {t("roadmap.timeline.addPhase")}
-              </button>
-            )}
-          </div>
-        </div>
+              ))}
+            </SortableContext>
 
-        {/* ── Theme rows ────────────────────────────────────────────────── */}
-        {themes.map((theme) => {
-          const cs = THEME_COLOR_STYLES[theme.color];
-          return (
-            <div key={theme.id} className={`flex border-b border-gray-800/40 ${cs.row}`}>
-              {/* Theme label — sticky left */}
-              <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 border-r border-l-[6px] border-gray-800/60 ${cs.border} bg-gray-950/95 px-3 py-3 flex flex-col gap-1 justify-center`}>
-                {editingThemeId === theme.id ? (
-                  <CommitTextInput
-                    value={theme.name}
-                    onCommit={(v) => { onUpdateTheme(theme.id, { name: v }); setEditingThemeId(null); }}
+            {/* Add phase */}
+            <div className="shrink-0 border-b border-gray-800/60 px-2 py-3 flex items-end">
+              {addingPhase ? (
+                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/20 px-2 py-1.5">
+                  <input
                     autoFocus
-                    className="w-full bg-gray-800 rounded border border-gray-700 px-1.5 py-0.5 text-xs text-white outline-none"
+                    value={phaseDraft}
+                    onChange={(e) => setPhaseDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddPhase(); if (e.key === "Escape") { setPhaseDraft(""); setAddingPhase(false); } }}
+                    onBlur={handleAddPhase}
+                    placeholder={t("roadmap.timeline.phaseName")}
+                    className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-32"
                   />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setEditingThemeId(theme.id)}
-                    className={`text-xs font-semibold text-left leading-snug ${cs.text} hover:opacity-80 transition-opacity`}
-                  >
-                    {theme.name}
-                  </button>
-                )}
-
-                {/* Color dots */}
-                <div className="flex items-center gap-1 flex-wrap">
-                  {THEME_COLORS.map((c) => {
-                    const dot = THEME_COLOR_STYLES[c];
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => onUpdateTheme(theme.id, { color: c })}
-                        className={`h-2 w-2 rounded-full transition-transform hover:scale-125 ${dot.dot}`}
-                        style={{ opacity: theme.color === c ? 1 : 0.35 }}
-                      />
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => onDeleteTheme(theme.id)}
-                    className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
-                    title={t("roadmap.theme.delete")}
-                  >
-                    <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <button type="button" onClick={handleAddPhase} className="text-emerald-400 hover:text-emerald-200">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
                 </div>
-              </div>
-
-              {/* Phase cells */}
-              {phases.map((phase) => {
-                const cellItems = items.filter((i) => i.phaseId === phase.id && i.themeId === theme.id);
-                const isAddingHere = addingItem?.phaseId === phase.id && addingItem?.themeId === theme.id;
-
-                return (
-                  <div
-                    key={phase.id}
-                    className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/30 px-2 py-2 flex flex-col gap-1.5 min-h-[72px]`}
-                  >
-                    {cellItems.map((item) => (
-                      <ItemChip
-                        key={item.id}
-                        item={item}
-                        onUpdate={(patch) => onUpdateItem(item.id, patch)}
-                        onDelete={() => onDeleteItem(item.id)}
-                      />
-                    ))}
-
-                    {isAddingHere ? (
-                      <div className="flex items-center gap-1 rounded-lg border border-emerald-700/50 bg-emerald-950/20 px-2 py-1">
-                        <input
-                          autoFocus
-                          value={itemDraft}
-                          onChange={(e) => setItemDraft(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleAddItem(); if (e.key === "Escape") { setItemDraft(""); setAddingItem(null); }}}
-                          onBlur={handleAddItem}
-                          placeholder={t("roadmap.item.newPlaceholder")}
-                          className="flex-1 min-w-0 bg-transparent text-xs text-white placeholder-gray-500 outline-none"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => { setAddingItem({ phaseId: phase.id, themeId: theme.id }); setItemDraft(""); }}
-                        onKeyDown={(e) => e.key === "Enter" && (setAddingItem({ phaseId: phase.id, themeId: theme.id }), setItemDraft(""))}
-                        className="flex-1 min-h-[28px] w-full rounded border border-dashed border-gray-700/40 flex items-center justify-center cursor-pointer hover:border-violet-700/50 hover:bg-violet-950/10 transition-all group/add"
-                      >
-                        <svg className="h-3 w-3 text-gray-700 group-hover/add:text-violet-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingPhase(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-700 px-3 py-1.5 text-xs text-gray-500 hover:border-violet-700/50 hover:text-violet-400 transition-colors whitespace-nowrap"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {t("roadmap.timeline.addPhase")}
+                </button>
+              )}
             </div>
-          );
-        })}
-
-        {/* ── Add theme row ─────────────────────────────────────────────── */}
-        <div className="flex">
-          <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 bg-gray-950/95 border-r border-gray-800/60 px-3 py-3`}>
-            {addingTheme ? (
-              <div className="flex items-center gap-1.5 rounded-lg border border-violet-700/60 bg-violet-950/20 px-2 py-1.5">
-                <input
-                  autoFocus
-                  value={themeDraft}
-                  onChange={(e) => setThemeDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddTheme(); if (e.key === "Escape") { setThemeDraft(""); setAddingTheme(false); }}}
-                  onBlur={handleAddTheme}
-                  placeholder={t("roadmap.theme.namePlaceholder")}
-                  className="bg-transparent text-xs text-white placeholder-gray-500 outline-none w-full"
-                />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAddingTheme(true)}
-                className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-violet-400 transition-colors whitespace-nowrap"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {t("roadmap.theme.add")}
-              </button>
-            )}
           </div>
-          {phases.map((phase) => (
-            <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/20 px-2 py-3`} />
-          ))}
-        </div>
 
+          {/* ── Sortable theme rows ───────────────────────────────────────── */}
+          <SortableContext items={themes.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            {themes.map((theme) => (
+              <SortableThemeRow
+                key={theme.id}
+                theme={theme}
+                phases={phases}
+                items={items}
+                onUpdateTheme={onUpdateTheme}
+                onDeleteTheme={onDeleteTheme}
+                onAddItem={onAddItem}
+                onUpdateItem={onUpdateItem}
+                onDeleteItem={onDeleteItem}
+                editingThemeId={editingThemeId}
+                setEditingThemeId={setEditingThemeId}
+                addingItem={addingItem}
+                setAddingItem={setAddingItem}
+                itemDraft={itemDraft}
+                setItemDraft={setItemDraft}
+                handleAddItem={handleAddItem}
+                t={t}
+              />
+            ))}
+          </SortableContext>
+
+          {/* ── Add theme row ─────────────────────────────────────────────── */}
+          <div className="flex">
+            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 bg-gray-950/95 border-r border-gray-800/60 px-3 py-3`}>
+              {addingTheme ? (
+                <div className="flex items-center gap-1.5 rounded-lg border border-violet-700/60 bg-violet-950/20 px-2 py-1.5">
+                  <input
+                    autoFocus
+                    value={themeDraft}
+                    onChange={(e) => setThemeDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddTheme(); if (e.key === "Escape") { setThemeDraft(""); setAddingTheme(false); } }}
+                    onBlur={handleAddTheme}
+                    placeholder={t("roadmap.theme.namePlaceholder")}
+                    className="bg-transparent text-xs text-white placeholder-gray-500 outline-none w-full"
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingTheme(true)}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-violet-400 transition-colors whitespace-nowrap"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {t("roadmap.theme.add")}
+                </button>
+              )}
+            </div>
+            {phases.map((phase) => (
+              <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/20 px-2 py-3`} />
+            ))}
+          </div>
+
+        </div>
       </div>
-    </div>
+    </DndContext>
   );
 }

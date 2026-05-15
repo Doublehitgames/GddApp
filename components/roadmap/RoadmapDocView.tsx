@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import type { PhaseStatus, ItemStatus, RoadmapItem, RoadmapPhase } from "@/lib/roadmap/types";
+import { ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
 
 const ITEM_STATUS_DOT: Record<ItemStatus, string> = {
   planned:     "bg-slate-400",
@@ -124,12 +126,17 @@ function ItemDetailModal({ item, onClose, t }: { item: RoadmapItem; onClose: () 
           </button>
         </div>
 
-        {/* Status badge */}
-        <div className="flex items-center gap-2">
+        {/* Status + tag badges */}
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${ITEM_STATUS_BADGE[item.status]}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${ITEM_STATUS_DOT[item.status]}`} />
             {t("roadmap.status." + item.status)}
           </span>
+          {item.tag && (
+            <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-bold ${ITEM_TAG_CONFIG[item.tag].docStyle}`}>
+              {ITEM_TAG_CONFIG[item.tag].label}
+            </span>
+          )}
           {!item.isPublic && (
             <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs text-gray-500">
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,10 +220,13 @@ function PhaseDetailModal({ phase, onClose, t }: { phase: RoadmapPhase; onClose:
 
 interface Props {
   projectId: string;
+  /** URL slug — used to build the link to the roadmap manager */
+  projectSlug?: string;
 }
 
-export default function RoadmapDocView({ projectId }: Props) {
+export default function RoadmapDocView({ projectId, projectSlug }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
   const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
   const getRoadmapThemes   = useProjectStore((s) => s.getRoadmapThemes);
   const getRoadmapItems    = useProjectStore((s) => s.getRoadmapItems);
@@ -246,6 +256,26 @@ export default function RoadmapDocView({ projectId }: Props) {
 
   const [selectedItem, setSelectedItem]   = useState<RoadmapItem | null>(null);
   const [selectedPhase, setSelectedPhase] = useState<RoadmapPhase | null>(null);
+  const [showNavMenu, setShowNavMenu]     = useState(false);
+  const navMenuRef                        = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showNavMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (navMenuRef.current && !navMenuRef.current.contains(e.target as Node)) setShowNavMenu(false);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [showNavMenu]);
+
+  // Scroll to section when navigating from the roadmap manager via anchor link
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#roadmap-section") {
+      const el = document.getElementById("roadmap-section");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
 
   if (phases.length === 0) return null;
 
@@ -260,7 +290,34 @@ export default function RoadmapDocView({ projectId }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-gray-800">{t("roadmap.pageTitle")}</h2>
+        <div className="relative" ref={navMenuRef}>
+          <button
+            type="button"
+            onClick={() => setShowNavMenu((v) => !v)}
+            className="flex items-center gap-1.5 group/title"
+          >
+            <h2 className="text-xl font-bold text-gray-800 group-hover/title:text-violet-700 transition-colors">
+              {t("roadmap.pageTitle")}
+            </h2>
+            <svg className="h-4 w-4 text-gray-400 group-hover/title:text-violet-500 transition-colors mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showNavMenu && projectSlug && (
+            <div className="absolute left-0 top-full mt-1 z-30 min-w-[200px] rounded-xl border border-gray-200 bg-white shadow-lg py-1">
+              <button
+                type="button"
+                onClick={() => { setShowNavMenu(false); router.push(`/projects/${projectSlug}/roadmap`); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-700 transition-colors"
+              >
+                <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                {t("roadmap.openManager")}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Grid */}
@@ -318,6 +375,11 @@ export default function RoadmapDocView({ projectId }: Props) {
                               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition-colors ${ITEM_STATUS_CHIP[item.status]}`}
                             >
                               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ITEM_STATUS_DOT[item.status]}`} />
+                              {item.tag && (
+                                <span className={`shrink-0 inline-flex items-center rounded px-1 text-[9px] font-bold leading-4 ${ITEM_TAG_CONFIG[item.tag].docStyle}`}>
+                                  {ITEM_TAG_CONFIG[item.tag].label}
+                                </span>
+                              )}
                               <span className={ITEM_STATUS_TEXT[item.status]}>{item.title}</span>
                             </button>
                           ))}

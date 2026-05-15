@@ -27,9 +27,12 @@ export default function RoadmapClient({ projectId }: Props) {
   const addRoadmapTheme    = useProjectStore((s) => s.addRoadmapTheme);
   const updateRoadmapTheme = useProjectStore((s) => s.updateRoadmapTheme);
   const deleteRoadmapTheme = useProjectStore((s) => s.deleteRoadmapTheme);
-  const addRoadmapItem     = useProjectStore((s) => s.addRoadmapItem);
-  const updateRoadmapItem  = useProjectStore((s) => s.updateRoadmapItem);
-  const deleteRoadmapItem  = useProjectStore((s) => s.deleteRoadmapItem);
+  const addRoadmapItem       = useProjectStore((s) => s.addRoadmapItem);
+  const updateRoadmapItem    = useProjectStore((s) => s.updateRoadmapItem);
+  const deleteRoadmapItem    = useProjectStore((s) => s.deleteRoadmapItem);
+  const reorderRoadmapPhases = useProjectStore((s) => s.reorderRoadmapPhases);
+  const reorderRoadmapThemes = useProjectStore((s) => s.reorderRoadmapThemes);
+  const reorderRoadmapItems  = useProjectStore((s) => s.reorderRoadmapItems);
 
   const roadmapsByProject = useProjectStore((s) => s.roadmapsByProject);
   const phasesByProject   = useProjectStore((s) => s.phasesByProject);
@@ -261,6 +264,20 @@ export default function RoadmapClient({ projectId }: Props) {
               {phases.length} {t("roadmap.grid.phasesCount")} · {themes.length} {t("roadmap.grid.themesCount")}
             </span>
           )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* View document link */}
+          <a
+            href={`/projects/${projectId}/view#roadmap-section`}
+            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-gray-700/60 px-3 py-1.5 text-xs text-gray-400 hover:text-violet-300 hover:border-violet-700/50 transition-colors shrink-0"
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {t("roadmap.viewDocument")}
+          </a>
         </div>
       </div>
 
@@ -290,6 +307,9 @@ export default function RoadmapClient({ projectId }: Props) {
           onAddItem={(phaseId, themeId, title) => { if (currentRoadmapId) addRoadmapItem(realProjectId, currentRoadmapId, phaseId, themeId, title); }}
           onUpdateItem={(itemId, patch) => updateRoadmapItem(realProjectId, itemId, patch)}
           onDeleteItem={(itemId) => deleteRoadmapItem(realProjectId, itemId)}
+          onReorderPhases={(ids) => { if (currentRoadmapId) reorderRoadmapPhases(realProjectId, currentRoadmapId, ids); }}
+          onReorderThemes={(ids) => { if (currentRoadmapId) reorderRoadmapThemes(realProjectId, currentRoadmapId, ids); }}
+          onReorderItems={(phaseId, themeId, ids) => reorderRoadmapItems(realProjectId, phaseId, themeId, ids)}
         />
       </div>
 
