@@ -252,8 +252,8 @@ function SortablePhaseHeader({
         onUpdate={onUpdate}
         onDelete={onDelete}
         t={t}
-        dragListeners={listeners as Record<string, unknown>}
-        dragAttributes={attributes as Record<string, unknown>}
+        dragListeners={listeners as unknown as Record<string, unknown>}
+        dragAttributes={attributes as unknown as Record<string, unknown>}
       />
     </div>
   );
@@ -282,8 +282,8 @@ function SortableItemWrapper({
         item={item}
         onUpdate={onUpdate}
         onDelete={onDelete}
-        dragHandleListeners={listeners as Record<string, unknown>}
-        dragHandleAttributes={attributes as Record<string, unknown>}
+        dragHandleListeners={listeners as unknown as Record<string, unknown>}
+        dragHandleAttributes={attributes as unknown as Record<string, unknown>}
       />
     </div>
   );
