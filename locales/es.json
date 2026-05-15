@@ -2789,6 +2789,12 @@
     "navLabel": "Roadmap",
     "openManager": "Abrir en el gestor",
     "viewDocument": "Ver documento",
+    "filter": {
+      "label": "Filtros",
+      "byStatus": "Estado",
+      "byTag": "Tipo",
+      "clear": "Limpiar filtros"
+    },
     "empty": {
       "title": "Aún no hay fases creadas",
       "subtitle": "Crea la primera fase de tu roadmap — Alpha, Beta, v1.0 o cualquier hito que tenga sentido para tu juego."

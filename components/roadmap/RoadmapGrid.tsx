@@ -69,7 +69,7 @@ function GripIcon({ className = "" }: { className?: string }) {
 // ─── PhaseHeaderCell ──────────────────────────────────────────────────────────
 
 function PhaseHeaderCell({
-  phase, onUpdate, onDelete, t, dragListeners, dragAttributes,
+  phase, onUpdate, onDelete, t, dragListeners, dragAttributes, progress,
 }: {
   phase: RoadmapPhase;
   onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
@@ -77,6 +77,7 @@ function PhaseHeaderCell({
   t: (key: string) => string;
   dragListeners?: Record<string, unknown>;
   dragAttributes?: Record<string, unknown>;
+  progress?: { done: number; total: number };
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -109,6 +110,23 @@ function PhaseHeaderCell({
         </div>
         {phase.headerType !== "title" && phase.name && (
           <span className="text-[11px] text-gray-500 pl-4 truncate w-full">{phase.name}</span>
+        )}
+        {progress && progress.total > 0 && (
+          <div className="flex items-center gap-1.5 w-full pl-4 mt-0.5">
+            <div className="flex-1 h-1 rounded-full bg-gray-700/60 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  progress.done === progress.total && progress.total > 0
+                    ? "bg-emerald-400"
+                    : "bg-sky-500"
+                }`}
+                style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">
+              {progress.done}/{progress.total}
+            </span>
+          </div>
         )}
       </button>
 
@@ -230,12 +248,13 @@ function PhaseHeaderCell({
 // ─── SortablePhaseHeader ──────────────────────────────────────────────────────
 
 function SortablePhaseHeader({
-  phase, onUpdate, onDelete, t,
+  phase, onUpdate, onDelete, t, progress,
 }: {
   phase: RoadmapPhase;
   onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
   onDelete: () => void;
   t: (k: string) => string;
+  progress?: { done: number; total: number };
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: phase.id,
@@ -252,6 +271,7 @@ function SortablePhaseHeader({
         onUpdate={onUpdate}
         onDelete={onDelete}
         t={t}
+        progress={progress}
         dragListeners={listeners as unknown as Record<string, unknown>}
         dragAttributes={attributes as unknown as Record<string, unknown>}
       />
@@ -448,6 +468,7 @@ interface Props {
   phases: RoadmapPhase[];
   themes: RoadmapTheme[];
   items: RoadmapItem[];
+  phaseProgress?: Record<string, { done: number; total: number }>;
   onAddPhase: (name: string) => void;
   onUpdatePhase: (phaseId: string, patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
   onDeletePhase: (phaseId: string) => void;
@@ -465,7 +486,7 @@ interface Props {
 // ─── Main Grid ────────────────────────────────────────────────────────────────
 
 export default function RoadmapGrid({
-  phases, themes, items,
+  phases, themes, items, phaseProgress,
   onAddPhase, onUpdatePhase, onDeletePhase,
   onAddTheme, onUpdateTheme, onDeleteTheme,
   onAddItem, onUpdateItem, onDeleteItem,
@@ -593,6 +614,7 @@ export default function RoadmapGrid({
                   onUpdate={(patch) => onUpdatePhase(phase.id, patch)}
                   onDelete={() => onDeletePhase(phase.id)}
                   t={t}
+                  progress={phaseProgress?.[phase.id]}
                 />
               ))}
             </SortableContext>

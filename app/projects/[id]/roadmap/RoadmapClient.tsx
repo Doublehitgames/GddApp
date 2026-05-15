@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import RoadmapGrid from "@/components/roadmap/RoadmapGrid";
 import { useI18n } from "@/lib/i18n/provider";
+import { ITEM_TAGS, ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
+import type { ItemStatus, RoadmapItemTag } from "@/lib/roadmap/types";
 
 interface Props { projectId: string; }
 
@@ -53,6 +55,28 @@ export default function RoadmapClient({ projectId }: Props) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const autoInitRef = useRef(false);
 
+  // ── Filter state ──────────────────────────────────────────────────────────
+  const [showFilters, setShowFilters]       = useState(false);
+  const [filterStatuses, setFilterStatuses] = useState<ItemStatus[]>([]);
+  const [filterTags, setFilterTags]         = useState<RoadmapItemTag[]>([]);
+
+  const activeFilterCount = filterStatuses.length + filterTags.length;
+
+  function toggleStatus(s: ItemStatus) {
+    setFilterStatuses((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+  }
+  function toggleTag(tag: RoadmapItemTag) {
+    setFilterTags((prev) =>
+      prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]
+    );
+  }
+  function clearFilters() {
+    setFilterStatuses([]);
+    setFilterTags([]);
+  }
+
   const roadmaps        = useMemo(() => getRoadmaps(realProjectId), [getRoadmaps, realProjectId, roadmapsByProject]);
   const activeRoadmapId = useMemo(() => getActiveRoadmapId(realProjectId), [getActiveRoadmapId, realProjectId, roadmapsByProject]);
 
@@ -95,6 +119,24 @@ export default function RoadmapClient({ projectId }: Props) {
     () => currentRoadmapId ? getRoadmapItems(realProjectId, currentRoadmapId) : [],
     [getRoadmapItems, realProjectId, currentRoadmapId, itemsByProject],
   );
+
+  // Filtered items — used for grid display
+  const filteredItems = useMemo(() => {
+    let result = items;
+    if (filterStatuses.length > 0) result = result.filter((i) => filterStatuses.includes(i.status));
+    if (filterTags.length > 0)     result = result.filter((i) => !!i.tag && filterTags.includes(i.tag));
+    return result;
+  }, [items, filterStatuses, filterTags]);
+
+  // Phase progress — always computed from unfiltered items
+  const phaseProgress = useMemo(() => {
+    const map: Record<string, { done: number; total: number }> = {};
+    for (const phase of phases) {
+      const pi = items.filter((i) => i.phaseId === phase.id);
+      map[phase.id] = { done: pi.filter((i) => i.status === "done").length, total: pi.length };
+    }
+    return map;
+  }, [items, phases]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -268,6 +310,27 @@ export default function RoadmapClient({ projectId }: Props) {
           {/* Spacer */}
           <div className="flex-1" />
 
+          {/* Filter toggle */}
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            className={`relative flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors shrink-0 ${
+              showFilters || activeFilterCount > 0
+                ? "border-violet-600/60 bg-violet-950/40 text-violet-300"
+                : "border-gray-700/60 text-gray-400 hover:text-gray-300 hover:border-gray-600"
+            }`}
+          >
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            {t("roadmap.filter.label")}
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
           {/* View document link */}
           <a
             href={`/projects/${projectId}/view#roadmap-section`}
@@ -280,6 +343,65 @@ export default function RoadmapClient({ projectId }: Props) {
           </a>
         </div>
       </div>
+
+      {/* Filter bar */}
+      {showFilters && (
+        <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-800 bg-gray-900/60 px-4 py-2.5">
+          {/* Status filters */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-gray-600 mr-0.5">{t("roadmap.filter.byStatus")}</span>
+            {(["planned", "in_progress", "done", "cut"] as ItemStatus[]).map((s) => {
+              const active = filterStatuses.includes(s);
+              const dotCls = { planned: "bg-slate-500", in_progress: "bg-sky-400", done: "bg-emerald-400", cut: "bg-rose-500" }[s];
+              const activeCls = { planned: "border-slate-600 bg-slate-800/60 text-slate-300", in_progress: "border-sky-700/60 bg-sky-950/50 text-sky-300", done: "border-emerald-700/60 bg-emerald-950/50 text-emerald-300", cut: "border-rose-700/40 bg-rose-950/30 text-rose-400" }[s];
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleStatus(s)}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${active ? activeCls : "border-gray-700/60 text-gray-600 hover:border-gray-600 hover:text-gray-400"}`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotCls}`} />
+                  {t("roadmap.status." + s)}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Separator */}
+          <div className="hidden sm:block h-4 w-px bg-gray-800" />
+
+          {/* Tag filters */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-gray-600 mr-0.5">{t("roadmap.filter.byTag")}</span>
+            {ITEM_TAGS.map((tag) => {
+              const cfg = ITEM_TAG_CONFIG[tag];
+              const active = filterTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`rounded border px-2 py-0.5 text-[11px] font-bold transition-colors ${active ? cfg.style : "border-gray-700/60 text-gray-600 hover:border-gray-600 hover:text-gray-400"}`}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Clear */}
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="ml-auto text-xs text-gray-600 hover:text-rose-400 transition-colors"
+            >
+              {t("roadmap.filter.clear")}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Archived banner */}
       {isReadOnly && (
@@ -297,7 +419,8 @@ export default function RoadmapClient({ projectId }: Props) {
           projectId={realProjectId}
           phases={phases}
           themes={themes}
-          items={items}
+          items={filteredItems}
+          phaseProgress={phaseProgress}
           onAddPhase={(name) => { if (currentRoadmapId) addRoadmapPhase(realProjectId, currentRoadmapId, name); }}
           onUpdatePhase={(phaseId, patch) => updateRoadmapPhase(realProjectId, phaseId, patch)}
           onDeletePhase={(phaseId) => deleteRoadmapPhase(realProjectId, phaseId)}
