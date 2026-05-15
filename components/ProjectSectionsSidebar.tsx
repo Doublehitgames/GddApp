@@ -74,9 +74,10 @@ import { CSS } from "@dnd-kit/utilities";
 
 interface Props {
   projectId: string;
+  projectSlug: string;
 }
 
-export default function ProjectSectionsSidebar({ projectId }: Props) {
+export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
   const { user, profile } = useAuthStore();
@@ -1571,6 +1572,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
           <SectionTree
             sections={project.sections || []}
             projectId={projectId}
+            projectSlug={projectSlug}
             reorderSections={reorderSections}
             sensors={sensors}
             searchTerm={searchTerm}
@@ -1770,6 +1772,7 @@ export default function ProjectSectionsSidebar({ projectId }: Props) {
 function SectionTree({
   sections,
   projectId,
+  projectSlug,
   reorderSections,
   sensors,
   searchTerm,
@@ -1782,6 +1785,7 @@ function SectionTree({
 }: {
   sections: any[];
   projectId: string;
+  projectSlug: string;
   reorderSections: any;
   sensors: any;
   searchTerm: string;
@@ -2039,6 +2043,7 @@ function SectionTree({
                 section={sec}
                 sections={sections}
                 projectId={projectId}
+                projectSlug={projectSlug}
                 searchTerm={searchTerm}
                 selectedTagFilters={selectedTagFilters}
                 selectedAddonFilters={selectedAddonFilters}
@@ -2070,6 +2075,7 @@ function SortableRootItem({
   section,
   sections,
   projectId,
+  projectSlug,
   searchTerm,
   selectedTagFilters,
   selectedAddonFilters,
@@ -2083,6 +2089,7 @@ function SortableRootItem({
   section: any;
   sections: any[];
   projectId: string;
+  projectSlug: string;
   searchTerm: string;
   selectedTagFilters: string[];
   selectedAddonFilters: string[];
@@ -2191,7 +2198,7 @@ function SortableRootItem({
   };
   const handleCardClick = () => {
     if (shouldBlockClickRef.current) return;
-    router.push(`/projects/${projectId}/sections/${toSlug(section.title ?? "")}`);
+    router.push(`/projects/${projectSlug}/sections/${toSlug(section.title ?? "")}`);
   };
 
   return (
@@ -2288,6 +2295,7 @@ function SortableRootItem({
               parentId={section.id}
               sections={sections}
               projectId={projectId}
+              projectSlug={projectSlug}
               searchTerm={searchTerm}
               selectedTagFilters={selectedTagFilters}
               selectedAddonFilters={selectedAddonFilters}
@@ -2347,6 +2355,7 @@ function SectionChildren({
   parentId,
   sections,
   projectId,
+  projectSlug,
   searchTerm,
   selectedTagFilters,
   selectedAddonFilters,
@@ -2359,6 +2368,7 @@ function SectionChildren({
   parentId: string;
   sections: any[];
   projectId: string;
+  projectSlug: string;
   searchTerm?: string;
   selectedTagFilters: string[];
   selectedAddonFilters: string[];
@@ -2424,6 +2434,7 @@ function SectionChildren({
             section={sec}
             sections={sections}
             projectId={projectId}
+            projectSlug={projectSlug}
             searchTerm={searchTerm || ""}
             selectedTagFilters={selectedTagFilters}
             selectedAddonFilters={selectedAddonFilters}

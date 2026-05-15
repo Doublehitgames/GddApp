@@ -326,7 +326,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 id="global-project-sections-sidebar"
                 className="lg:-ml-4 xl:-ml-5 lg:sticky lg:top-6 lg:self-start lg:h-[calc(100vh-6.5rem)]"
               >
-                <ProjectSectionsSidebar projectId={realProjectId} />
+                <ProjectSectionsSidebar projectId={realProjectId} projectSlug={projectId} />
               </div>
             )}
           </div>
@@ -343,7 +343,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
                 id="global-project-sections-sidebar"
                 className="absolute right-0 top-0 h-full w-full max-w-sm p-3"
               >
-                <ProjectSectionsSidebar projectId={realProjectId} />
+                <ProjectSectionsSidebar projectId={realProjectId} projectSlug={projectId} />
               </div>
             </div>
           )}
