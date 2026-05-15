@@ -405,25 +405,41 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
                   {t("roadmap.grid.themes")}
                 </span>
               </th>
-              {phases.map((phase) => (
-                <th key={phase.id} className="border-r border-gray-200 px-4 py-3 text-left align-top last:border-r-0 min-w-[160px]">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPhase(phase)}
-                    className="flex items-center gap-1.5 text-left group/phase w-full"
-                  >
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${PHASE_STATUS_DOT[phase.status]}`} />
-                    <span className="font-semibold text-gray-800 text-sm group-hover/phase:underline underline-offset-2">
-                      {phase.name}
-                    </span>
-                    {formatPhaseDate(phase.targetDate, phase.headerType) && (
-                      <span className="text-[11px] text-gray-400 font-normal">
-                        · {formatPhaseDate(phase.targetDate, phase.headerType)}
+              {phases.map((phase) => {
+                const phaseItems = items.filter((i) => i.phaseId === phase.id);
+                const done  = phaseItems.filter((i) => i.status === "done").length;
+                const total = phaseItems.length;
+                return (
+                  <th key={phase.id} className="border-r border-gray-200 px-4 py-3 text-left align-top last:border-r-0 min-w-[160px]">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPhase(phase)}
+                      className="flex items-center gap-1.5 text-left group/phase w-full"
+                    >
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${PHASE_STATUS_DOT[phase.status]}`} />
+                      <span className="font-semibold text-gray-800 text-sm group-hover/phase:underline underline-offset-2">
+                        {phase.name}
                       </span>
+                      {formatPhaseDate(phase.targetDate, phase.headerType) && (
+                        <span className="text-[11px] text-gray-400 font-normal">
+                          · {formatPhaseDate(phase.targetDate, phase.headerType)}
+                        </span>
+                      )}
+                    </button>
+                    {total > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1.5 pl-3.5">
+                        <div className="flex-1 h-1 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${done === total ? "bg-emerald-400" : "bg-sky-400"}`}
+                            style={{ width: `${Math.round((done / total) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">{done}/{total}</span>
+                      </div>
                     )}
-                  </button>
-                </th>
-              ))}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
