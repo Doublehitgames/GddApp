@@ -14,7 +14,7 @@ import { migrateLocalProjectsToSupabase } from "@/lib/supabase/projectSync";
  */
 export function useAuthInit() {
   const { initialize, user } = useAuthStore();
-  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig, refreshQuotaStatus, loadAgendaFromSupabase, loadKpiFromSupabase } = useProjectStore();
+  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig, refreshQuotaStatus, loadAgendaFromSupabase, loadKpiFromSupabase, loadRoadmapFromSupabase } = useProjectStore();
   const migratedRef = useRef(false);
 
   // Inicializa auth uma vez
@@ -36,6 +36,9 @@ export function useAuthInit() {
 
       // Carrega dados KPI do Supabase
       void loadKpiFromSupabase();
+
+      // Carrega dados do Roadmap do Supabase
+      void loadRoadmapFromSupabase();
 
       // Garante que o usuário tenha linha em profiles (evita quebra se profile foi apagado e auth mantido)
       const supabase = createClient();

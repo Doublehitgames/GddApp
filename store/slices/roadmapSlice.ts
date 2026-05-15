@@ -20,7 +20,8 @@ function scheduleSyncRoadmaps(projectId: string, get: StoreGet) {
   roadmapsSyncTimers[projectId] = setTimeout(async () => {
     const state = get();
     if (!state.userId) return;
-    // TODO: upsertRoadmaps in roadmapSync once Supabase table is added
+    const { upsertRoadmaps } = await import("@/lib/supabase/roadmapSync");
+    await upsertRoadmaps(state.userId, projectId, state.roadmapsByProject[projectId] ?? []);
   }, 2000);
 }
 
@@ -345,6 +346,6 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
       scheduleSyncItems(projectId, get);
     },
 
-    loadRoadmapFromSupabase: async () => {},
+    // loadRoadmapFromSupabase is implemented in persistenceSlice
   };
 }

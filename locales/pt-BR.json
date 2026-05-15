@@ -2830,6 +2830,7 @@
       "addDescription": "Adicionar descrição",
       "descriptionPlaceholder": "Descrição curta para players ou para o time...",
       "tagLabel": "Tipo",
+      "cycleStatus": "Clique para trocar o status",
       "public": "Público",
       "private": "Interno",
       "delete": "Excluir item"

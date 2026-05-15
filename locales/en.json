@@ -2830,6 +2830,7 @@
       "addDescription": "Add description",
       "descriptionPlaceholder": "Short description for players or the team...",
       "tagLabel": "Type",
+      "cycleStatus": "Click to cycle status",
       "public": "Public",
       "private": "Internal",
       "delete": "Delete item"

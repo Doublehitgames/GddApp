@@ -175,6 +175,98 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
       }
     },
 
+    loadRoadmapFromSupabase: async () => {
+      try {
+        const userId = (get() as ProjectStore & { userId?: string }).userId;
+        if (!userId) return;
+        const projectIds = get().projects.map((p: { id: string }) => p.id);
+        if (projectIds.length === 0) return;
+
+        const {
+          fetchRoadmaps, upsertRoadmaps,
+          fetchRoadmapPhases, upsertRoadmapPhases,
+          fetchRoadmapThemes, upsertRoadmapThemes,
+          fetchRoadmapItems, upsertRoadmapItems,
+        } = await import("@/lib/supabase/roadmapSync");
+        const {
+          persistRoadmaps, persistRoadmapPhases, persistRoadmapThemes, persistRoadmapItems,
+        } = await import("./storageHelpers");
+
+        const state = get() as ProjectStore & {
+          roadmapsByProject: Record<string, import("@/lib/roadmap/types").Roadmap[]>;
+          phasesByProject:   Record<string, import("@/lib/roadmap/types").RoadmapPhase[]>;
+          themesByProject:   Record<string, import("@/lib/roadmap/types").RoadmapTheme[]>;
+          itemsByProject:    Record<string, import("@/lib/roadmap/types").RoadmapItem[]>;
+        };
+
+        const roadmapUpdates: typeof state.roadmapsByProject = {};
+        const phaseUpdates:   typeof state.phasesByProject   = {};
+        const themeUpdates:   typeof state.themesByProject   = {};
+        const itemUpdates:    typeof state.itemsByProject     = {};
+
+        await Promise.all(
+          projectIds.map(async (projectId: string) => {
+            const [remoteRoadmaps, remotePhases, remoteThemes, remoteItems] = await Promise.all([
+              fetchRoadmaps(userId, projectId),
+              fetchRoadmapPhases(userId, projectId),
+              fetchRoadmapThemes(userId, projectId),
+              fetchRoadmapItems(userId, projectId),
+            ]);
+
+            // Roadmaps
+            if (remoteRoadmaps && remoteRoadmaps.length > 0) {
+              roadmapUpdates[projectId] = remoteRoadmaps;
+            } else {
+              const local = state.roadmapsByProject[projectId];
+              if (local && local.length > 0) void upsertRoadmaps(userId, projectId, local);
+            }
+            // Phases
+            if (remotePhases && remotePhases.length > 0) {
+              phaseUpdates[projectId] = remotePhases;
+            } else {
+              const local = state.phasesByProject[projectId];
+              if (local && local.length > 0) void upsertRoadmapPhases(userId, projectId, local);
+            }
+            // Themes
+            if (remoteThemes && remoteThemes.length > 0) {
+              themeUpdates[projectId] = remoteThemes;
+            } else {
+              const local = state.themesByProject[projectId];
+              if (local && local.length > 0) void upsertRoadmapThemes(userId, projectId, local);
+            }
+            // Items
+            if (remoteItems && remoteItems.length > 0) {
+              itemUpdates[projectId] = remoteItems;
+            } else {
+              const local = state.itemsByProject[projectId];
+              if (local && local.length > 0) void upsertRoadmapItems(userId, projectId, local);
+            }
+          })
+        );
+
+        const hasRoadmaps = Object.keys(roadmapUpdates).length > 0;
+        const hasPhases   = Object.keys(phaseUpdates).length > 0;
+        const hasThemes   = Object.keys(themeUpdates).length > 0;
+        const hasItems    = Object.keys(itemUpdates).length > 0;
+
+        if (hasRoadmaps || hasPhases || hasThemes || hasItems) {
+          const merged = {
+            ...(hasRoadmaps ? { roadmapsByProject: { ...state.roadmapsByProject, ...roadmapUpdates } } : {}),
+            ...(hasPhases   ? { phasesByProject:   { ...state.phasesByProject,   ...phaseUpdates   } } : {}),
+            ...(hasThemes   ? { themesByProject:   { ...state.themesByProject,   ...themeUpdates   } } : {}),
+            ...(hasItems    ? { itemsByProject:     { ...state.itemsByProject,    ...itemUpdates    } } : {}),
+          };
+          set(merged as Partial<ProjectStore>);
+          if (hasRoadmaps) persistRoadmaps({ ...state.roadmapsByProject, ...roadmapUpdates });
+          if (hasPhases)   persistRoadmapPhases({ ...state.phasesByProject, ...phaseUpdates });
+          if (hasThemes)   persistRoadmapThemes({ ...state.themesByProject, ...themeUpdates });
+          if (hasItems)    persistRoadmapItems({ ...state.itemsByProject, ...itemUpdates });
+        }
+      } catch (e) {
+        console.warn("[roadmapSync] loadRoadmapFromSupabase failed", e);
+      }
+    },
+
     loadKpiFromSupabase: async () => {
       try {
         const userId = (get() as ProjectStore & { userId?: string }).userId;
