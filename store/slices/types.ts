@@ -508,9 +508,12 @@ export interface ProjectStore {
   deleteRoadmapTheme: (projectId: string, themeId: string) => void;
   getRoadmapThemes: (projectId: string, roadmapId: string) => import("@/lib/roadmap/types").RoadmapTheme[];
   addRoadmapItem: (projectId: string, roadmapId: string, phaseId: string, themeId: string, title: string) => string;
-  updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<import("@/lib/roadmap/types").RoadmapItem, "title" | "description" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
+  updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<import("@/lib/roadmap/types").RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
   deleteRoadmapItem: (projectId: string, itemId: string) => void;
   getRoadmapItems: (projectId: string, roadmapId: string, phaseId?: string, themeId?: string) => import("@/lib/roadmap/types").RoadmapItem[];
+  reorderRoadmapPhases: (projectId: string, roadmapId: string, orderedIds: string[]) => void;
+  reorderRoadmapThemes: (projectId: string, roadmapId: string, orderedIds: string[]) => void;
+  reorderRoadmapItems: (projectId: string, phaseId: string, themeId: string, orderedIds: string[]) => void;
   loadRoadmapFromSupabase: () => Promise<void>;
 }
 
