@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter,
+  DndContext, DragEndEvent, DragStartEvent, DragOverlay,
+  PointerSensor, useSensor, useSensors, closestCenter,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy,
@@ -104,11 +106,11 @@ function PhaseHeaderCell({
   }, [open]);
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className="relative w-full h-full">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex flex-col items-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 hover:bg-gray-800/80 transition-colors text-left"
+        className="w-full h-full flex flex-col items-start justify-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 hover:bg-gray-800/80 transition-colors text-left"
       >
         <div className="flex items-center gap-2 w-full">
           <span className={`h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
@@ -122,23 +124,23 @@ function PhaseHeaderCell({
         {phase.headerType !== "title" && phase.name && (
           <span className="text-[11px] text-gray-500 pl-4 truncate w-full">{phase.name}</span>
         )}
-        {progress && progress.total > 0 && (
-          <div className="flex items-center gap-1.5 w-full pl-4 mt-0.5">
-            <div className="flex-1 h-1 rounded-full bg-gray-700/60 overflow-hidden">
+        <div className="flex items-center gap-1.5 w-full pl-4 mt-0.5">
+          <div className="flex-1 h-1 rounded-full bg-gray-700/40 overflow-hidden">
+            {progress && progress.total > 0 && (
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  progress.done === progress.total && progress.total > 0
-                    ? "bg-emerald-400"
-                    : "bg-sky-500"
+                  progress.done === progress.total ? "bg-emerald-400" : "bg-sky-500"
                 }`}
                 style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
               />
-            </div>
+            )}
+          </div>
+          {progress && progress.total > 0 && (
             <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">
               {progress.done}/{progress.total}
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </button>
 
       {/* Drag handle — top-right corner of header */}
@@ -353,6 +355,31 @@ function SortableItemWrapper({
   );
 }
 
+// ─── DroppableCell ────────────────────────────────────────────────────────────
+
+function DroppableCell({
+  phaseId, themeId, children,
+}: {
+  phaseId: string;
+  themeId: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `cell:${phaseId}:${themeId}`,
+    data: { type: "cell", phaseId, themeId },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/30 px-2 py-2 flex flex-col gap-1.5 min-h-[72px] transition-colors duration-150 ${
+        isOver ? "bg-violet-950/25 ring-1 ring-inset ring-violet-700/40 rounded-sm" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
 // ─── SortableThemeRow ─────────────────────────────────────────────────────────
 
 function SortableThemeRow({
@@ -370,7 +397,7 @@ function SortableThemeRow({
   onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
   onDeleteTheme: (themeId: string) => void;
   onAddItem: (phaseId: string, themeId: string, title: string) => void;
-  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
   onDeleteItem: (itemId: string) => void;
   editingThemeId: string | null;
   setEditingThemeId: (id: string | null) => void;
@@ -455,10 +482,7 @@ function SortableThemeRow({
         const isAddingHere = addingItem?.phaseId === phase.id && addingItem?.themeId === theme.id;
 
         return (
-          <div
-            key={phase.id}
-            className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/30 px-2 py-2 flex flex-col gap-1.5 min-h-[72px]`}
-          >
+          <DroppableCell key={phase.id} phaseId={phase.id} themeId={theme.id}>
             <SortableContext items={cellItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               {cellItems.map((item) => (
                 <SortableItemWrapper
@@ -498,7 +522,7 @@ function SortableThemeRow({
                 </svg>
               </div>
             )}
-          </div>
+          </DroppableCell>
         );
       })}
     </div>
@@ -520,7 +544,7 @@ interface Props {
   onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
   onDeleteTheme: (themeId: string) => void;
   onAddItem: (phaseId: string, themeId: string, title: string) => void;
-  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
   onDeleteItem: (itemId: string) => void;
   onReorderPhases: (orderedIds: string[]) => void;
   onReorderThemes: (orderedIds: string[]) => void;
@@ -545,6 +569,9 @@ export default function RoadmapGrid({
   const [addingItem, setAddingItem]   = useState<{ phaseId: string; themeId: string } | null>(null);
   const [itemDraft, setItemDraft]     = useState("");
   const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
+  const [activeItemId, setActiveItemId]     = useState<string | null>(null);
+
+  const activeItem = activeItemId ? items.find((i) => i.id === activeItemId) ?? null : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -570,7 +597,14 @@ export default function RoadmapGrid({
     setAddingItem(null);
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    if (event.active.data.current?.type === "item") {
+      setActiveItemId(String(event.active.id));
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveItemId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const type = active.data.current?.type as string;
@@ -585,12 +619,31 @@ export default function RoadmapGrid({
       if (oldIdx !== newIdx) onReorderThemes(arrayMove(themes, oldIdx, newIdx).map((t) => t.id));
     } else if (type === "item") {
       const { phaseId, themeId } = active.data.current as { phaseId: string; themeId: string };
-      // Only reorder within same cell
-      if (over.data.current?.phaseId !== phaseId || over.data.current?.themeId !== themeId) return;
-      const cellItems = items.filter((i) => i.phaseId === phaseId && i.themeId === themeId);
-      const oldIdx = cellItems.findIndex((i) => i.id === active.id);
-      const newIdx = cellItems.findIndex((i) => i.id === over.id);
-      if (oldIdx !== newIdx) onReorderItems(phaseId, themeId, arrayMove(cellItems, oldIdx, newIdx).map((i) => i.id));
+
+      // Determine target cell from the drop target
+      let toPhaseId = phaseId;
+      let toThemeId = themeId;
+      if (over.data.current?.type === "item") {
+        toPhaseId = over.data.current.phaseId as string;
+        toThemeId = over.data.current.themeId as string;
+      } else if (over.data.current?.type === "cell") {
+        toPhaseId = over.data.current.phaseId as string;
+        toThemeId = over.data.current.themeId as string;
+      } else {
+        return;
+      }
+
+      if (toPhaseId === phaseId && toThemeId === themeId) {
+        // Same cell → reorder
+        const cellItems = items.filter((i) => i.phaseId === phaseId && i.themeId === themeId);
+        const oldIdx = cellItems.findIndex((i) => i.id === active.id);
+        const newIdx = cellItems.findIndex((i) => i.id === over.id);
+        if (oldIdx !== newIdx) onReorderItems(phaseId, themeId, arrayMove(cellItems, oldIdx, newIdx).map((i) => i.id));
+      } else {
+        // Different cell → move item there, place at end
+        const targetItems = items.filter((i) => i.phaseId === toPhaseId && i.themeId === toThemeId);
+        onUpdateItem(String(active.id), { phaseId: toPhaseId, themeId: toThemeId, order: targetItems.length });
+      }
     }
   }
 
@@ -638,7 +691,7 @@ export default function RoadmapGrid({
 
   // ── Grid ───────────────────────────────────────────────────────────────────
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-full overflow-auto rounded-xl border border-gray-800/60">
         <div className="min-w-max">
 
@@ -757,6 +810,15 @@ export default function RoadmapGrid({
 
         </div>
       </div>
+
+      {/* Drag overlay — floating chip while dragging across columns */}
+      <DragOverlay dropAnimation={null}>
+        {activeItem && (
+          <div className={`${PHASE_COL_W} rotate-1 opacity-90 shadow-2xl`}>
+            <ItemChip item={activeItem} onUpdate={() => {}} onDelete={() => {}} />
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
