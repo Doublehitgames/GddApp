@@ -306,7 +306,7 @@ export function createRoadmapSlice(set: StoreSet, get: StoreGet) {
       return id;
     },
 
-    updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => {
+    updateRoadmapItem: (projectId: string, itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "thumbUrl" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => {
       sp(set, get, (s) => ({
         itemsByProject: {
           ...s.itemsByProject,

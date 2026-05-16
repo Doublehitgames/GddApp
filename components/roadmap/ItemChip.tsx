@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   item: RoadmapItem;
-  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
+  onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "thumbUrl" | "tag" | "status" | "isPublic">>) => void;
   onDelete: () => void;
   /** DnD drag handle — passed from SortableItemWrapper in RoadmapGrid */
   dragHandleListeners?: Record<string, unknown>;
@@ -55,6 +55,13 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
     e.stopPropagation();
     const idx = STATUS_CYCLE.indexOf(item.status);
     onUpdate({ status: STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length] });
+  }
+
+  async function handlePickThumb() {
+    const { openGoogleDriveImagePicker, driveFileIdToImageUrl } = await import("@/lib/googleDrivePicker");
+    const picked = await openGoogleDriveImagePicker();
+    if (!picked?.id) return;
+    onUpdate({ thumbUrl: driveFileIdToImageUrl(picked.id) });
   }
 
   return (
@@ -108,70 +115,110 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 w-[640px] rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
 
-          {/* Title */}
-          <CommitTextInput
-            value={item.title}
-            onCommit={(v) => onUpdate({ title: v })}
-            autoFocus
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
-            placeholder={t("roadmap.item.titlePlaceholder")}
-          />
+          {/* Top row: thumb (left) + title/status/tags (right) */}
+          <div className="flex gap-3">
 
-          {/* Status buttons */}
-          <div className="flex flex-wrap gap-1">
-            {STATUS_CYCLE.map((s) => {
-              const ss = STATUS_STYLES[s];
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onUpdate({ status: s })}
-                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    item.status === s ? ss.chip + " " + ss.text.split(" ")[0] : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${ss.dot}`} />
-                  {t("roadmap.status." + s)}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tag picker */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-              {t("roadmap.item.tagLabel")}
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {/* No tag */}
-              <button
-                type="button"
-                onClick={() => onUpdate({ tag: undefined })}
-                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-                  !item.tag
-                    ? "border-gray-500 bg-gray-700 text-gray-200"
-                    : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
-                }`}
-              >
-                —
-              </button>
-              {ITEM_TAGS.map((tag) => {
-                const cfg = ITEM_TAG_CONFIG[tag];
-                return (
+            {/* Left: Thumbnail */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handlePickThumb}
+              onKeyDown={(e) => e.key === "Enter" && handlePickThumb()}
+              title={item.thumbUrl ? t("roadmap.item.changeThumb") : t("roadmap.item.addThumb")}
+              className="relative shrink-0 w-28 h-28 rounded-lg border border-gray-700 bg-gray-800/50 overflow-hidden flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-colors group/thumb"
+            >
+              {item.thumbUrl ? (
+                <>
+                  <img src={item.thumbUrl} alt="" className="w-full h-full object-cover" />
                   <button
-                    key={tag}
                     type="button"
-                    onClick={() => onUpdate({ tag: item.tag === tag ? undefined : tag })}
-                    className={`rounded border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
-                      item.tag === tag ? cfg.style : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                    onClick={(e) => { e.stopPropagation(); onUpdate({ thumbUrl: undefined }); }}
+                    className="absolute top-1 right-1 rounded-full bg-gray-900/80 p-0.5 text-gray-400 hover:text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                    title={t("roadmap.item.removeThumb")}
+                  >
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <svg className="h-6 w-6 text-gray-600 group-hover/thumb:text-gray-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-[10px] text-gray-600 group-hover/thumb:text-gray-400 text-center leading-tight px-2 transition-colors">
+                    {t("roadmap.item.addThumb")}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Right: title + status + tags */}
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+              <CommitTextInput
+                value={item.title}
+                onCommit={(v) => onUpdate({ title: v })}
+                autoFocus
+                className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
+                placeholder={t("roadmap.item.titlePlaceholder")}
+              />
+
+              {/* Status buttons */}
+              <div className="flex flex-wrap gap-1">
+                {STATUS_CYCLE.map((s) => {
+                  const ss = STATUS_STYLES[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onUpdate({ status: s })}
+                      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                        item.status === s ? ss.chip + " " + ss.text.split(" ")[0] : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                      }`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${ss.dot}`} />
+                      {t("roadmap.status." + s)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Tag picker */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                  {t("roadmap.item.tagLabel")}
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ tag: undefined })}
+                    className={`rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                      !item.tag
+                        ? "border-gray-500 bg-gray-700 text-gray-200"
+                        : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
                     }`}
                   >
-                    {cfg.label}
+                    —
                   </button>
-                );
-              })}
-            </div>
-          </div>
+                  {ITEM_TAGS.map((tag) => {
+                    const cfg = ITEM_TAG_CONFIG[tag];
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => onUpdate({ tag: item.tag === tag ? undefined : tag })}
+                        className={`rounded border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
+                          item.tag === tag ? cfg.style : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                        }`}
+                      >
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>{/* end tag picker */}
+            </div>{/* end right column */}
+          </div>{/* end top row */}
 
           {/* Description */}
           <div className="flex flex-col gap-1">

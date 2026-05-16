@@ -72,6 +72,7 @@ export type RoadmapItem = {
   themeId: string;
   title: string;
   description?: string;
+  thumbUrl?: string;
   tag?: RoadmapItemTag;
   status: ItemStatus;
   isPublic: boolean;

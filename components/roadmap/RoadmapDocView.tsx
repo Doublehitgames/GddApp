@@ -109,7 +109,17 @@ function ItemDetailModal({ item, onClose, t }: { item: RoadmapItem; onClose: () 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div ref={ref} className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white shadow-2xl p-5 flex flex-col gap-4">
+      <div ref={ref} className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden flex flex-col">
+        {/* Thumbnail */}
+        {item.thumbUrl && (
+          <img
+            src={item.thumbUrl}
+            alt=""
+            className="w-full max-h-72 object-contain bg-gray-50"
+          />
+        )}
+
+        <div className={`flex flex-col gap-4 px-5 pb-5 ${item.thumbUrl ? "pt-4" : "pt-5"}`}>
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -156,6 +166,7 @@ function ItemDetailModal({ item, onClose, t }: { item: RoadmapItem; onClose: () 
             <p className="text-xs text-gray-400 italic">{t("roadmap.item.descriptionPlaceholder")}</p>
           )}
         </div>
+        </div>{/* end inner padding div */}
       </div>
     </div>
   );

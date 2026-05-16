@@ -397,7 +397,7 @@ function SortableThemeRow({
   onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
   onDeleteTheme: (themeId: string) => void;
   onAddItem: (phaseId: string, themeId: string, title: string) => void;
-  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "thumbUrl" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
   onDeleteItem: (itemId: string) => void;
   editingThemeId: string | null;
   setEditingThemeId: (id: string | null) => void;
@@ -544,7 +544,7 @@ interface Props {
   onUpdateTheme: (themeId: string, patch: Partial<Pick<RoadmapTheme, "name" | "color">>) => void;
   onDeleteTheme: (themeId: string) => void;
   onAddItem: (phaseId: string, themeId: string, title: string) => void;
-  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
+  onUpdateItem: (itemId: string, patch: Partial<Pick<RoadmapItem, "title" | "description" | "thumbUrl" | "tag" | "status" | "isPublic" | "order" | "phaseId" | "themeId">>) => void;
   onDeleteItem: (itemId: string) => void;
   onReorderPhases: (orderedIds: string[]) => void;
   onReorderThemes: (orderedIds: string[]) => void;
