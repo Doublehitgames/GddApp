@@ -36,8 +36,8 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
     const handler = (e: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mouseup", handler);
+    return () => document.removeEventListener("mouseup", handler);
   }, [open]);
 
   function cycleStatus(e: React.MouseEvent) {

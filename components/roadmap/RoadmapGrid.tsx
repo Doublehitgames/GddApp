@@ -88,8 +88,8 @@ function PhaseHeaderCell({
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mouseup", handler);
+    return () => document.removeEventListener("mouseup", handler);
   }, [open]);
 
   return (
