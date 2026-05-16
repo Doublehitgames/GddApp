@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RoadmapItem, ItemStatus, RoadmapItemTag } from "@/lib/roadmap/types";
 import { ITEM_TAGS, ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
 import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
+import { MarkdownContent } from "@/components/common/MarkdownContent";
 import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
@@ -27,6 +28,7 @@ export const STATUS_STYLES: Record<ItemStatus, { dot: string; chip: string; text
 export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners, dragHandleAttributes }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [descTab, setDescTab] = useState<"write" | "preview">("write");
   const popoverRef = useRef<HTMLDivElement>(null);
   const style = STATUS_STYLES[item.status];
   const tagCfg = item.tag ? ITEM_TAG_CONFIG[item.tag] : null;
@@ -102,7 +104,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
 
       {/* Detail popover */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-80 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 w-[640px] rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
 
           {/* Title */}
           <CommitTextInput
@@ -170,13 +172,46 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
           </div>
 
           {/* Description */}
-          <CommitTextarea
-            value={item.description ?? ""}
-            onCommit={(v) => onUpdate({ description: v || undefined })}
-            rows={5}
-            placeholder={t("roadmap.item.descriptionPlaceholder")}
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
-          />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                {t("roadmap.item.descriptionLabel")}
+              </label>
+              <div className="flex rounded-md overflow-hidden border border-gray-700 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setDescTab("write")}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  {t("common.tabWrite")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescTab("preview")}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  {t("common.tabPreview")}
+                </button>
+              </div>
+            </div>
+            {descTab === "write" ? (
+              <CommitTextarea
+                value={item.description ?? ""}
+                onCommit={(v) => onUpdate({ description: v || undefined })}
+                rows={5}
+                placeholder={t("roadmap.item.descriptionPlaceholder")}
+                className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
+              />
+            ) : (
+              <div className="min-h-[80px] rounded-lg border border-gray-700 bg-gray-800/50 px-2.5 py-1.5">
+                {item.description ? (
+                  <MarkdownContent theme="dark">{item.description}</MarkdownContent>
+                ) : (
+                  <p className="text-xs text-gray-600 italic">{t("roadmap.item.descriptionPlaceholder")}</p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Footer: public toggle + delete */}
           <div className="flex items-center justify-between pt-0.5">

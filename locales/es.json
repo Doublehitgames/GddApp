@@ -239,7 +239,9 @@
     "cancel": "Cancelar",
     "loading": "Cargando...",
     "search": "Buscar",
-    "back": "Volver"
+    "back": "Volver",
+    "tabWrite": "Editar",
+    "tabPreview": "Vista previa"
   },
   "pageTypes": {
     "sidebar": {
@@ -2807,6 +2809,7 @@
     },
     "phase": {
       "namePlaceholder": "Nombre de la fase",
+      "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "Describe el objetivo de esta fase...",
       "target": "Meta",
       "targetDate": "Fecha objetivo",
@@ -2828,6 +2831,7 @@
       "newPlaceholder": "Nombre del ítem... (Enter para confirmar)",
       "titlePlaceholder": "Título del ítem",
       "addDescription": "Agregar descripción",
+      "descriptionLabel": "Descripción",
       "descriptionPlaceholder": "Descripción corta para jugadores o el equipo...",
       "tagLabel": "Tipo",
       "cycleStatus": "Clic para cambiar el estado",

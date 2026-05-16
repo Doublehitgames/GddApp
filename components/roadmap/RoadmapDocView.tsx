@@ -6,6 +6,7 @@ import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import type { PhaseStatus, ItemStatus, RoadmapItem, RoadmapPhase, RoadmapItemTag } from "@/lib/roadmap/types";
 import { ITEM_TAG_CONFIG, ITEM_TAGS } from "@/lib/roadmap/types";
+import { MarkdownContent } from "@/components/common/MarkdownContent";
 
 const ITEM_STATUS_DOT: Record<ItemStatus, string> = {
   planned:     "bg-slate-400",
@@ -148,15 +149,13 @@ function ItemDetailModal({ item, onClose, t }: { item: RoadmapItem; onClose: () 
         </div>
 
         {/* Description */}
-        {item.description ? (
-          <p className="text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3">
-            {item.description}
-          </p>
-        ) : (
-          <p className="text-xs text-gray-400 italic border-t border-gray-100 pt-3">
-            {t("roadmap.item.descriptionPlaceholder")}
-          </p>
-        )}
+        <div className="border-t border-gray-100 pt-3">
+          {item.description ? (
+            <MarkdownContent theme="light">{item.description}</MarkdownContent>
+          ) : (
+            <p className="text-xs text-gray-400 italic">{t("roadmap.item.descriptionPlaceholder")}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -204,15 +203,13 @@ function PhaseDetailModal({ phase, onClose, t }: { phase: RoadmapPhase; onClose:
         </div>
 
         {/* Description */}
-        {phase.description ? (
-          <p className="text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3">
-            {phase.description}
-          </p>
-        ) : (
-          <p className="text-xs text-gray-400 italic border-t border-gray-100 pt-3">
-            {t("roadmap.phase.descriptionPlaceholder")}
-          </p>
-        )}
+        <div className="border-t border-gray-100 pt-3">
+          {phase.description ? (
+            <MarkdownContent theme="light">{phase.description}</MarkdownContent>
+          ) : (
+            <p className="text-xs text-gray-400 italic">{t("roadmap.phase.descriptionPlaceholder")}</p>
+          )}
+        </div>
       </div>
     </div>
   );

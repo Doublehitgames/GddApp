@@ -239,7 +239,9 @@
     "cancel": "Cancel",
     "loading": "Loading...",
     "search": "Search",
-    "back": "Back"
+    "back": "Back",
+    "tabWrite": "Write",
+    "tabPreview": "Preview"
   },
   "pageTypes": {
     "sidebar": {
@@ -2807,6 +2809,7 @@
     },
     "phase": {
       "namePlaceholder": "Phase name",
+      "descriptionLabel": "Description",
       "descriptionPlaceholder": "Describe the goal of this phase...",
       "target": "Target",
       "targetDate": "Target date",
@@ -2828,6 +2831,7 @@
       "newPlaceholder": "Item name... (Enter to confirm)",
       "titlePlaceholder": "Item title",
       "addDescription": "Add description",
+      "descriptionLabel": "Description",
       "descriptionPlaceholder": "Short description for players or the team...",
       "tagLabel": "Type",
       "cycleStatus": "Click to cycle status",

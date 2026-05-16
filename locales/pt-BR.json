@@ -239,7 +239,9 @@
     "cancel": "Cancelar",
     "loading": "Carregando...",
     "search": "Buscar",
-    "back": "Voltar"
+    "back": "Voltar",
+    "tabWrite": "Editar",
+    "tabPreview": "Preview"
   },
   "pageTypes": {
     "sidebar": {
@@ -2807,6 +2809,7 @@
     },
     "phase": {
       "namePlaceholder": "Nome da fase",
+      "descriptionLabel": "Descrição",
       "descriptionPlaceholder": "Descreva o objetivo desta fase...",
       "target": "Meta",
       "targetDate": "Data-alvo",
@@ -2828,6 +2831,7 @@
       "newPlaceholder": "Nome do item... (Enter para confirmar)",
       "titlePlaceholder": "Título do item",
       "addDescription": "Adicionar descrição",
+      "descriptionLabel": "Descrição",
       "descriptionPlaceholder": "Descrição curta para players ou para o time...",
       "tagLabel": "Tipo",
       "cycleStatus": "Clique para trocar o status",

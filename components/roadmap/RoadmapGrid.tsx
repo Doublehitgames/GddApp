@@ -16,6 +16,7 @@ import type {
 import { THEME_COLORS } from "@/lib/roadmap/types";
 import ItemChip from "./ItemChip";
 import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
+import { MarkdownContent } from "@/components/common/MarkdownContent";
 import { useI18n } from "@/lib/i18n/provider";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ function PhaseHeaderCell({
   progress?: { done: number; total: number };
 }) {
   const [open, setOpen] = useState(false);
+  const [descTab, setDescTab] = useState<"write" | "preview">("write");
   const ref = useRef<HTMLDivElement>(null);
   const st = PHASE_STATUS_STYLES[phase.status];
 
@@ -145,7 +147,7 @@ function PhaseHeaderCell({
       )}
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 w-[576px] rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
           {/* Name */}
           <CommitTextInput
             value={phase.name}
@@ -156,13 +158,46 @@ function PhaseHeaderCell({
           />
 
           {/* Description */}
-          <CommitTextarea
-            value={phase.description ?? ""}
-            onCommit={(v) => onUpdate({ description: v || undefined })}
-            rows={5}
-            placeholder={t("roadmap.phase.descriptionPlaceholder")}
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
-          />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                {t("roadmap.phase.descriptionLabel")}
+              </label>
+              <div className="flex rounded-md overflow-hidden border border-gray-700 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setDescTab("write")}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  {t("common.tabWrite")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDescTab("preview")}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  {t("common.tabPreview")}
+                </button>
+              </div>
+            </div>
+            {descTab === "write" ? (
+              <CommitTextarea
+                value={phase.description ?? ""}
+                onCommit={(v) => onUpdate({ description: v || undefined })}
+                rows={5}
+                placeholder={t("roadmap.phase.descriptionPlaceholder")}
+                className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
+              />
+            ) : (
+              <div className="min-h-[80px] rounded-lg border border-gray-700 bg-gray-800/50 px-2.5 py-1.5">
+                {phase.description ? (
+                  <MarkdownContent theme="dark">{phase.description}</MarkdownContent>
+                ) : (
+                  <p className="text-xs text-gray-600 italic">{t("roadmap.phase.descriptionPlaceholder")}</p>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Header type */}
           <div className="flex flex-col gap-1">
