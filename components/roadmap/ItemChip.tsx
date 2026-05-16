@@ -35,11 +35,20 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
+    let mousedownInside = false;
+    const onMouseDown = (e: MouseEvent) => {
+      mousedownInside = !!popoverRef.current?.contains(e.target as Node);
+    };
+    const onMouseUp = (e: MouseEvent) => {
+      if (mousedownInside) return;
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mouseup", handler);
-    return () => document.removeEventListener("mouseup", handler);
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
   }, [open]);
 
   function cycleStatus(e: React.MouseEvent) {
