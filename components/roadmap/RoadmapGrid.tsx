@@ -84,6 +84,7 @@ function PhaseHeaderCell({
 }) {
   const [open, setOpen] = useState(false);
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const st = PHASE_STATUS_STYLES[phase.status];
 
@@ -276,7 +277,7 @@ function PhaseHeaderCell({
             </button>
             <button
               type="button"
-              onClick={() => { onDelete(); setOpen(false); }}
+              onClick={() => setConfirmDelete(true)}
               className="flex items-center gap-1 text-xs text-gray-600 hover:text-rose-400 transition-colors"
             >
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,6 +287,44 @@ function PhaseHeaderCell({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Delete confirmation popup */}
+      {confirmDelete && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40"
+            onClick={() => setConfirmDelete(false)}
+          />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[280px] max-w-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-gray-200 mb-1">
+              {t("roadmap.phase.deleteConfirmQuestion")}{" "}
+              <strong className="text-white">{phase.name}</strong>?
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              {t("roadmap.phase.deleteWarning")}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                onClick={() => setConfirmDelete(false)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60 transition-colors"
+                onClick={() => { setConfirmDelete(false); onDelete(); setOpen(false); }}
+              >
+                {t("roadmap.phase.delete")}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
@@ -412,6 +451,7 @@ function SortableThemeRow({
     id: theme.id,
     data: { type: "theme" },
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const cs = THEME_COLOR_STYLES[theme.color];
 
   return (
@@ -465,7 +505,7 @@ function SortableThemeRow({
           ))}
           <button
             type="button"
-            onClick={() => onDeleteTheme(theme.id)}
+            onClick={() => setConfirmDelete(true)}
             className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
             title={t("roadmap.theme.delete")}
           >
@@ -525,6 +565,44 @@ function SortableThemeRow({
           </DroppableCell>
         );
       })}
+
+      {/* Delete theme confirmation popup */}
+      {confirmDelete && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40"
+            onClick={() => setConfirmDelete(false)}
+          />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[280px] max-w-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-gray-200 mb-1">
+              {t("roadmap.theme.deleteConfirmQuestion")}{" "}
+              <strong className="text-white">{theme.name}</strong>?
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              {t("roadmap.theme.deleteWarning")}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                onClick={() => setConfirmDelete(false)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60 transition-colors"
+                onClick={() => { setConfirmDelete(false); onDeleteTheme(theme.id); }}
+              >
+                {t("roadmap.theme.delete")}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

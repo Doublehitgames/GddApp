@@ -241,7 +241,8 @@
     "search": "Search",
     "back": "Back",
     "tabWrite": "Write",
-    "tabPreview": "Preview"
+    "tabPreview": "Preview",
+    "confirmDelete": "Confirm delete"
   },
   "pageTypes": {
     "sidebar": {
@@ -2817,6 +2818,8 @@
       "private": "Internal",
       "headerType": "Header type",
       "delete": "Delete phase",
+      "deleteConfirmQuestion": "Delete phase",
+      "deleteWarning": "This action cannot be undone. All items in this phase will be lost.",
       "progress": "{done} of {total} items completed",
       "emptyItems": "No items in this phase. Add the first one below."
     },
@@ -2875,7 +2878,9 @@
     "theme": {
       "add": "New theme",
       "namePlaceholder": "Theme name...",
-      "delete": "Delete theme"
+      "delete": "Delete theme",
+      "deleteConfirmQuestion": "Delete theme",
+      "deleteWarning": "This action cannot be undone. All items in this theme will be lost."
     },
     "headerType": {
       "title": "Title",

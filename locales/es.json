@@ -241,7 +241,8 @@
     "search": "Buscar",
     "back": "Volver",
     "tabWrite": "Editar",
-    "tabPreview": "Vista previa"
+    "tabPreview": "Vista previa",
+    "confirmDelete": "Confirmar eliminación"
   },
   "pageTypes": {
     "sidebar": {
@@ -2817,6 +2818,8 @@
       "private": "Interno",
       "headerType": "Tipo de encabezado",
       "delete": "Eliminar fase",
+      "deleteConfirmQuestion": "Eliminar la fase",
+      "deleteWarning": "Esta acción no se puede deshacer. Se perderán todos los ítems de esta fase.",
       "progress": "{done} de {total} ítems completados",
       "emptyItems": "Sin ítems en esta fase. Agrega el primero abajo."
     },
@@ -2875,7 +2878,9 @@
     "theme": {
       "add": "Nuevo tema",
       "namePlaceholder": "Nombre del tema...",
-      "delete": "Eliminar tema"
+      "delete": "Eliminar tema",
+      "deleteConfirmQuestion": "Eliminar el tema",
+      "deleteWarning": "Esta acción no se puede deshacer. Se perderán todos los ítems de este tema."
     },
     "headerType": {
       "title": "Título",
