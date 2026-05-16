@@ -460,15 +460,15 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
                               key={item.id}
                               type="button"
                               onClick={() => setSelectedItem(item)}
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition-colors ${ITEM_STATUS_CHIP[item.status]}`}
+                              title={item.title || undefined}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs transition-colors max-w-full overflow-hidden ${ITEM_STATUS_CHIP[item.status]}`}
                             >
-                              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${ITEM_STATUS_DOT[item.status]}`} />
                               {item.tag && (
                                 <span className={`shrink-0 inline-flex items-center rounded px-1 text-[9px] font-bold leading-4 ${ITEM_TAG_CONFIG[item.tag].docStyle}`}>
                                   {ITEM_TAG_CONFIG[item.tag].label}
                                 </span>
                               )}
-                              <span className={ITEM_STATUS_TEXT[item.status]}>{item.title}</span>
+                              <span className={`truncate ${ITEM_STATUS_TEXT[item.status]}`}>{item.title}</span>
                             </button>
                           ))}
                         </div>

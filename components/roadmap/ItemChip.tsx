@@ -65,6 +65,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
         tabIndex={0}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={(e) => e.key === "Enter" && setOpen((v) => !v)}
+        title={item.title || undefined}
         className={`group w-full flex items-start gap-1.5 rounded-lg border px-2 py-1.5 cursor-pointer transition-all duration-150 hover:brightness-110 ${style.chip}`}
       >
         {/* Drag handle */}
@@ -82,14 +83,6 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
             </svg>
           </button>
         )}
-
-        {/* Status dot */}
-        <button
-          type="button"
-          onClick={cycleStatus}
-          className={`mt-0.5 h-2 w-2 shrink-0 rounded-full transition-transform hover:scale-125 ${style.dot}`}
-          title={t("roadmap.item.cycleStatus")}
-        />
 
         {/* Tag badge */}
         {tagCfg && (
