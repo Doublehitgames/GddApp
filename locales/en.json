@@ -2902,6 +2902,18 @@
       "reactivate": "Reactivate",
       "rename": "Rename",
       "newPlaceholder": "New roadmap name"
+    },
+    "print": {
+      "back": "Back to roadmap",
+      "preview": "PDF Preview",
+      "export": "Export PDF",
+      "exportedOn": "Exported on",
+      "phases": "phases",
+      "items": "items",
+      "itemsDone": "done",
+      "noItems": "No items in this phase.",
+      "empty": "This roadmap has no phases yet.",
+      "defaultTitle": "Roadmap"
     }
   }
 }

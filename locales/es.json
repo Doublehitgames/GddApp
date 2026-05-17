@@ -2902,6 +2902,18 @@
       "reactivate": "Reactivar",
       "rename": "Renombrar",
       "newPlaceholder": "Nombre del nuevo roadmap"
+    },
+    "print": {
+      "back": "Volver al roadmap",
+      "preview": "Vista previa del PDF",
+      "export": "Exportar PDF",
+      "exportedOn": "Exportado el",
+      "phases": "fases",
+      "items": "ítems",
+      "itemsDone": "completados",
+      "noItems": "Sin ítems en esta fase.",
+      "empty": "Este roadmap todavía no tiene fases.",
+      "defaultTitle": "Roadmap"
     }
   }
 }
