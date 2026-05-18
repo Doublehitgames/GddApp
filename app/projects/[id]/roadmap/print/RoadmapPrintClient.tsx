@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import { MarkdownContent } from "@/components/common/MarkdownContent";
@@ -242,36 +242,57 @@ function PhaseSection({
 
 export default function RoadmapPrintClient({ projectId }: { projectId: string }) {
   const { t } = useI18n();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
-  const projects          = useProjectStore((s) => s.projects);
-  const roadmapsByProject = useProjectStore((s) => s.roadmapsByProject);
-  const getRoadmaps       = useProjectStore((s) => s.getRoadmaps);
+  const projects           = useProjectStore((s) => s.projects);
+  const getProjectBySlug   = useProjectStore((s) => s.getProjectBySlug);
+  const roadmapsByProject  = useProjectStore((s) => s.roadmapsByProject);
+  const getRoadmaps        = useProjectStore((s) => s.getRoadmaps);
   const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
-  const getRoadmapPhases  = useProjectStore((s) => s.getRoadmapPhases);
-  const getRoadmapThemes  = useProjectStore((s) => s.getRoadmapThemes);
-  const getRoadmapItems   = useProjectStore((s) => s.getRoadmapItems);
+  const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
+  const getRoadmapThemes   = useProjectStore((s) => s.getRoadmapThemes);
+  const getRoadmapItems    = useProjectStore((s) => s.getRoadmapItems);
 
-  const project        = projects.find((p) => p.id === projectId);
-  const activeRoadmapId = useMemo(() => getActiveRoadmapId(projectId), [getActiveRoadmapId, projectId, roadmapsByProject]);
-  const roadmaps       = useMemo(() => getRoadmaps(projectId), [getRoadmaps, projectId, roadmapsByProject]);
-  const activeRoadmap  = roadmaps.find((r) => r.id === activeRoadmapId);
+  // projectId from the URL is a slug — resolve it to the real UUID
+  const project        = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const realProjectId  = project?.id ?? projectId;
+
+  const activeRoadmapId = useMemo(() => getActiveRoadmapId(realProjectId), [getActiveRoadmapId, realProjectId, roadmapsByProject]);
+  const roadmaps        = useMemo(() => getRoadmaps(realProjectId), [getRoadmaps, realProjectId, roadmapsByProject]);
+  const activeRoadmap   = roadmaps.find((r) => r.id === activeRoadmapId);
 
   const phases = useMemo(
-    () => activeRoadmapId ? getRoadmapPhases(projectId, activeRoadmapId) : [],
-    [getRoadmapPhases, projectId, activeRoadmapId, roadmapsByProject],
+    () => activeRoadmapId ? getRoadmapPhases(realProjectId, activeRoadmapId) : [],
+    [getRoadmapPhases, realProjectId, activeRoadmapId, roadmapsByProject],
   );
   const themes = useMemo(
-    () => activeRoadmapId ? getRoadmapThemes(projectId, activeRoadmapId) : [],
-    [getRoadmapThemes, projectId, activeRoadmapId, roadmapsByProject],
+    () => activeRoadmapId ? getRoadmapThemes(realProjectId, activeRoadmapId) : [],
+    [getRoadmapThemes, realProjectId, activeRoadmapId, roadmapsByProject],
   );
   const allItems = useMemo(
-    () => activeRoadmapId ? getRoadmapItems(projectId, activeRoadmapId) : [],
-    [getRoadmapItems, projectId, activeRoadmapId, roadmapsByProject],
+    () => activeRoadmapId ? getRoadmapItems(realProjectId, activeRoadmapId) : [],
+    [getRoadmapItems, realProjectId, activeRoadmapId, roadmapsByProject],
   );
 
   const exportDate = new Date().toLocaleDateString("pt-BR", {
     day: "numeric", month: "long", year: "numeric",
   });
+
+  // Wait for localStorage hydration before rendering content
+  if (!mounted) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center gap-3 text-gray-500">
+          <svg className="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+          </svg>
+          <span className="text-sm">{t("roadmap.print.preview")}…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
