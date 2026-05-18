@@ -211,7 +211,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     <GlobalPagePicker projectId={realProjectId} />
     <div className="min-h-screen bg-gray-900 pb-14">
       {!isDocumentViewRoute && (
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
+      <header className="print:hidden fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-3">
           <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm text-gray-300 flex-1">
             <Link
@@ -314,7 +314,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       </header>
       )}
 
-      <div className={isDocumentViewRoute ? undefined : "pt-16 md:pt-20"}>
+      <div className={isDocumentViewRoute ? undefined : "pt-16 md:pt-20 print:pt-0"}>
       {shouldShowSidebar ? (
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8">
           <div
