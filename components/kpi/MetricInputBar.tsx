@@ -12,6 +12,8 @@ interface Props {
   benchmark: { good: number; ok: number };
   unit?: string;
   helpText?: string;
+  playerCount?: number;
+  onPlayerCountChange?: (v: number | undefined) => void;
 }
 
 const STATUS_COLORS: Record<MetricStatus, { bar: string; text: string; statusKey: string }> = {
@@ -47,7 +49,7 @@ function HelpTooltip({ text }: { text: string }) {
   );
 }
 
-export default function MetricInputBar({ label, value, onChange, benchmark, unit = "%", helpText }: Props) {
+export default function MetricInputBar({ label, value, onChange, benchmark, unit = "%", helpText, playerCount, onPlayerCountChange }: Props) {
   const { t } = useI18n();
   const status: MetricStatus = value !== undefined ? getMetricStatus(value, benchmark) : "critical";
   const colors = STATUS_COLORS[status];
@@ -108,6 +110,30 @@ export default function MetricInputBar({ label, value, onChange, benchmark, unit
           <span className="text-xs text-gray-600">{t("kpi.status.notFilled")}</span>
         )}
       </div>
+
+      {/* Player count */}
+      {onPlayerCountChange && (
+        <div className="flex items-center gap-1.5 border-t border-gray-800/60 pt-2.5">
+          <span className="text-[11px] text-gray-600">👥</span>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={playerCount ?? ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") onPlayerCountChange(undefined);
+              else {
+                const num = parseInt(raw, 10);
+                if (!isNaN(num)) onPlayerCountChange(num);
+              }
+            }}
+            placeholder="—"
+            className="w-16 rounded border border-gray-700/60 bg-gray-950 px-2 py-1 text-xs font-mono text-gray-300 focus:border-sky-500 focus:outline-none tabular-nums"
+          />
+          <span className="text-[11px] text-gray-500">{t("kpi.metrics.playersLabel")}</span>
+        </div>
+      )}
     </div>
   );
 }

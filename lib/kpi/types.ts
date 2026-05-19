@@ -11,7 +11,9 @@ export type KpiGameProfile = {
 
 export type KpiCustomBenchmarks = {
   d1?: { good: number; ok: number };
+  d3?: { good: number; ok: number };
   d7?: { good: number; ok: number };
+  d14?: { good: number; ok: number };
   d30?: { good: number; ok: number };
   sessionsPerDay?: { good: number; ok: number };
   sessionDuration?: { good: number; ok: number };
@@ -20,8 +22,15 @@ export type KpiCustomBenchmarks = {
 
 export type KpiMetrics = {
   d1?: number;
+  d1Players?: number;
+  d3?: number;
+  d3Players?: number;
   d7?: number;
+  d7Players?: number;
+  d14?: number;
+  d14Players?: number;
   d30?: number;
+  d30Players?: number;
   sessionsPerDay?: number;
   sessionDuration?: number; // avg minutes
   conversionRate?: number;  // % converting to payer

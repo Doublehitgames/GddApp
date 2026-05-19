@@ -36,7 +36,7 @@ function formatDate(iso: string): string {
   return new Date(y, m - 1, d).toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
-function MetricChip({ label, value, entry }: { label: "d1" | "d7" | "d30"; value: number | undefined; entry: KpiEntry }) {
+function MetricChip({ label, value, entry }: { label: "d1" | "d3" | "d7" | "d14" | "d30"; value: number | undefined; entry: KpiEntry }) {
   if (value === undefined) return null;
   const bench = GENRE_BENCHMARKS[entry.genre];
   const status = getMetricStatus(value, bench[label]);
@@ -139,7 +139,9 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
             {/* Metric chips */}
             <div className="flex flex-wrap gap-1.5">
               <MetricChip label="d1"  value={last.metrics.d1}  entry={last} />
+              <MetricChip label="d3"  value={last.metrics.d3}  entry={last} />
               <MetricChip label="d7"  value={last.metrics.d7}  entry={last} />
+              <MetricChip label="d14" value={last.metrics.d14} entry={last} />
               <MetricChip label="d30" value={last.metrics.d30} entry={last} />
             </div>
 

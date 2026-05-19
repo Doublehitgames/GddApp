@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import KpiMainTab from "@/components/kpi/KpiMainTab";
+import KpiEvolutionTab from "@/components/kpi/KpiEvolutionTab";
 import KpiFunnelTab from "@/components/kpi/KpiFunnelTab";
 import KpiRoutineTab from "@/components/kpi/KpiRoutineTab";
 import KpiQuestionsTab from "@/components/kpi/KpiQuestionsTab";
@@ -11,7 +12,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 interface Props { projectId: string; }
 
-const TAB_IDS = ["main", "funnel", "routine", "questions"] as const;
+const TAB_IDS = ["main", "evolution", "funnel", "routine", "questions"] as const;
 type TabId = typeof TAB_IDS[number];
 
 export default function KpiClient({ projectId }: Props) {
@@ -94,6 +95,7 @@ export default function KpiClient({ projectId }: Props) {
             onDeleteEntry={(id) => deleteKpiEntry(realProjectId, id)}
           />
         )}
+        {activeTab === "evolution" && <KpiEvolutionTab entries={entries} genre={genre} />}
         {activeTab === "funnel" && <KpiFunnelTab genre={genre} />}
         {activeTab === "routine" && <KpiRoutineTab />}
         {activeTab === "questions" && <KpiQuestionsTab />}

@@ -5,7 +5,9 @@ export type MetricStatus = "great" | "ok" | "low" | "critical";
 export type GenreBenchmark = {
   label: string;
   d1: { good: number; ok: number };
+  d3: { good: number; ok: number };
   d7: { good: number; ok: number };
+  d14: { good: number; ok: number };
   d30: { good: number; ok: number };
   sessionsPerDay: { good: number; ok: number };
   sessionDuration: { good: number; ok: number };
@@ -17,7 +19,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   farm: {
     label: "Farm / Simulação",
     d1: { good: 40, ok: 30 },
+    d3: { good: 28, ok: 20 },
     d7: { good: 20, ok: 12 },
+    d14: { good: 14, ok: 9 },
     d30: { good: 10, ok: 6 },
     sessionsPerDay: { good: 3, ok: 2 },
     sessionDuration: { good: 8, ok: 5 },
@@ -34,7 +38,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   casual: {
     label: "Casual / Hyper-casual",
     d1: { good: 35, ok: 25 },
+    d3: { good: 22, ok: 15 },
     d7: { good: 15, ok: 8 },
+    d14: { good: 10, ok: 6 },
     d30: { good: 7, ok: 4 },
     sessionsPerDay: { good: 5, ok: 3 },
     sessionDuration: { good: 5, ok: 3 },
@@ -51,7 +57,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   rpg: {
     label: "RPG / Mid-core",
     d1: { good: 30, ok: 20 },
+    d3: { good: 20, ok: 13 },
     d7: { good: 15, ok: 8 },
+    d14: { good: 11, ok: 6 },
     d30: { good: 8, ok: 4 },
     sessionsPerDay: { good: 2, ok: 1.5 },
     sessionDuration: { good: 20, ok: 12 },
@@ -68,7 +76,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   puzzle: {
     label: "Puzzle",
     d1: { good: 40, ok: 28 },
+    d3: { good: 28, ok: 18 },
     d7: { good: 20, ok: 12 },
+    d14: { good: 13, ok: 8 },
     d30: { good: 8, ok: 5 },
     sessionsPerDay: { good: 5, ok: 3 },
     sessionDuration: { good: 7, ok: 4 },
@@ -85,7 +95,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   idle: {
     label: "Idle / Clicker",
     d1: { good: 45, ok: 35 },
+    d3: { good: 32, ok: 22 },
     d7: { good: 25, ok: 15 },
+    d14: { good: 17, ok: 10 },
     d30: { good: 12, ok: 7 },
     sessionsPerDay: { good: 6, ok: 4 },
     sessionDuration: { good: 3, ok: 2 },
@@ -102,7 +114,9 @@ export const GENRE_BENCHMARKS: Record<GameGenre, GenreBenchmark> = {
   shooter: {
     label: "Shooter / Action",
     d1: { good: 25, ok: 18 },
+    d3: { good: 17, ok: 11 },
     d7: { good: 12, ok: 7 },
+    d14: { good: 8, ok: 5 },
     d30: { good: 5, ok: 3 },
     sessionsPerDay: { good: 3, ok: 2 },
     sessionDuration: { good: 20, ok: 15 },

@@ -9,13 +9,13 @@ interface Props {
   benchmark: GenreBenchmark;
 }
 
-const DAYS = ["D1", "D7", "D30"];
+const DAYS = ["D1", "D3", "D7", "D14", "D30"];
 
 export default function RetentionChart({ metrics, benchmark }: Props) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string; value: string } | null>(null);
 
-  const userValues = [metrics.d1, metrics.d7, metrics.d30];
-  const benchValues = [benchmark.d1.good, benchmark.d7.good, benchmark.d30.good];
+  const userValues = [metrics.d1, metrics.d3, metrics.d7, metrics.d14, metrics.d30];
+  const benchValues = [benchmark.d1.good, benchmark.d3.good, benchmark.d7.good, benchmark.d14.good, benchmark.d30.good];
 
   const hasUserData = userValues.some((v) => v !== undefined);
 
