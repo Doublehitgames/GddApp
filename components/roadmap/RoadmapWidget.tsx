@@ -39,7 +39,27 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
     [getRoadmapItems, realProjectId, activeRoadmapId],
   );
 
-  const activePhase = phases.find((p) => p.status === "active") ?? phases[0] ?? null;
+  // Pick the most relevant phase to highlight:
+  // 1. Active phase that still has pending work
+  // 2. Any phase that has in_progress items (user is working there even if phase status isn't set)
+  // 3. First active phase as fallback (even if 100% done)
+  // 4. First phase
+  const activePhase = useMemo(() => {
+    if (!phases.length) return null;
+    const activeNotDone = phases.find((p) => {
+      if (p.status !== "active") return false;
+      const phaseItems = allItems.filter((i) => i.phaseId === p.id);
+      if (phaseItems.length === 0) return true;
+      return phaseItems.filter((i) => i.status === "done").length < phaseItems.length;
+    });
+    if (activeNotDone) return activeNotDone;
+    const withInProgress = phases.find((p) =>
+      allItems.some((i) => i.phaseId === p.id && i.status === "in_progress")
+    );
+    if (withInProgress) return withInProgress;
+    return phases.find((p) => p.status === "active") ?? phases[0] ?? null;
+  }, [phases, allItems]);
+
   const activeItems = activePhase ? allItems.filter((i) => i.phaseId === activePhase.id) : [];
   const doneCount   = activeItems.filter((i) => i.status === "done").length;
   const total       = activeItems.length;
