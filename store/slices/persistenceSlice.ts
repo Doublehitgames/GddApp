@@ -271,8 +271,8 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
       try {
         const userId = (get() as ProjectStore & { userId?: string }).userId;
         if (!userId) return;
-        const projectIds = get().projects.map((p: { id: string }) => p.id);
-        if (projectIds.length === 0) return;
+        const projects = get().projects as Array<{ id: string; ownerId?: string | null }>;
+        if (projects.length === 0) return;
 
         const { fetchKpiEntries, fetchKpiConfig } = await import("@/lib/supabase/kpiSync");
         const { persistKpiEntries, persistKpiConfigs } = await import("./storageHelpers");
@@ -288,17 +288,23 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         const { upsertKpiEntries, upsertKpiConfig } = await import("@/lib/supabase/kpiSync");
 
         await Promise.all(
-          projectIds.map(async (projectId: string) => {
+          projects.map(async (project) => {
+            const projectId = project.id;
+            const isOwner = !project.ownerId || project.ownerId === userId;
+
+            // Membros lêem os dados do dono; donos lêem os próprios dados
+            const fetchUserId = isOwner ? userId : (project.ownerId as string);
+
             const [remoteEntries, remoteConfig] = await Promise.all([
-              fetchKpiEntries(userId, projectId),
-              fetchKpiConfig(userId, projectId),
+              fetchKpiEntries(fetchUserId, projectId),
+              fetchKpiConfig(fetchUserId, projectId),
             ]);
 
             // Supabase tem dados → usa o remoto (fonte de verdade na nuvem)
             if (remoteEntries && remoteEntries.length > 0) {
               entryUpdates[projectId] = remoteEntries;
-            } else {
-              // Supabase vazio → migra dados locais existentes para a nuvem
+            } else if (isOwner) {
+              // Supabase vazio → migra dados locais existentes para a nuvem (só o dono escreve)
               const localEntries = state.kpiEntriesByProject[projectId];
               if (localEntries && localEntries.length > 0) {
                 void upsertKpiEntries(userId, projectId, localEntries);
@@ -307,8 +313,8 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
 
             if (remoteConfig) {
               configUpdates[projectId] = remoteConfig;
-            } else {
-              // Supabase vazio → migra config local para a nuvem
+            } else if (isOwner) {
+              // Supabase vazio → migra config local para a nuvem (só o dono escreve)
               const localConfig = state.kpiConfigByProject[projectId];
               if (localConfig) {
                 void upsertKpiConfig(userId, projectId, localConfig);
