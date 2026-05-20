@@ -17,6 +17,7 @@ interface Props {
   profile?: KpiGameProfile;
   customBenchmarks?: KpiCustomBenchmarks;
   entries: KpiEntry[];
+  readOnly?: boolean;
   onSetGenre: (genre: GameGenre) => void;
   onUpdateConfig: (patch: Partial<Omit<KpiProjectConfig, "genre">>) => void;
   onAddEntry: (entry: Omit<KpiEntry, "id" | "createdAt">) => string;
@@ -47,7 +48,7 @@ function effectiveBench(base: GenreBenchmark, custom?: KpiCustomBenchmarks): Gen
 }
 
 export default function KpiMainTab({
-  projectId, genre, profile, customBenchmarks, entries,
+  projectId, genre, profile, customBenchmarks, entries, readOnly,
   onSetGenre, onUpdateConfig, onAddEntry, onUpdateEntry, onDeleteEntry,
 }: Props) {
   const { t } = useI18n();
@@ -121,18 +122,20 @@ export default function KpiMainTab({
 
   return (
     <div className="space-y-4">
-      {/* Config panel */}
-      <KpiConfigPanel
-        genre={genre}
-        profile={profile}
-        customBenchmarks={customBenchmarks}
-        onSetGenre={onSetGenre}
-        onUpdateProfile={(p) => onUpdateConfig({ profile: p })}
-        onUpdateCustomBenchmarks={(b) => onUpdateConfig({ customBenchmarks: b })}
-      />
+      {/* Config panel — oculto para membros */}
+      {!readOnly && (
+        <KpiConfigPanel
+          genre={genre}
+          profile={profile}
+          customBenchmarks={customBenchmarks}
+          onSetGenre={onSetGenre}
+          onUpdateProfile={(p) => onUpdateConfig({ profile: p })}
+          onUpdateCustomBenchmarks={(b) => onUpdateConfig({ customBenchmarks: b })}
+        />
+      )}
 
-      {/* ── Toggle button ─────────────────────────────────────────────────── */}
-      <button
+      {/* ── Toggle button — oculto para membros ───────────────────────────── */}
+      {!readOnly && <button
         type="button"
         onClick={() => setFormOpen((v) => !v)}
         className={`w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
@@ -155,10 +158,10 @@ export default function KpiMainTab({
             {t("kpi.main.newEntryHint")}
           </span>
         )}
-      </button>
+      </button>}
 
-      {/* ── Entry form (collapsible) ───────────────────────────────────────── */}
-      {formOpen && (
+      {/* ── Entry form (collapsible) — oculto para membros ────────────────── */}
+      {!readOnly && formOpen && (
         <div className="rounded-xl border border-emerald-700/30 bg-gray-900/60 p-4 space-y-5">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-white">{t("kpi.main.newEntry")}</p>
@@ -294,6 +297,7 @@ export default function KpiMainTab({
           </div>
           <KpiHistoryList
             entries={entries}
+            readOnly={readOnly}
             onUpdateEntry={onUpdateEntry}
             onDeleteEntry={onDeleteEntry}
           />

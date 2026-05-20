@@ -2396,6 +2396,10 @@
       "routine": "Rotina semanal",
       "questions": "Perguntas-guia"
     },
+    "readOnly": {
+      "badge": "Somente leitura",
+      "banner": "Você está visualizando como membro. Apenas o gerente do projeto pode registrar e editar KPIs."
+    },
     "evolution": {
       "emptyTitle": "Poucos dados para gerar o gráfico",
       "emptyHint": "Registre pelo menos 2 entradas na aba KPIs para ver a evolução das métricas.",

@@ -2396,6 +2396,10 @@
       "routine": "Weekly Routine",
       "questions": "Guiding Questions"
     },
+    "readOnly": {
+      "badge": "Read only",
+      "banner": "You're viewing as a member. Only the project manager can record and edit KPIs."
+    },
     "evolution": {
       "emptyTitle": "Not enough data to generate the chart",
       "emptyHint": "Record at least 2 entries in the Main KPIs tab to see the metrics over time.",

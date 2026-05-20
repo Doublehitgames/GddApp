@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n/provider";
 
 interface Props {
   entries: KpiEntry[];
+  readOnly?: boolean;
   onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   onDeleteEntry: (id: string) => void;
 }
@@ -276,7 +277,7 @@ function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (ou
 
 // ─── Main list ────────────────────────────────────────────────────────────────
 
-export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }: Props) {
+export default function KpiHistoryList({ entries, readOnly, onUpdateEntry, onDeleteEntry }: Props) {
   const { t } = useI18n();
   const [openOutcomeId, setOpenOutcomeId]           = useState<string | null>(null);
   const [editingId, setEditingId]                   = useState<string | null>(null);
@@ -352,7 +353,7 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
-                {!isConfirmDelete && !isEditing && (
+                {!readOnly && !isConfirmDelete && !isEditing && (
                   <>
                     {/* Edit button */}
                     <button
@@ -441,26 +442,32 @@ export default function KpiHistoryList({ entries, onUpdateEntry, onDeleteEntry }
                   {entry.learning && (
                     <p className="text-xs text-gray-400 line-clamp-1">{entry.learning}</p>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setOpenOutcomeId(isOutcomeOpen ? null : entry.id)}
-                    className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-                  >
-                    {t("kpi.history.editOutcome")}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => setOpenOutcomeId(isOutcomeOpen ? null : entry.id)}
+                      className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                    >
+                      {t("kpi.history.editOutcome")}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="mt-2 flex flex-col gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setOpenOutcomeId(isOutcomeOpen ? null : entry.id)}
-                    className="self-start rounded-lg border border-dashed border-amber-700/60 px-3 py-1.5 text-xs font-medium text-amber-500 hover:border-amber-500 hover:text-amber-300 transition-colors"
-                  >
-                    {t("kpi.history.recordOutcome")}
-                  </button>
-                  <p className="text-[11px] text-gray-600 leading-relaxed">
-                    {t("kpi.history.outcomeHint")}
-                  </p>
+                  {!readOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setOpenOutcomeId(isOutcomeOpen ? null : entry.id)}
+                        className="self-start rounded-lg border border-dashed border-amber-700/60 px-3 py-1.5 text-xs font-medium text-amber-500 hover:border-amber-500 hover:text-amber-300 transition-colors"
+                      >
+                        {t("kpi.history.recordOutcome")}
+                      </button>
+                      <p className="text-[11px] text-gray-600 leading-relaxed">
+                        {t("kpi.history.outcomeHint")}
+                      </p>
+                    </>
+                  )}
                 </div>
               )
             )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import KpiMainTab from "@/components/kpi/KpiMainTab";
 import KpiEvolutionTab from "@/components/kpi/KpiEvolutionTab";
 import KpiFunnelTab from "@/components/kpi/KpiFunnelTab";
@@ -26,6 +27,7 @@ export default function KpiClient({ projectId }: Props) {
   const addKpiEntry = useProjectStore((s) => s.addKpiEntry);
   const updateKpiEntry = useProjectStore((s) => s.updateKpiEntry);
   const deleteKpiEntry = useProjectStore((s) => s.deleteKpiEntry);
+  const currentUser = useAuthStore((s) => s.user);
 
   const [activeTab, setActiveTab] = useState<TabId>("main");
   const [mounted, setMounted] = useState(false);
@@ -34,6 +36,10 @@ export default function KpiClient({ projectId }: Props) {
 
   const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
   const realProjectId = project?.id ?? projectId;
+
+  // Membro = não é o dono do projeto
+  const isOwner = !project?.ownerId || project.ownerId === currentUser?.id;
+  const readOnly = !isOwner;
 
   const config = kpiConfigByProject[realProjectId];
   const genre: GameGenre = config?.genre ?? "farm";
@@ -56,8 +62,28 @@ export default function KpiClient({ projectId }: Props) {
             </svg>
           </div>
           <h1 className="text-base font-semibold text-white">{t("kpi.pageTitle")}</h1>
+          {readOnly && (
+            <span className="ml-auto flex items-center gap-1.5 rounded-full border border-gray-700 bg-gray-800/60 px-3 py-1 text-xs text-gray-400">
+              <svg className="h-3 w-3 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              {t("kpi.readOnly.badge")}
+            </span>
+          )}
         </div>
       </div>
+
+      {/* Read-only banner */}
+      {readOnly && (
+        <div className="bg-gray-900/80 border-b border-gray-800 px-4 py-2 sm:px-6">
+          <div className="mx-auto max-w-3xl flex items-center gap-2">
+            <svg className="h-3.5 w-3.5 shrink-0 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs text-gray-400">{t("kpi.readOnly.banner")}</p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-800 bg-gray-950/70 px-4 sm:px-6">
@@ -88,6 +114,7 @@ export default function KpiClient({ projectId }: Props) {
             profile={profile}
             customBenchmarks={customBenchmarks}
             entries={entries}
+            readOnly={readOnly}
             onSetGenre={(g) => setKpiGenre(realProjectId, g)}
             onUpdateConfig={(patch) => updateKpiConfig(realProjectId, patch)}
             onAddEntry={(entry) => addKpiEntry(realProjectId, entry)}
