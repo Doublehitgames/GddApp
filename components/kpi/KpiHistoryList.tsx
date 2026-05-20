@@ -440,7 +440,7 @@ export default function KpiHistoryList({ entries, readOnly, onUpdateEntry, onDel
                     {t("kpi.history.outcomes." + entry.outcome)}
                   </span>
                   {entry.learning && (
-                    <p className="text-xs text-gray-400 line-clamp-1">{entry.learning}</p>
+                    <p className="text-xs text-gray-400">{entry.learning}</p>
                   )}
                   {!readOnly && (
                     <button
