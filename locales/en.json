@@ -2897,7 +2897,16 @@
       "activeBadge": "In progress",
       "progress": "{done} of {total} items",
       "phases": "{count} phases",
-      "completedPhases": "{count} completed"
+      "completedPhases": "{count} completed",
+      "statusPlanned": "planned",
+      "statusInProgress": "in progress",
+      "statusDone": "done",
+      "statusCut": "cut",
+      "inProgressTitle": "In progress now",
+      "noInProgress": "No items in progress",
+      "overallTitle": "Overall progress",
+      "nextPhaseTitle": "Next phase",
+      "nextPhaseItems": "{count} items"
     },
     "grid": {
       "themes": "Themes",

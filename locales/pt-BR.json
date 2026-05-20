@@ -2897,7 +2897,16 @@
       "activeBadge": "Em andamento",
       "progress": "{done} de {total} itens",
       "phases": "{count} fases",
-      "completedPhases": "{count} concluída(s)"
+      "completedPhases": "{count} concluída(s)",
+      "statusPlanned": "planejado(s)",
+      "statusInProgress": "em andamento",
+      "statusDone": "concluído(s)",
+      "statusCut": "cortado(s)",
+      "inProgressTitle": "Em andamento agora",
+      "noInProgress": "Nenhum item em andamento",
+      "overallTitle": "Progresso geral",
+      "nextPhaseTitle": "Próxima fase",
+      "nextPhaseItems": "{count} itens"
     },
     "grid": {
       "themes": "Temas",

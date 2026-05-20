@@ -2897,7 +2897,16 @@
       "activeBadge": "En progreso",
       "progress": "{done} de {total} ítems",
       "phases": "{count} fases",
-      "completedPhases": "{count} completada(s)"
+      "completedPhases": "{count} completada(s)",
+      "statusPlanned": "planificado(s)",
+      "statusInProgress": "en progreso",
+      "statusDone": "completado(s)",
+      "statusCut": "descartado(s)",
+      "inProgressTitle": "En progreso ahora",
+      "noInProgress": "Ningún ítem en progreso",
+      "overallTitle": "Progreso general",
+      "nextPhaseTitle": "Próxima fase",
+      "nextPhaseItems": "{count} ítems"
     },
     "grid": {
       "themes": "Temas",
