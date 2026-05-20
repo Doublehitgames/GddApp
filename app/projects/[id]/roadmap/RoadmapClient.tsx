@@ -275,8 +275,8 @@ export default function RoadmapClient({ projectId }: Props) {
 
                 {/* Divider + actions */}
                 <div className="border-t border-gray-800 pt-1 mt-0.5 flex flex-col gap-0.5">
-                  {/* End active + create new */}
-                  {!isReadOnly && currentRoadmapId && (
+                  {/* End active + create new — only for owner */}
+                  {!isReadOnly && !isMember && currentRoadmapId && (
                     <button
                       type="button"
                       onClick={() => { setShowDropdown(false); setShowEndModal(true); setNewRoadmapNameDraft(`Roadmap v${roadmaps.length + 1}`); }}
@@ -289,8 +289,8 @@ export default function RoadmapClient({ projectId }: Props) {
                     </button>
                   )}
 
-                  {/* Reactivate (when viewing archived) */}
-                  {isReadOnly && (
+                  {/* Reactivate (when viewing archived) — only for owner */}
+                  {isReadOnly && !isMember && (
                     <button
                       type="button"
                       onClick={() => { handleReactivate(); setShowDropdown(false); }}
