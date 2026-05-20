@@ -2932,6 +2932,10 @@
       "rename": "Rename",
       "newPlaceholder": "New roadmap name"
     },
+    "readOnly": {
+      "badge": "Read only",
+      "banner": "You are viewing as a member. Only the project manager can edit the roadmap."
+    },
     "print": {
       "back": "Back to roadmap",
       "preview": "PDF Preview",

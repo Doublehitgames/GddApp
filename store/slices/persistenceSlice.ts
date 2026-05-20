@@ -179,8 +179,8 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
       try {
         const userId = (get() as ProjectStore & { userId?: string }).userId;
         if (!userId) return;
-        const projectIds = get().projects.map((p: { id: string }) => p.id);
-        if (projectIds.length === 0) return;
+        const projects = get().projects as Array<{ id: string; ownerId?: string | null }>;
+        if (projects.length === 0) return;
 
         const {
           fetchRoadmaps, upsertRoadmaps,
@@ -205,39 +205,45 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         const itemUpdates:    typeof state.itemsByProject     = {};
 
         await Promise.all(
-          projectIds.map(async (projectId: string) => {
+          projects.map(async (project) => {
+            const projectId = project.id;
+            const isOwner = !project.ownerId || project.ownerId === userId;
+
+            // Membros lêem os dados do dono; donos lêem os próprios dados
+            const fetchUserId = isOwner ? userId : (project.ownerId as string);
+
             const [remoteRoadmaps, remotePhases, remoteThemes, remoteItems] = await Promise.all([
-              fetchRoadmaps(userId, projectId),
-              fetchRoadmapPhases(userId, projectId),
-              fetchRoadmapThemes(userId, projectId),
-              fetchRoadmapItems(userId, projectId),
+              fetchRoadmaps(fetchUserId, projectId),
+              fetchRoadmapPhases(fetchUserId, projectId),
+              fetchRoadmapThemes(fetchUserId, projectId),
+              fetchRoadmapItems(fetchUserId, projectId),
             ]);
 
             // Roadmaps
             if (remoteRoadmaps && remoteRoadmaps.length > 0) {
               roadmapUpdates[projectId] = remoteRoadmaps;
-            } else {
+            } else if (isOwner) {
               const local = state.roadmapsByProject[projectId];
               if (local && local.length > 0) void upsertRoadmaps(userId, projectId, local);
             }
             // Phases
             if (remotePhases && remotePhases.length > 0) {
               phaseUpdates[projectId] = remotePhases;
-            } else {
+            } else if (isOwner) {
               const local = state.phasesByProject[projectId];
               if (local && local.length > 0) void upsertRoadmapPhases(userId, projectId, local);
             }
             // Themes
             if (remoteThemes && remoteThemes.length > 0) {
               themeUpdates[projectId] = remoteThemes;
-            } else {
+            } else if (isOwner) {
               const local = state.themesByProject[projectId];
               if (local && local.length > 0) void upsertRoadmapThemes(userId, projectId, local);
             }
             // Items
             if (remoteItems && remoteItems.length > 0) {
               itemUpdates[projectId] = remoteItems;
-            } else {
+            } else if (isOwner) {
               const local = state.itemsByProject[projectId];
               if (local && local.length > 0) void upsertRoadmapItems(userId, projectId, local);
             }

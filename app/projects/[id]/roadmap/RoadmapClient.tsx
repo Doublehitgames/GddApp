@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
+import { useAuthStore } from "@/store/authStore";
 import RoadmapGrid from "@/components/roadmap/RoadmapGrid";
 import { useI18n } from "@/lib/i18n/provider";
 import { ITEM_TAGS, ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
@@ -41,8 +42,14 @@ export default function RoadmapClient({ projectId }: Props) {
   const themesByProject   = useProjectStore((s) => s.themesByProject);
   const itemsByProject    = useProjectStore((s) => s.itemsByProject);
 
+  const currentUser = useAuthStore((s) => s.user);
+
   const project       = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
   const realProjectId = project?.id ?? projectId;
+
+  // Membro = não é o dono do projeto
+  const isOwner  = !project?.ownerId || project.ownerId === currentUser?.id;
+  const isMember = !isOwner;
 
   // ── Roadmap selector state ────────────────────────────────────────────────
 
@@ -354,6 +361,16 @@ export default function RoadmapClient({ projectId }: Props) {
             </svg>
             {t("roadmap.print.export")}
           </a>
+
+          {/* Member read-only badge */}
+          {isMember && (
+            <span className="ml-auto flex items-center gap-1.5 rounded-full border border-gray-700 bg-gray-800/60 px-3 py-1 text-xs text-gray-400 shrink-0">
+              <svg className="h-3 w-3 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              {t("roadmap.readOnly.badge")}
+            </span>
+          )}
         </div>
       </div>
 
@@ -426,10 +443,21 @@ export default function RoadmapClient({ projectId }: Props) {
         </div>
       )}
 
+      {/* Member read-only banner */}
+      {isMember && (
+        <div className="shrink-0 flex items-center gap-2 bg-gray-900/80 border-b border-gray-800 px-4 py-2 text-xs text-gray-400">
+          <svg className="h-3.5 w-3.5 shrink-0 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {t("roadmap.readOnly.banner")}
+        </div>
+      )}
+
       {/* Grid */}
       <div className={`flex-1 overflow-hidden px-4 py-4 sm:px-6 ${isReadOnly ? "pointer-events-none select-none opacity-60" : ""}`}>
         <RoadmapGrid
           projectId={realProjectId}
+          readOnly={isMember}
           phases={phases}
           themes={themes}
           items={filteredItems}

@@ -2932,6 +2932,10 @@
       "rename": "Renombrar",
       "newPlaceholder": "Nombre del nuevo roadmap"
     },
+    "readOnly": {
+      "badge": "Solo lectura",
+      "banner": "Estás visualizando como miembro. Solo el gerente del proyecto puede editar el roadmap."
+    },
     "print": {
       "back": "Volver al roadmap",
       "preview": "Vista previa del PDF",

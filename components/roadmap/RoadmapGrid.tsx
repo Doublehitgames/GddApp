@@ -72,7 +72,7 @@ function GripIcon({ className = "" }: { className?: string }) {
 // ─── PhaseHeaderCell ──────────────────────────────────────────────────────────
 
 function PhaseHeaderCell({
-  phase, onUpdate, onDelete, t, dragListeners, dragAttributes, progress,
+  phase, onUpdate, onDelete, t, dragListeners, dragAttributes, progress, readOnly,
 }: {
   phase: RoadmapPhase;
   onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
@@ -81,6 +81,7 @@ function PhaseHeaderCell({
   dragListeners?: Record<string, unknown>;
   dragAttributes?: Record<string, unknown>;
   progress?: { done: number; total: number };
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
@@ -110,17 +111,19 @@ function PhaseHeaderCell({
     <div ref={ref} className="relative w-full h-full">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full h-full flex flex-col items-start justify-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 hover:bg-gray-800/80 transition-colors text-left"
+        onClick={() => { if (!readOnly) setOpen((v) => !v); }}
+        className={`w-full h-full flex flex-col items-start justify-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 transition-colors text-left ${readOnly ? "cursor-default" : "hover:bg-gray-800/80"}`}
       >
         <div className="flex items-center gap-2 w-full">
           <span className={`h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
           <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
             {formatPhaseHeader(phase)}
           </span>
-          <svg className="h-3 w-3 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
+          {!readOnly && (
+            <svg className="h-3 w-3 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          )}
         </div>
         {phase.headerType !== "title" && phase.name && (
           <span className="text-[11px] text-gray-500 pl-4 truncate w-full">{phase.name}</span>
@@ -333,13 +336,14 @@ function PhaseHeaderCell({
 // ─── SortablePhaseHeader ──────────────────────────────────────────────────────
 
 function SortablePhaseHeader({
-  phase, onUpdate, onDelete, t, progress,
+  phase, onUpdate, onDelete, t, progress, readOnly,
 }: {
   phase: RoadmapPhase;
   onUpdate: (patch: Partial<Pick<RoadmapPhase, "name" | "description" | "headerType" | "targetDate" | "status" | "isPublic">>) => void;
   onDelete: () => void;
   t: (k: string) => string;
   progress?: { done: number; total: number };
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: phase.id,
@@ -357,8 +361,9 @@ function SortablePhaseHeader({
         onDelete={onDelete}
         t={t}
         progress={progress}
-        dragListeners={listeners as unknown as Record<string, unknown>}
-        dragAttributes={attributes as unknown as Record<string, unknown>}
+        readOnly={readOnly}
+        dragListeners={readOnly ? undefined : (listeners as unknown as Record<string, unknown>)}
+        dragAttributes={readOnly ? undefined : (attributes as unknown as Record<string, unknown>)}
       />
     </div>
   );
@@ -367,11 +372,12 @@ function SortablePhaseHeader({
 // ─── SortableItemWrapper ──────────────────────────────────────────────────────
 
 function SortableItemWrapper({
-  item, onUpdate, onDelete,
+  item, onUpdate, onDelete, readOnly,
 }: {
   item: RoadmapItem;
   onUpdate: (patch: Partial<Pick<RoadmapItem, "title" | "description" | "tag" | "status" | "isPublic">>) => void;
   onDelete: () => void;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -387,8 +393,9 @@ function SortableItemWrapper({
         item={item}
         onUpdate={onUpdate}
         onDelete={onDelete}
-        dragHandleListeners={listeners as unknown as Record<string, unknown>}
-        dragHandleAttributes={attributes as unknown as Record<string, unknown>}
+        readOnly={readOnly}
+        dragHandleListeners={readOnly ? undefined : (listeners as unknown as Record<string, unknown>)}
+        dragHandleAttributes={readOnly ? undefined : (attributes as unknown as Record<string, unknown>)}
       />
     </div>
   );
@@ -428,7 +435,7 @@ function SortableThemeRow({
   editingThemeId, setEditingThemeId,
   addingItem, setAddingItem,
   itemDraft, setItemDraft,
-  handleAddItem, t,
+  handleAddItem, t, readOnly,
 }: {
   theme: RoadmapTheme;
   phases: RoadmapPhase[];
@@ -446,6 +453,7 @@ function SortableThemeRow({
   setItemDraft: (v: string) => void;
   handleAddItem: () => void;
   t: (k: string) => string;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: theme.id,
@@ -464,17 +472,25 @@ function SortableThemeRow({
       <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 border-r border-l-[6px] border-gray-800/60 ${cs.border} bg-gray-950/95 px-2 py-3 flex flex-col gap-1 justify-center`}>
         {/* Drag handle + name row */}
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
-            {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
-            className="shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
-            tabIndex={-1}
-          >
-            <GripIcon className="h-2.5 w-2.5" />
-          </button>
+          {/* Drag handle — hidden for read-only members */}
+          {!readOnly && (
+            <button
+              type="button"
+              {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
+              {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
+              className="shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
+              tabIndex={-1}
+            >
+              <GripIcon className="h-2.5 w-2.5" />
+            </button>
+          )}
 
-          {editingThemeId === theme.id ? (
+          {readOnly ? (
+            /* Static theme name for members */
+            <span className={`flex-1 text-xs font-semibold leading-snug ${cs.text} truncate`}>
+              {theme.name}
+            </span>
+          ) : editingThemeId === theme.id ? (
             <CommitTextInput
               value={theme.name}
               onCommit={(v) => { onUpdateTheme(theme.id, { name: v }); setEditingThemeId(null); }}
@@ -492,28 +508,30 @@ function SortableThemeRow({
           )}
         </div>
 
-        {/* Color dots */}
-        <div className="flex items-center gap-1 flex-wrap pl-3.5">
-          {THEME_COLORS.map((c) => (
+        {/* Color dots + delete — hidden for read-only members */}
+        {!readOnly && (
+          <div className="flex items-center gap-1 flex-wrap pl-3.5">
+            {THEME_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onUpdateTheme(theme.id, { color: c })}
+                className={`h-2 w-2 rounded-full transition-transform hover:scale-125 ${THEME_COLOR_STYLES[c].dot}`}
+                style={{ opacity: theme.color === c ? 1 : 0.35 }}
+              />
+            ))}
             <button
-              key={c}
               type="button"
-              onClick={() => onUpdateTheme(theme.id, { color: c })}
-              className={`h-2 w-2 rounded-full transition-transform hover:scale-125 ${THEME_COLOR_STYLES[c].dot}`}
-              style={{ opacity: theme.color === c ? 1 : 0.35 }}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
-            title={t("roadmap.theme.delete")}
-          >
-            <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+              onClick={() => setConfirmDelete(true)}
+              className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
+              title={t("roadmap.theme.delete")}
+            >
+              <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Phase cells */}
@@ -530,11 +548,13 @@ function SortableThemeRow({
                   item={item}
                   onUpdate={(patch) => onUpdateItem(item.id, patch)}
                   onDelete={() => onDeleteItem(item.id)}
+                  readOnly={readOnly}
                 />
               ))}
             </SortableContext>
 
-            {isAddingHere ? (
+            {/* Add item — hidden for read-only members */}
+            {!readOnly && (isAddingHere ? (
               <div className="flex items-center gap-1 rounded-lg border border-emerald-700/50 bg-emerald-950/20 px-2 py-1">
                 <input
                   autoFocus
@@ -561,7 +581,7 @@ function SortableThemeRow({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </div>
-            )}
+            ))}
           </DroppableCell>
         );
       })}
@@ -627,6 +647,8 @@ interface Props {
   onReorderPhases: (orderedIds: string[]) => void;
   onReorderThemes: (orderedIds: string[]) => void;
   onReorderItems: (phaseId: string, themeId: string, orderedIds: string[]) => void;
+  /** When true, hides all edit/add/delete controls (member view) */
+  readOnly?: boolean;
 }
 
 // ─── Main Grid ────────────────────────────────────────────────────────────────
@@ -637,6 +659,7 @@ export default function RoadmapGrid({
   onAddTheme, onUpdateTheme, onDeleteTheme,
   onAddItem, onUpdateItem, onDeleteItem,
   onReorderPhases, onReorderThemes, onReorderItems,
+  readOnly,
 }: Props) {
   const { t } = useI18n();
 
@@ -738,18 +761,20 @@ export default function RoadmapGrid({
           <p className="text-sm font-semibold text-gray-300">{t("roadmap.empty.title")}</p>
           <p className="text-xs text-gray-600 max-w-xs leading-relaxed">{t("roadmap.empty.subtitle")}</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => setAddingPhase(true)}
-            className="flex items-center gap-2 rounded-xl border border-violet-700/50 bg-violet-950/30 px-4 py-2 text-sm text-violet-300 hover:bg-violet-950/50 transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {t("roadmap.timeline.addPhase")}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setAddingPhase(true)}
+              className="flex items-center gap-2 rounded-xl border border-violet-700/50 bg-violet-950/30 px-4 py-2 text-sm text-violet-300 hover:bg-violet-950/50 transition-colors"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {t("roadmap.timeline.addPhase")}
+            </button>
+          </div>
+        )}
         {addingPhase && (
           <div className="flex items-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 px-4 py-2 mt-2">
             <input
@@ -790,12 +815,13 @@ export default function RoadmapGrid({
                   onDelete={() => onDeletePhase(phase.id)}
                   t={t}
                   progress={phaseProgress?.[phase.id]}
+                  readOnly={readOnly}
                 />
               ))}
             </SortableContext>
 
-            {/* Add phase */}
-            <div className="shrink-0 border-b border-gray-800/60 px-2 py-3 flex items-end">
+            {/* Add phase — hidden for read-only members */}
+            {!readOnly && <div className="shrink-0 border-b border-gray-800/60 px-2 py-3 flex items-end">
               {addingPhase ? (
                 <div className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/20 px-2 py-1.5">
                   <input
@@ -825,7 +851,7 @@ export default function RoadmapGrid({
                   {t("roadmap.timeline.addPhase")}
                 </button>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* ── Sortable theme rows ───────────────────────────────────────── */}
@@ -849,12 +875,13 @@ export default function RoadmapGrid({
                 setItemDraft={setItemDraft}
                 handleAddItem={handleAddItem}
                 t={t}
+                readOnly={readOnly}
               />
             ))}
           </SortableContext>
 
-          {/* ── Add theme row ─────────────────────────────────────────────── */}
-          <div className="flex">
+          {/* ── Add theme row — hidden for read-only members ──────────────── */}
+          {!readOnly && <div className="flex">
             <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 bg-gray-950/95 border-r border-gray-800/60 px-3 py-3`}>
               {addingTheme ? (
                 <div className="flex items-center gap-1.5 rounded-lg border border-violet-700/60 bg-violet-950/20 px-2 py-1.5">
@@ -884,7 +911,7 @@ export default function RoadmapGrid({
             {phases.map((phase) => (
               <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/20 px-2 py-3`} />
             ))}
-          </div>
+          </div>}
 
         </div>
       </div>

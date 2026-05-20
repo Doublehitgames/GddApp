@@ -10,6 +10,7 @@ interface Props {
   selectedPhaseId: string | null;
   onSelectPhase: (phaseId: string) => void;
   onAddPhase: (name: string) => void;
+  readOnly?: boolean;
 }
 
 const PHASE_STATUS_STYLES = {
@@ -25,7 +26,7 @@ function formatTargetDate(raw: string): string {
   return date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
 }
 
-export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelectPhase, onAddPhase }: Props) {
+export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelectPhase, onAddPhase, readOnly }: Props) {
   const { t } = useI18n();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
@@ -112,8 +113,8 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
         );
       })}
 
-      {/* Add phase */}
-      {adding ? (
+      {/* Add phase — hidden for read-only members */}
+      {!readOnly && (adding ? (
         <div className="shrink-0 flex items-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 min-w-[180px]">
           <input
             ref={inputRef}
@@ -141,7 +142,7 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
           </svg>
           {t("roadmap.timeline.addPhase")}
         </button>
-      )}
+      ))}
     </div>
   );
 }
