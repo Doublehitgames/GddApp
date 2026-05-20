@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { RoadmapItem, ItemStatus, RoadmapItemTag } from "@/lib/roadmap/types";
 import { ITEM_TAGS, ITEM_TAG_CONFIG } from "@/lib/roadmap/types";
 import { CommitTextInput, CommitTextarea } from "@/components/common/CommitInput";
@@ -31,33 +31,8 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
-  const popoverRef = useRef<HTMLDivElement>(null);
   const style = STATUS_STYLES[item.status];
   const tagCfg = item.tag ? ITEM_TAG_CONFIG[item.tag] : null;
-
-  useEffect(() => {
-    if (!open) return;
-    let mousedownInside = false;
-    const onMouseDown = (e: MouseEvent) => {
-      mousedownInside = !!popoverRef.current?.contains(e.target as Node);
-    };
-    const onMouseUp = (e: MouseEvent) => {
-      if (mousedownInside) return;
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("mouseup", onMouseUp);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [open]);
-
-  function cycleStatus(e: React.MouseEvent) {
-    e.stopPropagation();
-    const idx = STATUS_CYCLE.indexOf(item.status);
-    onUpdate({ status: STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length] });
-  }
 
   async function handlePickThumb() {
     const { openGoogleDriveImagePicker, driveFileIdToImageUrl } = await import("@/lib/googleDrivePicker");
@@ -67,7 +42,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
   }
 
   return (
-    <div ref={popoverRef} className="relative">
+    <div className="relative">
       {/* Chip row */}
       <div
         role="button"
@@ -113,9 +88,13 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
         )}
       </div>
 
-      {/* Detail popover */}
+      {/* Detail modal — fixed overlay, above everything */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-[640px] rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+        >
+        <div className="w-full max-w-xl rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5 max-h-[90vh] overflow-y-auto">
 
           {/* Top row: thumb (left) + title/status/tags (right) */}
           <div className="flex gap-3">
@@ -337,6 +316,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
               </button>
             </div>
           )}
+        </div>
         </div>
       )}
     </div>
