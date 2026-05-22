@@ -112,6 +112,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const sectionAuditBy = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
   const [section, setSection] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
+  // Tracks the UUID of the last successfully resolved section so we can survive a title rename
+  // without flashing the "not found" page while the URL updates.
+  const lastKnownSectionUUIDRef = useRef<string | null>(null);
   const realProjectId = project?.id ?? "";
   const realSectionId = section?.id ?? "";
   const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
@@ -448,10 +451,22 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   useEffect(() => {
     const proj = getProjectBySlug(projectId);
     setProject(proj || null);
-    const sec = proj?.sections?.find((s: any) => toSlug(s.title) === sectionId);
+    let sec = proj?.sections?.find((s: any) => toSlug(s.title) === sectionId);
+
+    // Slug lookup failed — could be a title rename that updated the store before the URL changed.
+    // Fall back to the last known UUID so we don't flash "not found" while navigating.
+    if (!sec && lastKnownSectionUUIDRef.current && proj) {
+      const renamed = proj.sections?.find((s: any) => s.id === lastKnownSectionUUIDRef.current);
+      if (renamed) {
+        router.replace(sectionPath(proj, renamed));
+        return;
+      }
+    }
+
+    if (sec) lastKnownSectionUUIDRef.current = sec.id;
     setSection(sec || null);
     setEditedTitle(sec?.title || "");
-    
+
     // Build breadcrumb trail
     const trail: any[] = [];
     if (sec) {
@@ -469,7 +484,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setBreadcrumbs(trail);
     setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
-  }, [projectId, sectionId, getProjectBySlug, projects]);
+  }, [projectId, sectionId, getProjectBySlug, projects, router]);
 
   useEffect(() => {
     setShowAddonMenu(false);
@@ -1820,19 +1835,19 @@ function SectionDetailContent({
   const addonGroups = useMemo(() => {
     const groups = new Set<string>();
     for (const addon of addons) {
-      if (addon.type === "richDoc") continue;
+      if (addon.type === "richDoc" || addon.type === "fieldLibrary") continue;
       groups.add((addon as any).group || "A");
     }
     return Array.from(groups).sort();
   }, [addons]);
 
   const hasGroupableAddons = useMemo(
-    () => addons.some((a: SectionAddon) => a.type !== "richDoc"),
+    () => addons.some((a: SectionAddon) => a.type !== "richDoc" && a.type !== "fieldLibrary"),
     [addons]
   );
 
   const groupAddons = addons.filter(
-    (a: any) => a.type === "richDoc" || ((a as any).group || "A") === activeGroup
+    (a: any) => a.type === "richDoc" || a.type === "fieldLibrary" || ((a as any).group || "A") === activeGroup
   );
 
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
@@ -2208,8 +2223,12 @@ function SectionDetailContent({
                     if (e.key === 'Enter' && editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(realProjectId, realSectionId,editedTitle.trim(), convertedContent, undefined, undefined);
+                      const newTitle = editedTitle.trim();
+                      editSection(realProjectId, realSectionId, newTitle, convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
+                      if (project && newTitle !== section.title) {
+                        router.replace(sectionPath(project, { title: newTitle }));
+                      }
                     } else if (e.key === 'Escape') {
                       setEditedTitle(section.title);
                       setIsEditingTitle(false);
@@ -2226,8 +2245,12 @@ function SectionDetailContent({
                     if (editedTitle.trim()) {
                       const sections = project?.sections || [];
                       const convertedContent = convertReferencesToIds(section.content || '', sections);
-                      editSection(realProjectId, realSectionId,editedTitle.trim(), convertedContent, undefined, undefined);
+                      const newTitle = editedTitle.trim();
+                      editSection(realProjectId, realSectionId, newTitle, convertedContent, undefined, undefined);
                       setIsEditingTitle(false);
+                      if (project && newTitle !== section.title) {
+                        router.replace(sectionPath(project, { title: newTitle }));
+                      }
                     }
                   }}
                   className="inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-600/85 text-white px-3 py-1 text-sm hover:bg-emerald-500 transition-colors"

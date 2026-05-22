@@ -200,6 +200,16 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
     }
   }, [pathname]);
 
+  // Resolve the URL slug to the actual section UUID for comparisons against section.id
+  const resolvedSectionId = useMemo(() => {
+    if (!currentSectionId || !project?.sections) return null;
+    const sections: any[] = project.sections;
+    const byId = sections.find((s) => s.id === currentSectionId);
+    if (byId) return byId.id as string;
+    const bySlug = sections.find((s) => toSlug(s.title) === currentSectionId);
+    return (bySlug?.id as string) ?? null;
+  }, [currentSectionId, project?.sections]);
+
   const sectionIds = useMemo(
     () => (project?.sections || []).map((s: any) => s.id),
     [project?.sections]
@@ -300,14 +310,14 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
 
 
   useEffect(() => {
-    if (!currentSectionId) return;
+    if (!resolvedSectionId) return;
     const sections = project?.sections || [];
     if (sections.length === 0) return;
 
     const sectionById = new Map<string, any>(
       sections.map((section: any) => [section.id, section])
     );
-    const currentSection = sectionById.get(currentSectionId);
+    const currentSection = sectionById.get(resolvedSectionId);
     if (!currentSection) return;
 
     const idsToExpand = new Set<string>();
@@ -324,8 +334,8 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
     }
 
     // If current section has children, open exactly one level for quick navigation.
-    const hasChildren = sections.some((section: any) => section.parentId === currentSectionId);
-    if (hasChildren) idsToExpand.add(currentSectionId);
+    const hasChildren = sections.some((section: any) => section.parentId === resolvedSectionId);
+    if (hasChildren) idsToExpand.add(resolvedSectionId);
 
     if (idsToExpand.size === 0) return;
     setExpandedSections((prev) => {
@@ -333,7 +343,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
       idsToExpand.forEach((id) => next.add(id));
       return next;
     });
-  }, [currentSectionId, project?.sections]);
+  }, [resolvedSectionId, project?.sections]);
 
   const canExpandAll = sectionIds.some((id: string) => !expandedSections.has(id));
   const canCollapseAll = expandedSections.size > 0;
@@ -736,11 +746,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
     const title = newSectionTitle.trim();
     if (!title || nameError) return;
 
-    const parentSectionId =
-      currentSectionId &&
-      (project?.sections || []).some((section: any) => section.id === currentSectionId)
-        ? currentSectionId
-        : null;
+    const parentSectionId = resolvedSectionId ?? null;
 
     const pageType = selectedPageTypeId === "blank" ? null : getPageType(selectedPageTypeId) ?? null;
     const kinds: RequirementKind[] = pageType?.requires ? [...pageType.requires] : [];
@@ -1578,7 +1584,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
             searchTerm={searchTerm}
             selectedTagFilters={selectedTagFilters}
             selectedAddonFilters={selectedAddonFilters}
-            activeSectionId={currentSectionId}
+            activeSectionId={resolvedSectionId}
             expandedSections={expandedSections}
             setExpandedSections={setExpandedSections}
             labels={{
@@ -1620,7 +1626,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
             onChange={(e) => {
               const val = e.target.value;
               setNewSectionTitle(val);
-              const parentId = currentSectionId ?? undefined;
+              const parentId = resolvedSectionId ?? undefined;
               if (val.trim() && hasDuplicateName(projectId, val.trim(), parentId)) {
                 setNameError(parentId ? t("sectionDetail.subsections.duplicate") : t("projectDetail.rootSectionDuplicate"));
               } else {
@@ -1628,7 +1634,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
               }
             }}
             placeholder={(() => {
-              const fallback = currentSectionId
+              const fallback = resolvedSectionId
                 ? t("sectionDetail.subsections.addPlaceholder")
                 : t("projectDetail.newSectionPlaceholder");
               if (selectedPageTypeId === "blank") return fallback;

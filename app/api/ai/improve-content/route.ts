@@ -188,38 +188,70 @@ ${contextInfo}`;
 
   } catch (error) {
     console.error('Error improving content:', error);
-    
-    const errorMessage = error instanceof Error ? error.message : 'Failed to improve content';
-    const normalizedError = errorMessage.toLowerCase();
 
-    // Detecta chave de API inválida para orientar correção no cliente
+    const rawMessage = error instanceof Error ? error.message : 'Failed to improve content';
+
+    // Parse structured error from provider response when available (e.g. Groq/OpenAI JSON body)
+    let providerCode = '';
+    let providerMessage = '';
+    try {
+      const jsonStart = rawMessage.indexOf('{');
+      if (jsonStart !== -1) {
+        const parsed = JSON.parse(rawMessage.slice(jsonStart));
+        providerCode = parsed?.error?.code ?? '';
+        providerMessage = parsed?.error?.message ?? '';
+      }
+    } catch { /* not JSON — ignore */ }
+
+    const effectiveMessage = providerMessage || rawMessage;
+    const normalizedRaw = rawMessage.toLowerCase();
+
+    // Invalid API key
     if (
-      normalizedError.includes('invalid_api_key') ||
-      normalizedError.includes('invalid api key') ||
-      normalizedError.includes('unauthorized') ||
-      normalizedError.includes('401')
+      providerCode === 'invalid_api_key' ||
+      normalizedRaw.includes('invalid_api_key') ||
+      normalizedRaw.includes('invalid api key') ||
+      normalizedRaw.includes('unauthorized') ||
+      normalizedRaw.includes('401')
     ) {
       return NextResponse.json({
         error: '🔑 Chave de API inválida. Abra Configurações de IA e atualize sua chave.',
         errorType: 'invalid_api_key',
       }, { status: 401 });
     }
-    
-    // Detecta rate limit
-    if (errorMessage.includes('rate_limit_exceeded') || errorMessage.includes('Rate limit')) {
-      const timeMatch = errorMessage.match(/Please try again in ([\d\.]+[smh]|\\d+m\\d+\\.?\\d*s)/);
-      const waitTime = timeMatch ? timeMatch[1] : 'alguns segundos';
-      
+
+    // Rate / quota limit — covers per-minute, daily, and monthly limits
+    const isRateLimit =
+      providerCode === 'rate_limit_exceeded' ||
+      providerCode === 'insufficient_quota' ||
+      effectiveMessage.toLowerCase().includes('rate limit') ||
+      normalizedRaw.includes('rate_limit_exceeded');
+
+    if (isRateLimit) {
+      // Extract wait time (fixes regex: single \d for digits, handles Xm, Xs, Xh, XmYs)
+      const timeMatch = effectiveMessage.match(/[Pp]lease try again in ([\d.]+[smhdSMHD]|\d+m[\d.]*s)/);
+      const waitTime = timeMatch ? timeMatch[1] : null;
+
+      // Distinguish long waits (daily/monthly exhaustion) from short ones (per-minute)
+      const isLongWait = waitTime ? /[hH]/.test(waitTime) || parseInt(waitTime) > 60 : false;
+      const waitPhrase = waitTime
+        ? `Aguarde ${waitTime} e tente novamente.`
+        : 'Verifique seu uso em console.groq.com e tente novamente.';
+
+      const hint = isLongWait || !waitTime
+        ? ' Seu limite diário/mensal pode ter sido atingido — verifique em console.groq.com.'
+        : '';
+
       return NextResponse.json({
-        error: `⏱️ Limite de API atingido. Aguarde ${waitTime} e tente novamente.`,
+        error: `⏱️ Limite de API atingido. ${waitPhrase}${hint}`,
         errorType: 'rate_limit',
-        waitTime: timeMatch ? timeMatch[1] : null
+        waitTime,
       }, { status: 429 });
     }
-    
+
     return NextResponse.json({
       error: '❌ Erro ao melhorar conteúdo. Tente novamente.',
-      details: errorMessage
+      details: rawMessage
     }, { status: 500 });
   }
 }
