@@ -1,4 +1,4 @@
-import type { AgendaTask, AgendaState, AgendaActions, SubTask } from "@/lib/agenda/types";
+import type { AgendaTask, AgendaState, AgendaActions, SubTask, RecurrenceRule } from "@/lib/agenda/types";
 import { persistAgendaTasks } from "./storageHelpers";
 import { upsertAgendaTasks } from "@/lib/supabase/agendaSync";
 
@@ -6,6 +6,10 @@ type StoreSet = (partial: Partial<AgendaState & AgendaActions> | ((state: Agenda
 type StoreGet = () => AgendaState & AgendaActions & { tasksByProject: Record<string, AgendaTask[]>; activeTaskId: string | null; userId?: string | null };
 
 const syncTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
 
 function scheduleSyncToSupabase(projectId: string, get: StoreGet) {
   clearTimeout(syncTimers[projectId]);
@@ -279,6 +283,74 @@ export function createAgendaSlice(set: StoreSet, get: StoreGet) {
         const d = new Date(t.date);
         return d >= start && d < end;
       });
+    },
+
+    setAgendaTaskRecurrence: (projectId: string, taskId: string, recurrence: RecurrenceRule | undefined) => {
+      sp(set, get, (state) => ({
+        tasksByProject: {
+          ...state.tasksByProject,
+          [projectId]: (state.tasksByProject[projectId] ?? []).map((t) =>
+            t.id === taskId ? { ...t, recurrence } : t
+          ),
+        },
+      }));
+      scheduleSyncToSupabase(projectId, get);
+    },
+
+    ensureRecurringTasksForRange: (projectId: string, dateStart: string, dateEnd: string) => {
+      const allTasks = get().tasksByProject[projectId] ?? [];
+      const sources = allTasks.filter((t) => t.recurrence && !t.recurrenceSourceId);
+      if (sources.length === 0) return;
+
+      const existingKeys = new Set<string>();
+      for (const t of allTasks) {
+        if (t.recurrenceSourceId) existingKeys.add(`${t.recurrenceSourceId}|${t.date}`);
+      }
+
+      const newTasks: AgendaTask[] = [];
+      const rangeStart = new Date(dateStart + "T00:00:00");
+      const rangeEnd = new Date(dateEnd + "T00:00:00");
+
+      for (const source of sources) {
+        const sourceDow = new Date(source.date + "T00:00:00").getDay();
+        for (let d = new Date(rangeStart); d < rangeEnd; d.setDate(d.getDate() + 1)) {
+          const dateStr = isoDate(d);
+          if (dateStr <= source.date) continue;
+          if (source.recurrence!.type === "weekly" && d.getDay() !== sourceDow) continue;
+          const key = `${source.id}|${dateStr}`;
+          if (existingKeys.has(key)) continue;
+          existingKeys.add(key);
+          const orderBase =
+            allTasks.filter((t) => t.date === dateStr).length +
+            newTasks.filter((t) => t.date === dateStr).length;
+          newTasks.push({
+            id: crypto.randomUUID(),
+            projectId,
+            title: source.title,
+            date: dateStr,
+            status: "pending",
+            sessions: [],
+            totalMs: 0,
+            createdAt: new Date().toISOString(),
+            order: orderBase,
+            description: source.description,
+            priority: source.priority,
+            category: source.category,
+            subtasks: source.subtasks?.map((s) => ({ ...s, id: crypto.randomUUID() })),
+            ...(source.sectionId ? { sectionId: source.sectionId, sectionTitle: source.sectionTitle } : {}),
+            recurrenceSourceId: source.id,
+          });
+        }
+      }
+
+      if (newTasks.length === 0) return;
+      sp(set, get, (state) => ({
+        tasksByProject: {
+          ...state.tasksByProject,
+          [projectId]: [...(state.tasksByProject[projectId] ?? []), ...newTasks],
+        },
+      }));
+      scheduleSyncToSupabase(projectId, get);
     },
   };
 }

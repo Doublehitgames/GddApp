@@ -56,6 +56,8 @@ export default function AgendaClient({ projectId }: Props) {
   const addSubTask = useProjectStore((s) => s.addSubTask);
   const toggleSubTask = useProjectStore((s) => s.toggleSubTask);
   const deleteSubTask = useProjectStore((s) => s.deleteSubTask);
+  const setAgendaTaskRecurrence = useProjectStore((s) => s.setAgendaTaskRecurrence);
+  const ensureRecurringTasksForRange = useProjectStore((s) => s.ensureRecurringTasksForRange);
 
   const project = useMemo(
     () => getProjectBySlug(projectId),
@@ -71,6 +73,13 @@ export default function AgendaClient({ projectId }: Props) {
   const todayStr = toISODate(new Date());
   const isPast = selectedDate < todayStr;
   const isToday = selectedDate === todayStr;
+
+  // Gera instâncias de tarefas recorrentes ao navegar entre semanas
+  useEffect(() => {
+    const end = new Date(weekStart);
+    end.setDate(end.getDate() + 7);
+    ensureRecurringTasksForRange(realProjectId, toISODate(weekStart), toISODate(end));
+  }, [weekStart, realProjectId, ensureRecurringTasksForRange]);
 
 
   const allTasks: AgendaTask[] = tasksByProject[realProjectId] ?? [];
@@ -315,6 +324,7 @@ export default function AgendaClient({ projectId }: Props) {
           onAddSubTask={(title) => addSubTask(realProjectId, drawerTask.id, title)}
           onToggleSubTask={(subId) => toggleSubTask(realProjectId, drawerTask.id, subId)}
           onDeleteSubTask={(subId) => deleteSubTask(realProjectId, drawerTask.id, subId)}
+          onSetRecurrence={(recurrence) => setAgendaTaskRecurrence(realProjectId, drawerTask.id, recurrence)}
         />
       )}
     </div>

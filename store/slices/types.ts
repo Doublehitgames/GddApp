@@ -5,7 +5,7 @@ import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync
 import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { SectionAddon } from "@/lib/addons/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
-import type { AgendaTask } from "@/lib/agenda/types";
+import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
 
 export type UUID = string;
 
@@ -480,6 +480,8 @@ export interface ProjectStore {
   pauseAgendaTask: (projectId: string, taskId: string) => void;
   finishAgendaTask: (projectId: string, taskId: string) => void;
   getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
+  setAgendaTaskRecurrence: (projectId: string, taskId: string, recurrence: RecurrenceRule | undefined) => void;
+  ensureRecurringTasksForRange: (projectId: string, dateStart: string, dateEnd: string) => void;
   loadAgendaFromSupabase: () => Promise<void>;
   loadKpiFromSupabase: () => Promise<void>;
   // ── KPI tracker ───────────────────────────────────────────────────────────

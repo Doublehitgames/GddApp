@@ -2,6 +2,10 @@ export type TaskStatus = "pending" | "running" | "paused" | "done";
 
 export type TaskPriority = "low" | "medium" | "high";
 
+export type RecurrenceRule = {
+  type: "daily" | "weekly";
+};
+
 export type SubTask = {
   id: string;
   title: string;
@@ -39,6 +43,10 @@ export type AgendaTask = {
   sectionId?: string;
   /** Título da seção (snapshot no momento da criação) */
   sectionTitle?: string;
+  /** Regra de recorrência desta tarefa (apenas na tarefa-origem) */
+  recurrence?: RecurrenceRule;
+  /** Aponta para o id da tarefa-origem quando esta é uma instância gerada automaticamente */
+  recurrenceSourceId?: string;
 };
 
 export type AgendaState = {
@@ -60,4 +68,6 @@ export type AgendaActions = {
   pauseAgendaTask: (projectId: string, taskId: string) => void;
   finishAgendaTask: (projectId: string, taskId: string) => void;
   getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
+  setAgendaTaskRecurrence: (projectId: string, taskId: string, recurrence: RecurrenceRule | undefined) => void;
+  ensureRecurringTasksForRange: (projectId: string, dateStart: string, dateEnd: string) => void;
 };

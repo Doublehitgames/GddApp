@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import type { AgendaTask, TaskPriority, SubTask } from "@/lib/agenda/types";
+import type { AgendaTask, TaskPriority, SubTask, RecurrenceRule } from "@/lib/agenda/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { toSlug } from "@/lib/utils/slug";
 
@@ -22,6 +22,7 @@ interface Props {
   onAddSubTask: (title: string) => void;
   onToggleSubTask: (subTaskId: string) => void;
   onDeleteSubTask: (subTaskId: string) => void;
+  onSetRecurrence: (recurrence: RecurrenceRule | undefined) => void;
 }
 
 const PRIORITY_STYLE: Record<TaskPriority, { dot: string; bg: string; text: string; border: string }> = {
@@ -84,6 +85,7 @@ export default function TaskDetailDrawer({
   onPlay, onPause, onFinish, onDelete,
   onRenameTitle, onUpdateDetail,
   onAddSubTask, onToggleSubTask, onDeleteSubTask,
+  onSetRecurrence,
 }: Props) {
   const { t } = useI18n();
 
@@ -210,6 +212,11 @@ export default function TaskDetailDrawer({
             className="flex-1 min-w-0 bg-transparent text-base font-semibold text-white outline-none placeholder:text-gray-500 disabled:opacity-60 focus:border-b focus:border-sky-500 pb-0.5"
             placeholder="Nome da atividade"
           />
+          {task.recurrenceSourceId && (
+            <span className="shrink-0 rounded-full border border-violet-700/50 bg-violet-900/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-violet-400">
+              {t("agenda.recurrenceBadge", "Recorrente")}
+            </span>
+          )}
           {readOnly && (
             <span className="shrink-0 rounded-full border border-gray-700 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-gray-500">
               {t("agenda.historyBadge")}
@@ -328,6 +335,45 @@ export default function TaskDetailDrawer({
               className={`w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/20 ${readOnly ? "opacity-60 cursor-default" : ""}`}
             />
           </div>
+
+          {/* Recorrência — só para tarefas-origem (não para instâncias geradas) */}
+          {!task.recurrenceSourceId && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                {t("agenda.recurrenceLabel", "Recorrência")}
+              </p>
+              <div className={`flex gap-2 ${readOnly ? "pointer-events-none opacity-60" : ""}`}>
+                {([
+                  { value: undefined,  label: t("agenda.recurrenceNone",   "Não repete") },
+                  { value: "daily",    label: t("agenda.recurrenceDaily",   "Diária")     },
+                  { value: "weekly",   label: t("agenda.recurrenceWeekly",  "Semanal")    },
+                ] as { value: "daily" | "weekly" | undefined; label: string }[]).map(({ value, label }) => {
+                  const isActive = value === undefined ? !task.recurrence : task.recurrence?.type === value;
+                  return (
+                    <button
+                      key={value ?? "none"}
+                      type="button"
+                      onClick={() => onSetRecurrence(value ? { type: value } : undefined)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-all ${
+                        isActive
+                          ? "border-sky-500/60 bg-sky-500/20 text-sky-200"
+                          : "border-gray-700 bg-gray-900/60 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {task.recurrence && (
+                <p className="text-xs text-gray-500">
+                  {task.recurrence.type === "daily"
+                    ? t("agenda.recurrenceDailyHint", "Aparece todos os dias automaticamente.")
+                    : t("agenda.recurrenceWeeklyHint", "Aparece toda semana no mesmo dia.")}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Seção vinculada */}
           {task.sectionTitle && (
