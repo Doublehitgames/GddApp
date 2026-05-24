@@ -401,6 +401,7 @@ export async function POST(request: NextRequest) {
         "sort_order",
         "color",
         "domain_tags",
+        "data_id",
         includeBalanceAddonsColumn ? "balance_addons" : null,
         includeThumbImageColumn ? "thumb_image_url" : null,
         includeFlowchartStateColumn ? "flowchart_state" : null,
