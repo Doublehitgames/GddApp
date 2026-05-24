@@ -392,7 +392,8 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       );
     }
 
-    router.push(sectionPathById(project ?? { title: "", sections: [] }, outcome.newRootId));
+    const updatedProject = getProjectBySlug(projectId) ?? project;
+    router.push(sectionPathById(updatedProject ?? { title: "", sections: [] }, outcome.newRootId));
   }
 
   duplicateRef.current = handleDuplicateSection;
