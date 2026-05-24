@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import type { ProgressionTableAddonDraft } from "@/lib/addons/types";
+import { useState, useMemo } from "react";
+import type { FieldLibraryAddonDraft, ProgressionTableAddonDraft } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
+import { useProjectStore } from "@/store/projectStore";
 
 interface ProgressionTableAddonReadOnlyProps {
   addon: ProgressionTableAddonDraft;
@@ -18,8 +19,39 @@ export function ProgressionTableAddonReadOnly({
   bare = false,
 }: ProgressionTableAddonReadOnlyProps) {
   const { t } = useI18n();
+  const projects = useProjectStore((state) => state.projects);
   const rows = addon.rows || [];
   const columns = addon.columns || [];
+
+  const libraryMeta = useMemo(() => {
+    const map = new Map<string, { description: string; pageName: string }>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        for (const sa of section.addons || []) {
+          if (sa.type !== "fieldLibrary") continue;
+          const data = sa.data as FieldLibraryAddonDraft;
+          for (const entry of data.entries || []) {
+            const key = `${sa.id}:${entry.id}`;
+            map.set(key, {
+              description: entry.description || "",
+              pageName: section.title || section.id,
+            });
+          }
+        }
+      }
+    }
+    return map;
+  }, [projects]);
+
+  const getColumnTooltip = (column: (typeof columns)[number]): string | undefined => {
+    if (!column.libraryRef) return undefined;
+    const meta = libraryMeta.get(`${column.libraryRef.libraryAddonId}:${column.libraryRef.entryId}`);
+    if (!meta) return undefined;
+    const parts: string[] = [];
+    if (meta.description) parts.push(meta.description);
+    parts.push(`Página: ${meta.pageName}`);
+    return parts.join("\n");
+  };
   const isLight = theme === "light";
   void maxRows;
   const [isExpanded, setIsExpanded] = useState(false);
@@ -70,11 +102,23 @@ export function ProgressionTableAddonReadOnly({
               <th className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>
                 {t("progressionTableAddon.levelHeader", "Level")}
               </th>
-              {columns.map((column) => (
-                <th key={column.id} className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""}`}>
-                  {column.name || t("progressionTableAddon.columnFallback", "Coluna")}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const tooltip = getColumnTooltip(column);
+                return (
+                  <th
+                    key={column.id}
+                    title={tooltip}
+                    className={`px-2 py-1.5 ${bare ? "text-[11px] uppercase tracking-wide font-semibold" : ""} ${tooltip ? "cursor-help" : ""}`}
+                  >
+                    {column.name || t("progressionTableAddon.columnFallback", "Coluna")}
+                    {tooltip && (
+                      <span className="ml-1 inline-flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full border border-current text-[8px] font-bold opacity-50 leading-none">
+                        ?
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
