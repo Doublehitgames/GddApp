@@ -109,8 +109,11 @@ export function getBindingChipLabel(
   switch (binding.source) {
     case "manual":
       return "Sem vínculo";
-    case "sheets":
-      return `${binding.ref.sheetName}!${binding.ref.cellRef}`;
+    case "sheets": {
+      const regName = context.spreadsheetRegistry?.find((s) => s.spreadsheetId === binding.ref.spreadsheetId)?.name;
+      const ref = `${binding.ref.sheetName}!${binding.ref.cellRef}`;
+      return regName ? `Google Sheets: ${regName} - ${ref}` : ref;
+    }
     case "progressionColumn": {
       // When multiple columns share the same name, add the table name for disambiguation
       const cols = context.progressionColumns;

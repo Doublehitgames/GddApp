@@ -225,9 +225,9 @@ export function FieldBindingPicker({
 
       {/* Input + binding chip (or full-width chip when no children) */}
       <div className="flex items-stretch gap-2">
-        {children != null ? <div className="min-w-0 flex-1">{children}</div> : null}
+        {children != null ? <div className="min-w-[72px] shrink">{children}</div> : null}
 
-        <div ref={containerRef} className={`relative ${children == null ? "flex-1" : "shrink-0"}`}>
+        <div ref={containerRef} className="relative flex-1">
           {/* Chip button */}
           <button
             id={buttonId}
@@ -236,7 +236,7 @@ export function FieldBindingPicker({
             aria-expanded={open}
             aria-controls={popoverId}
             aria-labelledby={`${labelId} ${buttonId}`}
-            className={`inline-flex ${children == null ? "w-full" : "h-full max-w-[220px]"} items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${chipClass}`}
+            className={`inline-flex h-full w-full items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${chipClass}`}
           >
             <svg
               className="h-3.5 w-3.5 shrink-0"
@@ -252,7 +252,7 @@ export function FieldBindingPicker({
                 d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 11-5.656-5.656l1.5-1.5m6.656-6.656l1.5-1.5a4 4 0 115.656 5.656l-3 3a4 4 0 01-5.656 0"
               />
             </svg>
-            <span className="truncate">{chipLabel}</span>
+            <span className="whitespace-nowrap">{chipLabel}</span>
             {isActive ? (
               <span aria-hidden="true" className={isSheets ? "text-emerald-300" : "text-indigo-300"}>
                 •

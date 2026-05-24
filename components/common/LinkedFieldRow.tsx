@@ -148,8 +148,12 @@ export function LinkedFieldRow({
 
   const hasSheetsBinding = Boolean(sheetsBinding?.current);
 
+  const sheetsRegistryName = hasSheetsBinding
+    ? spreadsheetRegistry?.find((s) => s.spreadsheetId === sheetsBinding!.current!.spreadsheetId)?.name
+    : undefined;
+
   const chipText = hasSheetsBinding
-    ? `${sheetsBinding!.current!.sheetName}!${sheetsBinding!.current!.cellRef}`
+    ? `${sheetsRegistryName ? `Google Sheets: ${sheetsRegistryName} - ` : ""}${sheetsBinding!.current!.sheetName}!${sheetsBinding!.current!.cellRef}`
     : selected
     ? selected.label
     : hasInvalidLink

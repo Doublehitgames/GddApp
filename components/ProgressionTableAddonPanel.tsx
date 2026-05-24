@@ -1827,7 +1827,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                             <div className="flex items-center justify-between gap-2">
                               <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300">
                                 <span aria-hidden>📊</span>
-                                <span>{t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")}</span>
+                                <span>
+                                  {`Google Sheets: ${linkedSpreadsheets.find((s) => s.spreadsheetId === column.sheetsBinding?.spreadsheetId)?.name ?? t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")}`}
+                                </span>
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <button
