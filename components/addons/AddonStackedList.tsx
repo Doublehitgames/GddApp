@@ -61,6 +61,34 @@ export function AddonStackedList({
     return map;
   }, []);
 
+  type RenderUnit =
+    | { kind: "single"; addon: SectionAddon }
+    | { kind: "pair"; schema: SectionAddon; remote: SectionAddon };
+
+  const renderUnits = useMemo((): RenderUnit[] => {
+    const units: RenderUnit[] = [];
+    let i = 0;
+    while (i < addons.length) {
+      const cur = addons[i];
+      const nxt = addons[i + 1];
+      const curIsSchema = cur.type === "dataSchema" || cur.type === "genericStats";
+      const nxtIsRemote = nxt?.type === "exportSchema";
+      const curIsRemote = cur.type === "exportSchema";
+      const nxtIsSchema = nxt && (nxt.type === "dataSchema" || nxt.type === "genericStats");
+      if (curIsSchema && nxtIsRemote) {
+        units.push({ kind: "pair", schema: cur, remote: nxt });
+        i += 2;
+      } else if (curIsRemote && nxtIsSchema) {
+        units.push({ kind: "pair", schema: nxt, remote: cur });
+        i += 2;
+      } else {
+        units.push({ kind: "single", addon: cur });
+        i++;
+      }
+    }
+    return units;
+  }, [addons]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -85,18 +113,52 @@ export function AddonStackedList({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={addons.map((a) => a.id)} strategy={verticalListSortingStrategy}>
         <div className="divide-y divide-gray-800/60">
-          {addons.map((addon) => {
+          {renderUnits.map((unit) => {
+            if (unit.kind === "pair") {
+              const { schema, remote } = unit;
+              const schemaEntry = entriesByType.get(schema.type) || entriesByType.get("dataSchema");
+              const remoteEntry = entriesByType.get(remote.type);
+              if (!schemaEntry || !remoteEntry) return null;
+              const renderCard = (addon: SectionAddon, entry: AddonRegistryEntry) => (
+                <AddonCard
+                  key={addon.id}
+                  addon={addon}
+                  emoji={entry.emoji}
+                  label={addon.name || getAddonTypeLabel(addon.type)}
+                  typeLabel={getAddonTypeLabel(addon.type)}
+                  isSelected={selectedIds.has(addon.id)}
+                  isDrawerOpen={drawerOpenAddonId === addon.id}
+                  onOpenEditor={() => onOpenEditor(addon.id)}
+                  onSelectionClick={(mods) => onSelectionToggle(addon.id, mods)}
+                  onRename={(name) => onRename(addon.id, name)}
+                  onCopy={onCopy ? () => onCopy(addon) : undefined}
+                  onMove={onMove ? () => onMove(addon) : undefined}
+                  onRemove={() => onRemove(addon.id)}
+                >
+                  {renderReadOnly(addon, entry)}
+                </AddonCard>
+              );
+              return (
+                <div key={`pair-${schema.id}-${remote.id}`} className="flex gap-0 items-start">
+                  <div className="flex-1 min-w-0 border-r border-gray-800/60 pr-2">
+                    {renderCard(schema, schemaEntry)}
+                  </div>
+                  <div className="flex-1 min-w-0 pl-2">
+                    {renderCard(remote, remoteEntry)}
+                  </div>
+                </div>
+              );
+            }
+            const { addon } = unit;
             const entry = entriesByType.get(addon.type);
-            // genericStats is aliased to dataSchema in the registry lookup
             const resolvedEntry = entry || entriesByType.get(addon.type === "genericStats" ? "dataSchema" : addon.type);
             if (!resolvedEntry) return null;
-            const label = addon.name || getAddonTypeLabel(addon.type);
             return (
               <AddonCard
                 key={addon.id}
                 addon={addon}
                 emoji={resolvedEntry.emoji}
-                label={label}
+                label={addon.name || getAddonTypeLabel(addon.type)}
                 typeLabel={getAddonTypeLabel(addon.type)}
                 isSelected={selectedIds.has(addon.id)}
                 isDrawerOpen={drawerOpenAddonId === addon.id}
