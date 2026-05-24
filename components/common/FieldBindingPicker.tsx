@@ -189,7 +189,6 @@ export function FieldBindingPicker({
         cachedValue = String(raw);
       }
 
-      const curRef = value.source === "sheets" ? value.ref : undefined;
       await onChange({
         source: "sheets",
         ref: {
@@ -198,10 +197,6 @@ export function FieldBindingPicker({
           cellRef: cell,
           cachedValue,
           syncedAt: new Date().toISOString(),
-          // Preserve cachedValue/syncedAt if it's the same spreadsheet and hasn't been read yet
-          ...(curRef?.spreadsheetId === spreadsheetId && curRef.cachedValue == null
-            ? { cachedValue: null, syncedAt: null }
-            : {}),
         },
       });
       setOpen(false);

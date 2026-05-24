@@ -747,24 +747,32 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   const maxOutputRaw = asPositiveIntegerOrUndefined(value.maxOutput);
   const maxOutput = maxOutputRaw == null ? undefined : minOutput == null ? maxOutputRaw : Math.max(minOutput, maxOutputRaw);
   const minOutputBinding = migrateLegacyBinding(value, "minOutputBinding", "minOutputProgressionLink", "minOutputSheetsRef");
+  const outputMin = asPositiveIntegerOrUndefined(value.outputMin);
+  const outputMinBinding = migrateLegacyBinding(value, "outputMinBinding");
   const maxOutputBinding = migrateLegacyBinding(value, "maxOutputBinding", "maxOutputProgressionLink", "maxOutputSheetsRef");
   // Time fields keep sub-second precision so e.g. fast-tick recipes (0.5s)
   // and decimal craft timers (1.5s) survive the round-trip.
   const intervalSeconds = asPositiveFloatOrUndefined(value.intervalSeconds);
   const intervalSecondsBinding = migrateLegacyBinding(value, "intervalSecondsBinding", "intervalSecondsProgressionLink", "intervalSecondsSheetsRef");
   const intervalSecondsMin = asPositiveFloatOrUndefined(value.intervalSecondsMin);
+  const intervalSecondsMinBinding = migrateLegacyBinding(value, "intervalSecondsMinBinding");
   const intervalSecondsMax = asPositiveFloatOrUndefined(value.intervalSecondsMax);
+  const intervalSecondsMaxBinding = migrateLegacyBinding(value, "intervalSecondsMaxBinding");
   const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
   const capacity = asPositiveIntegerOrUndefined(value.capacity);
   const capacityBinding = migrateLegacyBinding(value, "capacityBinding", "capacityProgressionLink", "capacitySheetsRef");
   const capacityMin = asPositiveIntegerOrUndefined(value.capacityMin);
+  const capacityMinBinding = migrateLegacyBinding(value, "capacityMinBinding");
   const capacityMax = asPositiveIntegerOrUndefined(value.capacityMax);
+  const capacityMaxBinding = migrateLegacyBinding(value, "capacityMaxBinding");
   const ingredients = normalizeProductionItems(value.ingredients);
   const outputs = normalizeProductionItems(value.outputs);
   const craftTimeSeconds = asPositiveFloatOrUndefined(value.craftTimeSeconds);
   const craftTimeSecondsBinding = migrateLegacyBinding(value, "craftTimeSecondsBinding", "craftTimeSecondsProgressionLink");
   const craftTimeSecondsMin = asPositiveFloatOrUndefined(value.craftTimeSecondsMin);
+  const craftTimeSecondsMinBinding = migrateLegacyBinding(value, "craftTimeSecondsMinBinding");
   const craftTimeSecondsMax = asPositiveFloatOrUndefined(value.craftTimeSecondsMax);
+  const craftTimeSecondsMaxBinding = migrateLegacyBinding(value, "craftTimeSecondsMaxBinding");
   const notes = typeof value.notes === "string" ? value.notes : "";
 
   return {
@@ -774,23 +782,31 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
     outputRef: outputRef || undefined,
     minOutput,
     minOutputBinding,
+    outputMin,
+    outputMinBinding,
     maxOutput,
     maxOutputBinding,
     intervalSeconds,
     intervalSecondsBinding,
     intervalSecondsMin,
+    intervalSecondsMinBinding,
     intervalSecondsMax,
+    intervalSecondsMaxBinding,
     requiresCollection,
     capacity,
     capacityBinding,
     capacityMin,
+    capacityMinBinding,
     capacityMax,
+    capacityMaxBinding,
     ingredients,
     outputs,
     craftTimeSeconds,
     craftTimeSecondsBinding,
     craftTimeSecondsMin,
+    craftTimeSecondsMinBinding,
     craftTimeSecondsMax,
+    craftTimeSecondsMaxBinding,
     notes: notes || undefined,
   };
 }
