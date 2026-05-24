@@ -140,15 +140,19 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
   };
 
   const libraryEntriesById = useMemo(() => {
-    // Map: `${libraryAddonId}:${entryId}` → { key, label }
-    const map = new Map<string, { key: string; label: string }>();
+    const map = new Map<string, { key: string; label: string; description: string; pageName: string }>();
     for (const project of projects) {
       for (const section of project.sections || []) {
         for (const sa of section.addons || []) {
           if (sa.type !== "fieldLibrary") continue;
           const data = sa.data as FieldLibraryAddonDraft;
           for (const e of data.entries || []) {
-            map.set(`${sa.id}:${e.id}`, { key: e.key, label: e.label || e.key });
+            map.set(`${sa.id}:${e.id}`, {
+              key: e.key,
+              label: e.label || e.key,
+              description: e.description || "",
+              pageName: section.title || section.id,
+            });
           }
         }
       }
@@ -160,6 +164,16 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
     if (!entry.libraryRef) return entry.label || entry.key || "-";
     const match = libraryEntriesById.get(`${entry.libraryRef.libraryAddonId}:${entry.libraryRef.entryId}`);
     return match?.label || entry.label || entry.key || "-";
+  };
+
+  const resolveEntryTooltip = (entry: DataSchemaEntry): string | undefined => {
+    if (!entry.libraryRef) return undefined;
+    const match = libraryEntriesById.get(`${entry.libraryRef.libraryAddonId}:${entry.libraryRef.entryId}`);
+    if (!match) return undefined;
+    const parts: string[] = [];
+    if (match.description) parts.push(match.description);
+    parts.push(`Página: ${match.pageName}`);
+    return parts.join("\n");
   };
 
   const xpRefLabelBySectionId = useMemo(() => {
@@ -256,11 +270,19 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
         <div className={`${bare ? "" : "mt-2"} space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
           {rows.map((entry) => {
             const lineLabel = resolveEntryLabel(entry);
+            const tooltip = resolveEntryTooltip(entry);
             const unitXpSectionId = entry.binding?.source === "unitXp" ? entry.binding.sectionId : undefined;
             const linkedXpName = unitXpSectionId ? xpRefLabelBySectionId.get(unitXpSectionId) : undefined;
             return (
               <p key={entry.id} className={bare ? "" : "text-sm"}>
-                {lineLabel}: {formatValue(resolveEntryValue(entry))}
+                <span title={tooltip} className={tooltip ? "cursor-help" : undefined}>
+                  {lineLabel}
+                  {tooltip && (
+                    <span className="ml-1 inline-flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full border border-current text-[8px] font-bold opacity-50 leading-none align-middle">
+                      ?
+                    </span>
+                  )}
+                </span>: {formatValue(resolveEntryValue(entry))}
                 {linkedXpName && unitXpSectionId ? (
                   <>
                     {" "}
