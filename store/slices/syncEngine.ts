@@ -119,6 +119,7 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
         parentId: section.parentId || null,
         order: section.order,
         color: section.color || null,
+        dataId: section.dataId || null,
         addons: section.addons || [],
       }));
 
