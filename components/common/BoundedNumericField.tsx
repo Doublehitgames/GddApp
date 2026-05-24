@@ -17,11 +17,12 @@ import {
  *   ── Limites ── [OFF/ON]
  *     Mín [input]   Máx [input]
  *
- * If `binding` + `onBindingChange` + `acceptedSources` + `bindingContext` are
- * all provided, the main input is wrapped inside a FieldBindingPicker.
- * Otherwise just the label + plain input are rendered.
+ * Base, Mín and Máx are always three separate fields in the data model.
+ * When the toggle is open, both Mín and Máx are always visible.
  *
- * The Mín / Máx inputs inside the toggle are ALWAYS plain — never bound.
+ * The base field supports FieldBindingPicker (progressionColumn + sheets).
+ * Mín and Máx support sheets-only binding when limitMinBinding /
+ * limitMaxBinding props are provided.
  */
 
 const DEFAULT_INPUT_CLASS =
@@ -35,25 +36,19 @@ interface BoundedNumericFieldProps {
   // ── Main value ────────────────────────────────────────────────────────────
   value?: number;
   onValueChange: (next: number | undefined) => void;
-  /** Makes the main input read-only (e.g. when source is "sheets"). */
   readOnly?: boolean;
 
   // ── Limites toggle ────────────────────────────────────────────────────────
-  /**
-   * Value for the Mín input inside the toggle.
-   * Pass `undefined` to hide the Mín field (toggle shows Máx only).
-   * Note: for fields where the main value IS the minimum (e.g. "Quantidade"),
-   * pass `limitMin={limitMax != null ? value : undefined}` so the toggle only
-   * opens when a max has been set.
-   */
   limitMin?: number;
   onLimitMinChange: (next: number | undefined) => void;
+  limitMinBinding?: FieldBinding;
+  onLimitMinBindingChange?: (b: FieldBinding) => void;
+
   limitMax?: number;
   onLimitMaxChange: (next: number | undefined) => void;
-  /**
-   * Called when the user turns Limites off.
-   * Must clear limitMin, limitMax and any related bindings.
-   */
+  limitMaxBinding?: FieldBinding;
+  onLimitMaxBindingChange?: (b: FieldBinding) => void;
+
   onLimitsClear: () => void;
 
   /** Override the toggle section label. Default: "Limites". */
@@ -63,7 +58,7 @@ interface BoundedNumericFieldProps {
   /** Label for the Máx input. Default: "Máx". */
   maxLabel?: string;
 
-  // ── Optional FieldBindingPicker ───────────────────────────────────────────
+  // ── Optional FieldBindingPicker for the base field ────────────────────────
   binding?: FieldBinding;
   onBindingChange?: (b: FieldBinding) => void;
   acceptedSources?: FieldBinding["source"][];
@@ -85,8 +80,12 @@ export function BoundedNumericField({
   readOnly,
   limitMin,
   onLimitMinChange,
+  limitMinBinding,
+  onLimitMinBindingChange,
   limitMax,
   onLimitMaxChange,
+  limitMaxBinding,
+  onLimitMaxBindingChange,
   onLimitsClear,
   limitsLabel,
   minLabel = "Mín",
@@ -107,6 +106,11 @@ export function BoundedNumericField({
     bindingContext !== undefined;
 
   const isReadOnly = readOnly || (hasBinding && binding?.source === "sheets");
+
+  const hasLimitMinBinding = limitMinBinding !== undefined && limitMinBinding.source !== "manual";
+  const hasLimitMaxBinding = limitMaxBinding !== undefined && limitMaxBinding.source !== "manual";
+
+  // ── Base field row ────────────────────────────────────────────────────────
 
   const mainInput = (
     <CommitOptionalNumberInput
@@ -141,41 +145,77 @@ export function BoundedNumericField({
     </div>
   );
 
-  const showMin = limitMin !== undefined;
+  // ── Limit fields (Mín / Máx) ──────────────────────────────────────────────
+
+  const minInput = (
+    <CommitOptionalNumberInput
+      value={limitMin}
+      onCommit={onLimitMinChange}
+      min={0}
+      step={step}
+      integer={integer}
+      className={inputClassName}
+      readOnly={hasLimitMinBinding && limitMinBinding!.source === "sheets"}
+    />
+  );
+
+  const maxInput = (
+    <CommitOptionalNumberInput
+      value={limitMax}
+      onCommit={onLimitMaxChange}
+      min={0}
+      step={step}
+      integer={integer}
+      className={inputClassName}
+      readOnly={hasLimitMaxBinding && limitMaxBinding!.source === "sheets"}
+    />
+  );
+
+  const minField =
+    onLimitMinBindingChange && bindingContext ? (
+      <FieldBindingPicker
+        config={{ valueType: "number", acceptedSources: ["sheets"], label: minLabel }}
+        value={limitMinBinding ?? MANUAL_BINDING}
+        onChange={onLimitMinBindingChange}
+        context={bindingContext}
+      >
+        {minInput}
+      </FieldBindingPicker>
+    ) : (
+      <label className="block">
+        <span className="mb-1 block text-xs text-gray-400">{minLabel}</span>
+        {minInput}
+      </label>
+    );
+
+  const maxField =
+    onLimitMaxBindingChange && bindingContext ? (
+      <FieldBindingPicker
+        config={{ valueType: "number", acceptedSources: ["sheets"], label: maxLabel }}
+        value={limitMaxBinding ?? MANUAL_BINDING}
+        onChange={onLimitMaxBindingChange}
+        context={bindingContext}
+      >
+        {maxInput}
+      </FieldBindingPicker>
+    ) : (
+      <label className="block">
+        <span className="mb-1 block text-xs text-gray-400">{maxLabel}</span>
+        {maxInput}
+      </label>
+    );
 
   return (
     <div>
       {fieldRow}
       <NumericLimitsToggle
-        hasData={limitMin != null || limitMax != null}
+        hasData={limitMin != null || limitMax != null || hasLimitMinBinding || hasLimitMaxBinding}
         onClear={onLimitsClear}
         label={limitsLabel}
       >
-        <div className={`grid gap-2 ${showMin ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
-          {showMin && (
-            <label className="block">
-              <span className="mb-1 block text-xs text-gray-400">{minLabel}</span>
-              <CommitOptionalNumberInput
-                value={limitMin}
-                onCommit={onLimitMinChange}
-                min={0}
-                step={step}
-                integer={integer}
-                className={inputClassName}
-              />
-            </label>
-          )}
-          <label className="block">
-            <span className="mb-1 block text-xs text-gray-400">{maxLabel}</span>
-            <CommitOptionalNumberInput
-              value={limitMax}
-              onCommit={onLimitMaxChange}
-              min={0}
-              step={step}
-              integer={integer}
-              className={inputClassName}
-            />
-          </label>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {minField}
+          {maxField}
         </div>
       </NumericLimitsToggle>
     </div>

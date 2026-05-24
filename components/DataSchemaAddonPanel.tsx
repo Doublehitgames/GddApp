@@ -216,11 +216,15 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   }, [projects, currentProjectId]);
 
   const ECONOMY_LINK_FIELDS: Array<{ key: EconomyLinkFieldKey; label: string }> = [
-    { key: "buyValue", label: "Valor de Compra" },
-    { key: "minBuyValue", label: "Valor de Compra Min" },
-    { key: "sellValue", label: "Valor de Venda" },
-    { key: "maxSellValue", label: "Valor de Venda Max" },
-    { key: "unlockValue", label: "Nível de Desbloqueio" },
+    { key: "buyValue",       label: "Preço de Compra" },
+    { key: "minBuyValue",    label: "Preço de Compra — Mín" },
+    { key: "maxBuyValue",    label: "Preço de Compra — Máx" },
+    { key: "sellValue",      label: "Preço de Venda" },
+    { key: "minSellValue",   label: "Preço de Venda — Mín" },
+    { key: "maxSellValue",   label: "Preço de Venda — Máx" },
+    { key: "unlockValue",    label: "Nível de Desbloqueio" },
+    { key: "unlockValueMin", label: "Nível de Desbloqueio — Mín" },
+    { key: "unlockValueMax", label: "Nível de Desbloqueio — Máx" },
     { key: "buyCurrencyRef", label: "Moeda de Compra (dataId)" },
     { key: "sellCurrencyRef", label: "Moeda de Venda (dataId)" },
     { key: "buyCurrencyKey", label: "Moeda de Compra (chave)" },
@@ -327,11 +331,18 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
   };
 
   const PRODUCTION_FIELDS_BASE: Array<{ key: ProductionFieldKey; label: string; requiresOutput?: "buy" | "sell" | "unlock" }> = [
-    { key: "minOutput", label: "Qtd Minima" },
-    { key: "maxOutput", label: "Qtd Maxima" },
-    { key: "intervalSeconds", label: "Tempo (passivo)" },
-    { key: "craftTimeSeconds", label: "Tempo (receita)" },
-    { key: "capacity", label: "Capacidade maxima" },
+    { key: "minOutput",           label: "Produção" },
+    { key: "outputMin",           label: "Produção — Mín" },
+    { key: "maxOutput",           label: "Produção — Máx" },
+    { key: "intervalSeconds",     label: "Tempo (passivo)" },
+    { key: "intervalSecondsMin",  label: "Tempo (passivo) — Mín" },
+    { key: "intervalSecondsMax",  label: "Tempo (passivo) — Máx" },
+    { key: "craftTimeSeconds",    label: "Tempo (receita)" },
+    { key: "craftTimeSecondsMin", label: "Tempo (receita) — Mín" },
+    { key: "craftTimeSecondsMax", label: "Tempo (receita) — Máx" },
+    { key: "capacity",            label: "Capacidade" },
+    { key: "capacityMin",         label: "Capacidade — Mín" },
+    { key: "capacityMax",         label: "Capacidade — Máx" },
     { key: "outputBuyEffective", label: "Compra do item (efetivo)", requiresOutput: "buy" },
     { key: "outputMinBuyValue", label: "Compra min do item", requiresOutput: "buy" },
     { key: "outputSellEffective", label: "Venda do item (efetivo)", requiresOutput: "sell" },
@@ -427,8 +438,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
 
     // Direct production fields
     const directFields: Record<string, keyof ProductionAddonDraft> = {
-      minOutput: "minOutput", maxOutput: "maxOutput",
-      intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
+      minOutput: "minOutput", outputMin: "outputMin", maxOutput: "maxOutput",
+      intervalSeconds: "intervalSeconds", intervalSecondsMin: "intervalSecondsMin", intervalSecondsMax: "intervalSecondsMax",
+      craftTimeSeconds: "craftTimeSeconds", craftTimeSecondsMin: "craftTimeSecondsMin", craftTimeSecondsMax: "craftTimeSecondsMax",
+      capacity: "capacity", capacityMin: "capacityMin", capacityMax: "capacityMax",
     };
     if (field in directFields) return found.data[directFields[field]] as number | undefined;
 

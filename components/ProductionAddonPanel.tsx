@@ -433,8 +433,16 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   }), [progressionColumnOptions, linkedSpreadsheets]);
 
   function handleBindingChange(
-    bindingField: "minOutputBinding" | "intervalSecondsBinding" | "capacityBinding",
-    scalarField: "minOutput" | "intervalSeconds" | "capacity",
+    bindingField:
+      | "minOutputBinding" | "outputMinBinding" | "maxOutputBinding"
+      | "intervalSecondsBinding" | "intervalSecondsMinBinding" | "intervalSecondsMaxBinding"
+      | "capacityBinding" | "capacityMinBinding" | "capacityMaxBinding"
+      | "craftTimeSecondsBinding" | "craftTimeSecondsMinBinding" | "craftTimeSecondsMaxBinding",
+    scalarField:
+      | "minOutput" | "outputMin" | "maxOutput"
+      | "intervalSeconds" | "intervalSecondsMin" | "intervalSecondsMax"
+      | "capacity" | "capacityMin" | "capacityMax"
+      | "craftTimeSeconds" | "craftTimeSecondsMin" | "craftTimeSecondsMax",
     binding: FieldBinding
   ) {
     const patch: Partial<ProductionAddonDraft> = { [bindingField]: binding.source === "manual" ? undefined : binding };
@@ -576,14 +584,15 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   label={t("productionAddon.outputLabel", "Quantidade")}
                   value={addon.minOutput}
                   onValueChange={(next) => commit({ minOutput: next })}
-                  // For "Quantidade", the main value IS the minimum.
-                  // Only expose the Mín field in the toggle when a Máx is set,
-                  // so the toggle stays closed when no range has been configured.
-                  limitMin={addon.maxOutput != null ? addon.minOutput : undefined}
-                  onLimitMinChange={(next) => commit({ minOutput: next })}
+                  limitMin={addon.outputMin}
+                  onLimitMinChange={(next) => commit({ outputMin: next })}
+                  limitMinBinding={addon.outputMinBinding ?? MANUAL_BINDING}
+                  onLimitMinBindingChange={(b) => handleBindingChange("outputMinBinding", "outputMin", b)}
                   limitMax={addon.maxOutput}
                   onLimitMaxChange={(next) => commit({ maxOutput: next })}
-                  onLimitsClear={() => commit({ maxOutput: undefined, maxOutputBinding: undefined })}
+                  limitMaxBinding={addon.maxOutputBinding ?? MANUAL_BINDING}
+                  onLimitMaxBindingChange={(b) => handleBindingChange("maxOutputBinding", "maxOutput", b)}
+                  onLimitsClear={() => commit({ outputMin: undefined, outputMinBinding: undefined, maxOutput: undefined, maxOutputBinding: undefined })}
                   binding={addon.minOutputBinding ?? MANUAL_BINDING}
                   onBindingChange={(b) => handleBindingChange("minOutputBinding", "minOutput", b)}
                   acceptedSources={["progressionColumn", "sheets"]}
@@ -599,9 +608,13 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 onValueChange={(next) => commit({ intervalSeconds: next })}
                 limitMin={addon.intervalSecondsMin}
                 onLimitMinChange={(next) => commit({ intervalSecondsMin: next })}
+                limitMinBinding={addon.intervalSecondsMinBinding ?? MANUAL_BINDING}
+                onLimitMinBindingChange={(b) => handleBindingChange("intervalSecondsMinBinding", "intervalSecondsMin", b)}
                 limitMax={addon.intervalSecondsMax}
                 onLimitMaxChange={(next) => commit({ intervalSecondsMax: next })}
-                onLimitsClear={() => commit({ intervalSecondsMin: undefined, intervalSecondsMax: undefined })}
+                limitMaxBinding={addon.intervalSecondsMaxBinding ?? MANUAL_BINDING}
+                onLimitMaxBindingChange={(b) => handleBindingChange("intervalSecondsMaxBinding", "intervalSecondsMax", b)}
+                onLimitsClear={() => commit({ intervalSecondsMin: undefined, intervalSecondsMinBinding: undefined, intervalSecondsMax: undefined, intervalSecondsMaxBinding: undefined })}
                 binding={addon.intervalSecondsBinding ?? MANUAL_BINDING}
                 onBindingChange={(b) => handleBindingChange("intervalSecondsBinding", "intervalSeconds", b)}
                 acceptedSources={["progressionColumn", "sheets"]}
@@ -627,9 +640,13 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                     onValueChange={(next) => commit({ capacity: next })}
                     limitMin={addon.capacityMin}
                     onLimitMinChange={(next) => commit({ capacityMin: next })}
+                    limitMinBinding={addon.capacityMinBinding ?? MANUAL_BINDING}
+                    onLimitMinBindingChange={(b) => handleBindingChange("capacityMinBinding", "capacityMin", b)}
                     limitMax={addon.capacityMax}
                     onLimitMaxChange={(next) => commit({ capacityMax: next })}
-                    onLimitsClear={() => commit({ capacityMin: undefined, capacityMax: undefined })}
+                    limitMaxBinding={addon.capacityMaxBinding ?? MANUAL_BINDING}
+                    onLimitMaxBindingChange={(b) => handleBindingChange("capacityMaxBinding", "capacityMax", b)}
+                    onLimitsClear={() => commit({ capacityMin: undefined, capacityMinBinding: undefined, capacityMax: undefined, capacityMaxBinding: undefined })}
                     binding={addon.capacityBinding ?? MANUAL_BINDING}
                     onBindingChange={(b) => handleBindingChange("capacityBinding", "capacity", b)}
                     acceptedSources={["progressionColumn", "sheets"]}
@@ -801,9 +818,13 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 onValueChange={(next) => commit({ craftTimeSeconds: next })}
                 limitMin={addon.craftTimeSecondsMin}
                 onLimitMinChange={(next) => commit({ craftTimeSecondsMin: next })}
+                limitMinBinding={addon.craftTimeSecondsMinBinding ?? MANUAL_BINDING}
+                onLimitMinBindingChange={(b) => handleBindingChange("craftTimeSecondsMinBinding", "craftTimeSecondsMin", b)}
                 limitMax={addon.craftTimeSecondsMax}
                 onLimitMaxChange={(next) => commit({ craftTimeSecondsMax: next })}
-                onLimitsClear={() => commit({ craftTimeSecondsMin: undefined, craftTimeSecondsMax: undefined })}
+                limitMaxBinding={addon.craftTimeSecondsMaxBinding ?? MANUAL_BINDING}
+                onLimitMaxBindingChange={(b) => handleBindingChange("craftTimeSecondsMaxBinding", "craftTimeSecondsMax", b)}
+                onLimitsClear={() => commit({ craftTimeSecondsMin: undefined, craftTimeSecondsMinBinding: undefined, craftTimeSecondsMax: undefined, craftTimeSecondsMaxBinding: undefined })}
                 binding={addon.craftTimeSecondsBinding ?? MANUAL_BINDING}
                 onBindingChange={(b) => commit({ craftTimeSecondsBinding: b.source === "manual" ? undefined : b })}
                 acceptedSources={["progressionColumn"]}

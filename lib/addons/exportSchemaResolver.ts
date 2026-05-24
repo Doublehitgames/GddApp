@@ -560,7 +560,7 @@ function resolveEntryEffectiveValue(
       const prod = prodAddon.data as ProductionAddonDraft;
       const field = binding.field;
       const directFields: Record<string, keyof ProductionAddonDraft> = {
-        minOutput: "minOutput", maxOutput: "maxOutput",
+        minOutput: "minOutput", outputMin: "outputMin", maxOutput: "maxOutput",
         intervalSeconds: "intervalSeconds", intervalSecondsMin: "intervalSecondsMin", intervalSecondsMax: "intervalSecondsMax",
         craftTimeSeconds: "craftTimeSeconds", craftTimeSecondsMin: "craftTimeSecondsMin", craftTimeSecondsMax: "craftTimeSecondsMax",
         capacity: "capacity", capacityMin: "capacityMin", capacityMax: "capacityMax",

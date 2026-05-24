@@ -282,24 +282,32 @@ export type ProductionAddonDraft = {
   outputRef?: string;
   minOutput?: number;
   minOutputBinding?: FieldBinding;
+  outputMin?: number;
+  outputMinBinding?: FieldBinding;
   maxOutput?: number;
   maxOutputBinding?: FieldBinding;
   intervalSeconds?: number;
   intervalSecondsBinding?: FieldBinding;
   intervalSecondsMin?: number;
+  intervalSecondsMinBinding?: FieldBinding;
   intervalSecondsMax?: number;
+  intervalSecondsMaxBinding?: FieldBinding;
   requiresCollection?: boolean;
   capacity?: number;
   capacityBinding?: FieldBinding;
   capacityMin?: number;
+  capacityMinBinding?: FieldBinding;
   capacityMax?: number;
+  capacityMaxBinding?: FieldBinding;
   // Recipe mode
   ingredients: ProductionIngredient[];
   outputs: ProductionOutput[];
   craftTimeSeconds?: number;
   craftTimeSecondsBinding?: FieldBinding;
   craftTimeSecondsMin?: number;
+  craftTimeSecondsMinBinding?: FieldBinding;
   craftTimeSecondsMax?: number;
+  craftTimeSecondsMaxBinding?: FieldBinding;
   notes?: string;
 };
 
@@ -361,6 +369,7 @@ export type EconomyLinkFieldKey =
 
 export type ProductionFieldKey =
   | "minOutput"
+  | "outputMin"
   | "maxOutput"
   | "intervalSeconds"
   | "intervalSecondsMin"

@@ -696,7 +696,7 @@ function normalizeFieldBinding(raw: unknown): FieldBinding | undefined {
   if (source === "production") {
     const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
     if (!addonId) return undefined;
-    const validProductionFields: ProductionFieldKey[] = ["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
+    const validProductionFields: ProductionFieldKey[] = ["minOutput", "outputMin", "maxOutput", "intervalSeconds", "intervalSecondsMin", "intervalSecondsMax", "craftTimeSeconds", "craftTimeSecondsMin", "craftTimeSecondsMax", "capacity", "capacityMin", "capacityMax", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
     const field = validProductionFields.find((f) => f === raw.field);
     if (!field) return undefined;
     return { source: "production", addonId, field };
@@ -929,7 +929,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
         const field = validEconomyFields.find((f) => f === rawEntry.economyLinkField);
         if (field) binding = { source: "economyLink", sectionId: rawEntry.economyLinkRef.trim(), field };
       } else if (typeof rawEntry.productionRef === "string" && rawEntry.productionRef.trim()) {
-        const validProductionFields: ProductionFieldKey[] = ["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
+        const validProductionFields: ProductionFieldKey[] = ["minOutput", "outputMin", "maxOutput", "intervalSeconds", "intervalSecondsMin", "intervalSecondsMax", "craftTimeSeconds", "craftTimeSecondsMin", "craftTimeSecondsMax", "capacity", "capacityMin", "capacityMax", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
         const field = validProductionFields.find((f) => f === rawEntry.productionField);
         if (field) binding = { source: "production", addonId: rawEntry.productionRef.trim(), field };
       }
