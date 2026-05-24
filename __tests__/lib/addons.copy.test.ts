@@ -70,7 +70,7 @@ describe("copyAddon", () => {
     expect(copy.data.values[0].value).toBe(10);
   });
 
-  it("clears productionRef on DataSchema entries", () => {
+  it("clears production binding on DataSchema entries", () => {
     const original: DataSchemaSectionAddon = {
       id: "data-schema-orig",
       type: "dataSchema",
@@ -85,7 +85,7 @@ describe("copyAddon", () => {
             label: "Rate",
             valueType: "int",
             value: 0,
-            productionRef: "production-same-section",
+            binding: { source: "production", addonId: "production-same-section", field: "minOutput" },
           },
           {
             id: "e2",
@@ -93,19 +93,19 @@ describe("copyAddon", () => {
             label: "Price",
             valueType: "int",
             value: 0,
-            economyLinkRef: "section-economy-elsewhere",
+            binding: { source: "economyLink", sectionId: "section-economy-elsewhere", field: "buyValue" },
           },
         ],
       },
     };
 
     const copy = copyAddon(original) as DataSchemaSectionAddon;
-    expect(copy.data.entries[0].productionRef).toBeUndefined();
-    // section-ID ref preserved
-    expect(copy.data.entries[1].economyLinkRef).toBe("section-economy-elsewhere");
+    expect(copy.data.entries[0].binding).toBeUndefined();
+    // cross-section economyLink binding preserved
+    expect((copy.data.entries[1].binding as { sectionId?: string })?.sectionId).toBe("section-economy-elsewhere");
   });
 
-  it("clears progression links on Production addon", () => {
+  it("clears progression bindings on Production addon", () => {
     const original: ProductionSectionAddon = {
       id: "production-orig",
       type: "production",
@@ -120,12 +120,14 @@ describe("copyAddon", () => {
         intervalSeconds: 60,
         ingredients: [],
         outputs: [],
-        minOutputProgressionLink: {
+        minOutputBinding: {
+          source: "progressionColumn",
           progressionAddonId: "progression-same-section",
           columnId: "col-1",
           columnName: "Min",
         },
-        craftTimeSecondsProgressionLink: {
+        craftTimeSecondsBinding: {
+          source: "progressionColumn",
           progressionAddonId: "progression-same-section",
           columnId: "col-2",
           columnName: "Craft",
@@ -134,10 +136,10 @@ describe("copyAddon", () => {
     };
 
     const copy = copyAddon(original) as ProductionSectionAddon;
-    expect(copy.data.minOutputProgressionLink).toBeUndefined();
-    expect(copy.data.craftTimeSecondsProgressionLink).toBeUndefined();
-    expect(copy.data.maxOutputProgressionLink).toBeUndefined();
-    expect(copy.data.intervalSecondsProgressionLink).toBeUndefined();
+    expect(copy.data.minOutputBinding).toBeUndefined();
+    expect(copy.data.craftTimeSecondsBinding).toBeUndefined();
+    expect(copy.data.maxOutputBinding).toBeUndefined();
+    expect(copy.data.intervalSecondsBinding).toBeUndefined();
     // cross-section outputRef preserved
     expect(copy.data.outputRef).toBe("section-item-elsewhere");
   });

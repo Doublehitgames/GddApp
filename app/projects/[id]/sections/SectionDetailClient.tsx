@@ -1889,11 +1889,12 @@ function SectionDetailContent({
     // Deep clone data and remap internal references
     const remapAddonData = (data: any, addonType: string): any => {
       const d = JSON.parse(JSON.stringify(data));
-      // DataSchema entries: remap economyLinkRef, productionRef
+      // DataSchema entries: remap production binding addonId, economyLink binding sectionId
       if (d.entries && Array.isArray(d.entries)) {
         for (const entry of d.entries) {
-          if (entry.economyLinkRef) entry.economyLinkRef = remap(entry.economyLinkRef);
-          if (entry.productionRef) entry.productionRef = remap(entry.productionRef);
+          if (entry.binding?.source === "production" && entry.binding.addonId) {
+            entry.binding.addonId = remap(entry.binding.addonId);
+          }
         }
       }
       // ExportSchema nodes: remap addonId in bindings and array sources
@@ -1914,11 +1915,12 @@ function SectionDetailContent({
       }
       // AttributeProfile/Modifiers: remap definitionsRef
       if (d.definitionsRef) d.definitionsRef = remap(d.definitionsRef);
-      // Production: remap progression links
-      if (d.minOutputProgressionLink?.progressionAddonId) d.minOutputProgressionLink.progressionAddonId = remap(d.minOutputProgressionLink.progressionAddonId);
-      if (d.maxOutputProgressionLink?.progressionAddonId) d.maxOutputProgressionLink.progressionAddonId = remap(d.maxOutputProgressionLink.progressionAddonId);
-      if (d.intervalSecondsProgressionLink?.progressionAddonId) d.intervalSecondsProgressionLink.progressionAddonId = remap(d.intervalSecondsProgressionLink.progressionAddonId);
-      if (d.craftTimeSecondsProgressionLink?.progressionAddonId) d.craftTimeSecondsProgressionLink.progressionAddonId = remap(d.craftTimeSecondsProgressionLink.progressionAddonId);
+      // Production: remap progressionColumn bindings
+      for (const key of ["minOutputBinding", "maxOutputBinding", "intervalSecondsBinding", "capacityBinding", "craftTimeSecondsBinding"]) {
+        if (d[key]?.source === "progressionColumn" && d[key].progressionAddonId) {
+          d[key].progressionAddonId = remap(d[key].progressionAddonId);
+        }
+      }
       return d;
     };
 

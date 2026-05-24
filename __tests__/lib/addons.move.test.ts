@@ -62,7 +62,7 @@ describe("moveAddon", () => {
     expect(moved.data.definitionsRef).toBe("section-defs-elsewhere");
   });
 
-  it("clears productionRef on DataSchema entries", () => {
+  it("clears production binding on DataSchema entries, preserves economyLink binding", () => {
     const original: DataSchemaSectionAddon = {
       id: "data-schema-orig",
       type: "dataSchema",
@@ -77,15 +77,22 @@ describe("moveAddon", () => {
             label: "Rate",
             valueType: "int",
             value: 0,
-            productionRef: "production-same-section",
-            economyLinkRef: "section-economy-elsewhere",
+            binding: { source: "production", addonId: "production-same-section", field: "minOutput" },
+          },
+          {
+            id: "e2",
+            key: "price",
+            label: "Price",
+            valueType: "int",
+            value: 0,
+            binding: { source: "economyLink", sectionId: "section-economy-elsewhere", field: "buyValue" },
           },
         ],
       },
     };
     const moved = moveAddon(original) as DataSchemaSectionAddon;
-    expect(moved.data.entries[0].productionRef).toBeUndefined();
-    expect(moved.data.entries[0].economyLinkRef).toBe("section-economy-elsewhere");
+    expect(moved.data.entries[0].binding).toBeUndefined();
+    expect((moved.data.entries[1].binding as { sectionId?: string })?.sectionId).toBe("section-economy-elsewhere");
   });
 
   it("clears all progression links on Production", () => {
@@ -102,7 +109,8 @@ describe("moveAddon", () => {
         intervalSeconds: 60,
         ingredients: [],
         outputs: [],
-        minOutputProgressionLink: {
+        minOutputBinding: {
+          source: "progressionColumn" as const,
           progressionAddonId: "p-1",
           columnId: "c",
           columnName: "C",
@@ -110,8 +118,8 @@ describe("moveAddon", () => {
       },
     };
     const moved = moveAddon(original) as ProductionSectionAddon;
-    expect(moved.data.minOutputProgressionLink).toBeUndefined();
-    expect(moved.data.maxOutputProgressionLink).toBeUndefined();
+    expect(moved.data.minOutputBinding).toBeUndefined();
+    expect(moved.data.maxOutputBinding).toBeUndefined();
   });
 
   it("clears ExportSchema addon-id refs recursively", () => {

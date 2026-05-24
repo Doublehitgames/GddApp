@@ -195,7 +195,7 @@ describe("ProductionAddonPanel", () => {
 
     expect(screen.getByText("Item produzido")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Abrir item/i });
-    expect(link).toHaveAttribute("href", "/projects/p1/sections/sec-item-output");
+    expect(link).toHaveAttribute("href", "/projects/projeto/sections/ovo");
     expect(link).toHaveTextContent("↗");
     expect(screen.queryByText(/ref estoque/i)).not.toBeInTheDocument();
   });
@@ -218,8 +218,8 @@ describe("ProductionAddonPanel", () => {
 
     const links = screen.getAllByRole("link", { name: /Abrir item/i });
     expect(links.length).toBeGreaterThanOrEqual(2);
-    expect(links[0]).toHaveAttribute("href", "/projects/p1/sections/sec-item-output");
-    expect(links[1]).toHaveAttribute("href", "/projects/p1/sections/sec-item-output");
+    expect(links[0]).toHaveAttribute("href", "/projects/projeto/sections/ovo");
+    expect(links[1]).toHaveAttribute("href", "/projects/projeto/sections/ovo");
     expect(links[0]).toHaveTextContent("↗");
     expect(links[1]).toHaveTextContent("↗");
   });
@@ -230,7 +230,8 @@ describe("ProductionAddonPanel", () => {
       name: "Production",
       mode: "passive",
       intervalSeconds: 60,
-      intervalSecondsProgressionLink: {
+      intervalSecondsBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-1",
         columnId: "timeA",
         columnName: "Tempo",
@@ -263,7 +264,8 @@ describe("ProductionAddonPanel", () => {
       ingredients: [],
       outputs: [],
       craftTimeSeconds: 45,
-      craftTimeSecondsProgressionLink: {
+      craftTimeSecondsBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-2",
         columnId: "timeB",
         columnName: "Tempo",
@@ -291,7 +293,8 @@ describe("ProductionAddonPanel", () => {
       name: "Production",
       mode: "passive",
       intervalSeconds: 60,
-      intervalSecondsProgressionLink: {
+      intervalSecondsBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-404",
         columnId: "time404",
         columnName: "Tempo",
@@ -308,24 +311,20 @@ describe("ProductionAddonPanel", () => {
 
     const labelButton = screen.getByRole("button", { name: /Tempo \(segundos\)/i });
     fireEvent.click(labelButton);
-    expect(screen.getByText(/Vinculo invalido \(coluna removida\)/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Vínculo quebrado/i).length).toBeGreaterThan(0);
   });
 
-  it("supports min/max quantity links with computed badges", () => {
+  it("supports output quantity link with computed badges", () => {
     const addon: ProductionAddonDraft = {
       id: "prod-1",
       name: "Production",
       mode: "passive",
       minOutput: 10,
       maxOutput: 100,
-      minOutputProgressionLink: {
+      minOutputBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-1",
         columnId: "timeA",
-        columnName: "Tempo",
-      },
-      maxOutputProgressionLink: {
-        progressionAddonId: "prog-2",
-        columnId: "timeB",
         columnName: "Tempo",
       },
       ingredients: [],
@@ -338,17 +337,18 @@ describe("ProductionAddonPanel", () => {
       </I18nProvider>
     );
 
-    const minLabelButton = screen.getByRole("button", { name: /Qtd minima/i });
-    fireEvent.click(minLabelButton);
+    // "Quantidade" field with progression binding: clicking chip shows level badges
+    const quantityButton = screen.getByRole("button", { name: /Quantidade/i });
+    fireEvent.click(quantityButton);
     expect(screen.getByText(/Lv1:\s*9\b/i)).toBeInTheDocument();
     expect(screen.getByText(/Lv5:\s*8\b/i)).toBeInTheDocument();
     expect(screen.getByText(/Lv10:\s*7\b/i)).toBeInTheDocument();
 
-    const maxLabelButton = screen.getByRole("button", { name: /Qtd maxima/i });
-    fireEvent.click(maxLabelButton);
-    expect(screen.getByText(/Lv1:\s*95/i)).toBeInTheDocument();
-    expect(screen.getByText(/Lv5:\s*90/i)).toBeInTheDocument();
-    expect(screen.getByText(/Lv10:\s*80/i)).toBeInTheDocument();
+    // maxOutput is set, so the NumericLimitsToggle auto-opens showing Mín + Máx plain inputs
+    expect(screen.getByText(/^Mín$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Máx$/i)).toBeInTheDocument();
+    // No separate binding chip for Qtd maxima — it's a plain input inside the toggle
+    expect(screen.queryByRole("button", { name: /Qtd maxima/i })).toBeNull();
   });
 
   it("shows active-link visual marker on linked field labels", () => {
@@ -357,19 +357,15 @@ describe("ProductionAddonPanel", () => {
       name: "Production",
       mode: "passive",
       minOutput: 10,
-      minOutputProgressionLink: {
+      minOutputBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-1",
         columnId: "timeA",
         columnName: "Tempo",
       },
-      maxOutput: 100,
-      maxOutputProgressionLink: {
-        progressionAddonId: "prog-2",
-        columnId: "timeB",
-        columnName: "Tempo",
-      },
       intervalSeconds: 60,
-      intervalSecondsProgressionLink: {
+      intervalSecondsBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-1",
         columnId: "timeA",
         columnName: "Tempo",
@@ -384,8 +380,10 @@ describe("ProductionAddonPanel", () => {
       </I18nProvider>
     );
 
-    expect(screen.getByRole("button", { name: /Qtd minima/i })).toHaveTextContent("•");
-    expect(screen.getByRole("button", { name: /Qtd maxima/i })).toHaveTextContent("•");
+    // "Quantidade" (formerly "Qtd minima") shows active-link dot when bound
+    expect(screen.getByRole("button", { name: /Quantidade/i })).toHaveTextContent("•");
+    // "Qtd maxima" is now a plain input (no chip button) — no active-link marker
+    expect(screen.queryByRole("button", { name: /Qtd maxima/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Tempo \(segundos\)/i })).toHaveTextContent("•");
   });
 });

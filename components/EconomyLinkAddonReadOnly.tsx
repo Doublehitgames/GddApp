@@ -178,16 +178,18 @@ export function EconomyLinkAddonReadOnly({
     () =>
       computeEffectiveValue(addon.buyValue, buyModifiers, globalVariableByRefId, {
         min: addon.minBuyValue,
+        max: addon.maxBuyValue,
       }),
-    [addon.buyValue, addon.minBuyValue, buyModifiers, globalVariableByRefId]
+    [addon.buyValue, addon.minBuyValue, addon.maxBuyValue, buyModifiers, globalVariableByRefId]
   );
 
   const sellEffectiveValue = useMemo(
     () =>
       computeEffectiveValue(addon.sellValue, sellModifiers, globalVariableByRefId, {
+        min: addon.minSellValue,
         max: addon.maxSellValue,
       }),
-    [addon.sellValue, addon.maxSellValue, sellModifiers, globalVariableByRefId]
+    [addon.sellValue, addon.minSellValue, addon.maxSellValue, sellModifiers, globalVariableByRefId]
   );
 
   const navigateToDocumentAnchor = (sectionId: string) => {

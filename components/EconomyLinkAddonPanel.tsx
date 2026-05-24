@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react";
-import type { EconomyLinkAddonDraft, ProductionProgressionLink, SheetsCellRef } from "@/lib/addons/types";
+import type { EconomyLinkAddonDraft, SheetsCellRef } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { sectionPathById } from "@/lib/utils/slug";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
-import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
+import { FieldBindingPicker } from "@/components/common/FieldBindingPicker";
+import { NumericLimitsToggle } from "@/components/common/NumericLimitsToggle";
+import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 import { getGoogleSheetsToken, fetchSheetCellValue, parseCellNumber } from "@/lib/googleSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 
@@ -349,32 +351,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     [progressionColumnOptions]
   );
 
-  const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
-    () => progressionColumnOptions.map((o) => ({ key: o.key, label: o.label, hint: o.sectionName })),
-    [progressionColumnOptions]
-  );
-
-  const handleLinkChange = (
-    field: "buyValueProgressionLink" | "minBuyValueProgressionLink" | "sellValueProgressionLink" | "maxSellValueProgressionLink",
-    option: LinkedFieldOption | undefined
-  ) => {
-    if (!option) {
-      commit({ [field]: undefined } as Partial<EconomyLinkAddonDraft>);
-      return;
-    }
-    const found = progressionColumnOptionByKey.get(option.key);
-    if (!found) return;
-    commit({
-      [field]: { progressionAddonId: found.progressionAddonId, columnId: found.columnId, columnName: found.columnName },
-    } as Partial<EconomyLinkAddonDraft>);
-  };
-
   const buildLevelBadges = (
-    link: ProductionProgressionLink | undefined,
+    binding: FieldBinding | undefined,
     multiplier: number
   ): Array<{ level: number; value: string }> | null => {
-    if (!link) return null;
-    const opt = progressionColumnOptionByKey.get(`${link.progressionAddonId}::${link.columnId}`);
+    if (binding?.source !== "progressionColumn") return null;
+    const opt = progressionColumnOptionByKey.get(`${binding.progressionAddonId}::${binding.columnId}`);
     if (!opt) return null;
     const { startLevel, endLevel, rowsByLevel } = opt;
     const midLevel = Math.floor((startLevel + endLevel) / 2);
@@ -397,9 +379,6 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       </div>
     );
   };
-
-  const getLinkKey = (link: ProductionProgressionLink | undefined) =>
-    link ? `${link.progressionAddonId}::${link.columnId}` : "";
 
   const validationMessages = useMemo(() => {
     const messages: string[] = [];
@@ -424,56 +403,40 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     onChange({ ...addon, ...patch });
   };
 
-  const handleBindSheetsRef = useCallback(
-    async (field: "buyValue" | "sellValue" | "unlockValue", ref: SheetsCellRef): Promise<void> => {
-      setSyncing(true);
-      setSyncError(null);
-      let finalRef = ref;
-      try {
-        const clientId = await getGoogleClientId();
-        const token = clientId ? await getGoogleSheetsToken(clientId) : null;
-        if (token) {
-          const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
-          if (raw !== null) {
-            const num = parseCellNumber(raw);
-            if (num !== null) {
-              finalRef = { ...ref, cachedValue: num, syncedAt: new Date().toISOString() };
-            } else {
-              throw new Error(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
-            }
-          } else {
-            throw new Error(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
-          }
-        } else {
-          throw new Error("Não foi possível obter autorização do Google.");
-        }
-      } finally {
-        setSyncing(false);
-      }
-      const patch: Partial<EconomyLinkAddonDraft> = {
-        [`${field}SheetsRef`]: finalRef,
-      } as Partial<EconomyLinkAddonDraft>;
-      if (finalRef.cachedValue !== null && finalRef.cachedValue !== undefined) {
-        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, finalRef.cachedValue));
-      }
-      commit(patch);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [addon],
-  );
+  const bindingContext = useMemo<FieldBindingPickerContext>(() => ({
+    progressionColumns: progressionColumnOptions.map((o) => ({
+      progressionAddonId: o.progressionAddonId,
+      progressionAddonName: `${o.label} · ${o.sectionName}`,
+      columnId: o.columnId,
+      columnName: o.columnName,
+    })),
+    spreadsheetRegistry: linkedSpreadsheets,
+  }), [progressionColumnOptions, linkedSpreadsheets]);
 
-  const handleUnbindSheetsRef = useCallback(
-    (field: "buyValue" | "sellValue" | "unlockValue") => {
-      commit({ [`${field}SheetsRef`]: undefined } as Partial<EconomyLinkAddonDraft>);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [addon],
-  );
+  function handleValueBinding(
+    bindingField: "buyValueBinding" | "sellValueBinding",
+    scalarField: "buyValue" | "sellValue",
+    binding: FieldBinding
+  ) {
+    const patch: Partial<EconomyLinkAddonDraft> = { [bindingField]: binding.source === "manual" ? undefined : binding };
+    if (binding.source === "sheets" && typeof binding.ref.cachedValue === "number") {
+      (patch as Record<string, unknown>)[scalarField] = Math.floor(Math.max(0, binding.ref.cachedValue));
+    }
+    commit(patch);
+  }
+
+  function handleUnlockSheetsBinding(binding: FieldBinding) {
+    const patch: Partial<EconomyLinkAddonDraft> = { unlockValueBinding: binding.source === "manual" ? undefined : binding };
+    if (binding.source === "sheets" && typeof binding.ref.cachedValue === "number") {
+      patch.unlockValue = Math.floor(Math.max(0, binding.ref.cachedValue));
+    }
+    commit(patch);
+  }
 
   const handleSyncSheets = useCallback(async () => {
     const bindings: Array<{ field: "buyValue" | "sellValue"; ref: SheetsCellRef }> = [];
-    if (addon.buyValueSheetsRef) bindings.push({ field: "buyValue", ref: addon.buyValueSheetsRef });
-    if (addon.sellValueSheetsRef) bindings.push({ field: "sellValue", ref: addon.sellValueSheetsRef });
+    if (addon.buyValueBinding?.source === "sheets") bindings.push({ field: "buyValue", ref: addon.buyValueBinding.ref });
+    if (addon.sellValueBinding?.source === "sheets") bindings.push({ field: "sellValue", ref: addon.sellValueBinding.ref });
     if (bindings.length === 0) return;
 
     setSyncing(true);
@@ -505,9 +468,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
           setSyncError(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
           return;
         }
-        const refKey = `${field}SheetsRef` as keyof EconomyLinkAddonDraft;
-        patch[refKey] = { ...ref, cachedValue: num, syncedAt } as never;
-        patch[field] = Math.floor(Math.max(0, num)) as never;
+        const bindingKey = `${field}Binding` as "buyValueBinding" | "sellValueBinding";
+        patch[bindingKey] = { source: "sheets", ref: { ...ref, cachedValue: num, syncedAt } };
+        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, num));
       }
 
       commit(patch);
@@ -552,13 +515,13 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     return { min, max };
   }, [addon.unlockRef, xpRefOptions]);
   const resolveLinkedValue = (
-    link: ProductionProgressionLink | undefined,
+    binding: FieldBinding | undefined,
     unlockValue: number | undefined,
     fallback: number | undefined,
     multiplier: number
   ): number | undefined => {
-    if (link && unlockValue != null) {
-      const opt = progressionColumnOptionByKey.get(`${link.progressionAddonId}::${link.columnId}`);
+    if (binding?.source === "progressionColumn" && unlockValue != null) {
+      const opt = progressionColumnOptionByKey.get(`${binding.progressionAddonId}::${binding.columnId}`);
       if (opt) {
         const tableVal = opt.rowsByLevel.get(unlockValue);
         if (tableVal != null) return Math.floor(tableVal * multiplier);
@@ -570,45 +533,43 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
 
   const effectiveMultiplier = addon.priceMultiplier ?? 1;
   const hasAnyProgressionLink = !!(
-    addon.buyValueProgressionLink ||
-    addon.minBuyValueProgressionLink ||
-    addon.sellValueProgressionLink ||
-    addon.maxSellValueProgressionLink
+    addon.buyValueBinding?.source === "progressionColumn" ||
+    addon.sellValueBinding?.source === "progressionColumn"
   );
 
   const buyEffectiveValue = useMemo(() => {
-    if (addon.buyValueProgressionLink) {
-      return resolveLinkedValue(addon.buyValueProgressionLink, addon.unlockValue, addon.buyValue, effectiveMultiplier);
+    if (addon.buyValueBinding?.source === "progressionColumn") {
+      return resolveLinkedValue(addon.buyValueBinding, addon.unlockValue, addon.buyValue, effectiveMultiplier);
     }
     return computeEffectiveValue(addon.buyValue, addon.buyModifiers || [], globalVariableByRefId, { min: addon.minBuyValue });
-  }, [addon.buyValueProgressionLink, addon.unlockValue, addon.buyValue, addon.priceMultiplier, addon.buyModifiers, addon.minBuyValue, globalVariableByRefId, progressionColumnOptionByKey]);
+  }, [addon.buyValueBinding, addon.unlockValue, addon.buyValue, addon.priceMultiplier, addon.buyModifiers, addon.minBuyValue, globalVariableByRefId, progressionColumnOptionByKey]);
 
   const sellEffectiveValue = useMemo(() => {
-    if (addon.sellValueProgressionLink) {
-      return resolveLinkedValue(addon.sellValueProgressionLink, addon.unlockValue, addon.sellValue, effectiveMultiplier);
+    if (addon.sellValueBinding?.source === "progressionColumn") {
+      return resolveLinkedValue(addon.sellValueBinding, addon.unlockValue, addon.sellValue, effectiveMultiplier);
     }
     const computed = computeEffectiveValue(addon.sellValue, addon.sellModifiers || [], globalVariableByRefId, { max: addon.maxSellValue });
     if (computed != null) return effectiveMultiplier !== 1 ? Math.floor(computed * effectiveMultiplier) : computed;
     if (addon.sellValue != null) return effectiveMultiplier !== 1 ? Math.floor(addon.sellValue * effectiveMultiplier) : addon.sellValue;
     return undefined;
-  }, [addon.sellValueProgressionLink, addon.unlockValue, addon.sellValue, addon.priceMultiplier, addon.sellModifiers, addon.maxSellValue, globalVariableByRefId, progressionColumnOptionByKey]);
+  }, [addon.sellValueBinding, addon.unlockValue, addon.sellValue, addon.priceMultiplier, addon.sellModifiers, addon.maxSellValue, globalVariableByRefId, progressionColumnOptionByKey]);
 
   useEffect(() => {
-    if (addon.buyValueProgressionLink && buyEffectiveValue != null && buyEffectiveValue !== addon.buyValue) {
+    if (addon.buyValueBinding?.source === "progressionColumn" && buyEffectiveValue != null && buyEffectiveValue !== addon.buyValue) {
       commit({ buyValue: buyEffectiveValue });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buyEffectiveValue, addon.buyValueProgressionLink]);
+  }, [buyEffectiveValue, addon.buyValueBinding]);
 
   useEffect(() => {
-    if (addon.sellValueProgressionLink && sellEffectiveValue != null && sellEffectiveValue !== addon.sellValue) {
+    if (addon.sellValueBinding?.source === "progressionColumn" && sellEffectiveValue != null && sellEffectiveValue !== addon.sellValue) {
       commit({ sellValue: sellEffectiveValue });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sellEffectiveValue, addon.sellValueProgressionLink]);
+  }, [sellEffectiveValue, addon.sellValueBinding]);
 
-  const hasBuyBinding = Boolean(addon.buyValueSheetsRef);
-  const hasSellBinding = Boolean(addon.sellValueSheetsRef);
+  const hasBuyBinding = addon.buyValueBinding?.source === "sheets";
+  const hasSellBinding = addon.sellValueBinding?.source === "sheets";
   const hasAnyBinding = hasBuyBinding || hasSellBinding;
 
   return (
@@ -630,8 +591,11 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           hasBuyConfig: false,
                           buyCurrencyRef: undefined,
                           buyValue: undefined,
-                          buyValueSheetsRef: undefined,
+                          buyValueBinding: undefined,
                           minBuyValue: undefined,
+                          minBuyValueBinding: undefined,
+                          maxBuyValue: undefined,
+                          maxBuyValueBinding: undefined,
                           buyModifiers: [],
                         }
                   );
@@ -673,54 +637,40 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     ))}
                   </select>
                 </label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <LinkedFieldRow
-                    label={buyEffectiveValue != null ? `${t("economyLinkAddon.buyValue", "Valor de compra")}: ${formatDisplayNumber(buyEffectiveValue)}` : t("economyLinkAddon.buyValue", "Valor de compra")}
-                    selectedKey={getLinkKey(addon.buyValueProgressionLink)}
-                    options={linkedFieldOptions}
-                    invalidLabelFallback={addon.buyValueProgressionLink?.columnName}
-                    onChange={(opt) => handleLinkChange("buyValueProgressionLink", opt)}
-                    badges={renderLevelBadges(buildLevelBadges(addon.buyValueProgressionLink, addon.priceMultiplier ?? 1), "buy-val")}
-                    sheetsBinding={{
-                      current: addon.buyValueSheetsRef,
-                      onBind: (ref) => handleBindSheetsRef("buyValue", ref),
-                      onUnbind: () => handleUnbindSheetsRef("buyValue"),
-                    }}
-                    spreadsheetRegistry={linkedSpreadsheets}
-                  >
-                    {hasBuyBinding ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
-                        {addon.buyValueSheetsRef!.cachedValue != null ? formatDisplayNumber(addon.buyValueSheetsRef!.cachedValue) : "—"}
-                      </div>
-                    ) : addon.buyValueProgressionLink ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
-                        {buyEffectiveValue != null ? formatDisplayNumber(buyEffectiveValue) : "—"}
-                      </div>
-                    ) : (
-                      <CommitOptionalNumberInput
-                        value={addon.buyValue}
-                        onCommit={(next) => commit({ buyValue: next })}
-                        placeholder="0"
-                        min={0}
-                        integer
-                        step={1}
-                        className={INPUT_CLASS}
-                      />
-                    )}
-                  </LinkedFieldRow>
-                  <LinkedFieldRow
-                    label={t("economyLinkAddon.minBuyValue", "Minimo de compra")}
-                    selectedKey={getLinkKey(addon.minBuyValueProgressionLink)}
-                    options={linkedFieldOptions}
-                    invalidLabelFallback={addon.minBuyValueProgressionLink?.columnName}
-                    onChange={(opt) => handleLinkChange("minBuyValueProgressionLink", opt)}
-                    badges={renderLevelBadges(buildLevelBadges(addon.minBuyValueProgressionLink, addon.priceMultiplier ?? 1), "min-buy")}
-                  >
-                    {addon.minBuyValueProgressionLink ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
-                        {resolveLinkedValue(addon.minBuyValueProgressionLink, addon.unlockValue, addon.minBuyValue, effectiveMultiplier) ?? "—"}
-                      </div>
-                    ) : (
+                <FieldBindingPicker
+                  config={{ valueType: "number", acceptedSources: ["progressionColumn", "sheets"], label: buyEffectiveValue != null ? `${t("economyLinkAddon.buyValue", "Valor de compra")}: ${formatDisplayNumber(buyEffectiveValue)}` : t("economyLinkAddon.buyValue", "Valor de compra") }}
+                  value={addon.buyValueBinding ?? MANUAL_BINDING}
+                  onChange={(b) => handleValueBinding("buyValueBinding", "buyValue", b)}
+                  context={bindingContext}
+                  badges={renderLevelBadges(buildLevelBadges(addon.buyValueBinding, addon.priceMultiplier ?? 1), "buy-val")}
+                >
+                  {addon.buyValueBinding?.source === "sheets" ? (
+                    <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                      {addon.buyValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.buyValueBinding.ref.cachedValue)) : "—"}
+                    </div>
+                  ) : addon.buyValueBinding?.source === "progressionColumn" ? (
+                    <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                      {buyEffectiveValue != null ? formatDisplayNumber(buyEffectiveValue) : "—"}
+                    </div>
+                  ) : (
+                    <CommitOptionalNumberInput
+                      value={addon.buyValue}
+                      onCommit={(next) => commit({ buyValue: next })}
+                      placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
+                    />
+                  )}
+                </FieldBindingPicker>
+                <NumericLimitsToggle
+                  hasData={!!(addon.minBuyValue != null || addon.maxBuyValue != null)}
+                  onClear={() => commit({ minBuyValue: undefined, minBuyValueBinding: undefined, maxBuyValue: undefined, maxBuyValueBinding: undefined })}
+                >
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.minBuyValue", "Mín")}</span>
                       <CommitOptionalNumberInput
                         value={addon.minBuyValue}
                         onCommit={(next) => commit({ minBuyValue: next })}
@@ -730,9 +680,21 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         step={1}
                         className={INPUT_CLASS}
                       />
-                    )}
-                  </LinkedFieldRow>
-                </div>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.maxBuyValue", "Máx")}</span>
+                      <CommitOptionalNumberInput
+                        value={addon.maxBuyValue}
+                        onCommit={(next) => commit({ maxBuyValue: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    </label>
+                  </div>
+                </NumericLimitsToggle>
             <label className="block">
               <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.buyModifiers", "Variaveis de compra (refs, separadas por virgula)")}</span>
               {buyModifierOptions.length > 0 && (
@@ -785,8 +747,11 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                           hasSellConfig: false,
                           sellCurrencyRef: undefined,
                           sellValue: undefined,
-                          sellValueSheetsRef: undefined,
+                          sellValueBinding: undefined,
+                          minSellValue: undefined,
+                          minSellValueBinding: undefined,
                           maxSellValue: undefined,
+                          maxSellValueBinding: undefined,
                           sellModifiers: [],
                         }
                   );
@@ -828,54 +793,52 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     ))}
                   </select>
                 </label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <LinkedFieldRow
-                    label={sellEffectiveValue != null ? `${t("economyLinkAddon.sellValue", "Valor de venda")}: ${formatDisplayNumber(sellEffectiveValue)}` : t("economyLinkAddon.sellValue", "Valor de venda")}
-                    selectedKey={getLinkKey(addon.sellValueProgressionLink)}
-                    options={linkedFieldOptions}
-                    invalidLabelFallback={addon.sellValueProgressionLink?.columnName}
-                    onChange={(opt) => handleLinkChange("sellValueProgressionLink", opt)}
-                    badges={renderLevelBadges(buildLevelBadges(addon.sellValueProgressionLink, addon.priceMultiplier ?? 1), "sell-val")}
-                    sheetsBinding={{
-                      current: addon.sellValueSheetsRef,
-                      onBind: (ref) => handleBindSheetsRef("sellValue", ref),
-                      onUnbind: () => handleUnbindSheetsRef("sellValue"),
-                    }}
-                    spreadsheetRegistry={linkedSpreadsheets}
-                  >
-                    {hasSellBinding ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
-                        {addon.sellValueSheetsRef!.cachedValue != null ? formatDisplayNumber(addon.sellValueSheetsRef!.cachedValue) : "—"}
-                      </div>
-                    ) : addon.sellValueProgressionLink ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
-                        {sellEffectiveValue != null ? formatDisplayNumber(sellEffectiveValue) : "—"}
-                      </div>
-                    ) : (
+                <FieldBindingPicker
+                  config={{ valueType: "number", acceptedSources: ["progressionColumn", "sheets"], label: sellEffectiveValue != null ? `${t("economyLinkAddon.sellValue", "Valor de venda")}: ${formatDisplayNumber(sellEffectiveValue)}` : t("economyLinkAddon.sellValue", "Valor de venda") }}
+                  value={addon.sellValueBinding ?? MANUAL_BINDING}
+                  onChange={(b) => handleValueBinding("sellValueBinding", "sellValue", b)}
+                  context={bindingContext}
+                  badges={renderLevelBadges(buildLevelBadges(addon.sellValueBinding, addon.priceMultiplier ?? 1), "sell-val")}
+                >
+                  {addon.sellValueBinding?.source === "sheets" ? (
+                    <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                      {addon.sellValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.sellValueBinding.ref.cachedValue)) : "—"}
+                    </div>
+                  ) : addon.sellValueBinding?.source === "progressionColumn" ? (
+                    <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
+                      {sellEffectiveValue != null ? formatDisplayNumber(sellEffectiveValue) : "—"}
+                    </div>
+                  ) : (
+                    <CommitOptionalNumberInput
+                      value={addon.sellValue}
+                      onCommit={(next) => commit({ sellValue: next })}
+                      placeholder="0"
+                      min={0}
+                      integer
+                      step={1}
+                      className={INPUT_CLASS}
+                    />
+                  )}
+                </FieldBindingPicker>
+                <NumericLimitsToggle
+                  hasData={!!(addon.minSellValue != null || addon.maxSellValue != null)}
+                  onClear={() => commit({ minSellValue: undefined, minSellValueBinding: undefined, maxSellValue: undefined, maxSellValueBinding: undefined })}
+                >
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.minSellValue", "Mín")}</span>
                       <CommitOptionalNumberInput
-                        value={addon.sellValue}
-                        onCommit={(next) => commit({ sellValue: next })}
+                        value={addon.minSellValue}
+                        onCommit={(next) => commit({ minSellValue: next })}
                         placeholder="0"
                         min={0}
                         integer
                         step={1}
                         className={INPUT_CLASS}
                       />
-                    )}
-                  </LinkedFieldRow>
-                  <LinkedFieldRow
-                    label={t("economyLinkAddon.maxSellValue", "Maximo de venda")}
-                    selectedKey={getLinkKey(addon.maxSellValueProgressionLink)}
-                    options={linkedFieldOptions}
-                    invalidLabelFallback={addon.maxSellValueProgressionLink?.columnName}
-                    onChange={(opt) => handleLinkChange("maxSellValueProgressionLink", opt)}
-                    badges={renderLevelBadges(buildLevelBadges(addon.maxSellValueProgressionLink, addon.priceMultiplier ?? 1), "max-sell")}
-                  >
-                    {addon.maxSellValueProgressionLink ? (
-                      <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-gray-400`}>
-                        {resolveLinkedValue(addon.maxSellValueProgressionLink, addon.unlockValue, addon.maxSellValue, effectiveMultiplier) ?? "—"}
-                      </div>
-                    ) : (
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.maxSellValue", "Máx")}</span>
                       <CommitOptionalNumberInput
                         value={addon.maxSellValue}
                         onCommit={(next) => commit({ maxSellValue: next })}
@@ -885,9 +848,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         step={1}
                         className={INPUT_CLASS}
                       />
-                    )}
-                  </LinkedFieldRow>
-                </div>
+                    </label>
+                  </div>
+                </NumericLimitsToggle>
             <label className="block">
               {sellModifierOptions.length > 0 && (
                 <div className="mb-2 max-h-28 space-y-1 overflow-auto rounded-lg border border-gray-700 bg-gray-900/40 p-2">
@@ -922,7 +885,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
             )}
           </div>
         </div>
-        {(addon.buyValueProgressionLink || addon.minBuyValueProgressionLink || addon.sellValueProgressionLink || addon.maxSellValueProgressionLink) && (
+        {hasAnyProgressionLink && (
           <div className={PANEL_BLOCK_CLASS}>
             <h4 className="mb-2 text-xs uppercase tracking-wide text-gray-400">
               {t("economyLinkAddon.priceMultiplierTitle", "Multiplicador de Preço")}
@@ -965,6 +928,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         hasUnlockConfig: false,
                         unlockRef: undefined,
                         unlockValue: undefined,
+                        unlockValueBinding: undefined,
+                        unlockValueMin: undefined,
+                        unlockValueMax: undefined,
                       }
                 )
               }
@@ -1018,22 +984,18 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                       </p>
                     )}
                   </label>
-                  <LinkedFieldRow
-                    label={t("economyLinkAddon.unlockValue", "LV de desbloqueio")}
-                    selectedKey=""
-                    options={[]}
-                    onChange={() => {}}
-                    hint={
-                      unlockSelectedKnown && unlockBounds.min != null && unlockBounds.max != null
+                  <FieldBindingPicker
+                    config={{
+                      valueType: "number",
+                      acceptedSources: ["sheets"],
+                      label: t("economyLinkAddon.unlockValue", "LV de desbloqueio"),
+                      hint: unlockSelectedKnown && unlockBounds.min != null && unlockBounds.max != null
                         ? `${t("economyLinkAddon.unlockRangeLabel", "LV permitido")}: ${unlockBounds.min}-${unlockBounds.max}`
-                        : undefined
-                    }
-                    sheetsBinding={{
-                      current: addon.unlockValueSheetsRef,
-                      onBind: (ref) => handleBindSheetsRef("unlockValue", ref),
-                      onUnbind: () => handleUnbindSheetsRef("unlockValue"),
+                        : undefined,
                     }}
-                    spreadsheetRegistry={linkedSpreadsheets}
+                    value={addon.unlockValueBinding ?? MANUAL_BINDING}
+                    onChange={handleUnlockSheetsBinding}
+                    context={{ spreadsheetRegistry: linkedSpreadsheets }}
                   >
                     <CommitOptionalNumberInput
                       value={addon.unlockValue}
@@ -1049,10 +1011,41 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                       integer
                       step={1}
                       className={INPUT_CLASS}
-                      readOnly={!!addon.unlockValueSheetsRef}
+                      readOnly={addon.unlockValueBinding?.source === "sheets"}
                     />
-                  </LinkedFieldRow>
+                  </FieldBindingPicker>
                 </div>
+                <NumericLimitsToggle
+                  hasData={!!(addon.unlockValueMin != null || addon.unlockValueMax != null)}
+                  onClear={() => commit({ unlockValueMin: undefined, unlockValueMax: undefined })}
+                >
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.unlockValueMin", "Mín de desbloqueio")}</span>
+                      <CommitOptionalNumberInput
+                        value={addon.unlockValueMin}
+                        onCommit={(next) => commit({ unlockValueMin: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.unlockValueMax", "Máx de desbloqueio")}</span>
+                      <CommitOptionalNumberInput
+                        value={addon.unlockValueMax}
+                        onCommit={(next) => commit({ unlockValueMax: next })}
+                        placeholder="0"
+                        min={0}
+                        integer
+                        step={1}
+                        className={INPUT_CLASS}
+                      />
+                    </label>
+                  </div>
+                </NumericLimitsToggle>
                 {hasAnyProgressionLink && (
                   <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-900/20 px-3 py-2 text-xs text-blue-200">
                     <span className="mt-0.5 shrink-0">ℹ</span>
@@ -1091,8 +1084,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
             )}
             {!syncError && (
               <p className="text-xs text-gray-500">
-                {addon.buyValueSheetsRef?.syncedAt || addon.sellValueSheetsRef?.syncedAt
-                  ? `Última sync: ${formatSyncedAt(addon.buyValueSheetsRef?.syncedAt ?? addon.sellValueSheetsRef?.syncedAt ?? null)}`
+                {(addon.buyValueBinding?.source === "sheets" && addon.buyValueBinding.ref.syncedAt) || (addon.sellValueBinding?.source === "sheets" && addon.sellValueBinding.ref.syncedAt)
+                  ? `Última sync: ${formatSyncedAt(
+                      (addon.buyValueBinding?.source === "sheets" ? addon.buyValueBinding.ref.syncedAt : null) ??
+                      (addon.sellValueBinding?.source === "sheets" ? addon.sellValueBinding.ref.syncedAt : null) ??
+                      null
+                    )}`
                   : "Ainda não sincronizado"}
               </p>
             )}

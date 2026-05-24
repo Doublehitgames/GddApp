@@ -88,8 +88,8 @@ export function ProgressionTableAddonReadOnly({
                 </td>
                 {columns.map((column) => (
                   <td key={`${row.level}-${column.id}`} className="px-2 py-1">
-                    {String(row.values?.[column.id] ?? 0)}
-                    {column.isPercentage ? "%" : ""}
+                    {String(row.values?.[column.id] ?? (column.valueType === "text" ? "" : 0))}
+                    {column.valueType !== "text" && column.isPercentage ? "%" : ""}
                   </td>
                 ))}
               </tr>

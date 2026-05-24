@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import type { InventoryAddonDraft, InventoryBindType } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
@@ -9,6 +9,8 @@ import { sectionPathById } from "@/lib/utils/slug";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { CommitNumberInput, CommitTextInput } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
+import { FieldBindingPicker } from "@/components/common/FieldBindingPicker";
+import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 
 type LibraryFieldOption = {
   libraryAddonId: string;
@@ -41,26 +43,6 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
     if (!p) return "#";
     return sectionPathById(p, sId);
   };
-  const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
-  const libraryPickerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isLibraryPickerOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      if (libraryPickerRef.current?.contains(event.target as Node)) return;
-      setIsLibraryPickerOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsLibraryPickerOpen(false);
-    };
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isLibraryPickerOpen]);
-
   const availableLibraryFields = useMemo<LibraryFieldOption[]>(() => {
     const out: LibraryFieldOption[] = [];
     const seenLibraryIds = new Set<string>();
@@ -90,16 +72,38 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
     return out;
   }, [projects, currentProjectId]);
 
+  const libraryBinding = addon.categoryBinding?.source === "library" ? addon.categoryBinding : undefined;
+
   const linkedCategoryOption = useMemo(() => {
-    if (!addon.categoryLibraryRef) return null;
+    if (!libraryBinding) return null;
     return (
       availableLibraryFields.find(
-        (opt) =>
-          opt.libraryAddonId === addon.categoryLibraryRef!.libraryAddonId &&
-          opt.entryId === addon.categoryLibraryRef!.entryId
+        (opt) => opt.libraryAddonId === libraryBinding.libraryAddonId && opt.entryId === libraryBinding.entryId
       ) || null
     );
-  }, [addon.categoryLibraryRef, availableLibraryFields]);
+  }, [libraryBinding, availableLibraryFields]);
+
+  const categoryBindingContext = useMemo<FieldBindingPickerContext>(() => ({
+    libraryEntries: availableLibraryFields.map((o) => ({
+      libraryAddonId: o.libraryAddonId,
+      entryId: o.entryId,
+      key: o.key,
+      label: o.label,
+    })),
+  }), [availableLibraryFields]);
+
+  function handleCategoryBindingChange(binding: FieldBinding) {
+    if (binding.source === "manual") {
+      commit({ categoryBinding: undefined });
+    } else if (binding.source === "library") {
+      const opt = availableLibraryFields.find(
+        (o) => o.libraryAddonId === binding.libraryAddonId && o.entryId === binding.entryId
+      );
+      if (opt) {
+        commit({ inventoryCategory: opt.label, categoryBinding: binding });
+      }
+    }
+  }
 
   const currentSectionId = useMemo(() => {
     for (const project of projects) {
@@ -190,107 +194,46 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
     <section className={PANEL_SHELL_CLASS}>
       <div className="space-y-3">
         <div className="block">
-          <span className="mb-1 flex items-center justify-between text-xs uppercase tracking-wide text-gray-400">
-            <span>{t("inventoryAddon.categoryLabel", "Categoria de inventario")}</span>
-            {!addon.categoryLibraryRef && availableLibraryFields.length > 0 && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsLibraryPickerOpen((prev) => !prev)}
-                  aria-label={t("inventoryAddon.linkLibraryAriaLabel", "Vincular à Biblioteca de Campos")}
-                  aria-expanded={isLibraryPickerOpen}
-                  title={t("inventoryAddon.linkLibraryButton", "Vincular à Biblioteca de Campos")}
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-gray-600 bg-gray-800 text-[11px] text-gray-300 hover:bg-gray-700 hover:text-gray-100"
-                >
-                  📚
-                </button>
-                {isLibraryPickerOpen && (
-                  <div
-                    ref={libraryPickerRef}
-                    role="listbox"
-                    aria-label={t("inventoryAddon.libraryPickerTitle", "Selecionar campo da Biblioteca")}
-                    className="absolute right-0 top-full z-20 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl normal-case"
-                  >
-                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                      {t("inventoryAddon.libraryPickerTitle", "Selecionar campo da Biblioteca")}
-                    </p>
-                    {(() => {
-                      const byLibrary = new Map<string, { libraryName: string; sectionTitle: string; entries: LibraryFieldOption[] }>();
-                      for (const opt of availableLibraryFields) {
-                        const bucket = byLibrary.get(opt.libraryAddonId);
-                        if (bucket) bucket.entries.push(opt);
-                        else byLibrary.set(opt.libraryAddonId, { libraryName: opt.libraryName, sectionTitle: opt.sectionTitle, entries: [opt] });
-                      }
-                      return Array.from(byLibrary.entries()).map(([libId, group]) => (
-                        <div key={libId} className="mb-1">
-                          <p className="px-2 py-1 text-[10px] font-semibold text-sky-300/80">
-                            <span className="text-gray-400">{group.sectionTitle}</span>
-                            <span className="mx-1 text-gray-500">→</span>
-                            <span>{group.libraryName}</span>
-                          </p>
-                          {group.entries.map((opt) => (
-                            <button
-                              key={`${opt.libraryAddonId}:${opt.entryId}`}
-                              type="button"
-                              role="option"
-                              onClick={() => {
-                                commit({
-                                  inventoryCategory: opt.label,
-                                  categoryLibraryRef: { libraryAddonId: opt.libraryAddonId, entryId: opt.entryId },
-                                });
-                                setIsLibraryPickerOpen(false);
-                              }}
-                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
-                              title={opt.description || undefined}
-                            >
-                              <LibraryLabelPath value={opt.label} className="flex-1" />
-                              <span className="shrink-0 text-[10px] text-gray-500">{opt.key}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-          </span>
-          {addon.categoryLibraryRef ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
-                <span aria-hidden className="text-[10px]">📎</span>
-                <span className="flex-1 flex flex-wrap items-center gap-1">
+          {availableLibraryFields.length > 0 || libraryBinding ? (
+            <FieldBindingPicker
+              config={{
+                valueType: "text",
+                acceptedSources: ["library"],
+                label: t("inventoryAddon.categoryLabel", "Categoria de inventario"),
+                libraryOutput: "label",
+              }}
+              value={addon.categoryBinding ?? MANUAL_BINDING}
+              onChange={handleCategoryBindingChange}
+              context={categoryBindingContext}
+            >
+              {libraryBinding ? (
+                <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-sky-600/40 bg-sky-900/20 px-2.5 py-1.5 text-xs text-sky-200">
                   <LibraryLabelPath value={linkedCategoryOption?.label ?? addon.inventoryCategory} />
                   {linkedCategoryOption && (
                     <span className="text-[10px] text-sky-400/80">({linkedCategoryOption.key})</span>
                   )}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => commit({ categoryLibraryRef: undefined })}
-                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-sky-300 hover:bg-sky-800/50 hover:text-sky-100"
-                  aria-label={t("inventoryAddon.unlinkLibraryAriaLabel", "Desvincular da Biblioteca")}
-                >
-                  ✕
-                </button>
-              </div>
-              {!linkedCategoryOption && (
-                <p className="text-[11px] text-amber-300">
-                  ⚠️{" "}
-                  {t(
-                    "inventoryAddon.brokenLibraryRef",
-                    "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback."
-                  )}
-                </p>
+                </div>
+              ) : (
+                <CommitTextInput
+                  value={addon.inventoryCategory}
+                  onCommit={(next) => commit({ inventoryCategory: next })}
+                  placeholder={t("inventoryAddon.categoryPlaceholder", "Ex.: Consumivel")}
+                  className={INPUT_CLASS}
+                />
               )}
-            </div>
+            </FieldBindingPicker>
           ) : (
-            <CommitTextInput
-              value={addon.inventoryCategory}
-              onCommit={(next) => commit({ inventoryCategory: next })}
-              placeholder={t("inventoryAddon.categoryPlaceholder", "Ex.: Consumivel")}
-              className={INPUT_CLASS}
-            />
+            <>
+              <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
+                {t("inventoryAddon.categoryLabel", "Categoria de inventario")}
+              </span>
+              <CommitTextInput
+                value={addon.inventoryCategory}
+                onCommit={(next) => commit({ inventoryCategory: next })}
+                placeholder={t("inventoryAddon.categoryPlaceholder", "Ex.: Consumivel")}
+                className={INPUT_CLASS}
+              />
+            </>
           )}
         </div>
 

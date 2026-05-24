@@ -8,7 +8,7 @@ import type {
 } from "@/lib/addons/types";
 
 describe("collectIntraSectionDeps", () => {
-  it("returns productionRef from DataSchema entries", () => {
+  it("returns production binding addonIds from DataSchema entries", () => {
     const addon: DataSchemaSectionAddon = {
       id: "ds-1",
       type: "dataSchema",
@@ -17,8 +17,8 @@ describe("collectIntraSectionDeps", () => {
         id: "ds-1",
         name: "x",
         entries: [
-          { id: "e1", key: "a", label: "A", valueType: "int", value: 0, productionRef: "prod-1" },
-          { id: "e2", key: "b", label: "B", valueType: "int", value: 0, productionRef: "prod-2" },
+          { id: "e1", key: "a", label: "A", valueType: "int", value: 0, binding: { source: "production", addonId: "prod-1", field: "minOutput" } },
+          { id: "e2", key: "b", label: "B", valueType: "int", value: 0, binding: { source: "production", addonId: "prod-2", field: "minOutput" } },
           { id: "e3", key: "c", label: "C", valueType: "int", value: 0 },
         ],
       },
@@ -37,9 +37,9 @@ describe("collectIntraSectionDeps", () => {
         mode: "passive",
         ingredients: [],
         outputs: [],
-        minOutputProgressionLink: { progressionAddonId: "pt-a", columnId: "c", columnName: "C" },
-        maxOutputProgressionLink: { progressionAddonId: "pt-a", columnId: "c", columnName: "C" },
-        craftTimeSecondsProgressionLink: { progressionAddonId: "pt-b", columnId: "c", columnName: "C" },
+        minOutputBinding: { source: "progressionColumn", progressionAddonId: "pt-a", columnId: "c", columnName: "C" },
+        maxOutputBinding: { source: "progressionColumn", progressionAddonId: "pt-a", columnId: "c", columnName: "C" },
+        craftTimeSecondsBinding: { source: "progressionColumn", progressionAddonId: "pt-b", columnId: "c", columnName: "C" },
       },
     };
     const deps = collectIntraSectionDeps(addon).sort();
@@ -100,38 +100,39 @@ describe("collectIntraSectionDeps", () => {
 });
 
 describe("clearIntraSectionRefs with preserveIds", () => {
-  it("preserves DataSchema productionRef when in preserve set", () => {
+  it("preserves DataSchema production binding when addonId is in preserve set", () => {
     const data = {
       id: "ds-1",
       name: "x",
       entries: [
-        { id: "e1", key: "a", label: "A", valueType: "int", value: 0, productionRef: "keep-me" },
-        { id: "e2", key: "b", label: "B", valueType: "int", value: 0, productionRef: "drop-me" },
+        { id: "e1", key: "a", label: "A", valueType: "int", value: 0, binding: { source: "production", addonId: "keep-me", field: "minOutput" } },
+        { id: "e2", key: "b", label: "B", valueType: "int", value: 0, binding: { source: "production", addonId: "drop-me", field: "minOutput" } },
       ],
     } as Record<string, unknown>;
     clearIntraSectionRefs(data, "dataSchema", new Set(["keep-me"]));
-    const entries = data.entries as Array<{ productionRef?: string }>;
-    expect(entries[0].productionRef).toBe("keep-me");
-    expect(entries[1].productionRef).toBeUndefined();
+    const entries = data.entries as Array<{ binding?: { addonId?: string } }>;
+    expect(entries[0].binding?.addonId).toBe("keep-me");
+    expect(entries[1].binding).toBeUndefined();
   });
 
-  it("preserves Production progression link when its id is in preserve set", () => {
+  it("preserves Production progression binding when its progressionAddonId is in preserve set", () => {
     const data = {
       id: "p-1",
       name: "P",
       mode: "passive",
       ingredients: [],
       outputs: [],
-      minOutputProgressionLink: { progressionAddonId: "keep", columnId: "c", columnName: "C" },
-      maxOutputProgressionLink: { progressionAddonId: "drop", columnId: "c", columnName: "C" },
+      minOutputBinding: { source: "progressionColumn", progressionAddonId: "keep", columnId: "c", columnName: "C" },
+      maxOutputBinding: { source: "progressionColumn", progressionAddonId: "drop", columnId: "c", columnName: "C" },
     } as Record<string, unknown>;
     clearIntraSectionRefs(data, "production", new Set(["keep"]));
-    expect((data as { minOutputProgressionLink?: unknown }).minOutputProgressionLink).toEqual({
+    expect((data as { minOutputBinding?: unknown }).minOutputBinding).toEqual({
+      source: "progressionColumn",
       progressionAddonId: "keep",
       columnId: "c",
       columnName: "C",
     });
-    expect((data as { maxOutputProgressionLink?: unknown }).maxOutputProgressionLink).toBeUndefined();
+    expect((data as { maxOutputBinding?: unknown }).maxOutputBinding).toBeUndefined();
   });
 
   it("preserves ExportSchema binding addonId when in preserve set", () => {
@@ -172,12 +173,12 @@ describe("moveAddon with preserveIds", () => {
         mode: "passive",
         ingredients: [],
         outputs: [],
-        minOutputProgressionLink: { progressionAddonId: "pt-1", columnId: "c", columnName: "C" },
-        maxOutputProgressionLink: { progressionAddonId: "pt-2", columnId: "c", columnName: "C" },
+        minOutputBinding: { source: "progressionColumn" as const, progressionAddonId: "pt-1", columnId: "c", columnName: "C" },
+        maxOutputBinding: { source: "progressionColumn" as const, progressionAddonId: "pt-2", columnId: "c", columnName: "C" },
       },
     };
     const moved = moveAddon(addon, new Set(["pt-1"])) as ProductionSectionAddon;
-    expect(moved.data.minOutputProgressionLink?.progressionAddonId).toBe("pt-1");
-    expect(moved.data.maxOutputProgressionLink).toBeUndefined();
+    expect((moved.data.minOutputBinding as { progressionAddonId?: string })?.progressionAddonId).toBe("pt-1");
+    expect(moved.data.maxOutputBinding).toBeUndefined();
   });
 });

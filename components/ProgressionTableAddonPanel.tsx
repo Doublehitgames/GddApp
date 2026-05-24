@@ -38,6 +38,7 @@ import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import {
+  CommitTextInput,
   CommitNumberInput,
   CommitOptionalNumberInput,
 } from "@/components/common/CommitInput";
@@ -45,25 +46,32 @@ import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 
-/** Module-level helper: fetches a sheets range and maps raw values to per-row numbers. */
+/** Module-level helper: fetches a sheets range and maps raw values to per-row values (numbers or strings for text columns). */
 async function fetchAndMapSheetsValues(
   binding: ProgressionTableColumnSheetsBinding,
   rows: ProgressionTableRow[],
   columnId: string,
-  token: string
-): Promise<{ cachedValues: number[]; rowValues: Record<number, number> } | null> {
+  token: string,
+  isText?: boolean
+): Promise<{ cachedValues: (number | string)[]; rowValues: Record<number, number | string> } | null> {
   const rawValues = await fetchSheetRangeValues(token, binding.spreadsheetId, binding.sheetName, binding.range);
   if (!rawValues) return null;
-  const cachedValues: number[] = [];
-  const rowValues: Record<number, number> = {};
+  const cachedValues: (number | string)[] = [];
+  const rowValues: Record<number, number | string> = {};
   rows.forEach((row, i) => {
     const raw = i < rawValues.length ? rawValues[i] : null;
-    let num: number | null = null;
-    if (typeof raw === "number") num = raw;
-    else if (typeof raw === "string") num = parseCellNumber(raw);
-    const val = num ?? Number(row.values[columnId] ?? 0);
-    cachedValues.push(val);
-    if (num !== null) rowValues[row.level] = num;
+    if (isText) {
+      const val = raw != null ? String(raw) : String(row.values[columnId] ?? "");
+      cachedValues.push(val);
+      if (raw != null) rowValues[row.level] = val;
+    } else {
+      let num: number | null = null;
+      if (typeof raw === "number") num = raw;
+      else if (typeof raw === "string") num = parseCellNumber(raw);
+      const val = num ?? Number(row.values[columnId] ?? 0);
+      cachedValues.push(val);
+      if (num !== null) rowValues[row.level] = num;
+    }
   });
   return { cachedValues, rowValues };
 }
@@ -117,14 +125,20 @@ interface ProgressionTableAddonPanelProps {
 
 function normalizeColumns(columns: ProgressionTableColumn[]): ProgressionTableColumn[] {
   if (columns.length > 0) {
-    return columns.map((column) => ({
-      ...column,
-      generator: column.generator ?? { mode: "manual" },
-      decimals: Number.isFinite(column.decimals) ? Math.max(0, Math.min(6, Math.floor(Number(column.decimals)))) : 0,
-      isPercentage: Boolean(column.isPercentage),
-      min: Number.isFinite(column.min) ? Number(column.min) : undefined,
-      max: Number.isFinite(column.max) ? Number(column.max) : undefined,
-    }));
+    return columns.map((column) => {
+      const isText = column.valueType === "text";
+      return {
+        ...column,
+        valueType: isText ? ("text" as const) : undefined,
+        defaultTextValue: isText ? (column.defaultTextValue ?? "") : undefined,
+        // Text columns don't use a generator
+        generator: isText ? undefined : (column.generator ?? { mode: "manual" }),
+        decimals: Number.isFinite(column.decimals) ? Math.max(0, Math.min(6, Math.floor(Number(column.decimals)))) : 0,
+        isPercentage: Boolean(column.isPercentage),
+        min: Number.isFinite(column.min) ? Number(column.min) : undefined,
+        max: Number.isFinite(column.max) ? Number(column.max) : undefined,
+      };
+    });
   }
   return [{ id: "value", name: "Valor", generator: { mode: "manual" }, decimals: 0, isPercentage: false, min: undefined, max: undefined }];
 }
@@ -143,7 +157,8 @@ function remapRows(
     if (!existing) return baseRow;
     const values: Record<string, number | string> = {};
     for (const column of safeColumns) {
-      values[column.id] = existing.values[column.id] ?? 0;
+      const fallback = column.valueType === "text" ? (column.defaultTextValue ?? "") : 0;
+      values[column.id] = existing.values[column.id] ?? fallback;
     }
     return { level: baseRow.level, values };
   });
@@ -819,6 +834,47 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     });
   };
 
+  const updateColumnValueType = (columnId: string, valueType: "number" | "text") => {
+    const nextColumns = columns.map((column) => {
+      if (column.id !== columnId) return column;
+      if (valueType === "text") {
+        // Switching to text: remove generator and numeric fields, keep sheetsBinding
+        return {
+          ...column,
+          valueType: "text" as const,
+          defaultTextValue: column.defaultTextValue ?? "",
+          generator: undefined,
+          decimals: 0,
+          isPercentage: false,
+          min: undefined,
+          max: undefined,
+        };
+      }
+      // Switching back to number: remove text fields, restore defaults
+      return {
+        ...column,
+        valueType: undefined,
+        defaultTextValue: undefined,
+        generator: { mode: "manual" as const },
+        decimals: 0,
+        isPercentage: false,
+        min: undefined,
+        max: undefined,
+      };
+    });
+    commit({
+      columns: nextColumns,
+      rows: remapRows(rows, nextColumns, startLevel, endLevel),
+    });
+  };
+
+  const updateColumnDefaultText = (columnId: string, defaultTextValue: string) => {
+    const nextColumns = columns.map((column) =>
+      column.id === columnId ? { ...column, defaultTextValue } : column
+    );
+    commit({ columns: nextColumns });
+  };
+
   const generateColumn = (columnId: string) => {
     const rc = resolvedColumns.find((item) => item.id === columnId);
     if (!rc) return;
@@ -932,7 +988,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       values: { ...row.values, [newId]: row.values[columnId] ?? 0 },
     }));
     // Copy overrides from source column to the new column
-    const nextOverrides: Record<string, Record<string, number>> = {};
+    const nextOverrides: Record<string, Record<string, number | string>> = {};
     for (const [levelKey, colMap] of Object.entries(currentOverrides)) {
       nextOverrides[levelKey] = columnId in colMap
         ? { ...colMap, [newId]: colMap[columnId] }
@@ -965,13 +1021,13 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   // ── Override helpers ─────────────────────────────────────────────
   const currentOverrides = addon.overrides ?? {};
 
-  const setOverride = (level: number, columnId: string, value: number): Record<string, Record<string, number>> => {
+  const setOverride = (level: number, columnId: string, value: number | string): Record<string, Record<string, number | string>> => {
     const key = String(level);
     const prev = currentOverrides[key] ?? {};
     return { ...currentOverrides, [key]: { ...prev, [columnId]: value } };
   };
 
-  const removeOverride = (level: number, columnId: string): Record<string, Record<string, number>> => {
+  const removeOverride = (level: number, columnId: string): Record<string, Record<string, number | string>> => {
     const key = String(level);
     const prev = currentOverrides[key];
     if (!prev || !(columnId in prev)) return currentOverrides;
@@ -984,8 +1040,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     return next;
   };
 
-  const removeColumnOverrides = (columnId: string): Record<string, Record<string, number>> => {
-    const next: Record<string, Record<string, number>> = {};
+  const removeColumnOverrides = (columnId: string): Record<string, Record<string, number | string>> => {
+    const next: Record<string, Record<string, number | string>> = {};
     for (const [key, colMap] of Object.entries(currentOverrides)) {
       const { [columnId]: _, ...rest } = colMap;
       if (Object.keys(rest).length > 0) next[key] = rest;
@@ -1008,7 +1064,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const applyOverridesToRows = (
     generatedRows: ProgressionTableRow[],
     columnId: string,
-    ovr: Record<string, Record<string, number>>
+    ovr: Record<string, Record<string, number | string>>
   ): ProgressionTableRow[] => {
     return generatedRows.map((row) => {
       const overrideValue = ovr[String(row.level)]?.[columnId];
@@ -1020,20 +1076,27 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const updateCell = (level: number, columnId: string, rawValue: string) => {
     const rc = resolvedColumns.find((item) => item.id === columnId);
     const column = columns.find((item) => item.id === columnId);
-    const bounds = normalizeBounds(rc?.min, rc?.max);
-    const parsedValue = parseNumber(rawValue);
-    const clampedValue = clampValueWithBounds(parsedValue, bounds.min, bounds.max);
+    const isText = column?.valueType === "text";
+    let finalValue: number | string;
+    let nextOverrides = currentOverrides;
+    if (isText) {
+      finalValue = rawValue;
+      // Text columns are always "manual" — no overrides needed
+    } else {
+      const bounds = normalizeBounds(rc?.min, rc?.max);
+      const parsedValue = parseNumber(rawValue);
+      const clampedValue = clampValueWithBounds(parsedValue, bounds.min, bounds.max);
+      finalValue = clampedValue;
+      const mode = column?.generator?.mode ?? "manual";
+      if (mode !== "manual") nextOverrides = setOverride(level, columnId, clampedValue);
+    }
     const nextRows = rows.map((row) => {
       if (row.level !== level) return row;
       return {
         ...row,
-        values: { ...row.values, [columnId]: clampedValue },
+        values: { ...row.values, [columnId]: finalValue },
       };
     });
-    const mode = column?.generator?.mode ?? "manual";
-    const nextOverrides = mode !== "manual"
-      ? setOverride(level, columnId, clampedValue)
-      : currentOverrides;
     commit({
       rows: nextRows,
       columns,
@@ -1257,7 +1320,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       if (!clientId) throw new Error(t("progressionTableAddon.sheets.errorNoClientId", "Google Client ID não configurado."));
       const token = await getGoogleSheetsToken(clientId);
       if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
-      const result = await fetchAndMapSheetsValues(column.sheetsBinding, rows, columnId, token);
+      const isText = column.valueType === "text";
+      const result = await fetchAndMapSheetsValues(column.sheetsBinding, rows, columnId, token, isText);
       if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
       const { cachedValues, rowValues } = result;
       let nextOverrides = { ...currentOverrides };
@@ -1272,9 +1336,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
           ? { ...c, sheetsBinding: { ...c.sheetsBinding!, cachedValues, syncedAt: new Date().toISOString() } }
           : c
       );
+      const fallbackEmpty = isText ? "" : 0;
       const nextRows = rows.map((row, i) => ({
         ...row,
-        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? 0 },
+        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? fallbackEmpty },
       }));
       commit({ columns: nextColumns, rows: nextRows, overrides: nextOverrides });
     } catch (err) {
@@ -1313,7 +1378,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       }
       for (const col of boundColumns) {
         if (!col.sheetsBinding) continue;
-        const result = await fetchAndMapSheetsValues(col.sheetsBinding, finalRows, col.id, token);
+        const colIsText = col.valueType === "text";
+        const result = await fetchAndMapSheetsValues(col.sheetsBinding, finalRows, col.id, token, colIsText);
         if (!result) { errors[col.id] = t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."); continue; }
         const { cachedValues, rowValues } = result;
         Object.entries(rowValues).forEach(([level, val]) => {
@@ -1327,9 +1393,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
             ? { ...c, sheetsBinding: { ...col.sheetsBinding!, cachedValues, syncedAt: new Date().toISOString() } }
             : c
         );
+        const colFallback = colIsText ? "" : 0;
         finalRows = finalRows.map((row, i) => ({
           ...row,
-          values: { ...row.values, [col.id]: cachedValues[i] ?? row.values[col.id] ?? 0 },
+          values: { ...row.values, [col.id]: cachedValues[i] ?? row.values[col.id] ?? colFallback },
         }));
       }
       commit({ columns: finalColumns, rows: finalRows, overrides: finalOverrides });
@@ -1375,7 +1442,9 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       if (!clientId) throw new Error(t("progressionTableAddon.sheets.errorNoClientId", "Google Client ID não configurado."));
       const token = await getGoogleSheetsToken(clientId);
       if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
-      const result = await fetchAndMapSheetsValues(binding, rows, columnId, token);
+      const bindingColumn = columns.find((c) => c.id === columnId);
+      const bindIsText = bindingColumn?.valueType === "text";
+      const result = await fetchAndMapSheetsValues(binding, rows, columnId, token, bindIsText);
       if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
       const { cachedValues, rowValues } = result;
       let nextOverrides = { ...currentOverrides };
@@ -1389,9 +1458,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       const nextColumns = columns.map((c) =>
         c.id === columnId ? { ...c, sheetsBinding: finalBinding } : c
       );
+      const bindFallback = bindIsText ? "" : 0;
       const nextRows = rows.map((row, i) => ({
         ...row,
-        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? 0 },
+        values: { ...row.values, [columnId]: cachedValues[i] ?? row.values[columnId] ?? bindFallback },
       }));
       commit({ columns: nextColumns, rows: nextRows, overrides: nextOverrides });
       setBindingFormColumnId(null);
@@ -1706,6 +1776,51 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </button>
                         </div>
 
+                        {/* ── Tipo: Número / Texto ── */}
+                        <div>
+                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                            {t("progressionTableAddon.typeLabel", "Tipo")}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {(["number", "text"] as const).map((vt) => {
+                              const isActive = vt === "text" ? column.valueType === "text" : column.valueType !== "text";
+                              const label = vt === "number"
+                                ? t("progressionTableAddon.type.number", "Número")
+                                : t("progressionTableAddon.type.text", "Texto");
+                              return (
+                                <button
+                                  key={vt}
+                                  type="button"
+                                  onClick={() => updateColumnValueType(column.id, vt)}
+                                  aria-pressed={isActive}
+                                  className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                                    isActive
+                                      ? "border-sky-600/60 bg-sky-900/30 text-sky-200"
+                                      : "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* ── Default text value (only for text columns without sheets binding) ── */}
+                        {column.valueType === "text" && !column.sheetsBinding && (
+                          <label className="block">
+                            <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
+                              {t("progressionTableAddon.defaultTextValueLabel", "Valor padrão")}
+                            </span>
+                            <CommitTextInput
+                              value={column.defaultTextValue ?? ""}
+                              onCommit={(next) => updateColumnDefaultText(column.id, next)}
+                              placeholder={t("progressionTableAddon.defaultTextValuePlaceholder", "ex: COINS")}
+                              className={INPUT_CLASS}
+                            />
+                          </label>
+                        )}
+
                         {/* ── Sheets binding section ── */}
                         {column.sheetsBinding ? (
                           <div className="rounded-lg border border-emerald-700/40 bg-emerald-900/10 p-2.5 space-y-1.5">
@@ -1849,7 +1964,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </button>
                         )}
 
-                        {!column.sheetsBinding && (<>
+                        {!column.sheetsBinding && column.valueType !== "text" && (<>
                         <div>
                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">
                             {t("progressionTableAddon.modeLabel", "Modo")}
@@ -2569,21 +2684,35 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   <td className="px-3 py-1.5">
                                     <div className="flex items-center gap-1">
                                       <div className="relative flex-1">
-                                        <CommitNumberInput
-                                          value={Number(row.values[column.id] ?? 0)}
-                                          onCommit={(next) => updateCell(row.level, column.id, String(next))}
-                                          readOnly={!!column.sheetsBinding}
-                                          className={`${INPUT_CLASS} w-64 ${
-                                            column.isPercentage ? "pr-6" : ""
-                                          } ${
-                                            column.sheetsBinding
-                                              ? "cursor-default border-emerald-600/40 bg-emerald-900/10 text-emerald-100/80 select-none"
-                                              : cellHasOverride
-                                              ? "border-amber-600/40 bg-amber-900/10"
-                                              : ""
-                                          }`}
-                                        />
-                                        {column.isPercentage && (
+                                        {column.valueType === "text" ? (
+                                          <CommitTextInput
+                                            value={String(row.values[column.id] ?? "")}
+                                            onCommit={(next) => updateCell(row.level, column.id, next)}
+                                            readOnly={!!column.sheetsBinding}
+                                            placeholder={column.defaultTextValue ?? ""}
+                                            className={`${INPUT_CLASS} w-64 ${
+                                              column.sheetsBinding
+                                                ? "cursor-default border-emerald-600/40 bg-emerald-900/10 text-emerald-100/80 select-none"
+                                                : ""
+                                            }`}
+                                          />
+                                        ) : (
+                                          <CommitNumberInput
+                                            value={Number(row.values[column.id] ?? 0)}
+                                            onCommit={(next) => updateCell(row.level, column.id, String(next))}
+                                            readOnly={!!column.sheetsBinding}
+                                            className={`${INPUT_CLASS} w-64 ${
+                                              column.isPercentage ? "pr-6" : ""
+                                            } ${
+                                              column.sheetsBinding
+                                                ? "cursor-default border-emerald-600/40 bg-emerald-900/10 text-emerald-100/80 select-none"
+                                                : cellHasOverride
+                                                ? "border-amber-600/40 bg-amber-900/10"
+                                                : ""
+                                            }`}
+                                          />
+                                        )}
+                                        {column.valueType !== "text" && column.isPercentage && (
                                           <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-300">
                                             %
                                           </span>
@@ -2615,7 +2744,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                           </table>
                         </div>
 
-                        {rows.length >= 2 && (() => {
+                        {rows.length >= 2 && column.valueType !== "text" && (() => {
                           const colValues = rows.map((r) => Number(r.values[column.id] ?? 0));
                           return (
                             <div className="flex-1 min-w-0 sticky top-0 h-[380px]">

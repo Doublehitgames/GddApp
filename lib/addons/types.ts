@@ -1,18 +1,23 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
+import type { FieldBinding } from "@/lib/addons/fieldBinding";
 
 export type ProgressionTableColumnSheetsBinding = {
   spreadsheetId: string;
   sheetName: string;
   /** Cell range, e.g. "B2:B51" — must cover exactly (endLevel - startLevel + 1) cells. */
   range: string;
-  /** Last synced values, one per level row (index 0 = startLevel). */
-  cachedValues?: number[];
+  /** Last synced values, one per level row (index 0 = startLevel). Strings for text columns. */
+  cachedValues?: (number | string)[];
   syncedAt?: string | null;
 };
 
 export type ProgressionTableColumn = {
   id: string;
   name: string;
+  /** "number" (default) = numeric values; "text" = free-text values per level. */
+  valueType?: "number" | "text";
+  /** Default text value used when populating new rows for a text column. */
+  defaultTextValue?: string;
   libraryRef?: {
     libraryAddonId: string;
     entryId: string;
@@ -73,8 +78,8 @@ export type ProgressionTableAddonDraft = {
   endLevel: number;
   columns: ProgressionTableColumn[];
   rows: ProgressionTableRow[];
-  /** Manual cell overrides: overrides[String(level)][columnId] = value */
-  overrides?: Record<string, Record<string, number>>;
+  /** Manual cell overrides: overrides[String(level)][columnId] = value (number or text). */
+  overrides?: Record<string, Record<string, number | string>>;
 };
 
 export type EconomyModifierRef = {
@@ -197,11 +202,8 @@ export type InventoryAddonDraft = {
   stackable: boolean;
   maxStack: number;
   inventoryCategory: string;
-  /** When linked, the category is derived from a Field Library entry's label. */
-  categoryLibraryRef?: {
-    libraryAddonId: string;
-    entryId: string;
-  };
+  /** When set, the category is derived from a Field Library entry's label. */
+  categoryBinding?: FieldBinding;
   slotSize: number;
   hasDurabilityConfig?: boolean;
   durability: number;
@@ -219,7 +221,7 @@ export type SheetsCellRef = {
   spreadsheetId: string;
   sheetName: string;
   cellRef: string;
-  cachedValue: number | null;
+  cachedValue: string | number | boolean | null;
   syncedAt: string | null;
 };
 
@@ -229,18 +231,20 @@ export type EconomyLinkAddonDraft = {
   hasBuyConfig?: boolean;
   buyCurrencyRef?: string;
   buyValue?: number;
-  buyValueProgressionLink?: ProductionProgressionLink;
-  buyValueSheetsRef?: SheetsCellRef;
+  buyValueBinding?: FieldBinding;
   minBuyValue?: number;
-  minBuyValueProgressionLink?: ProductionProgressionLink;
+  minBuyValueBinding?: FieldBinding;
+  maxBuyValue?: number;
+  maxBuyValueBinding?: FieldBinding;
   buyModifiers: EconomyModifierRef[];
   hasSellConfig?: boolean;
   sellCurrencyRef?: string;
   sellValue?: number;
-  sellValueProgressionLink?: ProductionProgressionLink;
-  sellValueSheetsRef?: SheetsCellRef;
+  sellValueBinding?: FieldBinding;
+  minSellValue?: number;
+  minSellValueBinding?: FieldBinding;
   maxSellValue?: number;
-  maxSellValueProgressionLink?: ProductionProgressionLink;
+  maxSellValueBinding?: FieldBinding;
   sellModifiers: EconomyModifierRef[];
   /** Multiplies all buy and sell values (from fixed or table). Default 1. */
   priceMultiplier?: number;
@@ -252,7 +256,9 @@ export type EconomyLinkAddonDraft = {
   hasUnlockConfig?: boolean;
   unlockRef?: string;
   unlockValue?: number;
-  unlockValueSheetsRef?: SheetsCellRef;
+  unlockValueBinding?: FieldBinding;
+  unlockValueMin?: number;
+  unlockValueMax?: number;
   notes?: string;
 };
 
@@ -268,12 +274,6 @@ export type ProductionOutput = {
   quantity: number;
 };
 
-export type ProductionProgressionLink = {
-  progressionAddonId: string;
-  columnId: string;
-  columnName: string;
-};
-
 export type ProductionAddonDraft = {
   id: string;
   name: string;
@@ -281,23 +281,25 @@ export type ProductionAddonDraft = {
   // Passive mode
   outputRef?: string;
   minOutput?: number;
-  minOutputProgressionLink?: ProductionProgressionLink;
-  minOutputSheetsRef?: SheetsCellRef;
+  minOutputBinding?: FieldBinding;
   maxOutput?: number;
-  maxOutputProgressionLink?: ProductionProgressionLink;
-  maxOutputSheetsRef?: SheetsCellRef;
+  maxOutputBinding?: FieldBinding;
   intervalSeconds?: number;
-  intervalSecondsProgressionLink?: ProductionProgressionLink;
-  intervalSecondsSheetsRef?: SheetsCellRef;
+  intervalSecondsBinding?: FieldBinding;
+  intervalSecondsMin?: number;
+  intervalSecondsMax?: number;
   requiresCollection?: boolean;
   capacity?: number;
-  capacityProgressionLink?: ProductionProgressionLink;
-  capacitySheetsRef?: SheetsCellRef;
+  capacityBinding?: FieldBinding;
+  capacityMin?: number;
+  capacityMax?: number;
   // Recipe mode
   ingredients: ProductionIngredient[];
   outputs: ProductionOutput[];
   craftTimeSeconds?: number;
-  craftTimeSecondsProgressionLink?: ProductionProgressionLink;
+  craftTimeSecondsBinding?: FieldBinding;
+  craftTimeSecondsMin?: number;
+  craftTimeSecondsMax?: number;
   notes?: string;
 };
 
@@ -345,9 +347,13 @@ export type DataSchemaValueType = "int" | "float" | "seconds" | "percent" | "boo
 export type EconomyLinkFieldKey =
   | "buyValue"
   | "minBuyValue"
+  | "maxBuyValue"
   | "sellValue"
+  | "minSellValue"
   | "maxSellValue"
   | "unlockValue"
+  | "unlockValueMin"
+  | "unlockValueMax"
   | "buyCurrencyRef"
   | "sellCurrencyRef"
   | "buyCurrencyKey"
@@ -357,8 +363,14 @@ export type ProductionFieldKey =
   | "minOutput"
   | "maxOutput"
   | "intervalSeconds"
+  | "intervalSecondsMin"
+  | "intervalSecondsMax"
   | "craftTimeSeconds"
+  | "craftTimeSecondsMin"
+  | "craftTimeSecondsMax"
   | "capacity"
+  | "capacityMin"
+  | "capacityMax"
   | "outputBuyEffective"
   | "outputMinBuyValue"
   | "outputSellEffective"
@@ -379,17 +391,8 @@ export type DataSchemaEntry = {
   min?: number;
   max?: number;
   unit?: string;
-  unitXpRef?: string;
-  /** Reference to an Economy Link addon (section ID that contains it). */
-  economyLinkRef?: string;
-  /** Which field from the Economy Link addon to pull. */
-  economyLinkField?: EconomyLinkFieldKey;
-  /** Reference to a Production addon (addon ID in the same section). */
-  productionRef?: string;
-  /** Which field from the Production addon to pull. */
-  productionField?: ProductionFieldKey;
-  /** When true, the value comes from the section's dataId field. */
-  usePageDataId?: boolean;
+  /** Value binding — links the entry's value to an external source (unitXp, economyLink, production, pageDataId). Separate from `libraryRef` which links the key/label identity. */
+  binding?: FieldBinding;
   notes?: string;
 };
 
@@ -501,10 +504,16 @@ export type ProductionScalarField =
   | "name"
   | "mode"
   | "craftTimeSeconds"
+  | "craftTimeSecondsMin"
+  | "craftTimeSecondsMax"
   | "minOutput"
   | "maxOutput"
   | "intervalSeconds"
+  | "intervalSecondsMin"
+  | "intervalSecondsMax"
   | "capacity"
+  | "capacityMin"
+  | "capacityMax"
   | "requiresCollection"
   | "outputRef";
 
@@ -834,7 +843,7 @@ function createDefaultRows(
   for (let level = normalizedStart; level <= normalizedEnd; level += 1) {
     const values: Record<string, number | string> = {};
     for (const column of columns) {
-      values[column.id] = 0;
+      values[column.id] = column.valueType === "text" ? (column.defaultTextValue ?? "") : 0;
     }
     rows.push({ level, values });
   }

@@ -155,7 +155,7 @@ describe("collectReverseRefUpdates", () => {
   });
 
   describe("xpBalance", () => {
-    it("updates unitXpRef on dataSchema entries and unlockRef on economyLink", () => {
+    it("updates unitXp binding on dataSchema entries and unlockRef on economyLink", () => {
       const ds: SectionAddon = {
         id: "ds-1",
         type: "dataSchema",
@@ -164,7 +164,7 @@ describe("collectReverseRefUpdates", () => {
           id: "ds-1",
           name: "S",
           entries: [
-            { id: "e1", key: "xp", label: "XP", valueType: "int", value: 0, unitXpRef: "A" },
+            { id: "e1", key: "xp", label: "XP", valueType: "int", value: 0, binding: { source: "unitXp" as const, sectionId: "A" } },
           ],
         },
       };
@@ -181,7 +181,7 @@ describe("collectReverseRefUpdates", () => {
       expect(count).toBe(2);
       const nextDs = updatedSections[1].addons![0];
       if (nextDs.type === "dataSchema") {
-        expect(nextDs.data.entries[0].unitXpRef).toBe("C");
+        expect((nextDs.data.entries[0].binding as { source: string; sectionId: string }).sectionId).toBe("C");
       }
       const nextEco = updatedSections[1].addons![1];
       if (nextEco.type === "economyLink") {
@@ -191,7 +191,7 @@ describe("collectReverseRefUpdates", () => {
   });
 
   describe("economyLink", () => {
-    it("updates economyLinkRef on dataSchema entries", () => {
+    it("updates economyLink binding sectionId on dataSchema entries", () => {
       const ds: SectionAddon = {
         id: "ds-1",
         type: "dataSchema",
@@ -200,7 +200,7 @@ describe("collectReverseRefUpdates", () => {
           id: "ds-1",
           name: "S",
           entries: [
-            { id: "e1", key: "x", label: "X", valueType: "int", value: 0, economyLinkRef: "A" },
+            { id: "e1", key: "x", label: "X", valueType: "int", value: 0, binding: { source: "economyLink" as const, sectionId: "A", field: "buyValue" as const } },
           ],
         },
       };
@@ -217,7 +217,7 @@ describe("collectReverseRefUpdates", () => {
       expect(count).toBe(1);
       const nextDs = updatedSections[1].addons![0];
       if (nextDs.type === "dataSchema") {
-        expect(nextDs.data.entries[0].economyLinkRef).toBe("C");
+        expect((nextDs.data.entries[0].binding as { source: string; sectionId: string }).sectionId).toBe("C");
       }
     });
   });

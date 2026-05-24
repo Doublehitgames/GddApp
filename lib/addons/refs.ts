@@ -1,4 +1,5 @@
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
+import type { FieldBinding } from "@/lib/addons/fieldBinding";
 
 /**
  * ── Intra-section refs ─────────────────────────────────────────────────
@@ -63,8 +64,9 @@ export function clearIntraSectionRefs(
     const entries = (data as { entries?: Array<Record<string, unknown>> }).entries;
     if (Array.isArray(entries)) {
       for (const entry of entries) {
-        if ("productionRef" in entry && !shouldPreserve(entry.productionRef as string | undefined, preserveIds)) {
-          entry.productionRef = undefined;
+        const binding = entry.binding as FieldBinding | undefined;
+        if (binding?.source === "production" && !shouldPreserve(binding.addonId, preserveIds)) {
+          entry.binding = undefined;
         }
       }
     }
@@ -74,13 +76,14 @@ export function clearIntraSectionRefs(
   if (type === "production") {
     const production = data as Record<string, unknown>;
     for (const key of [
-      "minOutputProgressionLink",
-      "maxOutputProgressionLink",
-      "intervalSecondsProgressionLink",
-      "craftTimeSecondsProgressionLink",
+      "minOutputBinding",
+      "maxOutputBinding",
+      "intervalSecondsBinding",
+      "capacityBinding",
+      "craftTimeSecondsBinding",
     ] as const) {
-      const link = production[key] as { progressionAddonId?: string } | undefined;
-      if (link && !shouldPreserve(link.progressionAddonId, preserveIds)) {
+      const binding = production[key] as FieldBinding | undefined;
+      if (binding?.source === "progressionColumn" && !shouldPreserve(binding.progressionAddonId, preserveIds)) {
         production[key] = undefined;
       }
     }
@@ -100,22 +103,23 @@ export function clearIntraSectionRefs(
 export function collectIntraSectionDeps(addon: SectionAddon): string[] {
   const ids = new Set<string>();
   if (addon.type === "dataSchema" || addon.type === "genericStats") {
-    const entries = (addon.data as { entries?: Array<{ productionRef?: string }> }).entries;
+    const entries = (addon.data as { entries?: Array<{ binding?: FieldBinding }> }).entries;
     if (Array.isArray(entries)) {
       for (const e of entries) {
-        if (typeof e.productionRef === "string" && e.productionRef) ids.add(e.productionRef);
+        if (e.binding?.source === "production") ids.add(e.binding.addonId);
       }
     }
   } else if (addon.type === "production") {
     const d = addon.data;
     for (const key of [
-      "minOutputProgressionLink",
-      "maxOutputProgressionLink",
-      "intervalSecondsProgressionLink",
-      "craftTimeSecondsProgressionLink",
+      "minOutputBinding",
+      "maxOutputBinding",
+      "intervalSecondsBinding",
+      "capacityBinding",
+      "craftTimeSecondsBinding",
     ] as const) {
-      const link = d[key];
-      if (link?.progressionAddonId) ids.add(link.progressionAddonId);
+      const binding = d[key] as FieldBinding | undefined;
+      if (binding?.source === "progressionColumn") ids.add(binding.progressionAddonId);
     }
   } else if (addon.type === "exportSchema") {
     const visit = (nodes: ExportSchemaNodeLike[] | undefined) => {
@@ -218,16 +222,16 @@ function remapCraftTableProductionRef(
 
 const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = {
   xpBalance: (addon, from, to, bump) => {
-    // DataSchemaEntry.unitXpRef + EconomyLinkAddonDraft.unlockRef
+    // DataSchemaEntry.binding (unitXp source) + EconomyLinkAddonDraft.unlockRef
     if (addon.type === "dataSchema" || addon.type === "genericStats") {
-      const entries = (addon.data as { entries?: Array<{ unitXpRef?: string }> }).entries;
+      const entries = (addon.data as { entries?: Array<{ binding?: FieldBinding }> }).entries;
       if (!Array.isArray(entries)) return addon;
       let changed = false;
       const nextEntries = entries.map((e) => {
-        if (e.unitXpRef === from) {
+        if (e.binding?.source === "unitXp" && e.binding.sectionId === from) {
           changed = true;
           bump();
-          return { ...e, unitXpRef: to };
+          return { ...e, binding: { source: "unitXp" as const, sectionId: to } };
         }
         return e;
       });
@@ -318,14 +322,14 @@ const REVERSE_REF_PATCHES: Partial<Record<SectionAddonType, ReverseRefPatch>> = 
 
   economyLink: (addon, from, to, bump) => {
     if (addon.type !== "dataSchema" && addon.type !== "genericStats") return addon;
-    const entries = addon.data.entries;
+    const entries = (addon.data as { entries?: Array<{ binding?: FieldBinding }> }).entries;
     if (!Array.isArray(entries)) return addon;
     let changed = false;
     const nextEntries = entries.map((e) => {
-      if (e.economyLinkRef === from) {
+      if (e.binding?.source === "economyLink" && e.binding.sectionId === from) {
         changed = true;
         bump();
-        return { ...e, economyLinkRef: to };
+        return { ...e, binding: { ...e.binding, sectionId: to } };
       }
       return e;
     });

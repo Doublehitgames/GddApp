@@ -76,30 +76,37 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
 
   /** Resolve the effective value of an entry, considering active bindings */
   const resolveEntryValue = (entry: DataSchemaEntry): string | number | boolean => {
-    if (entry.usePageDataId && sectionContext) {
+    const binding = entry.binding;
+    if (binding?.source === "pageDataId" && sectionContext) {
       return sectionContext.section.dataId ?? "";
     }
-    if (entry.economyLinkRef && entry.economyLinkField) {
-      const elAddon = (sectionContext?.addons ?? []).find(
-        (a: SectionAddon) => a.type === "economyLink" && a.id === entry.economyLinkRef
-      );
+    if (binding?.source === "economyLink") {
+      let elAddon: SectionAddon | undefined;
+      for (const project of projects) {
+        for (const section of project.sections || []) {
+          if (section.id !== binding.sectionId) continue;
+          elAddon = (section.addons || []).find((a: SectionAddon) => a.type === "economyLink");
+          break;
+        }
+        if (elAddon) break;
+      }
       if (elAddon) {
-        const val = (elAddon.data as EconomyLinkAddonDraft)[entry.economyLinkField as keyof EconomyLinkAddonDraft];
+        const val = (elAddon.data as EconomyLinkAddonDraft)[binding.field as keyof EconomyLinkAddonDraft];
         if (typeof val === "number") return val;
       }
     }
-    if (entry.productionRef && entry.productionField) {
+    if (binding?.source === "production") {
       const prodAddon = (sectionContext?.addons ?? []).find(
-        (a: SectionAddon) => a.type === "production" && a.id === entry.productionRef
+        (a: SectionAddon) => a.type === "production" && a.id === binding.addonId
       );
       if (prodAddon) {
-        const directFields: Record<string, string> = {
+        const directFields: Record<string, keyof ProductionAddonDraft> = {
           minOutput: "minOutput", maxOutput: "maxOutput",
           intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
         };
-        const field = entry.productionField;
-        if (field in directFields) {
-          const val = (prodAddon.data as ProductionAddonDraft)[directFields[field] as keyof ProductionAddonDraft];
+        const fieldKey = directFields[binding.field];
+        if (fieldKey) {
+          const val = (prodAddon.data as ProductionAddonDraft)[fieldKey];
           if (typeof val === "number") return val;
         }
       }
@@ -224,15 +231,16 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
         <div className={`${bare ? "" : "mt-2"} space-y-1.5 ${isLight ? "text-gray-900" : "text-gray-200"}`}>
           {rows.map((entry) => {
             const lineLabel = resolveEntryLabel(entry);
-            const linkedXpName = entry.unitXpRef ? xpRefLabelBySectionId.get(entry.unitXpRef) : undefined;
+            const unitXpSectionId = entry.binding?.source === "unitXp" ? entry.binding.sectionId : undefined;
+            const linkedXpName = unitXpSectionId ? xpRefLabelBySectionId.get(unitXpSectionId) : undefined;
             return (
               <p key={entry.id} className={bare ? "" : "text-sm"}>
                 {lineLabel}: {formatValue(resolveEntryValue(entry))}
-                {linkedXpName && entry.unitXpRef ? (
+                {linkedXpName && unitXpSectionId ? (
                   <>
                     {" "}
                     (
-                    {renderSectionLink(entry.unitXpRef, linkedXpName)}
+                    {renderSectionLink(unitXpSectionId, linkedXpName)}
                     )
                   </>
                 ) : entry.unit ? (

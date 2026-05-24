@@ -585,8 +585,8 @@ describe("AIChat addon commands", () => {
       expect(addon?.data.outputRef).toBeUndefined();
       expect(addon?.data.ingredients).toEqual([]);
       expect(addon?.data.outputs).toEqual([]);
-      expect(addon?.data.minOutputProgressionLink).toBeUndefined();
-      expect(addon?.data.craftTimeSecondsProgressionLink).toBeUndefined();
+      expect(addon?.data.minOutputBinding).toBeUndefined();
+      expect(addon?.data.craftTimeSecondsBinding).toBeUndefined();
     });
   });
 

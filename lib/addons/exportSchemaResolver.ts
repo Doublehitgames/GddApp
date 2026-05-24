@@ -213,14 +213,26 @@ function resolveProductionField(
       return prod.mode ?? "passive";
     case "craftTimeSeconds":
       return prod.craftTimeSeconds ?? 0;
+    case "craftTimeSecondsMin":
+      return prod.craftTimeSecondsMin ?? 0;
+    case "craftTimeSecondsMax":
+      return prod.craftTimeSecondsMax ?? 0;
     case "minOutput":
       return prod.minOutput ?? 0;
     case "maxOutput":
       return prod.maxOutput ?? 0;
     case "intervalSeconds":
       return prod.intervalSeconds ?? 0;
+    case "intervalSecondsMin":
+      return prod.intervalSecondsMin ?? 0;
+    case "intervalSecondsMax":
+      return prod.intervalSecondsMax ?? 0;
     case "capacity":
       return prod.capacity ?? 0;
+    case "capacityMin":
+      return prod.capacityMin ?? 0;
+    case "capacityMax":
+      return prod.capacityMax ?? 0;
     case "requiresCollection":
       return Boolean(prod.requiresCollection);
     case "outputRef":
@@ -477,8 +489,7 @@ function findDataSchemaEntry(
 
 /**
  * Resolves the effective value of a Data Schema entry.
- * If the entry has an active binding (economyLinkRef or productionRef),
- * the value is computed live from the source addon instead of using the stored entry.value.
+ * If the entry has an active binding, the value is computed live from the source addon.
  */
 function resolveEntryEffectiveValue(
   entry: DataSchemaEntry,
@@ -486,56 +497,53 @@ function resolveEntryEffectiveValue(
   sectionDataId?: string,
   sectionLookup?: SectionLookup
 ): string | number | boolean {
-  // Page DataID binding
-  if (entry.usePageDataId) {
+  const binding = entry.binding;
+
+  if (binding?.source === "pageDataId") {
     return sectionDataId ?? "";
   }
 
-  // Economy Link binding
-  if (entry.economyLinkRef && entry.economyLinkField) {
-    const elAddon = allAddons.find((a) => a.type === "economyLink" && a.id === entry.economyLinkRef);
+  if (binding?.source === "economyLink") {
+    const sectionEntry = sectionLookup?.get(binding.sectionId);
+    const elAddon = sectionEntry?.addons.find((a) => a.type === "economyLink")
+      ?? allAddons.find((a) => a.type === "economyLink" && a.id === binding.sectionId);
     if (elAddon) {
       const el = elAddon.data as EconomyLinkAddonDraft;
-      const field = entry.economyLinkField;
+      const field = binding.field;
       if (field === "buyCurrencyRef" || field === "sellCurrencyRef") {
-        const refField = field === "buyCurrencyRef" ? "buyCurrencyRef" : "sellCurrencyRef";
-        const currencySecId = el[refField] as string | undefined;
+        const currencySecId = el[field === "buyCurrencyRef" ? "buyCurrencyRef" : "sellCurrencyRef"];
         return resolveRefToDataId(currencySecId, sectionLookup);
       }
       if (field === "buyCurrencyKey" || field === "sellCurrencyKey") {
-        const refField = field === "buyCurrencyKey" ? "buyCurrencyRef" : "sellCurrencyRef";
-        const currencySecId = el[refField] as string | undefined;
+        const currencySecId = el[field === "buyCurrencyKey" ? "buyCurrencyRef" : "sellCurrencyRef"];
         if (!currencySecId || !sectionLookup) return entry.value;
-        const secEntry = sectionLookup.get(currencySecId);
-        if (!secEntry) return entry.value;
-        const currAddon = secEntry.addons.find((a) => a.type === "currency");
+        const currSec = sectionLookup.get(currencySecId);
+        if (!currSec) return entry.value;
+        const currAddon = currSec.addons.find((a) => a.type === "currency");
         return (currAddon?.data as any)?.code ?? entry.value;
       }
-      // Numeric fields: resolve progression link then apply priceMultiplier
-      const progressionLinkMap: Partial<Record<string, keyof EconomyLinkAddonDraft>> = {
-        buyValue: "buyValueProgressionLink",
-        minBuyValue: "minBuyValueProgressionLink",
-        sellValue: "sellValueProgressionLink",
-        maxSellValue: "maxSellValueProgressionLink",
-      };
-      const linkField = progressionLinkMap[field];
-      if (linkField) {
+      // Numeric fields: resolve via the EconomyLink addon's own *Binding, then apply priceMultiplier
+      let elFieldBinding: typeof el.buyValueBinding | undefined;
+      if (field === "buyValue") elFieldBinding = el.buyValueBinding;
+      else if (field === "minBuyValue") elFieldBinding = el.minBuyValueBinding;
+      else if (field === "maxBuyValue") elFieldBinding = el.maxBuyValueBinding;
+      else if (field === "sellValue") elFieldBinding = el.sellValueBinding;
+      else if (field === "minSellValue") elFieldBinding = el.minSellValueBinding;
+      else if (field === "maxSellValue") elFieldBinding = el.maxSellValueBinding;
+      if (elFieldBinding !== undefined) {
         const multiplier = typeof el.priceMultiplier === "number" && el.priceMultiplier > 0 ? el.priceMultiplier : 1;
-        const link = el[linkField] as { progressionAddonId: string; columnId: string } | undefined;
-        if (link && el.unlockValue != null) {
-          let progAddon = allAddons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+        if (elFieldBinding.source === "progressionColumn" && el.unlockValue != null) {
+          let progAddon = allAddons.find((a) => a.type === "progressionTable" && a.id === elFieldBinding.progressionAddonId);
           if (!progAddon && sectionLookup) {
-            for (const secEntry of sectionLookup.values()) {
-              const found = secEntry.addons.find((a) => a.type === "progressionTable" && a.id === link.progressionAddonId);
+            for (const se of sectionLookup.values()) {
+              const found = se.addons.find((a) => a.type === "progressionTable" && a.id === elFieldBinding.progressionAddonId);
               if (found) { progAddon = found; break; }
             }
           }
           if (progAddon) {
             const row = ((progAddon.data as any).rows || []).find((r: any) => r.level === el.unlockValue);
-            if (row) {
-              const colVal = row.values?.[link.columnId];
-              if (typeof colVal === "number") return Math.floor(colVal * multiplier);
-            }
+            const colVal = row?.values?.[elFieldBinding.columnId];
+            if (typeof colVal === "number") return Math.floor(colVal * multiplier);
           }
         }
         const directValue = el[field as keyof EconomyLinkAddonDraft];
@@ -546,33 +554,24 @@ function resolveEntryEffectiveValue(
     }
   }
 
-  // Production binding
-  if (entry.productionRef && entry.productionField) {
-    const prodAddon = allAddons.find((a) => a.type === "production" && a.id === entry.productionRef);
+  if (binding?.source === "production") {
+    const prodAddon = allAddons.find((a) => a.type === "production" && a.id === binding.addonId);
     if (prodAddon) {
       const prod = prodAddon.data as ProductionAddonDraft;
-      const field = entry.productionField;
-
-      // Direct production fields
+      const field = binding.field;
       const directFields: Record<string, keyof ProductionAddonDraft> = {
         minOutput: "minOutput", maxOutput: "maxOutput",
-        intervalSeconds: "intervalSeconds", craftTimeSeconds: "craftTimeSeconds", capacity: "capacity",
+        intervalSeconds: "intervalSeconds", intervalSecondsMin: "intervalSecondsMin", intervalSecondsMax: "intervalSecondsMax",
+        craftTimeSeconds: "craftTimeSeconds", craftTimeSecondsMin: "craftTimeSecondsMin", craftTimeSecondsMax: "craftTimeSecondsMax",
+        capacity: "capacity", capacityMin: "capacityMin", capacityMax: "capacityMax",
       };
       if (field in directFields) {
         const v = prod[directFields[field]];
         if (typeof v === "number") return v;
         return 0;
       }
-
-      // Output item economy fields: follow Production.outputRef → section → Economy Link
-      if (field.startsWith("output") && prod.outputRef) {
-        // Find the Economy Link on the produced item's section
-        // We need to search all projects, but we only have addons from the current section
-        // The outputRef is a section ID, so we can't resolve cross-section here directly.
-        // However, the DataSchemaAddonPanel already computes and stores the value in entry.value
-        // for these cross-section lookups. So we fall back to entry.value for output* fields.
-        return entry.value;
-      }
+      // output* fields cross-section: value is pre-computed and stored in entry.value
+      if (field.startsWith("output") && prod.outputRef) return entry.value;
     }
   }
 

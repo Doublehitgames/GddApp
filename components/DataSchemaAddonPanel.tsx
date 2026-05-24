@@ -22,6 +22,8 @@ import {
   CommitTextInput,
 } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
+import { FieldBindingPicker } from "@/components/common/FieldBindingPicker";
+import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 
 interface DataSchemaAddonPanelProps {
   addon: DataSchemaAddonDraft;
@@ -295,18 +297,19 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       if (!currencySecId) return undefined;
       return getSectionCurrencyCode(currencySecId);
     }
-    // Numeric fields: resolve progression link then apply priceMultiplier
-    const progressionLinkMap: Partial<Record<EconomyLinkFieldKey, keyof typeof found.data>> = {
-      buyValue: "buyValueProgressionLink",
-      minBuyValue: "minBuyValueProgressionLink",
-      sellValue: "sellValueProgressionLink",
-      maxSellValue: "maxSellValueProgressionLink",
+    // Numeric fields: resolve progression binding then apply priceMultiplier
+    const bindingFieldMap: Partial<Record<EconomyLinkFieldKey, keyof typeof found.data>> = {
+      buyValue: "buyValueBinding",
+      minBuyValue: "minBuyValueBinding",
+      sellValue: "sellValueBinding",
+      maxSellValue: "maxSellValueBinding",
     };
-    const linkField = progressionLinkMap[field];
-    if (linkField) {
+    const bindingField = bindingFieldMap[field];
+    if (bindingField) {
       const multiplier = typeof found.data.priceMultiplier === "number" && found.data.priceMultiplier > 0 ? found.data.priceMultiplier : 1;
-      const link = (found.data as any)[linkField] as { progressionAddonId: string; columnId: string } | undefined;
-      if (link && found.data.unlockValue != null) {
+      const link = (found.data as any)[bindingField];
+      const isProgLink = link?.source === "progressionColumn";
+      if (isProgLink && found.data.unlockValue != null) {
         const sectionAddons = getEconomyLinkSectionAddons(refId);
         const progAddon = sectionAddons.find((a: any) => a.type === "progressionTable" && a.id === link.progressionAddonId);
         if (progAddon) {
@@ -464,6 +467,28 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     });
   };
 
+  const entryAcceptedSources = useMemo<FieldBinding["source"][]>(() => {
+    const sources: FieldBinding["source"][] = ["pageDataId"];
+    if (xpRefOptions.length > 0) sources.push("unitXp");
+    if (economyLinkRefOptions.length > 0) sources.push("economyLink");
+    if (productionRefOptions.length > 0) sources.push("production");
+    return sources;
+  }, [xpRefOptions.length, economyLinkRefOptions.length, productionRefOptions.length]);
+
+  const bindingContext = useMemo<FieldBindingPickerContext>(() => ({
+    unitXpSections: xpRefOptions.map((o) => ({ sectionId: o.refId, sectionLabel: o.label })),
+    economyLinks: economyLinkRefOptions.flatMap((o) =>
+      ECONOMY_LINK_FIELDS.map((f) => ({ sectionId: o.refId, sectionLabel: o.label, field: f.key }))
+    ),
+    productionAddons: productionRefOptions.flatMap((o) =>
+      getAvailableProductionFields(o.refId).map((f) => ({
+        addonId: o.refId,
+        addonName: o.label,
+        field: f.key,
+      }))
+    ),
+  }), [xpRefOptions, economyLinkRefOptions, productionRefOptions, projects]);
+
   useEffect(() => {
     setCollapsedEntries((prev) => {
       const next: Record<string, boolean> = {};
@@ -528,6 +553,38 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     });
     commit(nextEntries);
   };
+
+  function handleEntryBindingChange(entryId: string, binding: FieldBinding) {
+    switch (binding.source) {
+      case "manual":
+        updateEntry(entryId, { binding: undefined });
+        break;
+      case "pageDataId":
+        updateEntry(entryId, { binding, valueType: "string", value: section?.dataId ?? "" });
+        break;
+      case "unitXp": {
+        const xpMeta = xpRefOptions.find((r) => r.refId === binding.sectionId);
+        const forcedType: DataSchemaValueType = xpMeta ? (xpMeta.decimals > 0 ? "float" : "int") : "int";
+        updateEntry(entryId, { binding, valueType: forcedType });
+        break;
+      }
+      case "economyLink": {
+        const isCurrRef = ["buyCurrencyRef", "sellCurrencyRef", "buyCurrencyKey", "sellCurrencyKey"].includes(binding.field);
+        const linkedValue = getEconomyLinkValue(binding.sectionId, binding.field);
+        updateEntry(entryId, {
+          binding,
+          valueType: isCurrRef ? "string" : "int",
+          value: linkedValue ?? (isCurrRef ? "" : 0),
+        });
+        break;
+      }
+      case "production": {
+        const linkedValue = getProductionValue(binding.addonId, binding.field);
+        updateEntry(entryId, { binding, valueType: "int", value: linkedValue ?? 0 });
+        break;
+      }
+    }
+  }
 
   const addEntry = () => {
     const nextId = `stat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -609,13 +666,16 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                   : isDuplicate
                     ? t("dataSchemaAddon.validation.keyUnique", "A chave deve ser única.")
                     : null;
-                const linkedXpMeta = entry.unitXpRef ? xpRefOptions.find((item) => item.refId === entry.unitXpRef) : undefined;
-                const isLinkedToXp = Boolean(linkedXpMeta);
-                const isLinkedToEconomy = Boolean(entry.economyLinkRef && entry.economyLinkField);
-                const isLinkedToProduction = Boolean(entry.productionRef && entry.productionField);
-                const isLinkedToPageDataId = Boolean(entry.usePageDataId);
+                const entryBinding = entry.binding;
+                const economyBinding = entryBinding?.source === "economyLink" ? entryBinding : undefined;
+                const productionBinding = entryBinding?.source === "production" ? entryBinding : undefined;
+                const linkedXpMeta = entryBinding?.source === "unitXp" ? xpRefOptions.find((item) => item.refId === entryBinding.sectionId) : undefined;
+                const isLinkedToXp = entryBinding?.source === "unitXp";
+                const isLinkedToEconomy = entryBinding?.source === "economyLink";
+                const isLinkedToProduction = entryBinding?.source === "production";
+                const isLinkedToPageDataId = entryBinding?.source === "pageDataId";
                 const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToPageDataId;
-                const isCurrencyRefField = entry.economyLinkField === "buyCurrencyRef" || entry.economyLinkField === "sellCurrencyRef" || entry.economyLinkField === "buyCurrencyKey" || entry.economyLinkField === "sellCurrencyKey";
+                const isCurrencyRefField = economyBinding != null && (economyBinding.field === "buyCurrencyRef" || economyBinding.field === "sellCurrencyRef" || economyBinding.field === "buyCurrencyKey" || economyBinding.field === "sellCurrencyKey");
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
                     ? "float"
@@ -630,10 +690,6 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                   effectiveLabel?.trim() ||
                   effectiveKey?.trim() ||
                   t("dataSchemaAddon.fallbackTitle", "Campo");
-                const unitRefSelectedKnown = entry.unitXpRef
-                  ? xpRefOptions.some((item) => item.refId === entry.unitXpRef)
-                  : false;
-
                 return (
                   <SortableEntryBlock key={entry.id} id={entry.id}>
                     <div className={PANEL_BLOCK_CLASS}>
@@ -819,218 +875,16 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                           </div>
                           {/* Binding type selector */}
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
-                            <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
-                              Vinculo (opcional)
-                            </p>
-                            <div className="flex flex-wrap items-start gap-2">
-                              <label className="min-w-[130px]">
-                                <span className="mb-1 block text-xs text-gray-400">Tipo</span>
-                                <select
-                                  value={entry.usePageDataId ? "pageDataId" : entry.productionRef ? "production" : entry.economyLinkRef ? "economy" : entry.unitXpRef ? "xp" : "none"}
-                                  onChange={(event) => {
-                                    const next = event.target.value;
-                                    const clearAll = { unitXpRef: undefined, economyLinkRef: undefined, economyLinkField: undefined, productionRef: undefined, productionField: undefined, usePageDataId: undefined };
-                                    if (next === "none") {
-                                      updateEntry(entry.id, clearAll);
-                                    } else if (next === "pageDataId") {
-                                      updateEntry(entry.id, {
-                                        ...clearAll,
-                                        usePageDataId: true,
-                                        valueType: "string",
-                                        value: section?.dataId ?? "",
-                                      });
-                                    } else if (next === "xp") {
-                                      const first = xpRefOptions[0];
-                                      const forcedType: DataSchemaValueType | undefined = first ? (first.decimals > 0 ? "float" : "int") : undefined;
-                                      updateEntry(entry.id, {
-                                        ...clearAll,
-                                        unitXpRef: first?.refId,
-                                        ...(forcedType ? { valueType: forcedType } : {}),
-                                      });
-                                    } else if (next === "economy") {
-                                      const first = economyLinkRefOptions[0];
-                                      const defaultField: EconomyLinkFieldKey = "buyValue";
-                                      const linkedValue = first ? getEconomyLinkValue(first.refId, defaultField) : 0;
-                                      updateEntry(entry.id, {
-                                        ...clearAll,
-                                        economyLinkRef: first?.refId,
-                                        economyLinkField: defaultField,
-                                        valueType: "int",
-                                        value: linkedValue ?? 0,
-                                      });
-                                    } else if (next === "production") {
-                                      const first = productionRefOptions[0];
-                                      const defaultField: ProductionFieldKey = "minOutput";
-                                      const linkedValue = first ? getProductionValue(first.refId, defaultField) : 0;
-                                      updateEntry(entry.id, {
-                                        ...clearAll,
-                                        productionRef: first?.refId,
-                                        productionField: defaultField,
-                                        valueType: "int",
-                                        value: linkedValue ?? 0,
-                                      });
-                                    }
-                                  }}
-                                  className={INPUT_CLASS}
-                                >
-                                  <option value="none">Sem vinculo</option>
-                                  <option value="pageDataId">DataID da pagina</option>
-                                  <option value="xp">Pagina de XP</option>
-                                  {economyLinkRefOptions.length > 0 && <option value="economy">Economia vinculada</option>}
-                                  {productionRefOptions.length > 0 && <option value="production">Producao</option>}
-                                </select>
-                              </label>
-
-                              {/* XP ref selector */}
-                              {entry.unitXpRef !== undefined && !entry.economyLinkRef && !entry.productionRef && (
-                                <label className="min-w-[200px]">
-                                  <span className="mb-1 block text-xs text-gray-400">Pagina</span>
-                                  <select
-                                    value={
-                                      entry.unitXpRef
-                                        ? unitRefSelectedKnown
-                                          ? entry.unitXpRef
-                                          : "__invalid__"
-                                        : ""
-                                    }
-                                    onChange={(event) => {
-                                      const next = event.target.value;
-                                      if (next === "__invalid__") return;
-                                      const nextRef = next || undefined;
-                                      const nextLinkedXp = nextRef ? xpRefOptions.find((item) => item.refId === nextRef) : undefined;
-                                      const forcedType: DataSchemaValueType | undefined = nextLinkedXp
-                                        ? nextLinkedXp.decimals > 0
-                                          ? "float"
-                                          : "int"
-                                        : undefined;
-                                      let nextValue = entry.value;
-                                      if (nextLinkedXp) {
-                                        const parsed =
-                                          typeof entry.value === "number"
-                                            ? entry.value
-                                            : Number(String(entry.value ?? "").replace(",", "."));
-                                        const safeNumeric = Number.isFinite(parsed) ? parsed : 0;
-                                        nextValue = roundToDecimals(safeNumeric, nextLinkedXp.decimals);
-                                      }
-                                      updateEntry(entry.id, {
-                                        unitXpRef: nextRef,
-                                        ...(forcedType ? { valueType: forcedType, value: nextValue } : {}),
-                                      });
-                                    }}
-                                    className={INPUT_CLASS}
-                                  >
-                                    <option value="">{t("dataSchemaAddon.selectNone", "Sem vínculo")}</option>
-                                    {entry.unitXpRef && !unitRefSelectedKnown && (
-                                      <option value="__invalid__">
-                                        {t("dataSchemaAddon.invalidUnitXpRef", "Vínculo inválido")}
-                                      </option>
-                                    )}
-                                    {xpRefOptions.map((option) => (
-                                      <option key={option.refId} value={option.refId}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                              )}
-
-                              {/* Economy Link ref + field selectors */}
-                              {entry.economyLinkRef && (
-                                <>
-                                  <label className="min-w-[200px]">
-                                    <span className="mb-1 block text-xs text-gray-400">Addon</span>
-                                    <select
-                                      value={entry.economyLinkRef}
-                                      onChange={(event) => {
-                                        const nextRef = event.target.value;
-                                        const field = entry.economyLinkField ?? "buyValue";
-                                        const linkedValue = getEconomyLinkValue(nextRef, field);
-                                        const isCurrRef = field === "buyCurrencyRef" || field === "sellCurrencyRef" || field === "buyCurrencyKey" || field === "sellCurrencyKey";
-                                        updateEntry(entry.id, {
-                                          economyLinkRef: nextRef,
-                                          value: linkedValue ?? (isCurrRef ? "" : 0),
-                                        });
-                                      }}
-                                      className={INPUT_CLASS}
-                                    >
-                                      {economyLinkRefOptions.map((option) => (
-                                        <option key={option.refId} value={option.refId}>
-                                          {option.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <label className="min-w-[160px]">
-                                    <span className="mb-1 block text-xs text-gray-400">Campo</span>
-                                    <select
-                                      value={entry.economyLinkField ?? "buyValue"}
-                                      onChange={(event) => {
-                                        const field = event.target.value as EconomyLinkFieldKey;
-                                        const isCurrRef = field === "buyCurrencyRef" || field === "sellCurrencyRef" || field === "buyCurrencyKey" || field === "sellCurrencyKey";
-                                        const linkedValue = getEconomyLinkValue(entry.economyLinkRef!, field);
-                                        updateEntry(entry.id, {
-                                          economyLinkField: field,
-                                          valueType: isCurrRef ? "string" : "int",
-                                          value: linkedValue ?? (isCurrRef ? "" : 0),
-                                        });
-                                      }}
-                                      className={INPUT_CLASS}
-                                    >
-                                      {ECONOMY_LINK_FIELDS.map((f) => (
-                                        <option key={f.key} value={f.key}>{f.label}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                </>
-                              )}
-
-                              {/* Production ref + field selectors */}
-                              {entry.productionRef && (
-                                <>
-                                  <label className="min-w-[200px]">
-                                    <span className="mb-1 block text-xs text-gray-400">Addon</span>
-                                    <select
-                                      value={entry.productionRef}
-                                      onChange={(event) => {
-                                        const nextRef = event.target.value;
-                                        const field = entry.productionField ?? "minOutput";
-                                        const linkedValue = getProductionValue(nextRef, field);
-                                        updateEntry(entry.id, {
-                                          productionRef: nextRef,
-                                          value: linkedValue ?? 0,
-                                        });
-                                      }}
-                                      className={INPUT_CLASS}
-                                    >
-                                      {productionRefOptions.map((option) => (
-                                        <option key={option.refId} value={option.refId}>
-                                          {option.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <label className="min-w-[160px]">
-                                    <span className="mb-1 block text-xs text-gray-400">Campo</span>
-                                    <select
-                                      value={entry.productionField ?? "minOutput"}
-                                      onChange={(event) => {
-                                        const field = event.target.value as ProductionFieldKey;
-                                        const linkedValue = getProductionValue(entry.productionRef!, field);
-                                        updateEntry(entry.id, {
-                                          productionField: field,
-                                          value: linkedValue ?? 0,
-                                        });
-                                      }}
-                                      className={INPUT_CLASS}
-                                    >
-                                      {getAvailableProductionFields(entry.productionRef!).map((f) => (
-                                        <option key={f.key} value={f.key}>{f.label}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                </>
-                              )}
-                            </div>
+                            <FieldBindingPicker
+                              config={{
+                                valueType: "number",
+                                acceptedSources: entryAcceptedSources,
+                                label: "Vínculo (opcional)",
+                              }}
+                              value={entry.binding ?? MANUAL_BINDING}
+                              onChange={(binding) => handleEntryBindingChange(entry.id, binding)}
+                              context={bindingContext}
+                            />
                           </div>
                           <div className="rounded-lg border border-gray-700 bg-gray-900/70 p-2.5">
                             <p className="mb-2 text-[10px] uppercase tracking-wide text-gray-400">
@@ -1044,9 +898,11 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                 <span className="text-sm font-mono font-medium text-indigo-300">
                                   {isLinkedToPageDataId
                                     ? (section?.dataId || "N/A")
-                                    : isLinkedToEconomy
-                                      ? (getEconomyLinkValue(entry.economyLinkRef!, entry.economyLinkField!) ?? "N/A")
-                                      : (getProductionValue(entry.productionRef!, entry.productionField!) ?? "N/A")}
+                                    : economyBinding
+                                      ? (getEconomyLinkValue(economyBinding.sectionId, economyBinding.field) ?? "N/A")
+                                      : productionBinding
+                                        ? (getProductionValue(productionBinding.addonId, productionBinding.field) ?? "N/A")
+                                        : "N/A"}
                                 </span>
                                 <span className="text-[10px] text-gray-500 italic">
                                   (vinculado - somente leitura)

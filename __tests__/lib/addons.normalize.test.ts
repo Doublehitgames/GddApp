@@ -162,12 +162,14 @@ describe("normalizeSectionAddons economyLink", () => {
     expect(normalized?.length).toBe(1);
     expect(normalized?.[0].type).toBe("production");
     if (normalized?.[0].type === "production") {
-      expect(normalized[0].data.intervalSecondsProgressionLink).toEqual({
+      expect(normalized[0].data.intervalSecondsBinding).toEqual({
+        source: "progressionColumn",
         progressionAddonId: "prog-a",
         columnId: "col-time",
         columnName: "Tempo",
       });
-      expect(normalized[0].data.craftTimeSecondsProgressionLink).toEqual({
+      expect(normalized[0].data.craftTimeSecondsBinding).toEqual({
+        source: "progressionColumn",
         progressionAddonId: "prog-b",
         columnId: "col-craft",
         columnName: "Tempo Receita",

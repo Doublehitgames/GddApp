@@ -153,18 +153,21 @@ describe("ProductionAddonReadOnly", () => {
       outputRef: "sec-output",
       minOutput: 10,
       maxOutput: 100,
-      minOutputProgressionLink: {
+      minOutputBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-readonly",
         columnId: "tempo_pct",
         columnName: "Tempo",
       },
-      maxOutputProgressionLink: {
+      maxOutputBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-readonly",
         columnId: "tempo_pct",
         columnName: "Tempo",
       },
       intervalSeconds: 60,
-      intervalSecondsProgressionLink: {
+      intervalSecondsBinding: {
+        source: "progressionColumn",
         progressionAddonId: "prog-readonly",
         columnId: "tempo_pct",
         columnName: "Tempo",

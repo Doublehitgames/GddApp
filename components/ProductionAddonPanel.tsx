@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon, SheetsCellRef } from "@/lib/addons/types";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { sectionPathById, toSlug } from "@/lib/utils/slug";
@@ -9,10 +9,9 @@ import { useAuthStore } from "@/store/authStore";
 import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/common/CommitInput";
-import { LinkedFieldRow, type LinkedFieldOption } from "@/components/common/LinkedFieldRow";
+import { BoundedNumericField } from "@/components/common/BoundedNumericField";
+import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 import { openQuickNewPage } from "@/components/QuickNewPageModal";
-import { getGoogleSheetsToken, fetchSheetCellValue, parseCellNumber } from "@/lib/googleSheets";
-import { getGoogleClientId } from "@/lib/googleDrivePicker";
 
 interface ProductionAddonPanelProps {
   addon: ProductionAddonDraft;
@@ -336,26 +335,14 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     return map;
   }, [progressionColumnOptions]);
 
-  const minOutputSelectedKey = addon.minOutputProgressionLink
-    ? `${addon.minOutputProgressionLink.progressionAddonId}::${addon.minOutputProgressionLink.columnId}`
-    : "";
-  const maxOutputSelectedKey = addon.maxOutputProgressionLink
-    ? `${addon.maxOutputProgressionLink.progressionAddonId}::${addon.maxOutputProgressionLink.columnId}`
-    : "";
-  const intervalSelectedKey = addon.intervalSecondsProgressionLink
-    ? `${addon.intervalSecondsProgressionLink.progressionAddonId}::${addon.intervalSecondsProgressionLink.columnId}`
-    : "";
-  const craftSelectedKey = addon.craftTimeSecondsProgressionLink
-    ? `${addon.craftTimeSecondsProgressionLink.progressionAddonId}::${addon.craftTimeSecondsProgressionLink.columnId}`
-    : "";
-  const capacitySelectedKey = addon.capacityProgressionLink
-    ? `${addon.capacityProgressionLink.progressionAddonId}::${addon.capacityProgressionLink.columnId}`
-    : "";
-  const minOutputSelectedOption = minOutputSelectedKey ? progressionColumnOptionByKey.get(minOutputSelectedKey) : undefined;
-  const maxOutputSelectedOption = maxOutputSelectedKey ? progressionColumnOptionByKey.get(maxOutputSelectedKey) : undefined;
-  const intervalSelectedOption = intervalSelectedKey ? progressionColumnOptionByKey.get(intervalSelectedKey) : undefined;
-  const craftSelectedOption = craftSelectedKey ? progressionColumnOptionByKey.get(craftSelectedKey) : undefined;
-  const capacitySelectedOption = capacitySelectedKey ? progressionColumnOptionByKey.get(capacitySelectedKey) : undefined;
+  const getProgressionOption = (binding: FieldBinding | undefined) => {
+    if (binding?.source !== "progressionColumn") return undefined;
+    return progressionColumnOptionByKey.get(`${binding.progressionAddonId}::${binding.columnId}`);
+  };
+  const minOutputSelectedOption = getProgressionOption(addon.minOutputBinding);
+  const intervalSelectedOption = getProgressionOption(addon.intervalSecondsBinding);
+  const craftSelectedOption = getProgressionOption(addon.craftTimeSecondsBinding);
+  const capacitySelectedOption = getProgressionOption(addon.capacityBinding);
 
   const buildLevelBadges = (
     option: ProgressionColumnOption | undefined,
@@ -383,19 +370,9 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   };
 
   const minOutputLevelBadges = buildLevelBadges(minOutputSelectedOption, addon.minOutput, toQuantityLabel);
-  const maxOutputLevelBadges = buildLevelBadges(maxOutputSelectedOption, addon.maxOutput, toQuantityLabel);
   const intervalLevelBadges = buildLevelBadges(intervalSelectedOption, addon.intervalSeconds, toSecondsLabel);
   const craftLevelBadges = buildLevelBadges(craftSelectedOption, addon.craftTimeSeconds, toSecondsLabel);
   const capacityLevelBadges = buildLevelBadges(capacitySelectedOption, addon.capacity, toQuantityLabel);
-
-  const linkedFieldOptions = useMemo<LinkedFieldOption[]>(
-    () =>
-      progressionColumnOptions.map((option) => ({
-        key: option.key,
-        label: option.label,
-      })),
-    [progressionColumnOptions]
-  );
 
   const renderLevelBadges = (
     badges: ReturnType<typeof buildLevelBadges>,
@@ -415,84 +392,6 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
       </div>
     );
   };
-
-  const handleBindSheetsRef = useCallback(
-    async (
-      field: "minOutput" | "maxOutput" | "intervalSeconds" | "capacity",
-      ref: SheetsCellRef
-    ): Promise<void> => {
-      let finalRef = ref;
-      const clientId = await getGoogleClientId();
-      const token = clientId ? await getGoogleSheetsToken(clientId) : null;
-      if (token) {
-        const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
-        if (raw !== null) {
-          const num = parseCellNumber(raw);
-          if (num !== null) {
-            finalRef = { ...ref, cachedValue: num, syncedAt: new Date().toISOString() };
-          } else {
-            throw new Error(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
-          }
-        } else {
-          throw new Error(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
-        }
-      } else {
-        throw new Error("Não foi possível obter autorização do Google.");
-      }
-      const patch: Partial<ProductionAddonDraft> = {
-        [`${field}SheetsRef`]: finalRef,
-      } as Partial<ProductionAddonDraft>;
-      if (finalRef.cachedValue !== null && finalRef.cachedValue !== undefined) {
-        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, finalRef.cachedValue));
-      }
-      commit(patch);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [addon],
-  );
-
-  const handleUnbindSheetsRef = useCallback(
-    (field: "minOutput" | "maxOutput" | "intervalSeconds" | "capacity") => {
-      commit({ [`${field}SheetsRef`]: undefined } as Partial<ProductionAddonDraft>);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [addon],
-  );
-
-  const handleLinkChange = (
-    field:
-      | "minOutputProgressionLink"
-      | "maxOutputProgressionLink"
-      | "intervalSecondsProgressionLink"
-      | "craftTimeSecondsProgressionLink"
-      | "capacityProgressionLink",
-    option: LinkedFieldOption | undefined
-  ) => {
-    if (!option) {
-      commit({ [field]: undefined } as Partial<ProductionAddonDraft>);
-      return;
-    }
-    const found = progressionColumnOptions.find((o) => o.key === option.key);
-    if (!found) return;
-    commit({
-      [field]: {
-        progressionAddonId: found.progressionAddonId,
-        columnId: found.columnId,
-        columnName: found.columnName,
-      },
-    } as Partial<ProductionAddonDraft>);
-  };
-
-  const renderEmptyOptionsCta = (): ReactNode => (
-    <button
-      type="button"
-      onClick={openQuickNewPage}
-      className="inline-flex items-center gap-1 rounded-md border border-indigo-400/50 bg-indigo-600/20 px-2 py-1 text-[11px] font-medium text-indigo-100 hover:bg-indigo-600/30"
-    >
-      <span aria-hidden="true">+</span>
-      <span>{t("productionAddon.createProgressionPageCta", "Criar página com progressão")}</span>
-    </button>
-  );
 
   const renderInventoryEmptyHint = (): ReactNode => (
     <div className="mt-1 flex flex-wrap items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
@@ -522,6 +421,28 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     next.outputs = Array.isArray(next.outputs) ? next.outputs : [];
     onChange(next);
   };
+
+  const bindingContext = useMemo<FieldBindingPickerContext>(() => ({
+    progressionColumns: progressionColumnOptions.map((o) => ({
+      progressionAddonId: o.progressionAddonId,
+      progressionAddonName: o.label,
+      columnId: o.columnId,
+      columnName: o.columnName,
+    })),
+    spreadsheetRegistry: linkedSpreadsheets,
+  }), [progressionColumnOptions, linkedSpreadsheets]);
+
+  function handleBindingChange(
+    bindingField: "minOutputBinding" | "intervalSecondsBinding" | "capacityBinding",
+    scalarField: "minOutput" | "intervalSeconds" | "capacity",
+    binding: FieldBinding
+  ) {
+    const patch: Partial<ProductionAddonDraft> = { [bindingField]: binding.source === "manual" ? undefined : binding };
+    if (binding.source === "sheets" && typeof binding.ref.cachedValue === "number") {
+      (patch as Record<string, unknown>)[scalarField] = Math.floor(Math.max(0, binding.ref.cachedValue));
+    }
+    commit(patch);
+  }
 
   const updateIngredient = (index: number, patch: Partial<{ itemRef: string; quantity: number }>) => {
     const next = [...(addon.ingredients || [])];
@@ -651,81 +572,44 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
               </label>
 
               <div className="space-y-2">
-                <LinkedFieldRow
-                  label={t("productionAddon.minOutputLabel", "Qtd minima")}
-                  selectedKey={minOutputSelectedKey}
-                  options={linkedFieldOptions}
-                  invalidLabelFallback={addon.minOutputProgressionLink?.columnName}
-                  onChange={(option) => handleLinkChange("minOutputProgressionLink", option)}
-                  emptyStateCta={renderEmptyOptionsCta()}
+                <BoundedNumericField
+                  label={t("productionAddon.outputLabel", "Quantidade")}
+                  value={addon.minOutput}
+                  onValueChange={(next) => commit({ minOutput: next })}
+                  // For "Quantidade", the main value IS the minimum.
+                  // Only expose the Mín field in the toggle when a Máx is set,
+                  // so the toggle stays closed when no range has been configured.
+                  limitMin={addon.maxOutput != null ? addon.minOutput : undefined}
+                  onLimitMinChange={(next) => commit({ minOutput: next })}
+                  limitMax={addon.maxOutput}
+                  onLimitMaxChange={(next) => commit({ maxOutput: next })}
+                  onLimitsClear={() => commit({ maxOutput: undefined, maxOutputBinding: undefined })}
+                  binding={addon.minOutputBinding ?? MANUAL_BINDING}
+                  onBindingChange={(b) => handleBindingChange("minOutputBinding", "minOutput", b)}
+                  acceptedSources={["progressionColumn", "sheets"]}
+                  bindingContext={bindingContext}
                   badges={renderLevelBadges(minOutputLevelBadges, "min-output")}
-                  sheetsBinding={{
-                    current: addon.minOutputSheetsRef,
-                    onBind: (ref) => handleBindSheetsRef("minOutput", ref),
-                    onUnbind: () => handleUnbindSheetsRef("minOutput"),
-                  }}
-                  spreadsheetRegistry={linkedSpreadsheets}
-                >
-                  <CommitOptionalNumberInput
-                    value={addon.minOutput}
-                    onCommit={(next) => commit({ minOutput: next })}
-                    min={0}
-                    step={1}
-                    integer
-                    className={INPUT_CLASS}
-                    readOnly={!!addon.minOutputSheetsRef}
-                  />
-                </LinkedFieldRow>
-                <LinkedFieldRow
-                  label={t("productionAddon.maxOutputLabel", "Qtd maxima")}
-                  selectedKey={maxOutputSelectedKey}
-                  options={linkedFieldOptions}
-                  invalidLabelFallback={addon.maxOutputProgressionLink?.columnName}
-                  onChange={(option) => handleLinkChange("maxOutputProgressionLink", option)}
-                  emptyStateCta={renderEmptyOptionsCta()}
-                  badges={renderLevelBadges(maxOutputLevelBadges, "max-output")}
-                  sheetsBinding={{
-                    current: addon.maxOutputSheetsRef,
-                    onBind: (ref) => handleBindSheetsRef("maxOutput", ref),
-                    onUnbind: () => handleUnbindSheetsRef("maxOutput"),
-                  }}
-                  spreadsheetRegistry={linkedSpreadsheets}
-                >
-                  <CommitOptionalNumberInput
-                    value={addon.maxOutput}
-                    onCommit={(next) => commit({ maxOutput: next })}
-                    min={0}
-                    step={1}
-                    integer
-                    className={INPUT_CLASS}
-                    readOnly={!!addon.maxOutputSheetsRef}
-                  />
-                </LinkedFieldRow>
-              </div>
-              <LinkedFieldRow
-                label={t("productionAddon.intervalSecondsLabel", "Tempo (segundos)")}
-                selectedKey={intervalSelectedKey}
-                options={linkedFieldOptions}
-                invalidLabelFallback={addon.intervalSecondsProgressionLink?.columnName}
-                onChange={(option) => handleLinkChange("intervalSecondsProgressionLink", option)}
-                emptyStateCta={renderEmptyOptionsCta()}
-                badges={renderLevelBadges(intervalLevelBadges, "interval")}
-                sheetsBinding={{
-                  current: addon.intervalSecondsSheetsRef,
-                  onBind: (ref) => handleBindSheetsRef("intervalSeconds", ref),
-                  onUnbind: () => handleUnbindSheetsRef("intervalSeconds"),
-                }}
-                spreadsheetRegistry={linkedSpreadsheets}
-              >
-                <CommitOptionalNumberInput
-                  value={addon.intervalSeconds}
-                  onCommit={(next) => commit({ intervalSeconds: next })}
-                  min={0}
-                  step={0.1}
-                  className={INPUT_CLASS}
-                  readOnly={!!addon.intervalSecondsSheetsRef}
+                  integer
+                  inputClassName={INPUT_CLASS}
                 />
-              </LinkedFieldRow>
+              </div>
+              <BoundedNumericField
+                label={t("productionAddon.intervalSecondsLabel", "Tempo (segundos)")}
+                value={addon.intervalSeconds}
+                onValueChange={(next) => commit({ intervalSeconds: next })}
+                limitMin={addon.intervalSecondsMin}
+                onLimitMinChange={(next) => commit({ intervalSecondsMin: next })}
+                limitMax={addon.intervalSecondsMax}
+                onLimitMaxChange={(next) => commit({ intervalSecondsMax: next })}
+                onLimitsClear={() => commit({ intervalSecondsMin: undefined, intervalSecondsMax: undefined })}
+                binding={addon.intervalSecondsBinding ?? MANUAL_BINDING}
+                onBindingChange={(b) => handleBindingChange("intervalSecondsBinding", "intervalSeconds", b)}
+                acceptedSources={["progressionColumn", "sheets"]}
+                bindingContext={bindingContext}
+                badges={renderLevelBadges(intervalLevelBadges, "interval")}
+                step={0.1}
+                inputClassName={INPUT_CLASS}
+              />
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-2">
@@ -737,31 +621,23 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                   />
                 </div>
                 <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-2">
-                  <LinkedFieldRow
+                  <BoundedNumericField
                     label={t("productionAddon.capacityLabel", "Capacidade maxima")}
-                    selectedKey={capacitySelectedKey}
-                    options={linkedFieldOptions}
-                    invalidLabelFallback={addon.capacityProgressionLink?.columnName}
-                    onChange={(option) => handleLinkChange("capacityProgressionLink", option)}
-                    emptyStateCta={renderEmptyOptionsCta()}
+                    value={addon.capacity}
+                    onValueChange={(next) => commit({ capacity: next })}
+                    limitMin={addon.capacityMin}
+                    onLimitMinChange={(next) => commit({ capacityMin: next })}
+                    limitMax={addon.capacityMax}
+                    onLimitMaxChange={(next) => commit({ capacityMax: next })}
+                    onLimitsClear={() => commit({ capacityMin: undefined, capacityMax: undefined })}
+                    binding={addon.capacityBinding ?? MANUAL_BINDING}
+                    onBindingChange={(b) => handleBindingChange("capacityBinding", "capacity", b)}
+                    acceptedSources={["progressionColumn", "sheets"]}
+                    bindingContext={bindingContext}
                     badges={renderLevelBadges(capacityLevelBadges, "capacity")}
-                    sheetsBinding={{
-                      current: addon.capacitySheetsRef,
-                      onBind: (ref) => handleBindSheetsRef("capacity", ref),
-                      onUnbind: () => handleUnbindSheetsRef("capacity"),
-                    }}
-                    spreadsheetRegistry={linkedSpreadsheets}
-                  >
-                    <CommitOptionalNumberInput
-                      value={addon.capacity}
-                      onCommit={(next) => commit({ capacity: next })}
-                      min={0}
-                      step={1}
-                      integer
-                      className={INPUT_CLASS}
-                      readOnly={!!addon.capacitySheetsRef}
-                    />
-                  </LinkedFieldRow>
+                    integer
+                    inputClassName={INPUT_CLASS}
+                  />
                 </div>
               </div>
             </div>
@@ -919,23 +795,23 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
                 </div>
               </div>
 
-              <LinkedFieldRow
+              <BoundedNumericField
                 label={t("productionAddon.craftTimeSecondsLabel", "Tempo de receita (segundos)")}
-                selectedKey={craftSelectedKey}
-                options={linkedFieldOptions}
-                invalidLabelFallback={addon.craftTimeSecondsProgressionLink?.columnName}
-                onChange={(option) => handleLinkChange("craftTimeSecondsProgressionLink", option)}
-                emptyStateCta={renderEmptyOptionsCta()}
+                value={addon.craftTimeSeconds}
+                onValueChange={(next) => commit({ craftTimeSeconds: next })}
+                limitMin={addon.craftTimeSecondsMin}
+                onLimitMinChange={(next) => commit({ craftTimeSecondsMin: next })}
+                limitMax={addon.craftTimeSecondsMax}
+                onLimitMaxChange={(next) => commit({ craftTimeSecondsMax: next })}
+                onLimitsClear={() => commit({ craftTimeSecondsMin: undefined, craftTimeSecondsMax: undefined })}
+                binding={addon.craftTimeSecondsBinding ?? MANUAL_BINDING}
+                onBindingChange={(b) => commit({ craftTimeSecondsBinding: b.source === "manual" ? undefined : b })}
+                acceptedSources={["progressionColumn"]}
+                bindingContext={bindingContext}
                 badges={renderLevelBadges(craftLevelBadges, "craft")}
-              >
-                <CommitOptionalNumberInput
-                  value={addon.craftTimeSeconds}
-                  onCommit={(next) => commit({ craftTimeSeconds: next })}
-                  min={0}
-                  step={0.1}
-                  className={INPUT_CLASS}
-                />
-              </LinkedFieldRow>
+                step={0.1}
+                inputClassName={INPUT_CLASS}
+              />
             </div>
           </div>
         )}

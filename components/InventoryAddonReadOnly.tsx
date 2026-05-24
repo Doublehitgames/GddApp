@@ -50,21 +50,22 @@ export function InventoryAddonReadOnly({ addon, theme = "dark", bare = false }: 
   const labelClass = isLight ? "text-gray-700" : "text-gray-300";
   const mutedClass = isLight ? "text-gray-600" : "text-gray-400";
   const linkedCategoryLabel = useMemo(() => {
-    if (!addon.categoryLibraryRef) return null;
+    const libraryBinding = addon.categoryBinding?.source === "library" ? addon.categoryBinding : undefined;
+    if (!libraryBinding) return null;
     for (const project of projects) {
       for (const sec of project.sections || []) {
         for (const sectionAddon of sec.addons || []) {
           if (sectionAddon.type !== "fieldLibrary") continue;
-          if (sectionAddon.id !== addon.categoryLibraryRef.libraryAddonId) continue;
+          if (sectionAddon.id !== libraryBinding.libraryAddonId) continue;
           const match = (sectionAddon.data.entries || []).find(
-            (entry) => entry.id === addon.categoryLibraryRef!.entryId
+            (entry) => entry.id === libraryBinding.entryId
           );
           if (match) return match.label;
         }
       }
     }
     return null;
-  }, [addon.categoryLibraryRef, projects]);
+  }, [addon.categoryBinding, projects]);
   const category =
     linkedCategoryLabel ?? (addon.inventoryCategory || t("inventoryAddon.emptyValue", "nao informado"));
   const maxStack = addon.stackable ? addon.maxStack : 1;

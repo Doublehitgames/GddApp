@@ -199,46 +199,41 @@ export function ProductionAddonReadOnly({ addon, theme = "dark", bare = false }:
     ];
   };
 
-  const minOutputSimulationBadges = useMemo(
-    () =>
-      addon.mode === "passive"
-        ? buildSimulationBadges(
-            resolveProgressionOption(addon.minOutputProgressionLink),
-            addon.minOutput,
-            toQuantityLabel
-          )
-        : null,
-    [addon.mode, addon.minOutputProgressionLink, addon.minOutput, resolveProgressionOption]
-  );
-  const maxOutputSimulationBadges = useMemo(
-    () =>
-      addon.mode === "passive"
-        ? buildSimulationBadges(
-            resolveProgressionOption(addon.maxOutputProgressionLink),
-            addon.maxOutput,
-            toQuantityLabel
-          )
-        : null,
-    [addon.mode, addon.maxOutputProgressionLink, addon.maxOutput, resolveProgressionOption]
-  );
-  const timeSimulationBadges = useMemo(
-    () =>
-      buildSimulationBadges(
-        resolveProgressionOption(
-          addon.mode === "passive" ? addon.intervalSecondsProgressionLink : addon.craftTimeSecondsProgressionLink
-        ),
-        addon.mode === "passive" ? addon.intervalSeconds : addon.craftTimeSeconds,
-        toSecondsLabel
-      ),
-    [
-      addon.mode,
-      addon.intervalSecondsProgressionLink,
-      addon.craftTimeSecondsProgressionLink,
-      addon.intervalSeconds,
-      addon.craftTimeSeconds,
-      resolveProgressionOption,
-    ]
-  );
+  const minOutputSimulationBadges = useMemo(() => {
+    if (addon.mode !== "passive") return null;
+    const b = addon.minOutputBinding;
+    return buildSimulationBadges(
+      resolveProgressionOption(b?.source === "progressionColumn" ? b : undefined),
+      addon.minOutput,
+      toQuantityLabel
+    );
+  }, [addon.mode, addon.minOutputBinding, addon.minOutput, resolveProgressionOption]);
+
+  const maxOutputSimulationBadges = useMemo(() => {
+    if (addon.mode !== "passive") return null;
+    const b = addon.maxOutputBinding;
+    return buildSimulationBadges(
+      resolveProgressionOption(b?.source === "progressionColumn" ? b : undefined),
+      addon.maxOutput,
+      toQuantityLabel
+    );
+  }, [addon.mode, addon.maxOutputBinding, addon.maxOutput, resolveProgressionOption]);
+
+  const timeSimulationBadges = useMemo(() => {
+    const b = addon.mode === "passive" ? addon.intervalSecondsBinding : addon.craftTimeSecondsBinding;
+    return buildSimulationBadges(
+      resolveProgressionOption(b?.source === "progressionColumn" ? b : undefined),
+      addon.mode === "passive" ? addon.intervalSeconds : addon.craftTimeSeconds,
+      toSecondsLabel
+    );
+  }, [
+    addon.mode,
+    addon.intervalSecondsBinding,
+    addon.craftTimeSecondsBinding,
+    addon.intervalSeconds,
+    addon.craftTimeSeconds,
+    resolveProgressionOption,
+  ]);
 
   const navigateToDocumentAnchor = (sectionId: string) => {
     const targetId = `section-${sectionId}`;

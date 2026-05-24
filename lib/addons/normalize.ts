@@ -1,4 +1,5 @@
 import type { BalanceAddonDraft } from "@/lib/balance/types";
+import type { FieldBinding } from "@/lib/addons/fieldBinding";
 import type {
   AttributeDefinitionsAddonDraft,
   AttributeModifiersAddonDraft,
@@ -16,6 +17,7 @@ import type {
   SkillEffectRef,
   DataSchemaAddonDraft,
   EconomyLinkAddonDraft,
+  EconomyLinkFieldKey,
   SheetsCellRef,
   ExportSchemaAddonDraft,
   ExportSchemaBinding,
@@ -92,6 +94,14 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
       }
     }
 
+    // Resolve valueType ("number" | "text") — defaults to "number"
+    const valueType: "number" | "text" =
+      (rawColumn as Record<string, unknown>).valueType === "text" ? "text" : "number";
+    const defaultTextValue: string | undefined =
+      valueType === "text" && typeof (rawColumn as Record<string, unknown>).defaultTextValue === "string"
+        ? ((rawColumn as Record<string, unknown>).defaultTextValue as string)
+        : undefined;
+
     // Preserve sheetsBinding if valid
     let sheetsBinding: ProgressionTableColumnSheetsBinding | undefined;
     if (
@@ -101,13 +111,17 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
       typeof (rawColumn.sheetsBinding as Record<string, unknown>).range === "string"
     ) {
       const sb = rawColumn.sheetsBinding as Record<string, unknown>;
+      // For text columns, preserve string values; for number columns filter non-finite
+      const cachedValues: (number | string)[] | undefined = Array.isArray(sb.cachedValues)
+        ? valueType === "text"
+          ? (sb.cachedValues as unknown[]).map((v) => (typeof v === "string" ? v : String(v ?? "")))
+          : (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
+        : undefined;
       sheetsBinding = {
         spreadsheetId: (sb.spreadsheetId as string).trim(),
         sheetName: (sb.sheetName as string).trim(),
         range: (sb.range as string).trim(),
-        cachedValues: Array.isArray(sb.cachedValues)
-          ? (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
-          : undefined,
+        cachedValues,
         syncedAt: typeof sb.syncedAt === "string" ? sb.syncedAt : null,
       };
     }
@@ -115,9 +129,13 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
     const column: ProgressionTableColumn = {
       id,
       name,
+      ...(valueType === "text" ? { valueType, ...(defaultTextValue !== undefined ? { defaultTextValue } : {}) } : {}),
       ...(libraryRef ? { libraryRef } : {}),
       ...(sheetsBinding ? { sheetsBinding } : {}),
-      generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" },
+      // Text columns don't use a generator; number columns always have one
+      ...(valueType === "text"
+        ? {}
+        : { generator: isObject(rawColumn.generator) ? (rawColumn.generator as ProgressionTableColumn["generator"]) : { mode: "manual" } }),
       decimals: decimalsValue == null ? 0 : Math.max(0, Math.min(6, Math.floor(decimalsValue))),
       isPercentage,
       min: minValue == null ? undefined : minValue,
@@ -139,8 +157,13 @@ function normalizeProgressionRows(rawRows: unknown[], columns: ProgressionTableC
     const values: Record<string, number | string> = {};
     for (const column of columns) {
       const rawValue = valuesObj[column.id];
-      const parsed = asFiniteNumber(rawValue);
-      values[column.id] = parsed == null ? 0 : parsed;
+      if (column.valueType === "text") {
+        values[column.id] =
+          typeof rawValue === "string" ? rawValue : (column.defaultTextValue ?? "");
+      } else {
+        const parsed = asFiniteNumber(rawValue);
+        values[column.id] = parsed == null ? 0 : parsed;
+      }
     }
     normalizedRows.push({ level: Math.max(1, Math.floor(level)), values });
   }
@@ -199,15 +222,17 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
   if (typeof value.name !== "string") return null;
 
   const buyValue = asPositiveIntegerOrUndefined(value.buyValue);
-  const buyValueProgressionLink = normalizeProductionProgressionLink(value.buyValueProgressionLink);
-  const buyValueSheetsRef = normalizeSheetsCellRef(value.buyValueSheetsRef);
+  const buyValueBinding = migrateLegacyBinding(value, "buyValueBinding", "buyValueProgressionLink", "buyValueSheetsRef");
   const minBuyValue = asPositiveIntegerOrUndefined(value.minBuyValue);
-  const minBuyValueProgressionLink = normalizeProductionProgressionLink(value.minBuyValueProgressionLink);
+  const minBuyValueBinding = migrateLegacyBinding(value, "minBuyValueBinding", "minBuyValueProgressionLink");
+  const maxBuyValue = asPositiveIntegerOrUndefined(value.maxBuyValue);
+  const maxBuyValueBinding = migrateLegacyBinding(value, "maxBuyValueBinding");
   const sellValue = asPositiveIntegerOrUndefined(value.sellValue);
-  const sellValueProgressionLink = normalizeProductionProgressionLink(value.sellValueProgressionLink);
-  const sellValueSheetsRef = normalizeSheetsCellRef(value.sellValueSheetsRef);
+  const sellValueBinding = migrateLegacyBinding(value, "sellValueBinding", "sellValueProgressionLink", "sellValueSheetsRef");
+  const minSellValue = asPositiveIntegerOrUndefined(value.minSellValue);
+  const minSellValueBinding = migrateLegacyBinding(value, "minSellValueBinding");
   const maxSellValue = asPositiveIntegerOrUndefined(value.maxSellValue);
-  const maxSellValueProgressionLink = normalizeProductionProgressionLink(value.maxSellValueProgressionLink);
+  const maxSellValueBinding = migrateLegacyBinding(value, "maxSellValueBinding", "maxSellValueProgressionLink");
   const rawPriceMultiplier = typeof value.priceMultiplier === "number" && Number.isFinite(value.priceMultiplier) && value.priceMultiplier > 0 ? value.priceMultiplier : undefined;
   const produceMin = asPositiveIntegerOrUndefined(value.produceMin);
   const produceMax = asPositiveIntegerOrUndefined(value.produceMax);
@@ -244,7 +269,9 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
             asPositiveFloatOrUndefined(value.productionTimeSeconds) != null
         );
   const unlockValue = asPositiveIntegerOrUndefined(value.unlockValue);
-  const unlockValueSheetsRef = normalizeSheetsCellRef(value.unlockValueSheetsRef);
+  const unlockValueBinding = migrateLegacyBinding(value, "unlockValueBinding", undefined, "unlockValueSheetsRef");
+  const unlockValueMin = asPositiveIntegerOrUndefined(value.unlockValueMin);
+  const unlockValueMax = asPositiveIntegerOrUndefined(value.unlockValueMax);
   const hasUnlockConfig =
     typeof value.hasUnlockConfig === "boolean"
       ? value.hasUnlockConfig
@@ -256,18 +283,20 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     hasBuyConfig,
     buyCurrencyRef: buyCurrencyRef || undefined,
     buyValue,
-    buyValueProgressionLink,
-    buyValueSheetsRef,
+    buyValueBinding,
     minBuyValue,
-    minBuyValueProgressionLink,
+    minBuyValueBinding,
+    maxBuyValue,
+    maxBuyValueBinding,
     buyModifiers,
     hasSellConfig,
     sellCurrencyRef: sellCurrencyRef || undefined,
     sellValue,
-    sellValueProgressionLink,
-    sellValueSheetsRef,
+    sellValueBinding,
+    minSellValue,
+    minSellValueBinding,
     maxSellValue,
-    maxSellValueProgressionLink,
+    maxSellValueBinding,
     sellModifiers,
     priceMultiplier: rawPriceMultiplier,
     hasProductionConfig,
@@ -278,7 +307,9 @@ function normalizeEconomyLinkDraft(value: unknown): EconomyLinkAddonDraft | null
     hasUnlockConfig,
     unlockRef: unlockRef || undefined,
     unlockValue,
-    unlockValueSheetsRef,
+    unlockValueBinding,
+    unlockValueMin,
+    unlockValueMax,
     notes: notes || undefined,
   };
 }
@@ -550,16 +581,13 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
   const maxStackRaw = asPositiveIntegerOrUndefined(value.maxStack) ?? 1;
   const maxStack = stackable ? Math.max(1, maxStackRaw) : 1;
   const inventoryCategory = typeof value.inventoryCategory === "string" ? value.inventoryCategory : "";
-  let categoryLibraryRef: InventoryAddonDraft["categoryLibraryRef"];
-  if (
-    isObject(value.categoryLibraryRef) &&
-    typeof (value.categoryLibraryRef as { libraryAddonId?: unknown }).libraryAddonId === "string" &&
-    typeof (value.categoryLibraryRef as { entryId?: unknown }).entryId === "string"
-  ) {
-    const libAddonId = ((value.categoryLibraryRef as { libraryAddonId: string }).libraryAddonId || "").trim();
-    const refEntryId = ((value.categoryLibraryRef as { entryId: string }).entryId || "").trim();
+  // Migrate legacy categoryLibraryRef → categoryBinding
+  let categoryBinding: FieldBinding | undefined = normalizeFieldBinding(value.categoryBinding);
+  if (!categoryBinding && isObject(value.categoryLibraryRef)) {
+    const libAddonId = ((value.categoryLibraryRef as { libraryAddonId?: unknown }).libraryAddonId || "").toString().trim();
+    const refEntryId = ((value.categoryLibraryRef as { entryId?: unknown }).entryId || "").toString().trim();
     if (libAddonId && refEntryId) {
-      categoryLibraryRef = { libraryAddonId: libAddonId, entryId: refEntryId };
+      categoryBinding = { source: "library", libraryAddonId: libAddonId, entryId: refEntryId };
     }
   }
   const slotSize = asFiniteNumber(value.slotSize) ?? 0;
@@ -589,7 +617,7 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
     stackable,
     maxStack,
     inventoryCategory,
-    ...(categoryLibraryRef ? { categoryLibraryRef } : {}),
+    ...(categoryBinding ? { categoryBinding } : {}),
     slotSize: Math.max(0, slotSize),
     hasDurabilityConfig,
     durability: hasDurabilityConfig ? durability : 0,
@@ -622,25 +650,90 @@ function normalizeSheetsCellRef(value: unknown): SheetsCellRef | undefined {
   const sheetName = typeof value.sheetName === "string" ? value.sheetName.trim() : "";
   const cellRef = typeof value.cellRef === "string" ? value.cellRef.trim() : "";
   if (!spreadsheetId || !sheetName || !cellRef) return undefined;
-  const cachedValue = typeof value.cachedValue === "number" && Number.isFinite(value.cachedValue) ? value.cachedValue : null;
+  let cachedValue: string | number | boolean | null = null;
+  if (typeof value.cachedValue === "number" && Number.isFinite(value.cachedValue)) {
+    cachedValue = value.cachedValue;
+  } else if (typeof value.cachedValue === "boolean") {
+    cachedValue = value.cachedValue;
+  } else if (typeof value.cachedValue === "string" && value.cachedValue !== "") {
+    cachedValue = value.cachedValue;
+  }
   const syncedAt = typeof value.syncedAt === "string" ? value.syncedAt : null;
   return { spreadsheetId, sheetName, cellRef, cachedValue, syncedAt };
 }
 
-function normalizeProductionProgressionLink(
-  value: unknown
-): { progressionAddonId: string; columnId: string; columnName: string } | undefined {
-  if (!isObject(value)) return undefined;
-  const progressionAddonId =
-    typeof value.progressionAddonId === "string" ? value.progressionAddonId.trim() : "";
-  const columnId = typeof value.columnId === "string" ? value.columnId.trim() : "";
-  const columnName = typeof value.columnName === "string" ? value.columnName.trim() : "";
-  if (!progressionAddonId || !columnId || !columnName) return undefined;
-  return {
-    progressionAddonId,
-    columnId,
-    columnName,
-  };
+function normalizeFieldBinding(raw: unknown): FieldBinding | undefined {
+  if (!isObject(raw)) return undefined;
+  const source = typeof raw.source === "string" ? raw.source : "";
+  if (source === "manual") return { source: "manual" };
+  if (source === "pageDataId") return { source: "pageDataId" };
+  if (source === "sheets") {
+    const ref = normalizeSheetsCellRef(raw.ref);
+    if (!ref) return undefined;
+    return { source: "sheets", ref };
+  }
+  if (source === "progressionColumn") {
+    const progressionAddonId = typeof raw.progressionAddonId === "string" ? raw.progressionAddonId.trim() : "";
+    const columnId = typeof raw.columnId === "string" ? raw.columnId.trim() : "";
+    const columnName = typeof raw.columnName === "string" ? raw.columnName.trim() : "";
+    if (!progressionAddonId || !columnId) return undefined;
+    return { source: "progressionColumn", progressionAddonId, columnId, columnName };
+  }
+  if (source === "library") {
+    const libraryAddonId = typeof raw.libraryAddonId === "string" ? raw.libraryAddonId.trim() : "";
+    const entryId = typeof raw.entryId === "string" ? raw.entryId.trim() : "";
+    if (!libraryAddonId || !entryId) return undefined;
+    return { source: "library", libraryAddonId, entryId };
+  }
+  if (source === "economyLink") {
+    const sectionId = typeof raw.sectionId === "string" ? raw.sectionId.trim() : "";
+    if (!sectionId) return undefined;
+    const validEconomyFields: EconomyLinkFieldKey[] = ["buyValue", "minBuyValue", "sellValue", "maxSellValue", "unlockValue", "buyCurrencyRef", "sellCurrencyRef", "buyCurrencyKey", "sellCurrencyKey"];
+    const field = validEconomyFields.find((f) => f === raw.field);
+    if (!field) return undefined;
+    return { source: "economyLink", sectionId, field };
+  }
+  if (source === "production") {
+    const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
+    if (!addonId) return undefined;
+    const validProductionFields: ProductionFieldKey[] = ["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
+    const field = validProductionFields.find((f) => f === raw.field);
+    if (!field) return undefined;
+    return { source: "production", addonId, field };
+  }
+  if (source === "unitXp") {
+    const sectionId = typeof raw.sectionId === "string" ? raw.sectionId.trim() : "";
+    if (!sectionId) return undefined;
+    return { source: "unitXp", sectionId };
+  }
+  return undefined;
+}
+
+/** Reads a FieldBinding from a raw object. Falls back to legacy progressionLink/sheetsRef fields if the new binding key is absent. */
+function migrateLegacyBinding(
+  raw: Record<string, unknown>,
+  newKey: string,
+  legacyLinkKey?: string,
+  legacySheetsKey?: string,
+): FieldBinding | undefined {
+  const newBinding = normalizeFieldBinding(raw[newKey]);
+  if (newBinding) return newBinding;
+  if (legacyLinkKey) {
+    const link = raw[legacyLinkKey];
+    if (isObject(link)) {
+      const progressionAddonId = typeof link.progressionAddonId === "string" ? link.progressionAddonId.trim() : "";
+      const columnId = typeof link.columnId === "string" ? link.columnId.trim() : "";
+      const columnName = typeof link.columnName === "string" ? link.columnName.trim() : "";
+      if (progressionAddonId && columnId) {
+        return { source: "progressionColumn", progressionAddonId, columnId, columnName };
+      }
+    }
+  }
+  if (legacySheetsKey) {
+    const ref = normalizeSheetsCellRef(raw[legacySheetsKey]);
+    if (ref) return { source: "sheets", ref };
+  }
+  return undefined;
 }
 
 function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
@@ -653,23 +746,25 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
   const minOutput = asPositiveIntegerOrUndefined(value.minOutput);
   const maxOutputRaw = asPositiveIntegerOrUndefined(value.maxOutput);
   const maxOutput = maxOutputRaw == null ? undefined : minOutput == null ? maxOutputRaw : Math.max(minOutput, maxOutputRaw);
-  const minOutputProgressionLink = normalizeProductionProgressionLink(value.minOutputProgressionLink);
-  const minOutputSheetsRef = normalizeSheetsCellRef(value.minOutputSheetsRef);
-  const maxOutputProgressionLink = normalizeProductionProgressionLink(value.maxOutputProgressionLink);
-  const maxOutputSheetsRef = normalizeSheetsCellRef(value.maxOutputSheetsRef);
+  const minOutputBinding = migrateLegacyBinding(value, "minOutputBinding", "minOutputProgressionLink", "minOutputSheetsRef");
+  const maxOutputBinding = migrateLegacyBinding(value, "maxOutputBinding", "maxOutputProgressionLink", "maxOutputSheetsRef");
   // Time fields keep sub-second precision so e.g. fast-tick recipes (0.5s)
   // and decimal craft timers (1.5s) survive the round-trip.
   const intervalSeconds = asPositiveFloatOrUndefined(value.intervalSeconds);
-  const intervalSecondsProgressionLink = normalizeProductionProgressionLink(value.intervalSecondsProgressionLink);
-  const intervalSecondsSheetsRef = normalizeSheetsCellRef(value.intervalSecondsSheetsRef);
+  const intervalSecondsBinding = migrateLegacyBinding(value, "intervalSecondsBinding", "intervalSecondsProgressionLink", "intervalSecondsSheetsRef");
+  const intervalSecondsMin = asPositiveFloatOrUndefined(value.intervalSecondsMin);
+  const intervalSecondsMax = asPositiveFloatOrUndefined(value.intervalSecondsMax);
   const requiresCollection = value.requiresCollection == null ? false : asBooleanLoose(value.requiresCollection);
   const capacity = asPositiveIntegerOrUndefined(value.capacity);
-  const capacityProgressionLink = normalizeProductionProgressionLink(value.capacityProgressionLink);
-  const capacitySheetsRef = normalizeSheetsCellRef(value.capacitySheetsRef);
+  const capacityBinding = migrateLegacyBinding(value, "capacityBinding", "capacityProgressionLink", "capacitySheetsRef");
+  const capacityMin = asPositiveIntegerOrUndefined(value.capacityMin);
+  const capacityMax = asPositiveIntegerOrUndefined(value.capacityMax);
   const ingredients = normalizeProductionItems(value.ingredients);
   const outputs = normalizeProductionItems(value.outputs);
   const craftTimeSeconds = asPositiveFloatOrUndefined(value.craftTimeSeconds);
-  const craftTimeSecondsProgressionLink = normalizeProductionProgressionLink(value.craftTimeSecondsProgressionLink);
+  const craftTimeSecondsBinding = migrateLegacyBinding(value, "craftTimeSecondsBinding", "craftTimeSecondsProgressionLink");
+  const craftTimeSecondsMin = asPositiveFloatOrUndefined(value.craftTimeSecondsMin);
+  const craftTimeSecondsMax = asPositiveFloatOrUndefined(value.craftTimeSecondsMax);
   const notes = typeof value.notes === "string" ? value.notes : "";
 
   return {
@@ -678,22 +773,24 @@ function normalizeProductionDraft(value: unknown): ProductionAddonDraft | null {
     mode,
     outputRef: outputRef || undefined,
     minOutput,
-    minOutputProgressionLink,
-    minOutputSheetsRef,
+    minOutputBinding,
     maxOutput,
-    maxOutputProgressionLink,
-    maxOutputSheetsRef,
+    maxOutputBinding,
     intervalSeconds,
-    intervalSecondsProgressionLink,
-    intervalSecondsSheetsRef,
+    intervalSecondsBinding,
+    intervalSecondsMin,
+    intervalSecondsMax,
     requiresCollection,
     capacity,
-    capacityProgressionLink,
-    capacitySheetsRef,
+    capacityBinding,
+    capacityMin,
+    capacityMax,
     ingredients,
     outputs,
     craftTimeSeconds,
-    craftTimeSecondsProgressionLink,
+    craftTimeSecondsBinding,
+    craftTimeSecondsMin,
+    craftTimeSecondsMax,
     notes: notes || undefined,
   };
 }
@@ -820,17 +917,23 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
     const min = asFiniteNumber(rawEntry.min) ?? undefined;
     const max = asFiniteNumber(rawEntry.max) ?? undefined;
     const unit = typeof rawEntry.unit === "string" && rawEntry.unit.trim() ? rawEntry.unit.trim() : undefined;
-    const unitXpRef = typeof rawEntry.unitXpRef === "string" && rawEntry.unitXpRef.trim() ? rawEntry.unitXpRef.trim() : undefined;
-    const economyLinkRef = typeof rawEntry.economyLinkRef === "string" && rawEntry.economyLinkRef.trim() ? rawEntry.economyLinkRef.trim() : undefined;
-    const rawEconomyField = typeof rawEntry.economyLinkField === "string" ? rawEntry.economyLinkField : undefined;
-    const economyLinkField =
-      rawEconomyField === "buyValue" || rawEconomyField === "minBuyValue" || rawEconomyField === "sellValue" || rawEconomyField === "maxSellValue" || rawEconomyField === "unlockValue" || rawEconomyField === "buyCurrencyRef" || rawEconomyField === "sellCurrencyRef" || rawEconomyField === "buyCurrencyKey" || rawEconomyField === "sellCurrencyKey"
-        ? rawEconomyField
-        : undefined;
-    const productionRef = typeof rawEntry.productionRef === "string" && rawEntry.productionRef.trim() ? rawEntry.productionRef.trim() : undefined;
-    const rawProductionField = typeof rawEntry.productionField === "string" ? rawEntry.productionField : undefined;
-    const validProductionFields = new Set(["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"]);
-    const productionField: ProductionFieldKey | undefined = rawProductionField && validProductionFields.has(rawProductionField) ? (rawProductionField as ProductionFieldKey) : undefined;
+    // Migrate legacy binding fields → FieldBinding
+    let binding: FieldBinding | undefined = normalizeFieldBinding(rawEntry.binding);
+    if (!binding) {
+      if (rawEntry.usePageDataId) {
+        binding = { source: "pageDataId" };
+      } else if (typeof rawEntry.unitXpRef === "string" && rawEntry.unitXpRef.trim()) {
+        binding = { source: "unitXp", sectionId: rawEntry.unitXpRef.trim() };
+      } else if (typeof rawEntry.economyLinkRef === "string" && rawEntry.economyLinkRef.trim()) {
+        const validEconomyFields: EconomyLinkFieldKey[] = ["buyValue", "minBuyValue", "sellValue", "maxSellValue", "unlockValue", "buyCurrencyRef", "sellCurrencyRef", "buyCurrencyKey", "sellCurrencyKey"];
+        const field = validEconomyFields.find((f) => f === rawEntry.economyLinkField);
+        if (field) binding = { source: "economyLink", sectionId: rawEntry.economyLinkRef.trim(), field };
+      } else if (typeof rawEntry.productionRef === "string" && rawEntry.productionRef.trim()) {
+        const validProductionFields: ProductionFieldKey[] = ["minOutput", "maxOutput", "intervalSeconds", "craftTimeSeconds", "capacity", "outputBuyEffective", "outputMinBuyValue", "outputSellEffective", "outputMaxSellValue", "outputUnlockValue"];
+        const field = validProductionFields.find((f) => f === rawEntry.productionField);
+        if (field) binding = { source: "production", addonId: rawEntry.productionRef.trim(), field };
+      }
+    }
     const notes = typeof rawEntry.notes === "string" && rawEntry.notes.trim() ? rawEntry.notes : undefined;
     // Preserve libraryRef if valid
     let libraryRef: { libraryAddonId: string; entryId: string } | undefined;
@@ -867,12 +970,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
       min: valueType === "boolean" || valueType === "string" ? undefined : min,
       max: valueType === "boolean" || valueType === "string" ? undefined : max,
       unit,
-      unitXpRef,
-      economyLinkRef,
-      economyLinkField: economyLinkRef ? economyLinkField : undefined,
-      productionRef,
-      productionField: productionRef ? productionField : undefined,
-      usePageDataId: asBooleanLoose(rawEntry.usePageDataId) || undefined,
+      ...(binding ? { binding } : {}),
       notes,
     });
   }
@@ -1382,8 +1480,13 @@ function normalizeProgressionTableDraft(value: unknown): ProgressionTableAddonDr
     return {
       level: baseRow.level,
       values: columns.reduce<Record<string, number | string>>((acc, column) => {
-        const parsed = asFiniteNumber(fromInput.values[column.id]);
-        acc[column.id] = parsed == null ? 0 : parsed;
+        if (column.valueType === "text") {
+          const raw = fromInput.values[column.id];
+          acc[column.id] = typeof raw === "string" ? raw : (column.defaultTextValue ?? "");
+        } else {
+          const parsed = asFiniteNumber(fromInput.values[column.id]);
+          acc[column.id] = parsed == null ? 0 : parsed;
+        }
         return acc;
       }, {}),
     };
