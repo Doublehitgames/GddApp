@@ -84,15 +84,40 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
       let elAddon: SectionAddon | undefined;
       for (const project of projects) {
         for (const section of project.sections || []) {
-          if (section.id !== binding.sectionId) continue;
-          elAddon = (section.addons || []).find((a: SectionAddon) => a.type === "economyLink");
-          break;
+          const found = (section.addons || []).find(
+            (a: SectionAddon) => a.id === binding.sectionId && a.type === "economyLink"
+          );
+          if (found) { elAddon = found; break; }
         }
         if (elAddon) break;
       }
       if (elAddon) {
-        const val = (elAddon.data as EconomyLinkAddonDraft)[binding.field as keyof EconomyLinkAddonDraft];
-        if (typeof val === "number") return val;
+        const data = elAddon.data as EconomyLinkAddonDraft;
+        if (binding.field === "buyCurrencyRef" || binding.field === "sellCurrencyRef") {
+          const currencySecId = data[binding.field];
+          if (currencySecId) {
+            for (const project of projects) {
+              const sec = (project.sections || []).find((s: any) => s.id === currencySecId);
+              if (sec) return (sec as any).dataId ?? entry.value;
+            }
+          }
+          return entry.value;
+        }
+        if (binding.field === "buyCurrencyKey" || binding.field === "sellCurrencyKey") {
+          const refField = binding.field === "buyCurrencyKey" ? "buyCurrencyRef" : "sellCurrencyRef";
+          const currencySecId = data[refField];
+          if (currencySecId) {
+            for (const project of projects) {
+              const sec = (project.sections || []).find((s: any) => s.id === currencySecId);
+              if (!sec) continue;
+              const currAddon = ((sec as any).addons || []).find((a: any) => a.type === "currency");
+              if (currAddon) return (currAddon.data as any)?.code ?? entry.value;
+            }
+          }
+          return entry.value;
+        }
+        const val = data[binding.field as keyof EconomyLinkAddonDraft];
+        if (typeof val === "number" || typeof val === "string" || typeof val === "boolean") return val;
       }
     }
     if (binding?.source === "production") {
