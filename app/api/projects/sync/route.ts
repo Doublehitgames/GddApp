@@ -73,7 +73,7 @@ type SyncAddonChange = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart" | "dataId">;
   addons: SyncAddonChange[];
 };
 
@@ -495,6 +495,7 @@ export async function POST(request: NextRequest) {
         if (Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0)) facets.push("order");
         if ((existing.color || null) !== (section.color || null)) facets.push("color");
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
+        if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -557,6 +558,7 @@ export async function POST(request: NextRequest) {
         Number((existing as { sort_order?: number }).sort_order ?? 0) !== Number(section.order || 0) ||
         (existing.color || null) !== (section.color || null) ||
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
+        (existing.data_id || null) !== (section.dataId || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null)
@@ -589,6 +591,7 @@ export async function POST(request: NextRequest) {
         (existing.content || "") === (section.content || "") &&
         (existing.color || null) === (section.color || null) &&
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
+        (existing.data_id || null) === (section.dataId || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
         addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
