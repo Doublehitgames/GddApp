@@ -509,8 +509,11 @@ export function FieldBindingPicker({
                         </div>
                       </>
                     ) : spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
-                      /* ── Nenhuma planilha na seção ainda: picker completo ── */
+                      /* ── Nenhuma planilha na seção ainda: picker completo + dica ── */
                       <>
+                        <div className="rounded border border-amber-700/30 bg-amber-900/10 px-2 py-1 text-[10px] text-amber-300/80">
+                          💡 Defina a planilha desta seção na página para não precisar escolher aqui toda vez.
+                        </div>
                         <select
                           value={selectedRegistryId}
                           onChange={(e) => {

@@ -43,6 +43,7 @@ import {
   CommitOptionalNumberInput,
 } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
+import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 
@@ -1552,6 +1553,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="mb-4 space-y-3">
+        <SectionLinkedSpreadsheetBar
+          linkedSpreadsheetId={sectionLinkedSpreadsheetId}
+          spreadsheetRegistry={linkedSpreadsheets}
+          onChange={handleSectionLinkedSpreadsheetChange}
+          readOnly
+        />
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">

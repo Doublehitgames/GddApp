@@ -6,18 +6,26 @@ interface SectionLinkedSpreadsheetBarProps {
   linkedSpreadsheetId: string | undefined;
   spreadsheetRegistry: LinkedSpreadsheet[];
   onChange: (id: string | undefined) => void;
+  /**
+   * Quando true, exibe apenas um badge read-only com o nome da planilha ativa.
+   * Útil dentro de drawers de addon, onde o seletor completo fica na página da seção.
+   */
+  readOnly?: boolean;
 }
 
 /**
  * Seletor de planilha no nível da seção.
- * Aparece no topo de qualquer addon panel que suporte vínculos com Google Sheets.
- * O usuário escolhe UMA planilha aqui; os campos de vínculo abaixo já herdam essa
- * escolha e precisam informar apenas a aba e a célula.
+ *
+ * - `readOnly=false` (padrão): seletor completo — aparece UMA vez na página da seção,
+ *   acima da lista de addons.
+ * - `readOnly=true`: badge compacto — usado dentro dos drawers de addon para indicar
+ *   qual planilha está ativa sem duplicar o controle de edição.
  */
 export function SectionLinkedSpreadsheetBar({
   linkedSpreadsheetId,
   spreadsheetRegistry,
   onChange,
+  readOnly = false,
 }: SectionLinkedSpreadsheetBarProps) {
   if (spreadsheetRegistry.length === 0) return null;
 
@@ -25,6 +33,30 @@ export function SectionLinkedSpreadsheetBar({
     ? spreadsheetRegistry.find((s) => s.id === linkedSpreadsheetId)
     : undefined;
 
+  /* ── Modo read-only: badge compacto para uso em drawers ── */
+  if (readOnly) {
+    if (!selected) return null;
+    return (
+      <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-emerald-700/25 bg-emerald-900/10 px-3 py-1.5 text-[11px] text-emerald-300/80">
+        <span aria-hidden="true">📊</span>
+        <span className="font-medium text-emerald-200">{selected.name}</span>
+        {selected.url ? (
+          <a
+            href={selected.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-0.5 text-emerald-400 hover:text-emerald-200"
+            title="Abrir planilha no Google Sheets"
+          >
+            ↗
+          </a>
+        ) : null}
+        <span className="ml-auto text-[10px] text-gray-500">Alterar na página da seção</span>
+      </div>
+    );
+  }
+
+  /* ── Modo padrão: seletor completo ── */
   return (
     <div className="mb-4 rounded-lg border border-emerald-700/30 bg-emerald-900/10 px-3 py-2.5">
       <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-emerald-400/70">
