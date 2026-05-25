@@ -28,6 +28,8 @@ export function LinkedSpreadsheetsSettings({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchedSheets, setFetchedSheets] = useState<string[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   function resetForm() {
     setNewUrl("");
@@ -103,6 +105,24 @@ export function LinkedSpreadsheetsSettings({
     onChange(spreadsheets.filter((s) => s.id !== id));
   }
 
+  async function handleRefreshSheets(s: LinkedSpreadsheet) {
+    setRefreshError(null);
+    setRefreshingId(s.id);
+    try {
+      const clientId = await getGoogleClientId();
+      if (!clientId) { setRefreshError(t("linkedSpreadsheetsSettings.errorNoClientId")); return; }
+      const token = await getGoogleSheetsToken(clientId);
+      if (!token) { setRefreshError(t("linkedSpreadsheetsSettings.errorNoAuth")); return; }
+      const sheets = await fetchSpreadsheetSheets(token, s.spreadsheetId);
+      if (!sheets || sheets.length === 0) { setRefreshError(t("linkedSpreadsheetsSettings.errorNoSheets")); return; }
+      onChange(spreadsheets.map((sp) => sp.id === s.id ? { ...sp, sheets } : sp));
+    } catch {
+      setRefreshError(t("linkedSpreadsheetsSettings.errorGeneric"));
+    } finally {
+      setRefreshingId(null);
+    }
+  }
+
   const canSave = Boolean(parseSpreadsheetId(newUrl) && newName.trim() && fetchedSheets);
 
   return (
@@ -132,6 +152,23 @@ export function LinkedSpreadsheetsSettings({
               <div className="flex shrink-0 gap-1.5 pt-0.5">
                 <button
                   type="button"
+                  onClick={() => handleRefreshSheets(s)}
+                  disabled={refreshingId === s.id}
+                  className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white disabled:opacity-50"
+                  title="Atualizar lista de abas"
+                >
+                  <svg
+                    className={`h-3.5 w-3.5 ${refreshingId === s.id ? "animate-spin" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleEdit(s)}
                   className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white"
                 >
@@ -148,6 +185,11 @@ export function LinkedSpreadsheetsSettings({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Erro de refresh de abas */}
+      {refreshError && (
+        <p className="text-xs text-rose-400">{refreshError}</p>
       )}
 
       {/* Formulário de adição/edição */}
