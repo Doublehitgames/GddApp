@@ -30,6 +30,7 @@ import AIChat from "@/components/AIChat";
 import AgendaWidget from "@/components/agenda/AgendaWidget";
 import KpiWidget from "@/components/kpi/KpiWidget";
 import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
+import RecentActivityWidget from "@/components/project/RecentActivityWidget";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
@@ -1208,6 +1209,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         <AgendaWidget projectId={projectId} realProjectId={realProjectId} />
                         <KpiWidget projectId={projectId} realProjectId={realProjectId} />
                         <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />
+                        <RecentActivityWidget projectId={projectId} realProjectId={realProjectId} />
 
                         <section className="ui-card-premium">
                             <div className="mb-4">

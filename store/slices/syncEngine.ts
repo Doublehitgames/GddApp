@@ -417,6 +417,8 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
           });
         }
         persistSyncState();
+        // Flush da fila de activity log pendente (best-effort, não bloqueia)
+        get().flushPendingActivityLog(projectId).catch(() => {});
         return;
       }
 

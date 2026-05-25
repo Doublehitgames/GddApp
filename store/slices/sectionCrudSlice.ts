@@ -83,6 +83,14 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           }),
         projectId
       );
+      get().logSectionActivity({
+        project_id: projectId,
+        section_id: newId,
+        section_title: title,
+        action: "created",
+        user_id: createdBy?.userId ?? null,
+        user_name: createdBy?.displayName ?? null,
+      });
       return newId;
     },
 
@@ -141,6 +149,14 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           }),
         projectId
       );
+      get().logSectionActivity({
+        project_id: projectId,
+        section_id: newId,
+        section_title: title,
+        action: "created",
+        user_id: createdBy?.userId ?? null,
+        user_name: createdBy?.displayName ?? null,
+      });
       return newId;
     },
 
@@ -305,6 +321,11 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
     ) => {
       const now = new Date().toISOString();
       const audit: Partial<Section> = { updated_at: now };
+      // Detectar rename antes de alterar o store
+      const oldSection = get().projects
+        .find((p) => p.id === projectId)
+        ?.sections?.find((s) => s.id === sectionId);
+      const titleChanged = oldSection && oldSection.title !== title;
       if (updatedBy) {
         audit.updated_by = updatedBy.userId;
         audit.updated_by_name = updatedBy.displayName ?? null;
@@ -343,6 +364,17 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           ),
         projectId
       );
+      if (titleChanged && oldSection) {
+        get().logSectionActivity({
+          project_id: projectId,
+          section_id: sectionId,
+          section_title: title,
+          action: "renamed",
+          old_title: oldSection.title,
+          user_id: updatedBy?.userId ?? null,
+          user_name: updatedBy?.displayName ?? null,
+        });
+      }
     },
 
     setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => {
@@ -438,6 +470,11 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
     },
 
     removeSection: (projectId: UUID, sectionId: UUID) => {
+      // Captura título e autor antes de remover do store
+      const deletedSection = get().projects
+        .find((p) => p.id === projectId)
+        ?.sections?.find((s) => s.id === sectionId);
+
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
@@ -448,6 +485,17 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         projectId
       );
       get().removeSectionDiagram(projectId, sectionId);
+
+      if (deletedSection) {
+        get().logSectionActivity({
+          project_id: projectId,
+          section_id: sectionId,
+          section_title: deletedSection.title,
+          action: "deleted",
+          user_id: deletedSection.updated_by ?? null,
+          user_name: deletedSection.updated_by_name ?? null,
+        });
+      }
     },
 
     moveSectionUp: (projectId: UUID, sectionId: UUID) => {

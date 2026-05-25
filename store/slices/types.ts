@@ -520,6 +520,15 @@ export interface ProjectStore {
   reorderRoadmapThemes: (projectId: string, roadmapId: string, orderedIds: string[]) => void;
   reorderRoadmapItems: (projectId: string, phaseId: string, themeId: string, orderedIds: string[]) => void;
   loadRoadmapFromSupabase: () => Promise<void>;
+  // ── Activity Log ──────────────────────────────────────────────────────────
+  activityLogByProject: Record<string, import("@/store/slices/activityLogSlice").ActivityLogEvent[]>;
+  activityLogFetchedProjects: string[];
+  pendingActivityLog: Record<string, import("@/store/slices/activityLogSlice").ActivityLogEvent[]>;
+  fetchActivityLog: (projectId: string) => Promise<void>;
+  /** Registra um evento localmente. Enviado ao Supabase no próximo sync do projeto. */
+  logSectionActivity: (event: Omit<import("@/store/slices/activityLogSlice").ActivityLogEvent, "id" | "created_at">) => void;
+  /** Enviado pelo syncEngine após sync bem-sucedido. */
+  flushPendingActivityLog: (projectId: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

@@ -58,7 +58,21 @@ export function createCloudSyncSlice(set: StoreSet, get: StoreGet, engine: SyncE
       engine.syncRetryCount.delete(projectId);
       engine.syncedProjectHash.set(projectId, engine.buildProjectHash(remoteProject));
 
-      set({ syncStatus: "idle", lastSyncError: null, lastSyncFailureReason: null });
+      // Descarta também os eventos de activity log pendentes deste projeto —
+      // eles correspondem a ações que foram desfeitas e não devem chegar ao banco.
+      set((s) => {
+        const updated = { ...s.pendingActivityLog };
+        delete updated[projectId];
+        try { localStorage.setItem("gdd_pending_activity_log_v1", JSON.stringify(updated)); } catch {}
+        return {
+          pendingActivityLog: updated,
+          activityLogByProject: { ...s.activityLogByProject, [projectId]: [] },
+          activityLogFetchedProjects: s.activityLogFetchedProjects.filter((id) => id !== projectId),
+          syncStatus: "idle" as const,
+          lastSyncError: null,
+          lastSyncFailureReason: null,
+        };
+      });
       engine.persistSyncState();
 
       return { error: null };

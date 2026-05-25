@@ -2964,5 +2964,25 @@
       "empty": "This roadmap has no phases yet.",
       "defaultTitle": "Roadmap"
     }
+  },
+  "activityLog": {
+    "widgetTitle": "Recent activity",
+    "modalTitle": "Activity history",
+    "modalClose": "Close",
+    "actionCreated": "New",
+    "actionDeleted": "Deleted",
+    "actionRenamed": "Renamed",
+    "renamedFrom": "was: {title}",
+    "eventSingular": "event",
+    "eventPlural": "events",
+    "seeMore": "See {count} more {label}",
+    "timeJustNow": "just now",
+    "timeMinutes": "{n}min ago",
+    "timeHours": "{n}h ago",
+    "timeYesterday": "yesterday",
+    "timeDays": "{n}d ago",
+    "timeWeeks": "{n}wk ago",
+    "timeMonths": "{n}mo ago",
+    "timeYears": "{n}y ago"
   }
 }

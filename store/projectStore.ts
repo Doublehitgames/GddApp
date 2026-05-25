@@ -13,6 +13,7 @@ import { createPersistenceSlice } from "./slices/persistenceSlice";
 import { createAgendaSlice } from "./slices/agendaSlice";
 import { createKpiSlice } from "./slices/kpiSlice";
 import { createRoadmapSlice } from "./slices/roadmapSlice";
+import { createActivityLogSlice } from "./slices/activityLogSlice";
 
 // Re-export ALL types for backward compatibility (zero breaking changes for consumers)
 export type {
@@ -68,5 +69,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     ...createAgendaSlice(set, get),
     ...createKpiSlice(set, get),
     ...createRoadmapSlice(set, get),
+    ...createActivityLogSlice(set as Parameters<typeof createActivityLogSlice>[0], get as Parameters<typeof createActivityLogSlice>[1]),
   };
 });
