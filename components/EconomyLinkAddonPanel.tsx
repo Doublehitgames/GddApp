@@ -449,10 +449,26 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     commit(patch);
   }
 
+  function handleLimitBinding(
+    bindingField: "minBuyValueBinding" | "maxBuyValueBinding" | "minSellValueBinding" | "maxSellValueBinding",
+    scalarField: "minBuyValue" | "maxBuyValue" | "minSellValue" | "maxSellValue",
+    binding: FieldBinding
+  ) {
+    const patch: Partial<EconomyLinkAddonDraft> = { [bindingField]: binding.source === "manual" ? undefined : binding };
+    if (binding.source === "sheets" && typeof binding.ref.cachedValue === "number") {
+      (patch as Record<string, unknown>)[scalarField] = Math.floor(Math.max(0, binding.ref.cachedValue));
+    }
+    commit(patch);
+  }
+
   const handleSyncSheets = useCallback(async () => {
-    const bindings: Array<{ field: "buyValue" | "sellValue"; ref: SheetsCellRef }> = [];
-    if (addon.buyValueBinding?.source === "sheets") bindings.push({ field: "buyValue", ref: addon.buyValueBinding.ref });
-    if (addon.sellValueBinding?.source === "sheets") bindings.push({ field: "sellValue", ref: addon.sellValueBinding.ref });
+    const bindings: Array<{ bindingKey: string; scalarKey: string; ref: SheetsCellRef }> = [];
+    if (addon.buyValueBinding?.source === "sheets") bindings.push({ bindingKey: "buyValueBinding", scalarKey: "buyValue", ref: addon.buyValueBinding.ref });
+    if (addon.minBuyValueBinding?.source === "sheets") bindings.push({ bindingKey: "minBuyValueBinding", scalarKey: "minBuyValue", ref: addon.minBuyValueBinding.ref });
+    if (addon.maxBuyValueBinding?.source === "sheets") bindings.push({ bindingKey: "maxBuyValueBinding", scalarKey: "maxBuyValue", ref: addon.maxBuyValueBinding.ref });
+    if (addon.sellValueBinding?.source === "sheets") bindings.push({ bindingKey: "sellValueBinding", scalarKey: "sellValue", ref: addon.sellValueBinding.ref });
+    if (addon.minSellValueBinding?.source === "sheets") bindings.push({ bindingKey: "minSellValueBinding", scalarKey: "minSellValue", ref: addon.minSellValueBinding.ref });
+    if (addon.maxSellValueBinding?.source === "sheets") bindings.push({ bindingKey: "maxSellValueBinding", scalarKey: "maxSellValue", ref: addon.maxSellValueBinding.ref });
     if (bindings.length === 0) return;
 
     const registryEntry = sectionLinkedSpreadsheetId
@@ -482,7 +498,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       const patch: Partial<EconomyLinkAddonDraft> = {};
       const syncedAt = new Date().toISOString();
 
-      for (const { field, ref } of bindings) {
+      for (const { bindingKey, scalarKey, ref } of bindings) {
         const raw = await fetchSheetCellValue(token, spreadsheetId, ref.sheetName, ref.cellRef);
         if (raw === null) {
           setSyncError(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
@@ -493,9 +509,8 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
           setSyncError(`Valor "${raw}" em ${ref.sheetName}!${ref.cellRef} não é um número válido.`);
           return;
         }
-        const bindingKey = `${field}Binding` as "buyValueBinding" | "sellValueBinding";
-        patch[bindingKey] = { source: "sheets", ref: { ...ref, cachedValue: num, syncedAt } };
-        (patch as Record<string, unknown>)[field] = Math.floor(Math.max(0, num));
+        (patch as Record<string, unknown>)[bindingKey] = { source: "sheets", ref: { ...ref, cachedValue: num, syncedAt } };
+        (patch as Record<string, unknown>)[scalarKey] = Math.floor(Math.max(0, num));
       }
 
       commit(patch);
@@ -595,7 +610,12 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
 
   const hasBuyBinding = addon.buyValueBinding?.source === "sheets";
   const hasSellBinding = addon.sellValueBinding?.source === "sheets";
-  const hasAnyBinding = hasBuyBinding || hasSellBinding;
+  const hasAnyBinding =
+    hasBuyBinding || hasSellBinding ||
+    addon.minBuyValueBinding?.source === "sheets" ||
+    addon.maxBuyValueBinding?.source === "sheets" ||
+    addon.minSellValueBinding?.source === "sheets" ||
+    addon.maxSellValueBinding?.source === "sheets";
 
   return (
     <section className={PANEL_SHELL_CLASS}>
@@ -702,27 +722,53 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.minBuyValue", "Mín")}</span>
-                      <CommitOptionalNumberInput
-                        value={addon.minBuyValue}
-                        onCommit={(next) => commit({ minBuyValue: next })}
-                        placeholder="0"
-                        min={0}
-                        integer
-                        step={1}
-                        className={INPUT_CLASS}
-                      />
+                      <FieldBindingPicker
+                        config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.minBuyValue", "Mín de compra") }}
+                        value={addon.minBuyValueBinding ?? MANUAL_BINDING}
+                        onChange={(b) => handleLimitBinding("minBuyValueBinding", "minBuyValue", b)}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                      >
+                        {addon.minBuyValueBinding?.source === "sheets" ? (
+                          <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                            {addon.minBuyValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.minBuyValueBinding.ref.cachedValue)) : "—"}
+                          </div>
+                        ) : (
+                          <CommitOptionalNumberInput
+                            value={addon.minBuyValue}
+                            onCommit={(next) => commit({ minBuyValue: next })}
+                            placeholder="0"
+                            min={0}
+                            integer
+                            step={1}
+                            className={INPUT_CLASS}
+                          />
+                        )}
+                      </FieldBindingPicker>
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.maxBuyValue", "Máx")}</span>
-                      <CommitOptionalNumberInput
-                        value={addon.maxBuyValue}
-                        onCommit={(next) => commit({ maxBuyValue: next })}
-                        placeholder="0"
-                        min={0}
-                        integer
-                        step={1}
-                        className={INPUT_CLASS}
-                      />
+                      <FieldBindingPicker
+                        config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.maxBuyValue", "Máx de compra") }}
+                        value={addon.maxBuyValueBinding ?? MANUAL_BINDING}
+                        onChange={(b) => handleLimitBinding("maxBuyValueBinding", "maxBuyValue", b)}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                      >
+                        {addon.maxBuyValueBinding?.source === "sheets" ? (
+                          <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                            {addon.maxBuyValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.maxBuyValueBinding.ref.cachedValue)) : "—"}
+                          </div>
+                        ) : (
+                          <CommitOptionalNumberInput
+                            value={addon.maxBuyValue}
+                            onCommit={(next) => commit({ maxBuyValue: next })}
+                            placeholder="0"
+                            min={0}
+                            integer
+                            step={1}
+                            className={INPUT_CLASS}
+                          />
+                        )}
+                      </FieldBindingPicker>
                     </label>
                   </div>
                 </NumericLimitsToggle>
@@ -858,27 +904,53 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="block">
                       <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.minSellValue", "Mín")}</span>
-                      <CommitOptionalNumberInput
-                        value={addon.minSellValue}
-                        onCommit={(next) => commit({ minSellValue: next })}
-                        placeholder="0"
-                        min={0}
-                        integer
-                        step={1}
-                        className={INPUT_CLASS}
-                      />
+                      <FieldBindingPicker
+                        config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.minSellValue", "Mín de venda") }}
+                        value={addon.minSellValueBinding ?? MANUAL_BINDING}
+                        onChange={(b) => handleLimitBinding("minSellValueBinding", "minSellValue", b)}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                      >
+                        {addon.minSellValueBinding?.source === "sheets" ? (
+                          <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                            {addon.minSellValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.minSellValueBinding.ref.cachedValue)) : "—"}
+                          </div>
+                        ) : (
+                          <CommitOptionalNumberInput
+                            value={addon.minSellValue}
+                            onCommit={(next) => commit({ minSellValue: next })}
+                            placeholder="0"
+                            min={0}
+                            integer
+                            step={1}
+                            className={INPUT_CLASS}
+                          />
+                        )}
+                      </FieldBindingPicker>
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-xs text-gray-400">{t("economyLinkAddon.maxSellValue", "Máx")}</span>
-                      <CommitOptionalNumberInput
-                        value={addon.maxSellValue}
-                        onCommit={(next) => commit({ maxSellValue: next })}
-                        placeholder="0"
-                        min={0}
-                        integer
-                        step={1}
-                        className={INPUT_CLASS}
-                      />
+                      <FieldBindingPicker
+                        config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.maxSellValue", "Máx de venda") }}
+                        value={addon.maxSellValueBinding ?? MANUAL_BINDING}
+                        onChange={(b) => handleLimitBinding("maxSellValueBinding", "maxSellValue", b)}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                      >
+                        {addon.maxSellValueBinding?.source === "sheets" ? (
+                          <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
+                            {addon.maxSellValueBinding.ref.cachedValue != null ? formatDisplayNumber(Number(addon.maxSellValueBinding.ref.cachedValue)) : "—"}
+                          </div>
+                        ) : (
+                          <CommitOptionalNumberInput
+                            value={addon.maxSellValue}
+                            onCommit={(next) => commit({ maxSellValue: next })}
+                            placeholder="0"
+                            min={0}
+                            integer
+                            step={1}
+                            className={INPUT_CLASS}
+                          />
+                        )}
+                      </FieldBindingPicker>
                     </label>
                   </div>
                 </NumericLimitsToggle>
@@ -1115,13 +1187,16 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
             )}
             {!syncError && (
               <p className="text-xs text-gray-500">
-                {(addon.buyValueBinding?.source === "sheets" && addon.buyValueBinding.ref.syncedAt) || (addon.sellValueBinding?.source === "sheets" && addon.sellValueBinding.ref.syncedAt)
-                  ? `Última sync: ${formatSyncedAt(
-                      (addon.buyValueBinding?.source === "sheets" ? addon.buyValueBinding.ref.syncedAt : null) ??
-                      (addon.sellValueBinding?.source === "sheets" ? addon.sellValueBinding.ref.syncedAt : null) ??
-                      null
-                    )}`
-                  : "Ainda não sincronizado"}
+                {(() => {
+                  const ts = [
+                    addon.buyValueBinding, addon.minBuyValueBinding, addon.maxBuyValueBinding,
+                    addon.sellValueBinding, addon.minSellValueBinding, addon.maxSellValueBinding,
+                  ].reduce<string | null>((acc, b) => {
+                    if (b?.source !== "sheets" || !b.ref.syncedAt) return acc;
+                    return !acc || b.ref.syncedAt > acc ? b.ref.syncedAt : acc;
+                  }, null);
+                  return ts ? `Última sync: ${formatSyncedAt(ts)}` : "Ainda não sincronizado";
+                })()}
               </p>
             )}
           </div>
