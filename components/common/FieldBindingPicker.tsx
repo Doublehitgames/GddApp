@@ -89,20 +89,18 @@ export function FieldBindingPicker({
     if (!open) return;
     if (value.source === "sheets") {
       const cur = value.ref;
-      setSheetsUrl(`https://docs.google.com/spreadsheets/d/${cur.spreadsheetId}/edit`);
       setSheetsSheetName(cur.sheetName);
       setSheetsCellRef(cur.cellRef);
-      if (context.spreadsheetRegistry) {
-        const match = context.spreadsheetRegistry.find((s) => s.spreadsheetId === cur.spreadsheetId);
-        setSelectedRegistryId(match?.id ?? "__other__");
-      }
     } else {
-      setSheetsUrl("");
       setSheetsSheetName("");
       setSheetsCellRef("");
-      setSelectedRegistryId(
-        context.spreadsheetRegistry && context.spreadsheetRegistry.length > 0 ? "" : "__other__"
-      );
+    }
+    setSheetsUrl("");
+    // Init registry selection from section's linkedSpreadsheetId
+    if (context.spreadsheetRegistry && context.spreadsheetRegistry.length > 0) {
+      setSelectedRegistryId(context.linkedSpreadsheetId ?? context.spreadsheetRegistry[0].id);
+    } else {
+      setSelectedRegistryId("__other__");
     }
     setSheetsError(null);
   }, [open]);
@@ -154,11 +152,6 @@ export function FieldBindingPicker({
 
   async function handleSheetsBind() {
     setSheetsError(null);
-    const spreadsheetId = parseSpreadsheetId(sheetsUrl);
-    if (!spreadsheetId) {
-      setSheetsError("URL inválida.");
-      return;
-    }
     const sheet = sheetsSheetName.trim();
     if (!sheet) {
       setSheetsError("Nome da aba é obrigatório.");
@@ -167,6 +160,18 @@ export function FieldBindingPicker({
     const cell = sheetsCellRef.trim().toUpperCase();
     if (!cell || !/^[A-Z]+\d+$/.test(cell)) {
       setSheetsError("Referência de célula inválida (ex: A1).");
+      return;
+    }
+    // Resolve which registry entry to use
+    const effectiveRegistryId = selectedRegistryId && selectedRegistryId !== "__other__"
+      ? selectedRegistryId
+      : undefined;
+    const registryEntry = effectiveRegistryId
+      ? context.spreadsheetRegistry?.find((s) => s.id === effectiveRegistryId)
+      : undefined;
+    const spreadsheetId = registryEntry?.spreadsheetId ?? (sheetsUrl ? parseSpreadsheetId(sheetsUrl) : null);
+    if (!spreadsheetId) {
+      setSheetsError("Selecione uma planilha ou informe a URL.");
       return;
     }
     setSheetsLoading(true);
@@ -189,10 +194,14 @@ export function FieldBindingPicker({
         cachedValue = String(raw);
       }
 
+      // Update section-level linked spreadsheet if changed
+      if (effectiveRegistryId && effectiveRegistryId !== context.linkedSpreadsheetId) {
+        context.onLinkedSpreadsheetChange?.(effectiveRegistryId);
+      }
+
       await onChange({
         source: "sheets",
         ref: {
-          spreadsheetId,
           sheetName: sheet,
           cellRef: cell,
           cachedValue,

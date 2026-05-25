@@ -1,7 +1,7 @@
 // store/slices/storageHelpers.ts
 // Pure helper functions extracted from store/projectStore.ts (no set/get dependency).
 
-import { normalizeSectionAddons } from "@/lib/addons/normalize";
+import { normalizeSectionAddons, extractLegacySpreadsheetId } from "@/lib/addons/normalize";
 import type { Project, LastConsistencyAnalysis, LastRelationsAnalysis, DiagramState, PersistenceConfig } from "./types";
 import {
   STORAGE_KEY, PERSISTENCE_CONFIG_KEY, LAST_ANALYSES_KEY, LAST_RELATIONS_KEY,
@@ -53,13 +53,24 @@ export function sanitizeProjectForStorage(project: Project): Project {
   return {
     ...project,
     description: sanitizeRichText(project.description),
-    sections: (project.sections || []).map((section) => ({
-      ...section,
-      content: sanitizeRichText(section.content),
-      addons: normalizeSectionAddons(
-        section.addons || (section as unknown as { balanceAddons?: unknown }).balanceAddons
-      ),
-    })),
+    sections: (project.sections || []).map((section) => {
+      const rawAddons = section.addons || (section as unknown as { balanceAddons?: unknown }).balanceAddons;
+      // Auto-migration: if section has no linkedSpreadsheetId but old bindings have spreadsheetId, populate it
+      let linkedSpreadsheetId = section.linkedSpreadsheetId;
+      if (!linkedSpreadsheetId) {
+        const legacyGoogleId = extractLegacySpreadsheetId(rawAddons);
+        if (legacyGoogleId) {
+          const match = project.linkedSpreadsheets?.find((ls) => ls.spreadsheetId === legacyGoogleId);
+          if (match) linkedSpreadsheetId = match.id;
+        }
+      }
+      return {
+        ...section,
+        ...(linkedSpreadsheetId ? { linkedSpreadsheetId } : {}),
+        content: sanitizeRichText(section.content),
+        addons: normalizeSectionAddons(rawAddons),
+      };
+    }),
   };
 }
 

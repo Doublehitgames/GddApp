@@ -276,6 +276,8 @@ export type Section = {
   domainTags?: string[];
   /** Addons genéricos vinculados a esta seção. */
   addons?: SectionAddon[];
+  /** ID da planilha cadastrada no projeto usada como fonte de dados desta seção. */
+  linkedSpreadsheetId?: string;
   /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
   pageTypeId?: string;
   /** Notas por grupo de addons (ex.: hipotese do teste A/B). Chave = nome do grupo. */
@@ -392,6 +394,7 @@ export interface ProjectStore {
     dataId?: string
   ) => void;
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
+  setSectionLinkedSpreadsheet: (projectId: UUID, sectionId: UUID, linkedSpreadsheetId: string | undefined) => void;
   setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => void;
   renameSectionAddonGroup: (projectId: UUID, sectionId: UUID, oldGroup: string, newGroup: string) => void;
   setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;

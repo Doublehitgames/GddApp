@@ -160,6 +160,8 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     if (!p) return "#";
     return sectionPathById(p, sId);
   };
+  const setSectionLinkedSpreadsheet = useProjectStore((state) => state.setSectionLinkedSpreadsheet);
+
   const linkedSpreadsheets = useMemo(() => {
     if (!currentProjectId) return [];
     const project = projects.find((p) => p.id === currentProjectId);
@@ -293,6 +295,17 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     return null;
   }, [scopedProjects, addon.id]);
 
+  const sectionLinkedSpreadsheetId = (currentSection as any)?.linkedSpreadsheetId as string | undefined;
+
+  const handleLinkedSpreadsheetChange = useCallback(
+    (id: string) => {
+      if (currentProjectId && currentSection) {
+        setSectionLinkedSpreadsheet(currentProjectId, (currentSection as any).id as string, id);
+      }
+    },
+    [currentProjectId, currentSection, setSectionLinkedSpreadsheet]
+  );
+
   const progressionColumnOptions = useMemo<ProgressionColumnOption[]>(() => {
     const out: ProgressionColumnOption[] = [];
     if (!currentSection) return out;
@@ -411,7 +424,9 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       columnName: o.columnName,
     })),
     spreadsheetRegistry: linkedSpreadsheets,
-  }), [progressionColumnOptions, linkedSpreadsheets]);
+    linkedSpreadsheetId: sectionLinkedSpreadsheetId,
+    onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange,
+  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange]);
 
   function handleValueBinding(
     bindingField: "buyValueBinding" | "sellValueBinding",
@@ -439,6 +454,15 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     if (addon.sellValueBinding?.source === "sheets") bindings.push({ field: "sellValue", ref: addon.sellValueBinding.ref });
     if (bindings.length === 0) return;
 
+    const registryEntry = sectionLinkedSpreadsheetId
+      ? linkedSpreadsheets.find((s) => s.id === sectionLinkedSpreadsheetId)
+      : undefined;
+    if (!registryEntry) {
+      setSyncError("Nenhuma planilha vinculada à seção. Vincule um campo primeiro.");
+      return;
+    }
+    const spreadsheetId = registryEntry.spreadsheetId;
+
     setSyncing(true);
     setSyncError(null);
 
@@ -458,7 +482,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
       const syncedAt = new Date().toISOString();
 
       for (const { field, ref } of bindings) {
-        const raw = await fetchSheetCellValue(token, ref.spreadsheetId, ref.sheetName, ref.cellRef);
+        const raw = await fetchSheetCellValue(token, spreadsheetId, ref.sheetName, ref.cellRef);
         if (raw === null) {
           setSyncError(`Não foi possível ler ${ref.sheetName}!${ref.cellRef}. Verifique o vínculo.`);
           return;
@@ -995,7 +1019,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     }}
                     value={addon.unlockValueBinding ?? MANUAL_BINDING}
                     onChange={handleUnlockSheetsBinding}
-                    context={{ spreadsheetRegistry: linkedSpreadsheets }}
+                    context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
                   >
                     <CommitOptionalNumberInput
                       value={addon.unlockValue}

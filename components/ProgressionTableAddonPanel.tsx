@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -49,12 +49,13 @@ const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 /** Module-level helper: fetches a sheets range and maps raw values to per-row values (numbers or strings for text columns). */
 async function fetchAndMapSheetsValues(
   binding: ProgressionTableColumnSheetsBinding,
+  spreadsheetId: string,
   rows: ProgressionTableRow[],
   columnId: string,
   token: string,
   isText?: boolean
 ): Promise<{ cachedValues: (number | string)[]; rowValues: Record<number, number | string> } | null> {
-  const rawValues = await fetchSheetRangeValues(token, binding.spreadsheetId, binding.sheetName, binding.range);
+  const rawValues = await fetchSheetRangeValues(token, spreadsheetId, binding.sheetName, binding.range);
   if (!rawValues) return null;
   const cachedValues: (number | string)[] = [];
   const rowValues: Record<number, number | string> = {};
@@ -488,11 +489,34 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     return out;
   }, [projects, currentProjectId]);
 
-  // ── Linked spreadsheets registry (project-level) ──────────────────────
-  const linkedSpreadsheets = useMemo<LinkedSpreadsheet[]>(() => {
-    const project = projects.find((p) => p.id === currentProjectId);
-    return (project as unknown as { linkedSpreadsheets?: LinkedSpreadsheet[] })?.linkedSpreadsheets ?? [];
-  }, [projects, currentProjectId]);
+  // ── Linked spreadsheets registry (project-level) + section-level binding ──
+  const setSectionLinkedSpreadsheet = useProjectStore((state) => state.setSectionLinkedSpreadsheet);
+
+  const currentProject = useMemo(
+    () => projects.find((p) => p.id === currentProjectId),
+    [projects, currentProjectId]
+  );
+
+  const linkedSpreadsheets = useMemo<LinkedSpreadsheet[]>(
+    () => (currentProject as unknown as { linkedSpreadsheets?: LinkedSpreadsheet[] })?.linkedSpreadsheets ?? [],
+    [currentProject]
+  );
+
+  const currentSection = useMemo(
+    () => currentProject?.sections?.find((s) => s.addons?.some((a) => a.id === addon.id)),
+    [currentProject, addon.id]
+  );
+
+  const sectionLinkedSpreadsheetId = currentSection?.linkedSpreadsheetId;
+
+  const handleSectionLinkedSpreadsheetChange = useCallback(
+    (id: string) => {
+      if (currentProjectId && currentSection) {
+        setSectionLinkedSpreadsheet(currentProjectId, currentSection.id, id);
+      }
+    },
+    [currentProjectId, currentSection, setSectionLinkedSpreadsheet]
+  );
 
   const columns = useMemo(() => normalizeColumns(addon.columns || []), [addon.columns]);
   // No more attribute overrides — `resolvedColumns` is just the raw columns.
@@ -1279,24 +1303,16 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
 
   const openBindingForm = (columnId: string, existingBinding?: ProgressionTableColumnSheetsBinding) => {
     setBindingFormColumnId(columnId);
+    // Pre-select the section's linked spreadsheet (or first in registry as fallback)
+    const defaultRegistryId = sectionLinkedSpreadsheetId ?? linkedSpreadsheets[0]?.id ?? "";
+    setSheetsFormRegistryId(defaultRegistryId);
+    setSheetsFormUrl("");
     if (existingBinding) {
       setSheetsFormSheetName(existingBinding.sheetName);
       setSheetsFormRange(existingBinding.range);
-      const matchEntry = linkedSpreadsheets.find(
-        (s) => s.spreadsheetId === existingBinding.spreadsheetId
-      );
-      if (matchEntry) {
-        setSheetsFormRegistryId(matchEntry.id);
-        setSheetsFormUrl("");
-      } else {
-        setSheetsFormRegistryId("");
-        setSheetsFormUrl(existingBinding.spreadsheetId);
-      }
     } else {
-      setSheetsFormRegistryId(linkedSpreadsheets[0]?.id ?? "");
       setSheetsFormSheetName("");
       setSheetsFormRange("");
-      setSheetsFormUrl("");
     }
     setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
   };
@@ -1310,9 +1326,19 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
   };
 
+  const resolveSectionSpreadsheetId = (): string | null => {
+    if (!sectionLinkedSpreadsheetId) return null;
+    return linkedSpreadsheets.find((s) => s.id === sectionLinkedSpreadsheetId)?.spreadsheetId ?? null;
+  };
+
   const handleSyncColumn = async (columnId: string) => {
     const column = columns.find((c) => c.id === columnId);
     if (!column?.sheetsBinding) return;
+    const spreadsheetId = resolveSectionSpreadsheetId();
+    if (!spreadsheetId) {
+      setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoSpreadsheet", "Nenhuma planilha vinculada à seção.") }));
+      return;
+    }
     setSyncingColumnIds((prev) => ({ ...prev, [columnId]: true }));
     setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
     try {
@@ -1321,7 +1347,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       const token = await getGoogleSheetsToken(clientId);
       if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
       const isText = column.valueType === "text";
-      const result = await fetchAndMapSheetsValues(column.sheetsBinding, rows, columnId, token, isText);
+      const result = await fetchAndMapSheetsValues(column.sheetsBinding, spreadsheetId, rows, columnId, token, isText);
       if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
       const { cachedValues, rowValues } = result;
       let nextOverrides = { ...currentOverrides };
@@ -1355,6 +1381,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const handleSyncAllColumns = async () => {
     const boundColumns = columns.filter((c) => c.sheetsBinding);
     if (boundColumns.length === 0) return;
+    const spreadsheetId = resolveSectionSpreadsheetId();
+    if (!spreadsheetId) {
+      const errMsg = t("progressionTableAddon.sheets.errorNoSpreadsheet", "Nenhuma planilha vinculada à seção.");
+      boundColumns.forEach((c) => { setSheetsSyncErrors((prev) => ({ ...prev, [c.id]: errMsg })); });
+      return;
+    }
     const syncMap: Record<string, boolean> = {};
     boundColumns.forEach((c) => { syncMap[c.id] = true; });
     setSyncingColumnIds(syncMap);
@@ -1379,7 +1411,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       for (const col of boundColumns) {
         if (!col.sheetsBinding) continue;
         const colIsText = col.valueType === "text";
-        const result = await fetchAndMapSheetsValues(col.sheetsBinding, finalRows, col.id, token, colIsText);
+        const result = await fetchAndMapSheetsValues(col.sheetsBinding, spreadsheetId, finalRows, col.id, token, colIsText);
         if (!result) { errors[col.id] = t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."); continue; }
         const { cachedValues, rowValues } = result;
         Object.entries(rowValues).forEach(([level, val]) => {
@@ -1410,9 +1442,11 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   };
 
   const handleBindAndSyncColumn = async (columnId: string) => {
+    // Resolve spreadsheetId: form selection takes priority (may change section binding), then existing section binding
+    const effectiveRegistryId = sheetsFormRegistryId || undefined;
     let spreadsheetId: string | null = null;
-    if (sheetsFormRegistryId) {
-      const entry = linkedSpreadsheets.find((s) => s.id === sheetsFormRegistryId);
+    if (effectiveRegistryId) {
+      const entry = linkedSpreadsheets.find((s) => s.id === effectiveRegistryId);
       if (entry) spreadsheetId = entry.spreadsheetId;
     }
     if (!spreadsheetId && sheetsFormUrl.trim()) {
@@ -1430,8 +1464,11 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoRange", "Informe o intervalo (ex: B2:B51).") }));
       return;
     }
+    // Update section-level linked spreadsheet if changed
+    if (effectiveRegistryId && effectiveRegistryId !== sectionLinkedSpreadsheetId) {
+      handleSectionLinkedSpreadsheetChange(effectiveRegistryId);
+    }
     const binding: ProgressionTableColumnSheetsBinding = {
-      spreadsheetId,
       sheetName: sheetsFormSheetName.trim(),
       range: sheetsFormRange.trim(),
     };
@@ -1444,7 +1481,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       if (!token) throw new Error(t("progressionTableAddon.sheets.errorAuthFailed", "Falha na autenticação Google."));
       const bindingColumn = columns.find((c) => c.id === columnId);
       const bindIsText = bindingColumn?.valueType === "text";
-      const result = await fetchAndMapSheetsValues(binding, rows, columnId, token, bindIsText);
+      const result = await fetchAndMapSheetsValues(binding, spreadsheetId, rows, columnId, token, bindIsText);
       if (!result) throw new Error(t("progressionTableAddon.sheets.errorFetchFailed", "Erro ao buscar dados da planilha."));
       const { cachedValues, rowValues } = result;
       let nextOverrides = { ...currentOverrides };
@@ -1828,7 +1865,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                               <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300">
                                 <span aria-hidden>📊</span>
                                 <span>
-                                  {`Google Sheets: ${linkedSpreadsheets.find((s) => s.spreadsheetId === column.sheetsBinding?.spreadsheetId)?.name ?? t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")}`}
+                                  {`Google Sheets: ${sectionLinkedSpreadsheetId ? (linkedSpreadsheets.find((s) => s.id === sectionLinkedSpreadsheetId)?.name ?? t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")) : t("progressionTableAddon.sheets.boundTitle", "Google Sheets vinculada")}`}
                                 </span>
                               </span>
                               <div className="flex items-center gap-1.5">

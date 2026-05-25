@@ -363,6 +363,26 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       );
     },
 
+    setSectionLinkedSpreadsheet: (projectId: UUID, sectionId: UUID, linkedSpreadsheetId: string | undefined) => {
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: new Date().toISOString(),
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId
+                      ? { ...s, linkedSpreadsheetId: linkedSpreadsheetId || undefined, updated_at: new Date().toISOString() }
+                      : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
     setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => {
       engine.wrappedSetWithSync(
         (prev) =>

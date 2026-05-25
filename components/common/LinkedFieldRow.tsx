@@ -4,7 +4,6 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import type { SheetsCellRef } from "@/lib/addons/types";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
-import { parseSpreadsheetId } from "@/lib/googleSheets";
 
 export type LinkedFieldOption = {
   /** Stable unique key for this option (e.g. `${addonId}::${columnId}`). */
@@ -44,6 +43,10 @@ interface LinkedFieldRowProps {
   };
   /** Planilhas cadastradas no projeto — quando fornecido, o formulário usa selects em vez de input livre. */
   spreadsheetRegistry?: LinkedSpreadsheet[];
+  /** ID da planilha (registry) vinculada à seção atual. */
+  linkedSpreadsheetId?: string;
+  /** Chamado quando o usuário muda a planilha vinculada à seção. */
+  onLinkedSpreadsheetChange?: (id: string) => void;
 }
 
 export function LinkedFieldRow({
@@ -59,6 +62,8 @@ export function LinkedFieldRow({
   labelAdornment,
   sheetsBinding,
   spreadsheetRegistry,
+  linkedSpreadsheetId,
+  onLinkedSpreadsheetChange,
 }: LinkedFieldRowProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -101,26 +106,21 @@ export function LinkedFieldRow({
   useEffect(() => {
     if (!open || !sheetsBinding) return;
     const cur = sheetsBinding.current;
-    setSheetsUrl(cur ? `https://docs.google.com/spreadsheets/d/${cur.spreadsheetId}/edit` : "");
     setSheetsSheetName(cur?.sheetName ?? "");
     setSheetsCellRef(cur?.cellRef ?? "");
     setSheetsError(null);
-    // Init registry selection from current binding
-    if (cur && spreadsheetRegistry) {
-      const match = spreadsheetRegistry.find((s) => s.spreadsheetId === cur.spreadsheetId);
-      setSelectedRegistryId(match?.id ?? "__other__");
+    // Init registry selection from section's linkedSpreadsheetId, falling back to first registry entry
+    if (spreadsheetRegistry && spreadsheetRegistry.length > 0) {
+      setSelectedRegistryId(linkedSpreadsheetId ?? spreadsheetRegistry[0].id);
+      setSheetsUrl("");
     } else {
-      setSelectedRegistryId(spreadsheetRegistry && spreadsheetRegistry.length > 0 ? "" : "__other__");
+      setSelectedRegistryId("__other__");
+      setSheetsUrl("");
     }
   }, [open]);
 
   async function handleSheetsBind() {
     setSheetsError(null);
-    const spreadsheetId = parseSpreadsheetId(sheetsUrl);
-    if (!spreadsheetId) {
-      setSheetsError(t("linkedField.sheets.errorInvalidUrl"));
-      return;
-    }
     const sheet = sheetsSheetName.trim();
     if (!sheet) { setSheetsError(t("linkedField.sheets.errorNoSheet")); return; }
     const cell = sheetsCellRef.trim().toUpperCase();
@@ -128,15 +128,25 @@ export function LinkedFieldRow({
       setSheetsError(t("linkedField.sheets.errorInvalidCell"));
       return;
     }
+    // Resolve which registry entry to use
+    const effectiveRegistryId = selectedRegistryId && selectedRegistryId !== "__other__"
+      ? selectedRegistryId
+      : undefined;
+    if (!effectiveRegistryId && !sheetsUrl.trim()) {
+      setSheetsError(t("linkedField.sheets.errorInvalidUrl"));
+      return;
+    }
+    if (effectiveRegistryId && onLinkedSpreadsheetChange && effectiveRegistryId !== linkedSpreadsheetId) {
+      onLinkedSpreadsheetChange(effectiveRegistryId);
+    }
     const cur = sheetsBinding?.current;
     setSheetsLoading(true);
     try {
       await sheetsBinding?.onBind({
-        spreadsheetId,
         sheetName: sheet,
         cellRef: cell,
-        cachedValue: cur?.spreadsheetId === spreadsheetId ? (cur?.cachedValue ?? null) : null,
-        syncedAt: cur?.spreadsheetId === spreadsheetId ? (cur?.syncedAt ?? null) : null,
+        cachedValue: cur?.sheetName === sheet && cur?.cellRef === cell ? (cur?.cachedValue ?? null) : null,
+        syncedAt: cur?.sheetName === sheet && cur?.cellRef === cell ? (cur?.syncedAt ?? null) : null,
       });
       setOpen(false);
     } catch (err) {
@@ -148,8 +158,8 @@ export function LinkedFieldRow({
 
   const hasSheetsBinding = Boolean(sheetsBinding?.current);
 
-  const sheetsRegistryName = hasSheetsBinding
-    ? spreadsheetRegistry?.find((s) => s.spreadsheetId === sheetsBinding!.current!.spreadsheetId)?.name
+  const sheetsRegistryName = hasSheetsBinding && linkedSpreadsheetId
+    ? spreadsheetRegistry?.find((s) => s.id === linkedSpreadsheetId)?.name
     : undefined;
 
   const chipText = hasSheetsBinding

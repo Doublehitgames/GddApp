@@ -2,7 +2,6 @@ import type { BalanceAddonDraft } from "@/lib/balance/types";
 import type { FieldBinding } from "@/lib/addons/fieldBinding";
 
 export type ProgressionTableColumnSheetsBinding = {
-  spreadsheetId: string;
   sheetName: string;
   /** Cell range, e.g. "B2:B51" — must cover exactly (endLevel - startLevel + 1) cells. */
   range: string;
@@ -218,7 +217,6 @@ export type InventoryAddonDraft = {
 };
 
 export type SheetsCellRef = {
-  spreadsheetId: string;
   sheetName: string;
   cellRef: string;
   cachedValue: string | number | boolean | null;

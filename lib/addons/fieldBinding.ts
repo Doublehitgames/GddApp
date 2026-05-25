@@ -97,6 +97,10 @@ export type FieldBindingPickerContext = {
   unitXpSections?: UnitXpBindingOption[];
   /** Registered Google Sheets spreadsheets in this project. */
   spreadsheetRegistry?: LinkedSpreadsheet[];
+  /** ID da planilha (registry) vinculada à seção atual. */
+  linkedSpreadsheetId?: string;
+  /** Chamado quando o usuário muda a planilha vinculada à seção. */
+  onLinkedSpreadsheetChange?: (id: string) => void;
 };
 
 // ── Display helpers ───────────────────────────────────────────────────────────
@@ -110,7 +114,9 @@ export function getBindingChipLabel(
     case "manual":
       return "Sem vínculo";
     case "sheets": {
-      const regName = context.spreadsheetRegistry?.find((s) => s.spreadsheetId === binding.ref.spreadsheetId)?.name;
+      const regName = context.linkedSpreadsheetId
+        ? context.spreadsheetRegistry?.find((s) => s.id === context.linkedSpreadsheetId)?.name
+        : undefined;
       const ref = `${binding.ref.sheetName}!${binding.ref.cellRef}`;
       return regName ? `Google Sheets: ${regName} - ${ref}` : ref;
     }

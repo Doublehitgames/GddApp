@@ -106,24 +106,26 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
     let sheetsBinding: ProgressionTableColumnSheetsBinding | undefined;
     if (
       isObject(rawColumn.sheetsBinding) &&
-      typeof (rawColumn.sheetsBinding as Record<string, unknown>).spreadsheetId === "string" &&
       typeof (rawColumn.sheetsBinding as Record<string, unknown>).sheetName === "string" &&
       typeof (rawColumn.sheetsBinding as Record<string, unknown>).range === "string"
     ) {
       const sb = rawColumn.sheetsBinding as Record<string, unknown>;
-      // For text columns, preserve string values; for number columns filter non-finite
-      const cachedValues: (number | string)[] | undefined = Array.isArray(sb.cachedValues)
-        ? valueType === "text"
-          ? (sb.cachedValues as unknown[]).map((v) => (typeof v === "string" ? v : String(v ?? "")))
-          : (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
-        : undefined;
-      sheetsBinding = {
-        spreadsheetId: (sb.spreadsheetId as string).trim(),
-        sheetName: (sb.sheetName as string).trim(),
-        range: (sb.range as string).trim(),
-        cachedValues,
-        syncedAt: typeof sb.syncedAt === "string" ? sb.syncedAt : null,
-      };
+      const sheetName = (sb.sheetName as string).trim();
+      const range = (sb.range as string).trim();
+      if (sheetName && range) {
+        // For text columns, preserve string values; for number columns filter non-finite
+        const cachedValues: (number | string)[] | undefined = Array.isArray(sb.cachedValues)
+          ? valueType === "text"
+            ? (sb.cachedValues as unknown[]).map((v) => (typeof v === "string" ? v : String(v ?? "")))
+            : (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
+          : undefined;
+        sheetsBinding = {
+          sheetName,
+          range,
+          cachedValues,
+          syncedAt: typeof sb.syncedAt === "string" ? sb.syncedAt : null,
+        };
+      }
     }
 
     const column: ProgressionTableColumn = {
@@ -646,10 +648,9 @@ function normalizeProductionItems(raw: unknown): Array<{ itemRef: string; quanti
 
 function normalizeSheetsCellRef(value: unknown): SheetsCellRef | undefined {
   if (!isObject(value)) return undefined;
-  const spreadsheetId = typeof value.spreadsheetId === "string" ? value.spreadsheetId.trim() : "";
   const sheetName = typeof value.sheetName === "string" ? value.sheetName.trim() : "";
   const cellRef = typeof value.cellRef === "string" ? value.cellRef.trim() : "";
-  if (!spreadsheetId || !sheetName || !cellRef) return undefined;
+  if (!sheetName || !cellRef) return undefined;
   let cachedValue: string | number | boolean | null = null;
   if (typeof value.cachedValue === "number" && Number.isFinite(value.cachedValue)) {
     cachedValue = value.cachedValue;
@@ -659,7 +660,45 @@ function normalizeSheetsCellRef(value: unknown): SheetsCellRef | undefined {
     cachedValue = value.cachedValue;
   }
   const syncedAt = typeof value.syncedAt === "string" ? value.syncedAt : null;
-  return { spreadsheetId, sheetName, cellRef, cachedValue, syncedAt };
+  return { sheetName, cellRef, cachedValue, syncedAt };
+}
+
+/**
+ * Scans raw addon data (before normalization) for any legacy `spreadsheetId` in bindings.
+ * Returns the first Google Sheets ID found (long alphanum, not a UUID). Used for auto-migration
+ * of sections that pre-date the section-level linkedSpreadsheetId field.
+ */
+export function extractLegacySpreadsheetId(rawAddons: unknown): string | undefined {
+  if (!Array.isArray(rawAddons)) return undefined;
+  for (const addon of rawAddons) {
+    const found = _scanObjectForSpreadsheetId(addon);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function _scanObjectForSpreadsheetId(obj: unknown): string | undefined {
+  if (!isObject(obj)) return undefined;
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === "spreadsheetId" && typeof value === "string" && value.trim()) {
+      const v = value.trim();
+      // Registry IDs are UUIDs (contain hyphens); Google Sheets IDs are long alphanumeric strings
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
+        return v;
+      }
+    }
+    if (isObject(value)) {
+      const found = _scanObjectForSpreadsheetId(value);
+      if (found) return found;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = _scanObjectForSpreadsheetId(item);
+        if (found) return found;
+      }
+    }
+  }
+  return undefined;
 }
 
 function normalizeFieldBinding(raw: unknown): FieldBinding | undefined {

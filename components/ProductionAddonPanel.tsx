@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ProductionAddonDraft, CraftTableSectionAddon, CraftTableEntry, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
@@ -68,6 +68,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   const { t } = useI18n();
   const allProjects = useProjectStore((state) => state.projects);
   const updateSectionAddon = useProjectStore((state) => state.updateSectionAddon);
+  const setSectionLinkedSpreadsheet = useProjectStore((state) => state.setSectionLinkedSpreadsheet);
   const currentProjectId = useCurrentProjectId();
   const projects = useMemo(
     () => (currentProjectId ? allProjects.filter((p) => p.id === currentProjectId) : allProjects),
@@ -277,6 +278,17 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     return undefined;
   }, [addon.id, projects]);
 
+  const sectionLinkedSpreadsheetId = (currentSection as { linkedSpreadsheetId?: string } | undefined)?.linkedSpreadsheetId;
+
+  const handleLinkedSpreadsheetChange = useCallback(
+    (id: string) => {
+      if (currentProjectId && currentSection) {
+        setSectionLinkedSpreadsheet(currentProjectId, currentSection.id, id);
+      }
+    },
+    [currentProjectId, currentSection, setSectionLinkedSpreadsheet]
+  );
+
   const craftTableReferences = useMemo(() => {
     if (!currentSection) return [] as Array<{ projectId: string; sectionId: string; label: string }>;
     const refs: Array<{ projectId: string; sectionId: string; label: string }> = [];
@@ -430,7 +442,9 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
       columnName: o.columnName,
     })),
     spreadsheetRegistry: linkedSpreadsheets,
-  }), [progressionColumnOptions, linkedSpreadsheets]);
+    linkedSpreadsheetId: sectionLinkedSpreadsheetId,
+    onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange,
+  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange]);
 
   function handleBindingChange(
     bindingField:

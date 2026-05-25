@@ -73,7 +73,7 @@ type SyncAddonChange = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart" | "dataId">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart" | "dataId" | "linkedSpreadsheet">;
   addons: SyncAddonChange[];
 };
 
@@ -402,6 +402,7 @@ export async function POST(request: NextRequest) {
         "color",
         "domain_tags",
         "data_id",
+        "linked_spreadsheet_id",
         includeBalanceAddonsColumn ? "balance_addons" : null,
         includeThumbImageColumn ? "thumb_image_url" : null,
         includeFlowchartStateColumn ? "flowchart_state" : null,
@@ -497,6 +498,7 @@ export async function POST(request: NextRequest) {
         if ((existing.color || null) !== (section.color || null)) facets.push("color");
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
         if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
+        if ((existing.linked_spreadsheet_id || null) !== (section.linkedSpreadsheetId || null)) facets.push("linkedSpreadsheet");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -560,6 +562,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) !== (section.color || null) ||
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         (existing.data_id || null) !== (section.dataId || null) ||
+        (existing.linked_spreadsheet_id || null) !== (section.linkedSpreadsheetId || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null)
@@ -593,6 +596,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) === (section.color || null) &&
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         (existing.data_id || null) === (section.dataId || null) &&
+        (existing.linked_spreadsheet_id || null) === (section.linkedSpreadsheetId || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
         addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
@@ -819,6 +823,7 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         data_id: s.dataId != null ? String(s.dataId) : null,
+        linked_spreadsheet_id: s.linkedSpreadsheetId != null ? String(s.linkedSpreadsheetId) : null,
         addon_group_notes: s.addonGroupNotes && Object.keys(s.addonGroupNotes).length > 0 ? s.addonGroupNotes : null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         balance_addons: normalizeSectionAddons(s.addons) || [],
