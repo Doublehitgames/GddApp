@@ -13,7 +13,6 @@ import { NumericLimitsToggle } from "@/components/common/NumericLimitsToggle";
 import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 import { getGoogleSheetsToken, fetchSheetCellValue, parseCellNumber } from "@/lib/googleSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
-import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
 
 interface EconomyLinkAddonPanelProps {
   addon: EconomyLinkAddonDraft;
@@ -600,11 +599,6 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="space-y-4">
-        <SectionLinkedSpreadsheetBar
-          linkedSpreadsheetId={sectionLinkedSpreadsheetId}
-          spreadsheetRegistry={linkedSpreadsheets}
-          onChange={handleLinkedSpreadsheetChange}
-        />
         <div className={PANEL_BLOCK_CLASS}>
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs uppercase tracking-wide text-gray-400">

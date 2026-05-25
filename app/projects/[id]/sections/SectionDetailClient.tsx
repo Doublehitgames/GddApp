@@ -53,6 +53,7 @@ import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import { AddonPickerModal } from "@/components/AddonPickerModal";
 import { AddonStackedList } from "@/components/addons/AddonStackedList";
 import { AddonEditorDrawer } from "@/components/addons/AddonEditorDrawer";
+import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
@@ -1696,8 +1697,14 @@ function SectionDetailContent({
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
+  const setSectionLinkedSpreadsheet = useProjectStore((s) => s.setSectionLinkedSpreadsheet);
   const realProjectId: string = project?.id ?? projectId ?? "";
   const realSectionId: string = section?.id ?? sectionId ?? "";
+  const linkedSpreadsheets: import("@/store/slices/types").LinkedSpreadsheet[] = project?.linkedSpreadsheets ?? [];
+  const sectionLinkedSpreadsheetId: string | undefined = (section as any)?.linkedSpreadsheetId;
+  const hasSheetCapableAddons: boolean = (addons as any[]).some(
+    (a: any) => a.type === "economyLink" || a.type === "progressionTable" || a.type === "production"
+  );
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
   const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
@@ -2663,6 +2670,15 @@ function SectionDetailContent({
               className="border-t border-gray-800/60 space-y-2"
               onDoubleClick={(event) => event.stopPropagation()}
             >
+              {/* Planilha vinculada à seção — visível uma única vez para toda a seção */}
+              {hasSheetCapableAddons && linkedSpreadsheets.length > 0 && (
+                <SectionLinkedSpreadsheetBar
+                  linkedSpreadsheetId={sectionLinkedSpreadsheetId}
+                  spreadsheetRegistry={linkedSpreadsheets}
+                  onChange={(id) => setSectionLinkedSpreadsheet(realProjectId, realSectionId, id)}
+                />
+              )}
+
               {/* Bulk action bar */}
               {selectedAddonIds.size > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-500/40 text-sm">
