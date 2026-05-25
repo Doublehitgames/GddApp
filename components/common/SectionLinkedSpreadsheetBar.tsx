@@ -37,21 +37,26 @@ export function SectionLinkedSpreadsheetBar({
   if (readOnly) {
     if (!selected) return null;
     return (
-      <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-emerald-700/25 bg-emerald-900/10 px-3 py-1.5 text-[11px] text-emerald-300/80">
-        <span aria-hidden="true">📊</span>
-        <span className="font-medium text-emerald-200">{selected.name}</span>
+      <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-700/25 bg-emerald-900/10 px-3 py-2">
+        <span aria-hidden="true" className="text-sm">📊</span>
+        <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-emerald-200">
+          {selected.name}
+        </span>
         {selected.url ? (
           <a
             href={selected.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-0.5 text-emerald-400 hover:text-emerald-200"
+            className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-700/50 bg-emerald-900/30 px-2 py-0.5 text-[10px] font-medium text-emerald-300 hover:bg-emerald-800/40 hover:text-emerald-100"
             title="Abrir planilha no Google Sheets"
           >
-            ↗
+            Abrir
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
           </a>
         ) : null}
-        <span className="ml-auto text-[10px] text-gray-500">Alterar na página da seção</span>
+        <span className="shrink-0 text-[10px] text-gray-600">Alterar na página da seção</span>
       </div>
     );
   }
@@ -80,10 +85,13 @@ export function SectionLinkedSpreadsheetBar({
             href={selected.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 text-xs text-emerald-300 hover:text-emerald-200"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-600/50 bg-emerald-700/20 px-3 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-700/35 hover:text-white"
             title="Abrir planilha no Google Sheets"
           >
-            ↗
+            Abrir planilha
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
           </a>
         ) : null}
       </div>
