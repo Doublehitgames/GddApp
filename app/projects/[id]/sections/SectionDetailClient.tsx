@@ -54,6 +54,7 @@ import { AddonPickerModal } from "@/components/AddonPickerModal";
 import { AddonStackedList } from "@/components/addons/AddonStackedList";
 import { AddonEditorDrawer } from "@/components/addons/AddonEditorDrawer";
 import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
+import { useSyncSectionSheets } from "@/hooks/useSyncSectionSheets";
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
@@ -1705,6 +1706,12 @@ function SectionDetailContent({
   const hasSheetCapableAddons: boolean = (addons as any[]).some(
     (a: any) => a.type === "economyLink" || a.type === "progressionTable" || a.type === "production"
   );
+  const {
+    sync: syncSectionSheets,
+    syncing: sectionSheetsSyncing,
+    result: sectionSheetsResult,
+    error: sectionSheetsError,
+  } = useSyncSectionSheets(realProjectId, realSectionId);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
   const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
@@ -2676,6 +2683,10 @@ function SectionDetailContent({
                   linkedSpreadsheetId={sectionLinkedSpreadsheetId}
                   spreadsheetRegistry={linkedSpreadsheets}
                   onChange={(id) => setSectionLinkedSpreadsheet(realProjectId, realSectionId, id)}
+                  onSync={syncSectionSheets}
+                  syncing={sectionSheetsSyncing}
+                  syncResult={sectionSheetsResult}
+                  syncError={sectionSheetsError}
                 />
               )}
 
