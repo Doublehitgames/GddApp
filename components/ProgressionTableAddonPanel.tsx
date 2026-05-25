@@ -43,6 +43,7 @@ import {
   CommitOptionalNumberInput,
 } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
+import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
 
 const FORMULA_ALLOWED_CHARS = /^[0-9,+\-*/().\s_a-zA-Z]+$/;
 
@@ -510,7 +511,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const sectionLinkedSpreadsheetId = currentSection?.linkedSpreadsheetId;
 
   const handleSectionLinkedSpreadsheetChange = useCallback(
-    (id: string) => {
+    (id: string | undefined) => {
       if (currentProjectId && currentSection) {
         setSectionLinkedSpreadsheet(currentProjectId, currentSection.id, id);
       }
@@ -1552,6 +1553,11 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="mb-4 space-y-3">
+        <SectionLinkedSpreadsheetBar
+          linkedSpreadsheetId={sectionLinkedSpreadsheetId}
+          spreadsheetRegistry={linkedSpreadsheets}
+          onChange={handleSectionLinkedSpreadsheetChange}
+        />
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
@@ -1903,7 +1909,16 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                         ) : bindingFormColumnId === column.id ? (
                           <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-2.5 space-y-2">
                             <p className="text-[11px] font-semibold text-gray-200">📊 {t("progressionTableAddon.sheets.formTitle", "Vincular ao Google Sheets")}</p>
-                            {linkedSpreadsheets.length > 0 && (
+                            {sectionLinkedSpreadsheetId ? (
+                              /* Planilha já definida na seção: apenas badge readonly */
+                              <div className="flex items-center gap-1.5 rounded border border-emerald-700/30 bg-emerald-900/10 px-2 py-1 text-[10px] text-emerald-300">
+                                <span aria-hidden="true">📊</span>
+                                <span className="truncate">
+                                  {linkedSpreadsheets.find((s) => s.id === sectionLinkedSpreadsheetId)?.name ?? t("progressionTableAddon.sheets.spreadsheetLabel", "Planilha")}
+                                </span>
+                              </div>
+                            ) : linkedSpreadsheets.length > 0 ? (
+                              /* Nenhuma planilha na seção ainda: picker completo */
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.spreadsheetLabel", "Planilha")}</span>
                                 <select
@@ -1917,8 +1932,8 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   <option value="">{t("progressionTableAddon.sheets.customUrlOption", "URL personalizada...")}</option>
                                 </select>
                               </label>
-                            )}
-                            {(!sheetsFormRegistryId || linkedSpreadsheets.length === 0) && (
+                            ) : null}
+                            {!sectionLinkedSpreadsheetId && (!sheetsFormRegistryId || linkedSpreadsheets.length === 0) && (
                               <label className="block">
                                 <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.urlLabel", "URL da Planilha")}</span>
                                 <input

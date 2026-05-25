@@ -12,6 +12,7 @@ import { CommitNumberInput, CommitOptionalNumberInput } from "@/components/commo
 import { BoundedNumericField } from "@/components/common/BoundedNumericField";
 import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 import { openQuickNewPage } from "@/components/QuickNewPageModal";
+import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
 
 interface ProductionAddonPanelProps {
   addon: ProductionAddonDraft;
@@ -281,7 +282,7 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   const sectionLinkedSpreadsheetId = (currentSection as { linkedSpreadsheetId?: string } | undefined)?.linkedSpreadsheetId;
 
   const handleLinkedSpreadsheetChange = useCallback(
-    (id: string) => {
+    (id: string | undefined) => {
       if (currentProjectId && currentSection) {
         setSectionLinkedSpreadsheet(currentProjectId, currentSection.id, id);
       }
@@ -489,6 +490,11 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="space-y-3">
+        <SectionLinkedSpreadsheetBar
+          linkedSpreadsheetId={sectionLinkedSpreadsheetId}
+          spreadsheetRegistry={linkedSpreadsheets}
+          onChange={handleLinkedSpreadsheetChange}
+        />
         <label className="block">
           <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
             {t("productionAddon.modeLabel", "Modo de producao")}

@@ -473,7 +473,43 @@ export function FieldBindingPicker({
 
                   {/* Sheets form */}
                   <div className="mx-1 mb-1 space-y-1">
-                    {spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
+                    {/* ── Planilha já definida na seção: mostrar só aba + célula ── */}
+                    {context.linkedSpreadsheetId && spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
+                      <>
+                        {/* Readonly: nome da planilha da seção */}
+                        <div className="flex items-center gap-1.5 rounded border border-emerald-700/30 bg-emerald-900/10 px-2 py-1 text-[10px] text-emerald-300">
+                          <span aria-hidden="true">📊</span>
+                          <span className="truncate">
+                            {spreadsheetRegistry.find((s) => s.id === context.linkedSpreadsheetId)?.name ?? "Planilha da seção"}
+                          </span>
+                        </div>
+                        {/* Aba + célula */}
+                        <div className="flex gap-1">
+                          <select
+                            value={sheetsSheetName}
+                            onChange={(e) => setSheetsSheetName(e.target.value)}
+                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
+                          >
+                            <option value="">Aba…</option>
+                            {(
+                              spreadsheetRegistry.find((s) => s.id === context.linkedSpreadsheetId)?.sheets ?? []
+                            ).map((sh) => (
+                              <option key={sh} value={sh}>
+                                {sh}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            value={sheetsCellRef}
+                            onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
+                            placeholder="A1"
+                            className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                          />
+                        </div>
+                      </>
+                    ) : spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
+                      /* ── Nenhuma planilha na seção ainda: picker completo ── */
                       <>
                         <select
                           value={selectedRegistryId}
@@ -557,6 +593,7 @@ export function FieldBindingPicker({
                         ) : null}
                       </>
                     ) : (
+                      /* ── Sem registro no projeto: URL manual ── */
                       <>
                         <input
                           type="url"
