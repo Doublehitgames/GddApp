@@ -445,7 +445,8 @@ export function ProductionAddonPanel({ addon, onChange, onRemove }: ProductionAd
     spreadsheetRegistry: linkedSpreadsheets,
     linkedSpreadsheetId: sectionLinkedSpreadsheetId,
     onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange,
-  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange]);
+    pageDataId: (currentSection as { dataId?: string } | undefined)?.dataId,
+  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange, currentSection]);
 
   function handleBindingChange(
     bindingField:

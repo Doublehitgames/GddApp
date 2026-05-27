@@ -8,6 +8,8 @@ export type ProgressionTableColumnSheetsBinding = {
   /** Last synced values, one per level row (index 0 = startLevel). Strings for text columns. */
   cachedValues?: (number | string)[];
   syncedAt?: string | null;
+  /** Nome do header da coluna (row 0). Quando definido, a coluna é resolvida por nome em vez de posição. */
+  columnLock?: string;
 };
 
 export type ProgressionTableColumn = {
@@ -218,9 +220,14 @@ export type InventoryAddonDraft = {
 
 export type SheetsCellRef = {
   sheetName: string;
+  /** Posição resolvida do último sync (ex: "B3"). Usado como fallback quando locks estão desativados. */
   cellRef: string;
   cachedValue: string | number | boolean | null;
   syncedAt: string | null;
+  /** Nome do header da coluna (row 0). Quando definido, a coluna é resolvida por nome em vez de posição. */
+  columnLock?: string;
+  /** Chave da linha na coluna 0. "auto" = DataID da página; string = valor fixo. */
+  rowLock?: "auto" | string;
 };
 
 export type EconomyLinkAddonDraft = {

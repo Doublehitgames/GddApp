@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
-import { parseSpreadsheetId, getGoogleSheetsToken, fetchSpreadsheetSheets } from "@/lib/googleSheets";
+import { parseSpreadsheetId, getGoogleSheetsToken, fetchSpreadsheetSheets, fetchSpreadsheetHeaders } from "@/lib/googleSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -27,6 +27,7 @@ export function LinkedSpreadsheetsSettings({
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchedSheets, setFetchedSheets] = useState<string[] | null>(null);
+  const [fetchedColumnsBySheet, setFetchedColumnsBySheet] = useState<Record<string, string[]> | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function LinkedSpreadsheetsSettings({
     setNewUrl("");
     setNewName("");
     setFetchedSheets(null);
+    setFetchedColumnsBySheet(null);
     setFetchError(null);
     setAdding(false);
     setEditingId(null);
@@ -58,7 +60,9 @@ export function LinkedSpreadsheetsSettings({
         setFetchError(t("linkedSpreadsheetsSettings.errorNoSheets"));
         return;
       }
+      const columnsBySheet = await fetchSpreadsheetHeaders(token, spreadsheetId, sheets);
       setFetchedSheets(sheets);
+      setFetchedColumnsBySheet(Object.keys(columnsBySheet).length > 0 ? columnsBySheet : null);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : t("linkedSpreadsheetsSettings.errorGeneric"));
     } finally {
@@ -69,11 +73,12 @@ export function LinkedSpreadsheetsSettings({
   function handleSave() {
     const spreadsheetId = parseSpreadsheetId(newUrl);
     if (!spreadsheetId || !newName.trim() || !fetchedSheets) return;
+    const columnsBySheet = fetchedColumnsBySheet ?? undefined;
     if (editingId) {
       onChange(
         spreadsheets.map((s) =>
           s.id === editingId
-            ? { ...s, name: newName.trim(), url: newUrl.trim(), spreadsheetId, sheets: fetchedSheets }
+            ? { ...s, name: newName.trim(), url: newUrl.trim(), spreadsheetId, sheets: fetchedSheets, columnsBySheet }
             : s
         )
       );
@@ -86,6 +91,7 @@ export function LinkedSpreadsheetsSettings({
           url: newUrl.trim(),
           spreadsheetId,
           sheets: fetchedSheets,
+          columnsBySheet,
         },
       ]);
     }
@@ -97,6 +103,7 @@ export function LinkedSpreadsheetsSettings({
     setNewUrl(s.url);
     setNewName(s.name);
     setFetchedSheets(s.sheets);
+    setFetchedColumnsBySheet(s.columnsBySheet ?? null);
     setFetchError(null);
     setAdding(true);
   }
@@ -115,7 +122,12 @@ export function LinkedSpreadsheetsSettings({
       if (!token) { setRefreshError(t("linkedSpreadsheetsSettings.errorNoAuth")); return; }
       const sheets = await fetchSpreadsheetSheets(token, s.spreadsheetId);
       if (!sheets || sheets.length === 0) { setRefreshError(t("linkedSpreadsheetsSettings.errorNoSheets")); return; }
-      onChange(spreadsheets.map((sp) => sp.id === s.id ? { ...sp, sheets } : sp));
+      const columnsBySheet = await fetchSpreadsheetHeaders(token, s.spreadsheetId, sheets);
+      onChange(spreadsheets.map((sp) =>
+        sp.id === s.id
+          ? { ...sp, sheets, columnsBySheet: Object.keys(columnsBySheet).length > 0 ? columnsBySheet : undefined }
+          : sp
+      ));
     } catch {
       setRefreshError(t("linkedSpreadsheetsSettings.errorGeneric"));
     } finally {

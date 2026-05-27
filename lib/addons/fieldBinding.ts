@@ -101,6 +101,8 @@ export type FieldBindingPickerContext = {
   linkedSpreadsheetId?: string;
   /** Chamado quando o usuário muda a planilha vinculada à seção. */
   onLinkedSpreadsheetChange?: (id: string) => void;
+  /** DataID da página atual — usado para resolver rowLock: "auto". */
+  pageDataId?: string;
 };
 
 // ── Display helpers ───────────────────────────────────────────────────────────

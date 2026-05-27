@@ -64,7 +64,13 @@ export function useSyncSectionSheets(projectId: string, sectionId: string) {
     setSyncing(true);
     try {
       const addons = section.addons ?? [];
-      const syncResult = await syncSectionAddons(addons, registryEntry.spreadsheetId, token);
+      const syncResult = await syncSectionAddons(
+        addons,
+        registryEntry.spreadsheetId,
+        token,
+        section.dataId,
+        registryEntry.columnsBySheet,
+      );
       setSectionAddons(projectId, sectionId, syncResult.updatedAddons);
       setResult(syncResult);
     } catch (e) {

@@ -4,6 +4,30 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import type { SheetsCellRef } from "@/lib/addons/types";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
+import {
+  getGoogleSheetsToken,
+  fetchSheetCellValue,
+  fetchColumnValues,
+  fetchSpreadsheetHeaders,
+  columnIndexToLetter,
+  parseSpreadsheetId,
+} from "@/lib/googleSheets";
+import { getGoogleClientId } from "@/lib/googleDrivePicker";
+
+// ── Module-level helpers ───────────────────────────────────────────────────────
+
+function formatSyncAge(syncedAt: string | null | undefined): string | null {
+  if (!syncedAt) return null;
+  const diff = Date.now() - new Date(syncedAt).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "agora";
+  if (m < 60) return `${m}min atrás`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  return `há ${Math.floor(h / 24)}d`;
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export type LinkedFieldOption = {
   /** Stable unique key for this option (e.g. `${addonId}::${columnId}`). */
@@ -47,6 +71,8 @@ interface LinkedFieldRowProps {
   linkedSpreadsheetId?: string;
   /** Chamado quando o usuário muda a planilha vinculada à seção. */
   onLinkedSpreadsheetChange?: (id: string) => void;
+  /** DataID da página atual — usado para resolver rowLock: "auto". */
+  pageDataId?: string;
 }
 
 export function LinkedFieldRow({
@@ -64,27 +90,40 @@ export function LinkedFieldRow({
   spreadsheetRegistry,
   linkedSpreadsheetId,
   onLinkedSpreadsheetChange,
+  pageDataId,
 }: LinkedFieldRowProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [sheetsUrl, setSheetsUrl] = useState("");
   const [sheetsSheetName, setSheetsSheetName] = useState("");
-  const [sheetsCellRef, setSheetsCellRef] = useState("");
+  // Coluna: "letter" = digita letra (ex: B) | "header" = escolhe pelo nome do header
+  const [columnMode, setColumnMode] = useState<"letter" | "header">("letter");
+  const [sheetsColInput, setSheetsColInput] = useState("");
+  const [columnHeaderValue, setColumnHeaderValue] = useState("");
+  // Linha: "number" = digita número (ex: 3) | "auto" = usa DataID da página
+  const [rowMode, setRowMode] = useState<"number" | "auto">("number");
+  const [sheetsRowInput, setSheetsRowInput] = useState("");
   const [sheetsError, setSheetsError] = useState<string | null>(null);
   const [sheetsLoading, setSheetsLoading] = useState(false);
   // registry mode
   const [selectedRegistryId, setSelectedRegistryId] = useState("");
+
+  // Auto-fetch headers
+  const [localColumnsBySheet, setLocalColumnsBySheet] = useState<Record<string, string[]>>({});
+  const [headersFetching, setHeadersFetching] = useState(false);
+
+  // Test-bind
+  const [testResult, setTestResult] = useState<{ cell: string; value: string | number | boolean | null } | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
   const popoverId = useId();
-  // Stable ids so the label <span> can be referenced via aria-labelledby on
-  // the trigger button. Without this, screen-readers (and accessibility-aware
-  // queries like `getByRole("button", { name: /Tempo (segundos)/ })`) only
-  // see the chip text and miss the field label entirely.
   const labelId = useId();
   const buttonId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selected = selectedKey ? options.find((o) => o.key === selectedKey) : undefined;
   const hasInvalidLink = Boolean(selectedKey && !selected);
+  const hasSheetsBinding = Boolean(sheetsBinding?.current);
 
   useEffect(() => {
     if (!open) return;
@@ -107,8 +146,28 @@ export function LinkedFieldRow({
     if (!open || !sheetsBinding) return;
     const cur = sheetsBinding.current;
     setSheetsSheetName(cur?.sheetName ?? "");
-    setSheetsCellRef(cur?.cellRef ?? "");
+    // Extrair coluna e linha do cellRef existente (ex: "B3" → col="B", row="3")
+    const colMatch = cur?.cellRef?.match(/^([A-Z]+)/);
+    const rowMatch = cur?.cellRef?.match(/(\d+)$/);
+    if (cur?.columnLock) {
+      setColumnMode("header");
+      setColumnHeaderValue(cur.columnLock);
+      setSheetsColInput(colMatch ? colMatch[1] : "");
+    } else {
+      setColumnMode("letter");
+      setSheetsColInput(colMatch ? colMatch[1] : "");
+      setColumnHeaderValue("");
+    }
+    if (cur?.rowLock) {
+      setRowMode("auto");
+      setSheetsRowInput(rowMatch ? rowMatch[1] : "");
+    } else {
+      setRowMode("number");
+      setSheetsRowInput(rowMatch ? rowMatch[1] : "");
+    }
     setSheetsError(null);
+    setTestResult(null);
+    setLocalColumnsBySheet({});
     // Init registry selection from section's linkedSpreadsheetId, falling back to first registry entry
     if (spreadsheetRegistry && spreadsheetRegistry.length > 0) {
       setSelectedRegistryId(linkedSpreadsheetId ?? spreadsheetRegistry[0].id);
@@ -119,34 +178,157 @@ export function LinkedFieldRow({
     }
   }, [open]);
 
+  // Auto-fetch headers when tab changes
+  useEffect(() => {
+    if (!open || !sheetsBinding || !sheetsSheetName) return;
+
+    const effectiveId = linkedSpreadsheetId
+      ?? (selectedRegistryId !== "__other__" ? selectedRegistryId : undefined);
+    const reg = spreadsheetRegistry?.find((s) => s.id === effectiveId);
+    if (!reg?.spreadsheetId) return;
+
+    // Already have headers — skip fetch
+    if (
+      (reg.columnsBySheet?.[sheetsSheetName] && reg.columnsBySheet[sheetsSheetName].length > 0) ||
+      (localColumnsBySheet[sheetsSheetName] && localColumnsBySheet[sheetsSheetName].length > 0)
+    ) return;
+
+    let cancelled = false;
+    setHeadersFetching(true);
+    (async () => {
+      try {
+        const clientId = await getGoogleClientId();
+        const token = clientId ? await getGoogleSheetsToken(clientId) : null;
+        if (!token || cancelled) return;
+        const result = await fetchSpreadsheetHeaders(token, reg.spreadsheetId, [sheetsSheetName]);
+        if (!cancelled) {
+          setLocalColumnsBySheet((prev) => ({ ...prev, ...result }));
+        }
+      } catch {
+        // silent
+      } finally {
+        if (!cancelled) setHeadersFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, sheetsSheetName, selectedRegistryId]);
+
+  // Derived: available headers
+  const effectiveRegistryEntry = spreadsheetRegistry?.find(
+    (s) => s.id === (linkedSpreadsheetId ?? (selectedRegistryId !== "__other__" ? selectedRegistryId : undefined))
+  );
+  const availableHeaders = sheetsSheetName
+    ? (localColumnsBySheet[sheetsSheetName] ?? effectiveRegistryEntry?.columnsBySheet?.[sheetsSheetName] ?? [])
+    : [];
+
+  const columnLockMissing = !!(sheetsBinding?.current?.columnLock && availableHeaders.length > 0 && !availableHeaders.includes(sheetsBinding.current.columnLock));
+  const hasLocks = hasSheetsBinding && sheetsBinding?.current && (sheetsBinding.current.columnLock || sheetsBinding.current.rowLock);
+
+  // Preview cell (derived from form state, no network)
+  const previewColLetter = columnMode === "letter"
+    ? (sheetsColInput.trim().toUpperCase() || null)
+    : (() => { const idx = availableHeaders.indexOf(columnHeaderValue); return idx >= 0 ? columnIndexToLetter(idx) : null; })();
+  const previewCell = sheetsSheetName && previewColLetter
+    ? `${sheetsSheetName}!${previewColLetter}${rowMode === "number" ? (sheetsRowInput.trim() || "?") : "?"}`
+    : null;
+
+  // ── Resolution helper (shared by test and bind) ────────────────────────────
+  async function resolveCell(): Promise<{ resolvedCell: string; spreadsheetId: string; token: string; sheet: string }> {
+    const sheet = sheetsSheetName.trim();
+    if (!sheet) throw new Error(t("linkedField.sheets.errorNoSheet"));
+
+    if (columnMode === "letter") {
+      const col = sheetsColInput.trim().toUpperCase();
+      if (!col || !/^[A-Z]+$/.test(col)) throw new Error("Informe a letra da coluna (ex: B).");
+    } else {
+      if (!columnHeaderValue) throw new Error("Selecione um campo da coluna.");
+    }
+    if (rowMode === "number") {
+      if (!sheetsRowInput.trim() || !/^\d+$/.test(sheetsRowInput.trim())) {
+        throw new Error("Informe o número da linha (ex: 3).");
+      }
+    } else {
+      if (!pageDataId) throw new Error("DataID da página não disponível.");
+    }
+
+    const effectiveRegistryId = selectedRegistryId && selectedRegistryId !== "__other__"
+      ? selectedRegistryId : undefined;
+    if (!effectiveRegistryId && !sheetsUrl.trim()) {
+      throw new Error(t("linkedField.sheets.errorInvalidUrl"));
+    }
+
+    const registryEntry = effectiveRegistryId
+      ? spreadsheetRegistry?.find((s) => s.id === effectiveRegistryId) : undefined;
+    const spreadsheetId = registryEntry?.spreadsheetId ?? (sheetsUrl ? parseSpreadsheetId(sheetsUrl) : null);
+    if (!spreadsheetId) throw new Error("Planilha não encontrada no registro.");
+
+    const clientId = await getGoogleClientId();
+    const token = clientId ? await getGoogleSheetsToken(clientId) : null;
+    if (!token) throw new Error("Não foi possível obter autorização do Google.");
+
+    // Resolver coluna
+    let colLetter: string;
+    if (columnMode === "letter") {
+      colLetter = sheetsColInput.trim().toUpperCase();
+    } else {
+      const headers = registryEntry?.columnsBySheet?.[sheet] ?? availableHeaders;
+      const colIdx = headers.findIndex((h) => h === columnHeaderValue);
+      if (colIdx < 0) throw new Error(`Campo "${columnHeaderValue}" não encontrado na aba "${sheet}". Atualize a planilha nas configurações do projeto.`);
+      colLetter = columnIndexToLetter(colIdx);
+    }
+
+    // Resolver linha
+    let rowNum: number;
+    if (rowMode === "number") {
+      rowNum = parseInt(sheetsRowInput.trim(), 10);
+    } else {
+      const colAValues = await fetchColumnValues(token, spreadsheetId, sheet);
+      if (!colAValues) throw new Error(`Não foi possível ler a coluna de IDs da aba "${sheet}".`);
+      const rowIdx = colAValues.findIndex((v) => v === pageDataId);
+      if (rowIdx < 0) throw new Error(`"${pageDataId}" não encontrado na coluna A de "${sheet}". Verifique se o DataID está correto.`);
+      rowNum = rowIdx + 1;
+    }
+
+    return { resolvedCell: `${colLetter}${rowNum}`, spreadsheetId, token, sheet };
+  }
+
+  async function handleSheetsTest() {
+    setSheetsError(null);
+    setTestResult(null);
+    setTestLoading(true);
+    try {
+      const { resolvedCell, spreadsheetId, token, sheet } = await resolveCell();
+      const raw = await fetchSheetCellValue(token, spreadsheetId, sheet, resolvedCell);
+      if (raw === null) throw new Error(`Célula ${sheet}!${resolvedCell} está vazia ou não foi possível ler.`);
+      setTestResult({ cell: `${sheet}!${resolvedCell}`, value: raw });
+    } catch (err) {
+      setSheetsError(err instanceof Error ? err.message : "Erro ao testar.");
+    } finally {
+      setTestLoading(false);
+    }
+  }
+
   async function handleSheetsBind() {
     setSheetsError(null);
-    const sheet = sheetsSheetName.trim();
-    if (!sheet) { setSheetsError(t("linkedField.sheets.errorNoSheet")); return; }
-    const cell = sheetsCellRef.trim().toUpperCase();
-    if (!cell || !/^[A-Z]+\d+$/.test(cell)) {
-      setSheetsError(t("linkedField.sheets.errorInvalidCell"));
-      return;
-    }
-    // Resolve which registry entry to use
-    const effectiveRegistryId = selectedRegistryId && selectedRegistryId !== "__other__"
-      ? selectedRegistryId
-      : undefined;
-    if (!effectiveRegistryId && !sheetsUrl.trim()) {
-      setSheetsError(t("linkedField.sheets.errorInvalidUrl"));
-      return;
-    }
-    if (effectiveRegistryId && onLinkedSpreadsheetChange && effectiveRegistryId !== linkedSpreadsheetId) {
-      onLinkedSpreadsheetChange(effectiveRegistryId);
-    }
-    const cur = sheetsBinding?.current;
     setSheetsLoading(true);
     try {
+      const { resolvedCell, sheet } = await resolveCell();
+
+      const effectiveRegistryId = selectedRegistryId && selectedRegistryId !== "__other__"
+        ? selectedRegistryId : undefined;
+
+      if (effectiveRegistryId && onLinkedSpreadsheetChange && effectiveRegistryId !== linkedSpreadsheetId) {
+        onLinkedSpreadsheetChange(effectiveRegistryId);
+      }
+
+      const cur = sheetsBinding?.current;
       await sheetsBinding?.onBind({
         sheetName: sheet,
-        cellRef: cell,
-        cachedValue: cur?.sheetName === sheet && cur?.cellRef === cell ? (cur?.cachedValue ?? null) : null,
-        syncedAt: cur?.sheetName === sheet && cur?.cellRef === cell ? (cur?.syncedAt ?? null) : null,
+        cellRef: resolvedCell,
+        cachedValue: cur?.sheetName === sheet && cur?.cellRef === resolvedCell ? (cur?.cachedValue ?? null) : null,
+        syncedAt: cur?.sheetName === sheet && cur?.cellRef === resolvedCell ? (cur?.syncedAt ?? null) : null,
+        columnLock: columnMode === "header" ? columnHeaderValue : undefined,
+        rowLock: rowMode === "auto" ? "auto" : undefined,
       });
       setOpen(false);
     } catch (err) {
@@ -155,8 +337,6 @@ export function LinkedFieldRow({
       setSheetsLoading(false);
     }
   }
-
-  const hasSheetsBinding = Boolean(sheetsBinding?.current);
 
   const sheetsRegistryName = hasSheetsBinding && linkedSpreadsheetId
     ? spreadsheetRegistry?.find((s) => s.id === linkedSpreadsheetId)?.name
@@ -180,6 +360,8 @@ export function LinkedFieldRow({
 
   return (
     <div className="flex flex-col gap-1.5">
+      {open ? <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" aria-hidden="true" /> : null}
+
       <div className="flex items-baseline justify-between gap-2">
         <span className="flex items-center gap-1">
           <span id={labelId} className="text-xs text-gray-400">{label}</span>
@@ -196,11 +378,11 @@ export function LinkedFieldRow({
             onClick={() => setOpen((prev) => !prev)}
             aria-expanded={open}
             aria-controls={popoverId}
-            // Combine the field label + the button's own chip text so the
-            // accessible name reads e.g. "Tempo (segundos) — Tabela Base".
             aria-labelledby={`${labelId} ${buttonId}`}
             title={
-              selected
+              hasSheetsBinding && sheetsBinding?.current?.syncedAt
+                ? `Último sync: ${formatSyncAge(sheetsBinding.current.syncedAt)}`
+                : selected
                 ? t("linkedField.editLink", "Editar vínculo")
                 : t("linkedField.addLink", "Vincular a uma tabela de progressão")
             }
@@ -214,10 +396,8 @@ export function LinkedFieldRow({
                 d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 11-5.656-5.656l1.5-1.5m6.656-6.656l1.5-1.5a4 4 0 115.656 5.656l-3 3a4 4 0 01-5.656 0"
               />
             </svg>
+            {hasLocks ? <span className="shrink-0 text-amber-400 text-[10px]" aria-hidden="true">🔒</span> : null}
             <span className="truncate">{chipText}</span>
-            {/* Active-link bullet indicator. Hidden visually when there's no
-                link, kept in markup as " " so test queries that assert on the
-                presence of "•" in the chip can run a single comparison. */}
             {selected || hasSheetsBinding ? (
               <span aria-hidden="true" className={hasSheetsBinding ? "text-emerald-300" : "text-indigo-300"}>
                 •
@@ -232,7 +412,7 @@ export function LinkedFieldRow({
             <div
               id={popoverId}
               role="listbox"
-              className="absolute right-0 z-30 mt-1 w-72 max-h-72 overflow-auto rounded-xl border border-gray-700 bg-gray-900/98 p-1.5 shadow-2xl shadow-black/40 backdrop-blur"
+              className="fixed left-1/2 top-1/2 z-50 max-h-[min(600px,90vh)] w-[22rem] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-xl border border-gray-700 bg-gray-900/98 p-1.5 shadow-2xl shadow-black/40 backdrop-blur"
             >
               <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-gray-500">
                 {t("linkedField.popoverTitle", "Vincular a tabela de progressão")}
@@ -336,12 +516,22 @@ export function LinkedFieldRow({
                     </svg>
                     Google Sheets
                   </div>
+
                   {sheetsBinding.current ? (
                     <div className="mx-1 mb-1 flex items-center justify-between rounded-md border border-emerald-700/40 bg-emerald-900/15 px-2 py-1.5">
-                      <span className="text-[10px] font-mono text-emerald-300 truncate">
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-mono text-emerald-300">
                         {sheetsBinding.current.sheetName}!{sheetsBinding.current.cellRef}
                         {sheetsBinding.current.cachedValue != null ? (
                           <span className="ml-1.5 text-emerald-500">= {sheetsBinding.current.cachedValue}</span>
+                        ) : null}
+                        {sheetsBinding.current.columnLock ? (
+                          <span className="ml-1.5 rounded bg-amber-900/30 px-1 text-[9px] text-amber-400">col:{sheetsBinding.current.columnLock}</span>
+                        ) : null}
+                        {sheetsBinding.current.rowLock ? (
+                          <span className="ml-1 rounded bg-amber-900/30 px-1 text-[9px] text-amber-400">linha:auto</span>
+                        ) : null}
+                        {sheetsBinding.current.syncedAt ? (
+                          <span className="ml-1.5 text-[9px] text-gray-500">{formatSyncAge(sheetsBinding.current.syncedAt)}</span>
                         ) : null}
                       </span>
                       <button
@@ -353,8 +543,16 @@ export function LinkedFieldRow({
                       </button>
                     </div>
                   ) : null}
-                  <div className="mx-1 mb-1 space-y-1">
-                    {/* ── Planilha da seção já definida: badge + só aba + célula ── */}
+
+                  {/* columnLock missing warning */}
+                  {columnLockMissing ? (
+                    <div className="mx-1 mb-1 rounded border border-amber-600/40 bg-amber-900/10 px-2 py-1.5 text-[10px] text-amber-300">
+                      ⚠ Campo &quot;{sheetsBinding.current!.columnLock}&quot; não encontrado na planilha. O vínculo pode estar quebrado.
+                    </div>
+                  ) : null}
+
+                  <div className="mx-1 mb-1 space-y-2">
+                    {/* ── Modo 1: planilha já vinculada à seção ── */}
                     {linkedSpreadsheetId && spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
                       <>
                         <div className="flex items-center gap-1.5 rounded border border-emerald-700/30 bg-emerald-900/10 px-2 py-1 text-[10px] text-emerald-300">
@@ -363,28 +561,19 @@ export function LinkedFieldRow({
                             {spreadsheetRegistry.find((s) => s.id === linkedSpreadsheetId)?.name ?? "Planilha da seção"}
                           </span>
                         </div>
-                        <div className="flex gap-1">
-                          <select
-                            value={sheetsSheetName}
-                            onChange={(e) => setSheetsSheetName(e.target.value)}
-                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
-                          >
-                            <option value="">{t("linkedField.sheets.chooseSheetPlaceholder")}</option>
-                            {(spreadsheetRegistry.find((s) => s.id === linkedSpreadsheetId)?.sheets ?? []).map((sh) => (
-                              <option key={sh} value={sh}>{sh}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="text"
-                            value={sheetsCellRef}
-                            onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
-                            placeholder="A1"
-                            className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                          />
-                        </div>
+                        <select
+                          value={sheetsSheetName}
+                          onChange={(e) => setSheetsSheetName(e.target.value)}
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
+                        >
+                          <option value="">{t("linkedField.sheets.chooseSheetPlaceholder")}</option>
+                          {(spreadsheetRegistry.find((s) => s.id === linkedSpreadsheetId)?.sheets ?? []).map((sh) => (
+                            <option key={sh} value={sh}>{sh}</option>
+                          ))}
+                        </select>
                       </>
                     ) : spreadsheetRegistry && spreadsheetRegistry.length > 0 ? (
-                      /* ── Nenhuma planilha na seção: picker completo + dica ── */
+                      /* ── Modo 2: tem registro mas sem planilha na seção ── */
                       <>
                         <div className="rounded border border-amber-700/30 bg-amber-900/10 px-2 py-1 text-[10px] text-amber-300/80">
                           💡 Defina a planilha desta seção na página para não precisar escolher aqui toda vez.
@@ -410,7 +599,6 @@ export function LinkedFieldRow({
                           ))}
                           <option value="__other__">{t("linkedField.sheets.otherOption")}</option>
                         </select>
-
                         {selectedRegistryId === "__other__" && (
                           <input
                             type="url"
@@ -420,48 +608,29 @@ export function LinkedFieldRow({
                             className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
                           />
                         )}
-
                         {selectedRegistryId && selectedRegistryId !== "__other__" ? (
-                          <div className="flex gap-1">
-                            <select
-                              value={sheetsSheetName}
-                              onChange={(e) => setSheetsSheetName(e.target.value)}
-                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
-                            >
-                              <option value="">{t("linkedField.sheets.chooseSheetPlaceholder")}</option>
-                              {(spreadsheetRegistry.find((s) => s.id === selectedRegistryId)?.sheets ?? []).map((sh) => (
-                                <option key={sh} value={sh}>{sh}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              value={sheetsCellRef}
-                              onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
-                              placeholder="A1"
-                              className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                            />
-                          </div>
+                          <select
+                            value={sheetsSheetName}
+                            onChange={(e) => setSheetsSheetName(e.target.value)}
+                            className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white outline-none focus:border-gray-500"
+                          >
+                            <option value="">{t("linkedField.sheets.chooseSheetPlaceholder")}</option>
+                            {(spreadsheetRegistry.find((s) => s.id === selectedRegistryId)?.sheets ?? []).map((sh) => (
+                              <option key={sh} value={sh}>{sh}</option>
+                            ))}
+                          </select>
                         ) : selectedRegistryId === "__other__" ? (
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={sheetsSheetName}
-                              onChange={(e) => setSheetsSheetName(e.target.value)}
-                              placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
-                              className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                            />
-                            <input
-                              type="text"
-                              value={sheetsCellRef}
-                              onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
-                              placeholder="A1"
-                              className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                            />
-                          </div>
+                          <input
+                            type="text"
+                            value={sheetsSheetName}
+                            onChange={(e) => setSheetsSheetName(e.target.value)}
+                            placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
+                            className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                          />
                         ) : null}
                       </>
                     ) : (
-                      /* ── Sem registry: input livre ── */
+                      /* ── Modo 3: sem registry, URL manual ── */
                       <>
                         <input
                           type="url"
@@ -470,36 +639,163 @@ export function LinkedFieldRow({
                           placeholder={t("linkedField.sheets.urlPlaceholder")}
                           className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
                         />
-                        <div className="flex gap-1">
-                          <input
-                            type="text"
-                            value={sheetsSheetName}
-                            onChange={(e) => setSheetsSheetName(e.target.value)}
-                            placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
-                            className="min-w-0 flex-1 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                          />
-                          <input
-                            type="text"
-                            value={sheetsCellRef}
-                            onChange={(e) => setSheetsCellRef(e.target.value.toUpperCase())}
-                            placeholder="A1"
-                            className="w-16 rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
-                          />
-                        </div>
+                        <input
+                          type="text"
+                          value={sheetsSheetName}
+                          onChange={(e) => setSheetsSheetName(e.target.value)}
+                          placeholder={t("linkedField.sheets.sheetNamePlaceholder")}
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-gray-500"
+                        />
                       </>
                     )}
+
+                    {/* ── Eixo: Coluna ── */}
+                    <div className="space-y-1.5 rounded-lg border border-gray-700/60 bg-gray-800/40 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Coluna</span>
+                        <div className="flex overflow-hidden rounded border border-gray-700">
+                          <button
+                            type="button"
+                            onClick={() => setColumnMode("letter")}
+                            className={`px-2 py-0.5 text-[10px] transition-colors ${
+                              columnMode === "letter" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                            }`}
+                          >
+                            Por letra
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setColumnMode("header")}
+                            className={`border-l border-gray-700 px-2 py-0.5 text-[10px] transition-colors ${
+                              columnMode === "header" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                            }`}
+                          >
+                            Por nome
+                          </button>
+                        </div>
+                      </div>
+                      {columnMode === "letter" ? (
+                        <input
+                          type="text"
+                          value={sheetsColInput}
+                          onChange={(e) => setSheetsColInput(e.target.value.toUpperCase())}
+                          placeholder="Ex: B"
+                          maxLength={3}
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-indigo-500"
+                        />
+                      ) : headersFetching && availableHeaders.length === 0 ? (
+                        <div className="flex items-center gap-2 rounded border border-gray-700 bg-gray-800/60 px-2 py-1.5 text-[10px] text-gray-500">
+                          <svg className="h-3 w-3 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" strokeWidth="4" />
+                            <path className="opacity-75" strokeLinecap="round" strokeWidth="4" d="M4 12a8 8 0 018-8" />
+                          </svg>
+                          Carregando campos…
+                        </div>
+                      ) : availableHeaders.length > 0 ? (
+                        <select
+                          value={columnHeaderValue}
+                          onChange={(e) => setColumnHeaderValue(e.target.value)}
+                          className="w-full rounded border border-indigo-600/40 bg-gray-800 px-2 py-1 text-xs text-indigo-100 outline-none focus:border-indigo-500"
+                        >
+                          <option value="">Escolher campo…</option>
+                          {availableHeaders.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="rounded border border-gray-700 bg-gray-800/60 px-2 py-1.5 text-[10px] text-gray-500">
+                          Selecione uma aba acima para ver os campos disponíveis.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Eixo: Linha ── */}
+                    <div className="space-y-1.5 rounded-lg border border-gray-700/60 bg-gray-800/40 p-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Linha</span>
+                        <div className="flex overflow-hidden rounded border border-gray-700">
+                          <button
+                            type="button"
+                            onClick={() => setRowMode("number")}
+                            className={`px-2 py-0.5 text-[10px] transition-colors ${
+                              rowMode === "number" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                            }`}
+                          >
+                            Por número
+                          </button>
+                          {pageDataId ? (
+                            <button
+                              type="button"
+                              onClick={() => setRowMode("auto")}
+                              className={`border-l border-gray-700 px-2 py-0.5 text-[10px] transition-colors ${
+                                rowMode === "auto" ? "bg-indigo-600 text-white" : "bg-gray-800 text-gray-400 hover:text-gray-200"
+                              }`}
+                            >
+                              DataID (auto)
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                      {rowMode === "number" ? (
+                        <input
+                          type="text"
+                          value={sheetsRowInput}
+                          onChange={(e) => setSheetsRowInput(e.target.value.replace(/\D/g, ""))}
+                          placeholder="Ex: 3"
+                          className="w-full rounded border border-gray-600 bg-gray-800 px-2 py-1 text-xs text-white placeholder-gray-500 outline-none focus:border-indigo-500"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 rounded border border-indigo-600/30 bg-indigo-900/15 px-2 py-1.5 text-[11px]">
+                          <span className="shrink-0 text-gray-400">ID da linha:</span>
+                          <span className="min-w-0 flex-1 truncate font-mono font-medium text-indigo-300">{pageDataId}</span>
+                          <span className="shrink-0 text-indigo-400" aria-hidden="true">🔒</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Preview cell */}
+                    {previewCell ? (
+                      <div className="flex items-center gap-1.5 rounded border border-indigo-700/30 bg-indigo-900/10 px-2 py-1 text-[10px]">
+                        <span className="text-gray-500">→</span>
+                        <span className="font-mono text-indigo-300">{previewCell}</span>
+                        {rowMode === "auto" ? (
+                          <span className="ml-auto text-[9px] text-gray-500">linha resolvida no vínculo</span>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {sheetsError ? (
                       <p className="text-[10px] text-rose-400">{sheetsError}</p>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={handleSheetsBind}
-                      disabled={sheetsLoading}
-                      className="w-full rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-2 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-50"
-                    >
-                      {sheetsLoading ? t("linkedField.sheets.bindingButton") : sheetsBinding.current ? t("linkedField.sheets.updateButton") : t("linkedField.sheets.bindButton")}
-                    </button>
+
+                    {/* Test result */}
+                    {testResult ? (
+                      <div className="flex items-center gap-2 rounded border border-emerald-700/40 bg-emerald-900/10 px-2 py-1.5 text-[11px]">
+                        <span className="text-emerald-400" aria-hidden="true">✓</span>
+                        <span className="font-mono text-[10px] text-gray-400">{testResult.cell}</span>
+                        <span className="ml-auto font-mono font-medium text-emerald-300">{String(testResult.value)}</span>
+                      </div>
+                    ) : null}
+
+                    {/* Buttons */}
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleSheetsTest}
+                        disabled={testLoading || sheetsLoading}
+                        className="flex-1 rounded-lg border border-gray-600 bg-gray-800/60 px-2 py-1.5 text-xs text-gray-300 hover:bg-gray-700 disabled:opacity-50"
+                      >
+                        {testLoading ? "Testando…" : "Testar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSheetsBind}
+                        disabled={sheetsLoading || testLoading}
+                        className="flex-1 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-2 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-50"
+                      >
+                        {sheetsLoading ? t("linkedField.sheets.bindingButton") : sheetsBinding.current ? t("linkedField.sheets.updateButton") : t("linkedField.sheets.bindButton")}
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : null}

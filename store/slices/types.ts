@@ -303,6 +303,8 @@ export type LinkedSpreadsheet = {
   url: string;
   /** Nomes das abas, buscados via API ao cadastrar. */
   sheets: string[];
+  /** Headers da linha 0 (row 1 no Sheets) por aba, preenchido ao registrar/atualizar. */
+  columnsBySheet?: Record<string, string[]>;
 };
 
 //Definição do Projeto. Um projeto pode ter várias seções.

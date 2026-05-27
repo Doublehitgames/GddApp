@@ -163,6 +163,69 @@ export async function fetchSheetRangeValues(
 }
 
 /**
+ * Converts a zero-based column index to a spreadsheet column letter.
+ * 0 → "A", 1 → "B", 25 → "Z", 26 → "AA", etc.
+ */
+export function columnIndexToLetter(index: number): string {
+  let result = "";
+  let n = index;
+  while (n >= 0) {
+    result = String.fromCharCode((n % 26) + 65) + result;
+    n = Math.floor(n / 26) - 1;
+  }
+  return result;
+}
+
+/**
+ * Fetches the first row (headers) for each given sheet tab.
+ * Returns a map of sheetName → array of header strings (empty strings filtered out at the end).
+ */
+export async function fetchSpreadsheetHeaders(
+  token: string,
+  spreadsheetId: string,
+  sheetNames: string[],
+): Promise<Record<string, string[]>> {
+  const result: Record<string, string[]> = {};
+  await Promise.all(
+    sheetNames.map(async (sheetName) => {
+      const range = `${sheetName}!1:1`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`;
+      try {
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = (await res.json()) as { values?: string[][] };
+        const headers = (data.values?.[0] ?? []).map((h) => String(h ?? "").trim()).filter(Boolean);
+        if (headers.length > 0) result[sheetName] = headers;
+      } catch {
+        // silently skip tabs that fail
+      }
+    })
+  );
+  return result;
+}
+
+/**
+ * Fetches all values from column A of a sheet tab (used for row lock resolution).
+ * Returns the raw string values of each cell, index 0 = row 1.
+ */
+export async function fetchColumnValues(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+): Promise<string[] | null> {
+  const range = `${sheetName}!A:A`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { values?: string[][] };
+    return (data.values ?? []).map((row) => String(row[0] ?? "").trim());
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parses a raw cell string value to a number.
  * Handles values like "150", "1,500", "1.500,00" (pt-BR) etc.
  */

@@ -427,7 +427,8 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
     spreadsheetRegistry: linkedSpreadsheets,
     linkedSpreadsheetId: sectionLinkedSpreadsheetId,
     onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange,
-  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange]);
+    pageDataId: currentSection?.dataId as string | undefined,
+  }), [progressionColumnOptions, linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange, currentSection]);
 
   function handleValueBinding(
     bindingField: "buyValueBinding" | "sellValueBinding",
@@ -726,7 +727,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.minBuyValue", "Mín de compra") }}
                         value={addon.minBuyValueBinding ?? MANUAL_BINDING}
                         onChange={(b) => handleLimitBinding("minBuyValueBinding", "minBuyValue", b)}
-                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange, pageDataId: currentSection?.dataId as string | undefined }}
                       >
                         {addon.minBuyValueBinding?.source === "sheets" ? (
                           <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
@@ -751,7 +752,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.maxBuyValue", "Máx de compra") }}
                         value={addon.maxBuyValueBinding ?? MANUAL_BINDING}
                         onChange={(b) => handleLimitBinding("maxBuyValueBinding", "maxBuyValue", b)}
-                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange, pageDataId: currentSection?.dataId as string | undefined }}
                       >
                         {addon.maxBuyValueBinding?.source === "sheets" ? (
                           <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
@@ -908,7 +909,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.minSellValue", "Mín de venda") }}
                         value={addon.minSellValueBinding ?? MANUAL_BINDING}
                         onChange={(b) => handleLimitBinding("minSellValueBinding", "minSellValue", b)}
-                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange, pageDataId: currentSection?.dataId as string | undefined }}
                       >
                         {addon.minSellValueBinding?.source === "sheets" ? (
                           <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
@@ -933,7 +934,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                         config={{ valueType: "number", acceptedSources: ["sheets"], label: t("economyLinkAddon.maxSellValue", "Máx de venda") }}
                         value={addon.maxSellValueBinding ?? MANUAL_BINDING}
                         onChange={(b) => handleLimitBinding("maxSellValueBinding", "maxSellValue", b)}
-                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                        context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange, pageDataId: currentSection?.dataId as string | undefined }}
                       >
                         {addon.maxSellValueBinding?.source === "sheets" ? (
                           <div className={`${INPUT_CLASS} cursor-not-allowed overflow-hidden truncate bg-gray-800/50 text-emerald-300`}>
@@ -1098,7 +1099,7 @@ export function EconomyLinkAddonPanel({ addon, onChange, onRemove }: EconomyLink
                     }}
                     value={addon.unlockValueBinding ?? MANUAL_BINDING}
                     onChange={handleUnlockSheetsBinding}
-                    context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange }}
+                    context={{ spreadsheetRegistry: linkedSpreadsheets, linkedSpreadsheetId: sectionLinkedSpreadsheetId, onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange, pageDataId: currentSection?.dataId as string | undefined }}
                   >
                     <CommitOptionalNumberInput
                       value={addon.unlockValue}
