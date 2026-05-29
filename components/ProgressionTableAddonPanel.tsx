@@ -18,7 +18,7 @@ import type {
   ProgressionTableColumnSheetsBinding,
   ProgressionTableRow,
 } from "@/lib/addons/types";
-import { getGoogleSheetsToken, fetchSheetRangeValues, parseSpreadsheetId, parseCellNumber } from "@/lib/googleSheets";
+import { getGoogleSheetsToken, fetchSheetRangeValues, parseSpreadsheetId, parseCellNumber, fetchSpreadsheetHeaders, columnIndexToLetter } from "@/lib/googleSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
 import { buildProgressionRowsFromRange } from "@/lib/addons/types";
@@ -451,6 +451,12 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const [sheetsFormSheetName, setSheetsFormSheetName] = useState<string>("");
   const [sheetsFormRange, setSheetsFormRange] = useState<string>("");
   const [sheetsFormUrl, setSheetsFormUrl] = useState<string>("");
+  // Column lock form state
+  const [sheetsFormColumnMode, setSheetsFormColumnMode] = useState<"letter" | "header">("letter");
+  const [sheetsFormColumnHeader, setSheetsFormColumnHeader] = useState<string>("");
+  const [sheetsFormRowRange, setSheetsFormRowRange] = useState<string>("");
+  const [sheetsFormLocalHeaders, setSheetsFormLocalHeaders] = useState<Record<string, string[]>>({});
+  const [sheetsFormHeadersFetching, setSheetsFormHeadersFetching] = useState(false);
 
   // ── Library linking: collect entries from every fieldLibrary addon in the project ──
   const projects = useProjectStore((state) => state.projects);
@@ -674,6 +680,40 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [libraryPickerOpenColumnId]);
+
+  // Auto-fetch headers when the aba changes in the binding form
+  useEffect(() => {
+    if (!bindingFormColumnId || !sheetsFormSheetName) return;
+    const effectiveEntry = linkedSpreadsheets.find((s) => s.id === (sectionLinkedSpreadsheetId ?? sheetsFormRegistryId));
+    if (!effectiveEntry?.spreadsheetId) return;
+    const existing = sheetsFormLocalHeaders[sheetsFormSheetName] ?? effectiveEntry.columnsBySheet?.[sheetsFormSheetName];
+    if (existing && existing.length > 0) return;
+
+    let cancelled = false;
+    setSheetsFormHeadersFetching(true);
+    (async () => {
+      try {
+        const clientId = await getGoogleClientId();
+        const token = clientId ? await getGoogleSheetsToken(clientId) : null;
+        if (!token || cancelled) return;
+        const result = await fetchSpreadsheetHeaders(token, effectiveEntry.spreadsheetId, [sheetsFormSheetName]);
+        if (!cancelled) {
+          setSheetsFormLocalHeaders((prev) => ({ ...prev, ...result }));
+        }
+      } catch { /* silent */ } finally {
+        if (!cancelled) setSheetsFormHeadersFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bindingFormColumnId, sheetsFormSheetName, sheetsFormRegistryId]);
+
+  // Available headers for the current aba in the binding form
+  const sheetsFormAvailableHeaders = (() => {
+    if (!sheetsFormSheetName) return [];
+    const effectiveEntry = linkedSpreadsheets.find((s) => s.id === (sectionLinkedSpreadsheetId ?? sheetsFormRegistryId));
+    return sheetsFormLocalHeaders[sheetsFormSheetName] ?? effectiveEntry?.columnsBySheet?.[sheetsFormSheetName] ?? [];
+  })();
 
   const commitFormulaExpression = (columnId: string) => {
     const column = columns.find((item) => item.id === columnId);
@@ -1308,12 +1348,27 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
     const defaultRegistryId = sectionLinkedSpreadsheetId ?? linkedSpreadsheets[0]?.id ?? "";
     setSheetsFormRegistryId(defaultRegistryId);
     setSheetsFormUrl("");
+    setSheetsFormLocalHeaders({});
     if (existingBinding) {
       setSheetsFormSheetName(existingBinding.sheetName);
       setSheetsFormRange(existingBinding.range);
+      if (existingBinding.columnLock) {
+        setSheetsFormColumnMode("header");
+        setSheetsFormColumnHeader(existingBinding.columnLock);
+        // Extract row range from existing range (e.g. "B2:B51" → "2:51")
+        const rr = existingBinding.range.match(/[A-Z]+(\d+):[A-Z]+(\d+)/);
+        setSheetsFormRowRange(rr ? `${rr[1]}:${rr[2]}` : "");
+      } else {
+        setSheetsFormColumnMode("letter");
+        setSheetsFormColumnHeader("");
+        setSheetsFormRowRange("");
+      }
     } else {
       setSheetsFormSheetName("");
       setSheetsFormRange("");
+      setSheetsFormColumnMode("letter");
+      setSheetsFormColumnHeader("");
+      setSheetsFormRowRange("");
     }
     setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
   };
@@ -1461,17 +1516,49 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoSheet", "Informe o nome da aba.") }));
       return;
     }
-    if (!sheetsFormRange.trim()) {
-      setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoRange", "Informe o intervalo (ex: B2:B51).") }));
-      return;
+
+    // Resolve column and range based on mode
+    let resolvedRange: string;
+    let bindingColumnLock: string | undefined;
+
+    if (sheetsFormColumnMode === "header") {
+      if (!sheetsFormColumnHeader) {
+        setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "Selecione um campo da coluna." }));
+        return;
+      }
+      const rowRangeStr = sheetsFormRowRange.trim();
+      const rowMatch = rowRangeStr.match(/^(\d+):(\d+)$/);
+      if (!rowMatch) {
+        setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "Informe as linhas no formato 2:51." }));
+        return;
+      }
+      const effectiveEntry = linkedSpreadsheets.find((s) => s.id === (sectionLinkedSpreadsheetId ?? sheetsFormRegistryId));
+      const headers = sheetsFormLocalHeaders[sheetsFormSheetName.trim()] ?? effectiveEntry?.columnsBySheet?.[sheetsFormSheetName.trim()] ?? [];
+      const colIdx = headers.findIndex((h) => h === sheetsFormColumnHeader);
+      if (colIdx < 0) {
+        setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: `Campo "${sheetsFormColumnHeader}" não encontrado na aba. Atualize a planilha nas configurações.` }));
+        return;
+      }
+      const colLetter = columnIndexToLetter(colIdx);
+      resolvedRange = `${colLetter}${rowMatch[1]}:${colLetter}${rowMatch[2]}`;
+      bindingColumnLock = sheetsFormColumnHeader;
+    } else {
+      if (!sheetsFormRange.trim()) {
+        setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: t("progressionTableAddon.sheets.errorNoRange", "Informe o intervalo (ex: B2:B51).") }));
+        return;
+      }
+      resolvedRange = sheetsFormRange.trim();
+      bindingColumnLock = undefined;
     }
+
     // Update section-level linked spreadsheet if changed
     if (effectiveRegistryId && effectiveRegistryId !== sectionLinkedSpreadsheetId) {
       handleSectionLinkedSpreadsheetChange(effectiveRegistryId);
     }
     const binding: ProgressionTableColumnSheetsBinding = {
       sheetName: sheetsFormSheetName.trim(),
-      range: sheetsFormRange.trim(),
+      range: resolvedRange,
+      ...(bindingColumnLock ? { columnLock: bindingColumnLock } : {}),
     };
     setSyncingColumnIds((prev) => ({ ...prev, [columnId]: true }));
     setSheetsSyncErrors((prev) => ({ ...prev, [columnId]: "" }));
@@ -1946,35 +2033,56 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 />
                               </label>
                             )}
-                            <div className="grid grid-cols-2 gap-2">
-                              <label className="block">
-                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.sheetLabel", "Aba")}</span>
-                                {(() => {
-                                  const registrySheets = linkedSpreadsheets.find((s) => s.id === sheetsFormRegistryId)?.sheets ?? [];
-                                  return registrySheets.length > 0 ? (
-                                    <select
-                                      value={sheetsFormSheetName}
-                                      onChange={(e) => setSheetsFormSheetName(e.target.value)}
-                                      className={INPUT_CLASS}
-                                    >
-                                      <option value="">{t("progressionTableAddon.sheets.sheetSelectPlaceholder", "Selecione...")}</option>
-                                      {registrySheets.map((sh) => (
-                                        <option key={sh} value={sh}>{sh}</option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      value={sheetsFormSheetName}
-                                      onChange={(e) => setSheetsFormSheetName(e.target.value)}
-                                      placeholder="Sheet1"
-                                      className={INPUT_CLASS}
-                                    />
-                                  );
-                                })()}
-                              </label>
-                              <label className="block">
-                                <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.rangeLabel", "Intervalo")}</span>
+                            {/* Aba */}
+                            <label className="block">
+                              <span className="mb-1 block text-[10px] uppercase tracking-wide text-gray-400">{t("progressionTableAddon.sheets.sheetLabel", "Aba")}</span>
+                              {(() => {
+                                const registrySheets = linkedSpreadsheets.find((s) => s.id === (sectionLinkedSpreadsheetId ?? sheetsFormRegistryId))?.sheets ?? [];
+                                return registrySheets.length > 0 ? (
+                                  <select
+                                    value={sheetsFormSheetName}
+                                    onChange={(e) => { setSheetsFormSheetName(e.target.value); setSheetsFormLocalHeaders({}); }}
+                                    className={INPUT_CLASS}
+                                  >
+                                    <option value="">{t("progressionTableAddon.sheets.sheetSelectPlaceholder", "Selecione...")}</option>
+                                    {registrySheets.map((sh) => (
+                                      <option key={sh} value={sh}>{sh}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={sheetsFormSheetName}
+                                    onChange={(e) => setSheetsFormSheetName(e.target.value)}
+                                    placeholder="Sheet1"
+                                    className={INPUT_CLASS}
+                                  />
+                                );
+                              })()}
+                            </label>
+
+                            {/* Coluna — mode selector */}
+                            <div className="space-y-1.5 rounded-lg border border-gray-700/60 bg-gray-800/40 p-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Coluna</span>
+                                <div className="flex overflow-hidden rounded border border-gray-700">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSheetsFormColumnMode("letter")}
+                                    className={`px-2 py-0.5 text-[10px] transition-colors ${sheetsFormColumnMode === "letter" ? "bg-indigo-600 text-white" : "bg-gray-900 text-gray-400 hover:text-gray-200"}`}
+                                  >
+                                    Por letra
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSheetsFormColumnMode("header")}
+                                    className={`border-l border-gray-700 px-2 py-0.5 text-[10px] transition-colors ${sheetsFormColumnMode === "header" ? "bg-indigo-600 text-white" : "bg-gray-900 text-gray-400 hover:text-gray-200"}`}
+                                  >
+                                    Por nome
+                                  </button>
+                                </div>
+                              </div>
+                              {sheetsFormColumnMode === "letter" ? (
                                 <input
                                   type="text"
                                   value={sheetsFormRange}
@@ -1982,7 +2090,36 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                   placeholder={t("progressionTableAddon.sheets.rangePlaceholder", "B2:B51")}
                                   className={INPUT_CLASS}
                                 />
-                              </label>
+                              ) : sheetsFormHeadersFetching ? (
+                                <div className="flex items-center gap-2 rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-[10px] text-gray-500">
+                                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-25" /><path d="M4 12a8 8 0 018-8" strokeWidth="4" className="opacity-75" /></svg>
+                                  <span>Carregando campos…</span>
+                                </div>
+                              ) : sheetsFormAvailableHeaders.length > 0 ? (
+                                <div className="space-y-1">
+                                  <select
+                                    value={sheetsFormColumnHeader}
+                                    onChange={(e) => setSheetsFormColumnHeader(e.target.value)}
+                                    className={INPUT_CLASS}
+                                  >
+                                    <option value="">Escolher campo…</option>
+                                    {sheetsFormAvailableHeaders.map((h) => (
+                                      <option key={h} value={h}>{h}</option>
+                                    ))}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    value={sheetsFormRowRange}
+                                    onChange={(e) => setSheetsFormRowRange(e.target.value)}
+                                    placeholder="Linhas: 2:51"
+                                    className={INPUT_CLASS}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-[10px] text-gray-500">
+                                  Selecione uma aba acima para ver os campos disponíveis.
+                                </div>
+                              )}
                             </div>
                             {sheetsSyncErrors[column.id] && (
                               <p className="text-[10px] text-rose-300">{sheetsSyncErrors[column.id]}</p>
