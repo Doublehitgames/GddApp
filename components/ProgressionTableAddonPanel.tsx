@@ -1980,10 +1980,15 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                 </button>
                               </div>
                             </div>
-                            <p className="text-[10px] text-gray-400">
+                            <p className="flex flex-wrap items-center gap-1 text-[10px] text-gray-400">
                               <span className="text-gray-300">{column.sheetsBinding.sheetName}</span>
-                              <span className="mx-1 text-gray-600">·</span>
+                              <span className="text-gray-600">·</span>
                               <span className="font-mono text-gray-300">{column.sheetsBinding.range}</span>
+                              {column.sheetsBinding.columnLock ? (
+                                <span className="rounded bg-indigo-900/30 px-1 text-[9px] text-indigo-400">
+                                  🔒 col: {column.sheetsBinding.columnLock}
+                                </span>
+                              ) : null}
                             </p>
                             <p className="text-[10px] text-gray-500">
                               {column.sheetsBinding.syncedAt
