@@ -2972,6 +2972,7 @@
     "actionCreated": "New",
     "actionDeleted": "Deleted",
     "actionRenamed": "Renamed",
+    "actionModified": "Modified",
     "renamedFrom": "was: {title}",
     "eventSingular": "event",
     "eventPlural": "events",

@@ -21,6 +21,7 @@ const ACTION_STYLES: Record<
   created:  { badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-500/60" },
   deleted:  { badge: "border-red-500/30    bg-red-500/10    text-red-400",       dot: "bg-red-500/60"    },
   renamed:  { badge: "border-amber-500/30  bg-amber-500/10  text-amber-400",     dot: "bg-amber-500/60"  },
+  modified: { badge: "border-blue-500/30   bg-blue-500/10   text-blue-400",      dot: "bg-blue-500/60"   },
 };
 
 function useTimeAgo() {
@@ -56,9 +57,10 @@ function ActivityCard({
   const isDeleted = event.action === "deleted";
 
   const actionLabels: Record<ActivityLogEvent["action"], string> = {
-    created: t("activityLog.actionCreated"),
-    deleted: t("activityLog.actionDeleted"),
-    renamed: t("activityLog.actionRenamed"),
+    created:  t("activityLog.actionCreated"),
+    deleted:  t("activityLog.actionDeleted"),
+    renamed:  t("activityLog.actionRenamed"),
+    modified: t("activityLog.actionModified"),
   };
 
   const inner = (
@@ -190,9 +192,10 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
   if (events.length === 0) return null;
 
   const actionLabels: Record<ActivityLogEvent["action"], string> = {
-    created: t("activityLog.actionCreated"),
-    deleted: t("activityLog.actionDeleted"),
-    renamed: t("activityLog.actionRenamed"),
+    created:  t("activityLog.actionCreated"),
+    deleted:  t("activityLog.actionDeleted"),
+    renamed:  t("activityLog.actionRenamed"),
+    modified: t("activityLog.actionModified"),
   };
 
   const extraLabel = extra === 1 ? t("activityLog.eventSingular") : t("activityLog.eventPlural");
@@ -210,7 +213,7 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
           <span className="text-sm font-semibold text-white">{t("activityLog.widgetTitle")}</span>
 
           <div className="ml-auto flex items-center gap-2.5">
-            {(["created", "renamed", "deleted"] as const).map((action) => (
+            {(["created", "modified", "renamed", "deleted"] as const).map((action) => (
               <span key={action} className="flex items-center gap-1 text-[11px] text-gray-500">
                 <span className={`inline-block h-2 w-2 rounded-full ${ACTION_STYLES[action].dot}`} />
                 {actionLabels[action]}

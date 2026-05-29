@@ -9,6 +9,10 @@ import type { SectionAuditBy } from "./types";
 type StoreSet = (partial: Partial<ProjectStore> | ((state: ProjectStore) => Partial<ProjectStore>)) => void;
 type StoreGet = () => ProjectStore;
 
+// Debounce por seção: agrupa múltiplas edições de campos num único evento 'modified'
+const addonModifiedTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const ADDON_LOG_DEBOUNCE_MS = 3_000;
+
 export function createAddonSlice(_set: StoreSet, get: StoreGet) {
   return {
     setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => {
@@ -27,6 +31,26 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
         section.domainTags,
         normalizedAddons
       );
+
+      // Log debounced: vários campos editados em sequência viram um único evento
+      const timerKey = `${projectId}:${sectionId}`;
+      const existing = addonModifiedTimers.get(timerKey);
+      if (existing) clearTimeout(existing);
+      addonModifiedTimers.set(timerKey, setTimeout(() => {
+        addonModifiedTimers.delete(timerKey);
+        // Re-lê o título mais recente (pode ter mudado durante o debounce)
+        const proj = get().projects.find((p) => p.id === projectId);
+        const sec  = proj?.sections?.find((s) => s.id === sectionId);
+        if (!sec) return;
+        get().logSectionActivity({
+          project_id:    projectId,
+          section_id:    sectionId,
+          section_title: sec.title,
+          action:        "modified",
+          user_id:       updatedBy?.userId   ?? null,
+          user_name:     updatedBy?.displayName ?? null,
+        });
+      }, ADDON_LOG_DEBOUNCE_MS));
     },
     addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => {
       const project = get().projects.find((p) => p.id === projectId);

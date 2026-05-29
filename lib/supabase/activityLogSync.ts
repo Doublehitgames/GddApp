@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const TIMEOUT_MS = 8_000;
 
-export type ActivityLogAction = "created" | "deleted" | "renamed";
+export type ActivityLogAction = "created" | "deleted" | "renamed" | "modified";
 
 export type ActivityLogEvent = {
   id: string;
