@@ -821,7 +821,7 @@ export function FieldBindingPicker({
                           className="w-full rounded border border-indigo-600/40 bg-gray-800 px-2 py-1 text-xs text-indigo-100 outline-none focus:border-indigo-500"
                         >
                           <option value="">Escolher campo…</option>
-                          {availableHeaders.map((h) => (
+                          {availableHeaders.filter(Boolean).map((h) => (
                             <option key={h} value={h}>{h}</option>
                           ))}
                         </select>

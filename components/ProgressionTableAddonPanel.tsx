@@ -2103,7 +2103,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                     className={INPUT_CLASS}
                                   >
                                     <option value="">Escolher campo…</option>
-                                    {sheetsFormAvailableHeaders.map((h) => (
+                                    {sheetsFormAvailableHeaders.filter(Boolean).map((h) => (
                                       <option key={h} value={h}>{h}</option>
                                     ))}
                                   </select>

@@ -177,8 +177,27 @@ export function columnIndexToLetter(index: number): string {
 }
 
 /**
+ * Converts a spreadsheet column letter to a zero-based column index.
+ * "A" → 0, "B" → 1, "Z" → 25, "AA" → 26, etc.
+ */
+function columnLetterToIndex(letter: string): number {
+  let index = 0;
+  for (let i = 0; i < letter.length; i++) {
+    index = index * 26 + (letter.toUpperCase().charCodeAt(i) - 64);
+  }
+  return index - 1;
+}
+
+/**
  * Fetches the first row (headers) for each given sheet tab.
- * Returns a map of sheetName → array of header strings (empty strings filtered out at the end).
+ * Returns a map of sheetName → full-width header array (index = 0-based column index).
+ *
+ * IMPORTANT: empty strings are preserved so that array index === column index.
+ * The Google Sheets API omits leading empty cells from the response but tells us
+ * the actual starting column in `response.range` (e.g. "Sheet1!B1:F1").
+ * We prepend empty strings for any skipped leading columns so that
+ * headers[0] → column A, headers[1] → column B, etc.
+ * Dropdowns should filter empty strings for display but use the full array for index lookups.
  */
 export async function fetchSpreadsheetHeaders(
   token: string,
@@ -193,9 +212,15 @@ export async function fetchSpreadsheetHeaders(
       try {
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
-        const data = (await res.json()) as { values?: string[][] };
-        const headers = (data.values?.[0] ?? []).map((h) => String(h ?? "").trim()).filter(Boolean);
-        if (headers.length > 0) result[sheetName] = headers;
+        const data = (await res.json()) as { range?: string; values?: string[][] };
+        // Determine the 0-based column index where the API response starts.
+        // The response `range` field looks like "Sheet1!B1:F1" when A1 is empty.
+        const startColLetter = data.range?.match(/!([A-Z]+)\d*:/)?.[1] ?? "A";
+        const startOffset = columnLetterToIndex(startColLetter);
+        // Prepend empty strings for skipped leading columns so index === column index.
+        const rawRow = (data.values?.[0] ?? []).map((h) => String(h ?? "").trim());
+        const headers = [...Array(startOffset).fill(""), ...rawRow];
+        if (headers.some(Boolean)) result[sheetName] = headers;
       } catch {
         // silently skip tabs that fail
       }
