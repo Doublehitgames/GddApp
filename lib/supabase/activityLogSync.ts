@@ -16,6 +16,8 @@ export type ActivityLogEvent = {
   section_title: string;
   action: ActivityLogAction;
   old_title?: string | null;
+  /** Contexto adicional: tipo do addon em eventos 'modified' (ex: "economyLink", "production"). */
+  detail?: string | null;
   user_id?: string | null;
   user_name?: string | null;
   created_at: string;

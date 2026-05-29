@@ -9,9 +9,36 @@ import type { SectionAuditBy } from "./types";
 type StoreSet = (partial: Partial<ProjectStore> | ((state: ProjectStore) => Partial<ProjectStore>)) => void;
 type StoreGet = () => ProjectStore;
 
-// Debounce por seção: agrupa múltiplas edições de campos num único evento 'modified'
+// Debounce por addon: agrupa múltiplas edições de campos num único evento 'modified'
 const addonModifiedTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const ADDON_LOG_DEBOUNCE_MS = 3_000;
+
+function logAddonModified(
+  get: StoreGet,
+  projectId: UUID,
+  sectionId: UUID,
+  addonType: string,
+  updatedBy?: SectionAuditBy,
+  debounceKey?: string
+) {
+  const key = debounceKey ?? `${projectId}:${sectionId}:${addonType}`;
+  const existing = addonModifiedTimers.get(key);
+  if (existing) clearTimeout(existing);
+  addonModifiedTimers.set(key, setTimeout(() => {
+    addonModifiedTimers.delete(key);
+    const sec = get().projects.find((p) => p.id === projectId)?.sections?.find((s) => s.id === sectionId);
+    if (!sec) return;
+    get().logSectionActivity({
+      project_id:    projectId,
+      section_id:    sectionId,
+      section_title: sec.title,
+      action:        "modified",
+      detail:        addonType,
+      user_id:       updatedBy?.userId      ?? null,
+      user_name:     updatedBy?.displayName ?? null,
+    });
+  }, ADDON_LOG_DEBOUNCE_MS));
+}
 
 export function createAddonSlice(_set: StoreSet, get: StoreGet) {
   return {
@@ -31,26 +58,7 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
         section.domainTags,
         normalizedAddons
       );
-
-      // Log debounced: vários campos editados em sequência viram um único evento
-      const timerKey = `${projectId}:${sectionId}`;
-      const existing = addonModifiedTimers.get(timerKey);
-      if (existing) clearTimeout(existing);
-      addonModifiedTimers.set(timerKey, setTimeout(() => {
-        addonModifiedTimers.delete(timerKey);
-        // Re-lê o título mais recente (pode ter mudado durante o debounce)
-        const proj = get().projects.find((p) => p.id === projectId);
-        const sec  = proj?.sections?.find((s) => s.id === sectionId);
-        if (!sec) return;
-        get().logSectionActivity({
-          project_id:    projectId,
-          section_id:    sectionId,
-          section_title: sec.title,
-          action:        "modified",
-          user_id:       updatedBy?.userId   ?? null,
-          user_name:     updatedBy?.displayName ?? null,
-        });
-      }, ADDON_LOG_DEBOUNCE_MS));
+      // Log é disparado pelas funções específicas (updateSectionAddon, etc.)
     },
     addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => {
       const project = get().projects.find((p) => p.id === projectId);
@@ -58,6 +66,8 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
       if (!section) return;
       const current = section.addons || [];
       get().setSectionAddons(projectId, sectionId, [...current, addon], updatedBy);
+      // Ação discreta — sem debounce
+      logAddonModified(get, projectId, sectionId, addon.type, updatedBy, `${projectId}:${sectionId}:add:${addon.type}`);
     },
     updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => {
       const project = get().projects.find((p) => p.id === projectId);
@@ -70,11 +80,14 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
         current.map((addon) => (addon.id === addonId ? nextAddon : addon)),
         updatedBy
       );
+      // Debounce por addon — edições rápidas de campos viram um único evento
+      logAddonModified(get, projectId, sectionId, nextAddon.type, updatedBy);
     },
     removeSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, updatedBy?: SectionAuditBy) => {
       const project = get().projects.find((p) => p.id === projectId);
       const section = project?.sections?.find((s) => s.id === sectionId);
       if (!section) return;
+      const addonType = section.addons?.find((a) => a.id === addonId)?.type ?? "unknown";
       const current = section.addons || [];
       get().setSectionAddons(
         projectId,
@@ -82,6 +95,8 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
         current.filter((addon) => addon.id !== addonId),
         updatedBy
       );
+      // Ação discreta — sem debounce
+      logAddonModified(get, projectId, sectionId, addonType, updatedBy, `${projectId}:${sectionId}:remove:${addonType}`);
     },
     copyAddonToSection: (
       projectId: UUID,
