@@ -120,6 +120,7 @@ export function LinkedFieldRow({
   const labelId = useId();
   const buttonId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const wasOpenRef = useRef(false);
 
   const selected = selectedKey ? options.find((o) => o.key === selectedKey) : undefined;
   const hasInvalidLink = Boolean(selectedKey && !selected);
@@ -143,7 +144,10 @@ export function LinkedFieldRow({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !sheetsBinding) return;
+    if (!open) { wasOpenRef.current = false; return; }
+    if (!sheetsBinding) return;
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
     const cur = sheetsBinding.current;
     setSheetsSheetName(cur?.sheetName ?? "");
     // Extrair coluna e linha do cellRef existente (ex: "B3" → col="B", row="3")
@@ -176,7 +180,8 @@ export function LinkedFieldRow({
       setSelectedRegistryId("__other__");
       setSheetsUrl("");
     }
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sheetsBinding?.current]);
 
   // Auto-fetch headers when tab changes
   useEffect(() => {

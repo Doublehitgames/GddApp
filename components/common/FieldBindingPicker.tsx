@@ -88,6 +88,9 @@ export function FieldBindingPicker({
   const [testLoading, setTestLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  // Tracks whether we've already initialised the form for the current open session,
+  // so adding `value` to the init-effect deps doesn't re-init mid-edit.
+  const wasOpenRef = useRef(false);
   const popoverId = useId();
   const labelId = useId();
   const buttonId = useId();
@@ -128,9 +131,14 @@ export function FieldBindingPicker({
     };
   }, [open]);
 
-  // Sync Sheets form with current binding when popover opens
+  // Sync Sheets form with current binding when popover opens.
+  // `value` is in the deps so React always uses the latest binding ref.
+  // `wasOpenRef` prevents re-initialising while the popup is already open
+  // (which would discard edits in progress).
   useEffect(() => {
-    if (!open) return;
+    if (!open) { wasOpenRef.current = false; return; }
+    if (wasOpenRef.current) return; // already initialised this open session
+    wasOpenRef.current = true;
     if (value.source === "sheets") {
       const cur = value.ref;
       setSheetsSheetName(cur.sheetName);
@@ -171,7 +179,8 @@ export function FieldBindingPicker({
     setSheetsError(null);
     setTestResult(null);
     setLocalColumnsBySheet({});
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, value]);
 
   // Auto-fetch headers when tab changes
   useEffect(() => {
