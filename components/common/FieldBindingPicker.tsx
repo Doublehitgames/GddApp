@@ -925,6 +925,22 @@ export function FieldBindingPicker({
         </div>
       </div>
 
+      {/* Lock badges — visíveis sem abrir o popup */}
+      {isSheets && (curSheetsRef?.columnLock || curSheetsRef?.rowLock) ? (
+        <div className="flex flex-wrap gap-1">
+          {curSheetsRef?.columnLock ? (
+            <span className="rounded bg-indigo-900/30 px-1 text-[9px] text-indigo-400">
+              🔒 col: {curSheetsRef.columnLock}
+            </span>
+          ) : null}
+          {curSheetsRef?.rowLock ? (
+            <span className="rounded bg-indigo-900/30 px-1 text-[9px] text-indigo-400">
+              🔒 linha: auto
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       {badges}
     </div>
   );
