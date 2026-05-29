@@ -119,11 +119,14 @@ function normalizeProgressionColumns(rawColumns: unknown[]): ProgressionTableCol
             ? (sb.cachedValues as unknown[]).map((v) => (typeof v === "string" ? v : String(v ?? "")))
             : (sb.cachedValues as unknown[]).map(Number).filter(Number.isFinite)
           : undefined;
+        const sbColumnLock = typeof sb.columnLock === "string" && sb.columnLock.trim()
+          ? sb.columnLock.trim() : undefined;
         sheetsBinding = {
           sheetName,
           range,
           cachedValues,
           syncedAt: typeof sb.syncedAt === "string" ? sb.syncedAt : null,
+          ...(sbColumnLock ? { columnLock: sbColumnLock } : {}),
         };
       }
     }
@@ -660,7 +663,16 @@ function normalizeSheetsCellRef(value: unknown): SheetsCellRef | undefined {
     cachedValue = value.cachedValue;
   }
   const syncedAt = typeof value.syncedAt === "string" ? value.syncedAt : null;
-  return { sheetName, cellRef, cachedValue, syncedAt };
+  // Preserve locks — these are the semantic binding anchors added in 2026-05.
+  const columnLock = typeof value.columnLock === "string" && value.columnLock.trim()
+    ? value.columnLock.trim() : undefined;
+  const rowLock = typeof value.rowLock === "string" && value.rowLock.trim()
+    ? (value.rowLock.trim() as "auto" | string) : undefined;
+  return {
+    sheetName, cellRef, cachedValue, syncedAt,
+    ...(columnLock ? { columnLock } : {}),
+    ...(rowLock ? { rowLock } : {}),
+  };
 }
 
 /**
