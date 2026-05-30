@@ -11,7 +11,7 @@ type StoreGet = () => ProjectStore;
 
 // Debounce por addon: agrupa múltiplas edições de campos num único evento 'modified'
 const addonModifiedTimers = new Map<string, ReturnType<typeof setTimeout>>();
-const ADDON_LOG_DEBOUNCE_MS = 3_000;
+const ADDON_LOG_DEBOUNCE_MS = 60_000; // 1 minuto — tempo razoável entre edições de campos
 
 function logAddonModified(
   get: StoreGet,
