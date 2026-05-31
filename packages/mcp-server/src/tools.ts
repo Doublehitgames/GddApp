@@ -143,6 +143,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       color: z.string().optional().describe("New hex color"),
       domainTags: z.array(z.string()).optional().describe("New domain tags"),
       dataId: z.string().optional().describe("New data identifier"),
+      linkedSpreadsheetId: z.string().nullable().optional().describe("UUID of the linked Google Spreadsheet (from project.linkedSpreadsheets)"),
     },
     async ({ projectId, sectionId, ...fields }) => {
       try { return json(await client.updateSection(projectId, sectionId, fields)); }

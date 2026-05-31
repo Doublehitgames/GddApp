@@ -96,6 +96,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (parsed.data.dataId !== undefined) updates.data_id = parsed.data.dataId;
   if (parsed.data.thumbImageUrl !== undefined) updates.thumb_image_url = parsed.data.thumbImageUrl;
   if (parsed.data.addonGroupNotes !== undefined) updates.addon_group_notes = parsed.data.addonGroupNotes;
+  if (parsed.data.linkedSpreadsheetId !== undefined) updates.linked_spreadsheet_id = parsed.data.linkedSpreadsheetId;
 
   const { error } = await auth.supabase
     .from("sections")

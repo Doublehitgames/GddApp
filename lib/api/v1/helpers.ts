@@ -179,11 +179,12 @@ export type SectionRow = {
   created_by_name: string | null;
   updated_by: string | null;
   updated_by_name: string | null;
+  linked_spreadsheet_id: string | null;
 };
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
 const SECTION_COLUMNS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, balance_addons, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, balance_addons, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, linked_spreadsheet_id";
 
 // Progressive fallback: drop the newest/most optional columns first.
 // Level 1: drop flowchart_state, data_id, addon_group_notes, audit columns
@@ -307,6 +308,7 @@ export function sectionToApi(s: SectionRow) {
     createdByName: s.created_by_name,
     updatedBy: s.updated_by,
     updatedByName: s.updated_by_name,
+    linkedSpreadsheetId: s.linked_spreadsheet_id ?? null,
   };
 }
 

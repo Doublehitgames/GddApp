@@ -50,6 +50,7 @@ export const updateSectionSchema = z.object({
   dataId: z.string().max(200).nullable().optional(),
   thumbImageUrl: z.string().url().nullable().optional(),
   addonGroupNotes: z.record(z.string(), z.string()).optional(),
+  linkedSpreadsheetId: z.string().nullable().optional(),
 });
 
 // ── Addons ────────────────────────────────────────────────────────────
