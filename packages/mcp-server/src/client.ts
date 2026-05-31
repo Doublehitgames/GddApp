@@ -117,19 +117,19 @@ export class GddApiClient {
     return this.request("DELETE", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`);
   }
 
-  async copyAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string) {
+  async copyAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) {
     return this.request(
       "POST",
       `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/copy`,
-      { toSectionId },
+      { toSectionId, overwrite },
     );
   }
 
-  async moveAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string) {
+  async moveAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) {
     return this.request(
       "POST",
       `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`,
-      { toSectionId },
+      { toSectionId, overwrite },
     );
   }
 

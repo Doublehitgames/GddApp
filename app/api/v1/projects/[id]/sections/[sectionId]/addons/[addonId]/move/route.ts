@@ -8,13 +8,17 @@ import {
   apiError,
 } from "@/lib/api/v1/helpers";
 import { moveAddon } from "@/lib/addons/move";
-import { collectReverseRefUpdates } from "@/lib/addons/refs";
+import { overwriteShell } from "@/lib/addons/copy";
+import { collectReverseRefUpdates, relinkIntraSectionRefsToSection } from "@/lib/addons/refs";
+import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
 import type { SectionAddon } from "@/lib/addons/types";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string; addonId: string }> };
 
 const moveBodySchema = z.object({
   toSectionId: z.string().uuid("toSectionId must be a UUID"),
+  /** Quando true, sobrescreve um addon singleton já existente no destino. */
+  overwrite: z.boolean().optional(),
 });
 
 /**
@@ -74,19 +78,47 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     return apiError("Failed to load project sections", 500, "db_error");
   }
 
-  const movedAddon = moveAddon(source);
   const movedType = source.type;
-
   type SectionRow = { id: string; balance_addons: SectionAddon[] | null };
   const rows = allSectionsData as SectionRow[];
 
-  // Build post-move snapshot (origin filtered, destination appended).
+  // Clona sem tratar refs — a religação ao destino acontece depois (com a lista
+  // final de addons do destino).
+  const movedAddon = moveAddon(source, undefined, { skipRefHandling: true });
+  const destAddons = (rows.find((r) => r.id === toSectionId)?.balance_addons || []) as SectionAddon[];
+
+  // Addons singleton: se o destino já tem um do mesmo tipo, exige overwrite.
+  const existing = SINGLETON_ADDON_TYPES.has(movedType)
+    ? destAddons.find((a) => a.type === movedType)
+    : undefined;
+  if (existing && !parsed.data.overwrite) {
+    return apiError(
+      "Destination already has a singleton addon of this type; pass overwrite=true to replace it",
+      409,
+      "singleton_conflict",
+      { existingAddonId: existing.id, type: movedType }
+    );
+  }
+  const arriving = existing ? overwriteShell(movedAddon, existing) : movedAddon;
+  const destNext = existing
+    ? destAddons.map((a) => (a.id === existing.id ? arriving : a))
+    : [...destAddons, arriving];
+  // Religa as refs intra-página do addon que chega aos addons do destino.
+  relinkIntraSectionRefsToSection(
+    arriving.data as Record<string, unknown>,
+    arriving.type,
+    sectionId,
+    toSectionId,
+    destNext
+  );
+
+  // Build post-move snapshot (origin filtered, destination = destNext).
   const postMove = rows.map((row) => {
     if (row.id === sectionId) {
       return { id: row.id, addons: (row.balance_addons || []).filter((a) => a.id !== addonId) };
     }
     if (row.id === toSectionId) {
-      return { id: row.id, addons: [...(row.balance_addons || []), movedAddon] };
+      return { id: row.id, addons: destNext };
     }
     return { id: row.id, addons: row.balance_addons || [] };
   });
@@ -122,5 +154,5 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   await auth.supabase.from("projects").update({ updated_at: now }).eq("id", id);
 
-  return apiJson({ addon: movedAddon, reverseRefsUpdated: count });
+  return apiJson({ addon: arriving, reverseRefsUpdated: count });
 }

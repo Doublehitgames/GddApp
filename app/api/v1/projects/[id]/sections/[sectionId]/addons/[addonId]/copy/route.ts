@@ -7,22 +7,29 @@ import {
   apiJson,
   apiError,
 } from "@/lib/api/v1/helpers";
-import { copyAddon } from "@/lib/addons/copy";
+import { copyAddon, overwriteShell } from "@/lib/addons/copy";
+import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
 import type { SectionAddon } from "@/lib/addons/types";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string; addonId: string }> };
 
 const copyBodySchema = z.object({
   toSectionId: z.string().uuid("toSectionId must be a UUID"),
+  /** Quando true, sobrescreve um addon singleton já existente no destino. */
+  overwrite: z.boolean().optional(),
 });
 
 /**
  * POST /api/v1/projects/:id/sections/:sectionId/addons/:addonId/copy
- * Body: { toSectionId }
+ * Body: { toSectionId, overwrite? }
  *
  * Copies the given addon into `toSectionId`. Generates a new addon ID,
- * deep-clones data, and clears intra-section refs. Returns the newly
- * inserted addon.
+ * deep-clones data, and re-links intra-section refs to the destination's
+ * equivalent addons (so value bindings keep working when the target page
+ * already has the needed addons). For singleton addon types already present
+ * in the destination, responds 409 unless `overwrite: true`, in which case it
+ * replaces the existing addon in place (keeping its id/group/name). Returns
+ * the inserted (or overwritten) addon.
  */
 export async function POST(request: NextRequest, ctx: Ctx) {
   const { id, sectionId, addonId } = await ctx.params;
@@ -56,9 +63,35 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   const source = sourceAddons.find((a) => a.id === addonId);
   if (!source) return apiError("Addon not found", 404, "not_found");
 
-  const copied = copyAddon(source);
   const toAddons = (toResult.section.balance_addons ?? []) as SectionAddon[];
-  const nextToAddons = [...toAddons, copied];
+  // Religa as refs intra-página aos addons equivalentes do destino.
+  const copied = copyAddon(source, {
+    fromSectionId: sectionId,
+    toSectionId: parsed.data.toSectionId,
+    targetAddons: toAddons,
+  });
+
+  // Addons singleton: se o destino já tem um do mesmo tipo, exige overwrite.
+  const existing = SINGLETON_ADDON_TYPES.has(source.type)
+    ? toAddons.find((a) => a.type === source.type)
+    : undefined;
+  let nextToAddons: SectionAddon[];
+  let resultAddon: SectionAddon;
+  if (existing) {
+    if (!parsed.data.overwrite) {
+      return apiError(
+        "Destination already has a singleton addon of this type; pass overwrite=true to replace it",
+        409,
+        "singleton_conflict",
+        { existingAddonId: existing.id, type: source.type }
+      );
+    }
+    resultAddon = overwriteShell(copied, existing);
+    nextToAddons = toAddons.map((a) => (a.id === existing.id ? resultAddon : a));
+  } else {
+    resultAddon = copied;
+    nextToAddons = [...toAddons, copied];
+  }
 
   const now = new Date().toISOString();
   const { error } = await auth.supabase
@@ -75,5 +108,5 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   await auth.supabase.from("projects").update({ updated_at: now }).eq("id", id);
 
-  return apiJson(copied, 201);
+  return apiJson(resultAddon, existing ? 200 : 201);
 }

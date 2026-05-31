@@ -228,30 +228,32 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "copy_addon",
-    "Copy an addon from one section to another. Generates a new addon ID, deep-clones the data, and clears intra-section refs (productionRef, progression links, exportSchema addonIds). Cross-section refs are preserved. Returns the newly inserted addon.",
+    "Copy an addon from one section to another. Generates a new addon ID, deep-clones the data, and re-links intra-section refs (production/progression/economyLink bindings, exportSchema addonIds) to the destination's equivalent addons so value bindings keep working when the target page already has the needed addons (cross-section refs are preserved). Singleton addon types (one-per-page: dataSchema, production, economyLink, currency, progressionTable, etc.) already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). TIP: to copy a RemoteConfig (exportSchema) into a page that lacks the addons it references (e.g. its DataSchema or ProgressionTable), copy those dependency addons FIRST, then copy the RemoteConfig — its bindings will re-link to them in the destination. Returns the inserted (or overwritten) addon.",
     {
       projectId: z.string().describe("Project UUID"),
       sectionId: z.string().describe("Section UUID where the source addon lives"),
       addonId: z.string().describe("Addon UUID to copy"),
       toSectionId: z.string().describe("Destination section UUID"),
+      overwrite: z.boolean().optional().describe("If the destination already has a singleton addon of the same type, replace its values in place instead of failing with 409."),
     },
-    async ({ projectId, sectionId, addonId, toSectionId }) => {
-      try { return json(await client.copyAddon(projectId, sectionId, addonId, toSectionId)); }
+    async ({ projectId, sectionId, addonId, toSectionId, overwrite }) => {
+      try { return json(await client.copyAddon(projectId, sectionId, addonId, toSectionId, overwrite)); }
       catch (e) { return err(e); }
     },
   );
 
   server.tool(
     "move_addon",
-    "Move an addon from one section to another, keeping its ID. Clears intra-section refs in the moved addon, and when the source section is left without another addon of the same type, rewrites reverse-refs across the project to point at the destination. Returns { addon, reverseRefsUpdated }.",
+    "Move an addon from one section to another, keeping its ID. Re-links intra-section refs in the moved addon to the destination's equivalent addons, and when the source section is left without another addon of the same type, rewrites reverse-refs across the project to point at the destination. Singleton addon types already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). Returns { addon, reverseRefsUpdated }.",
     {
       projectId: z.string().describe("Project UUID"),
       sectionId: z.string().describe("Section UUID where the source addon lives"),
       addonId: z.string().describe("Addon UUID to move"),
       toSectionId: z.string().describe("Destination section UUID (must differ from origin)"),
+      overwrite: z.boolean().optional().describe("If the destination already has a singleton addon of the same type, replace it in place instead of failing with 409."),
     },
-    async ({ projectId, sectionId, addonId, toSectionId }) => {
-      try { return json(await client.moveAddon(projectId, sectionId, addonId, toSectionId)); }
+    async ({ projectId, sectionId, addonId, toSectionId, overwrite }) => {
+      try { return json(await client.moveAddon(projectId, sectionId, addonId, toSectionId, overwrite)); }
       catch (e) { return err(e); }
     },
   );
