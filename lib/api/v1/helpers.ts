@@ -179,7 +179,7 @@ export type SectionRow = {
   created_by_name: string | null;
   updated_by: string | null;
   updated_by_name: string | null;
-  linked_spreadsheet_id: string | null;
+  linked_spreadsheet_id?: string | null;
 };
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
