@@ -23,6 +23,7 @@ const config: Config = {
     '/node_modules/',
     '/e2e/',
     '/.next/',
+    '/.claude/',
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
