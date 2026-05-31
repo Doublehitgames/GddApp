@@ -225,4 +225,315 @@ describe("projectStore balance addons", () => {
       expect(reloadedAddon.data.craftTimeSeconds).toBe(45);
     }
   });
+
+  it("copia addon singleton para pagina sem conflito (cria novo)", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Copia", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const economyAddon = createDefaultEconomyLinkAddon("eco-src");
+    economyAddon.data.buyValue = 123;
+    store.setSectionAddons(projectId, fromId, [economyAddon]);
+
+    store.copyAddonToSection(projectId, fromId, toId, "eco-src");
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    expect(toSection?.addons?.length).toBe(1);
+    const copied = toSection?.addons?.[0];
+    expect(copied?.type).toBe("economyLink");
+    expect(copied?.id).not.toBe("eco-src"); // novo ID
+    if (copied?.type === "economyLink") expect(copied.data.buyValue).toBe(123);
+  });
+
+  it("nao sobrescreve singleton existente sem flag overwrite", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Copia 2", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const src = createDefaultEconomyLinkAddon("eco-src");
+    src.data.buyValue = 999;
+    const dest = createDefaultEconomyLinkAddon("eco-dest");
+    dest.data.buyValue = 10;
+    store.setSectionAddons(projectId, fromId, [src]);
+    store.setSectionAddons(projectId, toId, [dest]);
+
+    store.copyAddonToSection(projectId, fromId, toId, "eco-src"); // sem overwrite
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    // Nada muda: ainda 1 addon, com o ID e valor originais do destino.
+    expect(toSection?.addons?.length).toBe(1);
+    expect(toSection?.addons?.[0].id).toBe("eco-dest");
+    const kept = toSection?.addons?.[0];
+    if (kept?.type === "economyLink") expect(kept.data.buyValue).toBe(10);
+  });
+
+  it("sobrescreve singleton existente preservando ID e grupo do destino", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Copia 3", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const src = createDefaultEconomyLinkAddon("eco-src");
+    src.name = "Economia Origem";
+    src.data.name = "Economia Origem";
+    src.data.buyValue = 777;
+    const dest = createDefaultEconomyLinkAddon("eco-dest");
+    dest.name = "Economia Destino";
+    dest.data.name = "Economia Destino";
+    dest.data.buyValue = 10;
+    dest.group = "GrupoB";
+    store.setSectionAddons(projectId, fromId, [src]);
+    store.setSectionAddons(projectId, toId, [dest]);
+
+    store.copyAddonToSection(projectId, fromId, toId, "eco-src", undefined, true);
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    // Continua 1 addon: o do destino, com ID/grupo/nome preservados mas valores sobrescritos.
+    expect(toSection?.addons?.length).toBe(1);
+    const result = toSection?.addons?.[0];
+    expect(result?.id).toBe("eco-dest");
+    expect(result?.group).toBe("GrupoB");
+    expect(result?.name).toBe("Economia Destino");
+    if (result?.type === "economyLink") {
+      expect(result.data.id).toBe("eco-dest");
+      expect(result.data.name).toBe("Economia Destino");
+      expect(result.data.buyValue).toBe(777);
+    }
+  });
+
+  it("mover sem overwrite mantem singleton conflitante na origem", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Mover", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const src = createDefaultEconomyLinkAddon("eco-src");
+    src.data.buyValue = 500;
+    const dest = createDefaultEconomyLinkAddon("eco-dest");
+    dest.data.buyValue = 10;
+    store.setSectionAddons(projectId, fromId, [src]);
+    store.setSectionAddons(projectId, toId, [dest]);
+
+    store.moveAddonToSection(projectId, fromId, toId, "eco-src"); // sem overwrite
+
+    const proj = useProjectStore.getState().getProject(projectId);
+    const fromSection = proj?.sections?.find((s) => s.id === fromId);
+    const toSection = proj?.sections?.find((s) => s.id === toId);
+    // src fica na origem; destino intacto (sem duplicata).
+    expect(fromSection?.addons?.some((a) => a.id === "eco-src")).toBe(true);
+    expect(toSection?.addons?.length).toBe(1);
+    expect(toSection?.addons?.[0].id).toBe("eco-dest");
+  });
+
+  it("mover com overwrite substitui singleton do destino e esvazia a origem", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Mover 2", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const src = createDefaultEconomyLinkAddon("eco-src");
+    src.name = "Origem";
+    src.data.name = "Origem";
+    src.data.buyValue = 888;
+    const dest = createDefaultEconomyLinkAddon("eco-dest");
+    dest.name = "Destino";
+    dest.data.name = "Destino";
+    dest.data.buyValue = 10;
+    store.setSectionAddons(projectId, fromId, [src]);
+    store.setSectionAddons(projectId, toId, [dest]);
+
+    store.moveAddonToSection(projectId, fromId, toId, "eco-src", undefined, true);
+
+    const proj = useProjectStore.getState().getProject(projectId);
+    const fromSection = proj?.sections?.find((s) => s.id === fromId);
+    const toSection = proj?.sections?.find((s) => s.id === toId);
+    // origem perde o addon; destino mantem id/nome mas recebe os valores movidos.
+    expect(fromSection?.addons?.some((a) => a.id === "eco-src") ?? false).toBe(false);
+    expect(toSection?.addons?.length).toBe(1);
+    const result = toSection?.addons?.[0];
+    expect(result?.id).toBe("eco-dest");
+    expect(result?.name).toBe("Destino");
+    if (result?.type === "economyLink") expect(result.data.buyValue).toBe(888);
+  });
+
+  it("copiar RemoteConfig religa arraySource/dataSchema aos addons do destino", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto RC", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+
+    const exportAddon = {
+      id: "export-schema-src",
+      type: "exportSchema" as const,
+      name: "Remote Config",
+      data: {
+        id: "export-schema-src",
+        name: "Remote Config",
+        nodes: [
+          {
+            id: "n1",
+            key: "levelSettings",
+            nodeType: "array",
+            arraySource: { type: "progressionTable", addonId: "prog-origem" },
+            itemTemplate: [
+              { id: "n1a", key: "price", nodeType: "value", binding: { source: "dataSchema", addonId: "schema-origem", entryKey: "price" } },
+            ],
+          },
+        ],
+      },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+
+    store.setSectionAddons(projectId, fromId, [exportAddon]);
+
+    // Destino já tem os addons equivalentes (IDs diferentes da origem).
+    const progDest = createDefaultProgressionTableAddon("prog-dest");
+    const schemaDest = {
+      id: "schema-dest",
+      type: "dataSchema" as const,
+      name: "Stats",
+      data: { id: "schema-dest", name: "Stats", entries: [{ id: "e1", key: "price", label: "Price", valueType: "int", value: 0 }] },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+    store.setSectionAddons(projectId, toId, [progDest, schemaDest]);
+
+    store.copyAddonToSection(projectId, fromId, toId, "export-schema-src");
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    const copied = toSection?.addons?.find((a) => a.type === "exportSchema");
+    expect(copied).toBeDefined();
+    if (copied?.type === "exportSchema") {
+      const node = copied.data.nodes[0];
+      // arraySource re-apontado para a ProgressionTable do destino, não a da origem.
+      expect(node.arraySource?.type === "progressionTable" ? node.arraySource.addonId : undefined).toBe("prog-dest");
+      const binding = node.itemTemplate?.[0].binding;
+      expect(binding?.source === "dataSchema" ? binding.addonId : undefined).toBe("schema-dest");
+    }
+  });
+
+  it("copiar dependência antes do RemoteConfig faz o relink apontar para o addon recém-copiado", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto RC2", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+
+    const schemaSrc = {
+      id: "schema-origem",
+      type: "dataSchema" as const,
+      name: "Stats",
+      data: { id: "schema-origem", name: "Stats", entries: [{ id: "e1", key: "price", label: "Price", valueType: "int", value: 0 }] },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+    const exportSrc = {
+      id: "export-schema-src",
+      type: "exportSchema" as const,
+      name: "Remote Config",
+      data: {
+        id: "export-schema-src",
+        name: "Remote Config",
+        nodes: [
+          { id: "n1", key: "id", nodeType: "value", binding: { source: "dataSchema", addonId: "schema-origem", entryKey: "id" } },
+        ],
+      },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+    store.setSectionAddons(projectId, fromId, [schemaSrc, exportSrc]);
+    // Destino começa SEM o dataSchema.
+    store.setSectionAddons(projectId, toId, []);
+
+    // Fluxo do performCopy: dependência primeiro, RemoteConfig depois.
+    store.copyAddonToSection(projectId, fromId, toId, "schema-origem");
+    store.copyAddonToSection(projectId, fromId, toId, "export-schema-src");
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    const newSchema = toSection?.addons?.find((a) => a.type === "dataSchema");
+    const copiedExport = toSection?.addons?.find((a) => a.type === "exportSchema");
+    expect(newSchema).toBeDefined();
+    expect(copiedExport).toBeDefined();
+    if (copiedExport?.type === "exportSchema") {
+      const binding = copiedExport.data.nodes[0].binding;
+      // O binding aponta para o dataSchema recém-copiado (novo ID), não o da origem.
+      expect(binding?.source === "dataSchema" ? binding.addonId : undefined).toBe(newSchema?.id);
+      expect(binding?.source === "dataSchema" ? binding.addonId : undefined).not.toBe("schema-origem");
+    }
+  });
+
+  it("copiar Schema de Dados religa bindings (production/economyLink/progressionColumn) ao destino", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Schema", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+
+    // Origem: production, economyLink, progressionTable e um dataSchema que referencia todos.
+    const prodSrc = createDefaultProductionAddon("prod-origem");
+    const ecoSrc = createDefaultEconomyLinkAddon("eco-origem");
+    const progSrc = createDefaultProgressionTableAddon("prog-origem");
+    const schemaSrc = {
+      id: "schema-origem",
+      type: "dataSchema" as const,
+      name: "Stats",
+      data: {
+        id: "schema-origem",
+        name: "Stats",
+        entries: [
+          { id: "e1", key: "rate", label: "Rate", valueType: "int", value: 0, binding: { source: "production", addonId: "prod-origem", field: "minOutput" } },
+          { id: "e2", key: "price", label: "Price", valueType: "int", value: 0, binding: { source: "economyLink", sectionId: "eco-origem", field: "buyValue" } },
+          { id: "e3", key: "col", label: "Col", valueType: "int", value: 0, binding: { source: "progressionColumn", progressionAddonId: "prog-origem", columnId: "c1", columnName: "C1" } },
+          { id: "e4", key: "pid", label: "PID", valueType: "text", value: "", binding: { source: "pageDataId" } },
+        ],
+      },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+    store.setSectionAddons(projectId, fromId, [prodSrc, ecoSrc, progSrc, schemaSrc]);
+
+    // Destino: já tem production, economyLink e progressionTable (IDs diferentes).
+    const prodDest = createDefaultProductionAddon("prod-dest");
+    const ecoDest = createDefaultEconomyLinkAddon("eco-dest");
+    const progDest = createDefaultProgressionTableAddon("prog-dest");
+    store.setSectionAddons(projectId, toId, [prodDest, ecoDest, progDest]);
+
+    store.copyAddonToSection(projectId, fromId, toId, "schema-origem");
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    const copied = toSection?.addons?.find((a) => a.type === "dataSchema");
+    expect(copied).toBeDefined();
+    if (copied?.type === "dataSchema") {
+      const byKey = Object.fromEntries(copied.data.entries.map((e) => [e.key, e.binding]));
+      // production → addon do destino
+      expect((byKey.rate as any)?.source).toBe("production");
+      expect((byKey.rate as any)?.addonId).toBe("prod-dest");
+      // economyLink → sectionId guarda o id do ADDON economyLink: re-apontado ao do destino
+      expect((byKey.price as any)?.source).toBe("economyLink");
+      expect((byKey.price as any)?.sectionId).toBe("eco-dest");
+      // progressionColumn → tabela do destino (columnId preservado)
+      expect((byKey.col as any)?.source).toBe("progressionColumn");
+      expect((byKey.col as any)?.progressionAddonId).toBe("prog-dest");
+      expect((byKey.col as any)?.columnId).toBe("c1");
+      // pageDataId → inalterado
+      expect((byKey.pid as any)?.source).toBe("pageDataId");
+    }
+  });
+
+  it("copiar Schema de Dados para destino SEM os addons limpa os bindings intra-página", () => {
+    const store = useProjectStore.getState();
+    const projectId = store.addProject("Projeto Schema 2", "Desc");
+    const fromId = store.addSection(projectId, "Origem", "");
+    const toId = store.addSection(projectId, "Destino", "");
+    const prodSrc = createDefaultProductionAddon("prod-origem");
+    const schemaSrc = {
+      id: "schema-origem",
+      type: "dataSchema" as const,
+      name: "Stats",
+      data: {
+        id: "schema-origem",
+        name: "Stats",
+        entries: [
+          { id: "e1", key: "rate", label: "Rate", valueType: "int", value: 0, binding: { source: "production", addonId: "prod-origem", field: "minOutput" } },
+        ],
+      },
+    } as unknown as Parameters<typeof store.addSectionAddon>[2];
+    store.setSectionAddons(projectId, fromId, [prodSrc, schemaSrc]);
+    store.setSectionAddons(projectId, toId, []); // destino vazio
+
+    store.copyAddonToSection(projectId, fromId, toId, "schema-origem");
+
+    const toSection = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === toId);
+    const copied = toSection?.addons?.find((a) => a.type === "dataSchema");
+    if (copied?.type === "dataSchema") {
+      // sem production no destino → binding fica sem vínculo (undefined), não dangling.
+      expect(copied.data.entries[0].binding).toBeUndefined();
+    }
+  });
 });

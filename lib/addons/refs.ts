@@ -11,7 +11,7 @@ import type { FieldBinding } from "@/lib/addons/fieldBinding";
  */
 
 type ExportSchemaNodeLike = {
-  arraySource?: { addonId?: string } | null;
+  arraySource?: { type?: string; addonId?: string } | null;
   binding?: { source?: string; addonId?: string } | null;
   children?: ExportSchemaNodeLike[];
   itemTemplate?: ExportSchemaNodeLike[];
@@ -46,6 +46,172 @@ function clearExportSchemaRefs(
   }
 }
 
+/** Tipos de addon que um exportSchema referencia por `addonId` (todos singleton por página). */
+type ExportSchemaRefType = "progressionTable" | "craftTable" | "skills";
+
+/** Resolve o id do addon do destino para um tipo (tratando dataSchema≈genericStats). */
+function targetAddonIdOfType(
+  targetAddons: ReadonlyArray<{ id: string; type: SectionAddonType }>,
+  type: SectionAddonType
+): string | undefined {
+  if (type === "dataSchema" || type === "genericStats") {
+    return targetAddons.find((a) => a.type === "dataSchema" || a.type === "genericStats")?.id;
+  }
+  return targetAddons.find((a) => a.type === type)?.id;
+}
+
+/**
+ * Re-aponta as refs intra-seção de um exportSchema (RemoteConfig) para os addons
+ * da seção de *destino*. Como os tipos referenciados (progressionTable, craftTable,
+ * skills, dataSchema) são singleton por página, o match por tipo é inequívoco.
+ *
+ * Sempre re-aponta (não só preenche vazios): no copy/move via store as refs
+ * carregam o id da origem, então precisam ser remapeadas para o equivalente do
+ * destino. Em cascade-move o irmão migra com o id original, então o destino tem
+ * um addon daquele tipo com aquele id → o remap resolve para ele mesmo. Se o
+ * destino não tem o tipo, a ref fica vazia. Muta `data` in place.
+ */
+export function relinkExportSchemaRefsToSection(
+  data: Record<string, unknown>,
+  targetAddons: ReadonlyArray<{ id: string; type: SectionAddonType }>
+): void {
+  const visit = (nodes: ExportSchemaNodeLike[] | undefined): void => {
+    if (!Array.isArray(nodes)) return;
+    for (const node of nodes) {
+      const src = node.arraySource;
+      if (
+        src &&
+        typeof src === "object" &&
+        (src.type === "progressionTable" || src.type === "craftTable" || src.type === "skills")
+      ) {
+        src.addonId = targetAddonIdOfType(targetAddons, src.type as ExportSchemaRefType);
+      }
+      if (node.binding && node.binding.source === "dataSchema") {
+        node.binding.addonId = targetAddonIdOfType(targetAddons, "dataSchema");
+      }
+      if (Array.isArray(node.children)) visit(node.children);
+      if (Array.isArray(node.itemTemplate)) visit(node.itemTemplate);
+    }
+  };
+  visit((data as { nodes?: ExportSchemaNodeLike[] }).nodes);
+}
+
+/**
+ * Re-aponta um FieldBinding intra-página para o addon equivalente da seção de
+ * destino. Retorna o binding remapeado, ou `undefined` quando o destino não tem
+ * o addon necessário (a ref não tem como ser resolvida → fica sem vínculo).
+ *
+ * - `production`: por addonId → production do destino.
+ * - `progressionColumn`: por progressionAddonId → progressionTable do destino.
+ * - `economyLink`: o campo `sectionId` guarda na verdade o ID do ADDON economyLink
+ *   (ver DataSchemaAddonPanel — só lista economyLinks da mesma página) → re-aponta
+ *   para o economyLink do destino, igual production.
+ * - `unitXp`: `sectionId` é id de SEÇÃO de verdade (o xpBalance pode estar em outra
+ *   página) → só re-aponta se apontava para a página de ORIGEM; refs a outras ficam.
+ * - demais sources (manual, sheets, library, pageDataId): inalterados.
+ */
+function relinkBindingToSection(
+  binding: FieldBinding | undefined,
+  fromSectionId: string,
+  toSectionId: string,
+  targetAddons: ReadonlyArray<{ id: string; type: SectionAddonType }>
+): FieldBinding | undefined {
+  if (!binding) return binding;
+  switch (binding.source) {
+    case "production": {
+      const id = targetAddonIdOfType(targetAddons, "production");
+      return id ? { ...binding, addonId: id } : undefined;
+    }
+    case "progressionColumn": {
+      const id = targetAddonIdOfType(targetAddons, "progressionTable");
+      return id ? { ...binding, progressionAddonId: id } : undefined;
+    }
+    case "economyLink": {
+      // `sectionId` aqui guarda o id do ADDON economyLink (ref intra-página), não a seção.
+      const id = targetAddonIdOfType(targetAddons, "economyLink");
+      return id ? { ...binding, sectionId: id } : undefined;
+    }
+    case "unitXp": {
+      if (binding.sectionId !== fromSectionId) return binding;
+      return targetAddons.some((a) => a.type === "xpBalance")
+        ? { ...binding, sectionId: toSectionId }
+        : undefined;
+    }
+    default:
+      return binding;
+  }
+}
+
+/**
+ * Religa TODAS as refs intra-página de um addon aos addons equivalentes da seção
+ * de destino, em vez de simplesmente limpá-las (como faz `clearIntraSectionRefs`).
+ * Usado no copy/move via store, onde o destino é conhecido — assim os vínculos de
+ * valor "continuam funcionando" quando a página de destino já tem os addons certos.
+ * Muta `data` in place.
+ */
+export function relinkIntraSectionRefsToSection(
+  data: Record<string, unknown>,
+  type: SectionAddonType,
+  fromSectionId: string,
+  toSectionId: string,
+  targetAddons: ReadonlyArray<{ id: string; type: SectionAddonType }>
+): void {
+  const relink = (b: FieldBinding | undefined) =>
+    relinkBindingToSection(b, fromSectionId, toSectionId, targetAddons);
+
+  if (type === "dataSchema" || type === "genericStats") {
+    const entries = (data as { entries?: Array<Record<string, unknown>> }).entries;
+    if (Array.isArray(entries)) {
+      for (const entry of entries) {
+        entry.binding = relink(entry.binding as FieldBinding | undefined);
+      }
+    }
+    return;
+  }
+
+  if (type === "production") {
+    const d = data as Record<string, unknown>;
+    for (const key of [
+      "minOutputBinding",
+      "outputMinBinding",
+      "maxOutputBinding",
+      "intervalSecondsBinding",
+      "intervalSecondsMinBinding",
+      "intervalSecondsMaxBinding",
+      "capacityBinding",
+      "capacityMinBinding",
+      "capacityMaxBinding",
+      "craftTimeSecondsBinding",
+      "craftTimeSecondsMinBinding",
+      "craftTimeSecondsMaxBinding",
+    ] as const) {
+      d[key] = relink(d[key] as FieldBinding | undefined);
+    }
+    return;
+  }
+
+  if (type === "economyLink") {
+    const d = data as Record<string, unknown>;
+    for (const key of [
+      "buyValueBinding",
+      "minBuyValueBinding",
+      "maxBuyValueBinding",
+      "sellValueBinding",
+      "minSellValueBinding",
+      "maxSellValueBinding",
+      "unlockValueBinding",
+    ] as const) {
+      d[key] = relink(d[key] as FieldBinding | undefined);
+    }
+    return;
+  }
+
+  if (type === "exportSchema") {
+    relinkExportSchemaRefsToSection(data, targetAddons);
+    return;
+  }
+}
+
 /**
  * Mutates the given `data` object in place, clearing refs that point to
  * addons inside the same section (productionRef, progression links, export
@@ -77,14 +243,39 @@ export function clearIntraSectionRefs(
     const production = data as Record<string, unknown>;
     for (const key of [
       "minOutputBinding",
+      "outputMinBinding",
       "maxOutputBinding",
       "intervalSecondsBinding",
+      "intervalSecondsMinBinding",
+      "intervalSecondsMaxBinding",
       "capacityBinding",
+      "capacityMinBinding",
+      "capacityMaxBinding",
       "craftTimeSecondsBinding",
+      "craftTimeSecondsMinBinding",
+      "craftTimeSecondsMaxBinding",
     ] as const) {
       const binding = production[key] as FieldBinding | undefined;
       if (binding?.source === "progressionColumn" && !shouldPreserve(binding.progressionAddonId, preserveIds)) {
         production[key] = undefined;
+      }
+    }
+    return;
+  }
+
+  if (type === "economyLink") {
+    for (const key of [
+      "buyValueBinding",
+      "minBuyValueBinding",
+      "maxBuyValueBinding",
+      "sellValueBinding",
+      "minSellValueBinding",
+      "maxSellValueBinding",
+      "unlockValueBinding",
+    ] as const) {
+      const binding = data[key] as FieldBinding | undefined;
+      if (binding?.source === "progressionColumn" && !shouldPreserve(binding.progressionAddonId, preserveIds)) {
+        data[key] = undefined;
       }
     }
     return;
@@ -113,10 +304,31 @@ export function collectIntraSectionDeps(addon: SectionAddon): string[] {
     const d = addon.data;
     for (const key of [
       "minOutputBinding",
+      "outputMinBinding",
       "maxOutputBinding",
       "intervalSecondsBinding",
+      "intervalSecondsMinBinding",
+      "intervalSecondsMaxBinding",
       "capacityBinding",
+      "capacityMinBinding",
+      "capacityMaxBinding",
       "craftTimeSecondsBinding",
+      "craftTimeSecondsMinBinding",
+      "craftTimeSecondsMaxBinding",
+    ] as const) {
+      const binding = d[key] as FieldBinding | undefined;
+      if (binding?.source === "progressionColumn") ids.add(binding.progressionAddonId);
+    }
+  } else if (addon.type === "economyLink") {
+    const d = addon.data;
+    for (const key of [
+      "buyValueBinding",
+      "minBuyValueBinding",
+      "maxBuyValueBinding",
+      "sellValueBinding",
+      "minSellValueBinding",
+      "maxSellValueBinding",
+      "unlockValueBinding",
     ] as const) {
       const binding = d[key] as FieldBinding | undefined;
       if (binding?.source === "progressionColumn") ids.add(binding.progressionAddonId);

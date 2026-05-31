@@ -408,21 +408,27 @@ export interface ProjectStore {
     fromSectionId: UUID,
     toSectionId: UUID,
     addonId: string,
-    updatedBy?: SectionAuditBy
+    updatedBy?: SectionAuditBy,
+    /** Quando true, sobrescreve um addon singleton já existente no destino em vez de abortar. */
+    overwrite?: boolean
   ) => void;
   moveAddonToSection: (
     projectId: UUID,
     fromSectionId: UUID,
     toSectionId: UUID,
     addonId: string,
-    updatedBy?: SectionAuditBy
+    updatedBy?: SectionAuditBy,
+    /** Quando true, sobrescreve addons singleton já existentes no destino. */
+    overwrite?: boolean
   ) => { reverseRefsUpdated: number };
   moveAddonsToSection: (
     projectId: UUID,
     fromSectionId: UUID,
     toSectionId: UUID,
     addonIds: string[],
-    updatedBy?: SectionAuditBy
+    updatedBy?: SectionAuditBy,
+    /** Quando true, sobrescreve addons singleton já existentes no destino. */
+    overwrite?: boolean
   ) => { reverseRefsUpdated: number };
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;

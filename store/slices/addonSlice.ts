@@ -1,9 +1,10 @@
 import type { ProjectStore, UUID } from "./types";
 import type { SectionAddon } from "@/lib/addons/types";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
-import { copyAddon } from "@/lib/addons/copy";
+import { copyAddon, overwriteShell } from "@/lib/addons/copy";
 import { moveAddon } from "@/lib/addons/move";
-import { collectReverseRefUpdates } from "@/lib/addons/refs";
+import { collectReverseRefUpdates, relinkIntraSectionRefsToSection } from "@/lib/addons/refs";
+import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
 import type { SectionAuditBy } from "./types";
 
 type StoreSet = (partial: Partial<ProjectStore> | ((state: ProjectStore) => Partial<ProjectStore>)) => void;
@@ -103,7 +104,8 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
       fromSectionId: UUID,
       toSectionId: UUID,
       addonId: string,
-      updatedBy?: SectionAuditBy
+      updatedBy?: SectionAuditBy,
+      overwrite?: boolean
     ) => {
       const project = get().projects.find((p) => p.id === projectId);
       if (!project) return;
@@ -112,7 +114,25 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
       if (!fromSection || !toSection) return;
       const source = (fromSection.addons || []).find((a) => a.id === addonId);
       if (!source) return;
-      const copied = copyAddon(source);
+      // Religa as refs intra-página (dataSchema/production/economyLink/RemoteConfig)
+      // aos addons equivalentes do destino, em vez de limpá-las — assim os vínculos
+      // de valor continuam funcionando quando o destino já tem os addons certos.
+      const copied = copyAddon(source, {
+        fromSectionId,
+        toSectionId,
+        targetAddons: toSection.addons || [],
+      });
+      const existing = SINGLETON_ADDON_TYPES.has(source.type)
+        ? (toSection.addons || []).find((a) => a.type === source.type)
+        : undefined;
+      if (existing) {
+        // Singleton já presente no destino. Sem permissão de sobrescrita, aborta.
+        if (!overwrite) return;
+        // Sobrescreve in-place, preservando id/grupo/nome do addon de destino.
+        const replaced = overwriteShell(copied, existing);
+        get().updateSectionAddon(projectId, toSectionId, existing.id, replaced, updatedBy);
+        return;
+      }
       get().addSectionAddon(projectId, toSectionId, copied, updatedBy);
     },
     moveAddonToSection: (
@@ -120,16 +140,18 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
       fromSectionId: UUID,
       toSectionId: UUID,
       addonId: string,
-      updatedBy?: SectionAuditBy
+      updatedBy?: SectionAuditBy,
+      overwrite?: boolean
     ) => {
-      return get().moveAddonsToSection(projectId, fromSectionId, toSectionId, [addonId], updatedBy);
+      return get().moveAddonsToSection(projectId, fromSectionId, toSectionId, [addonId], updatedBy, overwrite);
     },
     moveAddonsToSection: (
       projectId: UUID,
       fromSectionId: UUID,
       toSectionId: UUID,
       addonIds: string[],
-      updatedBy?: SectionAuditBy
+      updatedBy?: SectionAuditBy,
+      overwrite?: boolean
     ) => {
       if (fromSectionId === toSectionId || addonIds.length === 0) {
         return { reverseRefsUpdated: 0 };
@@ -145,17 +167,55 @@ export function createAddonSlice(_set: StoreSet, get: StoreGet) {
       const movingSources = sourceAddons.filter((a) => movingSet.has(a.id));
       if (movingSources.length === 0) return { reverseRefsUpdated: 0 };
 
-      // Preserve refs between addons that travel together.
-      const preserveIds = new Set(movingSources.map((a) => a.id));
-      const movedAddons = movingSources.map((a) => moveAddon(a, preserveIds));
+      // Clona sem tratar refs agora — a religação ocorre depois, contra o snapshot
+      // final do destino (inclui irmãos que vieram juntos no cascade).
+      const movedAddons = movingSources.map((a) => moveAddon(a, undefined, { skipRefHandling: true }));
+
+      // Resolve conflitos de singleton no destino. Cada addon singleton que chega
+      // e já existe no destino: com overwrite, funde sobre o existente (preservando
+      // id/grupo/nome do destino) e remove o antigo; sem overwrite, é descartado do
+      // movimento (fica na origem) — defensivo, a UI já confirma antes.
+      const targetAddons = toSection.addons || [];
+      const overwrittenTargetIds = new Set<string>();
+      const skippedFromMove = new Set<string>();
+      const arrivingAddons: SectionAddon[] = [];
+      for (const moved of movedAddons) {
+        if (SINGLETON_ADDON_TYPES.has(moved.type)) {
+          const existing = targetAddons.find(
+            (a) => a.type === moved.type && !overwrittenTargetIds.has(a.id)
+          );
+          if (existing) {
+            if (!overwrite) {
+              skippedFromMove.add(moved.id);
+              continue;
+            }
+            overwrittenTargetIds.add(existing.id);
+            arrivingAddons.push(overwriteShell(moved, existing));
+            continue;
+          }
+        }
+        arrivingAddons.push(moved);
+      }
+
+      // Religa as refs intra-página dos addons que chegam aos addons que existirão
+      // no destino após o move (pré-existentes não sobrescritos + os que chegam).
+      const finalTargetAddons = [
+        ...targetAddons.filter((a) => !overwrittenTargetIds.has(a.id)),
+        ...arrivingAddons,
+      ];
+      for (const arriving of arrivingAddons) {
+        relinkIntraSectionRefsToSection(arriving.data as Record<string, unknown>, arriving.type, fromSectionId, toSectionId, finalTargetAddons);
+      }
 
       // Build post-move snapshot.
       const postMoveSections = (project.sections || []).map((s) => {
         if (s.id === fromSectionId) {
-          return { ...s, addons: (s.addons || []).filter((a) => !movingSet.has(a.id)) };
+          // Addons descartados do movimento permanecem na origem.
+          return { ...s, addons: (s.addons || []).filter((a) => !movingSet.has(a.id) || skippedFromMove.has(a.id)) };
         }
         if (s.id === toSectionId) {
-          return { ...s, addons: [...(s.addons || []), ...movedAddons] };
+          const kept = (s.addons || []).filter((a) => !overwrittenTargetIds.has(a.id));
+          return { ...s, addons: [...kept, ...arrivingAddons] };
         }
         return s;
       });

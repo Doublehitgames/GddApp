@@ -12,9 +12,17 @@ import { clearIntraSectionRefs } from "@/lib/addons/refs";
  *   section (those siblings aren't coming along) — except for IDs in the
  *   optional `preserveIds` set, used when multiple addons move together.
  */
-export function moveAddon(addon: SectionAddon, preserveIds?: Set<string>): SectionAddon {
+export function moveAddon(
+  addon: SectionAddon,
+  preserveIds?: Set<string>,
+  opts?: { skipRefHandling?: boolean }
+): SectionAddon {
   const clonedData = JSON.parse(JSON.stringify(addon.data)) as Record<string, unknown>;
-  clearIntraSectionRefs(clonedData, addon.type, preserveIds);
+  // Quando `skipRefHandling`, o chamador (store) faz a religação ao destino depois,
+  // com o snapshot final dos addons — então não limpamos aqui (preservamos a info).
+  if (!opts?.skipRefHandling) {
+    clearIntraSectionRefs(clonedData, addon.type, preserveIds);
+  }
   return {
     ...addon,
     group: undefined,

@@ -1,5 +1,15 @@
 import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
-import { clearIntraSectionRefs } from "@/lib/addons/refs";
+import { clearIntraSectionRefs, relinkIntraSectionRefsToSection } from "@/lib/addons/refs";
+
+/**
+ * Contexto para religar as refs intra-página ao destino em vez de limpá-las.
+ * Usado quando o destino da cópia é conhecido (copy/move via store).
+ */
+export type CopyRelinkContext = {
+  fromSectionId: string;
+  toSectionId: string;
+  targetAddons: ReadonlyArray<{ id: string; type: SectionAddonType }>;
+};
 
 /**
  * ID prefixes per addon type, matching the convention used by createDefault
@@ -78,13 +88,35 @@ export function duplicateAddonsForDuplicatedSection(
  * - has `data.id` synced to the new wrapper ID (the app relies on this equality)
  * - has `group` reset to undefined (groups are per-section)
  * - keeps all section-ID references intact (they remain valid cross-section)
- * - clears addon-ID references that targeted addons inside the original section
+ * - intra-section addon refs: quando `relink` é informado, são religadas aos
+ *   addons equivalentes da seção de destino (assim os vínculos continuam
+ *   funcionando se o destino já tem os addons certos); senão, são limpas.
  */
-export function copyAddon(addon: SectionAddon): SectionAddon {
+/**
+ * Funde o conteúdo de `incoming` sobre o addon `existing` do destino, mantendo o
+ * ID, o grupo e o nome de `existing`. ID/grupo preservam referências (intra e
+ * cross-section) que apontam para o addon de destino; o nome é a identidade que o
+ * usuário deu àquele addon na página de destino. Usado na sobrescrita de singleton.
+ */
+export function overwriteShell(incoming: SectionAddon, existing: SectionAddon): SectionAddon {
+  return {
+    ...incoming,
+    id: existing.id,
+    group: existing.group,
+    name: existing.name,
+    data: { ...incoming.data, id: existing.id, name: existing.data.name },
+  } as SectionAddon;
+}
+
+export function copyAddon(addon: SectionAddon, relink?: CopyRelinkContext): SectionAddon {
   const newId = generateAddonId(addon.type);
   const clonedData = JSON.parse(JSON.stringify(addon.data)) as Record<string, unknown>;
   clonedData.id = newId;
-  clearIntraSectionRefs(clonedData, addon.type);
+  if (relink) {
+    relinkIntraSectionRefsToSection(clonedData, addon.type, relink.fromSectionId, relink.toSectionId, relink.targetAddons);
+  } else {
+    clearIntraSectionRefs(clonedData, addon.type);
+  }
 
   return {
     ...addon,

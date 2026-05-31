@@ -50,6 +50,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
+import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
 import { AddonPickerModal } from "@/components/AddonPickerModal";
 import { AddonStackedList } from "@/components/addons/AddonStackedList";
 import { AddonEditorDrawer } from "@/components/addons/AddonEditorDrawer";
@@ -828,16 +829,16 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSectionAddons(realProjectId, realSectionId,nextAddons, sectionAuditBy);
   };
 
-  const copyAddonToSectionHandler = (toSectionId: string, addonId: string) => {
-    copyAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy);
+  const copyAddonToSectionHandler = (toSectionId: string, addonId: string, overwrite?: boolean) => {
+    copyAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy, overwrite);
   };
 
-  const moveAddonToSectionHandler = (toSectionId: string, addonId: string): { reverseRefsUpdated: number } => {
-    return moveAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy);
+  const moveAddonToSectionHandler = (toSectionId: string, addonId: string, overwrite?: boolean): { reverseRefsUpdated: number } => {
+    return moveAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy, overwrite);
   };
 
-  const moveAddonsToSectionHandler = (toSectionId: string, addonIds: string[]): { reverseRefsUpdated: number } => {
-    return moveAddonsToSection(realProjectId, realSectionId, toSectionId, addonIds, sectionAuditBy);
+  const moveAddonsToSectionHandler = (toSectionId: string, addonIds: string[], overwrite?: boolean): { reverseRefsUpdated: number } => {
+    return moveAddonsToSection(realProjectId, realSectionId, toSectionId, addonIds, sectionAuditBy, overwrite);
   };
 
   return (
@@ -1714,6 +1715,24 @@ function SectionDetailContent({
   } = useSyncSectionSheets(realProjectId, realSectionId);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
+  // Confirmação de cópia: sobrescrita de singletons já presentes no destino (conflictLabels)
+  // e/ou dependências (DataSchema, ProgressionTable...) que faltam no destino (missingDeps).
+  const [copyConfirm, setCopyConfirm] = useState<{
+    target: string;
+    targetTitle: string;
+    ids: string[];
+    conflictLabels: string[];
+    missingDeps: { id: string; label: string; typeLabel: string }[];
+  } | null>(null);
+  // Quais dependências faltantes o usuário marcou para copiar junto (por addonId).
+  const [copyDepChecked, setCopyDepChecked] = useState<Record<string, boolean>>({});
+  // Idem para mover.
+  const [moveOverwriteConfirm, setMoveOverwriteConfirm] = useState<{
+    target: string;
+    targetTitle: string;
+    ids: string[];
+    conflictLabels: string[];
+  } | null>(null);
   const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
   const [moveAddonCascade, setMoveAddonCascade] = useState<Record<string, boolean>>({});
   const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(() => new Set());
@@ -2152,6 +2171,55 @@ function SectionDetailContent({
       return t("exportSchemaAddon.addonTypeLabel", "Remote Config");
     }
     return t("sectionDetail.history.addonType.generic");
+  };
+
+  // Executa a cópia de uma lista de addons para a página destino e exibe o toast.
+  // `depIds` (dependências faltantes) são copiados ANTES para que o relink do
+  // RemoteConfig os encontre no destino. O toast conta só os addons principais (`ids`).
+  const performCopy = (target: string, ids: string[], targetTitle: string, overwrite: boolean, depIds: string[] = []) => {
+    for (const id of depIds) {
+      onCopyAddonToSection?.(target, id, overwrite);
+    }
+    for (const id of ids) {
+      onCopyAddonToSection?.(target, id, overwrite);
+    }
+    const depSuffix = depIds.length > 0
+      ? t('sectionDetail.copy.withDeps', ' (+{n} dependências)').replace('{n}', String(depIds.length))
+      : '';
+    const msg = (ids.length > 1
+      ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
+          .replace('{count}', String(ids.length))
+          .replace('{section}', targetTitle)
+      : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle))
+      + depSuffix;
+    setCopyAddonToast(msg);
+    setCopyAddonModal(null);
+    setCopyConfirm(null);
+    setCopyDepChecked({});
+    setSelectedAddonIds(new Set());
+    setLastClickedAddonId(null);
+  };
+
+  // Executa o movimento de uma lista de addons para a página destino e exibe o toast.
+  const performMove = (target: string, addonIds: string[], targetTitle: string, overwrite: boolean) => {
+    const result = onMoveAddonsToSection?.(target, addonIds, overwrite)
+      ?? onMoveAddonToSection?.(target, addonIds[0], overwrite);
+    const count = result?.reverseRefsUpdated ?? 0;
+    const movedCount = addonIds.length;
+    const baseKey = movedCount > 1 ? 'sectionDetail.moveAddon.successBatch' : 'sectionDetail.moveAddon.success';
+    const baseFallback = movedCount > 1 ? '{count} addons movidos para "{section}"' : 'Movido para "{section}"';
+    let msg = t(baseKey, baseFallback)
+      .replace('{section}', targetTitle)
+      .replace('{count}', String(movedCount));
+    if (count > 0) {
+      msg += t('sectionDetail.moveAddon.refsSuffix', ' {n} referencias atualizadas.').replace('{n}', String(count));
+    }
+    setCopyAddonToast(msg);
+    setMoveAddonModal(null);
+    setMoveAddonCascade({});
+    setMoveOverwriteConfirm(null);
+    setSelectedAddonIds(new Set());
+    setLastClickedAddonId(null);
   };
 
   return (
@@ -3564,41 +3632,41 @@ function SectionDetailContent({
           : [];
         const selectedDepCount = depEntries.filter((d) => moveAddonCascade[d.id]).length;
         const totalToMove = isBulk ? (moveAddonModal?.bulkIds?.length ?? 0) : 1 + selectedDepCount;
+        // IDs que efetivamente serao movidos (principal + deps marcados, ou bulk).
+        const movingIds = isBulk
+          ? (moveAddonModal?.bulkIds ?? [])
+          : (moveAddonModal
+              ? [moveAddonModal.addonId, ...depEntries.filter((d) => moveAddonCascade[d.id]).map((d) => d.id)]
+              : []);
+        // Addons singleton ja presentes no destino que seriam sobrescritos pelo movimento.
+        const moveConflictLabelsFor = (target: string): string[] => {
+          const movingTypes = new Set(
+            movingIds
+              .map((id) => currentAddons.find((a) => a.id === id)?.type)
+              .filter((tp): tp is SectionAddonType => !!tp && SINGLETON_ADDON_TYPES.has(tp))
+          );
+          if (movingTypes.size === 0) return [];
+          const targetSection = sections.find((s: any) => s.id === target);
+          return ((targetSection?.addons || []) as SectionAddon[])
+            .filter((a) => movingTypes.has(a.type))
+            .map((a) => a.name || getAddonTypeLabel(a.type));
+        };
         return (
           <SectionPickerModal
             open={!!moveAddonModal}
             onClose={() => { setMoveAddonModal(null); setMoveAddonCascade({}); }}
             onConfirm={(target) => {
               if (!moveAddonModal) return;
+              if (target === sectionId) return;
               const targetSection = sections.find((s: any) => s.id === target);
-              const addonIds = isBulk
-                ? moveAddonModal.bulkIds!
-                : [
-                    moveAddonModal.addonId,
-                    ...depEntries.filter((d) => moveAddonCascade[d.id]).map((d) => d.id),
-                  ];
-              const result = onMoveAddonsToSection?.(target, addonIds)
-                ?? onMoveAddonToSection?.(target, moveAddonModal.addonId);
               const targetTitle = targetSection?.title || '';
-              const count = result?.reverseRefsUpdated ?? 0;
-              const movedCount = addonIds.length;
-              const baseKey = movedCount > 1 ? 'sectionDetail.moveAddon.successBatch' : 'sectionDetail.moveAddon.success';
-              const baseFallback = movedCount > 1
-                ? '{count} addons movidos para "{section}"'
-                : 'Movido para "{section}"';
-              let msg = t(baseKey, baseFallback)
-                .replace('{section}', targetTitle)
-                .replace('{count}', String(movedCount));
-              if (count > 0) {
-                const suffix = t('sectionDetail.moveAddon.refsSuffix', ' {n} referencias atualizadas.')
-                  .replace('{n}', String(count));
-                msg += suffix;
+              const addonIds = movingIds;
+              const conflictLabels = moveConflictLabelsFor(target);
+              if (conflictLabels.length > 0) {
+                setMoveOverwriteConfirm({ target, targetTitle, ids: addonIds, conflictLabels });
+                return;
               }
-              setCopyAddonToast(msg);
-              setMoveAddonModal(null);
-              setMoveAddonCascade({});
-              setSelectedAddonIds(new Set());
-              setLastClickedAddonId(null);
+              performMove(target, addonIds, targetTitle, false);
             }}
             title={t('sectionDetail.moveAddon.title', 'Mover addon para...')}
             description={moveAddonModal ? (<>{t('sectionDetail.copy.description', 'Mover')} <strong className="text-gray-100">{moveAddonModal.addonLabel}</strong> {!isBulk && totalToMove > 1 ? ` +${selectedDepCount} ` : ' '}{t('sectionDetail.moveAddon.descriptionTo', 'para outra pagina')}</>) : null}
@@ -3639,35 +3707,206 @@ function SectionDetailContent({
       })()}
 
       {/* Modal: Copiar Addon para outra pagina */}
-      <SectionPickerModal
-        open={!!copyAddonModal}
-        onClose={() => setCopyAddonModal(null)}
-        onConfirm={(target) => {
-          if (!copyAddonModal) return;
-          const targetSection = sections.find((s: any) => s.id === target);
-          const ids = copyAddonModal.bulkIds && copyAddonModal.bulkIds.length > 1
-            ? copyAddonModal.bulkIds
-            : [copyAddonModal.addonId];
-          for (const id of ids) {
-            onCopyAddonToSection?.(target, id);
+      {(() => {
+        const copyIds = copyAddonModal
+          ? (copyAddonModal.bulkIds && copyAddonModal.bulkIds.length > 1
+              ? copyAddonModal.bulkIds
+              : [copyAddonModal.addonId])
+          : [];
+        const copySet = new Set(copyIds);
+        // Tipos singleton que serao copiados — usados para detectar se o destino
+        // ja possui um addon desse tipo (que seria sobrescrito).
+        const copyConflictTypes = new Set(
+          copyIds
+            .map((id) => (addons as SectionAddon[]).find((a) => a.id === id)?.type)
+            .filter((tp): tp is SectionAddonType => !!tp && SINGLETON_ADDON_TYPES.has(tp))
+        );
+        // Dependencias intra-secao dos addons copiados (ex: RemoteConfig → DataSchema,
+        // ProgressionTable). Resolvidas para os addons irmaos da pagina atual.
+        const copyDepAddons = (() => {
+          const seen = new Set<string>();
+          const deps: SectionAddon[] = [];
+          for (const id of copyIds) {
+            const addon = (addons as SectionAddon[]).find((a) => a.id === id);
+            if (!addon) continue;
+            for (const depId of collectIntraSectionDeps(addon)) {
+              if (copySet.has(depId) || seen.has(depId)) continue;
+              const dep = (addons as SectionAddon[]).find((a) => a.id === depId);
+              if (dep) { seen.add(depId); deps.push(dep); }
+            }
           }
-          const targetTitle = targetSection?.title || '';
-          const msg = ids.length > 1
-            ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
-                .replace('{count}', String(ids.length))
-                .replace('{section}', targetTitle)
-            : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle);
-          setCopyAddonToast(msg);
-          setCopyAddonModal(null);
-          setSelectedAddonIds(new Set());
-          setLastClickedAddonId(null);
-        }}
-        title={t('sectionDetail.copy.title', 'Copiar addon para...')}
-        description={copyAddonModal ? (<>{t('sectionDetail.copy.description', 'Copiar')} <strong className="text-gray-100">{copyAddonModal.addonLabel}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
-        confirmLabel={t('sectionDetail.copy.confirm', 'Copiar')}
-        confirmVariant="sky"
-        sections={sections}
-      />
+          return deps;
+        })();
+        // Um tipo singleton (dataSchema≈genericStats) está satisfeito se o destino já o tem.
+        const targetHasType = (targetAddons: SectionAddon[], type: SectionAddonType): boolean =>
+          targetAddons.some((a) => a.type === type
+            || ((type === 'dataSchema' || type === 'genericStats') && (a.type === 'dataSchema' || a.type === 'genericStats')));
+        return (
+          <SectionPickerModal
+            open={!!copyAddonModal}
+            onClose={() => setCopyAddonModal(null)}
+            onConfirm={(target) => {
+              if (!copyAddonModal) return;
+              const targetSection = sections.find((s: any) => s.id === target);
+              const targetTitle = targetSection?.title || '';
+              const targetAddons: SectionAddon[] = targetSection?.addons || [];
+              // Addons singleton ja presentes no destino que serao sobrescritos.
+              const conflictLabels = copyConflictTypes.size > 0
+                ? targetAddons
+                    .filter((a) => copyConflictTypes.has(a.type))
+                    .map((a) => a.name || getAddonTypeLabel(a.type))
+                : [];
+              // Dependencias que faltam no destino (serao oferecidas para copiar junto).
+              const missingDeps = copyDepAddons
+                .filter((dep) => !targetHasType(targetAddons, dep.type))
+                .map((dep) => ({ id: dep.id, label: dep.name || getAddonTypeLabel(dep.type), typeLabel: getAddonTypeLabel(dep.type) }));
+              if (conflictLabels.length > 0 || missingDeps.length > 0) {
+                // Marca as dependencias faltantes por padrao.
+                setCopyDepChecked(Object.fromEntries(missingDeps.map((d) => [d.id, true])));
+                setCopyConfirm({ target, targetTitle, ids: copyIds, conflictLabels, missingDeps });
+                return;
+              }
+              performCopy(target, copyIds, targetTitle, false);
+            }}
+            title={t('sectionDetail.copy.title', 'Copiar addon para...')}
+            description={copyAddonModal ? (<>{t('sectionDetail.copy.description', 'Copiar')} <strong className="text-gray-100">{copyAddonModal.addonLabel}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
+            confirmLabel={t('sectionDetail.copy.confirm', 'Copiar')}
+            confirmVariant="sky"
+            sections={sections}
+          />
+        );
+      })()}
+
+      {/* Confirmacao de copia: sobrescrita de singletons + dependencias faltantes */}
+      {copyConfirm && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => { setCopyConfirm(null); setCopyDepChecked({}); }} />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[320px] max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Bloco de sobrescrita (quando o destino ja tem o singleton copiado) */}
+            {copyConfirm.conflictLabels.length > 0 && (
+              <>
+                <p className="text-sm text-gray-200 mb-2">
+                  {t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:')
+                    .replace('{section}', copyConfirm.targetTitle)}
+                </p>
+                <ul className="mb-3 space-y-1">
+                  {copyConfirm.conflictLabels.map((label, idx) => (
+                    <li key={idx} className="text-xs text-amber-300 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-gray-400 mb-4">
+                  {t('sectionDetail.copy.overwriteWarning', 'Copiar vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.')}
+                </p>
+              </>
+            )}
+
+            {/* Bloco de dependencias faltantes (ex: RemoteConfig precisa de DataSchema) */}
+            {copyConfirm.missingDeps.length > 0 && (
+              <div className="rounded-lg border border-sky-700/40 bg-sky-950/30 p-3 mb-4">
+                <p className="text-xs font-semibold text-sky-300 mb-2">
+                  {t('sectionDetail.copy.missingDepsTitle', 'O destino não tem alguns addons que este precisa. Copiar junto?')}
+                </p>
+                <div className="space-y-1">
+                  {copyConfirm.missingDeps.map((dep) => (
+                    <label key={dep.id} className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer hover:text-white">
+                      <input
+                        type="checkbox"
+                        checked={copyDepChecked[dep.id] ?? false}
+                        onChange={(e) => setCopyDepChecked((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
+                        className="accent-sky-500"
+                      />
+                      <span className="flex-1 truncate">{dep.label}</span>
+                      <span className="text-[10px] text-gray-500 shrink-0">{dep.typeLabel}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-500 mt-2">
+                  {t('sectionDetail.copy.missingDepsHint', 'Marcados são copiados junto para os vínculos funcionarem. Desmarcados ficam sem vínculo no destino.')}
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                onClick={() => { setCopyConfirm(null); setCopyDepChecked({}); }}
+              >
+                {t('common.cancel', 'Cancelar')}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-amber-700/60 bg-amber-900/40 px-4 py-1.5 text-xs text-amber-100 hover:bg-amber-900/60"
+                onClick={() => performCopy(
+                  copyConfirm.target,
+                  copyConfirm.ids,
+                  copyConfirm.targetTitle,
+                  copyConfirm.conflictLabels.length > 0,
+                  copyConfirm.missingDeps.filter((d) => copyDepChecked[d.id]).map((d) => d.id)
+                )}
+              >
+                {copyConfirm.conflictLabels.length > 0
+                  ? t('sectionDetail.copy.overwriteConfirm', 'Sobrescrever')
+                  : t('sectionDetail.copy.confirm', 'Copiar')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Confirmacao: sobrescrever addon singleton existente no destino (mover) */}
+      {moveOverwriteConfirm && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setMoveOverwriteConfirm(null)} />
+          <div
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[320px] max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-gray-200 mb-2">
+              {t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:')
+                .replace('{section}', moveOverwriteConfirm.targetTitle)}
+            </p>
+            <ul className="mb-3 space-y-1">
+              {moveOverwriteConfirm.conflictLabels.map((label, idx) => (
+                <li key={idx} className="text-xs text-amber-300 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-gray-400 mb-4">
+              {t('sectionDetail.moveAddon.overwriteWarning', 'Mover vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.')}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
+                onClick={() => setMoveOverwriteConfirm(null)}
+              >
+                {t('common.cancel', 'Cancelar')}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-amber-700/60 bg-amber-900/40 px-4 py-1.5 text-xs text-amber-100 hover:bg-amber-900/60"
+                onClick={() => performMove(
+                  moveOverwriteConfirm.target,
+                  moveOverwriteConfirm.ids,
+                  moveOverwriteConfirm.targetTitle,
+                  true
+                )}
+              >
+                {t('sectionDetail.moveAddon.overwriteConfirm', 'Sobrescrever')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Bulk remove confirmation */}
       {bulkConfirmRemove && (

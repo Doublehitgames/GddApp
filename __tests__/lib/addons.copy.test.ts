@@ -1,7 +1,9 @@
 import { copyAddon } from "@/lib/addons/copy";
+import { relinkExportSchemaRefsToSection } from "@/lib/addons/refs";
 import type {
   AttributeProfileSectionAddon,
   DataSchemaSectionAddon,
+  EconomyLinkSectionAddon,
   ExportSchemaSectionAddon,
   ProductionSectionAddon,
   ProgressionTableSectionAddon,
@@ -217,6 +219,82 @@ describe("copyAddon", () => {
     expect(objNode.children?.[1].binding?.source).toBe("manual");
   });
 
+  it("clears progressionColumn bindings on EconomyLink addon", () => {
+    const original: EconomyLinkSectionAddon = {
+      id: "economy-orig",
+      type: "economyLink",
+      name: "Economia",
+      data: {
+        id: "economy-orig",
+        name: "Economia",
+        buyModifiers: [],
+        sellModifiers: [],
+        hasBuyConfig: true,
+        buyCurrencyRef: "section-currency-elsewhere",
+        buyValueBinding: {
+          source: "progressionColumn",
+          progressionAddonId: "progression-same-section",
+          columnId: "col-buy",
+          columnName: "Buy",
+        },
+        minBuyValueBinding: {
+          source: "progressionColumn",
+          progressionAddonId: "progression-same-section",
+          columnId: "col-min-buy",
+          columnName: "Min Buy",
+        },
+        hasSellConfig: true,
+        sellCurrencyRef: "section-currency-elsewhere",
+        sellValueBinding: {
+          source: "progressionColumn",
+          progressionAddonId: "progression-same-section",
+          columnId: "col-sell",
+          columnName: "Sell",
+        },
+        hasUnlockConfig: true,
+        unlockRef: "section-xp-elsewhere",
+        unlockValueBinding: {
+          source: "progressionColumn",
+          progressionAddonId: "progression-same-section",
+          columnId: "col-unlock",
+          columnName: "Unlock",
+        },
+      },
+    };
+
+    const copy = copyAddon(original) as EconomyLinkSectionAddon;
+    expect(copy.data.buyValueBinding).toBeUndefined();
+    expect(copy.data.minBuyValueBinding).toBeUndefined();
+    expect(copy.data.sellValueBinding).toBeUndefined();
+    expect(copy.data.unlockValueBinding).toBeUndefined();
+    // cross-section refs preserved
+    expect(copy.data.buyCurrencyRef).toBe("section-currency-elsewhere");
+    expect(copy.data.sellCurrencyRef).toBe("section-currency-elsewhere");
+    expect(copy.data.unlockRef).toBe("section-xp-elsewhere");
+  });
+
+  it("preserves non-progressionColumn bindings on EconomyLink addon", () => {
+    const original: EconomyLinkSectionAddon = {
+      id: "economy-orig",
+      type: "economyLink",
+      name: "Economia",
+      data: {
+        id: "economy-orig",
+        name: "Economia",
+        buyModifiers: [],
+        sellModifiers: [],
+        hasBuyConfig: true,
+        buyValueBinding: { source: "sheets", ref: { sheetName: "Sheet1", cellRef: "B2", cachedValue: 10, syncedAt: null } },
+        hasSellConfig: true,
+        sellValueBinding: { source: "manual" },
+      },
+    };
+
+    const copy = copyAddon(original) as EconomyLinkSectionAddon;
+    expect(copy.data.buyValueBinding?.source).toBe("sheets");
+    expect(copy.data.sellValueBinding?.source).toBe("manual");
+  });
+
   it("deep clones data — mutations on the copy do not affect the original", () => {
     const original: DataSchemaSectionAddon = {
       id: "data-schema-orig",
@@ -260,5 +338,86 @@ describe("copyAddon", () => {
       const copy = copyAddon(stub);
       expect(copy.id.startsWith(prefix)).toBe(true);
     }
+  });
+});
+
+describe("relinkExportSchemaRefsToSection", () => {
+  const makeExportData = () => ({
+    id: "export-schema-1",
+    name: "Remote Config",
+    nodes: [
+      {
+        id: "n1",
+        key: "levelSettings",
+        nodeType: "array",
+        // addonId vazio (simula estado após o clear do copy)
+        arraySource: { type: "progressionTable", addonId: undefined },
+        itemTemplate: [
+          {
+            id: "n1a",
+            key: "upgrade_price",
+            nodeType: "value",
+            binding: { source: "dataSchema", addonId: undefined, entryKey: "price" },
+          },
+        ],
+      },
+      {
+        id: "n2",
+        key: "baseSettings",
+        nodeType: "object",
+        children: [
+          {
+            id: "n2a",
+            key: "id",
+            nodeType: "value",
+            binding: { source: "dataSchema", addonId: undefined, entryKey: "id" },
+          },
+        ],
+      },
+    ],
+  });
+
+  it("re-aponta arraySource e dataSchema binding para os addons do destino", () => {
+    const data = makeExportData() as unknown as Record<string, unknown>;
+    relinkExportSchemaRefsToSection(data, [
+      { id: "prog-dest", type: "progressionTable" },
+      { id: "schema-dest", type: "dataSchema" },
+    ]);
+    const nodes = (data as any).nodes;
+    expect(nodes[0].arraySource.addonId).toBe("prog-dest");
+    expect(nodes[0].itemTemplate[0].binding.addonId).toBe("schema-dest");
+    expect(nodes[1].children[0].binding.addonId).toBe("schema-dest");
+  });
+
+  it("resolve dataSchema também quando o destino usa genericStats", () => {
+    const data = makeExportData() as unknown as Record<string, unknown>;
+    relinkExportSchemaRefsToSection(data, [{ id: "legacy-schema", type: "genericStats" }]);
+    const nodes = (data as any).nodes;
+    expect(nodes[0].itemTemplate[0].binding.addonId).toBe("legacy-schema");
+  });
+
+  it("deixa a ref vazia quando o destino não tem o tipo necessário", () => {
+    const data = makeExportData() as unknown as Record<string, unknown>;
+    relinkExportSchemaRefsToSection(data, [{ id: "schema-dest", type: "dataSchema" }]);
+    const nodes = (data as any).nodes;
+    // sem progressionTable no destino → arraySource continua vazio
+    expect(nodes[0].arraySource.addonId).toBeUndefined();
+    // dataSchema existe → binding religado
+    expect(nodes[0].itemTemplate[0].binding.addonId).toBe("schema-dest");
+  });
+
+  it("re-aponta sempre para o addon do destino, mesmo se a ref já tinha um id (origem)", () => {
+    const data = makeExportData() as unknown as Record<string, unknown>;
+    (data as any).nodes[0].arraySource.addonId = "prog-origem"; // id da origem
+    relinkExportSchemaRefsToSection(data, [{ id: "prog-dest", type: "progressionTable" }]);
+    expect((data as any).nodes[0].arraySource.addonId).toBe("prog-dest");
+  });
+
+  it("em cascade o irmão migra com o id original e o relink resolve para ele mesmo", () => {
+    const data = makeExportData() as unknown as Record<string, unknown>;
+    (data as any).nodes[0].arraySource.addonId = "prog-cascade";
+    // O irmão veio junto no move (id preservado) → está no targetAddons.
+    relinkExportSchemaRefsToSection(data, [{ id: "prog-cascade", type: "progressionTable" }]);
+    expect((data as any).nodes[0].arraySource.addonId).toBe("prog-cascade");
   });
 });
