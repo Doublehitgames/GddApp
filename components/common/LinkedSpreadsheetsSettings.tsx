@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
 import { parseSpreadsheetId, getGoogleSheetsToken, fetchSpreadsheetSheets, fetchSpreadsheetHeaders } from "@/lib/googleSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 import { useI18n } from "@/lib/i18n/provider";
+import { useProjectStore } from "@/store/projectStore";
+import { useSyncSpreadsheetPages } from "@/hooks/useSyncSpreadsheetPages";
 
 interface LinkedSpreadsheetsSettingsProps {
   projectId: string;
@@ -31,6 +33,20 @@ export function LinkedSpreadsheetsSettings({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  // Sincronização em lote de páginas vinculadas
+  const { sync: syncPages, progress: syncProgress } = useSyncSpreadsheetPages(projectId);
+  const projects = useProjectStore((s) => s.projects);
+  const pageCountById = useMemo(() => {
+    const project = projects.find((p) => p.id === projectId);
+    const counts: Record<string, number> = {};
+    for (const sec of project?.sections ?? []) {
+      if (sec.linkedSpreadsheetId) {
+        counts[sec.linkedSpreadsheetId] = (counts[sec.linkedSpreadsheetId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [projects, projectId]);
 
   function resetForm() {
     setNewUrl("");
@@ -145,55 +161,129 @@ export function LinkedSpreadsheetsSettings({
           {spreadsheets.map((s) => (
             <li
               key={s.id}
-              className="flex items-start justify-between gap-3 rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-2.5"
+              className="flex flex-col gap-2 rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-2.5"
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-white">{s.name}</p>
-                <p className="mt-0.5 truncate text-[11px] text-gray-500">{s.url}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {s.sheets.map((sheet) => (
-                    <span
-                      key={sheet}
-                      className="rounded border border-gray-600 bg-gray-700/60 px-1.5 py-0.5 text-[10px] text-gray-300"
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">{s.name}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-gray-500">{s.url}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {s.sheets.map((sheet) => (
+                      <span
+                        key={sheet}
+                        className="rounded border border-gray-600 bg-gray-700/60 px-1.5 py-0.5 text-[10px] text-gray-300"
+                      >
+                        {sheet}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleRefreshSheets(s)}
+                    disabled={refreshingId === s.id}
+                    className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white disabled:opacity-50"
+                    title="Atualizar lista de abas"
+                  >
+                    <svg
+                      className={`h-3.5 w-3.5 ${refreshingId === s.id ? "animate-spin" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
-                      {sheet}
-                    </span>
-                  ))}
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(s)}
+                    className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white"
+                  >
+                    {t("linkedSpreadsheetsSettings.editButton")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(s.id)}
+                    className="rounded px-2 py-1 text-xs text-rose-500 hover:text-rose-300"
+                  >
+                    {t("linkedSpreadsheetsSettings.removeButton")}
+                  </button>
                 </div>
               </div>
-              <div className="flex shrink-0 gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleRefreshSheets(s)}
-                  disabled={refreshingId === s.id}
-                  className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white disabled:opacity-50"
-                  title="Atualizar lista de abas"
-                >
-                  <svg
-                    className={`h-3.5 w-3.5 ${refreshingId === s.id ? "animate-spin" : ""}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleEdit(s)}
-                  className="rounded px-2 py-1 text-xs text-gray-400 hover:text-white"
-                >
-                  {t("linkedSpreadsheetsSettings.editButton")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRemove(s.id)}
-                  className="rounded px-2 py-1 text-xs text-rose-500 hover:text-rose-300"
-                >
-                  {t("linkedSpreadsheetsSettings.removeButton")}
-                </button>
-              </div>
+
+              {/* Rodapé: sincronizar páginas vinculadas */}
+              {(() => {
+                const pageCount = pageCountById[s.id] ?? 0;
+                const isThis = syncProgress.spreadsheetId === s.id;
+                const isSyncing = isThis && syncProgress.syncing;
+                return (
+                  <div className="border-t border-gray-700/60 pt-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => syncPages(s)}
+                        disabled={pageCount === 0 || syncProgress.syncing}
+                        className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-900/20 px-2.5 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <svg
+                          className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {pageCount === 0
+                          ? t("linkedSpreadsheetsSettings.syncPagesNone")
+                          : t("linkedSpreadsheetsSettings.syncPagesButton").replace("{count}", String(pageCount))}
+                      </button>
+                      {isSyncing && (
+                        <span className="truncate text-[11px] text-gray-400">
+                          {t("linkedSpreadsheetsSettings.syncPagesProgress")
+                            .replace("{done}", String(syncProgress.done + 1))
+                            .replace("{total}", String(syncProgress.total))
+                            .replace("{title}", syncProgress.currentTitle ?? "")}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Resultado final */}
+                    {isThis && syncProgress.finished && (
+                      <div className="mt-1.5 text-[11px]">
+                        {syncProgress.fatalError ? (
+                          <p className="text-rose-400">
+                            {syncProgress.fatalError === "noClientId"
+                              ? t("linkedSpreadsheetsSettings.errorNoClientId")
+                              : syncProgress.fatalError === "noAuth"
+                                ? t("linkedSpreadsheetsSettings.errorNoAuth")
+                                : syncProgress.fatalError}
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-emerald-400">
+                              {t("linkedSpreadsheetsSettings.syncPagesDone")
+                                .replace("{pages}", String(syncProgress.total))
+                                .replace("{fields}", String(syncProgress.totalFieldsSynced))}
+                            </p>
+                            {syncProgress.errors.length > 0 && (
+                              <ul className="mt-1 space-y-0.5 text-amber-400">
+                                {syncProgress.errors.map((err, idx) => (
+                                  <li key={idx} className="truncate">
+                                    <span className="font-medium">{err.sectionTitle}:</span> {err.message}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </li>
           ))}
         </ul>

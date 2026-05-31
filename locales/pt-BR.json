@@ -183,7 +183,11 @@
     "errorNoClientId": "Google Client ID não configurado.",
     "errorNoAuth": "Não foi possível obter autorização do Google.",
     "errorNoSheets": "Nenhuma aba encontrada. Verifique a URL e as permissões.",
-    "errorGeneric": "Erro ao buscar abas."
+    "errorGeneric": "Erro ao buscar abas.",
+    "syncPagesButton": "Sincronizar {count} páginas",
+    "syncPagesNone": "Nenhuma página vinculada",
+    "syncPagesProgress": "Sincronizando {done}/{total} — {title}…",
+    "syncPagesDone": "{pages} páginas · {fields} campos sincronizados"
   },
   "quickNewPage": {
     "modalTitle": "Nova página",

@@ -183,7 +183,11 @@
     "errorNoClientId": "Google Client ID no configurado.",
     "errorNoAuth": "No se pudo obtener autorización de Google.",
     "errorNoSheets": "No se encontraron hojas. Verifica la URL y los permisos.",
-    "errorGeneric": "Error al buscar hojas."
+    "errorGeneric": "Error al buscar hojas.",
+    "syncPagesButton": "Sincronizar {count} páginas",
+    "syncPagesNone": "Ninguna página vinculada",
+    "syncPagesProgress": "Sincronizando {done}/{total} — {title}…",
+    "syncPagesDone": "{pages} páginas · {fields} campos sincronizados"
   },
   "quickNewPage": {
     "modalTitle": "Nueva página",

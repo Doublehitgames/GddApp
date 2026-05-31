@@ -183,7 +183,11 @@
     "errorNoClientId": "Google Client ID not configured.",
     "errorNoAuth": "Could not obtain Google authorization.",
     "errorNoSheets": "No sheets found. Check the URL and permissions.",
-    "errorGeneric": "Error fetching sheets."
+    "errorGeneric": "Error fetching sheets.",
+    "syncPagesButton": "Sync {count} pages",
+    "syncPagesNone": "No linked pages",
+    "syncPagesProgress": "Syncing {done}/{total} — {title}…",
+    "syncPagesDone": "{pages} pages · {fields} fields synced"
   },
   "quickNewPage": {
     "modalTitle": "New page",
