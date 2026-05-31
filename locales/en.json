@@ -1813,7 +1813,13 @@
       "confirm": "Copy",
       "success": "Copied to \"{section}\"",
       "successBatch": "{count} addons copied to \"{section}\"",
-      "noSections": "No pages available."
+      "noSections": "No pages available.",
+      "overwriteTitle": "Page \"{section}\" already has:",
+      "overwriteWarning": "Copying will overwrite the values of these addon(s) in the destination. This action cannot be undone.",
+      "overwriteConfirm": "Overwrite",
+      "missingDepsTitle": "The destination is missing some addons this one needs. Copy them too?",
+      "missingDepsHint": "Checked ones are copied along so the bindings work. Unchecked ones will have no binding in the destination.",
+      "withDeps": " (+{n} dependencies)"
     },
     "bulk": {
       "selected": "{n} selected",
@@ -1833,7 +1839,9 @@
       "successWithRefs": "Moved to \"{section}\". {n} references updated.",
       "refsSuffix": " {n} references updated.",
       "depsTitle": "This addon depends on addons in this page:",
-      "depsHint": "Check to move together. Unchecked stay in the current page (refs will be cleared)."
+      "depsHint": "Check to move together. Unchecked stay in the current page (refs will be cleared).",
+      "overwriteWarning": "Moving will overwrite the values of these addon(s) in the destination. This action cannot be undone.",
+      "overwriteConfirm": "Overwrite"
     },
     "picker": {
       "search": "Search pages...",

@@ -1813,7 +1813,13 @@
       "confirm": "Copiar",
       "success": "Copiado a \"{section}\"",
       "successBatch": "{count} addons copiados a \"{section}\"",
-      "noSections": "Ninguna página disponible."
+      "noSections": "Ninguna página disponible.",
+      "overwriteTitle": "La página \"{section}\" ya tiene:",
+      "overwriteWarning": "Copiar sobrescribirá los valores de ese(s) addon(s) en el destino. Esta acción no se puede deshacer.",
+      "overwriteConfirm": "Sobrescribir",
+      "missingDepsTitle": "Al destino le faltan algunos addons que este necesita. ¿Copiarlos también?",
+      "missingDepsHint": "Los marcados se copian junto para que los vínculos funcionen. Los no marcados quedan sin vínculo en el destino.",
+      "withDeps": " (+{n} dependencias)"
     },
     "bulk": {
       "selected": "{n} seleccionados",
@@ -1833,7 +1839,9 @@
       "successWithRefs": "Movido a \"{section}\". {n} referencias actualizadas.",
       "refsSuffix": " {n} referencias actualizadas.",
       "depsTitle": "Este addon depende de addons de esta página:",
-      "depsHint": "Marca para mover juntos. Los no marcados se quedan en la página actual (las referencias se limpiarán)."
+      "depsHint": "Marca para mover juntos. Los no marcados se quedan en la página actual (las referencias se limpiarán).",
+      "overwriteWarning": "Mover sobrescribirá los valores de ese(s) addon(s) en el destino. Esta acción no se puede deshacer.",
+      "overwriteConfirm": "Sobrescribir"
     },
     "picker": {
       "search": "Buscar página...",
