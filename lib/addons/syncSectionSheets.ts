@@ -115,6 +115,47 @@ async function resolveLockedCellRef(
 }
 
 /**
+ * Cache compartilhado entre várias seções num sync em lote, para reduzir chamadas
+ * à API do Google Sheets (e evitar rate limit). Mantém:
+ * - columnA: valores da coluna A por aba (resolução de rowLock)
+ * - columnValues: valores de uma coluna inteira por `${aba}!${letra}` (leitura de célula)
+ */
+export type SheetFetchCache = {
+  columnA: Map<string, string[]>;
+  columnValues: Map<string, (string | number | null)[]>;
+};
+
+/**
+ * Lê o valor de uma célula resolvida (ex: "E17") buscando a COLUNA INTEIRA uma vez
+ * e cacheando-a. Em lote, isso transforma N leituras de célula em 1 leitura por coluna.
+ * Retorna null se não conseguir ler.
+ */
+async function readCellCached(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+  cellRef: string,
+  cache: SheetFetchCache,
+): Promise<string | number | null> {
+  const m = cellRef.match(/^([A-Z]+)(\d+)$/);
+  if (!m) {
+    // Formato inesperado — cai no fetch de célula única
+    return fetchSheetCellValue(token, spreadsheetId, sheetName, cellRef);
+  }
+  const colLetter = m[1];
+  const rowNumber = parseInt(m[2], 10);
+  const key = `${sheetName}!${colLetter}`;
+  let colValues = cache.columnValues.get(key);
+  if (!colValues) {
+    const fetched = await fetchSheetRangeValues(token, spreadsheetId, sheetName, `${colLetter}:${colLetter}`);
+    if (!fetched) return null;
+    colValues = fetched;
+    cache.columnValues.set(key, colValues);
+  }
+  return colValues[rowNumber - 1] ?? null;
+}
+
+/**
  * Busca um intervalo e mapeia os valores para cada linha da tabela de progressão.
  * Suporta columnLock: resolve a coluna pelo header e reconstrói o range.
  * Replicado aqui (sem dependência do panel) para uso no sync em lote.
@@ -191,6 +232,7 @@ export async function syncSectionAddons(
   token: string,
   pageDataId?: string,
   columnsBySheet?: Record<string, string[]>,
+  sharedCache?: SheetFetchCache,
 ): Promise<SyncSectionResult> {
   const syncedAt = new Date().toISOString();
   let totalSynced = 0;
@@ -198,8 +240,10 @@ export async function syncSectionAddons(
   const updatedAddons: SectionAddon[] = [];
   const effectiveColumnsBySheet = columnsBySheet ?? {};
 
-  // Cache de coluna A por aba (para resolução de rowLock)
-  const columnACache = new Map<string, string[]>();
+  // Cache de fetches do Sheets. Quando fornecido (sync em lote), é compartilhado
+  // entre todas as seções → coluna A e colunas de valor são buscadas uma única vez.
+  const cache: SheetFetchCache = sharedCache ?? { columnA: new Map(), columnValues: new Map() };
+  const columnACache = cache.columnA;
 
   // Se columnsBySheet não foi fornecido mas há locks no sheet, busca headers on-demand
   // (fallback para quando a planilha foi cadastrada antes do recurso existir)
@@ -244,14 +288,14 @@ export async function syncSectionAddons(
             resolvedCellRef = resolved;
           }
 
-          const raw = await fetchSheetCellValue(token, spreadsheetId, ref.sheetName, resolvedCellRef);
-          if (raw === null) {
+          const rawVal = await readCellCached(token, spreadsheetId, ref.sheetName, resolvedCellRef, cache);
+          if (rawVal === null) {
             fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `Não foi possível ler ${ref.sheetName}!${resolvedCellRef}` });
             continue;
           }
-          const num = parseCellNumber(raw);
+          const num = typeof rawVal === "number" ? rawVal : parseCellNumber(String(rawVal));
           if (num === null) {
-            fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `"${raw}" não é número válido` });
+            fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `"${rawVal}" não é número válido` });
             continue;
           }
           // Atualiza cellRef com a posição resolvida (para display)

@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from "react";
 import { useProjectStore } from "@/store/projectStore";
-import { syncSectionAddons } from "@/lib/addons/syncSectionSheets";
+import { syncSectionAddons, type SheetFetchCache } from "@/lib/addons/syncSectionSheets";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 import { getGoogleSheetsToken } from "@/lib/googleSheets";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
@@ -94,7 +94,11 @@ export function useSyncSpreadsheetPages(projectId: string) {
       let totalFieldsSynced = 0;
       const errors: SyncPagesError[] = [];
 
-      // Sequencial: respeita rate limit e dá progresso página-a-página
+      // Cache compartilhado entre todas as páginas: coluna A e colunas de valor da
+      // planilha são buscadas UMA vez para o lote inteiro, evitando rate limit do Google.
+      const sharedCache: SheetFetchCache = { columnA: new Map(), columnValues: new Map() };
+
+      // Sequencial: progresso página-a-página
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         setProgress((prev) => ({ ...prev, done: i, currentTitle: page.title }));
@@ -105,6 +109,7 @@ export function useSyncSpreadsheetPages(projectId: string) {
             token,
             page.dataId,
             spreadsheet.columnsBySheet,
+            sharedCache,
           );
           setSectionAddons(projectId, page.id, result.updatedAddons);
           totalFieldsSynced += result.totalSynced;
