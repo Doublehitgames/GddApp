@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/provider";
 interface Props {
   entries: KpiEntry[];
   readOnly?: boolean;
-  onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
+  onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "date" | "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   onDeleteEntry: (id: string) => void;
 }
 
@@ -109,11 +109,12 @@ function EditEntryForm({
   entry, onSave, onCancel,
 }: {
   entry: KpiEntry;
-  onSave: (patch: Partial<Pick<KpiEntry, "metrics" | "hypothesis" | "hypothesisArea">>) => void;
+  onSave: (patch: Partial<Pick<KpiEntry, "date" | "metrics" | "hypothesis" | "hypothesisArea">>) => void;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
 
+  const [date, setDate]           = useState(entry.date);
   const [d1, setD1]               = useState(entry.metrics.d1);
   const [d1Players, setD1Players] = useState(entry.metrics.d1Players);
   const [d3, setD3]               = useState(entry.metrics.d3);
@@ -142,6 +143,7 @@ function EditEntryForm({
       conversionRate,
     };
     onSave({
+      date,
       metrics,
       hypothesis: hypothesis.trim() || undefined,
       hypothesisArea: hypothesis.trim() ? hypothesisArea : undefined,
@@ -150,7 +152,15 @@ function EditEntryForm({
 
   return (
     <div className="mt-3 space-y-4 border-t border-gray-700/50 pt-3">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("kpi.history.editTitle")}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("kpi.history.editTitle")}</p>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 focus:border-sky-500 focus:outline-none"
+        />
+      </div>
 
       {/* Retenção */}
       <div>

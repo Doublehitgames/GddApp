@@ -21,7 +21,7 @@ interface Props {
   onSetGenre: (genre: GameGenre) => void;
   onUpdateConfig: (patch: Partial<Omit<KpiProjectConfig, "genre">>) => void;
   onAddEntry: (entry: Omit<KpiEntry, "id" | "createdAt">) => string;
-  onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
+  onUpdateEntry: (id: string, patch: Partial<Pick<KpiEntry, "date" | "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   onDeleteEntry: (id: string) => void;
 }
 

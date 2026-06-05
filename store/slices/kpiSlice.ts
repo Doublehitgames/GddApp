@@ -89,7 +89,7 @@ export function createKpiSlice(set: StoreSet, get: StoreGet) {
       return id;
     },
 
-    updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => {
+    updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<KpiEntry, "date" | "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => {
       sp(set, get, (state) => ({
         kpiEntriesByProject: {
           ...state.kpiEntriesByProject,

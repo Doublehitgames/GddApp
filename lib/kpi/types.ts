@@ -64,6 +64,6 @@ export type KpiActions = {
   setKpiGenre: (projectId: string, genre: GameGenre) => void;
   updateKpiConfig: (projectId: string, patch: Partial<Omit<KpiProjectConfig, "genre">>) => void;
   addKpiEntry: (projectId: string, entry: Omit<KpiEntry, "id" | "createdAt">) => string;
-  updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<KpiEntry, "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
+  updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<KpiEntry, "date" | "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
   deleteKpiEntry: (projectId: string, entryId: string) => void;
 };
