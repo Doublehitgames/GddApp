@@ -833,7 +833,21 @@ export async function POST(request: NextRequest) {
       const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
       const hasAnyFlowchartPayload = rows.some((row) => row.flowchart_state != null);
 
-      let rowsForUpsert: Array<Record<string, unknown>> = [...rows];
+      // Garante que parent_id só aponta para seções que sobreviverão ao sync.
+      // Evita FK violation quando o store tem seções órfãs (pai deletado sem cascade no store).
+      const upsertBatchIds = new Set(rows.map((r) => String(r.id)));
+      const deletedThisSync = new Set(deletesToApply);
+      const existingDbIds = new Set(
+        (existingSections || [])
+          .map((s: { id: string }) => s.id)
+          .filter((id: string) => !deletedThisSync.has(id))
+      );
+      let rowsForUpsert: Array<Record<string, unknown>> = rows.map((r) => {
+        if (r.parent_id == null) return r;
+        const pid = String(r.parent_id);
+        if (upsertBatchIds.has(pid) || existingDbIds.has(pid)) return r;
+        return { ...r, parent_id: null };
+      });
       let droppedAddonsColumn = false;
       let droppedThumbColumn = false;
       let droppedFlowchartColumn = false;

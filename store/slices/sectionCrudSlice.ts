@@ -470,16 +470,28 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
     },
 
     removeSection: (projectId: UUID, sectionId: UUID) => {
-      // Captura título e autor antes de remover do store
-      const deletedSection = get().projects
-        .find((p) => p.id === projectId)
-        ?.sections?.find((s) => s.id === sectionId);
+      const project = get().projects.find((p) => p.id === projectId);
+      const sections = project?.sections || [];
+
+      // Coleta todos os descendentes para replicar o ON DELETE CASCADE do banco
+      const toDelete = new Set<string>([sectionId]);
+      const collectDescendants = (parentId: string) => {
+        sections.forEach((s) => {
+          if (s.parentId === parentId && !toDelete.has(s.id)) {
+            toDelete.add(s.id);
+            collectDescendants(s.id);
+          }
+        });
+      };
+      collectDescendants(sectionId);
+
+      const deletedSection = sections.find((s) => s.id === sectionId);
 
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
             p.id === projectId
-              ? { ...p, updatedAt: new Date().toISOString(), sections: (p.sections || []).filter((s) => s.id !== sectionId) }
+              ? { ...p, updatedAt: new Date().toISOString(), sections: (p.sections || []).filter((s) => !toDelete.has(s.id)) }
               : p
           ),
         projectId
