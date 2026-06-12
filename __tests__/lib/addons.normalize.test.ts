@@ -491,3 +491,207 @@ describe("normalizeSectionAddons fieldLibrary", () => {
     }
   });
 });
+
+describe("normalizeSectionAddons xpBalance", () => {
+  it("fills missing params/expression with defaults (regression: editor crash)", () => {
+    // Malformed draft persisted without params/expression (e.g. created via MCP/AI).
+    const input = [
+      {
+        id: "balance-1",
+        type: "xpBalance",
+        name: "XP",
+        data: {
+          id: "balance-1",
+          name: "XP",
+          mode: "preset",
+          preset: "exponential",
+          startLevel: 1,
+          endLevel: 50,
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const balance = normalized?.[0];
+    expect(balance?.type).toBe("xpBalance");
+    if (balance?.type === "xpBalance") {
+      // params must be a complete object so `addon.params[key]` never throws
+      expect(typeof balance.data.params).toBe("object");
+      expect(typeof balance.data.params.base).toBe("number");
+      expect(typeof balance.data.params.growth).toBe("number");
+      expect(typeof balance.data.params.plateauFactor).toBe("number");
+      // expression must be a string so `addon.expression.match(...)` never throws
+      expect(typeof balance.data.expression).toBe("string");
+      expect(balance.data.expression.length).toBeGreaterThan(0);
+      // preserved fields stay intact
+      expect(balance.data.startLevel).toBe(1);
+      expect(balance.data.endLevel).toBe(50);
+    }
+  });
+
+  it("preserves valid params instead of overwriting with defaults", () => {
+    const input = [
+      {
+        id: "balance-1",
+        type: "xpBalance",
+        name: "XP",
+        data: {
+          id: "balance-1",
+          name: "XP",
+          mode: "advanced",
+          preset: "linear",
+          expression: "base + level * growth",
+          startLevel: 1,
+          endLevel: 30,
+          decimals: 2,
+          params: { base: 42, growth: 2.5 },
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const balance = normalized?.[0];
+    if (balance?.type === "xpBalance") {
+      expect(balance.data.mode).toBe("advanced");
+      expect(balance.data.expression).toBe("base + level * growth");
+      expect(balance.data.params.base).toBe(42);
+      expect(balance.data.params.growth).toBe(2.5);
+      // missing param keys still backfilled
+      expect(typeof balance.data.params.offset).toBe("number");
+    }
+  });
+});
+
+describe("normalizeSectionAddons crop", () => {
+  it("keeps crop addons (regression: would be dropped as unknown type) and coerces fields", () => {
+    const input = [
+      {
+        id: "crop-1",
+        type: "crop",
+        name: "Semente de Nabo",
+        data: {
+          id: "crop-1",
+          name: "Semente de Nabo",
+          harvestMode: "progressive",
+          growthSeconds: "3600",
+          totalHarvest: "100",
+          stages: [
+            { id: "s1", label: "Broto 1", secondsFromPlanting: "0" },
+            { label: "Planta 2", secondsFromPlanting: 720 },
+          ],
+          outputs: [{ id: "o1", itemRef: " item-nabo ", quantity: "15", quantityMin: "5" }],
+          plantXp: { xpAddonRef: " sec-xp ", xp: "25" },
+          harvestXp: { xp: 5 },
+          spawnWitheredPlant: true,
+          fertilizers: [{ id: "f1", itemRef: "item-npk" }, "garbage"],
+          amendments: [],
+          seasons: ["summer", "bogus"],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const crop = normalized?.find((a) => a.type === "crop");
+    expect(crop?.type).toBe("crop");
+    if (crop?.type === "crop") {
+      expect(crop.data.harvestMode).toBe("progressive");
+      expect(crop.data.growthSeconds).toBe(3600);
+      expect(crop.data.totalHarvest).toBe(100);
+      expect(crop.data.stages).toHaveLength(2);
+      expect(crop.data.stages[1].id).toBeTruthy(); // id backfilled when missing
+      expect(crop.data.outputs[0].itemRef).toBe("item-nabo"); // trimmed
+      expect(crop.data.outputs[0].quantity).toBe(15);
+      expect(crop.data.outputs[0].quantityMin).toBe(5);
+      expect(crop.data.plantXp.xpAddonRef).toBe("sec-xp"); // trimmed
+      expect(crop.data.plantXp.xp).toBe(25);
+      expect(crop.data.harvestXp.xp).toBe(5);
+      expect(crop.data.spawnWitheredPlant).toBe(true);
+      expect(crop.data.fertilizers).toHaveLength(1); // "garbage" dropped
+      expect(crop.data.seasons).toEqual(["summer"]); // "bogus" dropped
+    }
+  });
+
+  it("backfills array fields for a minimal crop draft", () => {
+    const input = [
+      {
+        id: "crop-2",
+        type: "crop",
+        name: "Tomate",
+        data: { id: "crop-2", name: "Tomate" },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const crop = normalized?.[0];
+    if (crop?.type === "crop") {
+      expect(crop.data.harvestMode).toBe("instant");
+      expect(Array.isArray(crop.data.stages)).toBe(true);
+      expect(Array.isArray(crop.data.outputs)).toBe(true);
+      expect(Array.isArray(crop.data.fertilizers)).toBe(true);
+      expect(Array.isArray(crop.data.amendments)).toBe(true);
+      expect(crop.data.plantXp).toEqual({});
+      expect(crop.data.spawnWitheredPlant).toBe(false);
+    }
+  });
+});
+
+describe("normalizeSectionAddons crop FieldBinding", () => {
+  it("preserves a crop binding on a DataSchema entry and drops invalid fields (regression: allowlist)", () => {
+    const input = [
+      {
+        id: "ds-1",
+        type: "dataSchema",
+        name: "Stats",
+        data: {
+          id: "ds-1",
+          name: "Stats",
+          entries: [
+            {
+              id: "e1",
+              key: "grow",
+              label: "Grow",
+              valueType: "int",
+              value: 180,
+              binding: { source: "crop", addonId: "crop-1", field: "growthSeconds" },
+            },
+            {
+              id: "e2",
+              key: "yield",
+              label: "Yield",
+              valueType: "int",
+              value: 15,
+              binding: { source: "crop", addonId: "crop-1", field: "outputQuantity", outputId: "o1" },
+            },
+            {
+              id: "e3",
+              key: "bad",
+              label: "Bad",
+              valueType: "int",
+              value: 0,
+              binding: { source: "crop", addonId: "crop-1", field: "notAField" },
+            },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const ds = normalized?.[0];
+    expect(ds?.type).toBe("dataSchema");
+    if (ds?.type === "dataSchema") {
+      expect(ds.data.entries[0].binding).toEqual({
+        source: "crop",
+        addonId: "crop-1",
+        field: "growthSeconds",
+      });
+      expect(ds.data.entries[1].binding).toEqual({
+        source: "crop",
+        addonId: "crop-1",
+        field: "outputQuantity",
+        outputId: "o1",
+      });
+      // invalid field → binding rejected by the allowlist → dropped
+      expect(ds.data.entries[2].binding).toBeUndefined();
+    }
+  });
+});

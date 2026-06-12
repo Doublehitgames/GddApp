@@ -34,6 +34,7 @@ const ID_PREFIX: Record<SectionAddonType, string> = {
   exportSchema: "export-schema",
   richDoc: "rich-doc",
   skills: "skills",
+  crop: "crop",
   genericStats: "data-schema",
 };
 

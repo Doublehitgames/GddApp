@@ -121,6 +121,10 @@ const ADDON_PROMPT_INFO: Record<Exclude<SectionAddonType, "genericStats">, Addon
     label: "Rich Doc (Documento Rico)",
     whenToUse: "Blocos ricos BlockNote (heading/paragraph/bulletListItem/callout). Primary addon de seções narrative.",
   },
+  crop: {
+    label: "Plantar e Colher",
+    whenToUse: "Ciclo de vida de culturas para jogos de fazenda: tempo de crescimento, estágios visuais, colheita instantânea ou progressiva, XP de plantio/colheita, insumos (fertilizantes, adubos), pós-colheita (planta murcha).",
+  },
 };
 
 export const ADDON_TYPES_PROMPT_BLOCK: string = (() => {

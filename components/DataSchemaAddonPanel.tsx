@@ -11,7 +11,8 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, EconomyLinkAddonDraft, EconomyLinkFieldKey, GlobalVariableAddonDraft, ProductionAddonDraft, ProductionFieldKey } from "@/lib/addons/types";
+import type { CropAddonDraft, CropFieldKey, DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, EconomyLinkAddonDraft, EconomyLinkFieldKey, GlobalVariableAddonDraft, ProductionAddonDraft, ProductionFieldKey } from "@/lib/addons/types";
+import { resolveCropFieldValue } from "@/lib/addons/cropFields";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
@@ -23,7 +24,7 @@ import {
 } from "@/components/common/CommitInput";
 import { LibraryLabelPath } from "@/components/common/LibraryLabelPath";
 import { FieldBindingPicker } from "@/components/common/FieldBindingPicker";
-import { MANUAL_BINDING, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
+import { MANUAL_BINDING, type CropBindingOption, type FieldBinding, type FieldBindingPickerContext } from "@/lib/addons/fieldBinding";
 
 interface DataSchemaAddonPanelProps {
   addon: DataSchemaAddonDraft;
@@ -37,6 +38,15 @@ const INPUT_CLASS =
   "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
 const BUTTON_CLASS = "rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-xs text-gray-100 hover:bg-gray-700";
 const BUTTON_DANGER_CLASS = "rounded-lg border border-rose-700/60 bg-rose-900/30 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50";
+
+/** Scalar Crop fields offered to DataSchema bindings (output rows are added per-output at runtime). */
+const CROP_SCALAR_FIELDS: CropFieldKey[] = [
+  "growthSeconds", "growthSecondsMin", "growthSecondsMax",
+  "totalHarvest", "totalHarvestMin", "totalHarvestMax",
+  "seedQuantity", "seedQuantityMin", "seedQuantityMax",
+  "plantEnergy", "plantEnergyMin", "plantEnergyMax",
+  "plantXp", "harvestXp",
+];
 
 function normalizeKey(raw: string): string {
   return raw
@@ -480,13 +490,71 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     });
   };
 
+  // Only show Crop addons from the same section and group
+  const cropRefOptions = useMemo(() => {
+    const out: Array<{ refId: string; label: string; data: CropAddonDraft }> = [];
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        const hasThisAddon = (section.addons || []).some((a) => a.id === addon.id);
+        if (!hasThisAddon) continue;
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "crop") continue;
+          if (((sectionAddon as any).group || "A") !== myGroup) continue;
+          out.push({
+            refId: sectionAddon.id,
+            label: sectionAddon.name?.trim() || "Plantar e Colher",
+            data: sectionAddon.data as CropAddonDraft,
+          });
+        }
+        return out;
+      }
+    }
+    return out;
+  }, [projects, addon.id, myGroup]);
+
+  // Resolve a section id → its title (for labelling Crop output items)
+  const sectionTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        map.set(section.id, section.title?.trim() || section.id);
+      }
+    }
+    return map;
+  }, [projects]);
+
+  // Scalar fields + one entry per harvest output (quantity/min/max), labelled by item
+  const getAvailableCropFields = (refId: string): CropBindingOption[] => {
+    const found = cropRefOptions.find((o) => o.refId === refId);
+    if (!found) return [];
+    const opts: CropBindingOption[] = CROP_SCALAR_FIELDS.map((field) => ({
+      addonId: refId,
+      addonName: found.label,
+      field,
+    }));
+    for (const output of found.data.outputs || []) {
+      const itemLabel = output.itemRef ? (sectionTitleById.get(output.itemRef) ?? output.itemRef) : "saída";
+      for (const field of ["outputQuantity", "outputQuantityMin", "outputQuantityMax"] as CropFieldKey[]) {
+        opts.push({ addonId: refId, addonName: found.label, field, outputId: output.id, outputLabel: itemLabel });
+      }
+    }
+    return opts;
+  };
+
+  const getCropValue = (refId: string, field: CropFieldKey, outputId?: string): number | undefined => {
+    const found = cropRefOptions.find((o) => o.refId === refId);
+    if (!found) return undefined;
+    return resolveCropFieldValue(found.data, field, outputId);
+  };
+
   const entryAcceptedSources = useMemo<FieldBinding["source"][]>(() => {
     const sources: FieldBinding["source"][] = ["pageDataId"];
     if (xpRefOptions.length > 0) sources.push("unitXp");
     if (economyLinkRefOptions.length > 0) sources.push("economyLink");
     if (productionRefOptions.length > 0) sources.push("production");
+    if (cropRefOptions.length > 0) sources.push("crop");
     return sources;
-  }, [xpRefOptions.length, economyLinkRefOptions.length, productionRefOptions.length]);
+  }, [xpRefOptions.length, economyLinkRefOptions.length, productionRefOptions.length, cropRefOptions.length]);
 
   const bindingContext = useMemo<FieldBindingPickerContext>(() => ({
     unitXpSections: xpRefOptions.map((o) => ({ sectionId: o.refId, sectionLabel: o.label })),
@@ -500,7 +568,8 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
         field: f.key,
       }))
     ),
-  }), [xpRefOptions, economyLinkRefOptions, productionRefOptions, projects]);
+    cropAddons: cropRefOptions.flatMap((o) => getAvailableCropFields(o.refId)),
+  }), [xpRefOptions, economyLinkRefOptions, productionRefOptions, cropRefOptions, projects]);
 
   useEffect(() => {
     setCollapsedEntries((prev) => {
@@ -596,6 +665,11 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
         updateEntry(entryId, { binding, valueType: "int", value: linkedValue ?? 0 });
         break;
       }
+      case "crop": {
+        const linkedValue = getCropValue(binding.addonId, binding.field, binding.outputId);
+        updateEntry(entryId, { binding, valueType: "int", value: linkedValue ?? 0 });
+        break;
+      }
     }
   }
 
@@ -682,12 +756,14 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                 const entryBinding = entry.binding;
                 const economyBinding = entryBinding?.source === "economyLink" ? entryBinding : undefined;
                 const productionBinding = entryBinding?.source === "production" ? entryBinding : undefined;
+                const cropBinding = entryBinding?.source === "crop" ? entryBinding : undefined;
                 const linkedXpMeta = entryBinding?.source === "unitXp" ? xpRefOptions.find((item) => item.refId === entryBinding.sectionId) : undefined;
                 const isLinkedToXp = entryBinding?.source === "unitXp";
                 const isLinkedToEconomy = entryBinding?.source === "economyLink";
                 const isLinkedToProduction = entryBinding?.source === "production";
+                const isLinkedToCrop = entryBinding?.source === "crop";
                 const isLinkedToPageDataId = entryBinding?.source === "pageDataId";
-                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToPageDataId;
+                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToCrop || isLinkedToPageDataId;
                 const isCurrencyRefField = economyBinding != null && (economyBinding.field === "buyCurrencyRef" || economyBinding.field === "sellCurrencyRef" || economyBinding.field === "buyCurrencyKey" || economyBinding.field === "sellCurrencyKey");
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
@@ -915,7 +991,9 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                       ? (getEconomyLinkValue(economyBinding.sectionId, economyBinding.field) ?? "N/A")
                                       : productionBinding
                                         ? (getProductionValue(productionBinding.addonId, productionBinding.field) ?? "N/A")
-                                        : "N/A"}
+                                        : cropBinding
+                                          ? (getCropValue(cropBinding.addonId, cropBinding.field, cropBinding.outputId) ?? "N/A")
+                                          : "N/A"}
                                 </span>
                                 <span className="text-[10px] text-gray-500 italic">
                                   (vinculado - somente leitura)

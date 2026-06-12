@@ -17,6 +17,7 @@ import {
   isBindingBroken,
   economyLinkFieldLabel,
   productionFieldLabel,
+  cropFieldLabel,
   type FieldBinding,
   type FieldBindingConfig,
   type FieldBindingPickerContext,
@@ -252,6 +253,13 @@ export function FieldBindingPicker({
           value.source === "production" &&
           value.addonId === binding.addonId &&
           value.field === binding.field
+        );
+      case "crop":
+        return (
+          value.source === "crop" &&
+          value.addonId === binding.addonId &&
+          value.field === binding.field &&
+          (value.outputId ?? undefined) === (binding.outputId ?? undefined)
         );
       case "unitXp":
         return value.source === "unitXp" && value.sectionId === binding.sectionId;
@@ -584,6 +592,34 @@ export function FieldBindingPicker({
                       <PickerOption
                         key={`${opt.addonId}::${opt.field}`}
                         label={productionFieldLabel(opt.field)}
+                        hint={opt.addonName}
+                        selected={isCurrent(b)}
+                        onClick={() => handleSelect(b)}
+                      />
+                    );
+                  })}
+                </>
+              ) : null}
+
+              {/* ── Crop addon fields ── */}
+              {accepts("crop") && context.cropAddons && context.cropAddons.length > 0 ? (
+                <>
+                  <SectionDivider label="Plantar e Colher" />
+                  {context.cropAddons.map((opt) => {
+                    const b: FieldBinding = {
+                      source: "crop",
+                      addonId: opt.addonId,
+                      field: opt.field,
+                      ...(opt.outputId ? { outputId: opt.outputId } : {}),
+                    };
+                    return (
+                      <PickerOption
+                        key={`${opt.addonId}::${opt.field}::${opt.outputId ?? ""}`}
+                        label={
+                          opt.outputLabel
+                            ? `${cropFieldLabel(opt.field)} · ${opt.outputLabel}`
+                            : cropFieldLabel(opt.field)
+                        }
                         hint={opt.addonName}
                         selected={isCurrent(b)}
                         onClick={() => handleSelect(b)}

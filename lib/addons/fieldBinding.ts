@@ -1,4 +1,4 @@
-import type { EconomyLinkFieldKey, ProductionFieldKey, SheetsCellRef } from "@/lib/addons/types";
+import type { CropFieldKey, EconomyLinkFieldKey, ProductionFieldKey, SheetsCellRef } from "@/lib/addons/types";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
 
 // ── Value types ──────────────────────────────────────────────────────────────
@@ -20,6 +20,8 @@ export type FieldBinding =
   | { source: "economyLink"; sectionId: string; field: EconomyLinkFieldKey }
   /** Numeric value from a specific field of a Production addon. Intra-section ref. */
   | { source: "production"; addonId: string; field: ProductionFieldKey }
+  /** Numeric value from a specific field of a Crop addon. Intra-section ref. `outputId` selects the harvest output row for `output*` fields. */
+  | { source: "crop"; addonId: string; field: CropFieldKey; outputId?: string }
   /** Numeric value from the linked XpBalance section. Cross-section ref. */
   | { source: "unitXp"; sectionId: string }
   /** Value is the section's own dataId field. */
@@ -33,7 +35,7 @@ export function isActiveBinding(b: FieldBinding): boolean {
 
 /** Returns true when the binding targets an addon in the same section (cleared on move/copy). */
 export function isIntraSectionBinding(b: FieldBinding): boolean {
-  return b.source === "production" || b.source === "progressionColumn";
+  return b.source === "production" || b.source === "progressionColumn" || b.source === "crop";
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -84,6 +86,16 @@ export type UnitXpBindingOption = {
   sectionLabel: string;
 };
 
+export type CropBindingOption = {
+  addonId: string;
+  addonName: string;
+  field: CropFieldKey;
+  /** Set for `output*` fields — identifies the harvest output row. */
+  outputId?: string;
+  /** Display suffix for `output*` fields (e.g. the output item's name). */
+  outputLabel?: string;
+};
+
 export type FieldBindingPickerContext = {
   /** Available ProgressionTable columns in this section. */
   progressionColumns?: ProgressionColumnBindingOption[];
@@ -93,6 +105,8 @@ export type FieldBindingPickerContext = {
   economyLinks?: EconomyLinkBindingOption[];
   /** Available Production addon fields in this section. */
   productionAddons?: ProductionBindingOption[];
+  /** Available Crop addon fields in this section. */
+  cropAddons?: CropBindingOption[];
   /** Available XpBalance sections. */
   unitXpSections?: UnitXpBindingOption[];
   /** Registered Google Sheets spreadsheets in this project. */
@@ -157,6 +171,17 @@ export function getBindingChipLabel(
       const fieldLbl = productionFieldLabel(binding.field);
       return opt ? `${opt.addonName} › ${fieldLbl}` : fieldLbl;
     }
+    case "crop": {
+      const opt = context.cropAddons?.find(
+        (e) =>
+          e.addonId === binding.addonId &&
+          e.field === binding.field &&
+          (e.outputId ?? undefined) === (binding.outputId ?? undefined)
+      );
+      const fieldLbl = cropFieldLabel(binding.field);
+      const full = opt?.outputLabel ? `${fieldLbl} · ${opt.outputLabel}` : fieldLbl;
+      return opt ? `${opt.addonName} › ${full}` : full;
+    }
     case "unitXp": {
       const opt = context.unitXpSections?.find((e) => e.sectionId === binding.sectionId);
       return opt ? opt.sectionLabel : "XP Balance";
@@ -184,6 +209,13 @@ export function isBindingBroken(binding: FieldBinding, context: FieldBindingPick
       return !context.productionAddons?.some(
         (e) => e.addonId === binding.addonId && e.field === binding.field
       );
+    case "crop":
+      return !context.cropAddons?.some(
+        (e) =>
+          e.addonId === binding.addonId &&
+          e.field === binding.field &&
+          (e.outputId ?? undefined) === (binding.outputId ?? undefined)
+      );
     case "unitXp":
       return !context.unitXpSections?.some((e) => e.sectionId === binding.sectionId);
     default:
@@ -208,6 +240,29 @@ export function economyLinkFieldLabel(field: EconomyLinkFieldKey): string {
     sellCurrencyRef: "Moeda de venda (ref)",
     buyCurrencyKey: "Moeda de compra (key)",
     sellCurrencyKey: "Moeda de venda (key)",
+  };
+  return labels[field] ?? field;
+}
+
+export function cropFieldLabel(field: CropFieldKey): string {
+  const labels: Record<CropFieldKey, string> = {
+    growthSeconds: "Tempo de crescimento",
+    growthSecondsMin: "Tempo de crescimento — Mín",
+    growthSecondsMax: "Tempo de crescimento — Máx",
+    totalHarvest: "Total de colheitas",
+    totalHarvestMin: "Total de colheitas — Mín",
+    totalHarvestMax: "Total de colheitas — Máx",
+    seedQuantity: "Qtd. de sementes",
+    seedQuantityMin: "Qtd. de sementes — Mín",
+    seedQuantityMax: "Qtd. de sementes — Máx",
+    plantEnergy: "Energia ao plantar",
+    plantEnergyMin: "Energia ao plantar — Mín",
+    plantEnergyMax: "Energia ao plantar — Máx",
+    plantXp: "XP ao plantar",
+    harvestXp: "XP ao colher",
+    outputQuantity: "Saída — Quantidade",
+    outputQuantityMin: "Saída — Quantidade Mín",
+    outputQuantityMax: "Saída — Quantidade Máx",
   };
   return labels[field] ?? field;
 }

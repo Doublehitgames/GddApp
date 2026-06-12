@@ -659,6 +659,111 @@ export type GenericStatValueType = DataSchemaValueType;
 export type GenericStatEntry = DataSchemaEntry;
 export type GenericStatsAddonDraft = DataSchemaAddonDraft;
 
+// ── Crop addon (Plantar e Colher) ────────────────────────────────────
+
+export type HarvestMode = "instant" | "progressive";
+
+export type CropSeason = "spring" | "summer" | "fall" | "winter" | "greenhouse";
+
+export type CropStage = {
+  id: string;
+  label: string;
+  secondsFromPlanting: number;
+};
+
+export type CropOutput = {
+  id: string;
+  itemRef?: string;
+  /** Base yield. Min/Max are optional bounds, mirroring BoundedNumericField. */
+  quantity?: number;
+  quantityBinding?: FieldBinding;
+  quantityMin?: number;
+  quantityMinBinding?: FieldBinding;
+  quantityMax?: number;
+  quantityMaxBinding?: FieldBinding;
+};
+
+export type CropXpEvent = {
+  /** Section ID of the page that holds the xpBalance addon. */
+  xpAddonRef?: string;
+  xp?: number;
+  xpBinding?: FieldBinding;
+};
+
+export type CropItemInput = {
+  id: string;
+  itemRef?: string;
+};
+
+/** Sentinel value for `seedRef` meaning "the seed is this page itself" (own dataId). */
+export const CROP_SEED_SELF = "__self__";
+
+/**
+ * Scalar fields of a Crop addon that other addons (DataSchema, Remote Config)
+ * can bind to. Output* fields require an `outputId` on the binding to pick which
+ * harvest output row they read.
+ */
+export type CropFieldKey =
+  | "growthSeconds"
+  | "growthSecondsMin"
+  | "growthSecondsMax"
+  | "totalHarvest"
+  | "totalHarvestMin"
+  | "totalHarvestMax"
+  | "seedQuantity"
+  | "seedQuantityMin"
+  | "seedQuantityMax"
+  | "plantEnergy"
+  | "plantEnergyMin"
+  | "plantEnergyMax"
+  | "plantXp"
+  | "harvestXp"
+  | "outputQuantity"
+  | "outputQuantityMin"
+  | "outputQuantityMax";
+
+export type CropAddonDraft = {
+  id: string;
+  name: string;
+  harvestMode: HarvestMode;
+  growthSeconds?: number;
+  growthSecondsBinding?: FieldBinding;
+  growthSecondsMin?: number;
+  growthSecondsMinBinding?: FieldBinding;
+  growthSecondsMax?: number;
+  growthSecondsMaxBinding?: FieldBinding;
+  totalHarvest?: number;
+  totalHarvestBinding?: FieldBinding;
+  totalHarvestMin?: number;
+  totalHarvestMinBinding?: FieldBinding;
+  totalHarvestMax?: number;
+  totalHarvestMaxBinding?: FieldBinding;
+  stages: CropStage[];
+  outputs: CropOutput[];
+  plantXp: CropXpEvent;
+  harvestXp: CropXpEvent;
+  spawnWitheredPlant: boolean;
+  witheredPlantRef?: string;
+  /** Section id of the seed item, or CROP_SEED_SELF for the page's own dataId. */
+  seedRef?: string;
+  seedQuantity?: number;
+  seedQuantityBinding?: FieldBinding;
+  seedQuantityMin?: number;
+  seedQuantityMinBinding?: FieldBinding;
+  seedQuantityMax?: number;
+  seedQuantityMaxBinding?: FieldBinding;
+  plantEnergy?: number;
+  plantEnergyBinding?: FieldBinding;
+  plantEnergyMin?: number;
+  plantEnergyMinBinding?: FieldBinding;
+  plantEnergyMax?: number;
+  plantEnergyMaxBinding?: FieldBinding;
+  fertilizers: CropItemInput[];
+  amendments: CropItemInput[];
+  seasons?: CropSeason[];
+  notes?: string;
+};
+
 export type SectionAddonType =
   | "xpBalance"
   | "progressionTable"
@@ -677,6 +782,7 @@ export type SectionAddonType =
   | "richDoc"
   | "currencyExchange"
   | "skills"
+  | "crop"
   // legacy type kept for compatibility/migration
   | "genericStats";
 export type LegacySectionAddonType = "balance";
@@ -817,6 +923,14 @@ export type SkillsSectionAddon = {
   data: SkillsAddonDraft;
 };
 
+export type CropSectionAddon = {
+  id: string;
+  type: "crop";
+  name: string;
+  group?: string;
+  data: CropAddonDraft;
+};
+
 // Legacy addon shape kept for compatibility in normalize/migration flows.
 export type GenericStatsSectionAddon = {
   id: string;
@@ -844,6 +958,7 @@ export type SectionAddon =
   | ExportSchemaSectionAddon
   | RichDocSectionAddon
   | SkillsSectionAddon
+  | CropSectionAddon
   | GenericStatsSectionAddon;
 
 function createDefaultRows(
@@ -1146,6 +1261,27 @@ export function createDefaultExportSchemaAddon(addonId: string): ExportSchemaSec
       id: addonId,
       name: "Remote Config",
       nodes: [],
+    },
+  };
+}
+
+export function createDefaultCropAddon(addonId: string): CropSectionAddon {
+  return {
+    id: addonId,
+    type: "crop",
+    name: "Plantar e Colher",
+    data: {
+      id: addonId,
+      name: "Plantar e Colher",
+      harvestMode: "instant",
+      stages: [],
+      outputs: [],
+      plantXp: {},
+      harvestXp: {},
+      spawnWitheredPlant: false,
+      seedRef: CROP_SEED_SELF,
+      fertilizers: [],
+      amendments: [],
     },
   };
 }

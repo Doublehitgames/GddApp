@@ -24,7 +24,9 @@ import type {
   SkillEffectField,
   AttributeModifierEntry,
   AttributeModifiersAddonDraft,
+  CropAddonDraft,
 } from "@/lib/addons/types";
+import { resolveCropFieldValue } from "@/lib/addons/cropFields";
 
 export type SectionLookupEntry = {
   dataId?: string | null;
@@ -572,6 +574,15 @@ function resolveEntryEffectiveValue(
       }
       // output* fields cross-section: value is pre-computed and stored in entry.value
       if (field.startsWith("output") && prod.outputRef) return entry.value;
+    }
+  }
+
+  if (binding?.source === "crop") {
+    const cropAddon = allAddons.find((a) => a.type === "crop" && a.id === binding.addonId);
+    if (cropAddon) {
+      const resolved = resolveCropFieldValue(cropAddon.data as CropAddonDraft, binding.field, binding.outputId);
+      if (typeof resolved === "number") return resolved;
+      return 0;
     }
   }
 

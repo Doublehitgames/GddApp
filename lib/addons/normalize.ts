@@ -1,4 +1,10 @@
-import type { BalanceAddonDraft } from "@/lib/balance/types";
+import type {
+  BalanceAddonDraft,
+  BalanceFormulaMode,
+  BalanceFormulaParams,
+  BalancePresetId,
+} from "@/lib/balance/types";
+import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
 import type { FieldBinding } from "@/lib/addons/fieldBinding";
 import type {
   AttributeDefinitionsAddonDraft,
@@ -9,8 +15,16 @@ import type {
   CraftTableEntry,
   CraftTableEntryField,
   CraftTableUnlock,
+  CropAddonDraft,
+  CropFieldKey,
+  CropItemInput,
+  CropOutput,
+  CropSeason,
+  CropStage,
+  CropXpEvent,
   CurrencyAddonDraft,
   CurrencyExchangeAddonDraft,
+  HarvestMode,
   SkillsAddonDraft,
   SkillEntry,
   SkillCost,
@@ -46,6 +60,194 @@ function asBalanceDraft(value: unknown): BalanceAddonDraft | null {
   if (typeof value.id !== "string") return null;
   if (typeof value.name !== "string") return null;
   return value as unknown as BalanceAddonDraft;
+}
+
+const BALANCE_PRESET_IDS: ReadonlySet<string> = new Set([
+  "linear",
+  "exponential",
+  "tiered",
+  "softCap",
+  "hardCap",
+  "diminishingReturns",
+  "piecewise",
+]);
+
+/**
+ * Fills in missing/invalid fields of a balance (xpBalance) draft using the
+ * defaults from createDefaultBalanceAddon. Pre-2026 drafts (and addons created
+ * via MCP/AI) could be persisted without `params`/`expression`, which crashed
+ * the editor when it read `addon.params[key]` / `addon.expression.match(...)`.
+ * Valid incoming values are preserved; only absent ones get defaults.
+ */
+function normalizeBalanceDraft(value: unknown): BalanceAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const fallback = createDefaultBalanceAddon(value.id);
+  const rawParams = isObject(value.params) ? value.params : {};
+  const params: BalanceFormulaParams = {
+    base: asFiniteNumber(rawParams.base) ?? fallback.params.base,
+    growth: asFiniteNumber(rawParams.growth) ?? fallback.params.growth,
+    offset: asFiniteNumber(rawParams.offset) ?? fallback.params.offset,
+    tierStep: asFiniteNumber(rawParams.tierStep) ?? fallback.params.tierStep,
+    tierMultiplier: asFiniteNumber(rawParams.tierMultiplier) ?? fallback.params.tierMultiplier,
+    capValue: asFiniteNumber(rawParams.capValue) ?? fallback.params.capValue,
+    capStrength: asFiniteNumber(rawParams.capStrength) ?? fallback.params.capStrength,
+    plateauStartLevel: asFiniteNumber(rawParams.plateauStartLevel) ?? fallback.params.plateauStartLevel,
+    plateauFactor: asFiniteNumber(rawParams.plateauFactor) ?? fallback.params.plateauFactor,
+  };
+
+  const mode: BalanceFormulaMode = value.mode === "advanced" ? "advanced" : "preset";
+  const preset: BalancePresetId =
+    typeof value.preset === "string" && BALANCE_PRESET_IDS.has(value.preset)
+      ? (value.preset as BalancePresetId)
+      : fallback.preset;
+  const expression =
+    typeof value.expression === "string" && value.expression.trim()
+      ? value.expression
+      : fallback.expression;
+  const startLevel = Math.max(1, Math.floor(asFiniteNumber(value.startLevel) ?? fallback.startLevel));
+  const endLevel = Math.max(startLevel, Math.floor(asFiniteNumber(value.endLevel) ?? fallback.endLevel));
+  const decimals = Math.max(0, Math.floor(asFiniteNumber(value.decimals) ?? fallback.decimals));
+  const clampMin = asFiniteNumber(value.clampMin) ?? undefined;
+  const clampMax = asFiniteNumber(value.clampMax) ?? undefined;
+
+  return {
+    ...(value as Record<string, unknown>),
+    id: value.id,
+    name: value.name,
+    mode,
+    preset,
+    expression,
+    startLevel,
+    endLevel,
+    decimals,
+    clampMin,
+    clampMax,
+    params,
+  } as BalanceAddonDraft;
+}
+
+function asNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+const CROP_SEASONS: ReadonlySet<string> = new Set([
+  "spring",
+  "summer",
+  "fall",
+  "winter",
+  "greenhouse",
+]);
+
+function normalizeCropXpEvent(value: unknown): CropXpEvent {
+  if (!isObject(value)) return {};
+  const out: CropXpEvent = {};
+  const xpAddonRef = asNonEmptyString(value.xpAddonRef);
+  if (xpAddonRef) out.xpAddonRef = xpAddonRef;
+  const xp = asFiniteNumber(value.xp);
+  if (xp != null) out.xp = xp;
+  if (isObject(value.xpBinding)) out.xpBinding = value.xpBinding as unknown as FieldBinding;
+  return out;
+}
+
+/**
+ * Coerces a BoundedNumericField group (base + Min + Max + their bindings) from
+ * `source` onto `target`, integer-flooring numeric values to `minFloor` and
+ * passing through any binding objects. Mutates `target`.
+ */
+function applyBoundedNumeric(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+  key: string,
+  minFloor: number
+): void {
+  for (const suffix of ["", "Min", "Max"] as const) {
+    const num = asFiniteNumber(source[`${key}${suffix}`]);
+    if (num != null) target[`${key}${suffix}`] = Math.max(minFloor, Math.floor(num));
+    const binding = source[`${key}${suffix}Binding`];
+    if (isObject(binding)) target[`${key}${suffix}Binding`] = binding as unknown as FieldBinding;
+  }
+}
+
+function normalizeCropDraft(value: unknown): CropAddonDraft | null {
+  if (!isObject(value)) return null;
+  if (typeof value.id !== "string") return null;
+  if (typeof value.name !== "string") return null;
+
+  const harvestMode: HarvestMode = value.harvestMode === "progressive" ? "progressive" : "instant";
+
+  const stages: CropStage[] = Array.isArray(value.stages)
+    ? value.stages.flatMap((raw, index): CropStage[] => {
+        if (!isObject(raw)) return [];
+        const id = asNonEmptyString(raw.id) ?? `stage-${index}`;
+        return [
+          {
+            id,
+            label: typeof raw.label === "string" ? raw.label : "Estágio",
+            secondsFromPlanting: Math.max(0, Math.floor(asFiniteNumber(raw.secondsFromPlanting) ?? 0)),
+          },
+        ];
+      })
+    : [];
+
+  const outputs: CropOutput[] = Array.isArray(value.outputs)
+    ? value.outputs.flatMap((raw, index): CropOutput[] => {
+        if (!isObject(raw)) return [];
+        const out: CropOutput = { id: asNonEmptyString(raw.id) ?? `output-${index}` };
+        const itemRef = asNonEmptyString(raw.itemRef);
+        if (itemRef) out.itemRef = itemRef;
+        applyBoundedNumeric(out as unknown as Record<string, unknown>, raw, "quantity", 0);
+        return [out];
+      })
+    : [];
+
+  const normalizeItemInputs = (raw: unknown, prefix: string): CropItemInput[] =>
+    Array.isArray(raw)
+      ? raw.flatMap((item, index): CropItemInput[] => {
+          if (!isObject(item)) return [];
+          return [
+            {
+              id: asNonEmptyString(item.id) ?? `${prefix}-${index}`,
+              itemRef: asNonEmptyString(item.itemRef),
+            },
+          ];
+        })
+      : [];
+
+  const seasons: CropSeason[] = Array.isArray(value.seasons)
+    ? (value.seasons.filter((s): s is CropSeason => typeof s === "string" && CROP_SEASONS.has(s)))
+    : [];
+
+  const draft: CropAddonDraft = {
+    id: value.id,
+    name: value.name,
+    harvestMode,
+    stages,
+    outputs,
+    plantXp: normalizeCropXpEvent(value.plantXp),
+    harvestXp: normalizeCropXpEvent(value.harvestXp),
+    spawnWitheredPlant: value.spawnWitheredPlant === true,
+    fertilizers: normalizeItemInputs(value.fertilizers, "fert"),
+    amendments: normalizeItemInputs(value.amendments, "amend"),
+  };
+
+  const mutable = draft as unknown as Record<string, unknown>;
+  applyBoundedNumeric(mutable, value, "growthSeconds", 0);
+  applyBoundedNumeric(mutable, value, "totalHarvest", 1);
+  applyBoundedNumeric(mutable, value, "seedQuantity", 1);
+  applyBoundedNumeric(mutable, value, "plantEnergy", 0);
+
+  const witheredPlantRef = asNonEmptyString(value.witheredPlantRef);
+  if (witheredPlantRef) draft.witheredPlantRef = witheredPlantRef;
+  const seedRef = asNonEmptyString(value.seedRef);
+  if (seedRef) draft.seedRef = seedRef;
+  if (seasons.length > 0) draft.seasons = seasons;
+  const notes = asNonEmptyString(value.notes);
+  if (notes) draft.notes = notes;
+
+  return draft;
 }
 
 function asFiniteNumber(value: unknown): number | null {
@@ -751,6 +953,22 @@ function normalizeFieldBinding(raw: unknown): FieldBinding | undefined {
     const field = validProductionFields.find((f) => f === raw.field);
     if (!field) return undefined;
     return { source: "production", addonId, field };
+  }
+  if (source === "crop") {
+    const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
+    if (!addonId) return undefined;
+    const validCropFields: CropFieldKey[] = [
+      "growthSeconds", "growthSecondsMin", "growthSecondsMax",
+      "totalHarvest", "totalHarvestMin", "totalHarvestMax",
+      "seedQuantity", "seedQuantityMin", "seedQuantityMax",
+      "plantEnergy", "plantEnergyMin", "plantEnergyMax",
+      "plantXp", "harvestXp",
+      "outputQuantity", "outputQuantityMin", "outputQuantityMax",
+    ];
+    const field = validCropFields.find((f) => f === raw.field);
+    if (!field) return undefined;
+    const outputId = typeof raw.outputId === "string" && raw.outputId.trim() ? raw.outputId.trim() : undefined;
+    return { source: "crop", addonId, field, ...(outputId ? { outputId } : {}) };
   }
   if (source === "unitXp") {
     const sectionId = typeof raw.sectionId === "string" ? raw.sectionId.trim() : "";
@@ -1502,6 +1720,7 @@ function asSectionAddon(value: unknown): SectionAddon | null {
     value.type !== "fieldLibrary" &&
     value.type !== "exportSchema" &&
     value.type !== "richDoc" &&
+    value.type !== "crop" &&
     value.type !== "genericStats"
   ) {
     return null;
@@ -1786,9 +2005,34 @@ export function normalizeSectionAddons(raw: unknown): SectionAddon[] | undefined
         });
         continue;
       }
+      if (addon.type === "xpBalance") {
+        const draft = normalizeBalanceDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      if (addon.type === "crop") {
+        const draft = normalizeCropDraft(addon.data);
+        if (!draft) continue;
+        out.push({
+          ...addon,
+          name: addon.name || draft.name,
+          data: draft,
+        });
+        continue;
+      }
+      // Forward-compat safety net: any SectionAddonType added to the union and
+      // to asSectionAddon() but without a normalizer above falls through here
+      // and is passed through with just a trimmed name. (When every type is
+      // handled, `addon` narrows to `never`, hence the cast.)
+      const fallbackAddon = addon as SectionAddon;
       out.push({
-        ...addon,
-        name: addon.name.trim() || addon.name,
+        ...fallbackAddon,
+        name: fallbackAddon.name.trim() || fallbackAddon.name,
       });
       continue;
     }

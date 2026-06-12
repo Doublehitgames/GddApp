@@ -7,6 +7,7 @@ import {
   createDefaultAttributeProfileAddon,
   createDefaultFieldLibraryAddon,
   createDefaultCraftTableAddon,
+  createDefaultCropAddon,
   createDefaultCurrencyAddon,
   createDefaultCurrencyExchangeAddon,
   createDefaultDataSchemaAddon,
@@ -54,6 +55,8 @@ import { RichDocAddonPanel } from "@/components/RichDocAddonPanel";
 import { RichDocAddonReadOnly } from "@/components/RichDocAddonReadOnly";
 import { SkillsAddonPanel } from "@/components/SkillsAddonPanel";
 import { SkillsAddonReadOnly } from "@/components/SkillsAddonReadOnly";
+import { CropAddonPanel } from "@/components/CropAddonPanel";
+import { CropAddonReadOnly } from "@/components/CropAddonReadOnly";
 import React from "react";
 
 export type AddonCategory =
@@ -547,6 +550,33 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
     renderReadOnly: (addon, options) => {
       if (addon.type !== "exportSchema") return null;
       return React.createElement(ExportSchemaAddonReadOnly, {
+        addon: addon.data,
+        theme: options?.theme,
+        bare: options?.bare,
+      });
+    },
+  },
+  {
+    type: "crop",
+    label: "Plantar e Colher",
+    category: "items",
+    emoji: "🌱",
+    singleton: true,
+    createDefault: () => {
+      const addonId = `crop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return createDefaultCropAddon(addonId);
+    },
+    renderEditor: (addon, onChange, onRemove) => {
+      if (addon.type !== "crop") return null;
+      return React.createElement(CropAddonPanel, {
+        addon: addon.data,
+        onChange: (nextDraft) => onChange({ ...addon, name: addon.name || nextDraft.name, data: nextDraft }),
+        onRemove,
+      });
+    },
+    renderReadOnly: (addon, options) => {
+      if (addon.type !== "crop") return null;
+      return React.createElement(CropAddonReadOnly, {
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,

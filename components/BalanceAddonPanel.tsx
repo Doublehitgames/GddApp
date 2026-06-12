@@ -372,7 +372,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
       return ["base", "growth", "offset"] as Array<keyof BalanceAddonDraft["params"]>;
     }
 
-    const matches = addon.expression.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) || [];
+    const matches = (addon.expression || "").match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) || [];
     const used = new Set(matches.filter((token) => !ALLOWED_FN_NAMES.has(token)));
     return PARAM_KEYS.filter((key) => used.has(key));
   }, [addon.mode, addon.preset, addon.expression]);
