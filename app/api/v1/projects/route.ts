@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   }
 
   const all = [...(owned ?? []), ...memberProjects];
-  return apiJson(all.map(projectToApi));
+  return apiJson(all.map((p) => projectToApi(p)));
 }
 
 /**
@@ -107,5 +107,5 @@ export async function POST(request: NextRequest) {
 
   // Re-read with fallback
   const { data: created } = await selectProjects(auth.supabase, { eq: ["id", project.id] });
-  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, cover_image_url: null, mindmap_settings: null, ai_instructions: null, created_at: now, updated_at: now }), 201);
+  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, cover_image_url: null, mindmap_settings: null, ai_instructions: null, linked_spreadsheets: null, created_at: now, updated_at: now }), 201);
 }

@@ -57,11 +57,12 @@ export type ProjectRow = {
   cover_image_url: string | null;
   mindmap_settings: Record<string, unknown> | null;
   ai_instructions: string | null;
+  linked_spreadsheets: unknown[] | null;
   created_at: string;
   updated_at: string;
 };
 
-export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, created_at, updated_at";
+export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, linked_spreadsheets, created_at, updated_at";
 export const PROJECT_COLUMNS_SAFE = "id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at";
 
 /** Select projects with fallback if ai_instructions column doesn't exist. */
@@ -87,7 +88,7 @@ export async function selectProjects(
     const fbResult = await fb;
     if (fbResult.error) return { data: null, error: fbResult.error };
     const rows = (fbResult.data ?? []).map((r: Record<string, unknown>) => ({
-      ...r, ai_instructions: null,
+      ...r, ai_instructions: null, linked_spreadsheets: null,
     })) as unknown as ProjectRow[];
     return { data: rows, error: null };
   }
@@ -122,7 +123,7 @@ export async function requireProject(
       .eq("id", projectId)
       .maybeSingle();
     if (fb.data) {
-      project = { ...fb.data, ai_instructions: null } as unknown as typeof project;
+      project = { ...fb.data, ai_instructions: null, linked_spreadsheets: null } as unknown as typeof project;
       error = null;
     }
   }
@@ -273,7 +274,10 @@ export async function requireSection(
 
 // ── DB ↔ API field mapping ────────────────────────────────────────────
 
-export function projectToApi(p: ProjectRow) {
+export function projectToApi(
+  p: ProjectRow,
+  opts: { includeLinkedSpreadsheets?: boolean } = {}
+) {
   return {
     id: p.id,
     ownerId: p.owner_id,
@@ -282,6 +286,11 @@ export function projectToApi(p: ProjectRow) {
     coverImageUrl: p.cover_image_url,
     mindmapSettings: p.mindmap_settings,
     aiInstructions: p.ai_instructions ?? "",
+    // Opt-in to keep `list_projects` lean — only the single-project GET and the
+    // dedicated /spreadsheets endpoint pull the (potentially large) registry.
+    ...(opts.includeLinkedSpreadsheets
+      ? { linkedSpreadsheets: Array.isArray(p.linked_spreadsheets) ? p.linked_spreadsheets : [] }
+      : {}),
     createdAt: p.created_at,
     updatedAt: p.updated_at,
   };

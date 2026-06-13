@@ -86,6 +86,17 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
   );
 
+  server.tool(
+    "list_linked_spreadsheets",
+    "List the Google Spreadsheets registered in a project's settings (Linked Spreadsheets). Returns each spreadsheet's id (the UUID to set as a section's linkedSpreadsheetId), name, url, spreadsheetId, sheets (tab names), and columnsBySheet (header row per tab). Use this to discover the UUID and the exact sheet/column names needed to build field bindings. Leaner than get_project when you only need spreadsheet metadata. " +
+      "NOTES on columnsBySheet: (1) It is keyed by tab name and each value is the tab's row-1 headers as an array that is POSITION-ALIGNED to the column index — array index 0 = column A, 1 = B, 2 = C, etc. Leading empty columns appear as empty strings (e.g. ['','','Name'] means the 'Name' header is in column C). (2) A tab is OMITTED from columnsBySheet when its row 1 is entirely empty, so columnsBySheet may have FEWER keys than `sheets` — never assume every tab in `sheets` has a columnsBySheet entry. (3) columnsBySheet is a SNAPSHOT captured when the spreadsheet was registered/refreshed, not live — added columns won't appear until refreshed. (4) The field is optional: spreadsheets registered before this feature (or never refreshed) may lack columnsBySheet entirely. When columns are missing or stale, ask the user to open Project Settings → Linked Spreadsheets and click 'Atualizar abas' (refresh) on that spreadsheet.",
+    { projectId: z.string().describe("Project UUID") },
+    async ({ projectId }) => {
+      try { return json(await client.listLinkedSpreadsheets(projectId)); }
+      catch (e) { return err(e); }
+    },
+  );
+
   // ── Sections ────────────────────────────────────────────────────
 
   server.tool(

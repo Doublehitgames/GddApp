@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       limit,
     });
 
-    results.projects = (projects ?? []).map(projectToApi);
+    results.projects = (projects ?? []).map((p) => projectToApi(p));
   }
 
   if (type === "all" || type === "sections") {

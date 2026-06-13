@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { data: sections } = await selectSections(auth.supabase, { projectId: id });
 
   return apiJson({
-    ...projectToApi(pResult.project),
+    ...projectToApi(pResult.project, { includeLinkedSpreadsheets: true }),
     sections: (sections ?? []).map(sectionToApi),
   });
 }

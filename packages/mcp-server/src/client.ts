@@ -77,6 +77,10 @@ export class GddApiClient {
     return this.request("DELETE", `/projects/${id}`);
   }
 
+  async listLinkedSpreadsheets(id: string) {
+    return this.request("GET", `/projects/${id}/spreadsheets`);
+  }
+
   // ── Sections ──────────────────────────────────────────────────────
 
   async listSections(projectId: string) {
