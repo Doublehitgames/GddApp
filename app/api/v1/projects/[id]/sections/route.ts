@@ -8,6 +8,7 @@ import {
   sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
+import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
+  const contentBlocks = parsed.data.content ? markdownToBlocks(parsed.data.content) : null;
   const { data: section, error } = await auth.supabase
     .from("sections")
     .insert({
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       parent_id: parsed.data.parentId,
       title: parsed.data.title,
       content: parsed.data.content,
+      content_blocks: contentBlocks && contentBlocks.length > 0 ? contentBlocks : null,
       sort_order: parsed.data.order,
       color: parsed.data.color,
       domain_tags: parsed.data.domainTags,

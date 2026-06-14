@@ -9,6 +9,7 @@ import {
   sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
+import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
 
@@ -88,7 +89,11 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   };
 
   if (parsed.data.title !== undefined) updates.title = parsed.data.title;
-  if (parsed.data.content !== undefined) updates.content = parsed.data.content;
+  if (parsed.data.content !== undefined) {
+    updates.content = parsed.data.content;
+    const blocks = markdownToBlocks(parsed.data.content);
+    updates.content_blocks = blocks.length > 0 ? blocks : null;
+  }
   if (parsed.data.parentId !== undefined) updates.parent_id = parsed.data.parentId;
   if (parsed.data.order !== undefined) updates.sort_order = parsed.data.order;
   if (parsed.data.color !== undefined) updates.color = parsed.data.color;
