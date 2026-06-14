@@ -122,6 +122,40 @@ export function convertReferencesToNames(content: string, sections: any[]): stri
 }
 
 /**
+ * Walk a BlockNote block tree and convert `$[#uuid]` refs to `$[Section Title]`
+ * in every text node. Used when seeding the editor so the user sees readable
+ * names instead of raw IDs.
+ */
+export function convertBlockRefsToNames(blocks: unknown, sections: any[]): any {
+  if (!Array.isArray(blocks)) return blocks;
+  return blocks.map((b) => _convertBlockNode(b, sections));
+}
+
+function _convertBlockNode(block: unknown, sections: any[]): unknown {
+  if (!block || typeof block !== "object") return block;
+  const b = block as any;
+  const next: any = { ...b };
+  if (b.content !== undefined) next.content = _convertContent(b.content, sections);
+  if (Array.isArray(b.children)) next.children = b.children.map((c: unknown) => _convertBlockNode(c, sections));
+  return next;
+}
+
+function _convertContent(content: unknown, sections: any[]): unknown {
+  if (!Array.isArray(content)) return content;
+  return content.map((node) => {
+    if (!node || typeof node !== "object") return node;
+    const n = node as any;
+    if (typeof n.text === "string" && n.text.includes("$[#")) {
+      return { ...n, text: convertReferencesToNames(n.text, sections) };
+    }
+    if (n.type === "link" && Array.isArray(n.content)) {
+      return { ...n, content: _convertContent(n.content, sections) };
+    }
+    return node;
+  });
+}
+
+/**
  * Validate if all references in content exist in the project
  */
 export function validateReferences(

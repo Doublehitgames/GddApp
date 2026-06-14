@@ -7,15 +7,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
 import { collectIntraSectionDeps } from "@/lib/addons/refs";
 import { GroupDiffModal } from "@/components/GroupDiffModal";
-import { getBacklinks, convertReferencesToIds, convertReferencesToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
+import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
-import { useMarkdownAutocomplete } from "@/hooks/useMarkdownAutocomplete";
-import { addColorButtonToToolbar, addImageUrlButtonToToolbar, addDriveImageButtonToToolbar, addReferenceButtonToToolbar, addEmojiButtonToToolbar, addYouTubeButtonToToolbar } from "@/utils/toastui-color-plugin";
 import {
   driveFileIdToImageUrl,
   getDriveImageDisplayCandidates,
@@ -25,6 +22,8 @@ import {
 } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
+import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
+import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import {
   FREE_MAX_SECTIONS_PER_PROJECT,
   FREE_MAX_SECTIONS_TOTAL,
@@ -62,10 +61,6 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
 import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
-import {
-  convertYouTubeEmbedsToEditorPlaceholders,
-  convertYouTubeEditorPlaceholdersToEmbeds,
-} from "@/utils/youtubeEmbeds";
 
 interface Props {
   projectId: string;
@@ -98,6 +93,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
   const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
+  const updateSectionDescription = useProjectStore((s) => s.updateSectionDescription);
   const setSectionThumbImage = useProjectStore((s) => s.setSectionThumbImage);
   const setSectionFlowchartEnabled = useProjectStore((s) => s.setSectionFlowchartEnabled);
   const disableSectionFlowchartAndClearDiagram = useProjectStore((s) => s.disableSectionFlowchartAndClearDiagram);
@@ -125,8 +121,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [inlineEdit, setInlineEdit] = useState(false);
-  const [editorMode, setEditorMode] = useState<"wysiwyg" | "markdown">("wysiwyg");
-  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const editorRef = useRef<any>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
@@ -202,11 +196,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     () => getDriveImageDisplayCandidates(section?.thumbImageUrl || ""),
     [section?.thumbImageUrl]
   );
-  const editorContainerRef = useRef<HTMLDivElement | null>(null);
-  const { AutocompleteDropdown } = useMarkdownAutocomplete({
-    sections,
-    containerRef: inlineEdit ? editorContainerRef : undefined,
-  });
+
 
   // Redirecionamento de /sections/[id]/edit: abrir direto no modo edição inline
   useEffect(() => {
@@ -328,9 +318,11 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   function handleConfirmImprovement() {
     if (!section) return;
     
-    // Aplica o conteúdo melhorado
+    // Aplica o conteúdo melhorado. Limpa contentBlocks (no store via editSection
+    // e no estado local) — a descrição passa a vir do markdown melhorado; os
+    // blocks antigos seriam exibidos pela leitura, ignorando a melhoria.
     editSection(realProjectId, realSectionId,section.title, previewContent, undefined, undefined, sectionAuditBy);
-    setSection({ ...section, content: previewContent });
+    setSection({ ...section, content: previewContent, contentBlocks: undefined });
     
     // Fecha o preview
     setShowPreview(false);
@@ -525,111 +517,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       .catch(() => {});
     return () => { cancelled = true; };
   }, [loaded, realProjectId, realSectionId, lastSyncedAt, lastSyncStats]);
-
-  // Inicializa/destroi o editor WYSIWYG inline quando modo de edição é ativado
-  useEffect(() => {
-    let instance: any;
-    let cancelled = false;
-    async function mountEditor() {
-      if (!inlineEdit || !containerEl) return;
-      const mod: any = await import("@toast-ui/editor");
-      if (cancelled) return;
-      const ToastEditor = mod.default || mod;
-      const project = getProjectBySlug(projectId);
-      const sections = project?.sections || [];
-      const contentForEditor = normalizeDriveUrlsInMarkdown(
-        convertYouTubeEmbedsToEditorPlaceholders(
-          convertReferencesToNames(section?.content || "", sections)
-        )
-      );
-      instance = new ToastEditor({
-        el: containerEl,
-        initialEditType: editorMode,
-        previewStyle: "vertical",
-        height: editorHeight,
-        initialValue: contentForEditor,
-        usageStatistics: false,
-        customHTMLRenderer: {
-          htmlInline: {
-            span(node: any) {
-              return [
-                { type: 'openTag', tagName: 'span', attributes: node.attrs },
-                { type: 'html', content: node.literal || '' },
-                { type: 'closeTag', tagName: 'span' }
-              ];
-            }
-          }
-        },
-        // "table" removido: plugin de tabelas do Toast UI causa erros no console (CellSelection/removeRow) em certas interações
-        toolbarItems: [
-          ["heading", "bold", "italic", "strike"],
-          ["hr", "quote"],
-          ["ul", "ol", "task"],
-          ["link"],
-          ["code", "codeblock"],
-        ],
-      });
-      (editorRef as any).current = instance;
-      
-      // Adiciona botão de cor
-      addColorButtonToToolbar(instance);
-
-      // Adiciona botão de imagem por URL
-      addImageUrlButtonToToolbar(instance);
-      addYouTubeButtonToToolbar(instance);
-      addEmojiButtonToToolbar(instance);
-
-      // Adiciona botão de imagem do Google Drive (ao lado do anterior). getCurrentEditor evita referência destruída após o Picker fechar.
-      addDriveImageButtonToToolbar(instance, {
-        notConfiguredMessage: t("sectionEdit.driveNotConfigured"),
-        pasteHintMessage: t("sectionEdit.drivePasteHint"),
-        getMarkdownToInsert: (fileId, fileName) => {
-          const alt = fileName.replace(/\.(png|jpe?g|gif|webp|bmp|svg)$/i, "");
-          return `![${alt}](${driveFileIdToImageUrl(fileId)})`;
-        },
-        getCurrentEditor: () => (editorRef as any).current ?? null,
-      });
-      addReferenceButtonToToolbar(instance, {
-        sections: project?.sections || [],
-        buttonTitle: t("sectionEdit.insertReference"),
-        searchPlaceholder: t("sectionEdit.referenceSearchPlaceholder"),
-      });
-    }
-    mountEditor();
-    return () => {
-      cancelled = true;
-      if (instance && instance.destroy) {
-        instance.destroy();
-      }
-      (editorRef as any).current = null;
-    };
-  }, [inlineEdit, containerEl, sectionId, editorMode, section, projectId, editorHeight, t]);
-
-  useEffect(() => {
-    if ((editorRef as any).current) {
-      (editorRef as any).current.setHeight(editorHeight);
-    }
-  }, [editorHeight]);
-
-  // Inserção de imagem do Drive: plugin dispara evento em document; aqui temos o editorRef válido
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ markdownImage: string }>).detail;
-      if (!detail?.markdownImage) return;
-      const inst = (editorRef as any).current;
-      if (!inst || typeof inst.getMarkdown !== "function" || typeof inst.setMarkdown !== "function") return;
-      try {
-        const current = inst.getMarkdown();
-        const newMarkdown = (current || "").trimEnd() + "\n" + detail.markdownImage;
-        inst.setMarkdown(newMarkdown, false);
-        (document as unknown as { __gddDriveImageInserted?: boolean }).__gddDriveImageInserted = true;
-      } catch {
-        // ignore
-      }
-    };
-    document.addEventListener("gdd-insert-drive-image", handler);
-    return () => document.removeEventListener("gdd-insert-drive-image", handler);
-  }, []);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -854,14 +741,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     editedTitle={editedTitle}
     setEditedTitle={setEditedTitle}
     editSection={(pid: string, sid: string, title: string, content: string, parentId?: string | null, color?: string, domainTags?: string[]) => editSection(pid, sid, title, content, parentId, color, sectionAuditBy, domainTags)}
+    updateSectionDescription={(pid: string, sid: string, blocks: any[], md: string) => updateSectionDescription(pid, sid, blocks, md, sectionAuditBy)}
     inlineEdit={inlineEdit}
     setInlineEdit={setInlineEdit}
-    containerEl={containerEl}
-    setContainerEl={setContainerEl}
-    editorContainerRef={editorContainerRef}
     editorRef={editorRef}
-    editorMode={editorMode}
-    setEditorMode={setEditorMode}
     removeSection={removeSection}
     countDescendants={countDescendants}
     renderSubsectionTree={renderSubsectionTree}
@@ -930,7 +813,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     onMoveAddonToSection={moveAddonToSectionHandler}
     onMoveAddonsToSection={moveAddonsToSectionHandler}
       />
-      <AutocompleteDropdown />
     </>
   );
 }
@@ -1655,8 +1537,8 @@ function SortableAddonItem({
 // Componente principal de conteúdo
 function SectionDetailContent({ 
   project, projectId, section, sectionId, breadcrumbs, 
-  isEditingTitle, setIsEditingTitle, editedTitle, setEditedTitle, editSection,
-  inlineEdit, setInlineEdit, containerEl, setContainerEl, editorContainerRef, editorRef, editorMode, setEditorMode,
+  isEditingTitle, setIsEditingTitle, editedTitle, setEditedTitle, editSection, updateSectionDescription,
+  inlineEdit, setInlineEdit, editorRef,
   removeSection, countDescendants, renderSubsectionTree,
   newSubTitle, setNewSubTitle, nameError, setNameError, addSection, addSubsection, hasDuplicateName,
   router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
@@ -2690,9 +2572,9 @@ function SectionDetailContent({
         <div
           className="group/description relative max-w-6xl mx-auto mb-4 ui-card-premium transition-colors hover:ring-1 hover:ring-indigo-500/40"
           onDoubleClick={() => setInlineEdit(true)}
-          title={section.content ? t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição') : undefined}
+          title={(!isRichDocEmpty(section.contentBlocks) || (section.content && section.content.trim())) ? t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição') : undefined}
         >
-          {section.content ? (
+          {(!isRichDocEmpty(section.contentBlocks) || (section.content && section.content.trim())) ? (
             <>
               <button
                 type="button"
@@ -2708,18 +2590,15 @@ function SectionDetailContent({
                 <span>{t('sectionDetail.descriptionEditButton', 'Editar')}</span>
               </button>
               <div className="cursor-text">
-                <MarkdownWithReferences
-                  content={section.content}
-                  projectId={projectId}
+                <SectionDescriptionReadOnly
+                  blocks={section.contentBlocks}
+                  markdown={section.content}
+                  projectId={realProjectId}
                   sections={project?.sections || []}
                   projectTokenSource={project}
-                  currentSectionId={sectionId}
-                  resolveDocumentAnchorPreview={(sectionId) => {
-                    const sec = (project?.sections || []).find((s: any) => s.id === sectionId);
-                    if (!sec) return null;
-                    const plain = (sec.content || "").replace(/[#>*`~_\-![\]()]/g, "").replace(/\s+/g, " ").trim();
-                    return { title: sec.title || sectionId, shortDescription: plain.length > 160 ? plain.slice(0, 157) + "..." : plain };
-                  }}
+                  currentSectionId={realSectionId}
+                  referenceLinkMode="manager"
+                  theme="dark"
                 />
               </div>
             </>
@@ -3246,6 +3125,16 @@ function SectionDetailContent({
         </>
       )}
 
+      {/* Backlinks Section */}
+      {!(inlineEdit && isFullscreen) && (
+        <BacklinksSection
+          projectId={projectId}
+          sectionId={realSectionId}
+          sections={project?.sections || []}
+          router={router}
+        />
+      )}
+
       {/* Histórico de versões (colapsável) */}
       <div className="max-w-6xl mx-auto mb-4 ui-card-premium overflow-hidden">
         <button
@@ -3319,7 +3208,9 @@ function SectionDetailContent({
                       });
                       if (res.ok) {
                         editSection(realProjectId, realSectionId, v.title, v.content, undefined, v.color ?? undefined);
-                        setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
+                        // Versões guardam só markdown — limpa contentBlocks (store + local)
+                        // pra leitura renderizar o markdown restaurado, não os blocks atuais.
+                        setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, contentBlocks: undefined, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
                         const data = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
                         if (Array.isArray(data?.versions)) setSectionVersions(data.versions);
                       }
@@ -3409,7 +3300,25 @@ function SectionDetailContent({
               </button>
             </div>
           )}
-          <div ref={(el) => { editorContainerRef.current = el; setContainerEl(el); }} />
+          <SectionDescriptionEditor
+            initialBlocks={convertBlockRefsToNames(section?.contentBlocks, project?.sections || [])}
+            markdown={normalizeDriveUrlsInMarkdown(
+              convertReferencesToNames(section?.content || "", project?.sections || [])
+            )}
+            minHeight={editorHeight}
+            apiRef={editorRef}
+            sections={project?.sections?.map((s: any) => ({ id: s.id, title: s.title }))}
+            onChange={(blocks, md) => {
+              // Auto-save (Notion-style): persist blocks (source of truth) +
+              // derived markdown mirror on every debounced edit. Clearing the
+              // description to empty is allowed — `blocks` and `md` always come
+              // from the same live editor (see SectionDescriptionEditor), so an
+              // empty here means the user really emptied it.
+              const normalizedMd = normalizeSpecialTokenSyntax(md);
+              const convertedMd = convertReferencesToIds(normalizedMd, project?.sections || []);
+              updateSectionDescription(realProjectId, realSectionId, blocks, convertedMd);
+            }}
+          />
           <div className="mt-3">
             <SpecialTokensHelp
               title={t("sectionDetail.specialTokens.title", "Chaves especiais de addons")}
@@ -3425,50 +3334,31 @@ function SectionDetailContent({
               }}
             />
           </div>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex items-center gap-3">
             <button
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg transition-colors font-medium"
               onClick={() => {
-                const md = (editorRef as any).current?.getMarkdown?.() || "";
-                const restoredMd = convertYouTubeEditorPlaceholdersToEmbeds(md);
-                const normalizedMd = normalizeSpecialTokenSyntax(restoredMd);
-                const sections = project?.sections || [];
-                const convertedMd = convertReferencesToIds(normalizedMd, sections);
-                editSection(realProjectId, realSectionId,section.title, convertedMd, undefined, undefined);
+                // Auto-save already persisted edits as the user typed. On exit,
+                // flush any change still inside the debounce window so nothing
+                // is lost, then leave edit mode. Empty is allowed (clearing the
+                // description); blocks + md come from the same live editor.
+                const api = (editorRef as any).current;
+                if (api && typeof api.getBlocks === "function") {
+                  const blocks = api.getBlocks() || [];
+                  const md = api.getMarkdown?.() || "";
+                  const normalizedMd = normalizeSpecialTokenSyntax(md);
+                  const convertedMd = convertReferencesToIds(normalizedMd, project?.sections || []);
+                  updateSectionDescription(realProjectId, realSectionId, blocks, convertedMd);
+                }
                 setInlineEdit(false);
               }}
-            >{t("common.save")}</button>
-            <button
-              className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded-lg transition-colors"
-              onClick={() => setInlineEdit(false)}
-            >{t('common.cancel')}</button>
-            <button
-              className="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded-lg text-sm transition-colors"
-              onClick={() => {
-                const next = editorMode === "wysiwyg" ? "markdown" : "wysiwyg";
-                setEditorMode(next);
-                if ((editorRef as any).current?.changeMode) {
-                  (editorRef as any).current.changeMode(next, true);
-                }
-              }}
-            >
-              {t("sectionDetail.actions.editorModeLabel", "Modo")}: {editorMode === "wysiwyg" ? "WYSIWYG" : "Markdown"}
-            </button>
+            >✓ {t("sectionDetail.descriptionDone", "Concluir")}</button>
+            <span className="text-xs text-gray-400">
+              {t("sectionDetail.descriptionAutosaveHint", "Salvo automaticamente")}
+            </span>
           </div>
         </div>
       )}
-
-      {/* Backlinks Section */}
-      {!(inlineEdit && isFullscreen) && (
-        <BacklinksSection
-          projectId={projectId}
-          sectionId={sectionId}
-          sections={project?.sections || []}
-          router={router}
-        />
-      )}
-
-
 
       {/* Modal de Preview da IA */}
       {showPreview && (
@@ -3496,13 +3386,7 @@ function SectionDetailContent({
               )}
 
               <div className="prose prose-sm prose-invert max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
-                <MarkdownWithReferences
-                  content={previewContent}
-                  projectId={projectId}
-                  sections={project?.sections || []}
-                  projectTokenSource={project}
-                  currentSectionId={sectionId}
-                />
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewContent}</ReactMarkdown>
               </div>
 
               <div className="mt-4 space-y-4">
@@ -3977,32 +3861,93 @@ function SectionDetailContent({
 function BacklinksSection({ projectId, sectionId, sections, router }: any) {
   const { t } = useI18n();
   const backlinks = getBacklinks(sectionId, sections);
+  const [pending, setPending] = useState<{ id: string; title: string; shortDescription: string } | null>(null);
 
   if (backlinks.length === 0) return null;
 
+  const handleClick = (link: { id: string; title: string }) => {
+    const sec = sections.find((s: any) => s.id === link.id);
+    const rawContent = typeof sec?.content === "string" ? sec.content : "";
+    const shortDescription = rawContent
+      .replace(/[$@]\[[^\]]*\]/g, "")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/[*_`>~|]/g, "")
+      .replace(/\n+/g, " ")
+      .trim()
+      .slice(0, 150);
+    setPending({ id: link.id, title: link.title, shortDescription });
+  };
+
+  const navigate = (id: string) => {
+    const sec = sections.find((s: any) => s.id === id);
+    router.push(sec ? `/projects/${projectId}/sections/${toSlug(sec.title ?? "")}` : `/projects/${projectId}`);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
-      <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
-        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
-        </svg>
-        <span>{t('sectionDetail.backlinks')}</span>
-      </h3>
-      <div className="flex flex-wrap gap-2">
-        {backlinks.map((link, index) => (
-          <span key={link.id} className="inline-flex items-center">
-            <button
-              onClick={() => { const sec = sections.find((s: any) => s.id === link.id); router.push(sec ? `/projects/${projectId}/sections/${toSlug(sec.title ?? "")}` : `/projects/${projectId}`); }}
-              className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
-            >
-              {link.title}
-            </button>
-            {index < backlinks.length - 1 && <span className="text-blue-500 ml-1">,</span>}
-          </span>
-        ))}
+    <>
+      <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
+        <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
+          </svg>
+          <span>{t('sectionDetail.backlinks')}</span>
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {backlinks.map((link: any, index: number) => (
+            <span key={link.id} className="inline-flex items-center">
+              <button
+                onClick={() => handleClick(link)}
+                className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
+              >
+                {link.title}
+              </button>
+              {index < backlinks.length - 1 && <span className="text-blue-500 ml-1">,</span>}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {pending && (
+        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center" onClick={() => setPending(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-gray-200">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t('view.anchorPreview.title', 'Section Preview')}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">{pending.title}</h3>
+            </div>
+            <div className="px-5 py-4">
+              {pending.shortDescription ? (
+                <p className="text-sm leading-6 text-gray-700">{pending.shortDescription}</p>
+              ) : (
+                <p className="text-sm leading-6 text-gray-500">{t('view.anchorPreview.noDescription', 'No description.')}</p>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPending(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => { const id = pending.id; setPending(null); navigate(id); }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {t('view.anchorPreview.goButton', 'Go to section')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
-// Nota: O autocomplete é renderizado no componente principal via <AutocompleteDropdown />

@@ -4,7 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { sectionPathById, projectPath } from "@/lib/utils/slug";
-import { MarkdownWithReferences } from "@/components/MarkdownWithReferences";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
+import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
@@ -1056,10 +1059,11 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               </div>
             </HeadingTag>
 
-            {node.content && node.content.trim() ? (
+            {(!isRichDocEmpty((node as any).contentBlocks) || (node.content && node.content.trim())) ? (
               <div className={depth === 0 ? "gdd-reading-prose prose prose-sm sm:prose-base md:prose-lg max-w-none mb-6 md:mb-8" : depth === 1 ? "gdd-reading-prose prose prose-sm sm:prose-base max-w-none mb-5 md:mb-6" : "gdd-reading-prose prose prose-sm max-w-none mb-4"}>
-                <MarkdownWithReferences
-                  content={node.content}
+                <SectionDescriptionReadOnly
+                  blocks={(node as any).contentBlocks}
+                  markdown={node.content}
                   projectId={projectId}
                   sections={project.sections || []}
                   projectTokenSource={project}
@@ -1067,6 +1071,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                   heroThumbUrl={node.thumbImageUrl}
                   heroThumbWidth={heroThumbWidth}
                   referenceLinkMode="document"
+                  theme="light"
                   documentAnchorOffset={180}
                   resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
                 />
@@ -1503,15 +1508,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
               </p>
               {project.description && (
                 <div className="gdd-reading-prose max-w-2xl mx-auto prose prose-sm sm:prose-base md:prose-lg">
-                  <MarkdownWithReferences 
-                    content={project.description}
-                    projectId={projectId}
-                    sections={project.sections || []}
-                    projectTokenSource={project}
-                    referenceLinkMode="document"
-                    documentAnchorOffset={180}
-                    resolveDocumentAnchorPreview={resolveDocumentAnchorPreview}
-                  />
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.description}</ReactMarkdown>
                 </div>
               )}
 

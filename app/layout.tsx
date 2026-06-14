@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "@toast-ui/editor/dist/toastui-editor.css";
 import ClientInit from "./client-init";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { cookies, headers } from "next/headers";
