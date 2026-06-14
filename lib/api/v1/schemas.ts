@@ -24,6 +24,7 @@ export const updateProjectSchema = z.object({
 export const createSectionSchema = z.object({
   title: z.string().min(1).max(300),
   content: z.string().max(100_000).optional().default(""),
+  contentBlocks: z.array(z.record(z.string(), z.unknown())).optional(),
   parentId: z.string().uuid().nullable().optional().default(null),
   order: z.number().int().min(0).optional().default(0),
   color: z
@@ -39,6 +40,7 @@ export const createSectionSchema = z.object({
 export const updateSectionSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   content: z.string().max(100_000).optional(),
+  contentBlocks: z.array(z.record(z.string(), z.unknown())).optional(),
   parentId: z.string().uuid().nullable().optional(),
   order: z.number().int().min(0).optional(),
   color: z

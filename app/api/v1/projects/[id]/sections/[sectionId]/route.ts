@@ -89,11 +89,15 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   };
 
   if (parsed.data.title !== undefined) updates.title = parsed.data.title;
-  if (parsed.data.content !== undefined) {
-    updates.content = parsed.data.content;
+  if (parsed.data.contentBlocks !== undefined) {
+    // Caller supplied explicit blocks — use them directly.
+    updates.content_blocks = parsed.data.contentBlocks.length > 0 ? parsed.data.contentBlocks : null;
+  } else if (parsed.data.content !== undefined) {
+    // No explicit blocks — auto-generate from markdown.
     const blocks = markdownToBlocks(parsed.data.content);
     updates.content_blocks = blocks.length > 0 ? blocks : null;
   }
+  if (parsed.data.content !== undefined) updates.content = parsed.data.content;
   if (parsed.data.parentId !== undefined) updates.parent_id = parsed.data.parentId;
   if (parsed.data.order !== undefined) updates.sort_order = parsed.data.order;
   if (parsed.data.color !== undefined) updates.color = parsed.data.color;

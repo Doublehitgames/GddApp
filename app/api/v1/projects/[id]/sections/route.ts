@@ -118,7 +118,10 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
-  const contentBlocks = parsed.data.content ? markdownToBlocks(parsed.data.content) : null;
+  // contentBlocks from caller takes priority; fall back to auto-generating from markdown.
+  const resolvedBlocks = parsed.data.contentBlocks && parsed.data.contentBlocks.length > 0
+    ? parsed.data.contentBlocks
+    : (parsed.data.content ? markdownToBlocks(parsed.data.content) : null);
   const { data: section, error } = await auth.supabase
     .from("sections")
     .insert({
@@ -126,7 +129,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       parent_id: parsed.data.parentId,
       title: parsed.data.title,
       content: parsed.data.content,
-      content_blocks: contentBlocks && contentBlocks.length > 0 ? contentBlocks : null,
+      content_blocks: resolvedBlocks && resolvedBlocks.length > 0 ? resolvedBlocks : null,
       sort_order: parsed.data.order,
       color: parsed.data.color,
       domain_tags: parsed.data.domainTags,

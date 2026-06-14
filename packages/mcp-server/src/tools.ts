@@ -122,13 +122,37 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
   );
 
+  const CONTENT_BLOCKS_DESC =
+    "Rich BlockNote JSON blocks for the section description. " +
+    "Takes priority over auto-generating from `content`. " +
+    "Always also provide `content` as a plain-text/markdown mirror used for search and fallback. " +
+    "\n\nEach block: { type, props?, content, children }. " +
+    "\n\nSUPPORTED BLOCK TYPES:" +
+    "\n• paragraph — { type:'paragraph', content:[...inline], children:[] }" +
+    "\n• heading — { type:'heading', props:{level:1|2|3}, content:[...inline], children:[] }" +
+    "\n• bulletListItem — { type:'bulletListItem', content:[...inline], children:[] }" +
+    "\n• numberedListItem — { type:'numberedListItem', content:[...inline], children:[] }" +
+    "\n• checkListItem — { type:'checkListItem', props:{checked:false}, content:[...inline], children:[] }" +
+    "\n• quote — { type:'quote', content:[...inline], children:[] }" +
+    "\n• codeBlock — { type:'codeBlock', props:{language:'javascript'}, content:[{type:'text',text:'...'}], children:[] }" +
+    "\n• callout — { type:'callout', props:{emoji:'💡',variant:'info'|'warning'|'error'|'success'}, content:[...inline], children:[] }" +
+    "\n• image — { type:'image', props:{url:'https://...',caption:'',width:512}, content:[], children:[] }" +
+    "\n• table — { type:'table', content:{type:'tableContent',rows:[{cells:[[...inline],[...inline]]}]}, children:[] }" +
+    "\n\nINLINE CONTENT (used in `content` arrays of most blocks):" +
+    "\n• Text node: { type:'text', text:'Hello', styles:{bold?:true, italic?:true, underline?:true, strikethrough?:true, code?:true, textColor?:'blue'|'red'|'green'|'yellow'|'orange'|'purple'|'pink'|'gray'|'brown', backgroundColor?:same palette} }" +
+    "\n• Link: { type:'link', href:'https://...', content:[text nodes] }" +
+    "\n• Section cross-reference: write $[Section Name] as plain text inside a text node — it renders as a clickable link to that section." +
+    "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
+    '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"emoji":"⚠️","variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
+
   server.tool(
     "create_section",
-    "Create a new section in a project",
+    "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, lists, etc.). Always pair it with a plain-text `content` for search.",
     {
       projectId: z.string().describe("Project UUID"),
       title: z.string().describe("Section title"),
-      content: z.string().optional().describe("Section content (text/markdown)"),
+      content: z.string().optional().describe("Plain-text / markdown version of the description — used for search and as fallback when blocks are unavailable. If omitted and contentBlocks is provided, leave empty."),
+      contentBlocks: z.array(z.record(z.unknown())).optional().describe(CONTENT_BLOCKS_DESC),
       parentId: z.string().optional().describe("Parent section UUID for sub-sections"),
       order: z.number().optional().describe("Sort order (0-based)"),
       color: z.string().optional().describe("Hex color (#rrggbb)"),
@@ -143,12 +167,13 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "update_section",
-    "Update a section's fields (title, content, color, tags, etc.)",
+    "Update a section's fields (title, content, color, tags, etc.). Use `contentBlocks` to replace the description with rich formatted content.",
     {
       projectId: z.string().describe("Project UUID"),
       sectionId: z.string().describe("Section UUID"),
       title: z.string().optional().describe("New title"),
-      content: z.string().optional().describe("New content"),
+      content: z.string().optional().describe("Plain-text / markdown version of the description"),
+      contentBlocks: z.array(z.record(z.unknown())).optional().describe(CONTENT_BLOCKS_DESC),
       parentId: z.string().optional().describe("New parent section UUID"),
       order: z.number().optional().describe("New sort order"),
       color: z.string().optional().describe("New hex color"),
