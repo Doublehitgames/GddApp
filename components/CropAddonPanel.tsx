@@ -201,6 +201,36 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
     [addon, update]
   );
 
+  // When a sheet binding is applied, mirror its cached value into the numeric
+  // field so the input shows it (read-only) AND the export/DataSchema resolver
+  // (which reads the scalar, not the binding) sees the value. Same pattern as
+  // ProductionAddonPanel.
+  const cachedFromBinding = (b: FieldBinding): number | undefined =>
+    b.source === "sheets" && typeof b.ref.cachedValue === "number"
+      ? Math.floor(Math.max(0, b.ref.cachedValue))
+      : undefined;
+
+  /** Set a bounded numeric field's binding, mirroring the cached sheet value into its scalar. */
+  const bindNumeric = (
+    valueKey: keyof CropAddonDraft,
+    bindingKey: keyof CropAddonDraft,
+    b: FieldBinding
+  ) => {
+    const v = cachedFromBinding(b);
+    update({ [bindingKey]: b, ...(v !== undefined ? { [valueKey]: v } : {}) } as Partial<CropAddonDraft>);
+  };
+
+  /** Same as bindNumeric, but for a per-output quantity field. */
+  const bindOutput = (
+    outputId: string,
+    valueKey: keyof CropOutput,
+    bindingKey: keyof CropOutput,
+    b: FieldBinding
+  ) => {
+    const v = cachedFromBinding(b);
+    updateOutput(outputId, { [bindingKey]: b, ...(v !== undefined ? { [valueKey]: v } : {}) } as Partial<CropOutput>);
+  };
+
   const addStage = () => {
     const id = `stage-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     update({ stages: [...(addon.stages || []), { id, label: "Estágio", secondsFromPlanting: 0 }] });
@@ -296,7 +326,10 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             label: t("cropAddon.xpValue", "Valor XP"),
           }}
           value={event.xpBinding ?? MANUAL_BINDING}
-          onChange={(b: FieldBinding) => updateXpEvent(field, { xpBinding: b })}
+          onChange={(b: FieldBinding) => {
+            const cached = cachedFromBinding(b);
+            updateXpEvent(field, { xpBinding: b, ...(cached !== undefined ? { xp: cached } : {}) });
+          }}
           context={xpBindingContext}
         >
           <CommitOptionalNumberInput
@@ -419,11 +452,11 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
           limitMin={addon.growthSecondsMin}
           onLimitMinChange={(v) => update({ growthSecondsMin: v })}
           limitMinBinding={addon.growthSecondsMinBinding}
-          onLimitMinBindingChange={(b) => update({ growthSecondsMinBinding: b })}
+          onLimitMinBindingChange={(b) => bindNumeric("growthSecondsMin", "growthSecondsMinBinding", b)}
           limitMax={addon.growthSecondsMax}
           onLimitMaxChange={(v) => update({ growthSecondsMax: v })}
           limitMaxBinding={addon.growthSecondsMaxBinding}
-          onLimitMaxBindingChange={(b) => update({ growthSecondsMaxBinding: b })}
+          onLimitMaxBindingChange={(b) => bindNumeric("growthSecondsMax", "growthSecondsMaxBinding", b)}
           onLimitsClear={() =>
             update({
               growthSecondsMin: undefined,
@@ -433,7 +466,7 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             })
           }
           binding={addon.growthSecondsBinding ?? MANUAL_BINDING}
-          onBindingChange={(b) => update({ growthSecondsBinding: b })}
+          onBindingChange={(b) => bindNumeric("growthSeconds", "growthSecondsBinding", b)}
           acceptedSources={["sheets", "progressionColumn"]}
           bindingContext={bindingContext}
           integer
@@ -448,11 +481,11 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
               limitMin={addon.totalHarvestMin}
               onLimitMinChange={(v) => update({ totalHarvestMin: v })}
               limitMinBinding={addon.totalHarvestMinBinding}
-              onLimitMinBindingChange={(b) => update({ totalHarvestMinBinding: b })}
+              onLimitMinBindingChange={(b) => bindNumeric("totalHarvestMin", "totalHarvestMinBinding", b)}
               limitMax={addon.totalHarvestMax}
               onLimitMaxChange={(v) => update({ totalHarvestMax: v })}
               limitMaxBinding={addon.totalHarvestMaxBinding}
-              onLimitMaxBindingChange={(b) => update({ totalHarvestMaxBinding: b })}
+              onLimitMaxBindingChange={(b) => bindNumeric("totalHarvestMax", "totalHarvestMaxBinding", b)}
               onLimitsClear={() =>
                 update({
                   totalHarvestMin: undefined,
@@ -462,7 +495,7 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
                 })
               }
               binding={addon.totalHarvestBinding ?? MANUAL_BINDING}
-              onBindingChange={(b) => update({ totalHarvestBinding: b })}
+              onBindingChange={(b) => bindNumeric("totalHarvest", "totalHarvestBinding", b)}
               acceptedSources={["sheets", "progressionColumn"]}
               bindingContext={bindingContext}
               integer
@@ -557,11 +590,11 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
                 limitMin={output.quantityMin}
                 onLimitMinChange={(v) => updateOutput(output.id, { quantityMin: v })}
                 limitMinBinding={output.quantityMinBinding}
-                onLimitMinBindingChange={(b) => updateOutput(output.id, { quantityMinBinding: b })}
+                onLimitMinBindingChange={(b) => bindOutput(output.id, "quantityMin", "quantityMinBinding", b)}
                 limitMax={output.quantityMax}
                 onLimitMaxChange={(v) => updateOutput(output.id, { quantityMax: v })}
                 limitMaxBinding={output.quantityMaxBinding}
-                onLimitMaxBindingChange={(b) => updateOutput(output.id, { quantityMaxBinding: b })}
+                onLimitMaxBindingChange={(b) => bindOutput(output.id, "quantityMax", "quantityMaxBinding", b)}
                 onLimitsClear={() =>
                   updateOutput(output.id, {
                     quantityMin: undefined,
@@ -571,7 +604,7 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
                   })
                 }
                 binding={output.quantityBinding ?? MANUAL_BINDING}
-                onBindingChange={(b) => updateOutput(output.id, { quantityBinding: b })}
+                onBindingChange={(b) => bindOutput(output.id, "quantity", "quantityBinding", b)}
                 acceptedSources={["sheets", "progressionColumn"]}
                 bindingContext={bindingContext}
                 integer
@@ -690,11 +723,11 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
           limitMin={addon.seedQuantityMin}
           onLimitMinChange={(v) => update({ seedQuantityMin: v })}
           limitMinBinding={addon.seedQuantityMinBinding}
-          onLimitMinBindingChange={(b) => update({ seedQuantityMinBinding: b })}
+          onLimitMinBindingChange={(b) => bindNumeric("seedQuantityMin", "seedQuantityMinBinding", b)}
           limitMax={addon.seedQuantityMax}
           onLimitMaxChange={(v) => update({ seedQuantityMax: v })}
           limitMaxBinding={addon.seedQuantityMaxBinding}
-          onLimitMaxBindingChange={(b) => update({ seedQuantityMaxBinding: b })}
+          onLimitMaxBindingChange={(b) => bindNumeric("seedQuantityMax", "seedQuantityMaxBinding", b)}
           onLimitsClear={() =>
             update({
               seedQuantityMin: undefined,
@@ -704,7 +737,7 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             })
           }
           binding={addon.seedQuantityBinding ?? MANUAL_BINDING}
-          onBindingChange={(b) => update({ seedQuantityBinding: b })}
+          onBindingChange={(b) => bindNumeric("seedQuantity", "seedQuantityBinding", b)}
           acceptedSources={["sheets", "progressionColumn"]}
           bindingContext={bindingContext}
           integer
@@ -717,11 +750,11 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
           limitMin={addon.plantEnergyMin}
           onLimitMinChange={(v) => update({ plantEnergyMin: v })}
           limitMinBinding={addon.plantEnergyMinBinding}
-          onLimitMinBindingChange={(b) => update({ plantEnergyMinBinding: b })}
+          onLimitMinBindingChange={(b) => bindNumeric("plantEnergyMin", "plantEnergyMinBinding", b)}
           limitMax={addon.plantEnergyMax}
           onLimitMaxChange={(v) => update({ plantEnergyMax: v })}
           limitMaxBinding={addon.plantEnergyMaxBinding}
-          onLimitMaxBindingChange={(b) => update({ plantEnergyMaxBinding: b })}
+          onLimitMaxBindingChange={(b) => bindNumeric("plantEnergyMax", "plantEnergyMaxBinding", b)}
           onLimitsClear={() =>
             update({
               plantEnergyMin: undefined,
@@ -731,7 +764,7 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             })
           }
           binding={addon.plantEnergyBinding ?? MANUAL_BINDING}
-          onBindingChange={(b) => update({ plantEnergyBinding: b })}
+          onBindingChange={(b) => bindNumeric("plantEnergy", "plantEnergyBinding", b)}
           acceptedSources={["sheets", "progressionColumn"]}
           bindingContext={bindingContext}
           integer

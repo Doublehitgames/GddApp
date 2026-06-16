@@ -146,9 +146,20 @@ function normalizeCropXpEvent(value: unknown): CropXpEvent {
   const out: CropXpEvent = {};
   const xpAddonRef = asNonEmptyString(value.xpAddonRef);
   if (xpAddonRef) out.xpAddonRef = xpAddonRef;
+  if (isObject(value.xpBinding)) {
+    out.xpBinding = value.xpBinding as unknown as FieldBinding;
+    // Mirror cachedValue from sheets binding so the field is never blank on load.
+    if (
+      value.xpBinding.source === "sheets" &&
+      isObject(value.xpBinding.ref) &&
+      typeof value.xpBinding.ref.cachedValue === "number"
+    ) {
+      out.xp = Math.floor(value.xpBinding.ref.cachedValue as number);
+      return out;
+    }
+  }
   const xp = asFiniteNumber(value.xp);
   if (xp != null) out.xp = xp;
-  if (isObject(value.xpBinding)) out.xpBinding = value.xpBinding as unknown as FieldBinding;
   return out;
 }
 
@@ -164,10 +175,22 @@ function applyBoundedNumeric(
   minFloor: number
 ): void {
   for (const suffix of ["", "Min", "Max"] as const) {
+    const rawBinding = source[`${key}${suffix}Binding`];
+    if (isObject(rawBinding)) {
+      target[`${key}${suffix}Binding`] = rawBinding as unknown as FieldBinding;
+      // Sheets binding: mirror cachedValue into the scalar so the field always
+      // shows the sheet value, even for data saved before bind-time mirroring.
+      if (
+        rawBinding.source === "sheets" &&
+        isObject(rawBinding.ref) &&
+        typeof rawBinding.ref.cachedValue === "number"
+      ) {
+        target[`${key}${suffix}`] = Math.max(minFloor, Math.floor(rawBinding.ref.cachedValue as number));
+        continue;
+      }
+    }
     const num = asFiniteNumber(source[`${key}${suffix}`]);
     if (num != null) target[`${key}${suffix}`] = Math.max(minFloor, Math.floor(num));
-    const binding = source[`${key}${suffix}Binding`];
-    if (isObject(binding)) target[`${key}${suffix}Binding`] = binding as unknown as FieldBinding;
   }
 }
 
