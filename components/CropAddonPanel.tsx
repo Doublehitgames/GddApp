@@ -27,6 +27,7 @@ import {
   type FieldBindingPickerContext,
 } from "@/lib/addons/fieldBinding";
 import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
+import { SearchablePageSelect } from "@/components/common/SearchablePageSelect";
 
 interface CropAddonPanelProps {
   addon: CropAddonDraft;
@@ -346,34 +347,14 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
     );
   };
 
-  const renderItemSelect = (
-    value: string | undefined,
-    onChange: (ref: string | undefined) => void,
-    placeholder: string
-  ) => {
-    const isKnown = value ? itemOptions.some((o) => o.refId === value) : false;
-    return (
-      <select
-        value={value ? (isKnown ? value : "__invalid__") : ""}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === "__invalid__") return;
-          onChange(v || undefined);
-        }}
-        className={INPUT_CLASS}
-      >
-        <option value="">{placeholder}</option>
-        {value && !isKnown && (
-          <option value="__invalid__">{t("common.notFound", "Item não encontrado")}</option>
-        )}
-        {itemOptions.map((o) => (
-          <option key={o.refId} value={o.refId}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    );
-  };
+  const itemSelectOptions = useMemo(
+    () => itemOptions.map((o) => ({ id: o.refId, label: o.label })),
+    [itemOptions]
+  );
+  const sectionSelectOptions = useMemo(
+    () => sectionOptions.map((o) => ({ id: o.refId, label: o.label })),
+    [sectionOptions]
+  );
 
   return (
     <div className={PANEL_SHELL_CLASS}>
@@ -573,11 +554,12 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
                   <label className="mb-1 block text-[10px] text-gray-500">
                     {t("cropAddon.item", "Item")}
                   </label>
-                  {renderItemSelect(
-                    output.itemRef,
-                    (ref) => updateOutput(output.id, { itemRef: ref }),
-                    t("cropAddon.selectItem", "Selecione item")
-                  )}
+                  <SearchablePageSelect
+                    value={output.itemRef}
+                    onChange={(ref) => updateOutput(output.id, { itemRef: ref })}
+                    options={itemSelectOptions}
+                    placeholder={t("cropAddon.selectItem", "Selecione item...")}
+                  />
                 </div>
                 <button onClick={() => removeOutput(output.id)} className={BUTTON_DANGER_CLASS}>
                   ×
@@ -642,26 +624,20 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             onChange={(v) => update({ spawnWitheredPlant: v })}
           />
           <span className="text-sm text-gray-300">
-            {t("cropAddon.spawnWithered", "Spawnar planta murcha")}
+            {t("cropAddon.spawnWithered", "Spawn pós-colheita")}
           </span>
         </div>
         {addon.spawnWitheredPlant && (
           <div className="mt-2">
             <label className="mb-1 block text-xs text-gray-400">
-              {t("cropAddon.witheredPlantRef", "Planta murcha (página)")}
+              {t("cropAddon.witheredPlantRef", "Página a spawnar")}
             </label>
-            <select
-              value={addon.witheredPlantRef || ""}
-              onChange={(e) => update({ witheredPlantRef: e.target.value || undefined })}
-              className={INPUT_CLASS}
-            >
-              <option value="">{t("cropAddon.selectSection", "Selecione página")}</option>
-              {sectionOptions.map((o) => (
-                <option key={o.refId} value={o.refId}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <SearchablePageSelect
+              value={addon.witheredPlantRef}
+              onChange={(id) => update({ witheredPlantRef: id })}
+              options={sectionSelectOptions}
+              placeholder={t("cropAddon.selectSection", "Selecione página...")}
+            />
           </div>
         )}
       </div>
@@ -675,45 +651,15 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
           <label className="mb-1 block text-xs text-gray-400">
             {t("cropAddon.seed", "Semente")}
           </label>
-          {(() => {
-            const seedIsSelf = addon.seedRef === CROP_SEED_SELF;
-            const seedKnown =
-              addon.seedRef && !seedIsSelf
-                ? itemOptions.some((o) => o.refId === addon.seedRef)
-                : false;
-            return (
-              <select
-                value={
-                  seedIsSelf
-                    ? CROP_SEED_SELF
-                    : addon.seedRef
-                    ? seedKnown
-                      ? addon.seedRef
-                      : "__invalid__"
-                    : ""
-                }
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "__invalid__") return;
-                  update({ seedRef: v || undefined });
-                }}
-                className={INPUT_CLASS}
-              >
-                <option value={CROP_SEED_SELF}>
-                  🪴 {t("cropAddon.seedSelf", "Esta página (semente própria)")}
-                </option>
-                <option value="">{t("cropAddon.seedOther", "Outra página de item")}</option>
-                {addon.seedRef && !seedIsSelf && !seedKnown && (
-                  <option value="__invalid__">{t("common.notFound", "Item não encontrado")}</option>
-                )}
-                {itemOptions.map((o) => (
-                  <option key={o.refId} value={o.refId}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            );
-          })()}
+          <SearchablePageSelect
+            value={addon.seedRef}
+            onChange={(id) => update({ seedRef: id ?? CROP_SEED_SELF })}
+            prefixOptions={[
+              { id: CROP_SEED_SELF, label: `🪴 ${t("cropAddon.seedSelf", "Esta página (semente própria)")}` },
+            ]}
+            options={itemSelectOptions}
+            placeholder={t("cropAddon.seedOther", "Outra página de item...")}
+          />
         </div>
 
         <BoundedNumericField
@@ -786,11 +732,12 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             {(addon.fertilizers || []).map((f) => (
               <div key={f.id} className="flex items-center gap-2">
                 <div className="flex-1">
-                  {renderItemSelect(
-                    f.itemRef,
-                    (ref) => updateFertilizer(f.id, { itemRef: ref }),
-                    t("cropAddon.selectItem", "Selecione item")
-                  )}
+                  <SearchablePageSelect
+                    value={f.itemRef}
+                    onChange={(ref) => updateFertilizer(f.id, { itemRef: ref })}
+                    options={itemSelectOptions}
+                    placeholder={t("cropAddon.selectItem", "Selecione item...")}
+                  />
                 </div>
                 <button onClick={() => removeFertilizer(f.id)} className={BUTTON_DANGER_CLASS}>
                   ×
@@ -810,11 +757,12 @@ export function CropAddonPanel({ addon, onChange, onRemove }: CropAddonPanelProp
             {(addon.amendments || []).map((a) => (
               <div key={a.id} className="flex items-center gap-2">
                 <div className="flex-1">
-                  {renderItemSelect(
-                    a.itemRef,
-                    (ref) => updateAmendment(a.id, { itemRef: ref }),
-                    t("cropAddon.selectItem", "Selecione item")
-                  )}
+                  <SearchablePageSelect
+                    value={a.itemRef}
+                    onChange={(ref) => updateAmendment(a.id, { itemRef: ref })}
+                    options={itemSelectOptions}
+                    placeholder={t("cropAddon.selectItem", "Selecione item...")}
+                  />
                 </div>
                 <button onClick={() => removeAmendment(a.id)} className={BUTTON_DANGER_CLASS}>
                   ×
