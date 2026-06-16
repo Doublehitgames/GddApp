@@ -5,7 +5,7 @@
 
 export const FREE_MAX_PROJECTS = 2;
 export const FREE_MAX_SECTIONS_PER_PROJECT = 300;
-export const FREE_MAX_SECTIONS_TOTAL = 200;
+export const FREE_MAX_SECTIONS_TOTAL = 400;
 
 export type StructuralLimitReason =
   | "projects_limit"
