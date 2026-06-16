@@ -1,17 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CropAddonDraft, CropSeason } from "@/lib/addons/types";
 import { CROP_SEED_SELF } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { useCurrentProjectId } from "@/hooks/useCurrentProjectId";
+import { toSlug } from "@/lib/utils/slug";
 
 interface CropAddonReadOnlyProps {
   addon: CropAddonDraft;
   theme?: "dark" | "light";
   bare?: boolean;
 }
+
+type SectionMeta = { id: string; title: string; content: string };
+type PendingAnchorNavigation = { sectionId: string; title: string; shortDescription: string };
 
 const SEASON_LABELS: Record<CropSeason, string> = {
   spring: "🌸 Primavera",
@@ -34,33 +38,97 @@ function formatSeconds(s: number | undefined): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function toShortDescription(markdown: string): string {
+  const plain = markdown
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/\[[^\]]+\]\([^)]+\)/g, "")
+    .replace(/[#>*`~_-]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return "";
+  return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
+}
+
 export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonReadOnlyProps) {
   const { t } = useI18n();
   const allProjects = useProjectStore((state) => state.projects);
+  const currentProjectId = useCurrentProjectId();
   const isDark = theme === "dark";
 
-  const sectionTitleById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const project of allProjects) {
+  const projects = useMemo(
+    () => (currentProjectId ? allProjects.filter((p) => p.id === currentProjectId) : allProjects),
+    [allProjects, currentProjectId]
+  );
+
+  /* ── anchor navigation state ── */
+  const [pendingAnchorNavigation, setPendingAnchorNavigation] = useState<PendingAnchorNavigation | null>(null);
+  const anchorPreviewCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pendingAnchorNavigation) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (anchorPreviewCardRef.current?.contains(e.target as Node)) return;
+      setPendingAnchorNavigation(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") setPendingAnchorNavigation(null); };
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pendingAnchorNavigation]);
+
+  /* ── section map ── */
+  const sectionsById = useMemo(() => {
+    const map = new Map<string, SectionMeta>();
+    for (const project of projects) {
       for (const section of project.sections || []) {
-        map.set(section.id, section.title || section.id);
+        map.set(section.id, { id: section.id, title: section.title || section.id, content: section.content || "" });
       }
     }
     return map;
-  }, [allProjects]);
+  }, [projects]);
 
-  /* ── helpers ── */
+  /* ── navigation ── */
+  const navigateToDocumentAnchor = useCallback((sectionId: string) => {
+    const targetId = `section-${sectionId}`;
+    const targetEl =
+      (document.getElementById(targetId) as HTMLElement | null) ||
+      (document.querySelector(`[data-section-anchor="${sectionId}"]`) as HTMLElement | null);
+    if (!targetEl) {
+      const match = window.location.pathname.match(/\/projects\/([^/]+)/);
+      if (match) window.location.href = `/projects/${match[1]}/sections/${toSlug(sectionsById.get(sectionId)?.title ?? "") || sectionId}`;
+      return;
+    }
+    const top = targetEl.getBoundingClientRect().top + window.scrollY - 180;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    window.history.replaceState(null, "", `#${targetId}`);
+    targetEl.classList.add("gdd-anchor-highlight");
+    window.setTimeout(() => targetEl.classList.remove("gdd-anchor-highlight"), 1800);
+  }, [sectionsById]);
 
-  const sectionName = (id: string | undefined): string =>
-    id ? (sectionTitleById.get(id) ?? id) : "—";
+  /* ── render helpers ── */
+
+  const renderSectionLink = (refId: string, meta: SectionMeta): ReactNode => (
+    <a
+      href={`#section-${refId}`}
+      onClick={(e) => {
+        e.preventDefault();
+        setPendingAnchorNavigation({ sectionId: refId, title: meta.title, shortDescription: toShortDescription(meta.content) });
+      }}
+      className={`gdd-inline-anchor cursor-pointer underline ${isDark ? "text-sky-300 hover:text-sky-200" : "text-blue-600 hover:text-blue-800"}`}
+      title={t("view.anchorPreview.goToSection")}
+    >
+      {meta.title}
+    </a>
+  );
 
   const renderRef = (id: string | undefined): ReactNode => {
     if (!id) return <span className={isDark ? "text-gray-500" : "text-gray-400"}>não definido</span>;
-    return (
-      <span className={isDark ? "text-sky-300" : "text-blue-600"}>
-        {sectionTitleById.get(id) ?? id}
-      </span>
-    );
+    const meta = sectionsById.get(id);
+    if (!meta) return <span className={isDark ? "text-gray-500" : "text-gray-400"}>{id}</span>;
+    return renderSectionLink(id, meta);
   };
 
   const bold = (value: ReactNode): ReactNode => (
@@ -95,7 +163,7 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
   const hasPlantXp = addon.plantXp?.xp != null;
   const hasHarvestXp = addon.harvestXp?.xp != null;
 
-  /* ── paragraph renderers ── */
+  /* ── paragraphs ── */
 
   const renderOutputItem = (o: (typeof outputs)[number], i: number): ReactNode => {
     const hasBounds = o.quantityMin != null || o.quantityMax != null;
@@ -113,8 +181,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
     );
   };
 
-  // "Cresce em 3m 1s e produz 15 Nabo por colheita."
-  // "Cresce em 60min em modo progressivo — 1 Nabo a cada ~36s, até 100 por ciclo."
   const renderMainParagraph = (): ReactNode => {
     const time = bold(formatSeconds(addon.growthSeconds));
     if (addon.harvestMode === "instant") {
@@ -133,7 +199,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
         </>
       );
     }
-    // progressive
     const singleItem =
       outputs.length === 1 && outputs[0].itemRef
         ? renderRef(outputs[0].itemRef)
@@ -154,7 +219,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
     );
   };
 
-  // "Ganha +25 XP ao plantar e +50 XP ao colher (via [XP Page])."
   const renderXpParagraph = (): ReactNode => {
     if (!hasPlantXp && !hasHarvestXp) return null;
     return (
@@ -172,6 +236,7 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
         {hasPlantXp && hasHarvestXp && <> {t("cropAddon.summaryAnd", "e")} </>}
         {hasHarvestXp && (
           <>
+            {!hasPlantXp && <>{t("cropAddon.summaryGains", "Ganha")}{" "}</>}
             {yellowNum(addon.harvestXp.xp!)}{" "}
             {t("cropAddon.summaryOnHarvest", "ao colher")}
             {addon.harvestMode === "progressive" && (
@@ -188,7 +253,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
     );
   };
 
-  // "Requer 1 [Semente] e 10 de energia para plantar."
   const renderPlantingParagraph = (): ReactNode => {
     const hasSeed = !!addon.seedRef;
     const hasEnergy = addon.plantEnergy != null && addon.plantEnergy > 0;
@@ -215,7 +279,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
     );
   };
 
-  // "Ao expirar, spawna [Planta Murcha] no talhão."
   const renderPostHarvestParagraph = (): ReactNode => {
     if (!addon.spawnWitheredPlant) return null;
     return (
@@ -231,7 +294,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
     );
   };
 
-  // "Fertilizantes: [A], [B]. Adubos: [C]."
   const renderInputsParagraph = (): ReactNode => {
     if (fertilizers.length === 0 && amendments.length === 0) return null;
     return (
@@ -263,19 +325,18 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
   const chipClass = isDark
     ? "rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-300"
     : "rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600";
-
   const outerClass = bare
     ? ""
     : isDark
     ? "rounded-xl border border-gray-700 bg-gray-900/40 p-3"
     : "rounded-xl border border-gray-300 bg-white p-3";
 
-  /* ── render ── */
-
   const xpParagraph = renderXpParagraph();
   const plantingParagraph = renderPlantingParagraph();
   const postHarvestParagraph = renderPostHarvestParagraph();
   const inputsParagraph = renderInputsParagraph();
+
+  /* ── render ── */
 
   return (
     <div className={outerClass}>
@@ -306,7 +367,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
         {postHarvestParagraph && <p className={textClass}>{postHarvestParagraph}</p>}
         {inputsParagraph && <p className={textClass}>{inputsParagraph}</p>}
 
-        {/* Seasons chips */}
         {seasons.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {seasons.map((s) => (
@@ -315,7 +375,6 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
           </div>
         )}
 
-        {/* Stages — compact single line */}
         {stages.length > 0 && (
           <p className={mutedClass}>
             {stages.length} {t("cropAddon.stages", "estágio")}
@@ -331,11 +390,55 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
           </p>
         )}
 
-        {/* Notes */}
-        {addon.notes && (
-          <p className={mutedClass}>{addon.notes}</p>
-        )}
+        {addon.notes && <p className={mutedClass}>{addon.notes}</p>}
       </div>
+
+      {/* Anchor navigation popup */}
+      {pendingAnchorNavigation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div
+            ref={anchorPreviewCardRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("view.anchorPreview.title")}
+            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
+          >
+            <div className="border-b border-gray-200 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("view.anchorPreview.title")}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-gray-900">
+                {pendingAnchorNavigation.title}
+              </h3>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm leading-6 text-gray-700">
+                {pendingAnchorNavigation.shortDescription || t("view.anchorPreview.noDescription")}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setPendingAnchorNavigation(null)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  navigateToDocumentAnchor(pendingAnchorNavigation.sectionId);
+                  setPendingAnchorNavigation(null);
+                }}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                {t("view.anchorPreview.goButton")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
