@@ -3,7 +3,7 @@
 
 import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync";
 import type { DocumentThemeId } from "@/lib/documentThemes";
-import type { SectionAddon } from "@/lib/addons/types";
+import type { SectionAddon, RichDocBlock } from "@/lib/addons/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
 
@@ -267,7 +267,18 @@ export type Section = {
   thumbImageUrl?: string;
   flowchartEnabled?: boolean;
   flowchartState?: DiagramState;
+  /**
+   * Markdown da descrição. Durante a migração para blocks nativos (BlockNote),
+   * este campo é um ESPELHO derivado automaticamente de `contentBlocks` no save,
+   * mantido só para os leitores legados (busca, backlinks, IA, /view, MCP).
+   * Não deve ser editado à mão. Será removido na Fase 3 da migração.
+   */
   content?: string;
+  /**
+   * Fonte de verdade da descrição: blocks do BlockNote. Quando presente, a
+   * edição carrega/salva daqui (lossless). `content` é derivado deste campo.
+   */
+  contentBlocks?: RichDocBlock[];
   created_at: string;
   parentId?: UUID; // Se parentId for null, é uma seção raiz; se tiver valor, é uma subseção de outra seção.
   order: number; // Ordem de exibição dentro do mesmo nível (mesmo parentId)
@@ -343,6 +354,20 @@ export type LastSyncStats = SyncStats & {
   syncedByDisplayName?: string | null;
 };
 
+export type AppLimits = {
+  FREE_MAX_PROJECTS: number;
+  FREE_MAX_SECTIONS_PER_PROJECT: number;
+  FREE_MAX_SECTIONS_TOTAL: number;
+  SYNC_REQUESTS_PER_MINUTE: number;
+};
+
+export const DEFAULT_APP_LIMITS: AppLimits = {
+  FREE_MAX_PROJECTS: 2,
+  FREE_MAX_SECTIONS_PER_PROJECT: 300,
+  FREE_MAX_SECTIONS_TOTAL: 200,
+  SYNC_REQUESTS_PER_MINUTE: 30,
+};
+
 export interface ProjectStore {
   projects: Project[];
   syncStatus: SyncStatus;
@@ -361,6 +386,9 @@ export interface ProjectStore {
   // Auth sync
   userId: string | null;
   setUserId: (id: string | null) => void;
+  // Remote config
+  appLimits: AppLimits;
+  fetchAppLimits: () => Promise<void>;
   updatePersistenceConfig: (config: Partial<PersistenceConfig>) => void;
   // Mutations
   addProject: (name: string, description: string) => string;
@@ -394,6 +422,18 @@ export interface ProjectStore {
     domainTags?: string[],
     addons?: SectionAddon[],
     dataId?: string
+  ) => void;
+  /**
+   * Atualiza a descrição da seção a partir dos blocks nativos (fonte de verdade)
+   * e do markdown derivado (espelho de compatibilidade). Ação dedicada para não
+   * inflar editSection com mais parâmetros posicionais.
+   */
+  updateSectionDescription: (
+    projectId: UUID,
+    sectionId: UUID,
+    contentBlocks: RichDocBlock[],
+    contentMarkdown: string,
+    updatedBy?: SectionAuditBy
   ) => void;
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
   setSectionLinkedSpreadsheet: (projectId: UUID, sectionId: UUID, linkedSpreadsheetId: string | undefined) => void;

@@ -8,10 +8,6 @@ import {
   upsertProjectToSupabase,
 } from "@/lib/supabase/projectSync";
 import {
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
-import {
   logInfo, logWarn, sanitizeProjectForStorage, parseProjectsFromStorage,
   persist, buildSectionDiagramKey, loadDiagrams,
 } from "./storageHelpers";
@@ -357,13 +353,14 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
           return;
         }
         if (errorCode === "structural_limit_exceeded") {
+          const limits = get().appLimits;
           const msg =
             structuralLimitReason === "projects_limit"
-              ? "Limite do plano Free: máximo de 2 projetos."
+              ? `Limite do plano Free: máximo de ${limits.FREE_MAX_PROJECTS} projetos.`
               : structuralLimitReason === "sections_per_project_limit"
-                ? `Limite do plano Free: máximo de ${FREE_MAX_SECTIONS_PER_PROJECT} seções por projeto.`
+                ? `Limite do plano Free: máximo de ${limits.FREE_MAX_SECTIONS_PER_PROJECT} seções por projeto.`
                 : structuralLimitReason === "sections_total_limit"
-                  ? `Limite do plano Free: máximo de ${FREE_MAX_SECTIONS_TOTAL} seções na conta.`
+                  ? `Limite do plano Free: máximo de ${limits.FREE_MAX_SECTIONS_TOTAL} seções na conta.`
                   : "Limite estrutural do plano Free atingido.";
           set({ syncStatus: "error", lastSyncError: msg });
           return;

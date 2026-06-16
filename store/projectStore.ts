@@ -14,6 +14,7 @@ import { createAgendaSlice } from "./slices/agendaSlice";
 import { createKpiSlice } from "./slices/kpiSlice";
 import { createRoadmapSlice } from "./slices/roadmapSlice";
 import { createActivityLogSlice } from "./slices/activityLogSlice";
+import { DEFAULT_APP_LIMITS } from "./slices/types";
 
 // Re-export ALL types for backward compatibility (zero breaking changes for consumers)
 export type {
@@ -54,6 +55,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     lastSyncError: null,
     persistenceConfig: loadPersistenceConfig(),
     userId: null,
+    appLimits: DEFAULT_APP_LIMITS,
+
+    fetchAppLimits: async () => {
+      try {
+        const res = await fetch("/api/config/limits");
+        if (!res.ok) return;
+        const limits = await res.json();
+        set({ appLimits: limits });
+      } catch {}
+    },
+
     lastConsistencyAnalysisByProject: {},
     lastRelationsAnalysisByProject: {},
     diagramsBySection: {},

@@ -29,6 +29,7 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
       set({ userId: id });
       // Nao agendar sync aqui: ao fazer login isso disparava sync de todos os projetos e consumia creditos.
       // Projetos so locais (localOnly) sao enviados em loadFromSupabase; edicoes disparam sync via wrappedSetWithSync.
+      if (id) void get().fetchAppLimits();
     },
 
     loadFromStorage: () => {

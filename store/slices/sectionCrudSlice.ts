@@ -1,10 +1,6 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
-import type { SectionAddon } from "@/lib/addons/types";
+import type { SectionAddon, RichDocBlock } from "@/lib/addons/types";
 import { toSlug } from "@/lib/utils/slug";
-import {
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
 import { duplicateAddonsForDuplicatedSection } from "@/lib/addons/copy";
 import { buildPageTypeAddons, type PageTypeId } from "@/lib/pageTypes/registry";
 import type { SyncEngineAPI } from "./syncEngine";
@@ -33,11 +29,11 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
       const sectionsInProject = (project.sections || []).length;
-      if (sectionsInProject >= FREE_MAX_SECTIONS_PER_PROJECT) {
+      if (sectionsInProject >= get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT) {
         throw new Error("structural_limit_sections_per_project");
       }
       const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-      if (totalSections >= FREE_MAX_SECTIONS_TOTAL) {
+      if (totalSections >= get().appLimits.FREE_MAX_SECTIONS_TOTAL) {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
@@ -99,11 +95,11 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
       const sectionsInProject = (project.sections || []).length;
-      if (sectionsInProject >= FREE_MAX_SECTIONS_PER_PROJECT) {
+      if (sectionsInProject >= get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT) {
         throw new Error("structural_limit_sections_per_project");
       }
       const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-      if (totalSections >= FREE_MAX_SECTIONS_TOTAL) {
+      if (totalSections >= get().appLimits.FREE_MAX_SECTIONS_TOTAL) {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
@@ -198,8 +194,8 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         0
       );
       const allowedByProject =
-        FREE_MAX_SECTIONS_PER_PROJECT - sectionsInProject;
-      const allowedByTotal = FREE_MAX_SECTIONS_TOTAL - totalSections;
+        get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT - sectionsInProject;
+      const allowedByTotal = get().appLimits.FREE_MAX_SECTIONS_TOTAL - totalSections;
       const allowed = Math.max(0, Math.min(allowedByProject, allowedByTotal));
 
       let limitReason: DuplicateSectionOutcome["limitReason"] = null;
@@ -326,6 +322,13 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         .find((p) => p.id === projectId)
         ?.sections?.find((s) => s.id === sectionId);
       const titleChanged = oldSection && oldSection.title !== title;
+      // editSection is the legacy markdown path (AI improve, version restore,
+      // title/color tweaks). If the markdown content actually changed, any
+      // previously-stored contentBlocks are now stale — drop them so the
+      // read view falls back to the new markdown instead of rendering the old
+      // blocks. Inline description edits go through updateSectionDescription
+      // (which sets blocks), so they're unaffected.
+      const contentChanged = !oldSection || (oldSection.content || "") !== (content || "");
       if (updatedBy) {
         audit.updated_by = updatedBy.userId;
         audit.updated_by_name = updatedBy.displayName ?? null;
@@ -340,6 +343,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                   sections: (p.sections || []).map((s) => {
                     if (s.id === sectionId) {
                       const updated: Section = { ...s, title, content, ...audit };
+                      if (contentChanged) delete updated.contentBlocks;
                       const isColorPassedAsParentId =
                         typeof parentId === "string" && parentId.startsWith("#") && color === undefined;
 
@@ -375,6 +379,42 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           user_name: updatedBy?.displayName ?? null,
         });
       }
+    },
+
+    updateSectionDescription: (
+      projectId: UUID,
+      sectionId: UUID,
+      contentBlocks: RichDocBlock[],
+      contentMarkdown: string,
+      updatedBy?: SectionAuditBy
+    ) => {
+      const now = new Date().toISOString();
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) => {
+                    if (s.id !== sectionId) return s;
+                    const updated: Section = {
+                      ...s,
+                      content: contentMarkdown,
+                      contentBlocks: contentBlocks.length ? contentBlocks : undefined,
+                      updated_at: now,
+                    };
+                    if (updatedBy) {
+                      updated.updated_by = updatedBy.userId;
+                      updated.updated_by_name = updatedBy.displayName ?? null;
+                    }
+                    return updated;
+                  }),
+                }
+              : p
+          ),
+        projectId
+      );
     },
 
     setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => {

@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
-import {
-  FREE_MAX_PROJECTS,
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
+import { getRemoteConfig } from "@/lib/remoteConfig";
 import { normalizeSectionAddons, stableAddonsForCompare } from "@/lib/addons/normalize";
 
 /** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
@@ -14,8 +10,6 @@ const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
 /** Cota por projeto: dono e membros compartilham o mesmo pool. */
 const CLOUD_SYNC_USAGE_BY_PROJECT_TABLE = "cloud_sync_usage_hourly_by_project";
 
-/** Limite de requisições POST por usuário por minuto (proteção disk I/O / IOPS no Supabase). */
-const SYNC_REQUESTS_PER_MINUTE = 30;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 type RateLimitEntry = { count: number; windowStartMs: number };
@@ -35,7 +29,7 @@ function gcRateLimitEntries(now: number) {
   }
 }
 
-function checkSyncRateLimit(userId: string): { allowed: boolean } {
+function checkSyncRateLimit(userId: string, limit: number): { allowed: boolean } {
   const now = Date.now();
   gcRateLimitEntries(now);
   const entry = syncRequestCountByUser.get(userId);
@@ -47,7 +41,7 @@ function checkSyncRateLimit(userId: string): { allowed: boolean } {
     syncRequestCountByUser.set(userId, { count: 1, windowStartMs: now });
     return { allowed: true };
   }
-  if (entry.count >= SYNC_REQUESTS_PER_MINUTE) {
+  if (entry.count >= limit) {
     return { allowed: false };
   }
   entry.count += 1;
@@ -172,6 +166,19 @@ function isMissingSectionFlowchartStateColumn(error: unknown) {
   return combined.includes("flowchart_state") && combined.includes("column");
 }
 
+function isMissingSectionContentBlocksColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  return combined.includes("content_blocks") && combined.includes("column");
+}
+
 function stableSerialize(value: unknown): string {
   if (value === null || value === undefined) return "null";
   if (Array.isArray(value)) return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
@@ -273,8 +280,10 @@ export async function POST(request: NextRequest) {
     }
     if (syncedByDisplayName === null && user.email) syncedByDisplayName = user.email;
 
+    const remoteConfig = await getRemoteConfig();
+
     if (!dryRun) {
-      const { allowed } = checkSyncRateLimit(user.id);
+      const { allowed } = checkSyncRateLimit(user.id, remoteConfig.SYNC_REQUESTS_PER_MINUTE);
       if (!allowed) {
         return NextResponse.json(
           { error: "rate_limit", code: "rate_limit", message: "Muitas requisições de sync por minuto." },
@@ -362,25 +371,25 @@ export async function POST(request: NextRequest) {
 
     const ownerProjectIds = new Set((ownerProjects || []).map((r: { id: string }) => r.id));
 
-    if (isNewProject && ownerProjectIds.size >= FREE_MAX_PROJECTS) {
+    if (isNewProject && ownerProjectIds.size >= remoteConfig.FREE_MAX_PROJECTS) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "projects_limit",
-          limit: FREE_MAX_PROJECTS,
+          limit: remoteConfig.FREE_MAX_PROJECTS,
         },
         { status: 403 }
       );
     }
 
-    if (incomingSections.length > FREE_MAX_SECTIONS_PER_PROJECT) {
+    if (incomingSections.length > remoteConfig.FREE_MAX_SECTIONS_PER_PROJECT) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "sections_per_project_limit",
-          limit: FREE_MAX_SECTIONS_PER_PROJECT,
+          limit: remoteConfig.FREE_MAX_SECTIONS_PER_PROJECT,
         },
         { status: 403 }
       );
@@ -389,6 +398,7 @@ export async function POST(request: NextRequest) {
     let includeBalanceAddonsColumn = true;
     let includeThumbImageColumn = true;
     let includeFlowchartStateColumn = true;
+    let includeContentBlocksColumn = true;
     let existingSections: any[] | null = null;
     let existingErr: unknown = null;
 
@@ -406,6 +416,7 @@ export async function POST(request: NextRequest) {
         includeBalanceAddonsColumn ? "balance_addons" : null,
         includeThumbImageColumn ? "thumb_image_url" : null,
         includeFlowchartStateColumn ? "flowchart_state" : null,
+        includeContentBlocksColumn ? "content_blocks" : null,
       ]
         .filter(Boolean)
         .join(",");
@@ -422,6 +433,7 @@ export async function POST(request: NextRequest) {
           balance_addons: includeBalanceAddonsColumn ? section.balance_addons ?? null : null,
           thumb_image_url: includeThumbImageColumn ? section.thumb_image_url ?? null : null,
           flowchart_state: includeFlowchartStateColumn ? section.flowchart_state ?? null : null,
+          content_blocks: includeContentBlocksColumn ? section.content_blocks ?? null : null,
         }));
         break;
       }
@@ -437,6 +449,10 @@ export async function POST(request: NextRequest) {
       }
       if (includeFlowchartStateColumn && isMissingSectionFlowchartStateColumn(existingErr)) {
         includeFlowchartStateColumn = false;
+        retried = true;
+      }
+      if (includeContentBlocksColumn && isMissingSectionContentBlocksColumn(existingErr)) {
+        includeContentBlocksColumn = false;
         retried = true;
       }
       if (!retried) break;
@@ -460,13 +476,13 @@ export async function POST(request: NextRequest) {
 
     const totalSectionsAfter =
       (totalSectionsCount ?? 0) - existingSectionCount + incomingSections.length;
-    if (totalSectionsAfter > FREE_MAX_SECTIONS_TOTAL) {
+    if (totalSectionsAfter > remoteConfig.FREE_MAX_SECTIONS_TOTAL) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "sections_total_limit",
-          limit: FREE_MAX_SECTIONS_TOTAL,
+          limit: remoteConfig.FREE_MAX_SECTIONS_TOTAL,
         },
         { status: 403 }
       );
@@ -565,7 +581,9 @@ export async function POST(request: NextRequest) {
         (existing.linked_spreadsheet_id || null) !== (section.linkedSpreadsheetId || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) ||
-        !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null)
+        !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
+        stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
+          stableSerialize(section.contentBlocks ?? null)
       );
     });
 
@@ -828,10 +846,12 @@ export async function POST(request: NextRequest) {
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         balance_addons: normalizeSectionAddons(s.addons) || [],
         flowchart_state: s.flowchartState ?? null,
+        content_blocks: Array.isArray(s.contentBlocks) && s.contentBlocks.length > 0 ? s.contentBlocks : null,
       }));
       const hasAnyAddonPayload = rows.some((row) => Array.isArray(row.balance_addons) && row.balance_addons.length > 0);
       const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
       const hasAnyFlowchartPayload = rows.some((row) => row.flowchart_state != null);
+      const hasAnyContentBlocksPayload = rows.some((row) => row.content_blocks != null);
 
       // Garante que parent_id só aponta para seções que sobreviverão ao sync.
       // Evita FK violation quando o store tem seções órfãs (pai deletado sem cascade no store).
@@ -851,8 +871,9 @@ export async function POST(request: NextRequest) {
       let droppedAddonsColumn = false;
       let droppedThumbColumn = false;
       let droppedFlowchartColumn = false;
+      let droppedContentBlocksColumn = false;
       let sErr: unknown = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
+      for (let attempt = 0; attempt < 4; attempt += 1) {
         const upsertResult = await supabase
           .from("sections")
           .upsert(rowsForUpsert as unknown as object[], { onConflict: "id" });
@@ -875,6 +896,11 @@ export async function POST(request: NextRequest) {
           droppedFlowchartColumn = true;
           retried = true;
         }
+        if (!droppedContentBlocksColumn && isMissingSectionContentBlocksColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(({ content_blocks: _ignored, ...rest }) => rest);
+          droppedContentBlocksColumn = true;
+          retried = true;
+        }
         if (!retried) break;
       }
 
@@ -890,6 +916,12 @@ export async function POST(request: NextRequest) {
       }
       if (!sErr && droppedThumbColumn && hasAnyThumbPayload) {
         console.warn("[api/projects/sync] sections.thumb_image_url ausente; sincronizando sem thumbs.");
+      }
+      if (!sErr && droppedContentBlocksColumn && hasAnyContentBlocksPayload) {
+        // Aviso (não erro): a descrição ainda persiste via `content` (markdown
+        // espelho). A migração da coluna sections.content_blocks habilita a
+        // edição lossless nativa em blocks.
+        console.warn("[api/projects/sync] sections.content_blocks ausente; sincronizando descrição só como markdown. Aplique a migração para edição nativa em blocks.");
       }
       if (!sErr && droppedFlowchartColumn && hasAnyFlowchartPayload) {
         return NextResponse.json(

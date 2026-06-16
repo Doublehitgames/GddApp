@@ -1,6 +1,5 @@
 import type { ProjectStore, UUID, LinkedSpreadsheet } from "./types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
-import { FREE_MAX_PROJECTS } from "@/lib/structuralLimits";
 import { toSlug } from "@/lib/utils/slug";
 import { buildSectionDiagramKey, persistDiagrams, persist, logInfo } from "./storageHelpers";
 import type { SyncEngineAPI } from "./syncEngine";
@@ -13,7 +12,7 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
     addProject: (name: string, description: string) => {
       const { projects, userId } = get();
       const myCount = projects.filter((p) => p.ownerId === userId || (p.ownerId == null && userId)).length;
-      if (myCount >= FREE_MAX_PROJECTS) {
+      if (myCount >= get().appLimits.FREE_MAX_PROJECTS) {
         throw new Error("structural_limit_projects");
       }
       const newSlug = toSlug(name);

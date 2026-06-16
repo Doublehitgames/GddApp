@@ -7,9 +7,7 @@ import {
   projectToApi,
 } from "@/lib/api/v1/helpers";
 import { createProjectSchema } from "@/lib/api/v1/schemas";
-import {
-  FREE_MAX_PROJECTS,
-} from "@/lib/structuralLimits";
+import { getRemoteConfig } from "@/lib/remoteConfig";
 
 /**
  * GET /api/v1/projects — list the caller's projects (owned + member).
@@ -74,6 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Structural limit: max projects per owner
+  const { FREE_MAX_PROJECTS } = await getRemoteConfig();
   const { count } = await auth.supabase
     .from("projects")
     .select("id", { count: "exact", head: true })

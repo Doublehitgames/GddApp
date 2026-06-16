@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  FREE_MAX_PROJECTS,
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-  type StructuralLimitReason,
-} from "@/lib/structuralLimits";
+import { type StructuralLimitReason } from "@/lib/structuralLimits";
+import { getRemoteConfig } from "@/lib/remoteConfig";
 
 type SupabaseLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -156,6 +152,8 @@ async function validateTransferStructuralLimits(
   if (ownerProjectsErr) {
     throw new Error("projects_query_failed");
   }
+
+  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } = await getRemoteConfig();
 
   const ownedProjectIds = new Set((targetOwnerProjects || []).map((row: { id: string }) => row.id));
   if (!ownedProjectIds.has(projectId) && ownedProjectIds.size >= FREE_MAX_PROJECTS) {

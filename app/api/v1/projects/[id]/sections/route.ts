@@ -9,10 +9,7 @@ import {
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
-import {
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
+import { getRemoteConfig } from "@/lib/remoteConfig";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -64,6 +61,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   }
 
   // Structural limits (applied to project owner)
+  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } = await getRemoteConfig();
   const projectOwnerId = pResult.project.owner_id;
 
   // Sections in this project
