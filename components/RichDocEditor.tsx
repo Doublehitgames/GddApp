@@ -30,6 +30,13 @@ interface RichDocEditorProps {
   onChange?: (next: RichDocBlock[]) => void;
   /** Debounce window for onChange, ms. */
   debounceMs?: number;
+  /**
+   * Called once with the live BlockNote editor instance after it mounts.
+   * Lets a wrapper drive imperative APIs (markdown import/export, cursor
+   * insertion) without this component knowing about them. Optional — the
+   * richDoc addon doesn't use it.
+   */
+  onReady?: (editor: unknown) => void;
 }
 
 function toInitialContent(blocks: RichDocBlock[]): PartialBlock[] | undefined {
@@ -63,6 +70,7 @@ export default function RichDocEditor({
   theme = "dark",
   onChange,
   debounceMs = 300,
+  onReady,
 }: RichDocEditorProps) {
   const { locale, t } = useI18n();
   const dictionary = useMemo(() => pickBlockNoteDictionary(locale), [locale]);
@@ -104,6 +112,16 @@ export default function RichDocEditor({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  // Hand the live editor instance to a wrapper once it exists. `editor`
+  // identity is stable for the lifetime of the component, so this runs once.
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+  useEffect(() => {
+    onReadyRef.current?.(editor);
+  }, [editor]);
 
   useEffect(() => {
     if (!editable) return;
