@@ -320,8 +320,10 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
 
   /* ── styling ── */
 
-  const textClass = isDark ? "text-xs text-gray-300" : "text-xs text-gray-700";
-  const mutedClass = isDark ? "text-xs text-gray-500" : "text-xs text-gray-400";
+  // bare=true: inherit text size from parent (matches Production pattern)
+  // bare=false: explicit text-xs inside the standalone card
+  const textClass = isDark ? "text-gray-300" : "text-gray-700";
+  const mutedClass = isDark ? "text-gray-500" : "text-gray-400";
   const chipClass = isDark
     ? "rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-300"
     : "rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600";
@@ -360,7 +362,7 @@ export function CropAddonReadOnly({ addon, theme = "dark", bare }: CropAddonRead
         </div>
       )}
 
-      <div className="grid gap-1.5">
+      <div className={`${bare ? "" : "mt-2 text-xs"} grid gap-1.5`}>
         <p className={textClass}>{renderMainParagraph()}</p>
         {xpParagraph && <p className={textClass}>{xpParagraph}</p>}
         {plantingParagraph && <p className={textClass}>{plantingParagraph}</p>}
