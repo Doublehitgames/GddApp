@@ -523,20 +523,24 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     return map;
   }, [projects]);
 
-  // Scalar fields + one entry per harvest output (quantity/min/max), labelled by item
+  // Per-output fields first, then scalar fields (filtering progressive-only for instant crops)
   const getAvailableCropFields = (refId: string): CropBindingOption[] => {
     const found = cropRefOptions.find((o) => o.refId === refId);
     if (!found) return [];
-    const opts: CropBindingOption[] = CROP_SCALAR_FIELDS.map((field) => ({
-      addonId: refId,
-      addonName: found.label,
-      field,
-    }));
+    const isInstant = found.data.harvestMode === "instant";
+    const progressiveOnlyFields: CropFieldKey[] = ["totalHarvest", "totalHarvestMin", "totalHarvestMax"];
+    // Output quantity fields first — most common binding target
+    const opts: CropBindingOption[] = [];
     for (const output of found.data.outputs || []) {
       const itemLabel = output.itemRef ? (sectionTitleById.get(output.itemRef) ?? output.itemRef) : "saída";
       for (const field of ["outputQuantity", "outputQuantityMin", "outputQuantityMax"] as CropFieldKey[]) {
         opts.push({ addonId: refId, addonName: found.label, field, outputId: output.id, outputLabel: itemLabel });
       }
+    }
+    // Scalar fields, excluding progressive-only ones when in instant mode
+    for (const field of CROP_SCALAR_FIELDS) {
+      if (isInstant && progressiveOnlyFields.includes(field)) continue;
+      opts.push({ addonId: refId, addonName: found.label, field });
     }
     return opts;
   };

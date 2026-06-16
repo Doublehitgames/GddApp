@@ -249,9 +249,9 @@ export function cropFieldLabel(field: CropFieldKey): string {
     growthSeconds: "Tempo de crescimento",
     growthSecondsMin: "Tempo de crescimento — Mín",
     growthSecondsMax: "Tempo de crescimento — Máx",
-    totalHarvest: "Total de colheitas",
-    totalHarvestMin: "Total de colheitas — Mín",
-    totalHarvestMax: "Total de colheitas — Máx",
+    totalHarvest: "Colheitas no ciclo (progressiva)",
+    totalHarvestMin: "Colheitas no ciclo — Mín (progressiva)",
+    totalHarvestMax: "Colheitas no ciclo — Máx (progressiva)",
     seedQuantity: "Qtd. de sementes",
     seedQuantityMin: "Qtd. de sementes — Mín",
     seedQuantityMax: "Qtd. de sementes — Máx",
@@ -260,9 +260,9 @@ export function cropFieldLabel(field: CropFieldKey): string {
     plantEnergyMax: "Energia ao plantar — Máx",
     plantXp: "XP ao plantar",
     harvestXp: "XP ao colher",
-    outputQuantity: "Saída — Quantidade",
-    outputQuantityMin: "Saída — Quantidade Mín",
-    outputQuantityMax: "Saída — Quantidade Máx",
+    outputQuantity: "Qtd. colhida",
+    outputQuantityMin: "Qtd. colhida — Mín",
+    outputQuantityMax: "Qtd. colhida — Máx",
   };
   return labels[field] ?? field;
 }
