@@ -1681,6 +1681,11 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
           node.arraySource = { type: "skillCosts" };
         } else if (rawType === "skillEffects") {
           node.arraySource = { type: "skillEffects" };
+        } else if (rawType === "sections" && typeof rawNode.arraySource.parentSectionId === "string") {
+          const parentSectionName = typeof rawNode.arraySource.parentSectionName === "string" && rawNode.arraySource.parentSectionName.trim()
+            ? rawNode.arraySource.parentSectionName.trim()
+            : undefined;
+          node.arraySource = { type: "sections", parentSectionId: rawNode.arraySource.parentSectionId.trim(), parentSectionName };
         }
       }
       node.itemTemplate = Array.isArray(rawNode.itemTemplate) ? normalizeExportSchemaNodes(rawNode.itemTemplate) : [];

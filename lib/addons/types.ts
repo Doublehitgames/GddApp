@@ -512,7 +512,16 @@ export type ExportSchemaArraySource =
   /** Iterates the costs of the current Skills entry. Context-dependent — only useful inside a `skills` array. */
   | { type: "skillCosts" }
   /** Iterates the effects of the current Skills entry. Context-dependent. */
-  | { type: "skillEffects" };
+  | { type: "skillEffects" }
+  /**
+   * Iterates over the child sections (subsections) of a parent section, in tree
+   * order. Each iteration resolves the item template against that child's own
+   * addons — so a template authored against one page (e.g. a seed) produces one
+   * object per sibling page. Bindings resolve via the addon-name + entry-key
+   * fallbacks, so template-created pages that share the same DataSchema/Crop
+   * structure all resolve correctly.
+   */
+  | { type: "sections"; parentSectionId: string; parentSectionName?: string };
 
 export type ProductionScalarField =
   | "name"

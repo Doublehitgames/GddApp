@@ -153,6 +153,35 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
 
   const sectionLookup = useMemo(() => buildSectionLookup(projects), [projects]);
 
+  // Candidate parent pages for the `sections` array source: sections in the
+  // current project that have at least one child. Selecting one aggregates its
+  // children (e.g. all seed pages under "Sementes") into a single array.
+  const parentSectionOptions = useMemo(() => {
+    const proj = projects.find((p) => p.id === sectionContext?.projectId);
+    const secs = proj?.sections ?? [];
+    const parentIds = new Set(secs.map((s) => s.parentId).filter(Boolean) as string[]);
+    return secs
+      .filter((s) => parentIds.has(s.id))
+      .map((s) => ({ id: s.id, title: s.title || "(sem título)" }));
+  }, [projects, sectionContext?.projectId]);
+
+  // Returns the addons of a parent's FIRST child page — used as a sample so the
+  // item-template binding pickers can list the iterated pages' fields (DataSchema,
+  // Crop, etc.). Field libraries are merged since they're cross-section.
+  const getChildAddons = useCallback(
+    (parentSectionId: string): SectionAddon[] => {
+      const proj = projects.find((p) => p.id === sectionContext?.projectId);
+      const children = (proj?.sections ?? [])
+        .filter((s) => s.parentId === parentSectionId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const first = children[0];
+      if (!first) return [];
+      const own = first.addons ?? [];
+      return [...own, ...globalFieldLibraries.filter((a) => !own.some((s) => s.id === a.id))];
+    },
+    [projects, sectionContext?.projectId, globalFieldLibraries]
+  );
+
   // Resolved value per node (first iteration of any array wins). Used to render
   // inline preview chips next to each leaf in the tree editor.
   const nodeValueMap = useMemo(
@@ -401,6 +430,8 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
                   sectionAddons={sectionAddons}
                   depth={0}
                   insideArray={false}
+                  parentSectionOptions={parentSectionOptions}
+                  getChildAddons={getChildAddons}
                   readOnly={false}
                 />
               )}

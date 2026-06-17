@@ -492,6 +492,42 @@ describe("normalizeSectionAddons fieldLibrary", () => {
   });
 });
 
+describe("normalizeSectionAddons exportSchema", () => {
+  it("preserves a `sections` array source (regression: source was dropped on save)", () => {
+    const input = [
+      {
+        id: "export-1",
+        type: "exportSchema",
+        name: "Remote Config",
+        data: {
+          id: "export-1",
+          name: "Remote Config",
+          nodes: [
+            {
+              id: "n1",
+              key: "seedSettings",
+              nodeType: "array",
+              arraySource: { type: "sections", parentSectionId: " sec-parent ", parentSectionName: "Sementes" },
+              itemTemplate: [
+                { id: "t1", key: "id", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", addonName: "Stats", entryKey: "id" } },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const ex = normalized?.[0];
+    expect(ex?.type).toBe("exportSchema");
+    if (ex?.type === "exportSchema") {
+      const arr = ex.data.nodes[0];
+      expect(arr.arraySource).toEqual({ type: "sections", parentSectionId: "sec-parent", parentSectionName: "Sementes" });
+      expect(arr.itemTemplate?.length).toBe(1);
+    }
+  });
+});
+
 describe("normalizeSectionAddons xpBalance", () => {
   it("fills missing params/expression with defaults (regression: editor crash)", () => {
     // Malformed draft persisted without params/expression (e.g. created via MCP/AI).

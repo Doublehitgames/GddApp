@@ -520,7 +520,8 @@ export type ArraySourceKind =
   | "productionOutputs"
   | "skills"
   | "skillCosts"
-  | "skillEffects";
+  | "skillEffects"
+  | "sections";
 
 export function BindingEditor({
   binding,
@@ -942,6 +943,8 @@ export function SchemaNodeEditor({
   arraySourceType,
   inCraftEntry,
   inSkillEntry,
+  parentSectionOptions,
+  getChildAddons,
   readOnly,
 }: {
   node: ExportSchemaNode;
@@ -958,6 +961,10 @@ export function SchemaNodeEditor({
   inCraftEntry?: boolean;
   /** True when any ancestor iteration is a skills array (currentSkill is in scope). */
   inSkillEntry?: boolean;
+  /** Candidate parent pages for the `sections` array source (sections that have children). */
+  parentSectionOptions?: Array<{ id: string; title: string }>;
+  /** Returns the sample (first) child's addons for a parent — used so item-template bindings list the iterated pages' fields. */
+  getChildAddons?: (parentSectionId: string) => SectionAddon[];
   readOnly?: boolean;
 }) {
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
@@ -1037,6 +1044,14 @@ export function SchemaNodeEditor({
 
   const childInsideArray = node.nodeType === "array" ? true : insideArray;
   const childList = node.nodeType === "object" ? node.children ?? [] : node.nodeType === "array" ? node.itemTemplate ?? [] : [];
+
+  // For a `sections` array, the item template is authored against a sample child
+  // page, so its binding pickers must list that page's addons (DataSchema/Crop),
+  // not the host page's (which usually has none of the iterated data).
+  const childSectionAddons =
+    node.nodeType === "array" && node.arraySource?.type === "sections" && getChildAddons
+      ? getChildAddons(node.arraySource.parentSectionId)
+      : sectionAddons;
 
   const isContainer = node.nodeType === "object" || node.nodeType === "array";
   const bindingIssue = useMemo(() => getBindingIssue(node, sectionAddons), [node, sectionAddons]);
@@ -1125,6 +1140,8 @@ export function SchemaNodeEditor({
                   node.arraySource.type === "craftTable" ||
                   node.arraySource.type === "skills"
                   ? `${node.arraySource.type}:${node.arraySource.addonId}`
+                  : node.arraySource.type === "sections"
+                  ? `sections:${node.arraySource.parentSectionId}`
                   : node.arraySource.type
                 : ""
             }
@@ -1145,6 +1162,10 @@ export function SchemaNodeEditor({
                 raw === "skillEffects"
               ) {
                 nextSource = { type: raw };
+              } else if (raw.startsWith("sections:")) {
+                const parentSectionId = raw.slice("sections:".length);
+                const parentSectionName = parentSectionOptions?.find((p) => p.id === parentSectionId)?.title;
+                nextSource = { type: "sections", parentSectionId, parentSectionName };
               } else {
                 const [type, addonId] = raw.split(":");
                 if (type !== "progressionTable" && type !== "craftTable" && type !== "skills") return;
@@ -1183,6 +1204,15 @@ export function SchemaNodeEditor({
                 {skillsAddons.map((sk) => (
                   <option key={sk.id} value={`skills:${sk.id}`}>
                     {sk.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {parentSectionOptions && parentSectionOptions.length > 0 && (
+              <optgroup label="Coleção de páginas (filhas de)">
+                {parentSectionOptions.map((p) => (
+                  <option key={p.id} value={`sections:${p.id}`}>
+                    {p.title}
                   </option>
                 ))}
               </optgroup>
@@ -1336,13 +1366,15 @@ export function SchemaNodeEditor({
                     : { ...node, itemTemplate: duplicateInList(node.itemTemplate ?? [], child.id) }
                 )}
                 onAddChild={onAddChild}
-                sectionAddons={sectionAddons}
+                sectionAddons={childSectionAddons}
                 depth={depth + 1}
                 insideArray={childInsideArray}
                 arraySourceAddonId={resolvedArraySourceId}
                 arraySourceType={resolvedArraySourceType}
                 inCraftEntry={resolvedInCraftEntry}
                 inSkillEntry={resolvedInSkillEntry}
+                parentSectionOptions={parentSectionOptions}
+                getChildAddons={getChildAddons}
                 readOnly={readOnly}
               />
             )}

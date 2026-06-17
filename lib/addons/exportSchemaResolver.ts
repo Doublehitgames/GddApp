@@ -31,6 +31,12 @@ import { resolveCropFieldValue } from "@/lib/addons/cropFields";
 export type SectionLookupEntry = {
   dataId?: string | null;
   addons: SectionAddon[];
+  /** Parent section id (null/undefined for root sections). Used by the `sections` array source. */
+  parentId?: string | null;
+  /** Tree order among siblings. Used to sort children deterministically. */
+  order?: number;
+  /** Section title, for editor pickers. */
+  title?: string;
 };
 
 export type SectionLookup = Map<string, SectionLookupEntry>;
@@ -844,6 +850,63 @@ function buildSkillEffectsRowMajor(
   });
 }
 
+/**
+ * Row-major iteration over the child sections of a parent. For each child the
+ * context is swapped to that section's own addons + dataId, so the same item
+ * template resolves once per page. Field Library addons are merged from the
+ * whole project (they're cross-section) so library-backed keys still resolve.
+ */
+function buildSectionsRowMajor(
+  parentSectionId: string,
+  itemTemplate: ExportSchemaNode[],
+  ctx: ResolveContext
+): unknown[] {
+  if (!ctx.sectionLookup) return [];
+  const children = getChildSections(parentSectionId, ctx.sectionLookup);
+  if (children.length === 0) return [];
+
+  // Collect all Field Library addons across the project once — they are
+  // referenced cross-section by libraryRef and must be visible in each child ctx.
+  const globalLibraries: SectionAddon[] = [];
+  const seenLib = new Set<string>();
+  for (const [, entry] of ctx.sectionLookup) {
+    for (const a of entry.addons) {
+      if (a.type === "fieldLibrary" && !seenLib.has(a.id)) {
+        seenLib.add(a.id);
+        globalLibraries.push(a);
+      }
+    }
+  }
+
+  return children.map((child) => {
+    const childAddons = [
+      ...child.addons,
+      ...globalLibraries.filter((lib) => !child.addons.some((a) => a.id === lib.id)),
+    ];
+    const childCtx: ResolveContext = {
+      ...ctx,
+      sectionAddons: childAddons,
+      sectionDataId: child.dataId ?? undefined,
+      // Clear iteration-scoped context that doesn't carry across sections.
+      row: undefined,
+      entry: undefined,
+      currentProduction: undefined,
+      currentItem: undefined,
+      currentSkill: undefined,
+      currentSkillCost: undefined,
+      currentSkillEffect: undefined,
+      currentSkillEffectResolved: undefined,
+      currentSkillEffectDefinitionsRef: undefined,
+      currentTable: undefined,
+    };
+    const out: Record<string, unknown> = {};
+    for (const tmpl of itemTemplate) {
+      out[resolveNodeKey(tmpl, childCtx)] = resolveNode(tmpl, childCtx);
+    }
+    return out;
+  });
+}
+
 function resolveNode(
   node: ExportSchemaNode,
   ctx: ResolveContext
@@ -906,6 +969,9 @@ function resolveNodeInner(
       if (node.arraySource.type === "skillEffects") {
         const effects = ctx.currentSkill?.effects || [];
         return buildSkillEffectsRowMajor(effects, node.itemTemplate, ctx);
+      }
+      if (node.arraySource.type === "sections") {
+        return buildSectionsRowMajor(node.arraySource.parentSectionId, node.itemTemplate, ctx);
       }
       const table = findProgressionTableAddon(
         ctx.sectionAddons,
@@ -983,16 +1049,46 @@ export function resolveExportSchemaWithPreview(
 /** Helper: builds a SectionLookup from a list of projects (each containing sections with addons). */
 export function buildSectionLookup(
   projects: Array<{
-    sections?: Array<{ id: string; dataId?: string | null; addons?: SectionAddon[] }>;
+    sections?: Array<{
+      id: string;
+      dataId?: string | null;
+      addons?: SectionAddon[];
+      parentId?: string | null;
+      order?: number;
+      title?: string;
+    }>;
   }>
 ): SectionLookup {
   const map: SectionLookup = new Map();
   for (const project of projects || []) {
     for (const sec of project.sections || []) {
-      map.set(sec.id, { dataId: sec.dataId ?? null, addons: sec.addons ?? [] });
+      map.set(sec.id, {
+        dataId: sec.dataId ?? null,
+        addons: sec.addons ?? [],
+        parentId: sec.parentId ?? null,
+        order: sec.order,
+        title: sec.title,
+      });
     }
   }
   return map;
+}
+
+/**
+ * Returns the child sections of `parentSectionId`, sorted by tree order
+ * (falling back to insertion order when `order` is absent). Each entry keeps
+ * its section id so the resolver can swap context per child.
+ */
+export function getChildSections(
+  parentSectionId: string,
+  lookup: SectionLookup
+): Array<{ id: string } & SectionLookupEntry> {
+  const children: Array<{ id: string } & SectionLookupEntry> = [];
+  for (const [id, entry] of lookup) {
+    if (entry.parentId === parentSectionId) children.push({ id, ...entry });
+  }
+  children.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return children;
 }
 
 // ── Pretty-printer ─────────────────────────────────────────────────
