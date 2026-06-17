@@ -66,6 +66,7 @@ const addonTypes = [
   "inventory",
   "production",
   "craftTable",
+  "crop",
   "dataSchema",
   "attributeDefinitions",
   "attributeProfile",
