@@ -116,9 +116,9 @@ function splitTextWithRefs(
         content: [{ type: "text", text: resolved.title, styles }],
       });
     } else {
-      // Unresolved ref — keep literal text so the user notices the
-      // broken reference instead of silently dropping it.
-      out.push({ type: "text", text: ref.raw, styles });
+      // Unresolved ref — render in red so the user notices the broken link.
+      const baseStyles = (typeof styles === "object" && styles !== null ? styles : {}) as Record<string, unknown>;
+      out.push({ type: "text", text: ref.raw, styles: { ...baseStyles, textColor: "red" } });
     }
     cursor = ref.endIndex;
   }

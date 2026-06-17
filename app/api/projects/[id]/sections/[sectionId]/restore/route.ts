@@ -83,19 +83,34 @@ export async function POST(
         : user.email ?? null;
 
     const nowIso = new Date().toISOString();
-    const { error: updateErr } = await supabase
+    // Versions only store the markdown `content`, not `content_blocks`. Restoring
+    // must clear content_blocks so the read view falls back to the restored
+    // markdown — otherwise the stale blocks (current description) survive in the
+    // DB and reappear after a reload, making restore look like a no-op.
+    const baseUpdate = {
+      title: version.title,
+      content: version.content ?? "",
+      sort_order: version.sort_order ?? 0,
+      color: version.color ?? null,
+      updated_at: nowIso,
+      updated_by: user.id,
+      updated_by_name: displayName,
+    };
+    let { error: updateErr } = await supabase
       .from("sections")
-      .update({
-        title: version.title,
-        content: version.content ?? "",
-        sort_order: version.sort_order ?? 0,
-        color: version.color ?? null,
-        updated_at: nowIso,
-        updated_by: user.id,
-        updated_by_name: displayName,
-      })
+      .update({ ...baseUpdate, content_blocks: null })
       .eq("id", sectionId)
       .eq("project_id", projectId);
+
+    // Graceful fallback if the content_blocks column hasn't been migrated yet.
+    if (updateErr && String(updateErr.message || "").toLowerCase().includes("content_blocks")) {
+      const retry = await supabase
+        .from("sections")
+        .update(baseUpdate)
+        .eq("id", sectionId)
+        .eq("project_id", projectId);
+      updateErr = retry.error;
+    }
 
     if (updateErr) {
       return NextResponse.json(

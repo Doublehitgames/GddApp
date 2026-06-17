@@ -356,6 +356,9 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
       ? (rawTags as string[])
       : undefined;
   const addons = normalizeSectionAddons(row.balance_addons);
+  const contentBlocks = Array.isArray(row.content_blocks)
+    ? (row.content_blocks as Section["contentBlocks"])
+    : undefined;
   return {
     id: row.id as string,
     title: row.title as string,
@@ -363,6 +366,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     flowchartState: (row.flowchart_state as Section["flowchartState"]) || undefined,
     flowchartEnabled: row.flowchart_state != null,
     content: (row.content as string) || "",
+    contentBlocks,
     created_at: row.created_at as string,
     parentId: (row.parent_id as string) || undefined,
     order: ((row.sort_order ?? (row as { order?: number }).order) as number) ?? 0,
