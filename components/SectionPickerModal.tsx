@@ -26,6 +26,9 @@ type SectionPickerModalProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: (selection: string) => void;
+  onConfirmMulti?: (selections: string[]) => void;
+
+  multiSelect?: boolean;
 
   title: string;
   description?: ReactNode;
@@ -60,6 +63,8 @@ export function SectionPickerModal({
   open,
   onClose,
   onConfirm,
+  onConfirmMulti,
+  multiSelect = false,
   title,
   description,
   confirmLabel,
@@ -75,6 +80,7 @@ export function SectionPickerModal({
 }: SectionPickerModalProps) {
   const { t } = useI18n();
   const [selection, setSelection] = useState<string | null>(initialSelection);
+  const [multiSelection, setMultiSelection] = useState<Set<string>>(() => new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<string>>(
     () => new Set<string>()
@@ -91,6 +97,7 @@ export function SectionPickerModal({
   useEffect(() => {
     if (!open) return;
     setSelection(initialSelection);
+    setMultiSelection(new Set());
     setSearchTerm("");
     setManuallyCollapsed(new Set());
     // Delay focus until after modal render
@@ -214,6 +221,43 @@ export function SectionPickerModal({
     childrenByParent,
   ]);
 
+  const selectableVisibleIds = useMemo(
+    () =>
+      flatVisibleSelectable
+        .filter((r) => !r.disabled && r.id !== SECTION_PICKER_ROOT)
+        .map((r) => r.id),
+    [flatVisibleSelectable]
+  );
+
+  const allVisibleSelected =
+    selectableVisibleIds.length > 0 &&
+    selectableVisibleIds.every((id) => multiSelection.has(id));
+
+  const toggleAllVisible = useCallback(() => {
+    if (allVisibleSelected) {
+      setMultiSelection((prev) => {
+        const next = new Set(prev);
+        selectableVisibleIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setMultiSelection((prev) => {
+        const next = new Set(prev);
+        selectableVisibleIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }, [allVisibleSelected, selectableVisibleIds]);
+
+  const toggleMultiItem = useCallback((id: string) => {
+    setMultiSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   // Keyboard handling while modal is open.
   useEffect(() => {
     if (!open) return;
@@ -225,11 +269,18 @@ export function SectionPickerModal({
       }
       if (e.key === "Enter") {
         if (document.activeElement instanceof HTMLButtonElement) return;
-        const canConfirm =
-          selection !== null && !disabledSet.has(selection);
-        if (canConfirm && selection) {
-          e.preventDefault();
-          onConfirm(selection);
+        if (multiSelect) {
+          if (multiSelection.size > 0) {
+            e.preventDefault();
+            onConfirmMulti?.(Array.from(multiSelection));
+          }
+        } else {
+          const canConfirm =
+            selection !== null && !disabledSet.has(selection);
+          if (canConfirm && selection) {
+            e.preventDefault();
+            onConfirm(selection);
+          }
         }
         return;
       }
@@ -260,7 +311,7 @@ export function SectionPickerModal({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose, onConfirm, selection, disabledSet, flatVisibleSelectable]);
+  }, [open, onClose, onConfirm, onConfirmMulti, multiSelect, multiSelection, selection, disabledSet, flatVisibleSelectable]);
 
   if (!open) return null;
 
@@ -346,6 +397,33 @@ export function SectionPickerModal({
         {/* Body */}
         <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3">
           {prelude && <div className="mb-3 px-2">{prelude}</div>}
+          {multiSelect && (
+            <div className="flex items-center justify-between px-2 py-1.5 mb-2 border-b border-gray-700/50">
+              <span className="text-xs text-gray-400">
+                {multiSelection.size > 0
+                  ? `${multiSelection.size} selecionada${multiSelection.size !== 1 ? "s" : ""}`
+                  : "Nenhuma selecionada"}
+              </span>
+              <div className="flex items-center gap-3">
+                {multiSelection.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMultiSelection(new Set())}
+                    className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                  >
+                    Limpar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={toggleAllVisible}
+                  className="text-xs text-sky-400 hover:text-sky-300 transition-colors font-medium"
+                >
+                  {allVisibleSelected ? "Desmarcar visíveis" : "Selecionar visíveis"}
+                </button>
+              </div>
+            </div>
+          )}
           <div className="space-y-0.5">
             {allowRoot && !hasSearch && (
               <RootRow
@@ -382,6 +460,9 @@ export function SectionPickerModal({
                   searchTerm={hasSearch ? term : ""}
                   normTerm={normTerm}
                   t={t}
+                  multiSelect={multiSelect}
+                  multiSelection={multiSelection}
+                  onToggleMulti={toggleMultiItem}
                 />
               ))}
           </div>
@@ -390,7 +471,15 @@ export function SectionPickerModal({
         {/* Footer */}
         <div className="px-5 py-3 border-t border-gray-700/80 flex items-center gap-3">
           <div className="flex-1 min-w-0 text-xs text-gray-400">
-            {selection === SECTION_PICKER_ROOT && allowRoot ? (
+            {multiSelect ? (
+              multiSelection.size > 0 ? (
+                <span className="text-gray-200 font-medium">
+                  {multiSelection.size} página{multiSelection.size !== 1 ? "s" : ""} selecionada{multiSelection.size !== 1 ? "s" : ""}
+                </span>
+              ) : (
+                <span className="text-gray-600 italic">Selecione pelo menos uma página</span>
+              )
+            ) : selection === SECTION_PICKER_ROOT && allowRoot ? (
               <span>
                 <span className="text-gray-500">
                   {t("sectionDetail.picker.destination", "Destino:")}
@@ -440,13 +529,20 @@ export function SectionPickerModal({
           <button
             type="button"
             onClick={() => {
-              if (confirmDisabled || selection === null) return;
-              onConfirm(selection);
+              if (multiSelect) {
+                if (multiSelection.size === 0) return;
+                onConfirmMulti?.(Array.from(multiSelection));
+              } else {
+                if (confirmDisabled || selection === null) return;
+                onConfirm(selection);
+              }
             }}
-            disabled={confirmDisabled}
+            disabled={multiSelect ? multiSelection.size === 0 : confirmDisabled}
             className={`px-4 py-1.5 text-sm text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${CONFIRM_CLASSES[confirmVariant]}`}
           >
-            {confirmLabel}
+            {multiSelect && multiSelection.size > 0
+              ? `${confirmLabel} (${multiSelection.size})`
+              : confirmLabel}
           </button>
         </div>
       </div>
@@ -508,6 +604,9 @@ type PickerRowProps = {
   searchTerm: string;
   normTerm: string;
   t: (key: string, fallback?: string) => string;
+  multiSelect?: boolean;
+  multiSelection?: Set<string>;
+  onToggleMulti?: (id: string) => void;
 };
 
 function PickerRow({
@@ -525,13 +624,17 @@ function PickerRow({
   searchTerm,
   normTerm,
   t,
+  multiSelect = false,
+  multiSelection,
+  onToggleMulti,
 }: PickerRowProps) {
   const kids = (childrenByParent.get(section.id) ?? []).filter((k) =>
     visibleIds.has(k.id)
   );
   const hasChildren = kids.length > 0;
   const isDisabled = disabledSet.has(section.id);
-  const isSelected = selection === section.id;
+  const isMultiSelected = multiSelect && !!(multiSelection?.has(section.id));
+  const isSelected = multiSelect ? isMultiSelected : selection === section.id;
   const reason = isDisabled ? disabledReason?.(section.id) ?? null : null;
   const indent = level * 20;
 
@@ -541,7 +644,9 @@ function PickerRow({
         data-picker-row={section.id}
         className={`group flex items-stretch rounded-lg transition-colors ${
           isSelected
-            ? "bg-blue-900/30 ring-1 ring-blue-500/60"
+            ? multiSelect
+              ? "bg-sky-900/30 ring-1 ring-sky-500/60"
+              : "bg-blue-900/30 ring-1 ring-blue-500/60"
             : isDisabled
               ? "opacity-50"
               : "hover:bg-gray-800/70"
@@ -586,13 +691,31 @@ function PickerRow({
         <button
           type="button"
           onClick={() => {
-            if (!isDisabled) onSelect(section.id);
+            if (!isDisabled) {
+              if (multiSelect) onToggleMulti?.(section.id);
+              else onSelect(section.id);
+            }
           }}
           disabled={isDisabled}
           className={`flex-1 min-w-0 flex items-center gap-2 text-left px-2 py-2 rounded-r-lg ${
             isDisabled ? "cursor-not-allowed" : "cursor-pointer"
           }`}
         >
+          {multiSelect && (
+            <div
+              className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
+                isMultiSelected
+                  ? "bg-sky-500 border-sky-500"
+                  : "bg-transparent border-gray-500 group-hover:border-gray-300"
+              }`}
+            >
+              {isMultiSelected && (
+                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          )}
           <span className="text-base shrink-0" aria-hidden="true">
             {hasChildren ? "📁" : "📄"}
           </span>
@@ -634,6 +757,9 @@ function PickerRow({
               searchTerm={searchTerm}
               normTerm={normTerm}
               t={t}
+              multiSelect={multiSelect}
+              multiSelection={multiSelection}
+              onToggleMulti={onToggleMulti}
             />
           ))}
         </div>

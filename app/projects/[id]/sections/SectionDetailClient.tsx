@@ -1597,17 +1597,14 @@ function SectionDetailContent({
   } = useSyncSectionSheets(realProjectId, realSectionId);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
-  // Confirmação de cópia: sobrescrita de singletons já presentes no destino (conflictLabels)
-  // e/ou dependências (DataSchema, ProgressionTable...) que faltam no destino (missingDeps).
-  const [copyConfirm, setCopyConfirm] = useState<{
-    target: string;
-    targetTitle: string;
-    ids: string[];
-    conflictLabels: string[];
-    missingDeps: { id: string; label: string; typeLabel: string }[];
+  const [batchCopyConfirm, setBatchCopyConfirm] = useState<{
+    targetIds: string[];
+    addonIds: string[];
+    conflictPages: Array<{ id: string; title: string; conflictLabels: string[] }>;
+    missingDeps: Array<{ id: string; label: string; typeLabel: string }>;
   } | null>(null);
-  // Quais dependências faltantes o usuário marcou para copiar junto (por addonId).
-  const [copyDepChecked, setCopyDepChecked] = useState<Record<string, boolean>>({});
+  const [batchCopyDepChecked, setBatchCopyDepChecked] = useState<Record<string, boolean>>({});
+  const [batchOverwriteConflicts, setBatchOverwriteConflicts] = useState<'overwrite' | 'skip'>('overwrite');
   // Idem para mover.
   const [moveOverwriteConfirm, setMoveOverwriteConfirm] = useState<{
     target: string;
@@ -2055,29 +2052,58 @@ function SectionDetailContent({
     return t("sectionDetail.history.addonType.generic");
   };
 
-  // Executa a cópia de uma lista de addons para a página destino e exibe o toast.
-  // `depIds` (dependências faltantes) são copiados ANTES para que o relink do
-  // RemoteConfig os encontre no destino. O toast conta só os addons principais (`ids`).
-  const performCopy = (target: string, ids: string[], targetTitle: string, overwrite: boolean, depIds: string[] = []) => {
-    for (const id of depIds) {
-      onCopyAddonToSection?.(target, id, overwrite);
-    }
-    for (const id of ids) {
-      onCopyAddonToSection?.(target, id, overwrite);
+  const performBatchCopy = (
+    targetIds: string[],
+    addonIds: string[],
+    depIds: string[],
+    overwriteConflicting: boolean,
+    conflictPageIds: Set<string>
+  ) => {
+    let successCount = 0;
+    let skipCount = 0;
+    for (const targetId of targetIds) {
+      const hasConflict = conflictPageIds.has(targetId);
+      if (hasConflict && !overwriteConflicting) {
+        skipCount++;
+        continue;
+      }
+      const shouldOverwrite = hasConflict && overwriteConflicting;
+      for (const depId of depIds) {
+        const dep = (addons as SectionAddon[]).find((a) => a.id === depId);
+        if (!dep) continue;
+        const targetSection = (sections as any[]).find((s) => s.id === targetId);
+        const targetAddons: SectionAddon[] = targetSection?.addons || [];
+        const depPresent = targetAddons.some(
+          (a) => a.type === dep.type
+            || ((dep.type === 'dataSchema' || dep.type === 'genericStats') && (a.type === 'dataSchema' || a.type === 'genericStats'))
+        );
+        if (!depPresent) onCopyAddonToSection?.(targetId, depId, false);
+      }
+      for (const addonId of addonIds) {
+        onCopyAddonToSection?.(targetId, addonId, shouldOverwrite);
+      }
+      successCount++;
     }
     const depSuffix = depIds.length > 0
       ? t('sectionDetail.copy.withDeps', ' (+{n} dependências)').replace('{n}', String(depIds.length))
       : '';
-    const msg = (ids.length > 1
-      ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
-          .replace('{count}', String(ids.length))
-          .replace('{section}', targetTitle)
-      : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle))
-      + depSuffix;
+    let msg: string;
+    if (targetIds.length === 1) {
+      const targetTitle = (sections as any[]).find((s) => s.id === targetIds[0])?.title || '';
+      msg = (addonIds.length > 1
+        ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
+            .replace('{count}', String(addonIds.length)).replace('{section}', targetTitle)
+        : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle))
+        + depSuffix;
+    } else {
+      msg = `Copiado para ${successCount} página${successCount !== 1 ? 's' : ''}${depSuffix}`;
+      if (skipCount > 0) msg += `. ${skipCount} ${skipCount === 1 ? 'página pulada' : 'páginas puladas'} (já existia)`;
+    }
     setCopyAddonToast(msg);
     setCopyAddonModal(null);
-    setCopyConfirm(null);
-    setCopyDepChecked({});
+    setBatchCopyConfirm(null);
+    setBatchCopyDepChecked({});
+    setBatchOverwriteConflicts('overwrite');
     setSelectedAddonIds(new Set());
     setLastClickedAddonId(null);
   };
@@ -3590,7 +3616,7 @@ function SectionDetailContent({
         );
       })()}
 
-      {/* Modal: Copiar Addon para outra pagina */}
+      {/* Modal: Copiar Addon para outra pagina (multi-select) */}
       {(() => {
         const copyIds = copyAddonModal
           ? (copyAddonModal.bulkIds && copyAddonModal.bulkIds.length > 1
@@ -3598,15 +3624,11 @@ function SectionDetailContent({
               : [copyAddonModal.addonId])
           : [];
         const copySet = new Set(copyIds);
-        // Tipos singleton que serao copiados — usados para detectar se o destino
-        // ja possui um addon desse tipo (que seria sobrescrito).
         const copyConflictTypes = new Set(
           copyIds
             .map((id) => (addons as SectionAddon[]).find((a) => a.id === id)?.type)
             .filter((tp): tp is SectionAddonType => !!tp && SINGLETON_ADDON_TYPES.has(tp))
         );
-        // Dependencias intra-secao dos addons copiados (ex: RemoteConfig → DataSchema,
-        // ProgressionTable). Resolvidas para os addons irmaos da pagina atual.
         const copyDepAddons = (() => {
           const seen = new Set<string>();
           const deps: SectionAddon[] = [];
@@ -3621,7 +3643,6 @@ function SectionDetailContent({
           }
           return deps;
         })();
-        // Um tipo singleton (dataSchema≈genericStats) está satisfeito se o destino já o tem.
         const targetHasType = (targetAddons: SectionAddon[], type: SectionAddonType): boolean =>
           targetAddons.some((a) => a.type === type
             || ((type === 'dataSchema' || type === 'genericStats') && (a.type === 'dataSchema' || a.type === 'genericStats')));
@@ -3629,80 +3650,114 @@ function SectionDetailContent({
           <SectionPickerModal
             open={!!copyAddonModal}
             onClose={() => setCopyAddonModal(null)}
-            onConfirm={(target) => {
-              if (!copyAddonModal) return;
-              const targetSection = sections.find((s: any) => s.id === target);
-              const targetTitle = targetSection?.title || '';
-              const targetAddons: SectionAddon[] = targetSection?.addons || [];
-              // Addons singleton ja presentes no destino que serao sobrescritos.
-              const conflictLabels = copyConflictTypes.size > 0
-                ? targetAddons
-                    .filter((a) => copyConflictTypes.has(a.type))
-                    .map((a) => a.name || getAddonTypeLabel(a.type))
-                : [];
-              // Dependencias que faltam no destino (serao oferecidas para copiar junto).
-              const missingDeps = copyDepAddons
-                .filter((dep) => !targetHasType(targetAddons, dep.type))
-                .map((dep) => ({ id: dep.id, label: dep.name || getAddonTypeLabel(dep.type), typeLabel: getAddonTypeLabel(dep.type) }));
-              if (conflictLabels.length > 0 || missingDeps.length > 0) {
-                // Marca as dependencias faltantes por padrao.
-                setCopyDepChecked(Object.fromEntries(missingDeps.map((d) => [d.id, true])));
-                setCopyConfirm({ target, targetTitle, ids: copyIds, conflictLabels, missingDeps });
+            onConfirm={() => {}}
+            multiSelect={true}
+            onConfirmMulti={(targetIds) => {
+              if (!copyAddonModal || targetIds.length === 0) return;
+              const conflictPages: Array<{ id: string; title: string; conflictLabels: string[] }> = [];
+              for (const targetId of targetIds) {
+                const targetSection = (sections as any[]).find((s) => s.id === targetId);
+                const targetAddons: SectionAddon[] = targetSection?.addons || [];
+                const conflictLabels = copyConflictTypes.size > 0
+                  ? targetAddons.filter((a) => copyConflictTypes.has(a.type)).map((a) => a.name || getAddonTypeLabel(a.type))
+                  : [];
+                if (conflictLabels.length > 0) conflictPages.push({ id: targetId, title: targetSection?.title || '', conflictLabels });
+              }
+              const missingDepsMap = new Map<string, { id: string; label: string; typeLabel: string }>();
+              for (const dep of copyDepAddons) {
+                const anyMissing = targetIds.some((targetId) => {
+                  const targetSection = (sections as any[]).find((s) => s.id === targetId);
+                  return !targetHasType(targetSection?.addons || [], dep.type);
+                });
+                if (anyMissing && !missingDepsMap.has(dep.id)) {
+                  missingDepsMap.set(dep.id, { id: dep.id, label: dep.name || getAddonTypeLabel(dep.type), typeLabel: getAddonTypeLabel(dep.type) });
+                }
+              }
+              const missingDeps = Array.from(missingDepsMap.values());
+              if (conflictPages.length > 0 || missingDeps.length > 0) {
+                setBatchCopyDepChecked(Object.fromEntries(missingDeps.map((d) => [d.id, true])));
+                setBatchCopyConfirm({ targetIds, addonIds: copyIds, conflictPages, missingDeps });
                 return;
               }
-              performCopy(target, copyIds, targetTitle, false);
+              performBatchCopy(targetIds, copyIds, [], false, new Set());
             }}
             title={t('sectionDetail.copy.title', 'Copiar addon para...')}
             description={copyAddonModal ? (<>{t('sectionDetail.copy.description', 'Copiar')} <strong className="text-gray-100">{copyAddonModal.addonLabel}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
             confirmLabel={t('sectionDetail.copy.confirm', 'Copiar')}
             confirmVariant="sky"
             sections={sections}
+            disabledSectionIds={[sectionId]}
+            disabledReason={() => t('sectionDetail.picker.disabledCurrent', 'atual')}
           />
         );
       })()}
 
-      {/* Confirmacao de copia: sobrescrita de singletons + dependencias faltantes */}
-      {copyConfirm && (
+      {/* Confirmacao de copia em lote: paginas com conflito + dependencias faltantes */}
+      {batchCopyConfirm && (
         <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => { setCopyConfirm(null); setCopyDepChecked({}); }} />
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => { setBatchCopyConfirm(null); setBatchCopyDepChecked({}); setBatchOverwriteConflicts('overwrite'); }} />
           <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[320px] max-w-md"
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[360px] max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Bloco de sobrescrita (quando o destino ja tem o singleton copiado) */}
-            {copyConfirm.conflictLabels.length > 0 && (
-              <>
+            {batchCopyConfirm.conflictPages.length > 0 && (
+              <div className="mb-4">
                 <p className="text-sm text-gray-200 mb-2">
-                  {t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:')
-                    .replace('{section}', copyConfirm.targetTitle)}
+                  {batchCopyConfirm.conflictPages.length === 1
+                    ? t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:').replace('{section}', batchCopyConfirm.conflictPages[0].title)
+                    : `${batchCopyConfirm.conflictPages.length} de ${batchCopyConfirm.targetIds.length} páginas já possuem este addon:`}
                 </p>
-                <ul className="mb-3 space-y-1">
-                  {copyConfirm.conflictLabels.map((label, idx) => (
-                    <li key={idx} className="text-xs text-amber-300 flex items-center gap-1.5">
+                <div className="mb-3 max-h-28 overflow-y-auto space-y-1 pr-1">
+                  {batchCopyConfirm.conflictPages.slice(0, 6).map((p) => (
+                    <div key={p.id} className="text-xs text-amber-300 flex items-center gap-1.5">
                       <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
-                      <span className="truncate">{label}</span>
-                    </li>
+                      <span className="truncate">{p.title}</span>
+                    </div>
                   ))}
-                </ul>
-                <p className="text-xs text-gray-400 mb-4">
-                  {t('sectionDetail.copy.overwriteWarning', 'Copiar vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.')}
-                </p>
-              </>
+                  {batchCopyConfirm.conflictPages.length > 6 && (
+                    <div className="text-xs text-gray-500 pl-2.5">...e mais {batchCopyConfirm.conflictPages.length - 6}</div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-gray-700/60 bg-gray-800/40 p-3 space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="batchOverwrite"
+                      checked={batchOverwriteConflicts === 'overwrite'}
+                      onChange={() => setBatchOverwriteConflicts('overwrite')}
+                      className="mt-0.5 accent-amber-500 shrink-0"
+                    />
+                    <span className="text-xs text-gray-200">
+                      <span className="font-medium text-amber-200">Sobrescrever</span> — copia para todas as páginas, substituindo onde já existe
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="batchOverwrite"
+                      checked={batchOverwriteConflicts === 'skip'}
+                      onChange={() => setBatchOverwriteConflicts('skip')}
+                      className="mt-0.5 accent-amber-500 shrink-0"
+                    />
+                    <span className="text-xs text-gray-200">
+                      <span className="font-medium text-gray-100">Pular</span> — copia apenas para páginas que ainda não têm este addon
+                    </span>
+                  </label>
+                </div>
+              </div>
             )}
-
-            {/* Bloco de dependencias faltantes (ex: RemoteConfig precisa de DataSchema) */}
-            {copyConfirm.missingDeps.length > 0 && (
+            {batchCopyConfirm.missingDeps.length > 0 && (
               <div className="rounded-lg border border-sky-700/40 bg-sky-950/30 p-3 mb-4">
                 <p className="text-xs font-semibold text-sky-300 mb-2">
                   {t('sectionDetail.copy.missingDepsTitle', 'O destino não tem alguns addons que este precisa. Copiar junto?')}
                 </p>
                 <div className="space-y-1">
-                  {copyConfirm.missingDeps.map((dep) => (
+                  {batchCopyConfirm.missingDeps.map((dep) => (
                     <label key={dep.id} className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer hover:text-white">
                       <input
                         type="checkbox"
-                        checked={copyDepChecked[dep.id] ?? false}
-                        onChange={(e) => setCopyDepChecked((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
+                        checked={batchCopyDepChecked[dep.id] ?? false}
+                        onChange={(e) => setBatchCopyDepChecked((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
                         className="accent-sky-500"
                       />
                       <span className="flex-1 truncate">{dep.label}</span>
@@ -3715,29 +3770,44 @@ function SectionDetailContent({
                 </p>
               </div>
             )}
-
+            {batchCopyConfirm.targetIds.length > 1 && (
+              <p className="text-xs text-gray-500 mb-3">
+                {batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'skip'
+                  ? `Será copiado para ${batchCopyConfirm.targetIds.length - batchCopyConfirm.conflictPages.length} páginas (${batchCopyConfirm.conflictPages.length} puladas)`
+                  : `Será copiado para ${batchCopyConfirm.targetIds.length} página${batchCopyConfirm.targetIds.length !== 1 ? 's' : ''}`}
+              </p>
+            )}
             <div className="flex items-center gap-2 justify-end">
               <button
                 type="button"
                 className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => { setCopyConfirm(null); setCopyDepChecked({}); }}
+                onClick={() => { setBatchCopyConfirm(null); setBatchCopyDepChecked({}); setBatchOverwriteConflicts('overwrite'); }}
               >
                 {t('common.cancel', 'Cancelar')}
               </button>
               <button
                 type="button"
                 className="rounded-lg border border-amber-700/60 bg-amber-900/40 px-4 py-1.5 text-xs text-amber-100 hover:bg-amber-900/60"
-                onClick={() => performCopy(
-                  copyConfirm.target,
-                  copyConfirm.ids,
-                  copyConfirm.targetTitle,
-                  copyConfirm.conflictLabels.length > 0,
-                  copyConfirm.missingDeps.filter((d) => copyDepChecked[d.id]).map((d) => d.id)
-                )}
+                onClick={() => {
+                  const conflictPageIds = new Set(batchCopyConfirm.conflictPages.map((p) => p.id));
+                  const depIds = batchCopyConfirm.missingDeps.filter((d) => batchCopyDepChecked[d.id]).map((d) => d.id);
+                  performBatchCopy(
+                    batchCopyConfirm.targetIds,
+                    batchCopyConfirm.addonIds,
+                    depIds,
+                    batchOverwriteConflicts === 'overwrite',
+                    conflictPageIds
+                  );
+                }}
               >
-                {copyConfirm.conflictLabels.length > 0
+                {batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'overwrite'
                   ? t('sectionDetail.copy.overwriteConfirm', 'Sobrescrever')
                   : t('sectionDetail.copy.confirm', 'Copiar')}
+                {batchCopyConfirm.targetIds.length > 1 && ` (${
+                  batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'skip'
+                    ? batchCopyConfirm.targetIds.length - batchCopyConfirm.conflictPages.length
+                    : batchCopyConfirm.targetIds.length
+                } pág.)`}
               </button>
             </div>
           </div>
