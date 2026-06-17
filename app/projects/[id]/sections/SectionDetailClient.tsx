@@ -135,6 +135,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [modificationRequest, setModificationRequest] = useState("");
   const [sectionColor, setSectionColor] = useState("#3b82f6");
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showMoveChildrenModal, setShowMoveChildrenModal] = useState(false);
   const [sectionVersions, setSectionVersions] = useState<SectionVersionEntry[]>([]);
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
@@ -419,6 +420,16 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
 
     // Fechar modal
     setShowMoveModal(false);
+  }
+
+  function handleMoveChildren(target: string) {
+    if (!section || !project) return;
+    const newParentId = target === SECTION_PICKER_ROOT ? null : target;
+    const directChildren = sections.filter((s: any) => s.parentId === realSectionId);
+    for (const child of directChildren) {
+      editSection(realProjectId, child.id, child.title, child.content ?? '', newParentId, child.color, sectionAuditBy);
+    }
+    setShowMoveChildrenModal(false);
   }
 
   async function handlePickSectionThumb() {
@@ -783,6 +794,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     showMoveModal={showMoveModal}
     setShowMoveModal={setShowMoveModal}
     handleMoveSection={handleMoveSection}
+    showMoveChildrenModal={showMoveChildrenModal}
+    setShowMoveChildrenModal={setShowMoveChildrenModal}
+    handleMoveChildren={handleMoveChildren}
     handleDuplicateSection={handleDuplicateSection}
     sections={project?.sections || []}
     setSection={setSection}
@@ -1549,6 +1563,8 @@ function SectionDetailContent({
   sectionColor, setSectionColor, hasValidConfig,
   showMoveModal, setShowMoveModal,
   handleMoveSection,
+  showMoveChildrenModal, setShowMoveChildrenModal,
+  handleMoveChildren,
   handleDuplicateSection,
   sections,
   setSection,
@@ -2466,6 +2482,17 @@ function SectionDetailContent({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
                   </svg>
                 </button>
+                {sections.some((s: any) => s.parentId === realSectionId) && (
+                  <button
+                    onClick={() => setShowMoveChildrenModal(true)}
+                    className="w-8 h-8 flex items-center justify-center bg-amber-500 text-white rounded-lg border border-amber-400/40 hover:bg-amber-600 transition-colors"
+                    title={t("sectionDetail.actions.moveChildren", "Mover todos os filhos para...")}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </button>
+                )}
                 <button
                   onClick={handleDuplicateSection}
                   className="w-8 h-8 flex items-center justify-center bg-violet-600 text-white rounded-lg border border-violet-400/40 hover:bg-violet-700 transition-colors"
@@ -3527,6 +3554,37 @@ function SectionDetailContent({
             : t('sectionDetail.picker.disabledDescendant', 'descendente')
         }
       />
+
+      {/* Modal: Mover todos os filhos para outra pagina */}
+      {(() => {
+        const directChildren = sections.filter((s: any) => s.parentId === realSectionId);
+        return (
+          <SectionPickerModal
+            open={showMoveChildrenModal}
+            onClose={() => setShowMoveChildrenModal(false)}
+            onConfirm={handleMoveChildren}
+            title={t("sectionDetail.moveChildren.title", "Mover filhos para...")}
+            description={section ? (
+              <>
+                Mover <strong className="text-gray-100">{directChildren.length} {directChildren.length === 1 ? 'filho' : 'filhos'}</strong> de{" "}
+                <strong className="text-gray-100">{section.title}</strong> para outra página
+              </>
+            ) : null}
+            confirmLabel={t("sectionDetail.moveChildren.confirm", "Mover filhos")}
+            confirmVariant="blue"
+            sections={sections}
+            allowRoot
+            rootLabel={t('sectionDetail.move.rootLabel', '📁 Raiz do projeto')}
+            rootDescription={t('sectionDetail.move.makeRoot')}
+            disabledSectionIds={[realSectionId, ...getAllDescendants(realSectionId, sections)]}
+            disabledReason={(id) =>
+              id === realSectionId
+                ? t('sectionDetail.picker.disabledCurrent', 'atual')
+                : t('sectionDetail.picker.disabledDescendant', 'descendente')
+            }
+          />
+        );
+      })()}
 
       {/* Modal: Mover Addon para outra pagina */}
       {(() => {
