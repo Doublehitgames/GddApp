@@ -564,15 +564,22 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "skills",
       "skillCosts",
       "skillEffects",
+      "sections",
     ]).describe(
       "'progressionTable', 'craftTable' and 'skills' require addonId. " +
       "'productionIngredients' and 'productionOutputs' follow the current craftTable entry's " +
       "production and do not take an addonId (must be nested inside a craftTable array node). " +
       "'skillCosts' and 'skillEffects' follow the current skills entry and do not take an " +
-      "addonId (must be nested inside a skills array node)."
+      "addonId (must be nested inside a skills array node). " +
+      "'sections' iterates the child sections of parentSectionId, resolving the itemTemplate " +
+      "against each child's own addons (one object per child page — e.g. aggregate every seed " +
+      "page under a parent into a single array). Bindings resolve via addonName + entryKey " +
+      "fallback, so a template authored against one child resolves across all siblings."
     ),
     addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, craftTable or skills)"),
     addonName: z.string().optional().describe("Fallback match by name when used in templates"),
+    parentSectionId: z.string().optional().describe("Parent section ID whose child sections are iterated (required for type 'sections')"),
+    parentSectionName: z.string().optional().describe("Display name of the parent section (optional, for readability)"),
   }).describe("Array iteration source");
 
   const exportSchemaNodeSchema: z.ZodTypeAny = z.lazy(() =>
