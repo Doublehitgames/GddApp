@@ -374,6 +374,62 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   };
   pair("craft_table", "craftTable", "craft table (station aggregating Production recipes with unlock conditions)", craftTableFields, optional(craftTableFields));
 
+  // ── 7c. Crop (Plantar e Colher) ─────────────────────────────────
+
+  const cropXpEventSchema = z.object({
+    xpAddonRef: z.string().optional().describe("Section ID of the XP Balance addon that tracks this XP pool"),
+    xp: z.number().optional().describe("XP amount awarded"),
+  }).describe("XP event (plant or harvest)");
+
+  const cropStageSchema = z.object({
+    id: z.string().optional().describe("Stage ID (auto-generated if omitted)"),
+    label: z.string().describe("Stage label (e.g. 'Broto', 'Crescendo', 'Maduro')"),
+    secondsFromPlanting: z.number().describe("Seconds after planting when this stage begins"),
+  });
+
+  const cropOutputSchema = z.object({
+    id: z.string().optional().describe("Output row ID (auto-generated if omitted)"),
+    itemRef: z.string().optional().describe("Section ID of the harvested item"),
+    quantity: z.number().optional().describe("Base yield per harvest"),
+    quantityMin: z.number().optional().describe("Minimum yield"),
+    quantityMax: z.number().optional().describe("Maximum yield"),
+  });
+
+  const cropItemInputSchema = z.object({
+    id: z.string().optional().describe("Input row ID (auto-generated if omitted)"),
+    itemRef: z.string().optional().describe("Section ID of the consumable item"),
+  });
+
+  const cropFields = {
+    harvestMode: z.enum(["instant", "progressive"]).default("instant").describe(
+      "'instant' = single harvest, plant dies. 'progressive' = multiple harvest cycles over the same planting."
+    ),
+    growthSeconds: z.number().optional().describe("Base growth time in seconds"),
+    growthSecondsMin: z.number().optional().describe("Minimum growth time (lower bound)"),
+    growthSecondsMax: z.number().optional().describe("Maximum growth time (upper bound)"),
+    totalHarvest: z.number().optional().describe("Number of harvest cycles (progressive mode only)"),
+    totalHarvestMin: z.number().optional().describe("Minimum harvest cycles (progressive only)"),
+    totalHarvestMax: z.number().optional().describe("Maximum harvest cycles (progressive only)"),
+    stages: z.array(cropStageSchema).default([]).describe("Visual growth stages (progressive mode)"),
+    outputs: z.array(cropOutputSchema).default([]).describe("Items produced on each harvest"),
+    plantXp: cropXpEventSchema.optional().describe("XP awarded when planting"),
+    harvestXp: cropXpEventSchema.optional().describe("XP awarded when harvesting"),
+    spawnWitheredPlant: z.boolean().default(false).describe("Spawn a post-harvest page when the plant expires"),
+    witheredPlantRef: z.string().optional().describe("Section ID of the page to spawn after expiry"),
+    seedRef: z.string().optional().describe("Section ID of the seed item, or '__self__' to use this page as its own seed"),
+    seedQuantity: z.number().optional().describe("Base seed cost"),
+    seedQuantityMin: z.number().optional().describe("Minimum seed cost"),
+    seedQuantityMax: z.number().optional().describe("Maximum seed cost"),
+    plantEnergy: z.number().optional().describe("Energy consumed when planting"),
+    plantEnergyMin: z.number().optional().describe("Minimum energy cost"),
+    plantEnergyMax: z.number().optional().describe("Maximum energy cost"),
+    fertilizers: z.array(cropItemInputSchema).default([]).describe("Fertilizer items accepted by this crop"),
+    amendments: z.array(cropItemInputSchema).default([]).describe("Soil amendment items accepted by this crop"),
+    seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "greenhouse"])).optional().describe("Seasons in which this crop can be planted"),
+    notes: z.string().optional().describe("Design notes"),
+  };
+  pair("crop", "crop", "crop / plant-and-harvest mechanic", cropFields, optional(cropFields));
+
   // ── 8. Data Schema ──────────────────────────────────────────────
 
   // Data schema entries can SOURCE their value from several places instead

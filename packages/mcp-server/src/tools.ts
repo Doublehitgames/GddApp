@@ -217,7 +217,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "create_addon",
-    "Add an addon to a section. Types: xpBalance, progressionTable, economyLink, currency, globalVariable, inventory, production, dataSchema, attributeDefinitions, attributeProfile, attributeModifiers, fieldLibrary, exportSchema, richDoc",
+    "Add an addon to a section. Types: xpBalance, progressionTable, economyLink, currency, globalVariable, inventory, production, craftTable, crop, dataSchema, attributeDefinitions, attributeProfile, attributeModifiers, fieldLibrary, exportSchema, richDoc",
     {
       projectId: z.string().describe("Project UUID"),
       sectionId: z.string().describe("Section UUID"),
