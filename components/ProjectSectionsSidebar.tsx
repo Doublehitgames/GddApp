@@ -2144,7 +2144,8 @@ function SortableRootItem({
   const contentSnippet = directMatch && section.content ? getContentSnippet(section.content, searchTerm) : "";
   const isActiveSection = activeSectionId === section.id;
   const hasFlowchart = Boolean(section?.flowchartEnabled);
-  const hasChildren = sections.some((s: any) => s.parentId === section.id);
+  const childCount = sections.filter((s: any) => s.parentId === section.id).length;
+  const hasChildren = childCount > 0;
   const isExpanded =
     expandedSections.has(section.id) ||
     searchTerm.trim() ||
@@ -2265,6 +2266,18 @@ function SortableRootItem({
         >
           {highlightText(section.title, searchTerm)}
         </span>
+        {hasChildren && (
+          <span
+            className={`relative inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full border px-1.5 text-[10px] font-semibold pointer-events-none shrink-0 ${
+              isActiveSection
+                ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-300"
+                : "border-gray-600/60 bg-gray-800/70 text-gray-400"
+            }`}
+            title={`${childCount} subseção${childCount !== 1 ? "ões" : ""}`}
+          >
+            {childCount}
+          </span>
+        )}
         {hasFlowchart && (
           <span
             className="relative inline-flex items-center gap-1 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200 pointer-events-none"
