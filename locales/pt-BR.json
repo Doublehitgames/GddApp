@@ -1696,6 +1696,7 @@
       "editSectionName": "Editar nome da seção",
       "addAddon": "Adicionar addon nesta página",
       "moveSection": "Mover seção para outro local",
+      "moveChildren": "Mover todos os filhos para...",
       "duplicateSection": "Duplicar página (Ctrl+D)",
       "decreaseHeight": "Diminuir altura",
       "increaseHeight": "Aumentar altura",
@@ -1809,6 +1810,10 @@
       "cannotMoveToDescendant": "Não é possível mover uma seção para dentro de seus próprios descendentes.",
       "makeRoot": "Tornar seção principal (sem pai)",
       "move": "Mover"
+    },
+    "moveChildren": {
+      "title": "Mover filhos para...",
+      "confirm": "Mover filhos"
     },
     "copy": {
       "title": "Copiar addon para...",
