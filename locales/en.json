@@ -3002,5 +3002,21 @@
     "timeWeeks": "{n}wk ago",
     "timeMonths": "{n}mo ago",
     "timeYears": "{n}y ago"
+  },
+  "exportSchemaAddon": {
+    "format": {
+      "disabledHint": "Format only applies to Progression Table arrays. Add an array with that source to enable it (column-major, keyed, matrix)."
+    },
+    "sections": {
+      "progressionGroup": "Table from each child page",
+      "craftGroup": "Crafting table from each child page",
+      "skillsGroup": "Skills from each child page",
+      "matchByNameHint": "Matched by name in each child page — applies to every child that has an equivalent table, not just the sample page."
+    },
+    "coverage": {
+      "title": "⚠ Some child pages don't have this schema's data",
+      "without": "missing",
+      "footer": "These fields will be empty/zero in those pages' JSON until the addon is added."
+    }
   }
 }

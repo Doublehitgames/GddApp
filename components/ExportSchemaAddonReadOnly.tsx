@@ -9,6 +9,7 @@ import type {
 } from "@/lib/addons/types";
 import { buildSectionLookup, resolveExportSchema, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
 import { useProjectStore } from "@/store/projectStore";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface ExportSchemaAddonReadOnlyProps {
   addon: ExportSchemaAddonDraft;
@@ -23,6 +24,7 @@ export function ExportSchemaAddonReadOnly({
   theme = "dark",
   bare = false,
 }: ExportSchemaAddonReadOnlyProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   // Local (transient) override so the user can preview/copy/download in any
   // format without entering edit mode. Tracks the persisted addon format and
@@ -165,7 +167,7 @@ export function ExportSchemaAddonReadOnly({
             title={
               hasProgressionArraySource
                 ? "Formato do JSON para nós array (tabelas de balanceamento)"
-                : "Este schema não itera tabelas de balanceamento — formato fixo em rowMajor."
+                : t("exportSchemaAddon.format.disabledHint", "O formato só se aplica a arrays de Tabela de Balanceamento. Adicione um array com essa fonte para habilitar (column-major, keyed, matrix).")
             }
           >
             Formato:

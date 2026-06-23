@@ -7,8 +7,10 @@ import type {
   ExportSchemaNode,
   SectionAddon,
 } from "@/lib/addons/types";
-import { buildSectionLookup, resolveExportSchema, resolveExportSchemaWithPreview, stringifyExportJson } from "@/lib/addons/exportSchemaResolver";
+import { buildSectionLookup, resolveExportSchema, resolveExportSchemaWithPreview, stringifyExportJson, findSectionsCoverageIssues } from "@/lib/addons/exportSchemaResolver";
 import { importJsonToAddons } from "@/lib/addons/exportSchemaImporter";
+import { getAddonRegistryEntry } from "@/lib/addons/registry";
+import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import {
   SHELL,
@@ -80,6 +82,7 @@ interface ExportSchemaAddonPanelProps {
 // ── Main Panel ──────────────────────────────────────────────────────
 
 export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddons: externalAddons }: ExportSchemaAddonPanelProps) {
+  const { t } = useI18n();
   const [showPreview, setShowPreview] = useState(false);
   const [showTree, setShowTree] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -207,6 +210,14 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
   const resolved = useMemo(
     () => (showPreview ? resolveExportSchema(addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup) : null),
     [showPreview, addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup]
+  );
+
+  // Children of a `sections` source that are missing an addon the template needs
+  // (e.g. a pet without a Tabela de Balanceamento) — their JSON comes out with
+  // empty/zero holes, so surface a warning instead of failing silently.
+  const coverageIssues = useMemo(
+    () => findSectionsCoverageIssues(addon.nodes, sectionLookup),
+    [addon.nodes, sectionLookup]
   );
 
   const jsonString = useMemo(
@@ -449,6 +460,28 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
         )}
       </div>
 
+      {coverageIssues.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-900/15 px-3 py-2 text-xs text-amber-200">
+          <div className="font-semibold mb-1">
+            {t("exportSchemaAddon.coverage.title", "⚠ Algumas páginas filhas não têm os dados deste schema")}
+          </div>
+          <ul className="space-y-0.5">
+            {coverageIssues.map((issue) => (
+              <li key={issue.childId}>
+                <span className="text-amber-100">{issue.childTitle}</span>
+                {` — ${t("exportSchemaAddon.coverage.without", "sem")} `}
+                {issue.missingTypes
+                  .map((type) => getAddonRegistryEntry(type)?.label ?? type)
+                  .join(", ")}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-1 text-amber-300/80">
+            {t("exportSchemaAddon.coverage.footer", "Esses campos sairão vazios/zero no JSON dessas páginas até o addon ser adicionado.")}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <label
@@ -456,7 +489,7 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
           title={
             hasProgressionArraySource
               ? "Formato do JSON para nós array (tabelas de balanceamento)"
-              : "Este schema não itera tabelas de balanceamento — formato fixo em rowMajor."
+              : t("exportSchemaAddon.format.disabledHint", "O formato só se aplica a arrays de Tabela de Balanceamento. Adicione um array com essa fonte para habilitar (column-major, keyed, matrix).")
           }
         >
           Formato:

@@ -1,6 +1,8 @@
 import {
   resolveExportSchema,
   stringifyExportJson,
+  buildSectionLookup,
+  findSectionsCoverageIssues,
 } from "@/lib/addons/exportSchemaResolver";
 import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import type {
@@ -122,6 +124,161 @@ describe("resolveExportSchema — array formats", () => {
     expect(resolveExportSchema(schemaNodes, [emptyTable], undefined, "matrix")).toEqual({
       levelSettings: { headers: ["level", "price", "cap"], rows: [] },
     });
+  });
+});
+
+// ── sections source: per-child progression curve, rename- and id-proof ──
+// A parent page aggregates its children. Each child renamed its progression
+// table to a unique COSMETIC name ("Balanceamento Cão", "Balanceamento Cabra")
+// and one child has a different COLUMN ID. The binding was sampled from one
+// child, so it carries that child's addon id + name + column id. Resolution
+// must still reach every sibling: the addon by TYPE (singleton), the column by
+// NAME. The user-given name is cosmetic and must NOT be required to match.
+
+describe("resolveExportSchema — sections source: per-child curve, rename/id proof", () => {
+  const makeChildTable = (
+    tableId: string,
+    addonName: string,
+    priceColId: string,
+    v1: number,
+    v2: number
+  ): SectionAddon => ({
+    id: tableId,
+    type: "progressionTable",
+    name: addonName,
+    data: {
+      id: tableId,
+      name: addonName,
+      startLevel: 1,
+      endLevel: 2,
+      columns: [{ id: priceColId, name: "price" }],
+      rows: [
+        { level: 1, values: { [priceColId]: v1 } },
+        { level: 2, values: { [priceColId]: v2 } },
+      ],
+    },
+  });
+
+  // Child A: addon name "Balanceamento Cão", column id "price" (both match the
+  //   sampled binding directly).
+  // Child B: addon name "Balanceamento Cabra" (diverges → resolved by type) and
+  //   column id "col_regen" (diverges → resolved by columnName).
+  const lookup = buildSectionLookup([
+    {
+      sections: [
+        { id: "P", title: "Animais", parentId: null, order: 0, addons: [] },
+        { id: "A", title: "Cão", parentId: "P", order: 0, dataId: "PET_DOG", addons: [makeChildTable("pt-a", "Balanceamento Cão", "price", 100, 200)] },
+        { id: "B", title: "Cabra", parentId: "P", order: 1, dataId: "PET_GOAT", addons: [makeChildTable("pt-b", "Balanceamento Cabra", "col_regen", 111, 222)] },
+      ],
+    },
+  ]);
+
+  const nestedLevelSettings = (columnName?: string): ExportSchemaNode[] => [
+    {
+      id: "root",
+      key: "animals",
+      nodeType: "array",
+      arraySource: { type: "sections", parentSectionId: "P" },
+      itemTemplate: [
+        {
+          id: "ls",
+          key: "levelSettings",
+          nodeType: "array",
+          // Sampled from child A: id "pt-a", cosmetic name "Balanceamento Cão".
+          arraySource: { type: "progressionTable", addonId: "pt-a", addonName: "Balanceamento Cão" },
+          itemTemplate: [
+            { id: "lvl", key: "level", nodeType: "value", binding: { source: "rowLevel" } },
+            { id: "pr", key: "price", nodeType: "value", binding: { source: "rowColumn", columnId: "price", columnName } },
+          ],
+        },
+      ],
+    },
+  ];
+
+  it("resolves every child's curve: addon by type (rename-proof), column by name (id-proof)", () => {
+    const out = resolveExportSchema(nestedLevelSettings("price"), [], undefined, "rowMajor", lookup);
+    expect(out).toEqual({
+      animals: [
+        { levelSettings: [{ level: 1, price: 100 }, { level: 2, price: 200 }] },
+        // Child B resolved despite a different addon name AND a different column id.
+        { levelSettings: [{ level: 1, price: 111 }, { level: 2, price: 222 }] },
+      ],
+    });
+  });
+
+  it("without columnName, the divergent-column child loses only that value (column layer guard)", () => {
+    const out = resolveExportSchema(nestedLevelSettings(undefined), [], undefined, "rowMajor", lookup) as {
+      animals: Array<{ levelSettings: Array<{ level: number; price: number | null }> }>;
+    };
+    // Child B's table is still found (by type), but its column can't be matched
+    // without the name fallback, so the value falls through to null.
+    expect(out.animals[0].levelSettings).toEqual([{ level: 1, price: 100 }, { level: 2, price: 200 }]);
+    expect(out.animals[1].levelSettings).toEqual([{ level: 1, price: null }, { level: 2, price: null }]);
+  });
+});
+
+// ── findSectionsCoverageIssues: warn on children missing required addons ──
+
+describe("findSectionsCoverageIssues", () => {
+  const progTable = (id: string): SectionAddon => ({
+    id,
+    type: "progressionTable",
+    name: "Balanceamento",
+    data: { id, name: "Balanceamento", startLevel: 1, endLevel: 1, columns: [{ id: "price", name: "price" }], rows: [{ level: 1, values: { price: 1 } }] },
+  });
+  const schema = (id: string): SectionAddon => ({
+    id,
+    type: "dataSchema",
+    name: "Schema",
+    data: { id, name: "Schema", entries: [{ id: "e1", key: "id", label: "id", valueType: "string", value: "" }] },
+  });
+
+  const nodes: ExportSchemaNode[] = [
+    {
+      id: "root",
+      key: "animals",
+      nodeType: "array",
+      arraySource: { type: "sections", parentSectionId: "P" },
+      itemTemplate: [
+        { id: "v", key: "id", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-a", entryKey: "id" } },
+        {
+          id: "ls",
+          key: "levelSettings",
+          nodeType: "array",
+          arraySource: { type: "progressionTable", addonId: "pt-a" },
+          itemTemplate: [{ id: "lvl", key: "level", nodeType: "value", binding: { source: "rowLevel" } }],
+        },
+      ],
+    },
+  ];
+
+  it("flags children missing a required addon type (e.g. no progression table)", () => {
+    const lookup = buildSectionLookup([
+      {
+        sections: [
+          { id: "P", title: "Animais", parentId: null, order: 0, addons: [] },
+          { id: "A", title: "Cão", parentId: "P", order: 0, addons: [schema("ds-a"), progTable("pt-a")] },
+          { id: "B", title: "Cabra", parentId: "P", order: 1, addons: [schema("ds-b")] }, // no progressionTable
+        ],
+      },
+    ]);
+    const issues = findSectionsCoverageIssues(nodes, lookup);
+    expect(issues).toEqual([
+      { parentSectionId: "P", childId: "B", childTitle: "Cabra", missingTypes: ["progressionTable"] },
+    ]);
+  });
+
+  it("returns no issues when every child has all required addons (names may differ)", () => {
+    const lookup = buildSectionLookup([
+      {
+        sections: [
+          { id: "P", title: "Animais", parentId: null, order: 0, addons: [] },
+          { id: "A", title: "Cão", parentId: "P", order: 0, addons: [schema("ds-a"), progTable("pt-a")] },
+          { id: "B", title: "Cabra", parentId: "P", order: 1, addons: [schema("ds-b"), progTable("pt-b")] },
+        ],
+      },
+    ]);
+    expect(findSectionsCoverageIssues(nodes, lookup)).toEqual([]);
   });
 });
 

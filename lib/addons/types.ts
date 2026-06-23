@@ -622,7 +622,13 @@ export type ExportSchemaBinding =
   | { source: "manual"; value: string | number | boolean; valueType: "string" | "number" | "boolean" }
   | { source: "dataSchema"; addonId: string; addonName?: string; entryKey: string; entryId?: string }
   | { source: "rowLevel" }
-  | { source: "rowColumn"; columnId: string }
+  /**
+   * `columnName` is the human column name captured at authoring time. It lets
+   * the resolver re-match the column by name when `columnId` doesn't exist in
+   * the current table — essential when a `sections` array iterates sibling
+   * pages whose progression tables share column names but not column ids.
+   */
+  | { source: "rowColumn"; columnId: string; columnName?: string }
   | { source: "entryField"; field: CraftTableEntryField }
   /** Follows the current craft entry's productionRef and reads a scalar field from that Production addon. */
   | { source: "productionField"; field: ProductionScalarField }

@@ -4,6 +4,7 @@ import type {
   ExportSchemaBinding,
   ExportSchemaArrayFormat,
   SectionAddon,
+  SectionAddonType,
   CraftTableAddonDraft,
   CraftTableEntry,
   DataSchemaAddonDraft,
@@ -95,6 +96,26 @@ function findProductionByRef(
   return undefined;
 }
 
+/**
+ * Resolves the effective column id for a `rowColumn` binding against a given
+ * table. Prefers a direct id match; falls back to matching by the captured
+ * `columnName` when the id is absent (e.g. a sibling page whose progression
+ * table shares column names but has different column ids). Returns the binding
+ * id unchanged when no match is found.
+ */
+function resolveColumnId(
+  binding: Extract<ExportSchemaBinding, { source: "rowColumn" }>,
+  table?: ProgressionTableAddonDraft
+): string {
+  if (!table) return binding.columnId;
+  if (table.columns.some((c) => c.id === binding.columnId)) return binding.columnId;
+  if (binding.columnName) {
+    const byName = table.columns.find((c) => c.name === binding.columnName);
+    if (byName) return byName.id;
+  }
+  return binding.columnId;
+}
+
 function resolveColumnExportKey(
   columnId: string,
   table: ProgressionTableAddonDraft,
@@ -135,6 +156,10 @@ function findDataSchemaAddon(
       }
     }
   }
+  // Cross-section fallback (sections iteration): dataSchema is a singleton per
+  // section, so resolve by type when the sampled id/name don't match a sibling.
+  const byType = addons.find((a) => a.type === "dataSchema" || a.type === "genericStats");
+  if (byType) return byType.data as DataSchemaAddonDraft;
   return undefined;
 }
 
@@ -156,6 +181,10 @@ function findCraftTableAddon(
       }
     }
   }
+  // Cross-section fallback (sections iteration): craftTable is a singleton per
+  // section, so resolve by type when the sampled id/name don't match a sibling.
+  const byType = addons.find((a) => a.type === "craftTable");
+  if (byType) return byType.data as CraftTableAddonDraft;
   return undefined;
 }
 
@@ -277,6 +306,10 @@ function findSkillsAddon(
       }
     }
   }
+  // Cross-section fallback (sections iteration): skills is a singleton per
+  // section, so resolve by type when the sampled id/name don't match a sibling.
+  const byType = addons.find((a) => a.type === "skills");
+  if (byType) return byType.data as SkillsAddonDraft;
   return undefined;
 }
 
@@ -478,6 +511,13 @@ function findProgressionTableAddon(
       }
     }
   }
+  // Cross-section fallback (sections iteration over siblings): the source was
+  // sampled from one child, so neither the id nor the user-given (cosmetic)
+  // name match here. progressionTable is a singleton per section, so the type
+  // alone identifies it — resolve by type regardless of name. This keeps
+  // per-child curves working even when each child renamed its table.
+  const byType = addons.find((a) => a.type === "progressionTable");
+  if (byType) return byType.data as ProgressionTableAddonDraft;
   return undefined;
 }
 
@@ -612,9 +652,11 @@ function resolveBinding(
     case "rowLevel":
       return ctx.row ? ctx.row.level : null;
 
-    case "rowColumn":
+    case "rowColumn": {
       if (!ctx.row) return null;
-      return ctx.row.values[binding.columnId] ?? null;
+      const colId = resolveColumnId(binding, ctx.currentTable);
+      return ctx.row.values[colId] ?? null;
+    }
 
     case "entryField":
       if (!ctx.entry) return null;
@@ -669,7 +711,8 @@ function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
     }
   }
   if (node.binding?.source === "rowColumn" && ctx.currentTable) {
-    const libKey = resolveColumnExportKey(node.binding.columnId, ctx.currentTable, ctx.sectionAddons);
+    const colId = resolveColumnId(node.binding, ctx.currentTable);
+    const libKey = resolveColumnExportKey(colId, ctx.currentTable, ctx.sectionAddons);
     if (libKey) return libKey;
   }
   return node.key;
@@ -1089,6 +1132,82 @@ export function getChildSections(
   }
   children.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   return children;
+}
+
+// ── Coverage check for the `sections` source ───────────────────────
+// A `sections` array iterates the child pages and resolves the same item
+// template against each one. If a child is missing an addon the template needs
+// (e.g. a pet without a Tabela de Balanceamento), that part of its JSON comes
+// out empty/zero with no other signal. This walk reports those gaps so the UI
+// can warn instead of exporting silent holes.
+
+export type SectionsCoverageIssue = {
+  parentSectionId: string;
+  childId: string;
+  childTitle: string;
+  /** Addon types the item template needs but this child doesn't have. */
+  missingTypes: SectionAddonType[];
+};
+
+/** Collects the addon types an item template depends on (by source/binding). */
+function collectRequiredAddonTypes(nodes: ExportSchemaNode[]): Set<SectionAddonType> {
+  const types = new Set<SectionAddonType>();
+  const walk = (ns: ExportSchemaNode[]) => {
+    for (const n of ns) {
+      if (n.nodeType === "value" && n.binding?.source === "dataSchema") types.add("dataSchema");
+      if (n.nodeType === "array" && n.arraySource) {
+        const t = n.arraySource.type;
+        if (t === "progressionTable" || t === "craftTable" || t === "skills") types.add(t);
+      }
+      if (n.children) walk(n.children);
+      if (n.itemTemplate) walk(n.itemTemplate);
+    }
+  };
+  walk(nodes);
+  return types;
+}
+
+function childHasAddonType(addons: SectionAddon[], type: SectionAddonType): boolean {
+  return addons.some(
+    (a) => a.type === type || (type === "dataSchema" && a.type === "genericStats")
+  );
+}
+
+/**
+ * Walks the schema for `sections` arrays and reports, per child page, which
+ * required addon types are missing. Empty array = full coverage. UI-free so it
+ * can be unit-tested and reused by both editor and read-only panels.
+ */
+export function findSectionsCoverageIssues(
+  nodes: ExportSchemaNode[],
+  lookup: SectionLookup | undefined
+): SectionsCoverageIssue[] {
+  if (!lookup) return [];
+  const issues: SectionsCoverageIssue[] = [];
+  const walk = (ns: ExportSchemaNode[]) => {
+    for (const n of ns) {
+      if (n.nodeType === "array" && n.arraySource?.type === "sections") {
+        const required = collectRequiredAddonTypes(n.itemTemplate ?? []);
+        if (required.size > 0) {
+          for (const child of getChildSections(n.arraySource.parentSectionId, lookup)) {
+            const missingTypes = [...required].filter((t) => !childHasAddonType(child.addons, t));
+            if (missingTypes.length > 0) {
+              issues.push({
+                parentSectionId: n.arraySource.parentSectionId,
+                childId: child.id,
+                childTitle: child.title ?? "(sem título)",
+                missingTypes,
+              });
+            }
+          }
+        }
+      }
+      if (n.children) walk(n.children);
+      if (n.itemTemplate) walk(n.itemTemplate);
+    }
+  };
+  walk(nodes);
+  return issues;
 }
 
 // ── Pretty-printer ─────────────────────────────────────────────────

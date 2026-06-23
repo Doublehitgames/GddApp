@@ -1548,7 +1548,8 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
   if (source === "rowColumn") {
     const columnId = typeof raw.columnId === "string" ? raw.columnId.trim() : "";
     if (!columnId) return undefined;
-    return { source: "rowColumn", columnId };
+    const columnName = typeof raw.columnName === "string" ? raw.columnName.trim() : "";
+    return columnName ? { source: "rowColumn", columnId, columnName } : { source: "rowColumn", columnId };
   }
   if (source === "entryField") {
     const validFields: ReadonlySet<CraftTableEntryField> = new Set<CraftTableEntryField>([

@@ -13,6 +13,8 @@ import {
   CommitOptionalNumberInput,
   CommitTextInput,
 } from "@/components/common/CommitInput";
+import { getAddonRegistryEntry } from "@/lib/addons/registry";
+import { useI18n } from "@/lib/i18n/provider";
 import {
   DndContext,
   PointerSensor,
@@ -555,6 +557,9 @@ export function BindingEditor({
   const insideSkillsArray = insideArray && arraySourceType === "skills";
   const insideSkillCostsArray = insideArray && arraySourceType === "skillCosts";
   const insideSkillEffectsArray = insideArray && arraySourceType === "skillEffects";
+  // Inside a `sections` iteration the addon is sampled from one child but resolves
+  // by name across all children — label it generically, not as a specific page's.
+  const insideSectionsIteration = insideArray && arraySourceType === "sections";
 
   const currentPT = useMemo(
     () => (arraySourceAddonId ? progressionTables.find((pt) => pt.id === arraySourceAddonId) : undefined),
@@ -571,7 +576,7 @@ export function BindingEditor({
     } else if (newSource === "rowLevel") onChange({ source: "rowLevel" });
     else if (newSource === "rowColumn") {
       const firstCol = currentPT?.data.columns[0];
-      onChange({ source: "rowColumn", columnId: firstCol?.id ?? "" });
+      onChange({ source: "rowColumn", columnId: firstCol?.id ?? "", columnName: firstCol?.name });
     } else if (newSource === "entryField") {
       onChange({ source: "entryField", field: "productionRef" });
     } else if (newSource === "productionField") {
@@ -743,7 +748,7 @@ export function BindingEditor({
           >
             {dataSchemas.map((ds) => (
               <option key={ds.id} value={ds.id}>
-                {ds.name}
+                {insideSectionsIteration ? (getAddonRegistryEntry("dataSchema")?.label ?? ds.name) : ds.name}
               </option>
             ))}
             {dataSchemas.length === 0 && <option value="">Nenhum Data Schema</option>}
@@ -778,7 +783,8 @@ export function BindingEditor({
           disabled={readOnly}
           onChange={(e) => {
             if (readOnly) return;
-            onChange({ source: "rowColumn", columnId: e.target.value });
+            const col = currentPT.data.columns.find((c) => c.id === e.target.value);
+            onChange({ source: "rowColumn", columnId: e.target.value, columnName: col?.name });
           }}
         >
           {currentPT.data.columns.map((col) => (
@@ -967,6 +973,7 @@ export function SchemaNodeEditor({
   getChildAddons?: (parentSectionId: string) => SectionAddon[];
   readOnly?: boolean;
 }) {
+  const { t } = useI18n();
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
   const craftTables = useMemo(() => getCraftTableAddons(sectionAddons), [sectionAddons]);
   const skillsAddons = useMemo(() => getSkillsAddons(sectionAddons), [sectionAddons]);
@@ -1041,6 +1048,12 @@ export function SchemaNodeEditor({
     (node.nodeType === "array" && (node.arraySource?.type === "skillCosts" || node.arraySource?.type === "skillEffects"))
       ? true
       : inSkillEntry;
+
+  // True when this node lives inside a `sections` iteration: its addon pickers
+  // are sampled from one child page, but the chosen addon resolves by name
+  // against EVERY child. Labels must say "of each child page" instead of naming
+  // the sample, so the user doesn't think they're picking one specific page's table.
+  const insideSectionsIteration = insideArray && arraySourceType === "sections";
 
   const childInsideArray = node.nodeType === "array" ? true : insideArray;
   const childList = node.nodeType === "object" ? node.children ?? [] : node.nodeType === "array" ? node.itemTemplate ?? [] : [];
@@ -1182,28 +1195,28 @@ export function SchemaNodeEditor({
           >
             <option value="">Selecionar fonte...</option>
             {progressionTables.length > 0 && (
-              <optgroup label="Progression Table">
+              <optgroup label={insideSectionsIteration ? t("exportSchemaAddon.sections.progressionGroup", "Tabela de cada página filha") : "Progression Table"}>
                 {progressionTables.map((pt) => (
                   <option key={pt.id} value={`progressionTable:${pt.id}`}>
-                    {pt.name}
+                    {insideSectionsIteration ? (getAddonRegistryEntry("progressionTable")?.label ?? pt.name) : pt.name}
                   </option>
                 ))}
               </optgroup>
             )}
             {craftTables.length > 0 && (
-              <optgroup label="Craft Table">
+              <optgroup label={insideSectionsIteration ? t("exportSchemaAddon.sections.craftGroup", "Mesa de produção de cada página filha") : "Craft Table"}>
                 {craftTables.map((ct) => (
                   <option key={ct.id} value={`craftTable:${ct.id}`}>
-                    {ct.name}
+                    {insideSectionsIteration ? (getAddonRegistryEntry("craftTable")?.label ?? ct.name) : ct.name}
                   </option>
                 ))}
               </optgroup>
             )}
             {skillsAddons.length > 0 && (
-              <optgroup label="Skills">
+              <optgroup label={insideSectionsIteration ? t("exportSchemaAddon.sections.skillsGroup", "Habilidades de cada página filha") : "Skills"}>
                 {skillsAddons.map((sk) => (
                   <option key={sk.id} value={`skills:${sk.id}`}>
-                    {sk.name}
+                    {insideSectionsIteration ? (getAddonRegistryEntry("skills")?.label ?? sk.name) : sk.name}
                   </option>
                 ))}
               </optgroup>
@@ -1267,6 +1280,17 @@ export function SchemaNodeEditor({
           )
         )}
       </div>
+
+      {node.nodeType === "array" &&
+        insideSectionsIteration &&
+        node.arraySource &&
+        (node.arraySource.type === "progressionTable" ||
+          node.arraySource.type === "craftTable" ||
+          node.arraySource.type === "skills") && (
+          <div className="ml-4 pl-3 pb-1 text-[11px] text-gray-400">
+            {t("exportSchemaAddon.sections.matchByNameHint", "Casada pelo nome em cada página filha — vale para todos os filhos que tenham uma tabela equivalente, não só a página de amostra.")}
+          </div>
+        )}
 
       {node.nodeType === "value" && (
         <div className={`flex items-center gap-2 pb-1 pl-3 ml-4 flex-wrap border-l-4 ${bindingAccentClass(node.binding?.source)}`}>

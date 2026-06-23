@@ -3002,5 +3002,21 @@
     "timeWeeks": "{n}sem atrás",
     "timeMonths": "{n}m atrás",
     "timeYears": "{n}a atrás"
+  },
+  "exportSchemaAddon": {
+    "format": {
+      "disabledHint": "O formato só se aplica a arrays de Tabela de Balanceamento. Adicione um array com essa fonte para habilitar (column-major, keyed, matrix)."
+    },
+    "sections": {
+      "progressionGroup": "Tabela de cada página filha",
+      "craftGroup": "Mesa de produção de cada página filha",
+      "skillsGroup": "Habilidades de cada página filha",
+      "matchByNameHint": "Casada pelo nome em cada página filha — vale para todos os filhos que tenham uma tabela equivalente, não só a página de amostra."
+    },
+    "coverage": {
+      "title": "⚠ Algumas páginas filhas não têm os dados deste schema",
+      "without": "sem",
+      "footer": "Esses campos sairão vazios/zero no JSON dessas páginas até o addon ser adicionado."
+    }
   }
 }
