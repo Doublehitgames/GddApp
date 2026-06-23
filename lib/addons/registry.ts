@@ -1,5 +1,5 @@
 import { createDefaultBalanceAddon } from "@/lib/balance/formulaEngine";
-import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
+import type { SectionAddon, SectionAddonType, ExportSchemaArrayFormat } from "@/lib/addons/types";
 import {
   balanceDraftToSectionAddon,
   createDefaultAttributeDefinitionsAddon,
@@ -100,6 +100,12 @@ export type AddonRegistryEntry = {
        * page's stacked list).
        */
       bare?: boolean;
+      /**
+       * Export Schema only: persist the JSON display format chosen in the
+       * read-only view. Passed only by editable contexts (the section editor);
+       * omitted in public/view-only renders so the format stays transient there.
+       */
+      onArrayFormatChange?: (next: ExportSchemaArrayFormat) => void;
     }
   ) => React.ReactNode;
 };
@@ -553,6 +559,7 @@ export const ADDON_REGISTRY: AddonRegistryEntry[] = [
         addon: addon.data,
         theme: options?.theme,
         bare: options?.bare,
+        onArrayFormatChange: options?.onArrayFormatChange,
       });
     },
   },

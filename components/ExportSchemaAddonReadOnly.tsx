@@ -16,6 +16,12 @@ interface ExportSchemaAddonReadOnlyProps {
   sectionAddons?: SectionAddon[];
   theme?: "dark" | "light";
   bare?: boolean;
+  /**
+   * When provided, the format selector persists the chosen format (saved per
+   * addon) instead of being a transient session-only override. Editable
+   * contexts pass this; public/view-only renders omit it.
+   */
+  onArrayFormatChange?: (next: ExportSchemaArrayFormat) => void;
 }
 
 export function ExportSchemaAddonReadOnly({
@@ -23,6 +29,7 @@ export function ExportSchemaAddonReadOnly({
   sectionAddons: externalAddons,
   theme = "dark",
   bare = false,
+  onArrayFormatChange,
 }: ExportSchemaAddonReadOnlyProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
@@ -175,7 +182,11 @@ export function ExportSchemaAddonReadOnly({
               className={selectClass}
               value={hasProgressionArraySource ? format : "rowMajor"}
               disabled={!hasProgressionArraySource}
-              onChange={(e) => setFormat(e.target.value as ExportSchemaArrayFormat)}
+              onChange={(e) => {
+                const next = e.target.value as ExportSchemaArrayFormat;
+                setFormat(next);
+                onArrayFormatChange?.(next);
+              }}
             >
               <option value="rowMajor">Row-major (array de objetos)</option>
               <option value="columnMajor">Column-major (objeto de arrays)</option>

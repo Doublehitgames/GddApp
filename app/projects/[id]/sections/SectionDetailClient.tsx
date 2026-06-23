@@ -2838,6 +2838,13 @@ function SectionDetailContent({
                     showSummary: true,
                     showTable: true,
                     bare: true,
+                    // Persist the JSON display format chosen in the read-only
+                    // card so it survives navigation (saved per addon).
+                    onArrayFormatChange: (next) =>
+                      onUpdateAddon(addon.id, {
+                        ...addon,
+                        data: { ...(addon.data as Record<string, unknown>), arrayFormat: next },
+                      } as SectionAddon),
                   })
                 }
               />
