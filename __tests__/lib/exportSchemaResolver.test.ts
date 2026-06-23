@@ -217,6 +217,67 @@ describe("resolveExportSchema — sections source: per-child curve, rename/id pr
   });
 });
 
+// ── Data Schema → Inventory binding: Remote Config reads inventory fields ──
+
+describe("resolveExportSchema — Data Schema bound to Inventory fields", () => {
+  const inventoryAddon: SectionAddon = {
+    id: "inv-1",
+    type: "inventory",
+    name: "Inventory",
+    data: {
+      id: "inv-1",
+      name: "Inventory",
+      weight: 2.5,
+      stackable: true,
+      maxStack: 99,
+      inventoryCategory: "consumable",
+      slotSize: 1,
+      durability: 0,
+      bindType: "onPickup",
+      showInShop: false,
+      consumable: true,
+      discardable: true,
+    } as SectionAddon["data"],
+  };
+
+  const dataSchemaAddon: SectionAddon = {
+    id: "ds-1",
+    type: "dataSchema",
+    name: "Schema",
+    data: {
+      id: "ds-1",
+      name: "Schema",
+      entries: [
+        { id: "e1", key: "weight", label: "weight", valueType: "float", value: 0, binding: { source: "inventory", addonId: "inv-1", field: "weight" } },
+        { id: "e2", key: "max_stack", label: "max_stack", valueType: "int", value: 0, binding: { source: "inventory", addonId: "inv-1", field: "maxStack" } },
+        { id: "e3", key: "consumable", label: "consumable", valueType: "boolean", value: false, binding: { source: "inventory", addonId: "inv-1", field: "consumable" } },
+        { id: "e4", key: "category", label: "category", valueType: "string", value: "", binding: { source: "inventory", addonId: "inv-1", field: "inventoryCategory" } },
+        { id: "e5", key: "bind_type", label: "bind_type", valueType: "string", value: "", binding: { source: "inventory", addonId: "inv-1", field: "bindType" } },
+      ],
+    } as SectionAddon["data"],
+  };
+
+  const nodes: ExportSchemaNode[] = [
+    { id: "n1", key: "weight", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", entryKey: "weight" } },
+    { id: "n2", key: "maxStack", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", entryKey: "max_stack" } },
+    { id: "n3", key: "consumable", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", entryKey: "consumable" } },
+    { id: "n4", key: "category", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", entryKey: "category" } },
+    { id: "n5", key: "bindType", nodeType: "value", binding: { source: "dataSchema", addonId: "ds-1", entryKey: "bind_type" } },
+  ];
+
+  it("reads numeric, boolean and text inventory fields through the schema binding", () => {
+    const out = resolveExportSchema(nodes, [dataSchemaAddon, inventoryAddon]);
+    // Keys come from the Data Schema entry keys (existing behavior for dataSchema-bound nodes).
+    expect(out).toEqual({
+      weight: 2.5,
+      max_stack: 99,
+      consumable: true,
+      category: "consumable",
+      bind_type: "onPickup",
+    });
+  });
+});
+
 // ── findSectionsCoverageIssues: warn on children missing required addons ──
 
 describe("findSectionsCoverageIssues", () => {

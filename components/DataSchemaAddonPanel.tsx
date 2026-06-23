@@ -11,8 +11,9 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { CropAddonDraft, CropFieldKey, DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, EconomyLinkAddonDraft, EconomyLinkFieldKey, GlobalVariableAddonDraft, ProductionAddonDraft, ProductionFieldKey } from "@/lib/addons/types";
+import type { CropAddonDraft, CropFieldKey, DataSchemaAddonDraft, DataSchemaEntry, DataSchemaValueType, EconomyLinkAddonDraft, EconomyLinkFieldKey, GlobalVariableAddonDraft, InventoryAddonDraft, InventoryFieldKey, ProductionAddonDraft, ProductionFieldKey } from "@/lib/addons/types";
 import { resolveCropFieldValue } from "@/lib/addons/cropFields";
+import { INVENTORY_FIELD_KEYS, INVENTORY_FIELD_VALUE_TYPE, resolveInventoryFieldValue } from "@/lib/addons/inventoryFields";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { useProjectStore } from "@/store/projectStore";
@@ -557,14 +558,42 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
     return resolveCropFieldValue(found.data, field, outputId);
   };
 
+  const inventoryRefOptions = useMemo(() => {
+    const out: Array<{ refId: string; label: string; data: InventoryAddonDraft }> = [];
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        const hasThisAddon = (section.addons || []).some((a) => a.id === addon.id);
+        if (!hasThisAddon) continue;
+        for (const sectionAddon of section.addons || []) {
+          if (sectionAddon.type !== "inventory") continue;
+          if (((sectionAddon as any).group || "A") !== myGroup) continue;
+          out.push({
+            refId: sectionAddon.id,
+            label: sectionAddon.name?.trim() || "Inventory",
+            data: sectionAddon.data as InventoryAddonDraft,
+          });
+        }
+        return out;
+      }
+    }
+    return out;
+  }, [projects, addon.id, myGroup]);
+
+  const getInventoryValue = (refId: string, field: InventoryFieldKey): number | boolean | string | undefined => {
+    const found = inventoryRefOptions.find((o) => o.refId === refId);
+    if (!found) return undefined;
+    return resolveInventoryFieldValue(found.data, field);
+  };
+
   const entryAcceptedSources = useMemo<FieldBinding["source"][]>(() => {
     const sources: FieldBinding["source"][] = ["pageDataId"];
     if (xpRefOptions.length > 0) sources.push("unitXp");
     if (economyLinkRefOptions.length > 0) sources.push("economyLink");
     if (productionRefOptions.length > 0) sources.push("production");
     if (cropRefOptions.length > 0) sources.push("crop");
+    if (inventoryRefOptions.length > 0) sources.push("inventory");
     return sources;
-  }, [xpRefOptions.length, economyLinkRefOptions.length, productionRefOptions.length, cropRefOptions.length]);
+  }, [xpRefOptions.length, economyLinkRefOptions.length, productionRefOptions.length, cropRefOptions.length, inventoryRefOptions.length]);
 
   const bindingContext = useMemo<FieldBindingPickerContext>(() => ({
     unitXpSections: xpRefOptions.map((o) => ({ sectionId: o.refId, sectionLabel: o.label })),
@@ -579,7 +608,10 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
       }))
     ),
     cropAddons: cropRefOptions.flatMap((o) => getAvailableCropFields(o.refId)),
-  }), [xpRefOptions, economyLinkRefOptions, productionRefOptions, cropRefOptions, projects]);
+    inventoryAddons: inventoryRefOptions.flatMap((o) =>
+      INVENTORY_FIELD_KEYS.map((field) => ({ addonId: o.refId, addonName: o.label, field }))
+    ),
+  }), [xpRefOptions, economyLinkRefOptions, productionRefOptions, cropRefOptions, inventoryRefOptions, projects]);
 
   useEffect(() => {
     setCollapsedEntries((prev) => {
@@ -680,6 +712,13 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
         updateEntry(entryId, { binding, valueType: "int", value: linkedValue ?? 0 });
         break;
       }
+      case "inventory": {
+        const valueType = INVENTORY_FIELD_VALUE_TYPE[binding.field];
+        const linkedValue = getInventoryValue(binding.addonId, binding.field);
+        const fallback = valueType === "boolean" ? false : valueType === "string" ? "" : 0;
+        updateEntry(entryId, { binding, valueType, value: linkedValue ?? fallback });
+        break;
+      }
     }
   }
 
@@ -767,20 +806,26 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                 const economyBinding = entryBinding?.source === "economyLink" ? entryBinding : undefined;
                 const productionBinding = entryBinding?.source === "production" ? entryBinding : undefined;
                 const cropBinding = entryBinding?.source === "crop" ? entryBinding : undefined;
+                const inventoryBinding = entryBinding?.source === "inventory" ? entryBinding : undefined;
                 const linkedXpMeta = entryBinding?.source === "unitXp" ? xpRefOptions.find((item) => item.refId === entryBinding.sectionId) : undefined;
                 const isLinkedToXp = entryBinding?.source === "unitXp";
                 const isLinkedToEconomy = entryBinding?.source === "economyLink";
                 const isLinkedToProduction = entryBinding?.source === "production";
                 const isLinkedToCrop = entryBinding?.source === "crop";
+                const isLinkedToInventory = entryBinding?.source === "inventory";
                 const isLinkedToPageDataId = entryBinding?.source === "pageDataId";
-                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToCrop || isLinkedToPageDataId;
+                const isReadOnlyValue = isLinkedToEconomy || isLinkedToProduction || isLinkedToCrop || isLinkedToInventory || isLinkedToPageDataId;
                 const isCurrencyRefField = economyBinding != null && (economyBinding.field === "buyCurrencyRef" || economyBinding.field === "sellCurrencyRef" || economyBinding.field === "buyCurrencyKey" || economyBinding.field === "sellCurrencyKey");
                 const linkedValueType: DataSchemaValueType | null = linkedXpMeta
                   ? linkedXpMeta.decimals > 0
                     ? "float"
                     : "int"
                   : null;
-                const effectiveValueType = (isLinkedToPageDataId || isCurrencyRefField) ? "string" : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
+                const effectiveValueType = (isLinkedToPageDataId || isCurrencyRefField)
+                  ? "string"
+                  : inventoryBinding
+                    ? INVENTORY_FIELD_VALUE_TYPE[inventoryBinding.field]
+                    : isReadOnlyValue ? "int" : (linkedValueType || entry.valueType);
                 const supportsBoundsByType = effectiveValueType !== "boolean" && effectiveValueType !== "string";
                 const useBounds = supportsBoundsByType && (entry.min != null || entry.max != null);
                 const effectiveLabel = resolveEntryLabel(entry, availableLibraryFields);
@@ -1034,7 +1079,7 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                             {isReadOnlyValue ? (
                               <div className="flex items-center gap-3 py-1">
                                 <span className="text-xs text-gray-400">Tipo:</span>
-                                <span className="text-xs font-mono text-gray-300">{(isLinkedToPageDataId || isCurrencyRefField) ? "string" : "int"}</span>
+                                <span className="text-xs font-mono text-gray-300">{effectiveValueType}</span>
                                 <span className="text-xs text-gray-400">Valor:</span>
                                 <span className="text-sm font-mono font-medium text-indigo-300">
                                   {isLinkedToPageDataId
@@ -1045,7 +1090,12 @@ export function DataSchemaAddonPanel({ addon, onChange, onRemove }: DataSchemaAd
                                         ? (getProductionValue(productionBinding.addonId, productionBinding.field) ?? "N/A")
                                         : cropBinding
                                           ? (getCropValue(cropBinding.addonId, cropBinding.field, cropBinding.outputId) ?? "N/A")
-                                          : "N/A"}
+                                          : inventoryBinding
+                                            ? (() => {
+                                                const v = getInventoryValue(inventoryBinding.addonId, inventoryBinding.field);
+                                                return v === undefined ? "N/A" : String(v);
+                                              })()
+                                            : "N/A"}
                                 </span>
                                 <span className="text-[10px] text-gray-500 italic">
                                   (vinculado - somente leitura)

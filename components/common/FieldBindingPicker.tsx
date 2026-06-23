@@ -18,6 +18,7 @@ import {
   economyLinkFieldLabel,
   productionFieldLabel,
   cropFieldLabel,
+  inventoryFieldLabel,
   type FieldBinding,
   type FieldBindingConfig,
   type FieldBindingPickerContext,
@@ -263,6 +264,12 @@ export function FieldBindingPicker({
         );
       case "unitXp":
         return value.source === "unitXp" && value.sectionId === binding.sectionId;
+      case "inventory":
+        return (
+          value.source === "inventory" &&
+          value.addonId === binding.addonId &&
+          value.field === binding.field
+        );
       case "pageDataId":
         return value.source === "pageDataId";
       default:
@@ -620,6 +627,29 @@ export function FieldBindingPicker({
                             ? `${cropFieldLabel(opt.field)} · ${opt.outputLabel}`
                             : cropFieldLabel(opt.field)
                         }
+                        hint={opt.addonName}
+                        selected={isCurrent(b)}
+                        onClick={() => handleSelect(b)}
+                      />
+                    );
+                  })}
+                </>
+              ) : null}
+
+              {/* ── Inventory addon fields ── */}
+              {accepts("inventory") && context.inventoryAddons && context.inventoryAddons.length > 0 ? (
+                <>
+                  <SectionDivider label="Estoque" />
+                  {context.inventoryAddons.map((opt) => {
+                    const b: FieldBinding = {
+                      source: "inventory",
+                      addonId: opt.addonId,
+                      field: opt.field,
+                    };
+                    return (
+                      <PickerOption
+                        key={`${opt.addonId}::${opt.field}`}
+                        label={inventoryFieldLabel(opt.field)}
                         hint={opt.addonName}
                         selected={isCurrent(b)}
                         onClick={() => handleSelect(b)}

@@ -1,4 +1,4 @@
-import type { CropFieldKey, EconomyLinkFieldKey, ProductionFieldKey, SheetsCellRef } from "@/lib/addons/types";
+import type { CropFieldKey, EconomyLinkFieldKey, InventoryFieldKey, ProductionFieldKey, SheetsCellRef } from "@/lib/addons/types";
 import type { LinkedSpreadsheet } from "@/store/slices/types";
 
 // ── Value types ──────────────────────────────────────────────────────────────
@@ -22,6 +22,8 @@ export type FieldBinding =
   | { source: "production"; addonId: string; field: ProductionFieldKey }
   /** Numeric value from a specific field of a Crop addon. Intra-section ref. `outputId` selects the harvest output row for `output*` fields. */
   | { source: "crop"; addonId: string; field: CropFieldKey; outputId?: string }
+  /** Value (number/boolean/text) from a specific field of an Inventory addon. Intra-section ref. */
+  | { source: "inventory"; addonId: string; field: InventoryFieldKey }
   /** Numeric value from the linked XpBalance section. Cross-section ref. */
   | { source: "unitXp"; sectionId: string }
   /** Value is the section's own dataId field. */
@@ -35,7 +37,12 @@ export function isActiveBinding(b: FieldBinding): boolean {
 
 /** Returns true when the binding targets an addon in the same section (cleared on move/copy). */
 export function isIntraSectionBinding(b: FieldBinding): boolean {
-  return b.source === "production" || b.source === "progressionColumn" || b.source === "crop";
+  return (
+    b.source === "production" ||
+    b.source === "progressionColumn" ||
+    b.source === "crop" ||
+    b.source === "inventory"
+  );
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -86,6 +93,12 @@ export type UnitXpBindingOption = {
   sectionLabel: string;
 };
 
+export type InventoryBindingOption = {
+  addonId: string;
+  addonName: string;
+  field: InventoryFieldKey;
+};
+
 export type CropBindingOption = {
   addonId: string;
   addonName: string;
@@ -107,6 +120,8 @@ export type FieldBindingPickerContext = {
   productionAddons?: ProductionBindingOption[];
   /** Available Crop addon fields in this section. */
   cropAddons?: CropBindingOption[];
+  /** Available Inventory addon fields in this section. */
+  inventoryAddons?: InventoryBindingOption[];
   /** Available XpBalance sections. */
   unitXpSections?: UnitXpBindingOption[];
   /** Registered Google Sheets spreadsheets in this project. */
@@ -186,6 +201,13 @@ export function getBindingChipLabel(
       const opt = context.unitXpSections?.find((e) => e.sectionId === binding.sectionId);
       return opt ? opt.sectionLabel : "XP Balance";
     }
+    case "inventory": {
+      const opt = context.inventoryAddons?.find(
+        (e) => e.addonId === binding.addonId && e.field === binding.field
+      );
+      const fieldLbl = inventoryFieldLabel(binding.field);
+      return opt ? `${opt.addonName} › ${fieldLbl}` : fieldLbl;
+    }
     case "pageDataId":
       return "ID da página";
   }
@@ -218,6 +240,10 @@ export function isBindingBroken(binding: FieldBinding, context: FieldBindingPick
       );
     case "unitXp":
       return !context.unitXpSections?.some((e) => e.sectionId === binding.sectionId);
+    case "inventory":
+      return !context.inventoryAddons?.some(
+        (e) => e.addonId === binding.addonId && e.field === binding.field
+      );
     default:
       return false;
   }
@@ -263,6 +289,24 @@ export function cropFieldLabel(field: CropFieldKey): string {
     outputQuantity: "Qtd. colhida",
     outputQuantityMin: "Qtd. colhida — Mín",
     outputQuantityMax: "Qtd. colhida — Máx",
+  };
+  return labels[field] ?? field;
+}
+
+export function inventoryFieldLabel(field: InventoryFieldKey): string {
+  const labels: Record<InventoryFieldKey, string> = {
+    weight: "Peso",
+    maxStack: "Empilhamento máximo",
+    slotSize: "Tamanho do slot",
+    durability: "Durabilidade",
+    maxDurability: "Durabilidade máxima",
+    volume: "Volume",
+    stackable: "Empilhável",
+    showInShop: "Aparece na loja",
+    consumable: "Consumível",
+    discardable: "Descartável",
+    inventoryCategory: "Categoria",
+    bindType: "Tipo de vínculo",
   };
   return labels[field] ?? field;
 }

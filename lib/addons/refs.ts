@@ -126,6 +126,10 @@ function relinkBindingToSection(
       const id = targetAddonIdOfType(targetAddons, "crop");
       return id ? { ...binding, addonId: id } : undefined;
     }
+    case "inventory": {
+      const id = targetAddonIdOfType(targetAddons, "inventory");
+      return id ? { ...binding, addonId: id } : undefined;
+    }
     case "progressionColumn": {
       const id = targetAddonIdOfType(targetAddons, "progressionTable");
       return id ? { ...binding, progressionAddonId: id } : undefined;
@@ -236,7 +240,7 @@ export function clearIntraSectionRefs(
       for (const entry of entries) {
         const binding = entry.binding as FieldBinding | undefined;
         if (
-          (binding?.source === "production" || binding?.source === "crop") &&
+          (binding?.source === "production" || binding?.source === "crop" || binding?.source === "inventory") &&
           !shouldPreserve(binding.addonId, preserveIds)
         ) {
           entry.binding = undefined;
@@ -304,7 +308,7 @@ export function collectIntraSectionDeps(addon: SectionAddon): string[] {
     const entries = (addon.data as { entries?: Array<{ binding?: FieldBinding }> }).entries;
     if (Array.isArray(entries)) {
       for (const e of entries) {
-        if (e.binding?.source === "production" || e.binding?.source === "crop") ids.add(e.binding.addonId);
+        if (e.binding?.source === "production" || e.binding?.source === "crop" || e.binding?.source === "inventory") ids.add(e.binding.addonId);
       }
     }
   } else if (addon.type === "production") {

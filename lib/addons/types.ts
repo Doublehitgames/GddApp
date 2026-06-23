@@ -391,6 +391,24 @@ export type ProductionFieldKey =
   | "outputMaxSellValue"
   | "outputUnlockValue";
 
+/** Bindable fields of an Inventory addon (read into Data Schema / Remote Config). */
+export type InventoryFieldKey =
+  // numeric
+  | "weight"
+  | "maxStack"
+  | "slotSize"
+  | "durability"
+  | "maxDurability"
+  | "volume"
+  // boolean
+  | "stackable"
+  | "showInShop"
+  | "consumable"
+  | "discardable"
+  // text
+  | "inventoryCategory"
+  | "bindType";
+
 export type DataSchemaEntry = {
   id: string;
   key: string;

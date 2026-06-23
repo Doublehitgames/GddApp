@@ -26,8 +26,10 @@ import type {
   AttributeModifierEntry,
   AttributeModifiersAddonDraft,
   CropAddonDraft,
+  InventoryAddonDraft,
 } from "@/lib/addons/types";
 import { resolveCropFieldValue } from "@/lib/addons/cropFields";
+import { resolveInventoryFieldValue } from "@/lib/addons/inventoryFields";
 
 export type SectionLookupEntry = {
   dataId?: string | null;
@@ -629,6 +631,14 @@ function resolveEntryEffectiveValue(
       const resolved = resolveCropFieldValue(cropAddon.data as CropAddonDraft, binding.field, binding.outputId);
       if (typeof resolved === "number") return resolved;
       return 0;
+    }
+  }
+
+  if (binding?.source === "inventory") {
+    const invAddon = allAddons.find((a) => a.type === "inventory" && a.id === binding.addonId);
+    if (invAddon) {
+      const resolved = resolveInventoryFieldValue(invAddon.data as InventoryAddonDraft, binding.field);
+      if (resolved !== undefined) return resolved;
     }
   }
 

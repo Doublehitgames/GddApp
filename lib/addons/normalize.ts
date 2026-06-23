@@ -50,6 +50,7 @@ import type {
   SectionAddon,
 } from "@/lib/addons/types";
 import { balanceDraftToSectionAddon, buildProgressionRowsFromRange } from "@/lib/addons/types";
+import { INVENTORY_FIELD_KEYS } from "@/lib/addons/inventoryFields";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -992,6 +993,13 @@ function normalizeFieldBinding(raw: unknown): FieldBinding | undefined {
     if (!field) return undefined;
     const outputId = typeof raw.outputId === "string" && raw.outputId.trim() ? raw.outputId.trim() : undefined;
     return { source: "crop", addonId, field, ...(outputId ? { outputId } : {}) };
+  }
+  if (source === "inventory") {
+    const addonId = typeof raw.addonId === "string" ? raw.addonId.trim() : "";
+    if (!addonId) return undefined;
+    const field = INVENTORY_FIELD_KEYS.find((f) => f === raw.field);
+    if (!field) return undefined;
+    return { source: "inventory", addonId, field };
   }
   if (source === "unitXp") {
     const sectionId = typeof raw.sectionId === "string" ? raw.sectionId.trim() : "";
