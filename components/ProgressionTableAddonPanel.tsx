@@ -441,6 +441,7 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
   const autoIntervalPopoverRef = useRef<HTMLDivElement | null>(null);
   const autoIntervalButtonRef = useRef<HTMLButtonElement | null>(null);
   const [libraryPickerOpenColumnId, setLibraryPickerOpenColumnId] = useState<string | null>(null);
+  const [libraryPickerSearch, setLibraryPickerSearch] = useState("");
   const libraryPickerRef = useRef<HTMLDivElement | null>(null);
 
   // ── Sheets binding state ─────────────────────────────────────────────
@@ -679,6 +680,10 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
+  }, [libraryPickerOpenColumnId]);
+
+  useEffect(() => {
+    setLibraryPickerSearch("");
   }, [libraryPickerOpenColumnId]);
 
   // Auto-fetch headers when the aba changes in the binding form
@@ -1841,49 +1846,90 @@ export function ProgressionTableAddonPanel({ addon, onChange, onRemove }: Progre
                                         "progressionTableAddon.libraryPickerTitle",
                                         "Selecionar coluna da Biblioteca"
                                       )}
-                                      className="absolute right-0 top-full z-20 mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl"
+                                      className="absolute right-0 top-full z-20 mt-1 w-80 rounded-md border border-gray-700 bg-gray-950/95 p-1 text-xs text-gray-200 shadow-xl"
                                     >
                                       <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
                                         {t("progressionTableAddon.libraryPickerTitle", "Selecionar coluna da Biblioteca")}
                                       </p>
-                                      {(() => {
-                                        // Group by library
-                                        const byLibrary = new Map<string, { libraryName: string; sectionTitle: string; entries: LibraryColumnOption[] }>();
-                                        for (const entry of availableLibraryColumns) {
-                                          const bucket = byLibrary.get(entry.libraryAddonId);
-                                          if (bucket) {
-                                            bucket.entries.push(entry);
-                                          } else {
-                                            byLibrary.set(entry.libraryAddonId, {
-                                              libraryName: entry.libraryName,
-                                              sectionTitle: entry.sectionTitle,
-                                              entries: [entry],
-                                            });
+                                      <div className="px-1 pb-1">
+                                        <input
+                                          autoFocus
+                                          type="text"
+                                          value={libraryPickerSearch}
+                                          onChange={(e) => setLibraryPickerSearch(e.target.value)}
+                                          placeholder={t("progressionTableAddon.libraryPickerSearchPlaceholder", "Buscar coluna...")}
+                                          className="w-full rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-gray-200 placeholder-gray-500 focus:border-sky-500 focus:outline-none"
+                                        />
+                                      </div>
+                                      <div className="max-h-56 overflow-y-auto">
+                                        {(() => {
+                                          const query = libraryPickerSearch.trim().toLowerCase();
+                                          const filtered = query
+                                            ? availableLibraryColumns.filter(
+                                                (opt) =>
+                                                  opt.label.toLowerCase().includes(query) ||
+                                                  opt.key.toLowerCase().includes(query)
+                                              )
+                                            : availableLibraryColumns;
+                                          const byLibrary = new Map<string, { libraryName: string; sectionTitle: string; entries: LibraryColumnOption[] }>();
+                                          for (const opt of filtered) {
+                                            const bucket = byLibrary.get(opt.libraryAddonId);
+                                            if (bucket) {
+                                              bucket.entries.push(opt);
+                                            } else {
+                                              byLibrary.set(opt.libraryAddonId, {
+                                                libraryName: opt.libraryName,
+                                                sectionTitle: opt.sectionTitle,
+                                                entries: [opt],
+                                              });
+                                            }
                                           }
-                                        }
-                                        return Array.from(byLibrary.entries()).map(([libId, group]) => (
-                                          <div key={libId} className="mb-1">
-                                            <p className="px-2 py-1 text-[10px] font-semibold text-sky-300/80">
-                                              <span className="text-gray-400">{group.sectionTitle}</span>
-                                              <span className="mx-1 text-gray-500">→</span>
-                                              <span>{group.libraryName}</span>
-                                            </p>
-                                            {group.entries.map((entry) => (
-                                              <button
-                                                key={`${entry.libraryAddonId}:${entry.entryId}`}
-                                                type="button"
-                                                role="option"
-                                                onClick={() => linkColumnToLibrary(column.id, entry)}
-                                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800"
-                                                title={entry.description || undefined}
-                                              >
-                                                <LibraryLabelPath value={entry.label} className="flex-1" />
-                                                <span className="shrink-0 text-[10px] text-gray-500">{entry.key}</span>
-                                              </button>
-                                            ))}
-                                          </div>
-                                        ));
-                                      })()}
+                                          if (byLibrary.size === 0) {
+                                            return (
+                                              <p className="px-2 py-3 text-center text-[11px] text-gray-500">
+                                                {t("progressionTableAddon.libraryPickerEmpty", "Nenhuma coluna encontrada")}
+                                              </p>
+                                            );
+                                          }
+                                          return Array.from(byLibrary.entries()).map(([libId, group]) => (
+                                            <div key={libId} className="mb-1">
+                                              <p className="px-2 py-1 text-[10px] font-semibold text-sky-300/80">
+                                                <span className="text-gray-400">{group.sectionTitle}</span>
+                                                <span className="mx-1 text-gray-500">→</span>
+                                                <span>{group.libraryName}</span>
+                                              </p>
+                                              {group.entries.map((opt) => {
+                                                const isSelected =
+                                                  column.libraryRef?.libraryAddonId === opt.libraryAddonId &&
+                                                  column.libraryRef?.entryId === opt.entryId;
+                                                return (
+                                                  <button
+                                                    key={`${opt.libraryAddonId}:${opt.entryId}`}
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={isSelected}
+                                                    onClick={() => linkColumnToLibrary(column.id, opt)}
+                                                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-gray-800 ${isSelected ? "bg-sky-900/40" : ""}`}
+                                                  >
+                                                    <div className="min-w-0 flex-1">
+                                                      <LibraryLabelPath value={opt.label} />
+                                                      {opt.description && (
+                                                        <span className="mt-0.5 block truncate text-[10px] text-gray-500">
+                                                          {opt.description}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <span className="shrink-0 text-[10px] text-gray-500">{opt.key}</span>
+                                                    {isSelected && (
+                                                      <span className="shrink-0 text-sky-400">✓</span>
+                                                    )}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          ));
+                                        })()}
+                                      </div>
                                     </div>
                                   )}
                                 </>

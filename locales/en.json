@@ -1110,6 +1110,8 @@
     "linkLibraryAriaLabel": "Link to Field Library",
     "unlinkLibraryAriaLabel": "Unlink from Library",
     "libraryPickerTitle": "Select field from Library",
+    "libraryPickerSearchPlaceholder": "Search column...",
+    "libraryPickerEmpty": "No columns found",
     "overrideCount": "{count} manual",
     "resetOverrideAriaLabel": "Reset to generated value",
     "resetAllOverridesButton": "↺ Reset",
@@ -1366,6 +1368,8 @@
     "linkLibraryAriaLabel": "Link to Field Library",
     "unlinkLibraryAriaLabel": "Unlink from Library",
     "libraryPickerTitle": "Select field from Library",
+    "libraryPickerSearchPlaceholder": "Search field...",
+    "libraryPickerEmpty": "No fields found",
     "validation": {
       "keyRequired": "Key is required.",
       "keyUnique": "Key must be unique."

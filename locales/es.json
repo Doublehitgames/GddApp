@@ -1110,6 +1110,8 @@
     "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
     "unlinkLibraryAriaLabel": "Desvincular de la Biblioteca",
     "libraryPickerTitle": "Seleccionar campo de la Biblioteca",
+    "libraryPickerSearchPlaceholder": "Buscar columna...",
+    "libraryPickerEmpty": "Ninguna columna encontrada",
     "overrideCount": "{count} manual(es)",
     "resetOverrideAriaLabel": "Resetear al valor generado",
     "resetAllOverridesButton": "↺ Resetear",
@@ -1366,6 +1368,8 @@
     "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
     "unlinkLibraryAriaLabel": "Desvincular de la Biblioteca",
     "libraryPickerTitle": "Seleccionar campo de la Biblioteca",
+    "libraryPickerSearchPlaceholder": "Buscar campo...",
+    "libraryPickerEmpty": "Ningún campo encontrado",
     "validation": {
       "keyRequired": "La clave es obligatoria.",
       "keyUnique": "La clave debe ser única."
