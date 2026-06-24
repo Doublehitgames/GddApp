@@ -20,9 +20,11 @@ export const SINGLETON_ADDON_TYPES: ReadonlySet<SectionAddonType> = new Set<Sect
   "currency",
   "currencyExchange",
   "dataSchema",
+  "exportSchema",
   "globalVariable",
   "production",
   "craftTable",
   "inventory",
   "fieldLibrary",
+  "crop",
 ]);
