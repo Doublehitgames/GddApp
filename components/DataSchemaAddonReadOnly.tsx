@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { DataSchemaAddonDraft, DataSchemaEntry, EconomyLinkAddonDraft, FieldLibraryAddonDraft, ProductionAddonDraft, SectionAddon } from "@/lib/addons/types";
+import type { CropAddonDraft, DataSchemaAddonDraft, DataSchemaEntry, EconomyLinkAddonDraft, FieldLibraryAddonDraft, InventoryAddonDraft, ProductionAddonDraft, SectionAddon } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+import { resolveInventoryFieldValue } from "@/lib/addons/inventoryFields";
+import { resolveCropFieldValue } from "@/lib/addons/cropFields";
 import { toSlug } from "@/lib/utils/slug";
 
 interface DataSchemaAddonReadOnlyProps {
@@ -134,6 +136,24 @@ export function DataSchemaAddonReadOnly({ addon, theme = "dark", bare = false }:
           const val = (prodAddon.data as ProductionAddonDraft)[fieldKey];
           if (typeof val === "number") return val;
         }
+      }
+    }
+    if (binding?.source === "inventory") {
+      const invAddon = (sectionContext?.addons ?? []).find(
+        (a: SectionAddon) => a.type === "inventory" && a.id === binding.addonId
+      );
+      if (invAddon) {
+        const resolved = resolveInventoryFieldValue(invAddon.data as InventoryAddonDraft, binding.field);
+        if (resolved !== undefined) return resolved;
+      }
+    }
+    if (binding?.source === "crop") {
+      const cropAddon = (sectionContext?.addons ?? []).find(
+        (a: SectionAddon) => a.type === "crop" && a.id === binding.addonId
+      );
+      if (cropAddon) {
+        const resolved = resolveCropFieldValue(cropAddon.data as CropAddonDraft, binding.field, binding.outputId);
+        if (typeof resolved === "number") return resolved;
       }
     }
     return entry.value;
