@@ -1863,7 +1863,19 @@
       "destination": "Destino:",
       "selectDestination": "Selecione um destino",
       "disabledCurrent": "atual",
-      "disabledDescendant": "descendente"
+      "disabledDescendant": "descendente",
+      "clearSearch": "Limpar busca",
+      "noneSelected": "Nenhuma selecionada",
+      "selectedCountOne": "{count} selecionada",
+      "selectedCountMany": "{count} selecionadas",
+      "clear": "Limpar",
+      "selectChildren": "Selecionar filhos",
+      "selectVisible": "Selecionar visíveis",
+      "deselectVisible": "Desmarcar visíveis",
+      "selectedPagesOne": "{count} página selecionada",
+      "selectedPagesMany": "{count} páginas selecionadas",
+      "selectAtLeastOne": "Selecione pelo menos uma página",
+      "rootDefault": "📁 Raiz do Projeto"
     },
     "audit": {
       "createdBy": "Criado por {{name}} em {{date}}",

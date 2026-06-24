@@ -1863,7 +1863,19 @@
       "destination": "Destination:",
       "selectDestination": "Select a destination",
       "disabledCurrent": "current",
-      "disabledDescendant": "descendant"
+      "disabledDescendant": "descendant",
+      "clearSearch": "Clear search",
+      "noneSelected": "None selected",
+      "selectedCountOne": "{count} selected",
+      "selectedCountMany": "{count} selected",
+      "clear": "Clear",
+      "selectChildren": "Select children",
+      "selectVisible": "Select visible",
+      "deselectVisible": "Deselect visible",
+      "selectedPagesOne": "{count} page selected",
+      "selectedPagesMany": "{count} pages selected",
+      "selectAtLeastOne": "Select at least one page",
+      "rootDefault": "📁 Project Root"
     },
     "audit": {
       "createdBy": "Created by {{name}} on {{date}}",

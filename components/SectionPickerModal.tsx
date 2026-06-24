@@ -258,6 +258,33 @@ export function SectionPickerModal({
     });
   }, []);
 
+  // Pais (seções com filhos) atualmente selecionados → habilitam "Selecionar filhos".
+  const hasSelectedParent = useMemo(
+    () =>
+      Array.from(multiSelection).some(
+        (id) => (childrenByParent.get(id)?.length ?? 0) > 0
+      ),
+    [multiSelection, childrenByParent]
+  );
+
+  // Adiciona toda a subárvore (filhos, netos…) de cada pai já selecionado,
+  // pulando os desabilitados. Mantém o pai selecionado.
+  const selectChildrenOfSelectedParents = useCallback(() => {
+    setMultiSelection((prev) => {
+      const next = new Set(prev);
+      const addDescendants = (id: string) => {
+        for (const child of childrenByParent.get(id) ?? []) {
+          if (!disabledSet.has(child.id)) next.add(child.id);
+          addDescendants(child.id);
+        }
+      };
+      for (const id of prev) {
+        if ((childrenByParent.get(id)?.length ?? 0) > 0) addDescendants(id);
+      }
+      return next;
+    });
+  }, [childrenByParent, disabledSet]);
+
   // Keyboard handling while modal is open.
   useEffect(() => {
     if (!open) return;
@@ -384,7 +411,7 @@ export function SectionPickerModal({
                 type="button"
                 onClick={() => setSearchTerm("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-200"
-                aria-label="Limpar busca"
+                aria-label={t("sectionDetail.picker.clearSearch", "Limpar busca")}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -394,40 +421,58 @@ export function SectionPickerModal({
           </div>
         </div>
 
+        {/* Selection toolbar — fixo, fora da área de rolagem */}
+        {multiSelect && (
+          <div className="flex items-center justify-between px-5 py-2 border-b border-gray-700/80 shrink-0">
+            <span className="text-xs text-gray-400">
+              {multiSelection.size > 0
+                ? t(
+                    multiSelection.size === 1
+                      ? "sectionDetail.picker.selectedCountOne"
+                      : "sectionDetail.picker.selectedCountMany",
+                    multiSelection.size === 1 ? "{count} selecionada" : "{count} selecionadas"
+                  ).replace("{count}", String(multiSelection.size))
+                : t("sectionDetail.picker.noneSelected", "Nenhuma selecionada")}
+            </span>
+            <div className="flex items-center gap-3">
+              {multiSelection.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMultiSelection(new Set())}
+                  className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  {t("sectionDetail.picker.clear", "Limpar")}
+                </button>
+              )}
+              {hasSelectedParent && (
+                <button
+                  type="button"
+                  onClick={selectChildrenOfSelectedParents}
+                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium"
+                >
+                  {t("sectionDetail.picker.selectChildren", "Selecionar filhos")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleAllVisible}
+                className="text-xs text-sky-400 hover:text-sky-300 transition-colors font-medium"
+              >
+                {allVisibleSelected
+                  ? t("sectionDetail.picker.deselectVisible", "Desmarcar visíveis")
+                  : t("sectionDetail.picker.selectVisible", "Selecionar visíveis")}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Body */}
         <div ref={listRef} className="flex-1 overflow-y-auto px-3 py-3">
           {prelude && <div className="mb-3 px-2">{prelude}</div>}
-          {multiSelect && (
-            <div className="flex items-center justify-between px-2 py-1.5 mb-2 border-b border-gray-700/50">
-              <span className="text-xs text-gray-400">
-                {multiSelection.size > 0
-                  ? `${multiSelection.size} selecionada${multiSelection.size !== 1 ? "s" : ""}`
-                  : "Nenhuma selecionada"}
-              </span>
-              <div className="flex items-center gap-3">
-                {multiSelection.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setMultiSelection(new Set())}
-                    className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
-                  >
-                    Limpar
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={toggleAllVisible}
-                  className="text-xs text-sky-400 hover:text-sky-300 transition-colors font-medium"
-                >
-                  {allVisibleSelected ? "Desmarcar visíveis" : "Selecionar visíveis"}
-                </button>
-              </div>
-            </div>
-          )}
           <div className="space-y-0.5">
             {allowRoot && !hasSearch && (
               <RootRow
-                label={rootLabel || "📁 Raiz do Projeto"}
+                label={rootLabel || t("sectionDetail.picker.rootDefault", "📁 Raiz do Projeto")}
                 description={rootDescription}
                 selected={selection === SECTION_PICKER_ROOT}
                 onSelect={() => setSelection(SECTION_PICKER_ROOT)}
@@ -474,10 +519,15 @@ export function SectionPickerModal({
             {multiSelect ? (
               multiSelection.size > 0 ? (
                 <span className="text-gray-200 font-medium">
-                  {multiSelection.size} página{multiSelection.size !== 1 ? "s" : ""} selecionada{multiSelection.size !== 1 ? "s" : ""}
+                  {t(
+                    multiSelection.size === 1
+                      ? "sectionDetail.picker.selectedPagesOne"
+                      : "sectionDetail.picker.selectedPagesMany",
+                    multiSelection.size === 1 ? "{count} página selecionada" : "{count} páginas selecionadas"
+                  ).replace("{count}", String(multiSelection.size))}
                 </span>
               ) : (
-                <span className="text-gray-600 italic">Selecione pelo menos uma página</span>
+                <span className="text-gray-600 italic">{t("sectionDetail.picker.selectAtLeastOne", "Selecione pelo menos uma página")}</span>
               )
             ) : selection === SECTION_PICKER_ROOT && allowRoot ? (
               <span>
@@ -485,7 +535,7 @@ export function SectionPickerModal({
                   {t("sectionDetail.picker.destination", "Destino:")}
                 </span>{" "}
                 <span className="text-gray-200 font-medium">
-                  {rootLabel || "Raiz do Projeto"}
+                  {rootLabel || t("sectionDetail.picker.rootDefault", "📁 Raiz do Projeto")}
                 </span>
               </span>
             ) : selectedBreadcrumb ? (
