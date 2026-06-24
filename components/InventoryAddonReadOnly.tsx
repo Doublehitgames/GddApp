@@ -251,11 +251,14 @@ export function InventoryAddonReadOnly({ addon, theme = "dark", bare = false }: 
           {hasVolumeConfig ? `${t("inventoryAddon.summaryVolumePrefix", "Volume")} ${addon.volume ?? 0}, ` : ""}
           {t("inventoryAddon.summaryBindPrefix", "vinculo")} {t(`inventoryAddon.bindType.${addon.bindType}`, addon.bindType)}.{" "}
           {t("inventoryAddon.summaryShopPrefix", "Loja")}:{" "}
-          {addon.showInShop ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")},{" "}
+          {addon.showInShop ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}
+          {addon.showInShopBinding?.source === "sheets" ? <span title="Vinculado ao Google Sheets"> 🔗</span> : null},{" "}
           {t("inventoryAddon.summaryConsumablePrefix", "consumivel")}:{" "}
-          {addon.consumable ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")},{" "}
+          {addon.consumable ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}
+          {addon.consumableBinding?.source === "sheets" ? <span title="Vinculado ao Google Sheets"> 🔗</span> : null},{" "}
           {t("inventoryAddon.summaryDiscardablePrefix", "descartavel")}:{" "}
-          {addon.discardable ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}.
+          {addon.discardable ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}
+          {addon.discardableBinding?.source === "sheets" ? <span title="Vinculado ao Google Sheets"> 🔗</span> : null}.
         </p>
         {addon.notes ? <p className={mutedClass}>{addon.notes}</p> : null}
         {producedBySections.length > 0 && (

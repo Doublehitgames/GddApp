@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { InventoryAddonDraft, InventoryBindType } from "@/lib/addons/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
@@ -116,6 +116,87 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
     }
     return null;
   }, [addon.id, projects]);
+
+  // ── Google Sheets binding (showInShop / consumable / discardable) ─────────
+  const setSectionLinkedSpreadsheet = useProjectStore((state) => state.setSectionLinkedSpreadsheet);
+
+  const linkedSpreadsheets = useMemo(() => {
+    if (!currentProjectId) return [];
+    const project = projects.find((p) => p.id === currentProjectId);
+    return project?.linkedSpreadsheets ?? [];
+  }, [projects, currentProjectId]);
+
+  const currentSection = useMemo(() => {
+    for (const project of projects) {
+      for (const section of project.sections || []) {
+        if (section.id === currentSectionId) return section as { id: string; dataId?: string; linkedSpreadsheetId?: string };
+      }
+    }
+    return null;
+  }, [projects, currentSectionId]);
+
+  const sectionLinkedSpreadsheetId = currentSection?.linkedSpreadsheetId;
+
+  const handleLinkedSpreadsheetChange = useCallback(
+    (id: string | undefined) => {
+      if (currentProjectId && currentSection) {
+        setSectionLinkedSpreadsheet(currentProjectId, currentSection.id, id);
+      }
+    },
+    [currentProjectId, currentSection, setSectionLinkedSpreadsheet]
+  );
+
+  const sheetsBindingContext = useMemo<FieldBindingPickerContext>(() => ({
+    spreadsheetRegistry: linkedSpreadsheets,
+    linkedSpreadsheetId: sectionLinkedSpreadsheetId,
+    onLinkedSpreadsheetChange: handleLinkedSpreadsheetChange,
+    pageDataId: currentSection?.dataId,
+  }), [linkedSpreadsheets, sectionLinkedSpreadsheetId, handleLinkedSpreadsheetChange, currentSection]);
+
+  type BoolField = "showInShop" | "consumable" | "discardable";
+  type BoolBindingField = "showInShopBinding" | "consumableBinding" | "discardableBinding";
+
+  function handleBoolBinding(bindingField: BoolBindingField, scalarField: BoolField, binding: FieldBinding) {
+    const patch: Partial<InventoryAddonDraft> = {
+      [bindingField]: binding.source === "manual" ? undefined : binding,
+    };
+    if (binding.source === "sheets" && typeof binding.ref.cachedValue === "boolean") {
+      patch[scalarField] = binding.ref.cachedValue;
+    }
+    commit(patch);
+  }
+
+  const renderBoolField = (label: string, scalarField: BoolField, bindingField: BoolBindingField) => {
+    const binding = addon[bindingField];
+    const isSheets = binding?.source === "sheets";
+    const checked = isSheets && typeof binding.ref.cachedValue === "boolean"
+      ? binding.ref.cachedValue
+      : addon[scalarField];
+    return (
+      <div className="rounded-lg border border-gray-700/80 bg-gray-900/60 p-3">
+        <FieldBindingPicker
+          config={{ valueType: "boolean", acceptedSources: ["sheets"], label }}
+          value={binding ?? MANUAL_BINDING}
+          onChange={(b) => handleBoolBinding(bindingField, scalarField, b)}
+          context={sheetsBindingContext}
+        >
+          <div className="flex h-full items-center gap-2">
+            <ToggleSwitch
+              checked={checked}
+              onChange={(next) => commit({ [scalarField]: next } as Partial<InventoryAddonDraft>)}
+              ariaLabel={label}
+              disabled={isSheets}
+            />
+            {isSheets && (
+              <span className="text-[10px] font-medium text-emerald-300">
+                {checked ? t("inventoryAddon.boolean.true", "Sim") : t("inventoryAddon.boolean.false", "Nao")}
+              </span>
+            )}
+          </div>
+        </FieldBindingPicker>
+      </div>
+    );
+  };
 
   const producedBySections = useMemo(() => {
     if (!currentSectionId) return [] as Array<{ id: string; title: string; projectId: string; sourceKind: "passive" | "recipe" }>;
@@ -399,44 +480,9 @@ export function InventoryAddonPanel({ addon, onChange, onRemove }: InventoryAddo
       </label>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gray-700/80 bg-gray-900/60 p-3">
-          <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-            {t("inventoryAddon.showInShopLabel", "Pode aparecer na Loja")}
-          </span>
-          <div className="flex items-center">
-            <ToggleSwitch
-              checked={addon.showInShop}
-              onChange={(next) => commit({ showInShop: next })}
-              ariaLabel={t("inventoryAddon.showInShopLabel", "Pode aparecer na Loja")}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-700/80 bg-gray-900/60 p-3">
-          <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-            {t("inventoryAddon.consumableLabel", "Consumivel")}
-          </span>
-          <div className="flex items-center">
-            <ToggleSwitch
-              checked={addon.consumable}
-              onChange={(next) => commit({ consumable: next })}
-              ariaLabel={t("inventoryAddon.consumableLabel", "Consumivel")}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-700/80 bg-gray-900/60 p-3">
-          <span className="mb-1 block text-xs uppercase tracking-wide text-gray-400">
-            {t("inventoryAddon.discardableLabel", "Pode descartar")}
-          </span>
-          <div className="flex items-center">
-            <ToggleSwitch
-              checked={addon.discardable}
-              onChange={(next) => commit({ discardable: next })}
-              ariaLabel={t("inventoryAddon.discardableLabel", "Pode descartar")}
-            />
-          </div>
-        </div>
+        {renderBoolField(t("inventoryAddon.showInShopLabel", "Pode aparecer na Loja"), "showInShop", "showInShopBinding")}
+        {renderBoolField(t("inventoryAddon.consumableLabel", "Consumivel"), "consumable", "consumableBinding")}
+        {renderBoolField(t("inventoryAddon.discardableLabel", "Pode descartar"), "discardable", "discardableBinding")}
       </div>
 
       {(producedBySections.length > 0 || ingredientForSections.length > 0) && (

@@ -837,8 +837,18 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
   const bindType = bindTypeRaw === "none" || bindTypeRaw === "onPickup" || bindTypeRaw === "onEquip" ? bindTypeRaw : "none";
   let showInShop = true;
   if (value.showInShop != null) showInShop = asBooleanLoose(value.showInShop);
-  const consumable = asBooleanLoose(value.consumable);
-  const discardable = value.discardable == null ? true : asBooleanLoose(value.discardable);
+  let consumable = asBooleanLoose(value.consumable);
+  let discardable = value.discardable == null ? true : asBooleanLoose(value.discardable);
+  const showInShopBinding = normalizeFieldBinding(value.showInShopBinding);
+  const consumableBinding = normalizeFieldBinding(value.consumableBinding);
+  const discardableBinding = normalizeFieldBinding(value.discardableBinding);
+  // Sheets binding: mirror the synced cell value into the scalar so the field
+  // always reflects the sheet, even for data saved before bind-time mirroring.
+  const sheetsBoolCachedValue = (binding: FieldBinding | undefined): boolean | undefined =>
+    binding?.source === "sheets" && typeof binding.ref.cachedValue === "boolean" ? binding.ref.cachedValue : undefined;
+  showInShop = sheetsBoolCachedValue(showInShopBinding) ?? showInShop;
+  consumable = sheetsBoolCachedValue(consumableBinding) ?? consumable;
+  discardable = sheetsBoolCachedValue(discardableBinding) ?? discardable;
   const notes = typeof value.notes === "string" ? value.notes : "";
 
   return {
@@ -857,8 +867,11 @@ function normalizeInventoryDraft(value: unknown): InventoryAddonDraft | null {
     maxDurability: hasDurabilityConfig ? (maxDurability == null ? 0 : Math.max(0, maxDurability)) : undefined,
     bindType,
     showInShop,
+    ...(showInShopBinding ? { showInShopBinding } : {}),
     consumable,
+    ...(consumableBinding ? { consumableBinding } : {}),
     discardable,
+    ...(discardableBinding ? { discardableBinding } : {}),
     notes: notes || undefined,
   };
 }

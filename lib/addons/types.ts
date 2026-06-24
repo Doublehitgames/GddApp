@@ -213,8 +213,14 @@ export type InventoryAddonDraft = {
   maxDurability?: number;
   bindType: InventoryBindType;
   showInShop: boolean;
+  /** When bound to Sheets, `showInShop` mirrors the synced cell value. */
+  showInShopBinding?: FieldBinding;
   consumable: boolean;
+  /** When bound to Sheets, `consumable` mirrors the synced cell value. */
+  consumableBinding?: FieldBinding;
   discardable: boolean;
+  /** When bound to Sheets, `discardable` mirrors the synced cell value. */
+  discardableBinding?: FieldBinding;
   notes?: string;
 };
 

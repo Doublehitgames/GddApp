@@ -2,7 +2,15 @@
 // Sincronização em lote de todos os campos Google Sheets de uma seção.
 
 import { fetchSheetCellValue, fetchSheetRangeValues, fetchColumnValues, fetchSpreadsheetHeaders, columnIndexToLetter, parseCellNumber } from "@/lib/googleSheets";
-import type { SectionAddon, SheetsCellRef, ProgressionTableColumnSheetsBinding, ProgressionTableRow } from "@/lib/addons/types";
+import type { SectionAddon, SheetsCellRef, ProgressionTableColumnSheetsBinding, ProgressionTableRow, InventoryFieldKey } from "@/lib/addons/types";
+import { INVENTORY_FIELD_VALUE_TYPE } from "@/lib/addons/inventoryFields";
+
+/** Converte o valor cru de uma célula para boolean (mesma regra do FieldBindingPicker). */
+function parseCellBoolean(raw: string | number | boolean): boolean {
+  if (typeof raw === "boolean") return raw;
+  const upper = String(raw).trim().toUpperCase();
+  return upper === "TRUE" || upper === "1" || upper === "YES" || upper === "SIM";
+}
 
 // ---------------------------------------------------------------------------
 // Tipos públicos
@@ -301,6 +309,70 @@ export async function syncSectionAddons(
           // Atualiza cellRef com a posição resolvida (para display)
           data[bindingKey] = { source: "sheets", ref: { ...ref, cellRef: resolvedCellRef, cachedValue: num, syncedAt } };
           if (scalarKey) data[scalarKey] = Math.floor(Math.max(0, num));
+          totalSynced++;
+          changed = true;
+          fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: true });
+        } catch {
+          fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: "Erro inesperado" });
+        }
+      }
+
+      updatedAddons.push(changed ? ({ ...addon, data } as SectionAddon) : addon);
+
+    // ── inventory: células individuais (boolean/numérico, type-aware) ────────
+    } else if (addon.type === "inventory") {
+      const data = { ...(addon.data as Record<string, unknown>) };
+      const bindings = extractCellBindings(data);
+
+      if (bindings.length === 0) {
+        updatedAddons.push(addon);
+        continue;
+      }
+
+      const hasLocks = bindings.some((b) => b.ref.columnLock || b.ref.rowLock);
+      const resolvedColumnsBySheet = hasLocks
+        ? await ensureColumnsBySheet([...new Set(bindings.map((b) => b.ref.sheetName))])
+        : effectiveColumnsBySheet;
+
+      let changed = false;
+      for (const { bindingKey, scalarKey, ref } of bindings) {
+        try {
+          let resolvedCellRef = ref.cellRef;
+          if (ref.columnLock || ref.rowLock) {
+            const resolved = await resolveLockedCellRef(ref, spreadsheetId, token, pageDataId, resolvedColumnsBySheet, columnACache);
+            if (resolved === null) {
+              fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `Não foi possível resolver lock: coluna "${ref.columnLock ?? ""}" / linha "${ref.rowLock ?? ""}"` });
+              continue;
+            }
+            resolvedCellRef = resolved;
+          }
+
+          const rawVal = await readCellCached(token, spreadsheetId, ref.sheetName, resolvedCellRef, cache);
+          if (rawVal === null) {
+            fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `Não foi possível ler ${ref.sheetName}!${resolvedCellRef}` });
+            continue;
+          }
+
+          // Tipo do campo escalar determina a conversão (boolean vs numérico).
+          const valueType = scalarKey ? INVENTORY_FIELD_VALUE_TYPE[scalarKey as InventoryFieldKey] : undefined;
+          let cachedValue: string | number | boolean;
+          let scalarValue: number | boolean;
+          if (valueType === "boolean") {
+            const bool = parseCellBoolean(rawVal);
+            cachedValue = bool;
+            scalarValue = bool;
+          } else {
+            const num = typeof rawVal === "number" ? rawVal : parseCellNumber(String(rawVal));
+            if (num === null) {
+              fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: false, error: `"${rawVal}" não é número válido` });
+              continue;
+            }
+            cachedValue = num;
+            scalarValue = Math.floor(Math.max(0, num));
+          }
+
+          data[bindingKey] = { source: "sheets", ref: { ...ref, cellRef: resolvedCellRef, cachedValue, syncedAt } };
+          if (scalarKey) data[scalarKey] = scalarValue;
           totalSynced++;
           changed = true;
           fields.push({ addonId: addon.id, addonName, field: bindingKey, ok: true });
