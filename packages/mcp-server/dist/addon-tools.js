@@ -77,6 +77,20 @@ export function registerAddonTools(server, client) {
         }
         return result;
     }
+    // Reusable Google Sheets binding for a scalar field (boolean or numeric). The in-app
+    // "Sincronizar tudo" reads the cell and overwrites the scalar (booleans: TRUE/1/YES/SIM
+    // → true). cellRef is the fallback position; use rowLock "auto" to anchor the row to the
+    // page DataID so many items can bind to the same column at once. Setting it via MCP only
+    // defines the binding — value resolution stays client-side.
+    const sheetsBinding = z.object({
+        source: z.literal("sheets"),
+        ref: z.object({
+            sheetName: z.string().describe("Sheet/tab name"),
+            cellRef: z.string().describe('Fallback position, e.g. "C2". Required even with locks.'),
+            columnLock: z.string().optional().describe("Column header name (resolves the column by name)."),
+            rowLock: z.string().optional().describe('"auto" = page DataID; or a fixed value matched in column A.'),
+        }),
+    }).optional();
     // ── 1. Currency ─────────────────────────────────────────────────
     const currencyFields = {
         code: z.string().describe("Currency code (e.g. GLD, DIA)"),
@@ -87,19 +101,6 @@ export function registerAddonTools(server, client) {
     };
     pair("currency", "currency", "currency (in-game money)", currencyFields, optional(currencyFields));
     // ── 2. Inventory ────────────────────────────────────────────────
-    // Optional Google Sheets binding for a boolean field. The in-app "Sincronizar tudo"
-    // reads the cell and overwrites the scalar (TRUE/1/YES/SIM → true). cellRef is the
-    // fallback position; use rowLock "auto" to anchor the row to the page DataID so many
-    // items can bind to one column at once.
-    const sheetsBoolBinding = z.object({
-        source: z.literal("sheets"),
-        ref: z.object({
-            sheetName: z.string().describe("Sheet/tab name"),
-            cellRef: z.string().describe('Fallback position, e.g. "C2". Required even with locks.'),
-            columnLock: z.string().optional().describe("Column header name (resolves the column by name)."),
-            rowLock: z.string().optional().describe('"auto" = page DataID; or a fixed value matched in column A.'),
-        }),
-    }).optional();
     const inventoryFields = {
         weight: z.number().default(0).describe("Item weight"),
         stackable: z.boolean().default(true).describe("Can items stack?"),
@@ -117,11 +118,11 @@ export function registerAddonTools(server, client) {
         volume: z.number().optional().describe("Item volume; present only when hasVolumeConfig is true."),
         bindType: z.enum(["none", "onPickup", "onEquip"]).default("none").describe("Bind on pickup/equip"),
         showInShop: z.boolean().default(true).describe("Visible in shop?"),
-        showInShopBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for showInShop."),
+        showInShopBinding: sheetsBinding.describe("Optional Google Sheets binding for showInShop."),
         consumable: z.boolean().default(false).describe("Is consumable?"),
-        consumableBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for consumable."),
+        consumableBinding: sheetsBinding.describe("Optional Google Sheets binding for consumable."),
         discardable: z.boolean().default(true).describe("Can be discarded?"),
-        discardableBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for discardable."),
+        discardableBinding: sheetsBinding.describe("Optional Google Sheets binding for discardable."),
         notes: z.string().optional().describe("Design notes"),
     };
     pair("inventory", "inventory", "inventory item", inventoryFields, optional(inventoryFields));
@@ -135,6 +136,7 @@ export function registerAddonTools(server, client) {
         hasBuyConfig: z.boolean().optional().default(true).describe("Enable buy configuration"),
         buyCurrencyRef: z.string().optional().describe("Currency section ID for buy price"),
         buyValue: z.number().optional().describe("Buy price"),
+        buyValueBinding: sheetsBinding.describe("Optional Google Sheets binding for buyValue."),
         buyValueProgressionLink: progressionLinkSchema.describe("Link buyValue to a progression table column (resolved by unlockValue)"),
         minBuyValue: z.number().optional().describe("Minimum buy price"),
         minBuyValueProgressionLink: progressionLinkSchema.describe("Link minBuyValue to a progression table column"),
@@ -143,6 +145,7 @@ export function registerAddonTools(server, client) {
         hasSellConfig: z.boolean().optional().default(true).describe("Enable sell configuration"),
         sellCurrencyRef: z.string().optional().describe("Currency section ID for sell price"),
         sellValue: z.number().optional().describe("Sell price"),
+        sellValueBinding: sheetsBinding.describe("Optional Google Sheets binding for sellValue."),
         sellValueProgressionLink: progressionLinkSchema.describe("Link sellValue to a progression table column"),
         minSellValue: z.number().optional().describe("Minimum sell price"),
         minSellValueProgressionLink: progressionLinkSchema.describe("Link minSellValue to a progression table column"),
@@ -153,6 +156,7 @@ export function registerAddonTools(server, client) {
         hasUnlockConfig: z.boolean().optional().default(false).describe("Enable unlock config"),
         unlockRef: z.string().optional().describe("Reference to unlock requirement"),
         unlockValue: z.number().optional().describe("Unlock cost"),
+        unlockValueBinding: sheetsBinding.describe("Optional Google Sheets binding for unlockValue."),
         unlockValueMin: z.number().optional().describe("Minimum unlock cost"),
         unlockValueMax: z.number().optional().describe("Maximum unlock cost"),
         notes: z.string().optional().describe("Design notes"),
@@ -308,16 +312,21 @@ export function registerAddonTools(server, client) {
         mode: z.enum(["passive", "recipe"]).default("passive").describe("Production mode"),
         outputRef: z.string().optional().describe("Output item section ID (passive mode)"),
         minOutput: z.number().optional().default(1).describe("Minimum output quantity"),
+        minOutputBinding: sheetsBinding.describe("Optional Google Sheets binding for minOutput."),
         minOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link minOutput to a progression table column (level-scaled)."),
         maxOutput: z.number().optional().default(1).describe("Maximum output quantity"),
+        maxOutputBinding: sheetsBinding.describe("Optional Google Sheets binding for maxOutput."),
         maxOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link maxOutput to a progression table column (level-scaled)."),
         intervalSeconds: z.number().optional().default(60).describe("Production interval in seconds"),
+        intervalSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for intervalSeconds."),
         intervalSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link intervalSeconds to a progression table column (level-scaled)."),
         requiresCollection: z.boolean().optional().default(false).describe("Requires manual collection?"),
         capacity: z.number().optional().describe("Storage capacity"),
+        capacityBinding: sheetsBinding.describe("Optional Google Sheets binding for capacity."),
         ingredients: z.array(ingredientSchema).optional().default([]).describe("Recipe ingredients"),
         outputs: z.array(outputSchema).optional().default([]).describe("Recipe outputs"),
         craftTimeSeconds: z.number().optional().default(60).describe("Craft time in seconds"),
+        craftTimeSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for craftTimeSeconds."),
         craftTimeSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link craftTimeSeconds to a progression table column (level-scaled)."),
         notes: z.string().optional().describe("Design notes"),
     };
@@ -376,9 +385,11 @@ export function registerAddonTools(server, client) {
     const cropFields = {
         harvestMode: z.enum(["instant", "progressive"]).default("instant").describe("'instant' = single harvest, plant dies. 'progressive' = multiple harvest cycles over the same planting."),
         growthSeconds: z.number().optional().describe("Base growth time in seconds"),
+        growthSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for growthSeconds."),
         growthSecondsMin: z.number().optional().describe("Minimum growth time (lower bound)"),
         growthSecondsMax: z.number().optional().describe("Maximum growth time (upper bound)"),
         totalHarvest: z.number().optional().describe("Number of harvest cycles (progressive mode only)"),
+        totalHarvestBinding: sheetsBinding.describe("Optional Google Sheets binding for totalHarvest."),
         totalHarvestMin: z.number().optional().describe("Minimum harvest cycles (progressive only)"),
         totalHarvestMax: z.number().optional().describe("Maximum harvest cycles (progressive only)"),
         stages: z.array(cropStageSchema).default([]).describe("Visual growth stages (progressive mode)"),
@@ -389,9 +400,11 @@ export function registerAddonTools(server, client) {
         witheredPlantRef: z.string().optional().describe("Section ID of the page to spawn after expiry"),
         seedRef: z.string().optional().describe("Section ID of the seed item, or '__self__' to use this page as its own seed"),
         seedQuantity: z.number().optional().describe("Base seed cost"),
+        seedQuantityBinding: sheetsBinding.describe("Optional Google Sheets binding for seedQuantity."),
         seedQuantityMin: z.number().optional().describe("Minimum seed cost"),
         seedQuantityMax: z.number().optional().describe("Maximum seed cost"),
         plantEnergy: z.number().optional().describe("Energy consumed when planting"),
+        plantEnergyBinding: sheetsBinding.describe("Optional Google Sheets binding for plantEnergy."),
         plantEnergyMin: z.number().optional().describe("Minimum energy cost"),
         plantEnergyMax: z.number().optional().describe("Maximum energy cost"),
         fertilizers: z.array(cropItemInputSchema).default([]).describe("Fertilizer items accepted by this crop"),

@@ -125,11 +125,11 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
   const cur = { code: z.string(), displayName: z.string(), kind: z.enum(["soft", "premium", "event", "other"]), decimals: z.number().optional(), notes: z.string().optional() };
   pair("currency", "currency", "currency", cur, opt(cur));
 
-  // 2. Inventory
-  // Optional Google Sheets binding for the boolean fields. Sync (in-app "Sincronizar tudo")
-  // reads the cell and overwrites the scalar (TRUE/1/YES/SIM → true). Use rowLock "auto" to
-  // anchor the row to the page DataID — handy for binding many items to one column at once.
-  const sheetsBoolBind = z.object({
+  // Binding Google Sheets reutilizável (campo escalar boolean/numérico). O sync in-app
+  // ("Sincronizar tudo") lê a célula e sobrescreve o escalar (bool: TRUE/1/YES/SIM → true).
+  // cellRef é a posição-fallback; rowLock "auto" ancora a linha no DataID da página, útil
+  // pra vincular muitos itens à mesma coluna. Via MCP define-se só o vínculo (sync é client-side).
+  const sheetsBind = z.object({
     source: z.literal("sheets"),
     ref: z.object({
       sheetName: z.string(),
@@ -138,11 +138,13 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
       rowLock: z.string().optional().describe('"auto" = DataID da página; ou valor fixo da coluna A.'),
     }),
   }).optional();
-  const inv = { weight: z.number().optional(), stackable: z.boolean().optional(), maxStack: z.number().optional(), inventoryCategory: z.string().optional(), slotSize: z.number().optional(), durability: z.number().optional(), bindType: z.enum(["none", "onPickup", "onEquip"]).optional(), showInShop: z.boolean().optional(), showInShopBinding: sheetsBoolBind, consumable: z.boolean().optional(), consumableBinding: sheetsBoolBind, discardable: z.boolean().optional(), discardableBinding: sheetsBoolBind, notes: z.string().optional() };
+
+  // 2. Inventory
+  const inv = { weight: z.number().optional(), stackable: z.boolean().optional(), maxStack: z.number().optional(), inventoryCategory: z.string().optional(), slotSize: z.number().optional(), durability: z.number().optional(), bindType: z.enum(["none", "onPickup", "onEquip"]).optional(), showInShop: z.boolean().optional(), showInShopBinding: sheetsBind, consumable: z.boolean().optional(), consumableBinding: sheetsBind, discardable: z.boolean().optional(), discardableBinding: sheetsBind, notes: z.string().optional() };
   pair("inventory", "inventory", "inventory item", inv, opt(inv));
 
   // 3. Economy Link
-  const eco = { hasBuyConfig: z.boolean().optional(), buyCurrencyRef: z.string().optional(), buyValue: z.number().optional(), hasSellConfig: z.boolean().optional(), sellCurrencyRef: z.string().optional(), sellValue: z.number().optional(), hasProductionConfig: z.boolean().optional(), hasUnlockConfig: z.boolean().optional(), notes: z.string().optional() };
+  const eco = { hasBuyConfig: z.boolean().optional(), buyCurrencyRef: z.string().optional(), buyValue: z.number().optional(), buyValueBinding: sheetsBind, hasSellConfig: z.boolean().optional(), sellCurrencyRef: z.string().optional(), sellValue: z.number().optional(), sellValueBinding: sheetsBind, hasProductionConfig: z.boolean().optional(), hasUnlockConfig: z.boolean().optional(), notes: z.string().optional() };
   pair("economy_link", "economyLink", "economy link (buy/sell)", eco, opt(eco));
 
   // 4. Global Variable
@@ -196,7 +198,7 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
   // 7. Production
   const ing = z.object({ itemRef: z.string(), quantity: z.number() });
   const out = z.object({ itemRef: z.string(), quantity: z.number() });
-  const prod = { mode: z.enum(["passive", "recipe"]).optional(), outputRef: z.string().optional(), minOutput: z.number().optional(), maxOutput: z.number().optional(), intervalSeconds: z.number().optional(), ingredients: z.array(ing).optional(), outputs: z.array(out).optional(), craftTimeSeconds: z.number().optional(), notes: z.string().optional() };
+  const prod = { mode: z.enum(["passive", "recipe"]).optional(), outputRef: z.string().optional(), minOutput: z.number().optional(), minOutputBinding: sheetsBind, maxOutput: z.number().optional(), maxOutputBinding: sheetsBind, intervalSeconds: z.number().optional(), intervalSecondsBinding: sheetsBind, capacity: z.number().optional(), capacityBinding: sheetsBind, ingredients: z.array(ing).optional(), outputs: z.array(out).optional(), craftTimeSeconds: z.number().optional(), craftTimeSecondsBinding: sheetsBind, notes: z.string().optional() };
   pair("production", "production", "production", prod, opt(prod));
 
   // 8. Data Schema
