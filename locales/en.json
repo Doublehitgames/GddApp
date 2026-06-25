@@ -1668,6 +1668,7 @@
     "showInShopLabel": "Can appear in Shop",
     "consumableLabel": "Consumable",
     "discardableLabel": "Discardable",
+    "sheetsBoundTooltip": "Linked to Google Sheets",
     "boolean": {
       "true": "Yes",
       "false": "No"

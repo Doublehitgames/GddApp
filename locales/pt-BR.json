@@ -1668,6 +1668,7 @@
     "showInShopLabel": "Pode aparecer na Loja",
     "consumableLabel": "Consumivel",
     "discardableLabel": "Pode descartar",
+    "sheetsBoundTooltip": "Vinculado ao Google Sheets",
     "boolean": {
       "true": "Sim",
       "false": "Nao"
