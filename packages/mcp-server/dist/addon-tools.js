@@ -91,6 +91,33 @@ export function registerAddonTools(server, client) {
             rowLock: z.string().optional().describe('"auto" = page DataID; or a fixed value matched in column A.'),
         }),
     }).optional();
+    // Reusable binding for a numeric value field. Accepts three sources:
+    //  • sheets           — a Google Sheets cell (same shape as sheetsBinding)
+    //  • progressionColumn — a ProgressionTable column (level-scaled), intra-section
+    //  • library          — a Field Library entry (best for key/label fields; on a numeric
+    //                        field its resolved value is the entry, so prefer sheets/progression)
+    const valueBinding = z.union([
+        z.object({
+            source: z.literal("sheets"),
+            ref: z.object({
+                sheetName: z.string(),
+                cellRef: z.string().describe('Fallback position, e.g. "C2". Required even with locks.'),
+                columnLock: z.string().optional().describe("Column header name."),
+                rowLock: z.string().optional().describe('"auto" = page DataID; or a fixed value in column A.'),
+            }),
+        }),
+        z.object({
+            source: z.literal("progressionColumn"),
+            progressionAddonId: z.string().describe("Outer ID of the ProgressionTable addon"),
+            columnId: z.string().describe("Column ID inside that table"),
+            columnName: z.string().describe("Cached column name for display"),
+        }),
+        z.object({
+            source: z.literal("library"),
+            libraryAddonId: z.string().describe("Outer ID of the Field Library addon"),
+            entryId: z.string().describe("Entry ID inside the Field Library"),
+        }),
+    ]).optional();
     // ── 1. Currency ─────────────────────────────────────────────────
     const currencyFields = {
         code: z.string().describe("Currency code (e.g. GLD, DIA)"),
@@ -136,7 +163,7 @@ export function registerAddonTools(server, client) {
         hasBuyConfig: z.boolean().optional().default(true).describe("Enable buy configuration"),
         buyCurrencyRef: z.string().optional().describe("Currency section ID for buy price"),
         buyValue: z.number().optional().describe("Buy price"),
-        buyValueBinding: sheetsBinding.describe("Optional Google Sheets binding for buyValue."),
+        buyValueBinding: valueBinding.describe("Optional binding for buyValue (sheets | progressionColumn)."),
         buyValueProgressionLink: progressionLinkSchema.describe("Link buyValue to a progression table column (resolved by unlockValue)"),
         minBuyValue: z.number().optional().describe("Minimum buy price"),
         minBuyValueProgressionLink: progressionLinkSchema.describe("Link minBuyValue to a progression table column"),
@@ -145,7 +172,7 @@ export function registerAddonTools(server, client) {
         hasSellConfig: z.boolean().optional().default(true).describe("Enable sell configuration"),
         sellCurrencyRef: z.string().optional().describe("Currency section ID for sell price"),
         sellValue: z.number().optional().describe("Sell price"),
-        sellValueBinding: sheetsBinding.describe("Optional Google Sheets binding for sellValue."),
+        sellValueBinding: valueBinding.describe("Optional binding for sellValue (sheets | progressionColumn)."),
         sellValueProgressionLink: progressionLinkSchema.describe("Link sellValue to a progression table column"),
         minSellValue: z.number().optional().describe("Minimum sell price"),
         minSellValueProgressionLink: progressionLinkSchema.describe("Link minSellValue to a progression table column"),
@@ -156,7 +183,7 @@ export function registerAddonTools(server, client) {
         hasUnlockConfig: z.boolean().optional().default(false).describe("Enable unlock config"),
         unlockRef: z.string().optional().describe("Reference to unlock requirement"),
         unlockValue: z.number().optional().describe("Unlock cost"),
-        unlockValueBinding: sheetsBinding.describe("Optional Google Sheets binding for unlockValue."),
+        unlockValueBinding: valueBinding.describe("Optional binding for unlockValue (sheets | progressionColumn)."),
         unlockValueMin: z.number().optional().describe("Minimum unlock cost"),
         unlockValueMax: z.number().optional().describe("Maximum unlock cost"),
         notes: z.string().optional().describe("Design notes"),
@@ -312,21 +339,21 @@ export function registerAddonTools(server, client) {
         mode: z.enum(["passive", "recipe"]).default("passive").describe("Production mode"),
         outputRef: z.string().optional().describe("Output item section ID (passive mode)"),
         minOutput: z.number().optional().default(1).describe("Minimum output quantity"),
-        minOutputBinding: sheetsBinding.describe("Optional Google Sheets binding for minOutput."),
+        minOutputBinding: valueBinding.describe("Optional binding for minOutput (sheets | progressionColumn)."),
         minOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link minOutput to a progression table column (level-scaled)."),
         maxOutput: z.number().optional().default(1).describe("Maximum output quantity"),
-        maxOutputBinding: sheetsBinding.describe("Optional Google Sheets binding for maxOutput."),
+        maxOutputBinding: valueBinding.describe("Optional binding for maxOutput (sheets | progressionColumn)."),
         maxOutputProgressionLink: productionProgressionLinkSchema.optional().describe("Link maxOutput to a progression table column (level-scaled)."),
         intervalSeconds: z.number().optional().default(60).describe("Production interval in seconds"),
-        intervalSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for intervalSeconds."),
+        intervalSecondsBinding: valueBinding.describe("Optional binding for intervalSeconds (sheets | progressionColumn)."),
         intervalSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link intervalSeconds to a progression table column (level-scaled)."),
         requiresCollection: z.boolean().optional().default(false).describe("Requires manual collection?"),
         capacity: z.number().optional().describe("Storage capacity"),
-        capacityBinding: sheetsBinding.describe("Optional Google Sheets binding for capacity."),
+        capacityBinding: valueBinding.describe("Optional binding for capacity (sheets | progressionColumn)."),
         ingredients: z.array(ingredientSchema).optional().default([]).describe("Recipe ingredients"),
         outputs: z.array(outputSchema).optional().default([]).describe("Recipe outputs"),
         craftTimeSeconds: z.number().optional().default(60).describe("Craft time in seconds"),
-        craftTimeSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for craftTimeSeconds."),
+        craftTimeSecondsBinding: valueBinding.describe("Optional binding for craftTimeSeconds (sheets | progressionColumn)."),
         craftTimeSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link craftTimeSeconds to a progression table column (level-scaled)."),
         notes: z.string().optional().describe("Design notes"),
     };
@@ -365,6 +392,7 @@ export function registerAddonTools(server, client) {
     const cropXpEventSchema = z.object({
         xpAddonRef: z.string().optional().describe("Section ID of the XP Balance addon that tracks this XP pool"),
         xp: z.number().optional().describe("XP amount awarded"),
+        xpBinding: valueBinding.describe("Optional binding for the XP amount (sheets | progressionColumn)."),
     }).describe("XP event (plant or harvest)");
     const cropStageSchema = z.object({
         id: z.string().optional().describe("Stage ID (auto-generated if omitted)"),
@@ -375,6 +403,7 @@ export function registerAddonTools(server, client) {
         id: z.string().optional().describe("Output row ID (auto-generated if omitted)"),
         itemRef: z.string().optional().describe("Section ID of the harvested item"),
         quantity: z.number().optional().describe("Base yield per harvest"),
+        quantityBinding: valueBinding.describe("Optional binding for the yield (sheets | progressionColumn)."),
         quantityMin: z.number().optional().describe("Minimum yield"),
         quantityMax: z.number().optional().describe("Maximum yield"),
     });
@@ -385,11 +414,11 @@ export function registerAddonTools(server, client) {
     const cropFields = {
         harvestMode: z.enum(["instant", "progressive"]).default("instant").describe("'instant' = single harvest, plant dies. 'progressive' = multiple harvest cycles over the same planting."),
         growthSeconds: z.number().optional().describe("Base growth time in seconds"),
-        growthSecondsBinding: sheetsBinding.describe("Optional Google Sheets binding for growthSeconds."),
+        growthSecondsBinding: valueBinding.describe("Optional binding for growthSeconds (sheets | progressionColumn)."),
         growthSecondsMin: z.number().optional().describe("Minimum growth time (lower bound)"),
         growthSecondsMax: z.number().optional().describe("Maximum growth time (upper bound)"),
         totalHarvest: z.number().optional().describe("Number of harvest cycles (progressive mode only)"),
-        totalHarvestBinding: sheetsBinding.describe("Optional Google Sheets binding for totalHarvest."),
+        totalHarvestBinding: valueBinding.describe("Optional binding for totalHarvest (sheets | progressionColumn)."),
         totalHarvestMin: z.number().optional().describe("Minimum harvest cycles (progressive only)"),
         totalHarvestMax: z.number().optional().describe("Maximum harvest cycles (progressive only)"),
         stages: z.array(cropStageSchema).default([]).describe("Visual growth stages (progressive mode)"),
@@ -400,11 +429,11 @@ export function registerAddonTools(server, client) {
         witheredPlantRef: z.string().optional().describe("Section ID of the page to spawn after expiry"),
         seedRef: z.string().optional().describe("Section ID of the seed item, or '__self__' to use this page as its own seed"),
         seedQuantity: z.number().optional().describe("Base seed cost"),
-        seedQuantityBinding: sheetsBinding.describe("Optional Google Sheets binding for seedQuantity."),
+        seedQuantityBinding: valueBinding.describe("Optional binding for seedQuantity (sheets | progressionColumn)."),
         seedQuantityMin: z.number().optional().describe("Minimum seed cost"),
         seedQuantityMax: z.number().optional().describe("Maximum seed cost"),
         plantEnergy: z.number().optional().describe("Energy consumed when planting"),
-        plantEnergyBinding: sheetsBinding.describe("Optional Google Sheets binding for plantEnergy."),
+        plantEnergyBinding: valueBinding.describe("Optional binding for plantEnergy (sheets | progressionColumn)."),
         plantEnergyMin: z.number().optional().describe("Minimum energy cost"),
         plantEnergyMax: z.number().optional().describe("Maximum energy cost"),
         fertilizers: z.array(cropItemInputSchema).default([]).describe("Fertilizer items accepted by this crop"),
