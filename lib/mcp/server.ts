@@ -126,7 +126,19 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
   pair("currency", "currency", "currency", cur, opt(cur));
 
   // 2. Inventory
-  const inv = { weight: z.number().optional(), stackable: z.boolean().optional(), maxStack: z.number().optional(), inventoryCategory: z.string().optional(), slotSize: z.number().optional(), durability: z.number().optional(), bindType: z.enum(["none", "onPickup", "onEquip"]).optional(), showInShop: z.boolean().optional(), consumable: z.boolean().optional(), discardable: z.boolean().optional(), notes: z.string().optional() };
+  // Optional Google Sheets binding for the boolean fields. Sync (in-app "Sincronizar tudo")
+  // reads the cell and overwrites the scalar (TRUE/1/YES/SIM → true). Use rowLock "auto" to
+  // anchor the row to the page DataID — handy for binding many items to one column at once.
+  const sheetsBoolBind = z.object({
+    source: z.literal("sheets"),
+    ref: z.object({
+      sheetName: z.string(),
+      cellRef: z.string().describe('Posição-fallback, ex. "C2". Obrigatória mesmo com locks.'),
+      columnLock: z.string().optional().describe("Nome do header da coluna (resolve por nome)."),
+      rowLock: z.string().optional().describe('"auto" = DataID da página; ou valor fixo da coluna A.'),
+    }),
+  }).optional();
+  const inv = { weight: z.number().optional(), stackable: z.boolean().optional(), maxStack: z.number().optional(), inventoryCategory: z.string().optional(), slotSize: z.number().optional(), durability: z.number().optional(), bindType: z.enum(["none", "onPickup", "onEquip"]).optional(), showInShop: z.boolean().optional(), showInShopBinding: sheetsBoolBind, consumable: z.boolean().optional(), consumableBinding: sheetsBoolBind, discardable: z.boolean().optional(), discardableBinding: sheetsBoolBind, notes: z.string().optional() };
   pair("inventory", "inventory", "inventory item", inv, opt(inv));
 
   // 3. Economy Link

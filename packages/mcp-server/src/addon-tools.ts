@@ -108,6 +108,20 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
 
   // ── 2. Inventory ────────────────────────────────────────────────
 
+  // Optional Google Sheets binding for a boolean field. The in-app "Sincronizar tudo"
+  // reads the cell and overwrites the scalar (TRUE/1/YES/SIM → true). cellRef is the
+  // fallback position; use rowLock "auto" to anchor the row to the page DataID so many
+  // items can bind to one column at once.
+  const sheetsBoolBinding = z.object({
+    source: z.literal("sheets"),
+    ref: z.object({
+      sheetName: z.string().describe("Sheet/tab name"),
+      cellRef: z.string().describe('Fallback position, e.g. "C2". Required even with locks.'),
+      columnLock: z.string().optional().describe("Column header name (resolves the column by name)."),
+      rowLock: z.string().optional().describe('"auto" = page DataID; or a fixed value matched in column A.'),
+    }),
+  }).optional();
+
   const inventoryFields = {
     weight: z.number().default(0).describe("Item weight"),
     stackable: z.boolean().default(true).describe("Can items stack?"),
@@ -125,8 +139,11 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     volume: z.number().optional().describe("Item volume; present only when hasVolumeConfig is true."),
     bindType: z.enum(["none", "onPickup", "onEquip"]).default("none").describe("Bind on pickup/equip"),
     showInShop: z.boolean().default(true).describe("Visible in shop?"),
+    showInShopBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for showInShop."),
     consumable: z.boolean().default(false).describe("Is consumable?"),
+    consumableBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for consumable."),
     discardable: z.boolean().default(true).describe("Can be discarded?"),
+    discardableBinding: sheetsBoolBinding.describe("Optional Google Sheets binding for discardable."),
     notes: z.string().optional().describe("Design notes"),
   };
   pair("inventory", "inventory", "inventory item", inventoryFields, optional(inventoryFields));
