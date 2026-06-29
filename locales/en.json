@@ -923,17 +923,12 @@
       "word": {
         "label": "Word",
         "description": "Editable in Microsoft Word (.docx)"
-      },
-      "unityJson": {
-        "label": "Unity JSON",
-        "description": "Level balance table ready for engine integration."
       }
     },
     "info": {
       "markdown": "Best for editing and versioning (Git)",
       "pdf": "Best for presentation and sharing",
-      "word": "Best for collaborative editing",
-      "unityJson": "Exports computed LV -> XP curves for direct engine usage"
+      "word": "Best for collaborative editing"
     },
     "errors": {
       "exportFailed": "Error exporting document. Please try again."
@@ -3026,6 +3021,7 @@
     },
     "sections": {
       "progressionGroup": "Table from each child page",
+      "xpBalanceGroup": "XP balance from each child page",
       "craftGroup": "Crafting table from each child page",
       "skillsGroup": "Skills from each child page",
       "matchByNameHint": "Matched by name in each child page — applies to every child that has an equivalent table, not just the sample page."

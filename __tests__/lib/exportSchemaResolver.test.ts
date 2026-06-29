@@ -9,6 +9,7 @@ import type {
   ExportSchemaNode,
   ProgressionTableSectionAddon,
   SectionAddon,
+  XpBalanceSectionAddon,
 } from "@/lib/addons/types";
 
 // ── Fixtures ─────────────────────────────────────────────────────────
@@ -123,6 +124,115 @@ describe("resolveExportSchema — array formats", () => {
     });
     expect(resolveExportSchema(schemaNodes, [emptyTable], undefined, "matrix")).toEqual({
       levelSettings: { headers: ["level", "price", "cap"], rows: [] },
+    });
+  });
+});
+
+// ── xpBalance source: computed level→value curve ─────────────────────
+// Linear preset (value = base + growth*level + offset) with base=0, growth=100,
+// offset=0, decimals=0 over levels 1-3 → 100, 200, 300. The XP source projects
+// the curve into a synthetic 1-column ("value") progression table, so it reuses
+// the rowLevel / rowColumn bindings and every array format.
+
+const xpAddon: XpBalanceSectionAddon = {
+  id: "xp-1",
+  type: "xpBalance",
+  name: "XP Curve",
+  data: {
+    id: "xp-1",
+    name: "XP Curve",
+    mode: "preset",
+    preset: "linear",
+    expression: "",
+    startLevel: 1,
+    endLevel: 3,
+    decimals: 0,
+    params: {
+      base: 0,
+      growth: 100,
+      offset: 0,
+      tierStep: 10,
+      tierMultiplier: 1.25,
+      capValue: 5000,
+      capStrength: 0.08,
+      plateauStartLevel: 60,
+      plateauFactor: 0.35,
+    },
+  },
+};
+
+const xpSchemaNodes: ExportSchemaNode[] = [
+  {
+    id: "x1",
+    key: "xpTable",
+    nodeType: "array",
+    arraySource: { type: "xpBalance", addonId: "xp-1" },
+    itemTemplate: [
+      { id: "xt1", key: "level", nodeType: "value", binding: { source: "rowLevel" } },
+      { id: "xt2", key: "xp", nodeType: "value", binding: { source: "rowColumn", columnId: "value" } },
+    ],
+  },
+];
+
+describe("resolveExportSchema — xpBalance source", () => {
+  it("rowMajor: one object per level with computed value", () => {
+    const out = resolveExportSchema(xpSchemaNodes, [xpAddon]);
+    expect(out).toEqual({
+      xpTable: [
+        { level: 1, xp: 100 },
+        { level: 2, xp: 200 },
+        { level: 3, xp: 300 },
+      ],
+    });
+  });
+
+  it("keyedByLevel: indexed by level, rowLevel node dropped from body", () => {
+    const out = resolveExportSchema(xpSchemaNodes, [xpAddon], undefined, "keyedByLevel");
+    expect(out).toEqual({
+      xpTable: {
+        "1": { xp: 100 },
+        "2": { xp: 200 },
+        "3": { xp: 300 },
+      },
+    });
+  });
+
+  it("respects startAtZero: first level exports as 0 and the curve shifts", () => {
+    const zeroAddon: XpBalanceSectionAddon = {
+      ...xpAddon,
+      data: { ...xpAddon.data, startAtZero: true },
+    };
+    const out = resolveExportSchema(xpSchemaNodes, [zeroAddon]);
+    expect(out).toEqual({
+      xpTable: [
+        { level: 1, xp: 0 },
+        { level: 2, xp: 100 }, // f(1)
+        { level: 3, xp: 200 }, // f(2)
+      ],
+    });
+  });
+
+  it("resolves the XP source by name when the id doesn't match (template/sibling reuse)", () => {
+    const renamed: XpBalanceSectionAddon = {
+      ...xpAddon,
+      id: "xp-other",
+      data: { ...xpAddon.data, id: "xp-other" },
+    };
+    const out = resolveExportSchema(
+      [
+        {
+          ...xpSchemaNodes[0],
+          arraySource: { type: "xpBalance", addonId: "missing", addonName: "XP Curve" },
+        },
+      ],
+      [renamed]
+    );
+    expect(out).toEqual({
+      xpTable: [
+        { level: 1, xp: 100 },
+        { level: 2, xp: 200 },
+        { level: 3, xp: 300 },
+      ],
     });
   });
 });

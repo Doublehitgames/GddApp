@@ -526,6 +526,41 @@ describe("normalizeSectionAddons exportSchema", () => {
       expect(arr.itemTemplate?.length).toBe(1);
     }
   });
+
+  it("preserves an `xpBalance` array source (regression: source was dropped on save)", () => {
+    const input = [
+      {
+        id: "export-1",
+        type: "exportSchema",
+        name: "Remote Config",
+        data: {
+          id: "export-1",
+          name: "Remote Config",
+          nodes: [
+            {
+              id: "n1",
+              key: "xpTable",
+              nodeType: "array",
+              arraySource: { type: "xpBalance", addonId: " xp-1 ", addonName: "XP Curve" },
+              itemTemplate: [
+                { id: "t1", key: "level", nodeType: "value", binding: { source: "rowLevel" } },
+                { id: "t2", key: "xp", nodeType: "value", binding: { source: "rowColumn", columnId: "value" } },
+              ],
+            },
+          ],
+        },
+      },
+    ];
+
+    const normalized = normalizeSectionAddons(input);
+    const ex = normalized?.[0];
+    expect(ex?.type).toBe("exportSchema");
+    if (ex?.type === "exportSchema") {
+      const arr = ex.data.nodes[0];
+      expect(arr.arraySource).toEqual({ type: "xpBalance", addonId: "xp-1", addonName: "XP Curve" });
+      expect(arr.itemTemplate?.length).toBe(2);
+    }
+  });
 });
 
 describe("normalizeSectionAddons xpBalance", () => {

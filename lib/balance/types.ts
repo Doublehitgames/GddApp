@@ -54,6 +54,13 @@ export interface BalanceCurveInput {
   clampMin?: number;
   clampMax?: number;
   params: BalanceFormulaParams;
+  /**
+   * When true, the first level costs 0 XP and the formula shifts one step:
+   * value[startLevel] = 0, value[startLevel+1] = f(1), value[startLevel+2] = f(2)…
+   * Models "value = XP to reach this level from the previous one" — the player
+   * starts at level 1 with nothing to grind. Default false (formula at f(level)).
+   */
+  startAtZero?: boolean;
 }
 
 export interface BalanceSimulationInput {
@@ -91,6 +98,31 @@ export interface BalanceTargetSuggestion {
   recommendedAdjustments: Partial<BalanceFormulaParams>;
 }
 
+/**
+ * Result of solving the curve parameters that hit a progression target in one
+ * shot (vs. the single damped step of suggestTargetTuning). The solver bisects
+ * growthDeltaPercent until the measured time matches the target within
+ * tolerance, or reports it can't be reached within the parameter bounds.
+ */
+export interface BalanceTargetSolution {
+  /** Full param set to apply (already merged with the solved adjustments). */
+  params: BalanceFormulaParams;
+  /** True when the measured time landed within tolerance of the target. */
+  converged: boolean;
+  /** True when the target lies outside the feasible range — we returned the closest bound. */
+  atBound: boolean;
+  /** Measured time-to-target for the solved params, in `unit`. */
+  measuredValue: number;
+  /** The target time being solved for, in `unit`. */
+  targetValue: number;
+  /** Unit of measuredValue/targetValue: active hours (continuous) or calendar days (sessions). */
+  unit: "hours" | "days";
+  /** Bisection iterations consumed. */
+  iterations: number;
+  /** Human-readable summary of the outcome. */
+  message: string;
+}
+
 export interface BalanceAddonDraft {
   id: string;
   name: string;
@@ -107,4 +139,6 @@ export interface BalanceAddonDraft {
   comparisonBaseline?: BalancePoint[];
   simulationInput?: BalanceSimulationInput;
   target?: BalanceTargetInput;
+  /** See BalanceCurveInput.startAtZero — first level costs 0 XP and the curve shifts one step. */
+  startAtZero?: boolean;
 }

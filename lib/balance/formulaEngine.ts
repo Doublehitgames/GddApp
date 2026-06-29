@@ -10,6 +10,7 @@ import type {
   BalanceSimulationResult,
   BalanceTargetInput,
   BalanceTargetSuggestion,
+  BalanceTargetSolution,
 } from "@/lib/balance/types";
 
 const MAX_LEVEL_POINTS = 500;
@@ -132,15 +133,29 @@ export function generateBalanceCurve(input: BalanceCurveInput): BalanceCurveResu
     throw new Error(`Faixa de níveis muito grande (máximo ${MAX_LEVEL_POINTS} pontos).`);
   }
 
+  const startAtZero = input.startAtZero === true;
+
   const points: Array<{ level: number; value: number }> = [];
   let minValue = Number.POSITIVE_INFINITY;
   let maxValue = Number.NEGATIVE_INFINITY;
 
   for (let level = startLevel; level <= endLevel; level += 1) {
+    // startAtZero: the first level is a structural 0 (player starts here with
+    // nothing to grind) — bypass clamp/round so it's always exactly 0.
+    if (startAtZero && level === startLevel) {
+      minValue = Math.min(minValue, 0);
+      maxValue = Math.max(maxValue, 0);
+      points.push({ level, value: 0 });
+      continue;
+    }
+
+    // startAtZero shifts the formula one step: value[L] = f(L - startLevel), so
+    // the cost authored at f(1) lands on the second level, f(2) on the third, etc.
+    const evalLevel = startAtZero ? level - startLevel : level;
     const rawValue =
       input.mode === "preset"
-        ? evaluatePreset(input.preset, level, input.params)
-        : evaluateAdvancedExpression(input.expression, level, input.params);
+        ? evaluatePreset(input.preset, evalLevel, input.params)
+        : evaluateAdvancedExpression(input.expression, evalLevel, input.params);
 
     const finiteValue = Number.isFinite(rawValue) ? rawValue : 0;
     const clamped = applyClamp(finiteValue, input.clampMin, input.clampMax);
@@ -246,23 +261,64 @@ export function calculateCurveMetrics(points: BalancePoint[]): BalanceCurveMetri
   };
 }
 
-export function simulateProgressionBySession(
+/**
+ * Minutes spent on each level, given the simulation inputs. Shared by the full
+ * simulation and the single-level time lookup so both round identically.
+ */
+function computeMinutesPerLevel(
   points: BalancePoint[],
   input: BalanceSimulationInput
-): BalanceSimulationResult {
-  const mode = input.mode || "continuous";
+): Array<{ level: number; minutes: number }> {
   const safeXpPerMinute = Math.max(0.1, Number(input.xpPerMinute || 1));
   const safeWinRate = clamp(Number(input.winRate || 0.5), 0, 1);
-  const safeDuration = Math.max(0.1, Number(input.matchDurationMinutes || 1));
-  const safeSessionsPerDay = Math.max(1, Math.floor(Number(input.sessionsPerDay || 1)));
   const safeBonus = Math.max(0.1, Number(input.bonusMultiplier || 1));
-
-  const minutesPerLevel = points.map((point) => {
+  return points.map((point) => {
     const levelXpPerMinute = getXpPerMinuteForLevel(point.level, input, safeXpPerMinute);
     const effectiveXpPerMinute = levelXpPerMinute * safeWinRate * safeBonus;
     const minutes = point.value / Math.max(0.1, effectiveXpPerMinute);
     return { level: point.level, minutes: roundTo(minutes, 2) };
   });
+}
+
+/** Converts cumulative active minutes into the unit relevant to the sim mode. */
+function minutesToUnits(
+  cumulativeMinutes: number,
+  input: BalanceSimulationInput
+): { hours: number; calendarDays?: number } {
+  const hours = roundTo(cumulativeMinutes / 60, 2);
+  if ((input.mode || "continuous") === "sessionBased") {
+    const safeDuration = Math.max(0.1, Number(input.matchDurationMinutes || 1));
+    const safeSessionsPerDay = Math.max(1, Math.floor(Number(input.sessionsPerDay || 1)));
+    const activeMinutesPerDay = safeDuration * safeSessionsPerDay;
+    return { hours, calendarDays: roundTo(cumulativeMinutes / activeMinutesPerDay, 2) };
+  }
+  return { hours };
+}
+
+/**
+ * Cumulative time to reach an ARBITRARY level (not just the fixed milestones).
+ * Returns null when the level is outside the curve's range. Mirrors the
+ * rounding of simulateProgressionBySession so values line up exactly.
+ */
+export function cumulativeTimeToLevel(
+  points: BalancePoint[],
+  input: BalanceSimulationInput,
+  level: number
+): { hours: number; calendarDays?: number } | null {
+  const minutesPerLevel = computeMinutesPerLevel(points, input);
+  let cumulative = 0;
+  for (const entry of minutesPerLevel) {
+    cumulative += entry.minutes;
+    if (entry.level === level) return minutesToUnits(cumulative, input);
+  }
+  return null;
+}
+
+export function simulateProgressionBySession(
+  points: BalancePoint[],
+  input: BalanceSimulationInput
+): BalanceSimulationResult {
+  const minutesPerLevel = computeMinutesPerLevel(points, input);
   const cumulativeMinutesByLevel = new Map<number, number>();
   let cumulative = 0;
   for (const entry of minutesPerLevel) {
@@ -275,13 +331,7 @@ export function simulateProgressionBySession(
     .map((level) => {
       const cumulativeMinutes = cumulativeMinutesByLevel.get(level);
       if (cumulativeMinutes == null) return null;
-      const hours = roundTo(cumulativeMinutes / 60, 2);
-      if (mode === "sessionBased") {
-        const activeMinutesPerDay = safeDuration * safeSessionsPerDay;
-        const calendarDays = roundTo(cumulativeMinutes / activeMinutesPerDay, 2);
-        return { level, hours, calendarDays };
-      }
-      return { level, hours };
+      return { level, ...minutesToUnits(cumulativeMinutes, input) };
     })
     .filter((entry): entry is { level: number; hours: number; calendarDays?: number } => Boolean(entry));
 
@@ -373,6 +423,127 @@ export function suggestTargetTuning(
         : "Nao foi possivel gerar ajuste automatico para o preset atual.",
     recommendedGrowthDeltaPercent,
     recommendedAdjustments,
+  };
+}
+
+/**
+ * Solves, in one shot, the curve params that make the target level be reached
+ * in the target time (within tolerance). Bisects growthDeltaPercent over the
+ * feasible range (growth ∈ [0.1, 4]); time-to-level is monotonic increasing in
+ * the delta, so bisection converges in bounded iterations. When the target lies
+ * outside the feasible range it returns the closest bound with `atBound: true`.
+ *
+ * Unlike suggestTargetTuning (a single damped step), this needs the full
+ * BalanceCurveInput so it can regenerate the curve per candidate.
+ */
+export function solveTargetTuning(
+  curveInput: BalanceCurveInput,
+  target: BalanceTargetInput,
+  simulationInput: BalanceSimulationInput
+): BalanceTargetSolution {
+  const unit: "hours" | "days" = (simulationInput.mode || "continuous") === "sessionBased" ? "days" : "hours";
+  const unitLabel = unit === "days" ? "dias" : "horas";
+  const rawTargetValue = target.targetValue ?? target.targetHours ?? (unit === "days" ? 7 : 10);
+  const targetValue = Math.max(0.1, Number(rawTargetValue || 0.1));
+  const targetLevel = target.targetLevel;
+  const fmt = (v: number) => roundTo(v, 2);
+  const within = (v: number) => Math.abs((v - targetValue) / targetValue) <= 0.01;
+
+  const measure = (deltaPercent: number): { value: number | null; params: BalanceFormulaParams } => {
+    const params = { ...curveInput.params, ...buildPresetAdjustments(curveInput.preset, curveInput.params, deltaPercent) };
+    const curve = generateBalanceCurve({ ...curveInput, params });
+    const t = cumulativeTimeToLevel(curve.points, simulationInput, targetLevel);
+    if (!t) return { value: null, params };
+    const raw = unit === "days" ? t.calendarDays : t.hours;
+    return { value: raw == null || !Number.isFinite(raw) ? null : raw, params };
+  };
+
+  // Feasible delta range so growth stays within [0.1, 4].
+  const g = Math.max(0.1, Number(curveInput.params.growth || 0.1));
+  const deltaMin = (0.1 / g - 1) * 100;
+  const deltaMax = (4 / g - 1) * 100;
+
+  const lo = measure(deltaMin); // least growth → fastest
+  const hi = measure(deltaMax); // most growth → slowest
+
+  if (lo.value == null || hi.value == null) {
+    return {
+      params: curveInput.params,
+      converged: false,
+      atBound: false,
+      measuredValue: 0,
+      targetValue,
+      unit,
+      iterations: 0,
+      message: `O nivel ${targetLevel} esta fora da faixa da curva (${curveInput.startLevel}-${curveInput.endLevel}). Ajuste a faixa de niveis antes de mirar a meta.`,
+    };
+  }
+
+  const minTime = lo.value;
+  const maxTime = hi.value;
+
+  if (targetValue <= minTime) {
+    const ok = within(minTime);
+    return {
+      params: lo.params,
+      converged: ok,
+      atBound: true,
+      measuredValue: minTime,
+      targetValue,
+      unit,
+      iterations: 0,
+      message: ok
+        ? `Ajustado no limite de crescimento minimo: ~${fmt(minTime)} ${unitLabel}.`
+        : `Meta inatingivel: mesmo no crescimento minimo a curva leva ~${fmt(minTime)} ${unitLabel} (meta ${fmt(targetValue)}). Aumente XP/min ou suba a meta.`,
+    };
+  }
+  if (targetValue >= maxTime) {
+    const ok = within(maxTime);
+    return {
+      params: hi.params,
+      converged: ok,
+      atBound: true,
+      measuredValue: maxTime,
+      targetValue,
+      unit,
+      iterations: 0,
+      message: ok
+        ? `Ajustado no limite de crescimento maximo: ~${fmt(maxTime)} ${unitLabel}.`
+        : `Meta inatingivel: mesmo no crescimento maximo a curva leva ~${fmt(maxTime)} ${unitLabel} (meta ${fmt(targetValue)}). Reduza XP/min ou baixe a meta.`,
+    };
+  }
+
+  let loD = deltaMin;
+  let hiD = deltaMax;
+  let best = lo;
+  let iterations = 0;
+  let converged = false;
+  for (; iterations < 60; iterations++) {
+    const midD = (loD + hiD) / 2;
+    const m = measure(midD);
+    if (m.value == null) break;
+    best = m;
+    if (within(m.value)) {
+      converged = true;
+      break;
+    }
+    if (m.value < targetValue) loD = midD; // too fast → need more growth
+    else hiD = midD; // too slow → need less growth
+    if (Math.abs(hiD - loD) < 1e-6) break;
+  }
+
+  const measuredValue = best.value ?? 0;
+  return {
+    params: best.params,
+    converged,
+    atBound: false,
+    measuredValue,
+    targetValue,
+    unit,
+    iterations,
+    message: converged
+      ? `Ajustado: o nivel ${targetLevel} passa a ser atingido em ~${fmt(measuredValue)} ${unitLabel} (meta ${fmt(targetValue)}).`
+      : `Aproximacao: cheguei a ~${fmt(measuredValue)} ${unitLabel} (meta ${fmt(targetValue)}).`,
   };
 }
 

@@ -237,18 +237,23 @@ export function registerAddonTools(server, client) {
     // ── 6. XP Balance ───────────────────────────────────────────────
     const xpBalanceFields = {
         mode: z.enum(["preset", "advanced"]).default("preset").describe("Formula mode"),
-        preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap"]).default("exponential").describe("Curve preset"),
+        preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap", "diminishingReturns", "piecewise"]).default("exponential").describe("Curve preset"),
         expression: z.string().default("").describe("Custom expression (advanced mode)"),
         startLevel: z.number().default(1).describe("First level"),
         endLevel: z.number().default(100).describe("Last level"),
         decimals: z.number().default(0).describe("Decimal places"),
         clampMin: z.number().optional().describe("Minimum value clamp"),
         clampMax: z.number().optional().describe("Maximum value clamp"),
+        startAtZero: z.boolean().optional().describe("When true, the first level costs 0 XP and the curve shifts one step (value = XP to reach this level from the previous). Default false."),
         base: z.number().default(100).describe("Base XP value"),
         growth: z.number().default(1.15).describe("Growth factor"),
         offset: z.number().default(0).describe("Offset"),
-        tierStep: z.number().default(10).describe("Tier step size"),
-        tierMultiplier: z.number().default(1.5).describe("Tier multiplier"),
+        tierStep: z.number().default(10).describe("Tier step size (tiered preset)"),
+        tierMultiplier: z.number().default(1.5).describe("Tier multiplier (tiered preset)"),
+        capValue: z.number().default(5000).describe("Cap value (softCap/hardCap/diminishingReturns presets)"),
+        capStrength: z.number().default(0.08).describe("Cap strength (softCap preset)"),
+        plateauStartLevel: z.number().default(60).describe("Plateau start level (piecewise preset)"),
+        plateauFactor: z.number().default(0.35).describe("Plateau factor (piecewise preset)"),
     };
     // For xpBalance, the params are nested under a `params` object in the API
     server.tool("create_xp_balance_addon", "Create an XP balance curve addon", {
@@ -256,7 +261,7 @@ export function registerAddonTools(server, client) {
         name: z.string().describe("Display name"),
         group: z.string().optional().describe("Optional group name"),
         ...xpBalanceFields,
-    }, async ({ projectId, sectionId, name, group, base, growth, offset, tierStep, tierMultiplier, ...rest }) => {
+    }, async ({ projectId, sectionId, name, group, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
         try {
             return json(await client.createAddon(projectId, sectionId, {
                 type: "xpBalance",
@@ -264,7 +269,7 @@ export function registerAddonTools(server, client) {
                 ...(group ? { group } : {}),
                 data: {
                     ...rest,
-                    params: { base, growth, offset, tierStep, tierMultiplier },
+                    params: { base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor },
                 },
             }));
         }
@@ -277,19 +282,24 @@ export function registerAddonTools(server, client) {
         name: z.string().optional().describe("New display name"),
         group: z.string().optional().describe("New group name"),
         mode: z.enum(["preset", "advanced"]).optional().describe("Formula mode"),
-        preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap"]).optional().describe("Curve preset"),
+        preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap", "diminishingReturns", "piecewise"]).optional().describe("Curve preset"),
         expression: z.string().optional().describe("Custom expression (advanced mode)"),
         startLevel: z.number().optional().describe("First level"),
         endLevel: z.number().optional().describe("Last level"),
         decimals: z.number().optional().describe("Decimal places"),
         clampMin: z.number().optional().describe("Minimum value clamp"),
         clampMax: z.number().optional().describe("Maximum value clamp"),
+        startAtZero: z.boolean().optional().describe("When true, the first level costs 0 XP and the curve shifts one step. Default false."),
         base: z.number().optional().describe("Base XP value"),
         growth: z.number().optional().describe("Growth factor"),
         offset: z.number().optional().describe("Offset"),
-        tierStep: z.number().optional().describe("Tier step size"),
-        tierMultiplier: z.number().optional().describe("Tier multiplier"),
-    }, async ({ projectId, sectionId, addonId, name, group, base, growth, offset, tierStep, tierMultiplier, ...rest }) => {
+        tierStep: z.number().optional().describe("Tier step size (tiered preset)"),
+        tierMultiplier: z.number().optional().describe("Tier multiplier (tiered preset)"),
+        capValue: z.number().optional().describe("Cap value (softCap/hardCap/diminishingReturns presets)"),
+        capStrength: z.number().optional().describe("Cap strength (softCap preset)"),
+        plateauStartLevel: z.number().optional().describe("Plateau start level (piecewise preset)"),
+        plateauFactor: z.number().optional().describe("Plateau factor (piecewise preset)"),
+    }, async ({ projectId, sectionId, addonId, name, group, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
         try {
             const fields = {};
             if (name !== undefined)
@@ -308,6 +318,14 @@ export function registerAddonTools(server, client) {
                 params.tierStep = tierStep;
             if (tierMultiplier !== undefined)
                 params.tierMultiplier = tierMultiplier;
+            if (capValue !== undefined)
+                params.capValue = capValue;
+            if (capStrength !== undefined)
+                params.capStrength = capStrength;
+            if (plateauStartLevel !== undefined)
+                params.plateauStartLevel = plateauStartLevel;
+            if (plateauFactor !== undefined)
+                params.plateauFactor = plateauFactor;
             if (Object.keys(params).length > 0)
                 data.params = params;
             if (Object.keys(data).length > 0)
@@ -604,6 +622,7 @@ export function registerAddonTools(server, client) {
     const exportSchemaArraySourceSchema = z.object({
         type: z.enum([
             "progressionTable",
+            "xpBalance",
             "craftTable",
             "productionIngredients",
             "productionOutputs",
@@ -611,7 +630,9 @@ export function registerAddonTools(server, client) {
             "skillCosts",
             "skillEffects",
             "sections",
-        ]).describe("'progressionTable', 'craftTable' and 'skills' require addonId. " +
+        ]).describe("'progressionTable', 'xpBalance', 'craftTable' and 'skills' require addonId. " +
+            "'xpBalance' iterates the computed level→value curve of an XP Balance addon " +
+            "(use rowLevel for the level and rowColumn with columnId 'value' for the XP). " +
             "'productionIngredients' and 'productionOutputs' follow the current craftTable entry's " +
             "production and do not take an addonId (must be nested inside a craftTable array node). " +
             "'skillCosts' and 'skillEffects' follow the current skills entry and do not take an " +
@@ -620,7 +641,7 @@ export function registerAddonTools(server, client) {
             "against each child's own addons (one object per child page — e.g. aggregate every seed " +
             "page under a parent into a single array). Bindings resolve via addonName + entryKey " +
             "fallback, so a template authored against one child resolves across all siblings."),
-        addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, craftTable or skills)"),
+        addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, xpBalance, craftTable or skills)"),
         addonName: z.string().optional().describe("Fallback match by name when used in templates"),
         parentSectionId: z.string().optional().describe("Parent section ID whose child sections are iterated (required for type 'sections')"),
         parentSectionName: z.string().optional().describe("Display name of the parent section (optional, for readability)"),

@@ -265,6 +265,11 @@ export function getBindingIssue(
         (a) => a.type === "progressionTable" && (a.id === src.addonId || a.data?.id === src.addonId)
       );
       if (!found) return "Tabela de Balanceamento referenciada não foi encontrada";
+    } else if (src.type === "xpBalance") {
+      const found = sectionAddons.some(
+        (a) => a.type === "xpBalance" && (a.id === src.addonId || a.data?.id === src.addonId)
+      );
+      if (!found) return "Balanceamento de XP referenciado não foi encontrado";
     } else if (src.type === "craftTable") {
       const found = sectionAddons.some(
         (a) => a.type === "craftTable" && (a.id === src.addonId || a.data?.id === src.addonId)
@@ -445,6 +450,29 @@ export function getProgressionTableAddons(addons: SectionAddon[]): Array<{ id: s
     .map((a) => ({ id: a.id, name: a.name, data: a.data as ProgressionTableAddonDraft }));
 }
 
+/**
+ * XpBalance addons projected as progression-table-like sources: a single
+ * numeric column "value" (the computed XP per level). The editor only reads
+ * `.data.columns` for the rowColumn picker — rows are computed at resolve time
+ * by buildXpBalanceTable, so an empty rows array is fine here.
+ */
+export function getXpBalanceAddons(addons: SectionAddon[]): Array<{ id: string; name: string; data: ProgressionTableAddonDraft }> {
+  return addons
+    .filter((a) => a.type === "xpBalance")
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      data: {
+        id: a.id,
+        name: a.name,
+        startLevel: 1,
+        endLevel: 1,
+        columns: [{ id: "value", name: a.name || "XP", valueType: "number" as const }],
+        rows: [],
+      } satisfies ProgressionTableAddonDraft,
+    }));
+}
+
 export function getCraftTableAddons(
   addons: SectionAddon[]
 ): Array<{ id: string; name: string }> {
@@ -517,6 +545,7 @@ export function duplicateInList(nodes: ExportSchemaNode[], nodeId: string): Expo
 
 export type ArraySourceKind =
   | "progressionTable"
+  | "xpBalance"
   | "craftTable"
   | "productionIngredients"
   | "productionOutputs"
@@ -551,8 +580,13 @@ export function BindingEditor({
   const source = binding?.source ?? "manual";
   const dataSchemas = useMemo(() => getDataSchemaAddons(sectionAddons), [sectionAddons]);
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
+  const xpBalances = useMemo(() => getXpBalanceAddons(sectionAddons), [sectionAddons]);
   const insideCraftArray = insideArray && arraySourceType === "craftTable";
-  const insideProgressionArray = insideArray && (arraySourceType ?? "progressionTable") === "progressionTable";
+  // XpBalance reuses the progression-table machinery (rowLevel / rowColumn) — its
+  // synthetic table has a single "value" column, so it behaves like a 1-column
+  // progression table for binding purposes.
+  const insideProgressionArray =
+    insideArray && ((arraySourceType ?? "progressionTable") === "progressionTable" || arraySourceType === "xpBalance");
   const insideProductionItemsArray = insideArray && (arraySourceType === "productionIngredients" || arraySourceType === "productionOutputs");
   const insideSkillsArray = insideArray && arraySourceType === "skills";
   const insideSkillCostsArray = insideArray && arraySourceType === "skillCosts";
@@ -562,8 +596,12 @@ export function BindingEditor({
   const insideSectionsIteration = insideArray && arraySourceType === "sections";
 
   const currentPT = useMemo(
-    () => (arraySourceAddonId ? progressionTables.find((pt) => pt.id === arraySourceAddonId) : undefined),
-    [progressionTables, arraySourceAddonId]
+    () =>
+      arraySourceAddonId
+        ? progressionTables.find((pt) => pt.id === arraySourceAddonId) ??
+          xpBalances.find((xp) => xp.id === arraySourceAddonId)
+        : undefined,
+    [progressionTables, xpBalances, arraySourceAddonId]
   );
 
   const handleSourceChange = (newSource: string) => {
@@ -975,6 +1013,7 @@ export function SchemaNodeEditor({
 }) {
   const { t } = useI18n();
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
+  const xpBalances = useMemo(() => getXpBalanceAddons(sectionAddons), [sectionAddons]);
   const craftTables = useMemo(() => getCraftTableAddons(sectionAddons), [sectionAddons]);
   const skillsAddons = useMemo(() => getSkillsAddons(sectionAddons), [sectionAddons]);
   const [collapsed, setCollapsed] = useState(true);
@@ -1023,6 +1062,7 @@ export function SchemaNodeEditor({
     node.nodeType === "array" &&
     node.arraySource &&
     (node.arraySource.type === "progressionTable" ||
+      node.arraySource.type === "xpBalance" ||
       node.arraySource.type === "craftTable" ||
       node.arraySource.type === "skills")
       ? node.arraySource.addonId
@@ -1150,6 +1190,7 @@ export function SchemaNodeEditor({
             value={
               node.arraySource
                 ? node.arraySource.type === "progressionTable" ||
+                  node.arraySource.type === "xpBalance" ||
                   node.arraySource.type === "craftTable" ||
                   node.arraySource.type === "skills"
                   ? `${node.arraySource.type}:${node.arraySource.addonId}`
@@ -1181,7 +1222,7 @@ export function SchemaNodeEditor({
                 nextSource = { type: "sections", parentSectionId, parentSectionName };
               } else {
                 const [type, addonId] = raw.split(":");
-                if (type !== "progressionTable" && type !== "craftTable" && type !== "skills") return;
+                if (type !== "progressionTable" && type !== "xpBalance" && type !== "craftTable" && type !== "skills") return;
                 nextSource = { type, addonId };
               }
               const next: ExportSchemaNode = { ...node, arraySource: nextSource };
@@ -1199,6 +1240,15 @@ export function SchemaNodeEditor({
                 {progressionTables.map((pt) => (
                   <option key={pt.id} value={`progressionTable:${pt.id}`}>
                     {insideSectionsIteration ? (getAddonRegistryEntry("progressionTable")?.label ?? pt.name) : pt.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {xpBalances.length > 0 && (
+              <optgroup label={insideSectionsIteration ? t("exportSchemaAddon.sections.xpBalanceGroup", "Balanceamento de XP de cada página filha") : "XP Balance"}>
+                {xpBalances.map((xp) => (
+                  <option key={xp.id} value={`xpBalance:${xp.id}`}>
+                    {insideSectionsIteration ? (getAddonRegistryEntry("xpBalance")?.label ?? xp.name) : xp.name}
                   </option>
                 ))}
               </optgroup>
@@ -1285,6 +1335,7 @@ export function SchemaNodeEditor({
         insideSectionsIteration &&
         node.arraySource &&
         (node.arraySource.type === "progressionTable" ||
+          node.arraySource.type === "xpBalance" ||
           node.arraySource.type === "craftTable" ||
           node.arraySource.type === "skills") && (
           <div className="ml-4 pl-3 pb-1 text-[11px] text-gray-400">

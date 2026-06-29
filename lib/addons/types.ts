@@ -526,6 +526,8 @@ export type AttributeModifiersAddonDraft = {
 
 export type ExportSchemaArraySource =
   | { type: "progressionTable"; addonId: string; addonName?: string }
+  /** Iterates the computed level→value curve of an XpBalance addon. */
+  | { type: "xpBalance"; addonId: string; addonName?: string }
   | { type: "craftTable"; addonId: string; addonName?: string }
   /** Iterates the ingredients of the current craft table entry's Production addon. */
   | { type: "productionIngredients" }

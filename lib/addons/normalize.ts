@@ -127,6 +127,7 @@ function normalizeBalanceDraft(value: unknown): BalanceAddonDraft | null {
     clampMin,
     clampMax,
     params,
+    startAtZero: value.startAtZero === true,
   } as BalanceAddonDraft;
 }
 
@@ -1689,10 +1690,10 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
       if (isObject(rawNode.arraySource)) {
         const rawType = rawNode.arraySource.type;
         if (
-          (rawType === "progressionTable" || rawType === "craftTable" || rawType === "skills") &&
+          (rawType === "progressionTable" || rawType === "xpBalance" || rawType === "craftTable" || rawType === "skills") &&
           typeof rawNode.arraySource.addonId === "string"
         ) {
-          const sourceType = rawType as "progressionTable" | "craftTable" | "skills";
+          const sourceType = rawType as "progressionTable" | "xpBalance" | "craftTable" | "skills";
           const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
           node.arraySource = { type: sourceType, addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
         } else if (rawType === "productionIngredients") {

@@ -923,17 +923,12 @@
       "word": {
         "label": "Word",
         "description": "Editável no Microsoft Word (.docx)"
-      },
-      "unityJson": {
-        "label": "Unity JSON",
-        "description": "Tabela de balanceamento por level para integrar na engine."
       }
     },
     "info": {
       "markdown": "Melhor para edição e versionamento (Git)",
       "pdf": "Melhor para apresentação e compartilhamento",
-      "word": "Melhor para edição colaborativa",
-      "unityJson": "Exporta curvas calculadas LV -> XP para uso direto na engine"
+      "word": "Melhor para edição colaborativa"
     },
     "errors": {
       "exportFailed": "Erro ao exportar o documento. Tente novamente."
@@ -3026,6 +3021,7 @@
     },
     "sections": {
       "progressionGroup": "Tabela de cada página filha",
+      "xpBalanceGroup": "Balanceamento de XP de cada página filha",
       "craftGroup": "Mesa de produção de cada página filha",
       "skillsGroup": "Habilidades de cada página filha",
       "matchByNameHint": "Casada pelo nome em cada página filha — vale para todos os filhos que tenham uma tabela equivalente, não só a página de amostra."

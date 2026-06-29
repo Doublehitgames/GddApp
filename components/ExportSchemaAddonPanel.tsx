@@ -51,7 +51,9 @@ function patchNodeAddonIds(
   // Patch arraySource addonId (only sources that carry one)
   if (
     node.arraySource &&
-    (node.arraySource.type === "progressionTable" || node.arraySource.type === "craftTable") &&
+    (node.arraySource.type === "progressionTable" ||
+      node.arraySource.type === "xpBalance" ||
+      node.arraySource.type === "craftTable") &&
     node.arraySource.addonId &&
     idMap.has(node.arraySource.addonId)
   ) {
@@ -192,13 +194,14 @@ export function ExportSchemaAddonPanel({ addon, onChange, onRemove, sectionAddon
     [addon.nodes, resolverAddons, sectionContext?.dataId, addon.arrayFormat, sectionLookup]
   );
 
-  // The arrayFormat selector only affects ProgressionTable iteration. If the schema
-  // doesn't use any ProgressionTable array source, the format is irrelevant — we
-  // disable the selector to avoid confusing the user.
+  // The arrayFormat selector only affects level-table iteration (ProgressionTable
+  // and XpBalance, which both produce level→value rows). If the schema doesn't use
+  // any such array source, the format is irrelevant — we disable the selector to
+  // avoid confusing the user.
   const hasProgressionArraySource = useMemo(() => {
     const walk = (nodes: ExportSchemaNode[]): boolean => {
       for (const n of nodes) {
-        if (n.nodeType === "array" && n.arraySource?.type === "progressionTable") return true;
+        if (n.nodeType === "array" && (n.arraySource?.type === "progressionTable" || n.arraySource?.type === "xpBalance")) return true;
         if (n.children && walk(n.children)) return true;
         if (n.itemTemplate && walk(n.itemTemplate)) return true;
       }

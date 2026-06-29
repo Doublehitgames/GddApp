@@ -30,6 +30,8 @@ import type {
 } from "@/lib/addons/types";
 import { resolveCropFieldValue } from "@/lib/addons/cropFields";
 import { resolveInventoryFieldValue } from "@/lib/addons/inventoryFields";
+import { sectionAddonToBalanceDraft } from "@/lib/addons/types";
+import { generateBalanceCurve } from "@/lib/balance/formulaEngine";
 
 export type SectionLookupEntry = {
   dataId?: string | null;
@@ -521,6 +523,70 @@ function findProgressionTableAddon(
   const byType = addons.find((a) => a.type === "progressionTable");
   if (byType) return byType.data as ProgressionTableAddonDraft;
   return undefined;
+}
+
+/** Stable column id for the single value column of an XpBalance source. */
+const XP_VALUE_COLUMN_ID = "value";
+
+/**
+ * Locates an XpBalance addon by id, then by name, then by type. Mirrors
+ * findProgressionTableAddon — xpBalance is a singleton per section, so the
+ * type alone identifies it for the cross-section (`sections`) fallback.
+ */
+function findXpBalanceAddon(
+  addons: SectionAddon[],
+  addonId: string,
+  addonName?: string
+): SectionAddon | undefined {
+  for (const addon of addons) {
+    if (addon.type !== "xpBalance") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) return addon;
+  }
+  if (addonName) {
+    const byName = addons.find((a) => a.type === "xpBalance" && a.name === addonName);
+    if (byName) return byName;
+  }
+  return addons.find((a) => a.type === "xpBalance");
+}
+
+/**
+ * Projects an XpBalance addon's computed level→value curve into a synthetic
+ * ProgressionTableAddonDraft (single numeric column "value"). This lets the XP
+ * source reuse the full progression-table machinery — all four array formats
+ * plus the rowLevel / rowColumn bindings — instead of a bespoke export path.
+ */
+function buildXpBalanceTable(addon: SectionAddon): ProgressionTableAddonDraft {
+  const draft = sectionAddonToBalanceDraft(addon);
+  const curve = generateBalanceCurve({
+    mode: draft.mode,
+    preset: draft.preset,
+    expression: draft.expression,
+    startLevel: draft.startLevel,
+    endLevel: draft.endLevel,
+    decimals: draft.decimals,
+    clampMin: draft.clampMin,
+    clampMax: draft.clampMax,
+    params: draft.params,
+    startAtZero: draft.startAtZero,
+  });
+  return {
+    id: draft.id,
+    name: draft.name || "XP",
+    startLevel: draft.startLevel,
+    endLevel: draft.endLevel,
+    columns: [
+      {
+        id: XP_VALUE_COLUMN_ID,
+        name: draft.name || "XP",
+        valueType: "number",
+        decimals: draft.decimals,
+      },
+    ],
+    rows: curve.points.map((p) => ({
+      level: p.level,
+      values: { [XP_VALUE_COLUMN_ID]: p.value },
+    })),
+  };
 }
 
 function findDataSchemaEntry(
@@ -1026,11 +1092,21 @@ function resolveNodeInner(
       if (node.arraySource.type === "sections") {
         return buildSectionsRowMajor(node.arraySource.parentSectionId, node.itemTemplate, ctx);
       }
-      const table = findProgressionTableAddon(
-        ctx.sectionAddons,
-        node.arraySource.addonId,
-        node.arraySource.addonName
-      );
+      let table: ProgressionTableAddonDraft | undefined;
+      if (node.arraySource.type === "xpBalance") {
+        const xpAddon = findXpBalanceAddon(
+          ctx.sectionAddons,
+          node.arraySource.addonId,
+          node.arraySource.addonName
+        );
+        table = xpAddon ? buildXpBalanceTable(xpAddon) : undefined;
+      } else {
+        table = findProgressionTableAddon(
+          ctx.sectionAddons,
+          node.arraySource.addonId,
+          node.arraySource.addonName
+        );
+      }
       if (!table) return [];
       const tableCtx = { ...ctx, currentTable: table };
       const format = ctx.arrayFormat ?? "rowMajor";
@@ -1167,7 +1243,7 @@ function collectRequiredAddonTypes(nodes: ExportSchemaNode[]): Set<SectionAddonT
       if (n.nodeType === "value" && n.binding?.source === "dataSchema") types.add("dataSchema");
       if (n.nodeType === "array" && n.arraySource) {
         const t = n.arraySource.type;
-        if (t === "progressionTable" || t === "craftTable" || t === "skills") types.add(t);
+        if (t === "progressionTable" || t === "xpBalance" || t === "craftTable" || t === "skills") types.add(t);
       }
       if (n.children) walk(n.children);
       if (n.itemTemplate) walk(n.itemTemplate);

@@ -5,11 +5,13 @@ import {
   calculateCurveMetrics,
   createProfileDefaults,
   generateBalanceCurve,
-  suggestTargetTuning,
+  cumulativeTimeToLevel,
+  solveTargetTuning,
   simulateProgressionBySession,
 } from "@/lib/balance/formulaEngine";
-import type { BalanceAddonDraft } from "@/lib/balance/types";
+import type { BalanceAddonDraft, BalanceCurveInput } from "@/lib/balance/types";
 import { BalanceComparisonPanel } from "@/components/BalanceComparisonPanel";
+import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { calculateSensitivity, compareCurves } from "@/lib/balance/simulationEngine";
 import { useI18n } from "@/lib/i18n/provider";
 import { blurOnEnterKey, useBlurCommitText } from "@/hooks/useBlurCommitText";
@@ -166,25 +168,28 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
     onCommit: (nextExpression) => onChange({ ...addon, expression: nextExpression }),
   });
 
+  const curveInput = useMemo<BalanceCurveInput>(() => ({
+    mode: addon.mode,
+    preset: addon.preset,
+    expression: addon.expression,
+    startLevel: addon.startLevel,
+    endLevel: addon.endLevel,
+    decimals: addon.decimals,
+    clampMin: addon.clampMin,
+    clampMax: addon.clampMax,
+    params: addon.params,
+    startAtZero: addon.startAtZero,
+  }), [addon]);
+
   const curveState = useMemo(() => {
     try {
-      const curve = generateBalanceCurve({
-        mode: addon.mode,
-        preset: addon.preset,
-        expression: addon.expression,
-        startLevel: addon.startLevel,
-        endLevel: addon.endLevel,
-        decimals: addon.decimals,
-        clampMin: addon.clampMin,
-        clampMax: addon.clampMax,
-        params: addon.params,
-      });
+      const curve = generateBalanceCurve(curveInput);
       return { curve, error: "" };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha ao calcular a curva.";
       return { curve: null, error: message };
     }
-  }, [addon]);
+  }, [curveInput]);
 
   const points = useMemo(() => curveState.curve?.points ?? [], [curveState.curve]);
   const metrics = useMemo(() => calculateCurveMetrics(points), [points]);
@@ -242,10 +247,6 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
     () => simulateProgressionBySession(points, simulationInput),
     [points, simulationInput]
   );
-  const targetSuggestion = useMemo(() => {
-    if (!addon.target) return null;
-    return suggestTargetTuning(points, addon.target, simulationInput, addon.preset, addon.params);
-  }, [addon.target, points, simulationInput, addon.preset, addon.params]);
   const targetUnit: "hours" | "days" = simulationInput.mode === "sessionBased" ? "days" : "hours";
   const targetValue = useMemo(() => {
     if (!addon.target) return targetUnit === "days" ? 7 : 10;
@@ -257,13 +258,14 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
   }, [addon.target, targetUnit]);
   const targetComparison = useMemo(() => {
     if (!addon.target) return null;
-    const milestone = simulation.hoursToMilestones.find((entry) => entry.level === addon.target?.targetLevel);
-    if (!milestone) return null;
-    const measured = targetUnit === "days" ? milestone.calendarDays : milestone.hours;
-    if (!Number.isFinite(measured)) return null;
-    const diffPercent = (Math.abs((measured as number) - targetValue) / targetValue) * 100;
-    return { measured: measured as number, diffPercent };
-  }, [addon.target, simulation.hoursToMilestones, targetUnit, targetValue]);
+    // Works for ANY target level (not only the fixed 10/25/50/100 milestones).
+    const t = cumulativeTimeToLevel(points, simulationInput, addon.target.targetLevel);
+    if (!t) return null;
+    const measured = targetUnit === "days" ? t.calendarDays : t.hours;
+    if (measured == null || !Number.isFinite(measured)) return null;
+    const diffPercent = (Math.abs(measured - targetValue) / targetValue) * 100;
+    return { measured, diffPercent };
+  }, [addon.target, points, simulationInput, targetUnit, targetValue]);
   const targetStatus = useMemo(() => {
     if (!targetComparison) return null;
     const diffPercent = targetComparison.diffPercent;
@@ -311,21 +313,15 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
       detail: `${changed.length} niveis mudaram. Variacao media aproximada: ${roundDisplay(averageAbsDeltaPercent)}%.`,
     };
   }, [addon.comparisonBaseline, points]);
-  const suggestedAdjustments = useMemo(() => {
-    if (!targetSuggestion) return null;
-    const entries = Object.entries(targetSuggestion.recommendedAdjustments || {}).filter(([, value]) =>
-      Number.isFinite(value as number)
-    ) as Array<[keyof BalanceAddonDraft["params"], number]>;
-    if (entries.length === 0) return null;
-    const next = { ...addon.params };
-    for (const [key, value] of entries) {
-      next[key] = value;
-    }
-    return next;
-  }, [addon.params, targetSuggestion]);
+  // One-shot solve: the params that hit the target time within tolerance
+  // (bisection), instead of a single damped step the user has to click repeatedly.
+  const targetSolution = useMemo(() => {
+    if (!addon.target) return null;
+    return solveTargetTuning(curveInput, addon.target, simulationInput);
+  }, [addon.target, curveInput, simulationInput]);
   const adjustmentLabel = useMemo(() => {
-    if (!suggestedAdjustments) return "";
-    const changed = Object.entries(suggestedAdjustments).filter(([key, value]) => {
+    if (!targetSolution) return "";
+    const changed = Object.entries(targetSolution.params).filter(([key, value]) => {
       const current = addon.params[key as keyof BalanceAddonDraft["params"]];
       return Math.abs(Number(current) - Number(value)) > 0.0001;
     });
@@ -333,7 +329,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
     return changed
       .map(([key, value]) => `${key}: ${roundDisplay(addon.params[key as keyof BalanceAddonDraft["params"]])} -> ${roundDisplay(Number(value))}`)
       .join(" | ");
-  }, [addon.params, suggestedAdjustments]);
+  }, [addon.params, targetSolution]);
   const metricExamples = useMemo(() => {
     const first = points[0];
     const second = points[1];
@@ -377,40 +373,6 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
     return PARAM_KEYS.filter((key) => used.has(key));
   }, [addon.mode, addon.preset, addon.expression]);
 
-  const exportLevelXpJson = () => {
-    if (!points.length) return;
-
-    const payload = {
-      version: 1,
-      generatedAt: new Date().toISOString(),
-      addon: {
-        id: addon.id,
-        name: addon.name,
-        startLevel: addon.startLevel,
-        endLevel: addon.endLevel,
-      },
-      levelXpTable: points.map((point) => ({
-        level: point.level,
-        xp: point.value,
-      })),
-    };
-
-    const safeName = (addon.name || "balanceamento")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    const filename = `${safeName || "balanceamento"}-lv-xp.json`;
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <section className={PANEL_SHELL_CLASS}>
       <div className="mb-4 space-y-4">
@@ -453,6 +415,19 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
               onChange={(value) => onChange({ ...addon, decimals: value })}
             />
           </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+            <ToggleSwitch
+              checked={addon.startAtZero ?? false}
+              onChange={(checked) => onChange({ ...addon, startAtZero: checked })}
+              ariaLabel="Primeiro nivel comeca em 0 XP"
+            />
+            <span>
+              Primeiro nivel comeca em 0 XP
+              <span className="block text-gray-500">
+                O nivel inicial nao tem custo (o jogador comeca nele) e a curva desloca: o Lv {addon.startLevel + 1} passa a usar o primeiro valor da formula.
+              </span>
+            </span>
+          </label>
         </div>
       </div>
 
@@ -994,7 +969,7 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
                       }
                     />
                   </div>
-                  {targetSuggestion && (
+                  {targetSolution && (
                     <div className="mt-2 space-y-2">
                       {targetStatus && (
                         <div className={`rounded-lg border px-2.5 py-2 text-xs ${targetStatus.className}`}>
@@ -1002,21 +977,21 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
                           <p className="mt-1 opacity-90">{targetStatus.detail}</p>
                         </div>
                       )}
-                      <p className="text-xs text-gray-300">{targetSuggestion.message}</p>
-                      {suggestedAdjustments != null && adjustmentLabel !== "Sem ajuste necessario" && (
+                      <p className="text-xs text-gray-300">{targetSolution.message}</p>
+                      {adjustmentLabel !== "Sem ajuste necessario" && adjustmentLabel !== "" && (
                         <button
                           type="button"
                           onClick={() =>
                             onChange({
                               ...addon,
                               params: {
-                                ...suggestedAdjustments,
+                                ...targetSolution.params,
                               },
                             })
                           }
                           className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-100 hover:bg-gray-700"
                         >
-                          Aplicar ajuste sugerido ({adjustmentLabel})
+                          Aplicar e atingir a meta ({adjustmentLabel})
                         </button>
                       )}
                     </div>
@@ -1070,15 +1045,6 @@ export function BalanceAddonPanel({ addon, onChange, onRemove }: BalanceAddonPan
                 )}
               </div>
             )}
-          </div>
-          <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              onClick={exportLevelXpJson}
-              className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs text-gray-100 hover:bg-gray-700"
-            >
-              Exportar Lv-&gt;XP (JSON)
-            </button>
           </div>
         </>
       )}

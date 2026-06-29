@@ -96,7 +96,7 @@ export function ExportSchemaAddonReadOnly({
   const hasProgressionArraySource = useMemo(() => {
     const walk = (nodes: ExportSchemaNode[]): boolean => {
       for (const n of nodes) {
-        if (n.nodeType === "array" && n.arraySource?.type === "progressionTable") return true;
+        if (n.nodeType === "array" && (n.arraySource?.type === "progressionTable" || n.arraySource?.type === "xpBalance")) return true;
         if (n.children && walk(n.children)) return true;
         if (n.itemTemplate && walk(n.itemTemplate)) return true;
       }
