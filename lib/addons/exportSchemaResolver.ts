@@ -86,6 +86,32 @@ function resolveRefToDataId(sectionId: string | undefined, lookup?: SectionLooku
   return typeof dataId === "string" && dataId.trim() ? dataId.trim() : "";
 }
 
+/**
+ * Finds a Production addon by its own addon id (or fallback by name, then by
+ * type). Mirrors findCraftTableAddon — used by the standalone Production export
+ * sources (`productionIngredients`/`productionOutputs`/`productionField` with an
+ * `addonId`). The by-type fallback keeps a `sections` iteration resolving each
+ * child's own Production addon even when the sampled id/name don't match.
+ */
+function findProductionAddon(
+  addons: SectionAddon[],
+  addonId: string,
+  addonName?: string
+): ProductionAddonDraft | undefined {
+  for (const addon of addons) {
+    if (addon.type !== "production") continue;
+    if (addon.id === addonId || addon.data?.id === addonId) return addon.data as ProductionAddonDraft;
+  }
+  if (addonName) {
+    for (const addon of addons) {
+      if (addon.type === "production" && addon.name === addonName) return addon.data as ProductionAddonDraft;
+    }
+  }
+  const byType = addons.find((a) => a.type === "production");
+  if (byType) return byType.data as ProductionAddonDraft;
+  return undefined;
+}
+
 /** Finds a Production addon by section-ID ref (the section that contains it). */
 function findProductionByRef(
   sectionRef: string | undefined,
@@ -240,6 +266,7 @@ function resolveProductionField(
       case "name":
       case "mode":
       case "outputRef":
+      case "outputItemRef":
         return "";
       case "requiresCollection":
         return false;
@@ -278,6 +305,10 @@ function resolveProductionField(
       return Boolean(prod.requiresCollection);
     case "outputRef":
       return resolveRefToDataId(prod.outputRef, lookup);
+    case "outputItemRef":
+      return resolveRefToDataId(prod.outputs?.[0]?.itemRef, lookup);
+    case "outputQuantity":
+      return prod.outputs?.[0]?.quantity ?? 0;
     default:
       return null;
   }
@@ -738,8 +769,12 @@ function resolveBinding(
       if (!ctx.entry) return null;
       return resolveEntryField(ctx.entry, binding.field, ctx.sectionLookup);
 
-    case "productionField":
-      return resolveProductionField(ctx.currentProduction, binding.field, ctx.sectionLookup);
+    case "productionField": {
+      const prod = binding.addonId
+        ? findProductionAddon(ctx.sectionAddons, binding.addonId, binding.addonName)
+        : ctx.currentProduction;
+      return resolveProductionField(prod, binding.field, ctx.sectionLookup);
+    }
 
     case "itemField":
       return resolveItemField(ctx.currentItem, binding.field, ctx.sectionLookup);
@@ -1065,12 +1100,22 @@ function resolveNodeInner(
         return buildCraftTableRowMajor(craft, node.itemTemplate, ctx);
       }
       if (node.arraySource.type === "productionIngredients") {
-        const items = ctx.currentProduction?.ingredients || [];
-        return buildProductionItemRowMajor(items, node.itemTemplate, ctx);
+        // Standalone (addonId set) reads that Production directly; otherwise
+        // falls back to the current craft table entry's production.
+        const prod = node.arraySource.addonId
+          ? findProductionAddon(ctx.sectionAddons, node.arraySource.addonId, node.arraySource.addonName)
+          : ctx.currentProduction;
+        const items = prod?.ingredients || [];
+        const itemCtx = node.arraySource.addonId ? { ...ctx, currentProduction: prod } : ctx;
+        return buildProductionItemRowMajor(items, node.itemTemplate, itemCtx);
       }
       if (node.arraySource.type === "productionOutputs") {
-        const items = ctx.currentProduction?.outputs || [];
-        return buildProductionItemRowMajor(items, node.itemTemplate, ctx);
+        const prod = node.arraySource.addonId
+          ? findProductionAddon(ctx.sectionAddons, node.arraySource.addonId, node.arraySource.addonName)
+          : ctx.currentProduction;
+        const items = prod?.outputs || [];
+        const itemCtx = node.arraySource.addonId ? { ...ctx, currentProduction: prod } : ctx;
+        return buildProductionItemRowMajor(items, node.itemTemplate, itemCtx);
       }
       if (node.arraySource.type === "skills") {
         const skills = findSkillsAddon(
@@ -1244,7 +1289,11 @@ function collectRequiredAddonTypes(nodes: ExportSchemaNode[]): Set<SectionAddonT
       if (n.nodeType === "array" && n.arraySource) {
         const t = n.arraySource.type;
         if (t === "progressionTable" || t === "xpBalance" || t === "craftTable" || t === "skills") types.add(t);
+        // Standalone production sources (addonId set) depend on a Production addon
+        // in each iterated page; context-based ones (no addonId) do not.
+        if ((t === "productionIngredients" || t === "productionOutputs") && n.arraySource.addonId) types.add("production");
       }
+      if (n.nodeType === "value" && n.binding?.source === "productionField" && n.binding.addonId) types.add("production");
       if (n.children) walk(n.children);
       if (n.itemTemplate) walk(n.itemTemplate);
     }

@@ -529,10 +529,19 @@ export type ExportSchemaArraySource =
   /** Iterates the computed level→value curve of an XpBalance addon. */
   | { type: "xpBalance"; addonId: string; addonName?: string }
   | { type: "craftTable"; addonId: string; addonName?: string }
-  /** Iterates the ingredients of the current craft table entry's Production addon. */
-  | { type: "productionIngredients" }
-  /** Iterates the outputs of the current craft table entry's Production addon. */
-  | { type: "productionOutputs" }
+  /**
+   * Iterates the ingredients of a Production addon. When `addonId` is set, reads
+   * that specific Production addon directly (standalone Recipe export — no Craft
+   * Table needed). When omitted, follows the current craft table entry's
+   * Production addon (only valid nested inside a `craftTable` array).
+   */
+  | { type: "productionIngredients"; addonId?: string; addonName?: string }
+  /**
+   * Iterates the outputs of a Production addon. `addonId` behaves exactly like
+   * `productionIngredients` above — set it to read a specific addon standalone,
+   * omit it to follow the current craft table entry.
+   */
+  | { type: "productionOutputs"; addonId?: string; addonName?: string }
   /** Iterates the entries of a Skills addon. */
   | { type: "skills"; addonId: string; addonName?: string }
   /** Iterates the costs of the current Skills entry. Context-dependent — only useful inside a `skills` array. */
@@ -564,7 +573,11 @@ export type ProductionScalarField =
   | "capacityMin"
   | "capacityMax"
   | "requiresCollection"
-  | "outputRef";
+  | "outputRef"
+  /** Recipe mode: itemRef (as dataId) of the first output row. Empty when there are no outputs. */
+  | "outputItemRef"
+  /** Recipe mode: quantity of the first output row. 0 when there are no outputs. */
+  | "outputQuantity";
 
 export type ProductionItemField = "itemRef" | "quantity";
 
@@ -656,8 +669,13 @@ export type ExportSchemaBinding =
    */
   | { source: "rowColumn"; columnId: string; columnName?: string }
   | { source: "entryField"; field: CraftTableEntryField }
-  /** Follows the current craft entry's productionRef and reads a scalar field from that Production addon. */
-  | { source: "productionField"; field: ProductionScalarField }
+  /**
+   * Reads a scalar field from a Production addon. When `addonId` is set, reads
+   * that specific Production addon directly (standalone Recipe export). When
+   * omitted, follows the current craft entry's productionRef (only valid inside
+   * a `craftTable` array).
+   */
+  | { source: "productionField"; field: ProductionScalarField; addonId?: string; addonName?: string }
   /** Reads a field from the current ingredient/output row (inside productionIngredients/productionOutputs array). */
   | { source: "itemField"; field: ProductionItemField }
   /** Reads a scalar field from the current Skills entry (inside a `skills` array). */

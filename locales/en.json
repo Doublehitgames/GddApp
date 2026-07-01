@@ -3024,7 +3024,17 @@
       "xpBalanceGroup": "XP balance from each child page",
       "craftGroup": "Crafting table from each child page",
       "skillsGroup": "Skills from each child page",
+      "productionGroup": "Production (recipe) from each child page",
       "matchByNameHint": "Matched by name in each child page — applies to every child that has an equivalent table, not just the sample page."
+    },
+    "production": {
+      "group": "Production (recipe)",
+      "ingredients": "Ingredients",
+      "outputs": "Outputs",
+      "currentRecipe": "(current recipe)",
+      "addonSelectTitle": "Which Production addon to read the field from",
+      "tagRecipe": "recipe",
+      "tagPassive": "passive"
     },
     "coverage": {
       "title": "⚠ Some child pages don't have this schema's data",

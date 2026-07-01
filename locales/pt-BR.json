@@ -3024,7 +3024,17 @@
       "xpBalanceGroup": "Balanceamento de XP de cada página filha",
       "craftGroup": "Mesa de produção de cada página filha",
       "skillsGroup": "Habilidades de cada página filha",
+      "productionGroup": "Produção (receita) de cada página filha",
       "matchByNameHint": "Casada pelo nome em cada página filha — vale para todos os filhos que tenham uma tabela equivalente, não só a página de amostra."
+    },
+    "production": {
+      "group": "Produção (receita)",
+      "ingredients": "Ingredientes",
+      "outputs": "Saídas",
+      "currentRecipe": "(receita atual)",
+      "addonSelectTitle": "De qual addon de Produção ler o campo",
+      "tagRecipe": "receita",
+      "tagPassive": "passivo"
     },
     "coverage": {
       "title": "⚠ Algumas páginas filhas não têm os dados deste schema",

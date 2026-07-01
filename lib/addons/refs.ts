@@ -35,7 +35,7 @@ function clearExportSchemaRefs(
     if (
       node.binding &&
       typeof node.binding === "object" &&
-      node.binding.source === "dataSchema" &&
+      (node.binding.source === "dataSchema" || node.binding.source === "productionField") &&
       "addonId" in node.binding &&
       !shouldPreserve(node.binding.addonId, preserve)
     ) {
@@ -47,7 +47,7 @@ function clearExportSchemaRefs(
 }
 
 /** Tipos de addon que um exportSchema referencia por `addonId` (todos singleton por página). */
-type ExportSchemaRefType = "progressionTable" | "craftTable" | "skills";
+type ExportSchemaRefType = "progressionTable" | "craftTable" | "skills" | "production";
 
 /** Resolve o id do addon do destino para um tipo (tratando dataSchema≈genericStats). */
 function targetAddonIdOfType(
@@ -86,8 +86,22 @@ export function relinkExportSchemaRefsToSection(
       ) {
         src.addonId = targetAddonIdOfType(targetAddons, src.type as ExportSchemaRefType);
       }
+      // Standalone production sources carry an optional addonId — only remap when
+      // it was set, so context-based ones (nested in a craftTable) stay context-based.
+      if (
+        src &&
+        typeof src === "object" &&
+        (src.type === "productionIngredients" || src.type === "productionOutputs") &&
+        src.addonId
+      ) {
+        src.addonId = targetAddonIdOfType(targetAddons, "production");
+      }
       if (node.binding && node.binding.source === "dataSchema") {
         node.binding.addonId = targetAddonIdOfType(targetAddons, "dataSchema");
+      }
+      // productionField addonId is optional (absent = craft-entry context) — same guard.
+      if (node.binding && node.binding.source === "productionField" && node.binding.addonId) {
+        node.binding.addonId = targetAddonIdOfType(targetAddons, "production");
       }
       if (Array.isArray(node.children)) visit(node.children);
       if (Array.isArray(node.itemTemplate)) visit(node.itemTemplate);
@@ -349,7 +363,10 @@ export function collectIntraSectionDeps(addon: SectionAddon): string[] {
       if (!Array.isArray(nodes)) return;
       for (const node of nodes) {
         if (node.arraySource?.addonId) ids.add(node.arraySource.addonId);
-        if (node.binding?.source === "dataSchema" && node.binding.addonId) {
+        if (
+          (node.binding?.source === "dataSchema" || node.binding?.source === "productionField") &&
+          node.binding.addonId
+        ) {
           ids.add(node.binding.addonId);
         }
         if (Array.isArray(node.children)) visit(node.children);

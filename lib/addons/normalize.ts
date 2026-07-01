@@ -1604,10 +1604,19 @@ function normalizeExportSchemaBinding(raw: unknown): ExportSchemaBinding | undef
       "capacity",
       "requiresCollection",
       "outputRef",
+      "outputItemRef",
+      "outputQuantity",
     ]);
     const field = typeof raw.field === "string" ? raw.field.trim() : "";
     if (!validFields.has(field)) return undefined;
-    return { source: "productionField", field: field as "name" | "mode" | "craftTimeSeconds" | "minOutput" | "maxOutput" | "intervalSeconds" | "capacity" | "requiresCollection" | "outputRef" };
+    const addonId = typeof raw.addonId === "string" && raw.addonId.trim() ? raw.addonId.trim() : undefined;
+    const addonName = typeof raw.addonName === "string" && raw.addonName.trim() ? raw.addonName.trim() : undefined;
+    return {
+      source: "productionField",
+      field: field as Extract<ExportSchemaBinding, { source: "productionField" }>["field"],
+      ...(addonId ? { addonId } : {}),
+      ...(addonName ? { addonName } : {}),
+    };
   }
   if (source === "itemField") {
     const field = typeof raw.field === "string" ? raw.field.trim() : "";
@@ -1696,10 +1705,16 @@ function normalizeExportSchemaNodes(rawNodes: unknown[]): ExportSchemaNode[] {
           const sourceType = rawType as "progressionTable" | "xpBalance" | "craftTable" | "skills";
           const arrAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
           node.arraySource = { type: sourceType, addonId: rawNode.arraySource.addonId.trim(), addonName: arrAddonName };
-        } else if (rawType === "productionIngredients") {
-          node.arraySource = { type: "productionIngredients" };
-        } else if (rawType === "productionOutputs") {
-          node.arraySource = { type: "productionOutputs" };
+        } else if (rawType === "productionIngredients" || rawType === "productionOutputs") {
+          // addonId optional: set → standalone Recipe export; absent → follows the
+          // enclosing craftTable entry's production (context-based).
+          const prodAddonId = typeof rawNode.arraySource.addonId === "string" && rawNode.arraySource.addonId.trim() ? rawNode.arraySource.addonId.trim() : undefined;
+          const prodAddonName = typeof rawNode.arraySource.addonName === "string" && rawNode.arraySource.addonName.trim() ? rawNode.arraySource.addonName.trim() : undefined;
+          node.arraySource = {
+            type: rawType,
+            ...(prodAddonId ? { addonId: prodAddonId } : {}),
+            ...(prodAddonName ? { addonName: prodAddonName } : {}),
+          };
         } else if (rawType === "skillCosts") {
           node.arraySource = { type: "skillCosts" };
         } else if (rawType === "skillEffects") {

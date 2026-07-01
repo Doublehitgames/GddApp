@@ -241,7 +241,7 @@ export function isNumericBinding(
   if (binding.source === "productionField") {
     return binding.field === "craftTimeSeconds" || binding.field === "minOutput" ||
            binding.field === "maxOutput" || binding.field === "intervalSeconds" ||
-           binding.field === "capacity";
+           binding.field === "capacity" || binding.field === "outputQuantity";
   }
   if (binding.source === "itemField") return binding.field === "quantity";
   return false;
@@ -280,9 +280,19 @@ export function getBindingIssue(
         (a) => a.type === "skills" && (a.id === src.addonId || a.data?.id === src.addonId)
       );
       if (!found) return "Skills referenciado não foi encontrado";
+    } else if (
+      (src.type === "productionIngredients" || src.type === "productionOutputs") &&
+      src.addonId
+    ) {
+      // Only the standalone form (addonId set) has a static ref to validate;
+      // the context-based form (no addonId) follows the enclosing craftTable.
+      const found = sectionAddons.some(
+        (a) => a.type === "production" && (a.id === src.addonId || a.data?.id === src.addonId)
+      );
+      if (!found) return "Produção referenciada não foi encontrada";
     }
-    // productionIngredients/productionOutputs/skillCosts/skillEffects are
-    // context-dependent; no static ref to break.
+    // Context-based productionIngredients/productionOutputs (no addonId) and
+    // skillCosts/skillEffects are context-dependent; no static ref to break.
   }
 
   const binding = node.binding;
@@ -303,8 +313,18 @@ export function getBindingIssue(
     if (!entry) return `Campo "${binding.entryKey}" não existe no Data Schema`;
   }
 
-  // rowColumn/rowLevel/entryField/productionField/itemField are context-dependent —
-  // they don't have a static ref to validate here.
+  // A standalone productionField binding (addonId set) points at a specific
+  // Production addon — validate it. The context-based form (no addonId) follows
+  // the enclosing craftTable entry and has no static ref to break.
+  if (binding.source === "productionField" && binding.addonId) {
+    const found = sectionAddons.some(
+      (a) => a.type === "production" && (a.id === binding.addonId || a.data?.id === binding.addonId)
+    );
+    if (!found) return "Produção referenciada não foi encontrada";
+  }
+
+  // rowColumn/rowLevel/entryField/itemField (and context-based productionField)
+  // are context-dependent — they don't have a static ref to validate here.
   return null;
 }
 
@@ -489,6 +509,14 @@ export function getSkillsAddons(
     .map((a) => ({ id: a.id, name: a.name }));
 }
 
+export function getProductionAddons(
+  addons: SectionAddon[]
+): Array<{ id: string; name: string }> {
+  return addons
+    .filter((a) => a.type === "production")
+    .map((a) => ({ id: a.id, name: a.name }));
+}
+
 // ── immutable tree helpers ─────────────────────────────────────────
 
 export function updateNodeInList(nodes: ExportSchemaNode[], nodeId: string, updater: (n: ExportSchemaNode) => ExportSchemaNode): ExportSchemaNode[] {
@@ -577,10 +605,12 @@ export function BindingEditor({
   inSkillEntry?: boolean;
   readOnly?: boolean;
 }) {
+  const { t } = useI18n();
   const source = binding?.source ?? "manual";
   const dataSchemas = useMemo(() => getDataSchemaAddons(sectionAddons), [sectionAddons]);
   const progressionTables = useMemo(() => getProgressionTableAddons(sectionAddons), [sectionAddons]);
   const xpBalances = useMemo(() => getXpBalanceAddons(sectionAddons), [sectionAddons]);
+  const productionAddons = useMemo(() => getProductionAddons(sectionAddons), [sectionAddons]);
   const insideCraftArray = insideArray && arraySourceType === "craftTable";
   // XpBalance reuses the progression-table machinery (rowLevel / rowColumn) — its
   // synthetic table has a single "value" column, so it behaves like a 1-column
@@ -618,7 +648,15 @@ export function BindingEditor({
     } else if (newSource === "entryField") {
       onChange({ source: "entryField", field: "productionRef" });
     } else if (newSource === "productionField") {
-      onChange({ source: "productionField", field: "name" });
+      // Inside a craft entry, follow the entry's production (no addonId). Standalone,
+      // default to the first Production addon on the page so the binding resolves.
+      const useContext = insideCraftArray || inCraftEntry;
+      const firstProd = useContext ? undefined : productionAddons[0];
+      onChange({
+        source: "productionField",
+        field: "name",
+        ...(firstProd ? { addonId: firstProd.id, addonName: firstProd.name } : {}),
+      });
     } else if (newSource === "itemField") {
       onChange({ source: "itemField", field: "itemRef" });
     } else if (newSource === "skillField") {
@@ -674,16 +712,20 @@ export function BindingEditor({
     { value: "resolvedCategory", label: "resolved.category" },
   ];
 
-  const productionScalarFields: Array<{ value: "name" | "mode" | "craftTimeSeconds" | "minOutput" | "maxOutput" | "intervalSeconds" | "capacity" | "requiresCollection" | "outputRef"; label: string }> = [
+  const tagRecipe = t("exportSchemaAddon.production.tagRecipe", "receita");
+  const tagPassive = t("exportSchemaAddon.production.tagPassive", "passivo");
+  const productionScalarFields: Array<{ value: Extract<ExportSchemaBinding, { source: "productionField" }>["field"]; label: string }> = [
     { value: "name", label: "name" },
     { value: "mode", label: "mode" },
-    { value: "craftTimeSeconds", label: "craftTimeSeconds" },
-    { value: "minOutput", label: "minOutput" },
-    { value: "maxOutput", label: "maxOutput" },
-    { value: "intervalSeconds", label: "intervalSeconds" },
-    { value: "capacity", label: "capacity" },
-    { value: "requiresCollection", label: "requiresCollection" },
-    { value: "outputRef", label: "outputRef (dataId)" },
+    { value: "craftTimeSeconds", label: `craftTimeSeconds (${tagRecipe})` },
+    { value: "outputItemRef", label: `outputItemRef (${tagRecipe}, dataId)` },
+    { value: "outputQuantity", label: `outputQuantity (${tagRecipe})` },
+    { value: "minOutput", label: `minOutput (${tagPassive})` },
+    { value: "maxOutput", label: `maxOutput (${tagPassive})` },
+    { value: "intervalSeconds", label: `intervalSeconds (${tagPassive})` },
+    { value: "capacity", label: `capacity (${tagPassive})` },
+    { value: "requiresCollection", label: `requiresCollection (${tagPassive})` },
+    { value: "outputRef", label: `outputRef (${tagPassive}, dataId)` },
   ];
 
   const craftTableEntryFields: Array<{ value: "order" | "productionRef" | "category" | "hidden" | "unlockLevelEnabled" | "unlockLevel" | "unlockLevelXpRef" | "unlockCurrencyEnabled" | "unlockCurrencyAmount" | "unlockCurrencyRef" | "unlockItemEnabled" | "unlockItemQuantity" | "unlockItemRef"; label: string }> = [
@@ -710,7 +752,7 @@ export function BindingEditor({
         {insideProgressionArray && <option value="rowLevel">Row Level</option>}
         {insideProgressionArray && <option value="rowColumn">Row Column</option>}
         {insideCraftArray && <option value="entryField">Entry Field</option>}
-        {(insideCraftArray || inCraftEntry) && <option value="productionField">Production Field</option>}
+        {(insideCraftArray || inCraftEntry || productionAddons.length > 0) && <option value="productionField">Production Field</option>}
         {insideProductionItemsArray && <option value="itemField">Item Field</option>}
         {(insideSkillsArray || inSkillEntry) && <option value="skillField">Skill Field</option>}
         {insideSkillCostsArray && <option value="skillCostField">Skill Cost Field</option>}
@@ -852,21 +894,49 @@ export function BindingEditor({
       )}
 
       {source === "productionField" && binding?.source === "productionField" && (
-        <select
-          className={FIELD}
-          value={binding.field}
-          disabled={readOnly}
-          onChange={(e) => {
-            if (readOnly) return;
-            onChange({ source: "productionField", field: e.target.value as typeof binding.field });
-          }}
-        >
-          {productionScalarFields.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <>
+          {productionAddons.length > 0 && (
+            <select
+              className={FIELD}
+              value={binding.addonId ?? ""}
+              disabled={readOnly}
+              title={t("exportSchemaAddon.production.addonSelectTitle", "De qual addon de Produção ler o campo")}
+              onChange={(e) => {
+                if (readOnly) return;
+                const id = e.target.value;
+                if (!id) {
+                  // "receita atual" — context-based (only meaningful inside a craftTable).
+                  onChange({ source: "productionField", field: binding.field });
+                  return;
+                }
+                const name = productionAddons.find((p) => p.id === id)?.name;
+                onChange({ source: "productionField", field: binding.field, addonId: id, addonName: name });
+              }}
+            >
+              {(insideCraftArray || inCraftEntry) && <option value="">{t("exportSchemaAddon.production.currentRecipe", "(receita atual)")}</option>}
+              {productionAddons.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <select
+            className={FIELD}
+            value={binding.field}
+            disabled={readOnly}
+            onChange={(e) => {
+              if (readOnly) return;
+              onChange({ ...binding, source: "productionField", field: e.target.value as typeof binding.field });
+            }}
+          >
+            {productionScalarFields.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </>
       )}
 
       {source === "itemField" && binding?.source === "itemField" && (
@@ -1016,6 +1086,7 @@ export function SchemaNodeEditor({
   const xpBalances = useMemo(() => getXpBalanceAddons(sectionAddons), [sectionAddons]);
   const craftTables = useMemo(() => getCraftTableAddons(sectionAddons), [sectionAddons]);
   const skillsAddons = useMemo(() => getSkillsAddons(sectionAddons), [sectionAddons]);
+  const productionAddons = useMemo(() => getProductionAddons(sectionAddons), [sectionAddons]);
   const [collapsed, setCollapsed] = useState(true);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -1196,6 +1267,8 @@ export function SchemaNodeEditor({
                   ? `${node.arraySource.type}:${node.arraySource.addonId}`
                   : node.arraySource.type === "sections"
                   ? `sections:${node.arraySource.parentSectionId}`
+                  : (node.arraySource.type === "productionIngredients" || node.arraySource.type === "productionOutputs") && node.arraySource.addonId
+                  ? `${node.arraySource.type}:${node.arraySource.addonId}`
                   : node.arraySource.type
                 : ""
             }
@@ -1216,6 +1289,11 @@ export function SchemaNodeEditor({
                 raw === "skillEffects"
               ) {
                 nextSource = { type: raw };
+              } else if (raw.startsWith("productionIngredients:") || raw.startsWith("productionOutputs:")) {
+                // Standalone Recipe export: "{type}:{addonId}" targets a specific Production addon.
+                const [type, addonId] = raw.split(":");
+                const addonName = productionAddons.find((p) => p.id === addonId)?.name;
+                nextSource = { type: type as "productionIngredients" | "productionOutputs", addonId, addonName };
               } else if (raw.startsWith("sections:")) {
                 const parentSectionId = raw.slice("sections:".length);
                 const parentSectionName = parentSectionOptions?.find((p) => p.id === parentSectionId)?.title;
@@ -1260,6 +1338,18 @@ export function SchemaNodeEditor({
                     {insideSectionsIteration ? (getAddonRegistryEntry("craftTable")?.label ?? ct.name) : ct.name}
                   </option>
                 ))}
+              </optgroup>
+            )}
+            {productionAddons.length > 0 && (
+              <optgroup label={insideSectionsIteration ? t("exportSchemaAddon.sections.productionGroup", "Produção (receita) de cada página filha") : t("exportSchemaAddon.production.group", "Produção (receita)")}>
+                {productionAddons.flatMap((p) => [
+                  <option key={`${p.id}-ing`} value={`productionIngredients:${p.id}`}>
+                    {p.name} · {t("exportSchemaAddon.production.ingredients", "Ingredientes")}
+                  </option>,
+                  <option key={`${p.id}-out`} value={`productionOutputs:${p.id}`}>
+                    {p.name} · {t("exportSchemaAddon.production.outputs", "Saídas")}
+                  </option>,
+                ])}
               </optgroup>
             )}
             {skillsAddons.length > 0 && (

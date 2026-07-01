@@ -40,8 +40,8 @@ function patchNodeAddonIds(
 ): ExportSchemaNode {
   let patched = node;
 
-  // Patch binding addonId (only dataSchema bindings have addonId)
-  if (node.binding && "addonId" in node.binding && idMap.has(node.binding.addonId)) {
+  // Patch binding addonId (dataSchema and standalone productionField bindings carry one)
+  if (node.binding && "addonId" in node.binding && node.binding.addonId && idMap.has(node.binding.addonId)) {
     patched = {
       ...patched,
       binding: { ...node.binding, addonId: idMap.get(node.binding.addonId)! },
@@ -53,7 +53,9 @@ function patchNodeAddonIds(
     node.arraySource &&
     (node.arraySource.type === "progressionTable" ||
       node.arraySource.type === "xpBalance" ||
-      node.arraySource.type === "craftTable") &&
+      node.arraySource.type === "craftTable" ||
+      node.arraySource.type === "productionIngredients" ||
+      node.arraySource.type === "productionOutputs") &&
     node.arraySource.addonId &&
     idMap.has(node.arraySource.addonId)
   ) {
