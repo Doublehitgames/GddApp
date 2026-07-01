@@ -588,7 +588,9 @@ export function registerAddonTools(server, client) {
             "skillEffectField",
         ]).describe("Binding source. 'rowLevel' / 'rowColumn' are valid only inside a " +
             "progressionTable array. 'entryField' is valid inside a craftTable array. " +
-            "'productionField' is valid inside a craftTable array (follows entry.productionRef). " +
+            "'productionField' reads a scalar from a Production addon: inside a craftTable array it " +
+            "follows entry.productionRef (no addonId); standalone, set addonId to a Production addon " +
+            "on the page to export a recipe directly without a Craft Table. " +
             "'itemField' is valid inside productionIngredients/productionOutputs arrays. " +
             "'skillField' is valid inside a skills array (or any descendant of one). " +
             "'skillCostField' is valid inside a skillCosts array. " +
@@ -607,7 +609,8 @@ export function registerAddonTools(server, client) {
         field: z.string().optional().describe("entryField: order|productionRef|category|hidden|unlockLevelEnabled|unlockLevel|" +
             "unlockLevelXpRef|unlockCurrencyEnabled|unlockCurrencyAmount|unlockCurrencyRef|" +
             "unlockItemEnabled|unlockItemQuantity|unlockItemRef. " +
-            "productionField: name|mode|craftTimeSeconds|minOutput|maxOutput|intervalSeconds|" +
+            "productionField: name|mode|craftTimeSeconds|outputItemRef|outputQuantity (first output row, " +
+            "for flat single-output recipes)|minOutput|maxOutput|intervalSeconds|" +
             "capacity|requiresCollection|outputRef. " +
             "itemField: itemRef|quantity. " +
             "skillField: id|name|kind|description|cooldownSeconds|tagsCsv|unlockLevelEnabled|" +
@@ -633,15 +636,17 @@ export function registerAddonTools(server, client) {
         ]).describe("'progressionTable', 'xpBalance', 'craftTable' and 'skills' require addonId. " +
             "'xpBalance' iterates the computed level→value curve of an XP Balance addon " +
             "(use rowLevel for the level and rowColumn with columnId 'value' for the XP). " +
-            "'productionIngredients' and 'productionOutputs' follow the current craftTable entry's " +
-            "production and do not take an addonId (must be nested inside a craftTable array node). " +
+            "'productionIngredients' and 'productionOutputs' iterate a Production addon's ingredient/" +
+            "output rows. With addonId set they read that Production addon directly (standalone Recipe " +
+            "export — no Craft Table needed); without addonId they follow the current craftTable entry's " +
+            "production (must then be nested inside a craftTable array node). " +
             "'skillCosts' and 'skillEffects' follow the current skills entry and do not take an " +
             "addonId (must be nested inside a skills array node). " +
             "'sections' iterates the child sections of parentSectionId, resolving the itemTemplate " +
             "against each child's own addons (one object per child page — e.g. aggregate every seed " +
             "page under a parent into a single array). Bindings resolve via addonName + entryKey " +
             "fallback, so a template authored against one child resolves across all siblings."),
-        addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, xpBalance, craftTable or skills)"),
+        addonId: z.string().optional().describe("Section ID of the target addon (progressionTable, xpBalance, craftTable, skills, or a Production addon for standalone productionIngredients/productionOutputs)"),
         addonName: z.string().optional().describe("Fallback match by name when used in templates"),
         parentSectionId: z.string().optional().describe("Parent section ID whose child sections are iterated (required for type 'sections')"),
         parentSectionName: z.string().optional().describe("Display name of the parent section (optional, for readability)"),
