@@ -97,6 +97,16 @@ export class GddApiClient {
     async moveAddon(projectId, sectionId, addonId, toSectionId, overwrite) {
         return this.request("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`, { toSectionId, overwrite });
     }
+    // ── Remote Config (resolved economy) ──────────────────────────────
+    async getRemoteConfig(projectId, opts = {}) {
+        const params = new URLSearchParams();
+        if (opts.sectionId)
+            params.set("sectionId", opts.sectionId);
+        if (opts.addonId)
+            params.set("addonId", opts.addonId);
+        const qs = params.toString();
+        return this.request("GET", `/projects/${projectId}/remote-config${qs ? `?${qs}` : ""}`);
+    }
     // ── Search ────────────────────────────────────────────────────────
     async search(q, type, limit) {
         const params = new URLSearchParams({ q });

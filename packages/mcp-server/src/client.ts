@@ -137,6 +137,16 @@ export class GddApiClient {
     );
   }
 
+  // ── Remote Config (resolved economy) ──────────────────────────────
+
+  async getRemoteConfig(projectId: string, opts: { sectionId?: string; addonId?: string } = {}) {
+    const params = new URLSearchParams();
+    if (opts.sectionId) params.set("sectionId", opts.sectionId);
+    if (opts.addonId) params.set("addonId", opts.addonId);
+    const qs = params.toString();
+    return this.request("GET", `/projects/${projectId}/remote-config${qs ? `?${qs}` : ""}`);
+  }
+
   // ── Search ────────────────────────────────────────────────────────
 
   async search(q: string, type?: string, limit?: number) {

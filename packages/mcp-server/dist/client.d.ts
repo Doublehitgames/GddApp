@@ -34,5 +34,9 @@ export declare class GddApiClient {
     deleteAddon(projectId: string, sectionId: string, addonId: string): Promise<unknown>;
     copyAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean): Promise<unknown>;
     moveAddon(projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean): Promise<unknown>;
+    getRemoteConfig(projectId: string, opts?: {
+        sectionId?: string;
+        addonId?: string;
+    }): Promise<unknown>;
     search(q: string, type?: string, limit?: number): Promise<unknown>;
 }

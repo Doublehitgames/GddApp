@@ -90,6 +90,16 @@ export const updateAddonSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
+// ── Remote Config (exportSchema resolution) ──────────────────────────
+
+export const remoteConfigQuerySchema = z.object({
+  // Lenient (min 1) rather than strict uuid: legacy addon/section ids may
+  // predate the randomUUID convention, and rejecting a valid id is worse
+  // than accepting a bogus one (which simply resolves to no match).
+  sectionId: z.string().min(1).max(200).optional(),
+  addonId: z.string().min(1).max(200).optional(),
+});
+
 // ── Search ────────────────────────────────────────────────────────────
 
 export const searchSchema = z.object({

@@ -310,4 +310,20 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       catch (e) { return err(e); }
     },
   );
+
+  // ── Remote Config ───────────────────────────────────────────────
+
+  server.tool(
+    "get_remote_config",
+    "Resolve Remote Config (exportSchema) addons and return the RESOLVED economy JSON (actual values, not the blueprint). Scope: no sectionId/addonId → every config in the project; sectionId → every config in that section's subtree; addonId → a single config. Use this to get all balancing data in one call.",
+    {
+      projectId: z.string().describe("Project UUID"),
+      sectionId: z.string().optional().describe("Limit to this section's subtree"),
+      addonId: z.string().optional().describe("Resolve a single exportSchema addon by its id"),
+    },
+    async ({ projectId, sectionId, addonId }) => {
+      try { return json(await client.getRemoteConfig(projectId, { sectionId, addonId })); }
+      catch (e) { return err(e); }
+    },
+  );
 }
