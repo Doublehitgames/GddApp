@@ -662,6 +662,7 @@
     }
   },
   "projectDetail": {
+    "exportLabel": "Exportar",
     "backHome": "Voltar para Home",
     "notFound": "Projeto não encontrado.",
     "edit": "Editar",
@@ -903,6 +904,16 @@
     }
   },
   "projectExport": {
+    "economy": {
+      "scopeLabel": "O que exportar",
+      "selectAll": "Marcar tudo",
+      "clear": "Limpar",
+      "none": "Este projeto não tem Remote Configs.",
+      "empty": "Selecione ao menos um Remote Config para exportar.",
+      "wholeEconomy": "Economia inteira",
+      "customScope": "Seleção personalizada",
+      "scopeHint": "Baixa um .json só com os Remote Configs marcados. Entregue esse arquivo a um agente (ex.: ChatGPT) para analisar o balanceamento."
+    },
     "backToProject": "Voltar ao Projeto",
     "title": "Exportar GDD",
     "subtitlePrefix": "Escolha o formato para exportar:",
@@ -923,12 +934,17 @@
       "word": {
         "label": "Word",
         "description": "Editável no Microsoft Word (.docx)"
+      },
+      "economy": {
+        "label": "Economia (JSON)",
+        "description": "Remote Configs resolvidos, prontos para dar a um agente externo"
       }
     },
     "info": {
       "markdown": "Melhor para edição e versionamento (Git)",
       "pdf": "Melhor para apresentação e compartilhamento",
-      "word": "Melhor para edição colaborativa"
+      "word": "Melhor para edição colaborativa",
+      "economy": "Junta todos os Remote Configs resolvidos num arquivo para dar a um agente externo balancear."
     },
     "errors": {
       "exportFailed": "Erro ao exportar o documento. Tente novamente."
