@@ -1,5 +1,5 @@
 /**
- * Creates an McpServer with all 39 GDD Manager tools registered.
+ * Creates an McpServer with all GDD Manager tools registered.
  * Used by the remote HTTP endpoint (app/api/mcp/route.ts).
  */
 
@@ -81,7 +81,7 @@ function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async ({ query, type, limit }) => { try { return json(await api.search(query, type, limit)); } catch (e) { return err(e); } });
 }
 
-// ── Typed addon tools (24) ────────────────────────────────────────
+// ── Typed addon tools ─────────────────────────────────────────────
 
 function registerAddonTools(server: McpServer, api: ApiFetcher) {
   const ps = { projectId: z.string(), sectionId: z.string() };
@@ -231,6 +231,45 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
   const esArraySource = z.object({ type: z.enum(["progressionTable", "xpBalance", "craftTable", "productionIngredients", "productionOutputs", "skills", "skillCosts", "skillEffects", "sections"]), addonId: z.string().optional(), addonName: z.string().optional(), parentSectionId: z.string().optional(), parentSectionName: z.string().optional() });
   const esNode: z.ZodTypeAny = z.lazy(() => z.object({ id: z.string().optional(), key: z.string(), nodeType: z.enum(["object", "array", "value"]), children: z.array(esNode).optional(), arraySource: esArraySource.optional(), itemTemplate: z.array(esNode).optional(), binding: esBinding.optional(), abs: z.boolean().optional(), multiplier: z.number().optional() }));
   pair("export_schema", "exportSchema", "export schema", { nodes: z.array(esNode), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() }, { nodes: z.array(esNode).optional(), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() });
+
+  // 13. Craft Table
+  const ctUnlock = z.object({
+    level: z.object({ enabled: z.boolean(), xpAddonRef: z.string().optional(), level: z.number().optional() }).optional(),
+    currency: z.object({ enabled: z.boolean(), currencyAddonRef: z.string().optional(), amount: z.number().optional() }).optional(),
+    item: z.object({ enabled: z.boolean(), itemRef: z.string().optional(), quantity: z.number().optional() }).optional(),
+  });
+  const ctEntry = z.object({ id: z.string().optional(), productionRef: z.string().optional(), category: z.string().optional(), order: z.number(), unlock: ctUnlock.optional(), hidden: z.boolean().optional() });
+  const craft = { entries: z.array(ctEntry) };
+  pair("craft_table", "craftTable", "craft table (aggregates Production recipes with unlock conditions)", craft, opt(craft));
+
+  // 14. Crop (plant & harvest)
+  const cropXpEvent = z.object({ xpAddonRef: z.string().optional(), xp: z.number().optional(), xpBinding: valueBind });
+  const cropStage = z.object({ id: z.string().optional(), label: z.string(), secondsFromPlanting: z.number() });
+  const cropOutput = z.object({ id: z.string().optional(), itemRef: z.string().optional(), quantity: z.number().optional(), quantityBinding: valueBind, quantityMin: z.number().optional(), quantityMax: z.number().optional() });
+  const cropItemInput = z.object({ id: z.string().optional(), itemRef: z.string().optional() });
+  const crop = {
+    harvestMode: z.enum(["instant", "progressive"]).optional(),
+    growthSeconds: z.number().optional(), growthSecondsBinding: valueBind, growthSecondsMin: z.number().optional(), growthSecondsMax: z.number().optional(),
+    totalHarvest: z.number().optional(), totalHarvestBinding: valueBind, totalHarvestMin: z.number().optional(), totalHarvestMax: z.number().optional(),
+    stages: z.array(cropStage).optional(), outputs: z.array(cropOutput).optional(),
+    plantXp: cropXpEvent.optional(), harvestXp: cropXpEvent.optional(),
+    spawnWitheredPlant: z.boolean().optional(), witheredPlantRef: z.string().optional(),
+    seedRef: z.string().optional(), seedQuantity: z.number().optional(), seedQuantityBinding: valueBind, seedQuantityMin: z.number().optional(), seedQuantityMax: z.number().optional(),
+    plantEnergy: z.number().optional(), plantEnergyBinding: valueBind, plantEnergyMin: z.number().optional(), plantEnergyMax: z.number().optional(),
+    fertilizers: z.array(cropItemInput).optional(), amendments: z.array(cropItemInput).optional(),
+    seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "greenhouse"])).optional(),
+    notes: z.string().optional(),
+  };
+  pair("crop", "crop", "crop / plant-and-harvest mechanic", crop, opt(crop));
+
+  // 15. Field Library
+  const flEntry = z.object({ id: z.string().optional(), key: z.string(), label: z.string(), description: z.string().optional() });
+  const fieldLib = { entries: z.array(flEntry) };
+  pair("field_library", "fieldLibrary", "field library (reusable field definitions)", fieldLib, opt(fieldLib));
+
+  // 16. Rich Doc
+  const richDoc = { blocks: z.array(z.record(z.string(), z.unknown())), schemaVersion: z.literal(1).optional() };
+  pair("rich_doc", "richDoc", "rich document (Notion-style blocks)", richDoc, opt(richDoc));
 }
 
 // ── Factory ───────────────────────────────────────────────────────
