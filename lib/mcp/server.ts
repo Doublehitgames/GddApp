@@ -18,7 +18,7 @@ function err(e: unknown) {
   return { content: [{ type: "text" as const, text: String(e) }], isError: true };
 }
 
-// ── Generic tools (15) ────────────────────────────────────────────
+// ── Generic tools ─────────────────────────────────────────────────
 
 function registerGenericTools(server: McpServer, api: ApiFetcher) {
   server.tool("list_projects", "List all GDD projects you have access to", {},
@@ -75,6 +75,22 @@ function registerGenericTools(server: McpServer, api: ApiFetcher) {
   server.tool("delete_addon", "Remove an addon from a section",
     { projectId: z.string(), sectionId: z.string(), addonId: z.string() },
     async ({ projectId, sectionId, addonId }) => { try { return json(await api.deleteAddon(projectId, sectionId, addonId)); } catch (e) { return err(e); } });
+
+  server.tool("copy_addon", "Copy an addon to another section. Generates a new addon ID, deep-clones the data, and re-links intra-section refs to the destination's equivalent addons. Singleton types already present in the destination cause a 409 unless overwrite=true (replaces in place).",
+    { projectId: z.string(), sectionId: z.string().describe("Source section UUID"), addonId: z.string().describe("Addon UUID to copy"), toSectionId: z.string().describe("Destination section UUID"), overwrite: z.boolean().optional().describe("Replace an existing singleton addon in place instead of failing with 409") },
+    async ({ projectId, sectionId, addonId, toSectionId, overwrite }) => { try { return json(await api.copyAddon(projectId, sectionId, addonId, toSectionId, overwrite)); } catch (e) { return err(e); } });
+
+  server.tool("move_addon", "Move an addon to another section, keeping its ID. Re-links intra-section refs to the destination and rewrites reverse-refs across the project when the source is left without another addon of the same type. Singleton types already present in the destination cause a 409 unless overwrite=true.",
+    { projectId: z.string(), sectionId: z.string().describe("Source section UUID"), addonId: z.string().describe("Addon UUID to move"), toSectionId: z.string().describe("Destination section UUID (must differ from origin)"), overwrite: z.boolean().optional().describe("Replace an existing singleton addon in place instead of failing with 409") },
+    async ({ projectId, sectionId, addonId, toSectionId, overwrite }) => { try { return json(await api.moveAddon(projectId, sectionId, addonId, toSectionId, overwrite)); } catch (e) { return err(e); } });
+
+  server.tool("list_linked_spreadsheets", "List the Google Spreadsheets registered in a project's settings. Returns each spreadsheet's id (UUID to set as a section's linkedSpreadsheetId), name, url, spreadsheetId, sheets (tab names), and columnsBySheet (header row per tab, position-aligned to column index). Use to discover the sheet/column names needed for field bindings.",
+    { projectId: z.string() },
+    async ({ projectId }) => { try { return json(await api.listLinkedSpreadsheets(projectId)); } catch (e) { return err(e); } });
+
+  server.tool("get_remote_config", "Resolve Remote Config (exportSchema) addons and return the RESOLVED economy JSON (actual values, not the blueprint). Scope: no sectionId/addonId → every config in the project; sectionId → configs in that section's subtree; addonId → a single config.",
+    { projectId: z.string(), sectionId: z.string().optional().describe("Limit to this section's subtree"), addonId: z.string().optional().describe("Resolve a single exportSchema addon by its id") },
+    async ({ projectId, sectionId, addonId }) => { try { return json(await api.getRemoteConfig(projectId, { sectionId, addonId })); } catch (e) { return err(e); } });
 
   server.tool("search", "Search across all projects and sections",
     { query: z.string(), type: z.enum(["all", "projects", "sections"]).optional(), limit: z.number().optional() },

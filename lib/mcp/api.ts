@@ -63,6 +63,22 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
     createAddon: (projectId: string, sectionId: string, params: Record<string, unknown>) => api("POST", `/projects/${projectId}/sections/${sectionId}/addons`, params),
     updateAddon: (projectId: string, sectionId: string, addonId: string, params: Record<string, unknown>) => api("PATCH", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`, params),
     deleteAddon: (projectId: string, sectionId: string, addonId: string) => api("DELETE", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`),
+    copyAddon: (projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) =>
+      api("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/copy`, { toSectionId, overwrite }),
+    moveAddon: (projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) =>
+      api("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`, { toSectionId, overwrite }),
+
+    // Linked spreadsheets
+    listLinkedSpreadsheets: (projectId: string) => api("GET", `/projects/${projectId}/spreadsheets`),
+
+    // Remote Config (resolved economy)
+    getRemoteConfig: (projectId: string, opts: { sectionId?: string; addonId?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (opts.sectionId) params.set("sectionId", opts.sectionId);
+      if (opts.addonId) params.set("addonId", opts.addonId);
+      const qs = params.toString();
+      return api("GET", `/projects/${projectId}/remote-config${qs ? `?${qs}` : ""}`);
+    },
 
     // Search
     search: (q: string, type?: string, limit?: number) => {
