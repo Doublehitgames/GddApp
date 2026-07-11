@@ -3,24 +3,33 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { getApiUser } from "@/lib/auth/getApiUser";
 import { createApiFetcher } from "@/lib/mcp/api";
 import { createMcpServer } from "@/lib/mcp/server";
+import { OAUTH_CORS_HEADERS, requestOrigin, wwwAuthenticateHeader } from "@/lib/oauthMeta";
 
 /**
  * POST /api/mcp — Remote MCP endpoint (Streamable HTTP, stateless).
  *
  * Accepts JSON-RPC messages from MCP clients (Claude, etc.).
- * Auth: Bearer gdd_sk_... in Authorization header.
+ * Auth: Bearer gdd_sk_... (API key) ou gdd_at_... (OAuth) no Authorization header.
+ * O 401 anuncia o discovery OAuth via WWW-Authenticate (RFC 9728) para
+ * clientes como claude.ai iniciarem o fluxo de autorização sozinhos.
  */
 export async function POST(request: NextRequest) {
+  const baseUrl = requestOrigin(request);
+
   // Authenticate
   const auth = await getApiUser(request);
   if (!auth.authenticated) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { error: auth.error },
+      {
+        status: auth.status,
+        headers: {
+          ...OAUTH_CORS_HEADERS,
+          "WWW-Authenticate": wwwAuthenticateHeader(baseUrl),
+        },
+      }
+    );
   }
-
-  // Resolve base URL for internal API calls
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  const host = request.headers.get("host") ?? "gdd-app.vercel.app";
-  const baseUrl = `${proto}://${host}`;
 
   // Extract raw API key from header for internal calls
   const rawKey = request.headers.get("authorization")?.slice("Bearer ".length) ?? "";
@@ -74,4 +83,11 @@ export async function GET() {
  */
 export async function DELETE() {
   return NextResponse.json({ ok: true }, { status: 200 });
+}
+
+/**
+ * OPTIONS /api/mcp — CORS preflight (clientes MCP baseados em browser).
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: OAUTH_CORS_HEADERS });
 }

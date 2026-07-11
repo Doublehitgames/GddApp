@@ -6,7 +6,10 @@ import { supabaseSafeFetch } from "@/lib/supabase/safeFetch";
 // Rotas que NÃO precisam de autenticação. /docs/* é totalmente público —
 // a documentação fica acessível pra visitantes anônimos avaliarem o
 // produto antes de criar conta.
-const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/", "/docs"];
+// /.well-known/* e /oauth/authorize fazem parte do fluxo OAuth do MCP remoto:
+// discovery é anônimo por definição, e a página de consent trata sessão sozinha
+// (mostra "faça login" com retorno preservado em vez do redirect seco do proxy).
+const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/", "/docs", "/.well-known/", "/oauth/authorize"];
 const AUTH_TIMEOUT_MS = 4000;
 
 async function getUserWithTimeout(
@@ -104,11 +107,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Se está autenticado e vai para login → redireciona para home
+  // Se está autenticado e vai para login → redireciona para home (ou pro
+  // destino em ?next=, ex.: consentimento OAuth do MCP). Só paths internos.
   if (user && pathname === "/login") {
+    const next = request.nextUrl.searchParams.get("next");
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
     const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const target = new URL(safeNext, url.origin);
+    return NextResponse.redirect(target);
   }
 
   return supabaseResponse;

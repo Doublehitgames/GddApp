@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { getLocaleLabel, useI18n } from "@/lib/i18n/provider";
 
 type Mode = "login" | "signup";
 
-export default function LoginPage() {
+/** Só aceita paths internos ("/...") — evita open redirect via ?next=. */
+function safeNextPath(next: string | null): string | null {
+  if (!next) return null;
+  if (!next.startsWith("/") || next.startsWith("//")) return null;
+  return next;
+}
+
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"));
   const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuthStore();
   const { t, locale, setLocale, supportedLocales } = useI18n();
 
@@ -32,7 +41,7 @@ export default function LoginPage() {
       if (error) {
         setError(error);
       } else {
-        router.push("/");
+        router.push(nextPath ?? "/");
       }
     } else {
       const { error } = await signUpWithEmail(email, password, displayName);
@@ -48,7 +57,7 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     setError(null);
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(nextPath ?? undefined);
     if (error) setError(error);
   };
 
@@ -210,5 +219,14 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams exige um boundary de Suspense no App Router.
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

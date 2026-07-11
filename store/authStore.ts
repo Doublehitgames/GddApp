@@ -40,7 +40,7 @@ interface AuthStore {
   initialize: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithGoogle: (nextPath?: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<{ error: string | null }>;
 }
@@ -128,16 +128,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     return { error: null };
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (nextPath?: string) => {
     const supabase = createClient();
     const siteUrl = getPublicSiteUrl();
     const shouldUseConfiguredSiteUrl = Boolean(siteUrl && !siteUrl.includes("localhost"));
     const baseUrl = shouldUseConfiguredSiteUrl ? siteUrl! : window.location.origin;
+    const nextQuery = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${baseUrl}/auth/callback`,
+        redirectTo: `${baseUrl}/auth/callback${nextQuery}`,
       },
     });
     if (error) return { error: error.message };

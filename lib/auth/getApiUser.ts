@@ -14,6 +14,7 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateApiKey } from "@/lib/apiKeys";
+import { isOAuthAccessToken, validateOAuthToken } from "@/lib/oauth";
 
 export type AuthResult =
   | {
@@ -27,6 +28,13 @@ export type AuthResult =
       userId: string;
       source: "apiKey";
       keyId: string;
+      supabase: SupabaseClient;
+    }
+  | {
+      authenticated: true;
+      userId: string;
+      source: "oauth";
+      tokenId: string;
       supabase: SupabaseClient;
     }
   | {
@@ -53,6 +61,26 @@ export async function getApiUser(request: NextRequest): Promise<AuthResult> {
     return {
       authenticated: false,
       error: "Invalid or revoked API key",
+      status: 401,
+    };
+  }
+
+  // 1b. OAuth access token (MCP remoto — claude.ai, Claude Desktop, etc.)
+  if (authHeader?.startsWith("Bearer ") && isOAuthAccessToken(authHeader.slice("Bearer ".length))) {
+    const rawToken = authHeader.slice("Bearer ".length);
+    const result = await validateOAuthToken(rawToken);
+    if (result) {
+      return {
+        authenticated: true,
+        userId: result.userId,
+        source: "oauth",
+        tokenId: result.tokenId,
+        supabase: createAdminClient(),
+      };
+    }
+    return {
+      authenticated: false,
+      error: "Invalid, expired, or revoked OAuth token",
       status: 401,
     };
   }

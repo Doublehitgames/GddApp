@@ -10,5 +10,9 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(`${origin}/`);
+  // Retorno pós-login (ex.: consentimento OAuth do MCP). Só paths internos.
+  const next = searchParams.get("next");
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+
+  return NextResponse.redirect(`${origin}${safeNext}`);
 }
