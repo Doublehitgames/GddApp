@@ -13,6 +13,13 @@ type ApiKeyEntry = {
   revoked_at: string | null;
 };
 
+type OAuthConnection = {
+  clientId: string;
+  clientName: string | null;
+  connectedAt: string;
+  lastUsedAt: string | null;
+};
+
 export default function ApiKeysSettingsPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -24,6 +31,9 @@ export default function ApiKeysSettingsPage() {
   const [copied, setCopied] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+
+  const [connections, setConnections] = useState<OAuthConnection[]>([]);
+  const [loadingConnections, setLoadingConnections] = useState(true);
 
   const fetchKeys = useCallback(async () => {
     setLoading(true);
@@ -38,9 +48,31 @@ export default function ApiKeysSettingsPage() {
     }
   }, []);
 
+  const fetchConnections = useCallback(async () => {
+    setLoadingConnections(true);
+    try {
+      const res = await fetch("/api/oauth/connections");
+      if (res.ok) {
+        const data = await res.json();
+        setConnections(data.connections ?? []);
+      }
+    } finally {
+      setLoadingConnections(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (user) fetchKeys();
-  }, [user, fetchKeys]);
+    if (user) {
+      fetchKeys();
+      fetchConnections();
+    }
+  }, [user, fetchKeys, fetchConnections]);
+
+  const handleRevokeConnection = async (clientId: string, name: string) => {
+    if (!confirm(`Desconectar "${name}"? O acesso será revogado imediatamente e o app precisará ser autorizado de novo.`)) return;
+    await fetch(`/api/oauth/connections?clientId=${encodeURIComponent(clientId)}`, { method: "DELETE" });
+    await fetchConnections();
+  };
 
   const handleCreate = async () => {
     if (!newKeyName.trim()) {
@@ -302,6 +334,60 @@ export default function ApiKeysSettingsPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Aplicativos conectados via OAuth */}
+        <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-5 mb-6">
+          <h2 className="text-sm font-semibold text-gray-200 mb-1">
+            Aplicativos conectados
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Apps que você autorizou a acessar seus GDDs pelo claude.ai ou Claude Desktop.
+            Revogar aqui corta o acesso na hora — para reconectar, é só autorizar de novo.
+          </p>
+
+          {loadingConnections ? (
+            <p className="text-xs text-gray-500">Carregando...</p>
+          ) : connections.length === 0 ? (
+            <p className="text-xs text-gray-500 italic">
+              Nenhum aplicativo conectado. Conecte pelo passo a passo acima.
+            </p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700">
+                  <th className="text-left py-2 font-medium">Aplicativo</th>
+                  <th className="text-left py-2 font-medium">Conectado em</th>
+                  <th className="text-left py-2 font-medium">Último uso</th>
+                  <th className="text-right py-2 font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {connections.map((c) => {
+                  const name = c.clientName || "Aplicativo externo";
+                  return (
+                    <tr key={c.clientId} className="border-b border-gray-800">
+                      <td className="py-2 text-gray-200">{name}</td>
+                      <td className="py-2 text-gray-400">
+                        {new Date(c.connectedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 text-gray-400">
+                        {c.lastUsedAt ? new Date(c.lastUsedAt).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleRevokeConnection(c.clientId, name)}
+                          className="text-rose-400 hover:text-rose-300"
+                        >
+                          Desconectar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Uso avançado: Claude Code, scripts e integrações */}

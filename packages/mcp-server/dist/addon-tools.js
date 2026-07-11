@@ -678,5 +678,49 @@ export function registerAddonTools(server, client) {
         schemaVersion: z.literal(1).optional().describe("Schema version, always 1"),
     };
     pair("rich_doc", "richDoc", "rich document (Notion-style blocks: headings, lists, images, embeds, columns)", richDocFields, optional(richDocFields));
+    // ── 15. Currency Exchange ───────────────────────────────────────
+    const currencyExchangeEntrySchema = z.object({
+        id: z.string().optional().describe("Entry ID (auto-generated if omitted)"),
+        fromCurrencyRef: z.string().optional().describe("Section ID of the currency spent"),
+        fromAmount: z.number().describe("Amount of the source currency required"),
+        toCurrencyRef: z.string().optional().describe("Section ID of the currency received"),
+        toAmount: z.number().describe("Amount of the target currency received"),
+        direction: z.enum(["oneWay", "bidirectional"]).describe("'oneWay' = from→to only; 'bidirectional' = also reversible"),
+        notes: z.string().optional().describe("Designer notes (limits, conditions)"),
+    });
+    const currencyExchangeFields = {
+        entries: z.array(currencyExchangeEntrySchema).describe("Exchange rates offered"),
+    };
+    pair("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchangeFields, optional(currencyExchangeFields));
+    // ── 16. Skills ──────────────────────────────────────────────────
+    const skillCostSchema = z.object({
+        id: z.string().optional().describe("Cost ID (auto-generated if omitted)"),
+        type: z.enum(["currency", "attribute", "charges"]).describe("What is spent to use the skill"),
+        amount: z.number().describe("Amount spent"),
+        currencyRef: z.string().optional().describe("Required when type='currency': Section ID of a Currency addon"),
+        definitionsRef: z.string().optional().describe("Required when type='attribute': Section ID of the AttributeDefinitions page"),
+        attributeKey: z.string().optional().describe("Required when type='attribute': attribute key from the linked definitions"),
+    });
+    const skillEffectSchema = z.object({
+        id: z.string().optional().describe("Effect ID (auto-generated if omitted)"),
+        attributeModifiersSectionId: z.string().describe("Section ID hosting the source attributeModifiers addon"),
+        attributeModifiersAddonId: z.string().describe("Addon ID inside that section"),
+        modifierEntryId: z.string().describe("ID of the modifier entry inside that addon"),
+    });
+    const skillEntrySchema = z.object({
+        id: z.string().optional().describe("Skill ID (auto-generated if omitted)"),
+        name: z.string().describe("Skill name"),
+        description: z.string().optional().describe("Skill description"),
+        kind: z.enum(["active", "passive"]).describe("'active' = triggered (has cooldown); 'passive' = always on"),
+        cooldownSeconds: z.number().optional().describe("Cooldown in seconds (active skills only)"),
+        costs: z.array(skillCostSchema).optional().describe("What the skill costs to use"),
+        effects: z.array(skillEffectSchema).optional().describe("References to attributeModifiers entries applied by this skill"),
+        unlock: craftTableUnlockSchema.optional().describe("Unlock conditions (level + currency + item; same structure as Craft Table)"),
+        tags: z.array(z.string()).optional().describe("Free-form tags (e.g. 'fire', 'single-target')"),
+    });
+    const skillsFields = {
+        entries: z.array(skillEntrySchema).describe("Skills defined on this page"),
+    };
+    pair("skills", "skills", "skills (active/passive abilities with costs, effects, and unlock conditions)", skillsFields, optional(skillsFields));
 }
 //# sourceMappingURL=addon-tools.js.map

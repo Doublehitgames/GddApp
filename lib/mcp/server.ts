@@ -270,6 +270,18 @@ function registerAddonTools(server: McpServer, api: ApiFetcher) {
   // 16. Rich Doc
   const richDoc = { blocks: z.array(z.record(z.string(), z.unknown())), schemaVersion: z.literal(1).optional() };
   pair("rich_doc", "richDoc", "rich document (Notion-style blocks)", richDoc, opt(richDoc));
+
+  // 17. Currency Exchange
+  const ceEntry = z.object({ id: z.string().optional(), fromCurrencyRef: z.string().optional(), fromAmount: z.number(), toCurrencyRef: z.string().optional(), toAmount: z.number(), direction: z.enum(["oneWay", "bidirectional"]), notes: z.string().optional() });
+  const currencyExchange = { entries: z.array(ceEntry) };
+  pair("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchange, opt(currencyExchange));
+
+  // 18. Skills
+  const skillCost = z.object({ id: z.string().optional(), type: z.enum(["currency", "attribute", "charges"]), amount: z.number(), currencyRef: z.string().optional(), definitionsRef: z.string().optional(), attributeKey: z.string().optional() });
+  const skillEffect = z.object({ id: z.string().optional(), attributeModifiersSectionId: z.string(), attributeModifiersAddonId: z.string(), modifierEntryId: z.string() });
+  const skillEntry = z.object({ id: z.string().optional(), name: z.string(), description: z.string().optional(), kind: z.enum(["active", "passive"]), cooldownSeconds: z.number().optional(), costs: z.array(skillCost).optional(), effects: z.array(skillEffect).optional(), unlock: ctUnlock.optional(), tags: z.array(z.string()).optional() });
+  const skills = { entries: z.array(skillEntry) };
+  pair("skills", "skills", "skills (active/passive abilities with costs, effects, unlocks)", skills, opt(skills));
 }
 
 // ── Factory ───────────────────────────────────────────────────────

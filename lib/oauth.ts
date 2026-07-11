@@ -257,6 +257,74 @@ export function isOAuthAccessToken(raw: string): boolean {
   return raw.startsWith(ACCESS_PREFIX);
 }
 
+// ── Conexões do usuário (painel de revogação) ────────────────────────
+
+export type OAuthConnection = {
+  clientId: string;
+  clientName: string | null;
+  connectedAt: string;
+  lastUsedAt: string | null;
+};
+
+/**
+ * Lista as conexões OAuth ativas do usuário, agrupadas por cliente.
+ * Cada refresh rotaciona o par de tokens, então há vários registros por
+ * cliente; aqui colapsamos numa linha por cliente (conexão mais antiga +
+ * uso mais recente). Usa admin client porque `oauth_clients` tem RLS fechado.
+ */
+export async function listUserConnections(userId: string): Promise<OAuthConnection[]> {
+  const supabase = createAdminClient();
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("oauth_tokens")
+    .select("client_id, created_at, last_used_at, oauth_clients(client_name)")
+    .eq("user_id", userId)
+    .is("revoked_at", null)
+    .gt("access_expires_at", nowIso)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return [];
+
+  const byClient = new Map<string, OAuthConnection>();
+  for (const row of data as unknown as Array<{
+    client_id: string;
+    created_at: string;
+    last_used_at: string | null;
+    oauth_clients: { client_name: string | null } | null;
+  }>) {
+    const existing = byClient.get(row.client_id);
+    if (!existing) {
+      byClient.set(row.client_id, {
+        clientId: row.client_id,
+        clientName: row.oauth_clients?.client_name ?? null,
+        connectedAt: row.created_at,
+        lastUsedAt: row.last_used_at,
+      });
+    } else {
+      // created_at cresce (order asc) → mantém o primeiro; atualiza último uso
+      if (row.last_used_at && (!existing.lastUsedAt || row.last_used_at > existing.lastUsedAt)) {
+        existing.lastUsedAt = row.last_used_at;
+      }
+    }
+  }
+
+  return Array.from(byClient.values());
+}
+
+/** Revoga todos os tokens ativos do usuário para um cliente específico. */
+export async function revokeUserConnection(userId: string, clientId: string): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("oauth_tokens")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("client_id", clientId)
+    .is("revoked_at", null);
+
+  return !error;
+}
+
 export async function validateOAuthToken(
   rawToken: string
 ): Promise<{ userId: string; tokenId: string } | null> {
