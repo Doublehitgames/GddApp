@@ -1,13 +1,8 @@
 {
-  "updatedAt": "2026-03-02T02:36:39.635Z",
+  "updatedAt": "2026-07-11T14:04:25.992Z",
   "counts": {
     "binary-locale-check::app/projects/[id]/backup/page.tsx": 1,
     "binary-isPt-ternary::app/projects/[id]/backup/page.tsx": 1,
-    "binary-locale-check::app/projects/[id]/mindmap/MindMapClient.tsx": 1,
-    "binary-isPt-ternary::app/projects/[id]/mindmap/MindMapClient.tsx": 12,
-    "binary-locale-check::app/projects/[id]/settings/SettingsClient.tsx": 1,
-    "binary-isPt-ternary::app/projects/[id]/settings/SettingsClient.tsx": 13,
-    "pt-en-helper-signature::app/projects/[id]/settings/SettingsClient.tsx": 1,
-    "ptbr-date-format::app/projects/[id]/view/GDDViewClient.tsx": 2
+    "binary-locale-check::lib/templates/manualTemplates.ts": 13
   }
 }

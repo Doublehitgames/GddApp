@@ -68,11 +68,11 @@ const THEME_TEXT: Record<string, string> = {
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
-function formatPhaseLabel(phase: RoadmapPhase): string {
+function formatPhaseLabel(phase: RoadmapPhase, locale: string): string {
   if (phase.headerType === "title" || !phase.targetDate) return phase.name;
   const [y, m] = phase.targetDate.split("-").map(Number);
   switch (phase.headerType) {
-    case "month":    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    case "month":    return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
     case "quarter":  return `Q${Math.ceil(m / 3)} ${y}`;
     case "semester": return `S${m <= 6 ? 1 : 2} ${y}`;
     case "year":     return String(y);
@@ -178,10 +178,11 @@ function PhaseSection({
   isLast: boolean;
   t: (k: string) => string;
 }) {
+  const { locale } = useI18n();
   const phaseItems = items.filter((i) => i.phaseId === phase.id);
   const doneCount  = phaseItems.filter((i) => i.status === "done").length;
 
-  const label    = formatPhaseLabel(phase);
+  const label    = formatPhaseLabel(phase, locale);
   const subtitle = formatPhaseSubtitle(phase);
 
   return (
@@ -241,7 +242,7 @@ function PhaseSection({
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function RoadmapPrintClient({ projectId }: { projectId: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -275,7 +276,7 @@ export default function RoadmapPrintClient({ projectId }: { projectId: string })
     [getRoadmapItems, realProjectId, activeRoadmapId, roadmapsByProject],
   );
 
-  const exportDate = new Date().toLocaleDateString("pt-BR", {
+  const exportDate = new Date().toLocaleDateString(locale, {
     day: "numeric", month: "long", year: "numeric",
   });
 

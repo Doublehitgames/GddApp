@@ -20,7 +20,7 @@ const PHASE_STATUS_DOT: Record<PhaseStatus, string> = {
 };
 
 export default function RoadmapWidget({ projectId, realProjectId }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
   const getRoadmapItems    = useProjectStore((s) => s.getRoadmapItems);
   const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
@@ -139,7 +139,7 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
                 <span className="text-sm font-semibold text-white truncate">{activePhase.name}</span>
                 {activePhase.targetDate && (
                   <span className="ml-auto shrink-0 text-[11px] text-gray-500">
-                    {new Date(activePhase.targetDate + "-01").toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}
+                    {new Date(activePhase.targetDate + "-01").toLocaleDateString(locale, { month: "short", year: "numeric" })}
                   </span>
                 )}
               </div>

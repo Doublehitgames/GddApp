@@ -83,11 +83,11 @@ const THEME_ROW_BG: Record<string, string> = {
   slate:   "bg-slate-50/60",
 };
 
-function formatPhaseDate(targetDate?: string, headerType?: string): string | null {
+function formatPhaseDate(locale: string, targetDate?: string, headerType?: string): string | null {
   if (!targetDate || headerType === "title") return null;
   const [y, m] = targetDate.split("-").map(Number);
   switch (headerType) {
-    case "month":    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+    case "month":    return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "short", year: "numeric" });
     case "quarter":  return `Q${Math.ceil(m / 3)} ${y}`;
     case "semester": return `S${m <= 6 ? 1 : 2} ${y}`;
     case "year":     return String(y);
@@ -173,13 +173,14 @@ function ItemDetailModal({ item, onClose, t }: { item: RoadmapItem; onClose: () 
 }
 
 function PhaseDetailModal({ phase, onClose, t }: { phase: RoadmapPhase; onClose: () => void; t: (k: string) => string }) {
+  const { locale } = useI18n();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const dateLabel = formatPhaseDate(phase.targetDate, phase.headerType);
+  const dateLabel = formatPhaseDate(locale, phase.targetDate, phase.headerType);
 
   return (
     <div
@@ -233,7 +234,7 @@ interface Props {
 }
 
 export default function RoadmapDocView({ projectId, projectSlug }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
   const getRoadmapThemes   = useProjectStore((s) => s.getRoadmapThemes);
@@ -428,9 +429,9 @@ export default function RoadmapDocView({ projectId, projectSlug }: Props) {
                       <span className="font-semibold text-gray-800 text-sm group-hover/phase:underline underline-offset-2">
                         {phase.name}
                       </span>
-                      {formatPhaseDate(phase.targetDate, phase.headerType) && (
+                      {formatPhaseDate(locale, phase.targetDate, phase.headerType) && (
                         <span className="text-[11px] text-gray-400 font-normal">
-                          · {formatPhaseDate(phase.targetDate, phase.headerType)}
+                          · {formatPhaseDate(locale, phase.targetDate, phase.headerType)}
                         </span>
                       )}
                     </button>

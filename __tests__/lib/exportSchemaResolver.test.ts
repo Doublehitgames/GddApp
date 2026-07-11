@@ -347,7 +347,7 @@ describe("resolveExportSchema — Data Schema bound to Inventory fields", () => 
       showInShop: false,
       consumable: true,
       discardable: true,
-    } as SectionAddon["data"],
+    },
   };
 
   const dataSchemaAddon: SectionAddon = {
@@ -364,7 +364,7 @@ describe("resolveExportSchema — Data Schema bound to Inventory fields", () => 
         { id: "e4", key: "category", label: "category", valueType: "string", value: "", binding: { source: "inventory", addonId: "inv-1", field: "inventoryCategory" } },
         { id: "e5", key: "bind_type", label: "bind_type", valueType: "string", value: "", binding: { source: "inventory", addonId: "inv-1", field: "bindType" } },
       ],
-    } as SectionAddon["data"],
+    },
   };
 
   const nodes: ExportSchemaNode[] = [

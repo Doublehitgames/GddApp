@@ -4,10 +4,13 @@
  * Server component: valida os parâmetros, exige sessão Supabase (senão manda
  * pro /login com retorno) e mostra o que o cliente vai poder fazer.
  * Erros de client/redirect_uri são exibidos aqui — nunca redirecionados.
+ * Locale resolvido server-side (cookie → Accept-Language) porque visitantes
+ * chegam aqui sem sessão, direto do claude.ai.
  */
 import Link from "next/link";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
 import { getClient, OAUTH_SCOPE } from "@/lib/oauth";
+import { getServerT } from "@/lib/i18n/server";
 import { approveAuthorization, denyAuthorization } from "./actions";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -47,6 +50,7 @@ export default async function AuthorizePage({
   searchParams: Promise<SearchParams>;
 }) {
   const sp = await searchParams;
+  const t = await getServerT();
 
   const clientId = param(sp, "client_id");
   const redirectUri = param(sp, "redirect_uri");
@@ -59,8 +63,8 @@ export default async function AuthorizePage({
   if (!clientId || !redirectUri) {
     return (
       <ErrorCard
-        title="Solicitação inválida"
-        detail="Parâmetros client_id e redirect_uri são obrigatórios."
+        title={t("auth.oauthConsent.invalidRequestTitle")}
+        detail={t("auth.oauthConsent.missingParams")}
       />
     );
   }
@@ -68,33 +72,30 @@ export default async function AuthorizePage({
   const client = await getClient(clientId);
   if (!client) {
     return (
-      <ErrorCard title="Cliente desconhecido" detail="Esse client_id não está registrado." />
+      <ErrorCard
+        title={t("auth.oauthConsent.unknownClientTitle")}
+        detail={t("auth.oauthConsent.unknownClientDetail")}
+      />
     );
   }
   if (!client.redirect_uris.includes(redirectUri)) {
     return (
       <ErrorCard
-        title="Redirecionamento não autorizado"
-        detail="A redirect_uri informada não corresponde ao cadastro desse cliente."
+        title={t("auth.oauthConsent.badRedirectTitle")}
+        detail={t("auth.oauthConsent.badRedirectDetail")}
       />
     );
   }
 
   // A partir daqui a redirect_uri é confiável — erros de protocolo voltam pro cliente.
   if (responseType !== "code" || !codeChallenge || codeChallengeMethod !== "S256") {
-    const url = new URL(redirectUri);
-    url.searchParams.set(
-      "error",
-      responseType !== "code" ? "unsupported_response_type" : "invalid_request"
-    );
-    if (state) url.searchParams.set("state", state);
     return (
       <ErrorCard
-        title="Solicitação inválida"
+        title={t("auth.oauthConsent.invalidRequestTitle")}
         detail={
           responseType !== "code"
-            ? "Só o fluxo authorization code (com PKCE S256) é suportado."
-            : "PKCE (code_challenge com método S256) é obrigatório."
+            ? t("auth.oauthConsent.unsupportedResponseType")
+            : t("auth.oauthConsent.pkceRequired")
         }
       />
     );
@@ -105,7 +106,9 @@ export default async function AuthorizePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const clientName = client.client_name ?? "Aplicativo externo";
+  const clientName = client.client_name ?? t("auth.oauthConsent.defaultClientName");
+  const [introBefore, introAfter] = t("auth.oauthConsent.connectIntro").split("{{client}}");
+  const [wantsBefore, wantsAfter] = t("auth.oauthConsent.clientWants").split("{{client}}");
 
   if (!user) {
     const currentUrl = `/oauth/authorize?${new URLSearchParams(
@@ -113,16 +116,19 @@ export default async function AuthorizePage({
     ).toString()}`;
     return (
       <Shell>
-        <h1 className="text-xl font-bold text-white mb-2">Conectar ao GDD Manager</h1>
+        <h1 className="text-xl font-bold text-white mb-2">
+          {t("auth.oauthConsent.connectTitle")}
+        </h1>
         <p className="text-gray-400 text-sm mb-6">
-          <span className="text-white font-medium">{clientName}</span> quer acessar seus
-          documentos de game design. Entre na sua conta para continuar.
+          {introBefore}
+          <span className="text-white font-medium">{clientName}</span>
+          {introAfter}
         </p>
         <Link
           href={`/login?next=${encodeURIComponent(currentUrl)}`}
           className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors"
         >
-          Entrar para continuar
+          {t("auth.oauthConsent.loginCta")}
         </Link>
       </Shell>
     );
@@ -130,23 +136,27 @@ export default async function AuthorizePage({
 
   return (
     <Shell>
-      <h1 className="text-xl font-bold text-white mb-1">Autorizar acesso</h1>
+      <h1 className="text-xl font-bold text-white mb-1">
+        {t("auth.oauthConsent.authorizeTitle")}
+      </h1>
       <p className="text-gray-500 text-xs mb-5">
-        Conectado como <span className="text-gray-300">{user.email}</span>
+        {t("auth.oauthConsent.signedInAs")} <span className="text-gray-300">{user.email}</span>
       </p>
 
       <p className="text-gray-300 text-sm mb-4">
-        <span className="text-white font-medium">{clientName}</span> quer permissão para:
+        {wantsBefore}
+        <span className="text-white font-medium">{clientName}</span>
+        {wantsAfter}
       </p>
       <ul className="text-sm text-gray-400 space-y-2 mb-6">
         <li className="flex gap-2">
-          <span aria-hidden="true">📖</span> Ler seus projetos, seções e addons
+          <span aria-hidden="true">📖</span> {t("auth.oauthConsent.permRead")}
         </li>
         <li className="flex gap-2">
-          <span aria-hidden="true">✏️</span> Criar e editar conteúdo nos seus GDDs
+          <span aria-hidden="true">✏️</span> {t("auth.oauthConsent.permWrite")}
         </li>
         <li className="flex gap-2">
-          <span aria-hidden="true">🗑️</span> Excluir seções e addons quando você pedir
+          <span aria-hidden="true">🗑️</span> {t("auth.oauthConsent.permDelete")}
         </li>
       </ul>
 
@@ -159,7 +169,7 @@ export default async function AuthorizePage({
             type="submit"
             className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold py-3 rounded-xl transition-colors"
           >
-            Recusar
+            {t("auth.oauthConsent.deny")}
           </button>
         </form>
         <form action={approveAuthorization} className="flex-1">
@@ -172,15 +182,12 @@ export default async function AuthorizePage({
             type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors"
           >
-            Autorizar
+            {t("auth.oauthConsent.approve")}
           </button>
         </form>
       </div>
 
-      <p className="text-gray-600 text-xs mt-5">
-        Você pode revogar esse acesso quando quiser gerando/revogando conexões em
-        Configurações.
-      </p>
+      <p className="text-gray-600 text-xs mt-5">{t("auth.oauthConsent.revokeNote")}</p>
     </Shell>
   );
 }

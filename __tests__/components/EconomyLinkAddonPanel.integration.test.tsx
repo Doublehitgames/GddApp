@@ -172,7 +172,7 @@ describe("EconomyLinkAddonPanel integration", () => {
     );
 
     expect(screen.getByText(/Valor de compra:\s*70/i)).toBeInTheDocument();
-    expect(screen.getByText(/\$\s*110/i)).toBeInTheDocument();
+    expect(screen.getByText(/Valor de venda:\s*110/i)).toBeInTheDocument();
     expect(screen.getAllByText("+20%").length).toBeGreaterThan(0);
   });
 

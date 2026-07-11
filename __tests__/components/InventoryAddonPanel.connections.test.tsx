@@ -118,10 +118,10 @@ describe("InventoryAddonPanel connections", () => {
 
     expect(screen.getByText(/Conexoes de producao/i)).toBeInTheDocument();
     expect(screen.getByText(/Produzido por/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Galinha/i })).toHaveAttribute("href", "/projects/p1/sections/sec-chicken");
+    expect(screen.getByRole("link", { name: /Galinha/i })).toHaveAttribute("href", "/projects/projeto/sections/galinha");
     expect(screen.getByText(/Passiva/i)).toBeInTheDocument();
     expect(screen.getByText(/Ingrediente para/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Racao basica/i })).toHaveAttribute("href", "/projects/p1/sections/sec-feed");
+    expect(screen.getByRole("link", { name: /Racao basica/i })).toHaveAttribute("href", "/projects/projeto/sections/racao-basica");
     expect(screen.getAllByText("↗")).toHaveLength(2);
   });
 });

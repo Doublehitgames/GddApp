@@ -48,22 +48,24 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
 
     await page.goto('/projects');
 
+    // Wizard: o card "Criar sem template" revela o formulário rápido no passo 1
+    await page.getByRole('button', { name: /Criar sem template/i }).first().click();
     await page.getByPlaceholder('Nome do projeto').fill('Projeto Sync E2E');
-    await page.getByPlaceholder('Descrição').fill('Teste de sincronização sem refresh');
-    await page.getByPlaceholder('Nome do projeto').blur();
-    await page.getByRole('button', { name: 'Salvar Projeto' }).click();
+    await page.getByPlaceholder('Descrição do projeto (opcional)').fill('Teste de sincronização sem refresh');
+    await page.getByRole('button', { name: 'Criar sem template', exact: true }).click();
 
     await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
     await expect(page).toHaveURL(/\/projects\/.+/);
 
-    const projectIdFromUrl = page.url().split('/projects/')[1];
-
+    // O input de nova seção fica no sidebar de seções (fechado por padrão)
+    await page.getByRole('button', { name: 'Mostrar menu de seções' }).click();
     await page.getByPlaceholder('Nova seção').fill('Seção E2E');
     await page.getByRole('button', { name: 'Adicionar' }).first().click();
 
     await expect.poll(() => syncPayloads.length, { timeout: 10000 }).toBeGreaterThan(0);
 
-    const hasProjectPayload = syncPayloads.some((payload) => payload?.project?.id === projectIdFromUrl);
+    // A URL usa slug, então validamos o payload pelo título do projeto
+    const hasProjectPayload = syncPayloads.some((payload) => payload?.project?.title === 'Projeto Sync E2E');
     expect(hasProjectPayload).toBeTruthy();
 
   });
@@ -71,10 +73,10 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
   test('deve manter dados locais após reload', async ({ page }) => {
     await page.goto('/projects');
 
+    await page.getByRole('button', { name: /Criar sem template/i }).first().click();
     await page.getByPlaceholder('Nome do projeto').fill('Projeto Reload E2E');
-    await page.getByPlaceholder('Descrição').fill('Persistência após reload');
-    await page.getByPlaceholder('Nome do projeto').blur();
-    await page.getByRole('button', { name: 'Salvar Projeto' }).click();
+    await page.getByPlaceholder('Descrição do projeto (opcional)').fill('Persistência após reload');
+    await page.getByRole('button', { name: 'Criar sem template', exact: true }).click();
 
     await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
     await expect(page).toHaveURL(/\/projects\/.+/);

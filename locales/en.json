@@ -494,6 +494,29 @@
       "or": "or",
       "signupSuccess": "Account created! Check your email to confirm your registration.",
       "footer": "Your data is secure"
+    },
+    "oauthConsent": {
+      "defaultClientName": "External application",
+      "invalidRequestTitle": "Invalid request",
+      "missingParams": "The client_id and redirect_uri parameters are required.",
+      "unknownClientTitle": "Unknown client",
+      "unknownClientDetail": "This client_id is not registered.",
+      "badRedirectTitle": "Unauthorized redirect",
+      "badRedirectDetail": "The given redirect_uri does not match this client's registration.",
+      "unsupportedResponseType": "Only the authorization code flow (with PKCE S256) is supported.",
+      "pkceRequired": "PKCE (code_challenge with the S256 method) is required.",
+      "connectTitle": "Connect to GDD Manager",
+      "connectIntro": "{{client}} wants to access your game design documents. Sign in to continue.",
+      "loginCta": "Sign in to continue",
+      "authorizeTitle": "Authorize access",
+      "signedInAs": "Signed in as",
+      "clientWants": "{{client}} is asking for permission to:",
+      "permRead": "Read your projects, sections, and addons",
+      "permWrite": "Create and edit content in your GDDs",
+      "permDelete": "Delete sections and addons when you ask",
+      "deny": "Deny",
+      "approve": "Authorize",
+      "revokeNote": "You can revoke this access anytime in Settings."
     }
   },
   "projects": {

@@ -26,11 +26,11 @@ const OUTCOME_STYLES = {
   inconclusive: { bg: "bg-gray-700/60 border-gray-600/60",       text: "text-gray-400" },
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   try {
     const [year, month, day] = iso.split("-").map(Number);
     const d = new Date(year, month - 1, day);
-    return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
+    return d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
   } catch {
     return iso;
   }
@@ -288,7 +288,7 @@ function OutcomeForm({ entry, onSave, onCancel }: { entry: KpiEntry; onSave: (ou
 // ─── Main list ────────────────────────────────────────────────────────────────
 
 export default function KpiHistoryList({ entries, readOnly, onUpdateEntry, onDeleteEntry }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [openOutcomeId, setOpenOutcomeId]           = useState<string | null>(null);
   const [editingId, setEditingId]                   = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId]        = useState<string | null>(null);
@@ -341,7 +341,7 @@ export default function KpiHistoryList({ entries, readOnly, onUpdateEntry, onDel
             {/* Header row */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-gray-400">{formatDate(entry.date)}</span>
+                <span className="text-xs font-semibold text-gray-400">{formatDate(entry.date, locale)}</span>
                 {isPendingOutcome && !isEditing && (
                   <span className="flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-700/50 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />

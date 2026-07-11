@@ -84,7 +84,7 @@ describe("GlobalVariableAddonPanel usage backlinks", () => {
     );
 
     expect(screen.getByText(/Usado por/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Loja/i })).toHaveAttribute("href", "/projects/p1/sections/sec-economy");
+    expect(screen.getByRole("link", { name: /Loja/i })).toHaveAttribute("href", "/projects/projeto/sections/loja");
     expect(screen.getByText(/Compra/i)).toBeInTheDocument();
     expect(screen.getByText(/Venda/i)).toBeInTheDocument();
   });

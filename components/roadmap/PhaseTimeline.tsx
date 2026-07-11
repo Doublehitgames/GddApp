@@ -20,14 +20,14 @@ const PHASE_STATUS_STYLES = {
   cancelled: { dot: "bg-rose-400",                        tab: "border-rose-700/40",   active: "border-rose-400 bg-rose-950/40" },
 };
 
-function formatTargetDate(raw: string): string {
+function formatTargetDate(raw: string, locale: string): string {
   const [year, month] = raw.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { month: "short", year: "numeric" });
 }
 
 export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelectPhase, onAddPhase, readOnly }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +83,7 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
             {/* Target date */}
             {phase.targetDate && (
               <span className="text-[11px] text-gray-500 pl-4">
-                {formatTargetDate(phase.targetDate)}
+                {formatTargetDate(phase.targetDate, locale)}
               </span>
             )}
 

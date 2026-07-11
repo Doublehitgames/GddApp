@@ -248,18 +248,17 @@ describe('ProjectStore', () => {
       expect(store.getProject(projectId)?.sections).toHaveLength(0)
     })
 
-    it('should not remove subsections automatically', () => {
+    it('should remove subsections in cascade', () => {
       const store = useProjectStore.getState()
       const projectId = store.addProject('Test Game', 'Description')
       const parentId = store.addSection(projectId, 'Parent')
-      const subId = store.addSubsection(projectId, parentId, 'Subsection')
+      store.addSubsection(projectId, parentId, 'Subsection')
 
       store.removeSection(projectId, parentId)
 
       const project = store.getProject(projectId)
-      // O subsection ainda existe (sem parent agora)
-      expect(project?.sections).toHaveLength(1)
-      expect(project?.sections?.[0].id).toBe(subId)
+      // Sub-seções caem junto, replicando o ON DELETE CASCADE do banco
+      expect(project?.sections).toHaveLength(0)
     })
   })
 

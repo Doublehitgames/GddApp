@@ -48,11 +48,11 @@ const HEADER_TYPE_OPTIONS: PhaseHeaderType[] = ["title", "month", "quarter", "se
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
-function formatPhaseHeader(phase: RoadmapPhase): string {
+function formatPhaseHeader(phase: RoadmapPhase, locale: string): string {
   if (phase.headerType === "title" || !phase.targetDate) return phase.name;
   const [y, m] = phase.targetDate.split("-").map(Number);
   switch (phase.headerType) {
-    case "month":    return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+    case "month":    return new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "short", year: "numeric" });
     case "quarter":  return `Q${Math.ceil(m / 3)} ${y}`;
     case "semester": return `S${m <= 6 ? 1 : 2} ${y}`;
     case "year":     return String(y);
@@ -83,6 +83,7 @@ function PhaseHeaderCell({
   progress?: { done: number; total: number };
   readOnly?: boolean;
 }) {
+  const { locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [descTab, setDescTab] = useState<"write" | "preview">("write");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -117,7 +118,7 @@ function PhaseHeaderCell({
         <div className="flex items-center gap-2 w-full">
           <span className={`h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
           <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
-            {formatPhaseHeader(phase)}
+            {formatPhaseHeader(phase, locale)}
           </span>
           {!readOnly && (
             <svg className="h-3 w-3 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

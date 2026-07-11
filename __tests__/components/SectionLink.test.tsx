@@ -5,6 +5,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react'
 import { SectionLink } from '@/components/SectionLink'
+import { useProjectStore } from '@/store/projectStore'
 import { useRouter } from 'next/navigation'
 
 // Mock do Next.js router
@@ -26,6 +27,21 @@ describe('SectionLink', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     ;(useRouter as jest.Mock).mockReturnValue(mockRouter)
+    // O componente resolve a URL (slug) a partir do projeto no store
+    useProjectStore.setState({
+      projects: [
+        {
+          id: 'proj-abc',
+          title: 'Proj Abc',
+          sections: [{ id: 'sect-xyz', title: 'Level Design' }],
+        },
+        {
+          id: 'project-123',
+          title: 'Project 123',
+          sections: [{ id: 'section-456', title: 'Test Section' }],
+        },
+      ] as never,
+    })
   })
 
   describe('Valid section link', () => {
@@ -75,7 +91,7 @@ describe('SectionLink', () => {
       const button = screen.getByRole('button')
       fireEvent.click(button)
 
-      expect(mockPush).toHaveBeenCalledWith('/projects/proj-abc/sections/sect-xyz')
+      expect(mockPush).toHaveBeenCalledWith('/projects/proj-abc/sections/level-design')
       expect(mockPush).toHaveBeenCalledTimes(1)
     })
 

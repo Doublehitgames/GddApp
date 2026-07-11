@@ -31,9 +31,9 @@ function daysAgo(isoDate: string): number {
   return Math.floor((Date.now() - d.getTime()) / 86_400_000);
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
 function MetricChip({ label, value, entry }: { label: "d1" | "d3" | "d7" | "d14" | "d30"; value: number | undefined; entry: KpiEntry }) {
@@ -49,7 +49,7 @@ function MetricChip({ label, value, entry }: { label: "d1" | "d3" | "d7" | "d14"
 }
 
 export default function KpiWidget({ projectId, realProjectId }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const kpiEntriesByProject = useProjectStore((s) => s.kpiEntriesByProject);
   const kpiConfigByProject  = useProjectStore((s) => s.kpiConfigByProject);
 
@@ -129,7 +129,7 @@ export default function KpiWidget({ projectId, realProjectId }: Props) {
           <>
             {/* Date + genre */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">{formatDate(last.date)}</span>
+              <span className="text-xs text-gray-500">{formatDate(last.date, locale)}</span>
               <span className="rounded-full border border-emerald-700/40 bg-emerald-900/20 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
                 {t("kpi.config.genres." + last.genre)}
               </span>
