@@ -1482,8 +1482,7 @@ function normalizeFieldLibraryDraft(value: unknown): FieldLibraryAddonDraft | nu
     const keyRaw = typeof item.key === "string" ? item.key : "";
     const key = keyRaw
       .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_\s-]/g, "")
+      .replace(/[^a-zA-Z0-9_\s-]/g, "")
       .replace(/[\s-]+/g, "_")
       .replace(/_+/g, "_");
     if (!key || seenKeys.has(key)) continue;
