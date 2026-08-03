@@ -769,8 +769,7 @@ function normalizeGlobalVariableDraft(value: unknown): GlobalVariableAddonDraft 
   const keyRaw = typeof value.key === "string" ? value.key : "";
   const key = keyRaw
     .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_\-\s]+/g, "")
+    .replace(/[^a-zA-Z0-9_\-\s]+/g, "")
     .replace(/\s+/g, "_");
   const displayName = typeof value.displayName === "string" ? value.displayName : "";
 
@@ -1226,8 +1225,7 @@ function normalizeDataSchemaDraft(value: unknown): DataSchemaAddonDraft | null {
     const keyRaw = typeof rawEntry.key === "string" ? rawEntry.key : "";
     const key = keyRaw
       .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_\s-]/g, "")
+      .replace(/[^a-zA-Z0-9_\s-]/g, "")
       .replace(/[\s-]+/g, "_")
       .replace(/_+/g, "_");
     if (!key) continue;

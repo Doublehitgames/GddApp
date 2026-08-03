@@ -26,8 +26,7 @@ function inferDataSchemaValueType(value: unknown): DataSchemaValueType {
 function normalizeKey(raw: string): string {
   return raw
     .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_\s-]/g, "")
+    .replace(/[^a-zA-Z0-9_\s-]/g, "")
     .replace(/[\s-]+/g, "_")
     .replace(/_+/g, "_");
 }
