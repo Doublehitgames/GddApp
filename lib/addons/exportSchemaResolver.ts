@@ -146,19 +146,46 @@ function resolveColumnId(
   return binding.columnId;
 }
 
+/**
+ * Finds a Field Library addon by id. Field libraries are referenced
+ * cross-section by libraryRef, so we look in the current section first and
+ * then fall back to every section via the lookup (mirrors buildSectionsRowMajor).
+ */
+function findFieldLibraryAddon(
+  libraryAddonId: string,
+  sectionAddons: SectionAddon[],
+  sectionLookup?: SectionLookup
+): FieldLibraryAddonDraft | undefined {
+  const local = sectionAddons.find(
+    (a) => a.type === "fieldLibrary" && a.id === libraryAddonId
+  );
+  if (local) return local.data as FieldLibraryAddonDraft;
+  if (sectionLookup) {
+    for (const [, entry] of sectionLookup) {
+      const found = entry.addons.find(
+        (a) => a.type === "fieldLibrary" && a.id === libraryAddonId
+      );
+      if (found) return found.data as FieldLibraryAddonDraft;
+    }
+  }
+  return undefined;
+}
+
 function resolveColumnExportKey(
   columnId: string,
   table: ProgressionTableAddonDraft,
-  sectionAddons: SectionAddon[]
+  sectionAddons: SectionAddon[],
+  sectionLookup?: SectionLookup
 ): string | undefined {
   const column = table.columns.find((c) => c.id === columnId);
   if (!column) return undefined;
   if (column.libraryRef) {
-    const lib = sectionAddons.find(
-      (a) => a.type === "fieldLibrary" && a.id === column.libraryRef!.libraryAddonId
+    const data = findFieldLibraryAddon(
+      column.libraryRef.libraryAddonId,
+      sectionAddons,
+      sectionLookup
     );
-    if (lib) {
-      const data = lib.data as FieldLibraryAddonDraft;
+    if (data) {
       const entry = data.entries.find((e) => e.id === column.libraryRef!.entryId);
       if (entry?.key) return entry.key;
     }
@@ -808,12 +835,14 @@ function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
     const entry = findDataSchemaEntry(ctx.sectionAddons, node.binding);
     if (entry) {
       // If entry is linked to a field library, use the library entry's key.
+      // Libraries may live in another section, so consult the lookup too.
       if (entry.libraryRef) {
-        const lib = ctx.sectionAddons.find(
-          (a) => a.type === "fieldLibrary" && a.id === entry.libraryRef!.libraryAddonId
+        const libData = findFieldLibraryAddon(
+          entry.libraryRef.libraryAddonId,
+          ctx.sectionAddons,
+          ctx.sectionLookup
         );
-        if (lib) {
-          const libData = lib.data as FieldLibraryAddonDraft;
+        if (libData) {
           const libEntry = libData.entries.find((e) => e.id === entry.libraryRef!.entryId);
           if (libEntry?.key) return libEntry.key;
         }
@@ -823,7 +852,7 @@ function resolveNodeKey(node: ExportSchemaNode, ctx: ResolveContext): string {
   }
   if (node.binding?.source === "rowColumn" && ctx.currentTable) {
     const colId = resolveColumnId(node.binding, ctx.currentTable);
-    const libKey = resolveColumnExportKey(colId, ctx.currentTable, ctx.sectionAddons);
+    const libKey = resolveColumnExportKey(colId, ctx.currentTable, ctx.sectionAddons, ctx.sectionLookup);
     if (libKey) return libKey;
   }
   return node.key;
