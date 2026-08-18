@@ -7,15 +7,18 @@
  */
 import { z } from "zod/v3";
 import { GddApiError } from "./client.js";
-function json(data) {
-    return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-}
+import { addonCreated, addonReceipt, json, touched } from "./project.js";
 function err(e) {
     if (e instanceof GddApiError) {
         return { content: [{ type: "text", text: `Error (${e.code}): ${e.message}` }], isError: true };
     }
     return { content: [{ type: "text", text: String(e) }], isError: true };
 }
+/** Escape hatch on every write: opt back into the whole saved addon. */
+const returning = z
+    .enum(["minimal", "full"])
+    .optional()
+    .describe('"full" echoes the whole saved addon instead of a receipt (default "minimal")');
 // Shared params present in every create/update tool
 const projSec = {
     projectId: z.string().describe("Project UUID"),
@@ -29,31 +32,34 @@ export function registerAddonTools(server, client) {
     // ── Helper to register a create + update pair ──────────────────
     function pair(typeName, addonType, description, createFields, updateFields) {
         // CREATE
-        server.tool(`create_${typeName}_addon`, `Create a ${description} addon`, {
+        server.tool(`create_${typeName}_addon`, `Create a ${description} addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored values.`, {
             ...projSec,
             name: z.string().describe("Display name for the addon"),
             group: z.string().optional().describe("Optional group name"),
             ...createFields,
-        }, async ({ projectId, sectionId, name, group, ...data }) => {
+            returning,
+        }, async ({ projectId, sectionId, name, group, returning: returnMode, ...data }) => {
             try {
-                return json(await client.createAddon(projectId, sectionId, {
+                const created = await client.createAddon(projectId, sectionId, {
                     type: addonType,
                     name,
                     ...(group ? { group } : {}),
                     data,
-                }));
+                });
+                return json(returnMode === "full" ? created : addonCreated(created, sectionId));
             }
             catch (e) {
                 return err(e);
             }
         });
         // UPDATE
-        server.tool(`update_${typeName}_addon`, `Update a ${description} addon`, {
+        server.tool(`update_${typeName}_addon`, `Update a ${description} addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored values.`, {
             ...projSecAddon,
             name: z.string().optional().describe("New display name"),
             group: z.string().optional().describe("New group name"),
             ...updateFields,
-        }, async ({ projectId, sectionId, addonId, name, group, ...data }) => {
+            returning,
+        }, async ({ projectId, sectionId, addonId, name, group, returning: returnMode, ...data }) => {
             try {
                 const fields = {};
                 if (name !== undefined)
@@ -62,7 +68,8 @@ export function registerAddonTools(server, client) {
                     fields.group = group;
                 if (Object.keys(data).length > 0)
                     fields.data = data;
-                return json(await client.updateAddon(projectId, sectionId, addonId, fields));
+                const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
+                return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
             }
             catch (e) {
                 return err(e);
@@ -256,14 +263,15 @@ export function registerAddonTools(server, client) {
         plateauFactor: z.number().default(0.35).describe("Plateau factor (piecewise preset)"),
     };
     // For xpBalance, the params are nested under a `params` object in the API
-    server.tool("create_xp_balance_addon", "Create an XP balance curve addon", {
+    server.tool("create_xp_balance_addon", "Create an XP balance curve addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored curve.", {
         ...projSec,
         name: z.string().describe("Display name"),
         group: z.string().optional().describe("Optional group name"),
         ...xpBalanceFields,
-    }, async ({ projectId, sectionId, name, group, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
+        returning,
+    }, async ({ projectId, sectionId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
         try {
-            return json(await client.createAddon(projectId, sectionId, {
+            const created = await client.createAddon(projectId, sectionId, {
                 type: "xpBalance",
                 name,
                 ...(group ? { group } : {}),
@@ -271,13 +279,14 @@ export function registerAddonTools(server, client) {
                     ...rest,
                     params: { base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor },
                 },
-            }));
+            });
+            return json(returnMode === "full" ? created : addonCreated(created, sectionId));
         }
         catch (e) {
             return err(e);
         }
     });
-    server.tool("update_xp_balance_addon", "Update an XP balance curve addon", {
+    server.tool("update_xp_balance_addon", "Update an XP balance curve addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored curve.", {
         ...projSecAddon,
         name: z.string().optional().describe("New display name"),
         group: z.string().optional().describe("New group name"),
@@ -299,7 +308,8 @@ export function registerAddonTools(server, client) {
         capStrength: z.number().optional().describe("Cap strength (softCap preset)"),
         plateauStartLevel: z.number().optional().describe("Plateau start level (piecewise preset)"),
         plateauFactor: z.number().optional().describe("Plateau factor (piecewise preset)"),
-    }, async ({ projectId, sectionId, addonId, name, group, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
+        returning,
+    }, async ({ projectId, sectionId, addonId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
         try {
             const fields = {};
             if (name !== undefined)
@@ -330,7 +340,8 @@ export function registerAddonTools(server, client) {
                 data.params = params;
             if (Object.keys(data).length > 0)
                 fields.data = data;
-            return json(await client.updateAddon(projectId, sectionId, addonId, fields));
+            const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
+            return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
         }
         catch (e) {
             return err(e);
