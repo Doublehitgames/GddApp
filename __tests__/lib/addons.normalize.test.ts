@@ -218,7 +218,7 @@ describe("normalizeSectionAddons economyLink", () => {
 
     expect(normalized?.[1].type).toBe("globalVariable");
     if (normalized?.[1].type === "globalVariable") {
-      expect(normalized[1].data.key).toBe("sell_bonus_");
+      expect(normalized[1].data.key).toBe("Sell_Bonus_");
       expect(normalized[1].data.defaultValue).toBe(25);
       expect(normalized[1].data.scope).toBe("global");
     }
@@ -297,7 +297,7 @@ describe("normalizeSectionAddons economyLink", () => {
 });
 
 describe("normalizeSectionAddons fieldLibrary", () => {
-  it("normalizes fieldLibrary entries (trims key, derives label fallback, dedupes keys)", () => {
+  it("normalizes fieldLibrary entries (trims key, preserves case, derives label fallback, dedupes exact keys)", () => {
     const input = [
       {
         id: "lib-1",
@@ -309,8 +309,10 @@ describe("normalizeSectionAddons fieldLibrary", () => {
           entries: [
             { id: "e1", key: "  Sell Price ", label: "Preço de Venda", description: "Valor de venda" },
             { id: "e2", key: "buy_price", label: "" },
-            { id: "e3", key: "sell_price", label: "Duplicate" },
+            // Keys are case-sensitive, so "sell_price" is distinct from "Sell_Price" above.
+            { id: "e3", key: "sell_price", label: "Not a duplicate (different case)" },
             { id: "e4", key: "", label: "Ignored (no key)" },
+            { id: "e5", key: " sell_price ", label: "Ignored (exact duplicate of e3)" },
           ],
         },
       },
@@ -321,10 +323,10 @@ describe("normalizeSectionAddons fieldLibrary", () => {
     const lib = normalized?.[0];
     expect(lib?.type).toBe("fieldLibrary");
     if (lib?.type === "fieldLibrary") {
-      expect(lib.data.entries).toHaveLength(2);
+      expect(lib.data.entries).toHaveLength(3);
       expect(lib.data.entries[0]).toEqual({
         id: "e1",
-        key: "sell_price",
+        key: "Sell_Price",
         label: "Preço de Venda",
         description: "Valor de venda",
       });
@@ -332,6 +334,12 @@ describe("normalizeSectionAddons fieldLibrary", () => {
         id: "e2",
         key: "buy_price",
         label: "buy_price",
+        description: undefined,
+      });
+      expect(lib.data.entries[2]).toEqual({
+        id: "e3",
+        key: "sell_price",
+        label: "Not a duplicate (different case)",
         description: undefined,
       });
     }
