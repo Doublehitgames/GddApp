@@ -1,0 +1,257 @@
+---
+title: "Remote Config"
+description: "O JSON que o seu jogo lê em tempo real — você desenha a estrutura aqui e exporta direto do GDD."
+emoji: "📤"
+order: 170
+---
+
+# Remote Config
+
+**Remote Config** é o arquivo JSON que o seu jogo baixa e lê enquanto está rodando — sem precisar recompilar. É onde ficam os valores que você quer poder ajustar depois do lançamento: preços de itens, dano de habilidades, tempo de crafting, configuração de eventos sazonais.
+
+No GDD Manager, você **desenha a estrutura exata** desse JSON e conecta cada campo aos dados que já estão no seu projeto. O app gera o arquivo atualizado toda vez que você exportar.
+
+## O problema que ele resolve
+
+Sem isso, o fluxo costuma ser assim:
+
+1. Você ajusta valores nas suas planilhas ou documentos
+2. O programador escreve um script para ler esses valores e gerar o JSON do jogo
+3. Você muda algo → o programador precisa atualizar o script
+
+Com o Remote Config do GDD Manager:
+
+1. O programador define a estrutura do JSON **uma única vez** no bloco Remote Config
+2. Você ajusta os valores no projeto normalmente
+3. Exporta → JSON pronto, com a estrutura que o jogo espera
+
+Você ganha autonomia. O programador não precisa entrar no loop cada vez que você balancear uma curva ou ajustar um preço.
+
+## Onde costuma viver
+
+- Página do tipo **📤 Remote Config** (opção mais comum)
+- Qualquer página em branco quando você quiser separar por tema
+
+Você pode ter **vários blocos Remote Config na mesma página** — um para cada arquivo JSON que precisar gerar. Não é singleton.
+
+## A árvore de nós
+
+Você monta uma árvore que representa o JSON final. Cada peça é um dos três tipos:
+
+- **Objeto** — um grupo de campos, como `{ "dano": 10, "alcance": 5 }`
+- **Lista** — uma sequência de itens que vem do projeto (todos os níveis de uma torre, todas as habilidades, todas as receitas de crafting)
+- **Valor** — um campo específico que aponta para um dado do projeto (o nome de uma habilidade, o custo de um nível, o tempo de craft)
+
+O app mostra um **preview ao vivo** enquanto você monta — você vê o JSON sendo formado antes de exportar qualquer coisa.
+
+<Callout type="info" title="Vários exports por projeto">
+  Você pode ter vários blocos Remote Config no mesmo projeto — um para
+  habilidades, um para itens, um para economia. Cada um gera um arquivo
+  JSON separado.
+</Callout>
+
+## Criando seu primeiro export
+
+1. Crie uma página — pode ser do tipo **📤 Remote Config** ou qualquer página em branco
+2. Adicione o bloco **Remote Config** e dê um nome a ele
+3. Clique em **+ Adicionar nó** e escolha **Lista**
+4. Escolha de onde vêm os itens (ex: sua tabela de progressão, sua lista de habilidades)
+5. Dentro da lista, adicione **Valor** para cada campo que você quer exportar
+6. Escolha qual dado ler (nome, custo, nível, dano...)
+7. Clique em **Exportar** para baixar o JSON
+
+## Fontes de dados
+
+Ao adicionar uma **lista**, você escolhe de onde vêm os itens:
+
+| Fonte | O que itera |
+|---|---|
+| **Tabela de progressão** | Um item por nível da tabela (nível 1, 2, 3...) |
+| **Mesa de produção** | Uma receita por entry da mesa |
+| **Ingredientes de receita** | Um ingrediente por linha da receita atual *(dentro de Mesa de produção)* |
+| **Resultados de receita** | Um resultado por linha da receita atual *(dentro de Mesa de produção)* |
+| **Habilidades** | Uma habilidade por entry do addon de Skills |
+| **Custos de habilidade** | Um custo por entry da habilidade atual *(dentro de Habilidades)* |
+| **Efeitos de habilidade** | Um efeito por entry da habilidade atual *(dentro de Habilidades)* |
+
+<Callout type="info" title="Fontes contextuais">
+  Ingredientes, resultados, custos e efeitos só aparecem quando você está
+  **dentro** de uma lista da fonte pai correspondente. O app esconde as opções
+  inválidas automaticamente.
+</Callout>
+
+## Campos disponíveis
+
+Os campos que você pode ler dependem da fonte de dados ativa no contexto:
+
+### Tabela de progressão
+
+| Campo | O que traz |
+|---|---|
+| Nível | O número do nível (1, 2, 3...) |
+| *Qualquer coluna* | O valor calculado daquela coluna naquele nível |
+
+### Habilidades
+
+| Campo | O que traz |
+|---|---|
+| ID | Identificador único da habilidade |
+| Nome | Nome da habilidade |
+| Tipo | `active` ou `passive` |
+| Cooldown (segundos) | Tempo entre usos |
+| Tags | Tags separadas por vírgula (ex: `fire,magical,aoe`) |
+| Condição de desbloqueio | Nível, moeda ou item necessários para desbloquear |
+
+### Custos de habilidade
+
+| Campo | O que traz |
+|---|---|
+| ID | Identificador do custo |
+| Tipo | `currency`, `attribute` ou `charges` |
+| Quantidade | Valor a pagar |
+| Referência da moeda | Data ID da página da moeda usada |
+| Chave do atributo | Chave do stat consumido (ex: `mana`) |
+
+### Efeitos de habilidade
+
+| Campo | O que traz |
+|---|---|
+| Nome resolvido | Nome do modificador referenciado |
+| Chave do atributo | Chave do stat que o efeito modifica |
+| Página de atributos (ID) | Data ID da página de atributos |
+| Valor | Quantidade do efeito |
+| Duração (segundos) | Duração do efeito (para DoTs) |
+| Intervalo de tick (segundos) | Frequência de aplicação (para DoTs) |
+| Stacking | Regra de empilhamento |
+
+### Mesa de produção
+
+| Campo | O que traz |
+|---|---|
+| Referência da receita | Data ID da página com o Production vinculado |
+| Categoria | Categoria da entry na mesa |
+| Condição de desbloqueio | Nível, moeda ou item para desbloquear |
+
+### Ingredientes / Resultados de receita
+
+| Campo | O que traz |
+|---|---|
+| Referência do item | Data ID da página do item |
+| Quantidade | Quantidade do ingrediente ou resultado |
+
+### Valor fixo
+
+Em qualquer contexto você pode digitar um valor direto — texto, número ou verdadeiro/falso. Útil para versão de schema, flags de configuração, nome do jogo, etc.
+
+<Callout type="info" title="Referências exportam Data IDs">
+  Campos do tipo "referência" (moeda, item, atributos) exportam o **Data ID**
+  da página — ex.: `DATA_FIRE_BALL` — não o identificador interno. Esses IDs
+  são definidos por você, são legíveis e não mudam quando você reorganiza o
+  projeto.
+</Callout>
+
+## Formatos de lista
+
+Quando você tem uma lista de itens com vários campos, escolhe como eles aparecem no JSON. O formato certo depende de como o código do jogo vai ler esses dados — confirme com o programador qual ele prefere.
+
+### Uma linha por item *(padrão)*
+
+```json
+[
+  { "nivel": 1, "preco": 100, "dano": 10 },
+  { "nivel": 2, "preco": 200, "dano": 20 }
+]
+```
+
+O formato mais comum — um objeto por nível, com todos os campos juntos. Boa escolha na dúvida.
+
+### Por coluna
+
+```json
+{
+  "nivel": [1, 2, 3],
+  "preco": [100, 200, 300],
+  "dano": [10, 20, 30]
+}
+```
+
+Cada campo vira uma lista separada. Útil quando o motor processa dados por coluna — por exemplo, para calcular curvas ou alimentar gráficos.
+
+### Indexado por nível
+
+```json
+{
+  "1": { "preco": 100, "dano": 10 },
+  "2": { "preco": 200, "dano": 20 }
+}
+```
+
+O nível vira a chave do objeto. O código do jogo pode acessar `data["3"]` direto, sem percorrer a lista inteira.
+
+### Tabela compacta
+
+```json
+{
+  "headers": ["nivel", "preco", "dano"],
+  "rows": [[1, 100, 10], [2, 200, 20]]
+}
+```
+
+O mais compacto dos quatro. Bom quando o arquivo precisa ser pequeno ou quando o motor lê dados tabulares em lote.
+
+## Exemplo: exportando habilidades
+
+Este bloco gera uma lista de habilidades, cada uma com seus efeitos aninhados.
+
+JSON gerado:
+
+```json
+{
+  "habilidades": [
+    {
+      "id": "DATA_FIRE_BALL",
+      "nome": "Fireball",
+      "efeitos": [
+        { "pagina_atributos": "DATA_BASIC_ATTR", "chave": "hp", "valor": -10 }
+      ]
+    }
+  ]
+}
+```
+
+A árvore que gera esse resultado:
+
+- **Lista** → fonte: Habilidades (addon de Skills da página)
+  - **Valor** → ID da habilidade
+  - **Valor** → Nome da habilidade
+  - **Lista** → fonte: Efeitos de habilidade
+    - **Valor** → Página de atributos (ID)
+    - **Valor** → Chave do atributo
+    - **Valor** → Valor do efeito
+
+## Atualizar valores e reimportar
+
+Se o programador ajustar valores diretamente no JSON exportado (por exemplo, dentro do Unity ou Unreal) e você quiser manter o GDD atualizado, o app aceita **reimportar** esse JSON — ele re-aplica os valores nos blocos de origem.
+
+<Callout type="warning" title="O que reimporta e o que não reimporta">
+  Valores simples (números, textos, verdadeiro/falso) reimportam sem problema.
+  Referências entre páginas — como qual moeda é usada num custo de habilidade
+  — podem não reimportar automaticamente e precisam ser ajustadas à mão no app.
+</Callout>
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📊" title="Tabela de Progressão" href="/docs/referencia/addons/progression-table">
+    A fonte mais comum em exports — curvas de nível com preços, dano e capacidade.
+  </FeatureCard>
+  <FeatureCard emoji="⚡" title="Habilidades" href="/docs/referencia/addons/skills">
+    Tem 3 fontes dedicadas no Remote Config — habilidades, custos e efeitos.
+  </FeatureCard>
+  <FeatureCard emoji="🛠️" title="Mesa de Produção" href="/docs/referencia/addons/craft-table">
+    Exportar receitas com ingredientes e resultados aninhados no mesmo JSON.
+  </FeatureCard>
+  <FeatureCard emoji="📄" title="Tipos de página" href="/docs/referencia/page-types">
+    O tipo 📤 Remote Config cria a página já preparada para este bloco.
+  </FeatureCard>
+</div>

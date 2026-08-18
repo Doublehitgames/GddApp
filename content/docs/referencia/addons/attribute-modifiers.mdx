@@ -1,0 +1,148 @@
+---
+title: "attributeModifiers"
+description: "Buffs e debuffs que alteram atributos. Suporta one-shot, durativo e DoT/HoT."
+emoji: "✨"
+order: 30
+---
+
+# attributeModifiers
+
+Define **alterações** nos atributos: o `+10 ATK` da Espada de Ferro, o `-5 HP/s por 6s` do Veneno, o `×1.5 SPD` do buff de velocidade.
+
+## Por que importa
+
+Sem um modelo único pra modifier, cada feature implementa o seu (item, skill, evento, classe). Resulta em motor com 5 sistemas de buff incompatíveis. Aqui você define **uma vez**, e qualquer feature que precise de "alterar atributo" referencia uma entry deste addon.
+
+## Onde costuma viver
+
+- Página de **Equipamento** (`⚔️ Itens com efeito`) — efeitos do item ao equipar.
+- Página de **Habilidade** (`⚡ Habilidades`) — efeitos da skill no alvo.
+- Página de **Personagem** (`👤 Personagens`) — efeitos passivos da classe.
+- Página em branco — pool genérico de modifiers reutilizáveis.
+
+Singleton — 1 addon por página. Cada addon pode ter **N entries**, então uma página de Habilidades segura todos os efeitos das skills dela.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno do addon." },
+  { name: "name", type: "string", required: "Sim", description: "Nome amigável." },
+  { name: "definitionsRef", type: "string (sectionId)", description: "Página com attributeDefinitions. Filtra quais keys o painel oferece." },
+  { name: "modifiers", type: "AttributeModifierEntry[]", required: "Sim", description: "Lista de entries — cada uma é um efeito atômico." },
+]} />
+
+### `AttributeModifierEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "name", type: "string", description: <>Nome humano (ex.: <code>Fireball Impact</code>). Quando ausente, a UI gera um label automático tipo <code>+10 ATK 30s</code>.</> },
+  { name: "attributeKey", type: "string", required: "Sim", description: "Key do atributo a alterar (vem da definitionsRef)." },
+  { name: "mode", type: '"add" | "mult" | "set"', required: "Sim", description: <><strong>add</strong>: soma (negativo = dano). <strong>mult</strong>: multiplica (×1.5 = +50%). <strong>set</strong>: força valor exato.</> },
+  { name: "value", type: "number | boolean", required: "Sim", description: "O valor a aplicar. Boolean só faz sentido com mode=set em atributos boolean." },
+  { name: "temporary", type: "boolean", defaultValue: "false", description: "Quando true, o modifier expira depois de durationSeconds. Quando false, é permanente (ex.: dano em HP que não regenera)." },
+  { name: "durationSeconds", type: "number", description: "Duração total do efeito (em segundos). Aceita decimais (1.5s)." },
+  { name: "tickIntervalSeconds", type: "number", description: <>Intervalo entre aplicações pra DoT/HoT. Convenção <strong>trailing tick</strong>: primeiro tick em t=N, total = <code>floor(duration/interval)</code>.</> },
+  { name: "stackingRule", type: '"unique" | "refresh" | "stack"', description: <><strong>unique</strong>: 2º cast ignorado se ainda ativo. <strong>refresh</strong>: cada cast renova duração. <strong>stack</strong>: empilha como instâncias separadas.</> },
+  { name: "category", type: '"buff" | "debuff" | "neutral"', description: "Para sistemas de dispel/resistência no motor." },
+  { name: "tags", type: "string[]", description: <>Tags livres pra agrupar (<code>fire</code>, <code>poison</code>, <code>magical</code>). Lower-cased e dedup automaticamente.</> },
+]} />
+
+## Exemplos
+
+### One-shot: dano instantâneo
+
+```json
+{
+  "id": "fire-impact",
+  "name": "Fireball Impact",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -30,
+  "stackingRule": "stack"
+}
+```
+
+Sem `temporary`, então é permanente — o dano em HP fica até o jogador curar.
+
+### Durativo: buff de 30s
+
+```json
+{
+  "id": "berserk",
+  "name": "Berserk",
+  "attributeKey": "atk",
+  "mode": "mult",
+  "value": 1.5,
+  "temporary": true,
+  "durationSeconds": 30,
+  "stackingRule": "refresh",
+  "category": "buff"
+}
+```
+
+`mult: 1.5` = +50% ATK por 30s. `refresh` significa que recastear renova o timer.
+
+### DoT: queimadura
+
+```json
+{
+  "id": "burn",
+  "name": "Burn",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -2,
+  "temporary": true,
+  "durationSeconds": 6,
+  "tickIntervalSeconds": 1,
+  "stackingRule": "unique",
+  "category": "debuff",
+  "tags": ["fire", "dot"]
+}
+```
+
+Aplica `-2 HP` a cada 1s por 6s = **6 ticks × -2 = -12 HP total**. `unique` impede multiplicação descontrolada quando o jogador spammar a skill.
+
+## Convenção do tick
+
+DoT/HoT segue **trailing tick**:
+
+- Duration = 10s, tick = 1s → 10 ticks aplicados em t=1, 2, ..., 10
+- Total ticks = `floor(durationSeconds / tickIntervalSeconds)`
+
+Não dispara em t=0. Se o seu motor implementar leading tick (t=0, 1, ..., 10 = 11 ticks), ele vai entregar 10% mais dano do que o GDD diz. Documente bem essa convenção pro time de programação.
+
+<Callout type="warning" title="Por que não permite negative duration">
+  Não. Use `mode: "set"` com value=0 se quiser zerar. Para "remover ao longo do tempo", use múltiplas entries.
+</Callout>
+
+## Quem aponta pra este addon
+
+- **`skills.SkillEffectRef`** — efeitos de skill apontam pra entries específicas aqui (mesma página, por design).
+- **Equipamento** (via `equipmentItem` page type) — modifiers se aplicam ao equipar.
+
+## Wizard
+
+Não tem wizard próprio (não é page-type principal). Mas é seedado automaticamente por:
+
+- `👤 Personagens`
+- `⚔️ Itens com efeito`
+- `⚡ Habilidades`
+
+Todos seedam o addon vazio com `definitionsRef` já preenchido pra você só adicionar entries.
+
+## Comportamento na UI
+
+- **Painel**: bloco por entry colapsável, drag-and-drop pra reordenar, dropdowns dependentes (key → values disponíveis).
+- **Read-only**: lista as entries com badge de categoria + chips de tags + breakdown de timing (s, tick).
+- **Skills checklist**: cada entry aparece no picker de efeitos de uma skill na mesma página. O `name` (quando setado) é destacado em bold.
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="🎯" title="attributeDefinitions" href="/docs/referencia/addons/attribute-definitions">
+    Define as keys que os modifiers podem alterar.
+  </FeatureCard>
+  <FeatureCard emoji="⚡" title="skills" href="/docs/referencia/addons/skills">
+    Skills referenciam entries de modifiers via SkillEffectRef.
+  </FeatureCard>
+</div>

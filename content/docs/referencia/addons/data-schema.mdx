@@ -1,0 +1,114 @@
+---
+title: "dataSchema"
+description: "Campos livres (key-value) que ficam atrelados à página com tipo, validação e refs."
+emoji: "🗂️"
+order: 130
+---
+
+# dataSchema
+
+Define **pares chave-valor** com tipo (int, float, seconds, percent, boolean, string) que ficam vinculados à página. É o "addon coringa" — quando nenhum dos addons especializados cobre o que você precisa, este resolve.
+
+## Por que importa
+
+Game design tem muito caso "preciso anotar X aqui": rarity da arma, nível requerido, animação, número mágico de balanceamento. Sem o data schema, esses campos viram strings soltas no `richDoc`, sem validação, sem possibilidade de export estruturado. Aqui você ganha **tipo + min/max + ref a outros addons** sem precisar criar um novo tipo de addon.
+
+## Onde costuma viver
+
+- Páginas em branco quando você quer adicionar campos livres tipados.
+- Páginas tipadas quando precisa de campos extras que o addon principal não cobre.
+
+Singleton — 1 schema por página, com **N entries**.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "name", type: "string", required: "Sim", description: "Nome amigável (ex.: Metadados, Stats Extras)." },
+  { name: "entries", type: "DataSchemaEntry[]", required: "Sim", description: "Lista de campos." },
+]} />
+
+### `DataSchemaEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "key", type: "string", required: "Sim", description: "Chave técnica (snake_case). Vai pro JSON exportado." },
+  { name: "label", type: "string", required: "Sim", description: "Nome amigável que aparece na UI." },
+  { name: "libraryRef", type: "{ libraryAddonId, entryId }", description: "Quando preenchido, key e label vêm da Field Library (taxonomia central)." },
+  { name: "valueType", type: '"int" | "float" | "seconds" | "percent" | "boolean" | "string"', required: "Sim", description: "Tipo do valor — define input no painel e formatação." },
+  { name: "value", type: "number | boolean | string", required: "Sim", description: "O valor atual." },
+  { name: "min", type: "number", description: "Piso (numéricos)." },
+  { name: "max", type: "number", description: "Teto (numéricos)." },
+  { name: "unit", type: "string", description: "Sufixo visual (kg, mph, etc.)." },
+  { name: "unitXpRef", type: "string (sectionId)", description: "Quando o valor representa nível, aponta pra curva de XP usada como referência visual." },
+  { name: "economyLinkRef", type: "string (sectionId)", description: "Quando o valor é puxado de um economyLink — qual seção." },
+  { name: "economyLinkField", type: "EconomyLinkFieldKey", description: "Quando economyLinkRef preenchido — qual campo daquele addon (buyValue, sellValue, etc.)." },
+  { name: "productionRef", type: "string (addonId)", description: "Quando o valor é puxado de um production — qual addon (na mesma seção)." },
+  { name: "productionField", type: "ProductionFieldKey", description: "Quando productionRef preenchido — qual campo do production." },
+  { name: "usePageDataId", type: "boolean", description: "Quando true, o valor é o próprio dataId da página onde o schema vive." },
+  { name: "notes", type: "string", description: "Notas livres." },
+]} />
+
+## Exemplo
+
+Schema com 3 campos: rarity (string), required level (int), discovery date (string):
+
+```json
+{
+  "id": "schema-meta",
+  "name": "Metadados",
+  "entries": [
+    {
+      "id": "f1",
+      "key": "rarity",
+      "label": "Raridade",
+      "valueType": "string",
+      "value": "épico"
+    },
+    {
+      "id": "f2",
+      "key": "required_level",
+      "label": "Nível requerido",
+      "valueType": "int",
+      "value": 25,
+      "min": 1,
+      "max": 100,
+      "unit": "lv"
+    },
+    {
+      "id": "f3",
+      "key": "discovered_in",
+      "label": "Descoberto em",
+      "valueType": "string",
+      "value": "Patch 1.4"
+    }
+  ]
+}
+```
+
+## Refs computadas
+
+Os campos `economyLinkRef`/`economyLinkField` e `productionRef`/`productionField` permitem **valores derivados**: o painel mostra o valor atual do outro addon em vez de você digitar. Útil pra refletir "preço de compra" da economyLink no schema sem duplicar o número.
+
+Quando o addon-fonte muda, o valor "viaja" — se o economyLink mudar de 100 pra 120, o schema reflete automaticamente.
+
+<Callout type="tip" title="Quando NÃO usar">
+  Se o que você quer já tem addon dedicado (atributo, custo, modifier), use o addon
+  específico em vez de modelar com data schema. O data schema é fallback pra
+  conceitos que não cabem em nenhum dos 15 outros addons.
+</Callout>
+
+## Wizard
+
+Não tem wizard próprio. Você adiciona o addon manualmente quando precisa.
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="📚" title="fieldLibrary" href="/docs/referencia/addons/field-library">
+    Use libraryRef nas entries pra centralizar key/label e evitar duplicação.
+  </FeatureCard>
+  <FeatureCard emoji="🌐" title="globalVariable" href="/docs/referencia/addons/global-variable">
+    Quando o "campo livre" é uma variável global compartilhada entre páginas, use globalVariable.
+  </FeatureCard>
+</div>

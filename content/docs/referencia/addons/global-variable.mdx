@@ -1,0 +1,94 @@
+---
+title: "globalVariable"
+description: "Modificador global compartilhado entre páginas: % de venda, x2 XP em evento, taxa de drop."
+emoji: "🌐"
+order: 140
+---
+
+# globalVariable
+
+Define uma **variável global** que outros addons podem referenciar pra ajustes em massa: desconto sazonal de 10%, dobro de XP no fim de semana, multiplicador de drop em eventos.
+
+## Por que importa
+
+Designers de live ops mexem em "alavancas globais" o tempo todo. Sem este addon, você teria que editar 50 itens individualmente quando rodar uma promo de "tudo 20% off". Aqui você define `item_buy_discount = 0.20`, todos os economyLinks que referenciam essa variável aplicam automaticamente, e você desliga depois mudando 1 número.
+
+## Onde costuma viver
+
+- Páginas em branco dedicadas a alavancas globais (ex.: "Variáveis Live Ops").
+- O wizard de Itens cria automaticamente 2 globalVariables auxiliares (`item_buy_discount` e `item_sell_markup`) na primeira vez — você reaproveita elas pra todos os itens.
+
+Singleton — 1 variável por página. Pra múltiplas, crie múltiplas páginas (ou um agrupamento dedicado).
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "name", type: "string", required: "Sim", description: "Nome amigável (ex.: Desconto de Compra)." },
+  { name: "key", type: "string", required: "Sim", description: <>Chave técnica (snake_case) que vai pro JSON. Ex.: <code>item_buy_discount</code>, <code>event_xp_multiplier</code>.</> },
+  { name: "displayName", type: "string", required: "Sim", description: "Nome amigável duplicado pra UI (geralmente == name)." },
+  { name: "valueType", type: '"percent" | "multiplier" | "flat" | "boolean"', required: "Sim", description: <><strong>percent</strong>: 0–100 (%). <strong>multiplier</strong>: ×N (1.0 = sem efeito). <strong>flat</strong>: número absoluto somado. <strong>boolean</strong>: liga/desliga.</> },
+  { name: "defaultValue", type: "number | boolean", required: "Sim", description: "Valor inicial." },
+  { name: "scope", type: '"global" | "mode" | "event" | "season"', required: "Sim", description: <>Domínio onde se aplica. <strong>global</strong>: sempre. <strong>mode</strong>: apenas em modos específicos. <strong>event</strong>: durante eventos. <strong>season</strong>: por temporada/patch.</> },
+  { name: "notes", type: "string", description: "Notas livres (regras de evento, history, etc.)." },
+]} />
+
+## Exemplos
+
+### Desconto sazonal global
+
+```json
+{
+  "id": "var-buy-discount",
+  "name": "Desconto de Compra",
+  "key": "item_buy_discount",
+  "displayName": "Desconto de Compra",
+  "valueType": "percent",
+  "defaultValue": 0,
+  "scope": "global",
+  "notes": "Setado pra 20 durante a Black Friday. Volta pra 0 no fim do evento."
+}
+```
+
+### Multiplicador de XP em evento
+
+```json
+{
+  "id": "var-event-xp",
+  "name": "XP do Evento",
+  "key": "event_xp_multiplier",
+  "displayName": "XP × N",
+  "valueType": "multiplier",
+  "defaultValue": 1.0,
+  "scope": "event",
+  "notes": "Vira 2.0 durante o evento de XP em dobro."
+}
+```
+
+## Quem aponta pra globalVariable
+
+- **`economyLink.buyModifiers`** e **`economyLink.sellModifiers`** — refs (`{refId: sectionId}`) pra variáveis que ajustam preços.
+- Outros addons podem referenciar via custom integration no motor.
+
+## Comportamento prático
+
+A semântica fica do lado do **motor de jogo**: o addon só descreve a variável e seu valor padrão. Como ela se aplica (multiplicativo, aditivo, sobrescrita) é responsabilidade da implementação no jogo. O `valueType` é dica pra o motor.
+
+Recomendação: trate `percent` como divisão por 100 (`item_buy_discount: 20` → 20% off), `multiplier` como fator direto (`xp_multiplier: 2` → ×2), `flat` como soma direta, `boolean` como flag.
+
+## Wizard
+
+Não tem wizard próprio. Mas o **wizard de Itens** (`🎒 Itens` e `⚔️ Itens com efeito`) cria automaticamente as variáveis `item_buy_discount` e `item_sell_markup` na primeira vez — em duas páginas auto-criadas chamadas "📉 Desconto de Compra" e "📈 Bônus de Venda".
+
+A partir daí, todos os economyLinks futuros já vêm com refs pra essas duas variáveis.
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="💰" title="economyLink" href="/docs/referencia/addons/economy-link">
+    O maior consumidor de globalVariables (refs em buyModifiers/sellModifiers).
+  </FeatureCard>
+  <FeatureCard emoji="🗂️" title="dataSchema" href="/docs/referencia/addons/data-schema">
+    Pra valores que ficam atrelados a uma página específica em vez de globais.
+  </FeatureCard>
+</div>

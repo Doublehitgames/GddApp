@@ -1,0 +1,82 @@
+---
+title: "Burst + DoT na mesma skill"
+description: "Modela uma Fireball com impacto instantâneo + queimadura ao longo do tempo."
+emoji: "🔥"
+order: 10
+---
+
+# Burst + DoT na mesma skill
+
+**Cenário**: Fireball que dá `-30 HP` no impacto + queima por `-2 HP/s durante 6s`.
+
+A questão é como decompor isso em entries do `attributeModifiers` — porque o schema permite **um efeito por entry**, não dois numa só. Resposta: **2 entries separadas, ambas vinculadas à mesma skill**.
+
+## Setup
+
+Numa página `⚡ Habilidades`, o wizard já cria um `attributeModifiers` na mesma página. Adicione **2 entries**:
+
+### Entry 1 — Burst (impacto)
+
+```json
+{
+  "name": "Fireball Impact",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -30,
+  "stackingRule": "stack"
+}
+```
+
+Sem `temporary`, então o dano é **permanente** (HP não regenera sozinho). Stacking `stack` garante que casts repetidos somam dano.
+
+### Entry 2 — DoT (queimadura)
+
+```json
+{
+  "name": "Fireball Burn",
+  "attributeKey": "hp",
+  "mode": "add",
+  "value": -2,
+  "temporary": true,
+  "durationSeconds": 6,
+  "tickIntervalSeconds": 1,
+  "stackingRule": "unique",
+  "category": "debuff",
+  "tags": ["fire", "dot"]
+}
+```
+
+`unique` impede que casts spam multipliquem a queimadura — só rola uma queimadura ativa por vez.
+
+## Vincular à skill
+
+Na entry da skill Fireball, em **Efeitos**, marque **as duas checkboxes** (Fireball Impact + Fireball Burn). O painel mostra ambas como vinculadas e a timeline visual da skill renderiza:
+
+- Barra do caster: cooldown
+- Barra do alvo: queimadura de 6s com ticks divisórios
+- Hint: "Empilhamento 'unique': recasts antes de 6s são ignorados pra DoT (mas burst stacka)."
+
+## Total de dano por uso
+
+| Componente | Cálculo | Total |
+|---|---|---|
+| Burst | `-30 × 1` | `-30 HP` |
+| DoT | `-2 × 6 ticks` | `-12 HP` |
+| **Total** | | **`-42 HP` por cast** |
+
+Se o cooldown for menor que 6s, casts subsequentes só somam burst (DoT já está ativo + unique).
+
+## Por que separar em 2 entries
+
+Porque permite:
+
+- **Stacking diferente** por componente (burst stacka, DoT é único)
+- **Temporary diferente** (burst permanente, DoT temporário)
+- **Tags diferentes** (futuro: dispel só no DoT, não no burst)
+- **Export separado** no Remote Config (motor pode tratar burst e DoT em paths diferentes)
+
+## Veja também
+
+- [`attributeModifiers`](/docs/referencia/addons/attribute-modifiers) — schema completo de cada entry
+- [`skills`](/docs/referencia/addons/skills) — como skills referenciam modifiers
+- [Exportar skills pro Unity](/docs/cookbook/exportar-skills-unity) — pegar isso aqui e jogar no motor

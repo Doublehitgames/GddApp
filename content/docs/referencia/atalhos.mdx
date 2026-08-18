@@ -1,0 +1,79 @@
+---
+title: "Atalhos de teclado"
+description: "Todos os atalhos do app, agrupados por contexto. No app, aperte `?` em qualquer tela pra abrir esta lista flutuante."
+emoji: "⌨️"
+order: 40
+---
+
+# Atalhos de teclado
+
+Atalhos aceleram o fluxo quando você já sabe o que quer fazer. **No app, aperte `?` em qualquer tela** pra abrir uma versão flutuante desta página — o modal lê os mesmos dados.
+
+<Callout type="tip" title="Mac vs Windows/Linux">
+  Onde a tabela mostra <strong>Ctrl</strong>, no macOS troque por <strong>⌘</strong> (Cmd).
+  O app detecta o seu sistema automaticamente — o modal in-app já mostra o
+  símbolo certo.
+</Callout>
+
+## Geral
+
+Funcionam em qualquer tela do app.
+
+| Atalho | O que faz |
+|---|---|
+| `Ctrl + K` | Abrir o **buscador rápido de páginas** — comece a digitar o nome de qualquer página, ela aparece em segundos |
+| `Ctrl + /` ou `?` | Abrir esta lista de atalhos no modal flutuante |
+| `Esc` | Fechar diálogos, menus, modais e popovers abertos |
+
+## Página de seção
+
+Funcionam quando você está editando uma página.
+
+| Atalho | O que faz |
+|---|---|
+| `N` | Criar uma **nova página** (modal rápido — escolhe tipo + nome + parent) |
+| `Ctrl + I` | Adicionar um **addon** nesta página (abre o picker) |
+| `Ctrl + D` | **Duplicar** a página atual (cria cópia ao lado, com todos os addons) |
+| `Ctrl + M` *(Win/Linux)* `⌘ + Shift + M` *(Mac)* | **Mover** a seção pra outro local da árvore |
+
+<Callout type="warning" title="Ctrl+D dentro do navegador">
+  No browser, <code>Ctrl + D</code> normalmente é "favoritar página". O app
+  pega esse atalho pra duplicar — você verá um diálogo de confirmação na
+  primeira vez avisando, conforme nossa política de respeitar atalhos
+  nativos. Pode aceitar com tranquilidade.
+</Callout>
+
+## Fluxograma (Mind Map)
+
+Funcionam dentro do editor de fluxograma / mapa mental.
+
+| Atalho | O que faz |
+|---|---|
+| `Ctrl + Z` | **Desfazer** última ação |
+| `Ctrl + Y` | **Refazer** ação desfeita |
+| `Ctrl + C` | **Copiar** blocos selecionados |
+| `Ctrl + V` | **Colar** blocos do clipboard |
+| `Ctrl + D` | **Duplicar** bloco selecionado |
+| `Esc` | **Desselecionar** tudo |
+
+## Busca no mapa mental
+
+Quando a busca está ativa no mind map.
+
+| Atalho | O que faz |
+|---|---|
+| `↓` | Próximo resultado |
+| `↑` | Resultado anterior |
+| `Enter` | Pular pro resultado destacado (`Shift + Enter` = anterior) |
+
+## Convenções do app
+
+Algumas regras gerais que valem pra todos os atalhos:
+
+- **Atalhos nativos do navegador**: o app **respeita** (ou pede confirmação antes de sobrescrever) atalhos como `Ctrl+F`, `Ctrl+S`, `Ctrl+P`. Veja a config do projeto se quiser auditar.
+- **Foco em input**: a maioria dos atalhos de letra única (como `N` ou `?`) **não dispara** se você está digitando num input/textarea. Atalhos com modificadores (`Ctrl+...`) sim.
+- **Modal aberto**: alguns atalhos ficam suspensos quando há um modal/diálogo no topo — `Esc` fecha primeiro.
+
+## Sugerir um atalho
+
+Falta algum? Mande sua sugestão descrevendo o cenário — qual tela, qual ação, qual combinação você gostaria. Atalhos novos passam por revisão pra evitar conflito com atalhos nativos do navegador.

@@ -1,0 +1,137 @@
+---
+title: "craftTable"
+description: "Mesa de produção que agrega múltiplas receitas (forja, bancada, alquimia) com regras de unlock por entry."
+emoji: "🛠️"
+order: 100
+---
+
+# craftTable
+
+Modela uma **estação de produção** (forja, bancada, alquimia) que agrega **múltiplas receitas** já existentes, cada uma com sua própria condição de desbloqueio (nível, custo em moeda, item necessário).
+
+## Por que importa
+
+Em jogos com crafting maduro (Minecraft, Terraria, Stardew), receitas não vivem soltas — elas pertencem a estações. Uma "Forja" pode fazer espadas, machados e armaduras. Uma "Bancada" só pode fazer madeira processada. Sem este addon você modelaria essa relação à mão (página de Forja com lista de strings nomeando receitas), perdendo refs validadas.
+
+## Onde costuma viver
+
+- Página de tipo `🛠️ Mesa de Produção`. Wizard pergunta quais receitas associar.
+
+Singleton — 1 craftTable por página.
+
+## Schema
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "name", type: "string", required: "Sim", description: "Nome amigável (ex.: Forja do Ferreiro)." },
+  { name: "entries", type: "CraftTableEntry[]", required: "Sim", description: "Lista de receitas que essa mesa oferece." },
+]} />
+
+### `CraftTableEntry`
+
+<PropertyTable rows={[
+  { name: "id", type: "string", required: "Sim", description: "ID interno." },
+  { name: "productionRef", type: "string (sectionId)", description: "Página de Receita (production addon) que essa entry agrega." },
+  { name: "category", type: "string", description: "Categoria livre pra agrupar visualmente (ex.: Armas, Armaduras, Consumíveis)." },
+  { name: "order", type: "number", required: "Sim", description: "Ordem de exibição (lower = primeiro)." },
+  { name: "hidden", type: "boolean", description: "Quando true, entry oculta na UI até alguma condição (jogador descobrir, evento)." },
+  { name: "unlock", type: "CraftTableUnlock", description: "Condições pra desbloquear esta receita específica. Combina level + currency + item." },
+]} />
+
+### `CraftTableUnlock`
+
+Reusada também em `skills.unlock`. Três blocos opcionais que se combinam (todos precisam ser satisfeitos quando enabled):
+
+```ts
+{
+  level?: { enabled: bool, xpAddonRef?: sectionId, level?: number },
+  currency?: { enabled: bool, currencyAddonRef?: sectionId, amount?: number },
+  item?: { enabled: bool, itemRef?: sectionId, quantity?: number },
+}
+```
+
+- **level**: jogador precisa estar no nível X de uma curva de XP específica.
+- **currency**: paga X de uma moeda pra desbloquear permanentemente.
+- **item**: precisa ter X unidades de um item (pode ser consumido ou só requerido).
+
+## Exemplo
+
+Forja com 3 receitas, uma desbloqueada de cara, outra por nível, outra por compra:
+
+```json
+{
+  "id": "ct-forja",
+  "name": "Forja do Ferreiro",
+  "entries": [
+    {
+      "id": "e1",
+      "productionRef": "section-recipe-iron-sword",
+      "category": "Armas",
+      "order": 1
+    },
+    {
+      "id": "e2",
+      "productionRef": "section-recipe-steel-sword",
+      "category": "Armas",
+      "order": 2,
+      "unlock": {
+        "level": {
+          "enabled": true,
+          "xpAddonRef": "section-xp-blacksmith",
+          "level": 5
+        }
+      }
+    },
+    {
+      "id": "e3",
+      "productionRef": "section-recipe-mythril-sword",
+      "category": "Armas",
+      "order": 3,
+      "hidden": true,
+      "unlock": {
+        "currency": {
+          "enabled": true,
+          "currencyAddonRef": "section-gem",
+          "amount": 100
+        },
+        "item": {
+          "enabled": true,
+          "itemRef": "section-rare-recipe-paper",
+          "quantity": 1
+        }
+      }
+    }
+  ]
+}
+```
+
+A Mythril Sword requer 100 Gems + 1 papel raro. Inicialmente oculta.
+
+## Wizard
+
+A page type `🛠️ Mesa de Produção` abre um diálogo perguntando quais receitas (páginas de tipo `📜 Receita`) associar à mesa. Você pode:
+
+- **Selecionar existentes** do projeto (multi-select).
+- **Pular** e adicionar manualmente depois pelo painel.
+
+Cada receita selecionada vira uma entry nova com `order` sequencial. Você ajusta unlock e category depois.
+
+## Quem aponta pra craftTable
+
+Em geral, **ninguém** — ele é o consumidor final. Páginas de Receita são as folhas; CraftTable agrega; o motor lê o JSON.
+
+Você pode ter páginas múltiplas de Mesa de Produção apontando pra mesmas receitas (ex.: Receita "Pão" agregada tanto na Bancada de Casa quanto no Forno do Padeiro). Sem regra impedindo.
+
+## Veja também
+
+<div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
+  <FeatureCard emoji="⚙️" title="production" href="/docs/referencia/addons/production">
+    O addon que define cada receita individual referenciada aqui.
+  </FeatureCard>
+  <FeatureCard emoji="📈" title="xpBalance" href="/docs/referencia/addons/xp-balance">
+    Curvas de XP referenciadas em unlock.level.xpAddonRef.
+  </FeatureCard>
+  <FeatureCard emoji="🪙" title="currency" href="/docs/referencia/addons/currency">
+    Moedas referenciadas em unlock.currency.currencyAddonRef.
+  </FeatureCard>
+</div>
