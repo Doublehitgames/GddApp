@@ -55,7 +55,8 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     { projectId: z.string().describe("Project UUID"), includeAddons: z.boolean().optional().describe("Return every section's full addon data instead of the index (very large)") },
     async ({ projectId, includeAddons }) => {
       try {
-        const project = await api.getProject(projectId);
+        // Ask the API to leave the addon payload behind unless it is wanted.
+        const project = await api.getProject(projectId, includeAddons ? undefined : "types");
         return json(includeAddons ? projectFull(project) : projectIndex(project));
       } catch (e) { return err(e); }
     });
@@ -92,7 +93,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     },
     async ({ projectId, includeAddons, ...filters }) => {
       try {
-        const sections = (await api.listSections(projectId)) as unknown[];
+        const sections = (await api.listSections(projectId, includeAddons ? undefined : "types")) as unknown[];
         return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
       } catch (e) { return err(e); }
     });

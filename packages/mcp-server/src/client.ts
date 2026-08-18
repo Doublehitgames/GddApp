@@ -61,8 +61,9 @@ export class GddApiClient {
     return this.request("GET", "/projects");
   }
 
-  async getProject(id: string) {
-    return this.request("GET", `/projects/${id}`);
+  async getProject(id: string, addons?: "types" | "none") {
+    const qs = addons ? `?addons=${addons}` : "";
+    return this.request("GET", `/projects/${id}${qs}`);
   }
 
   async createProject(params: { title: string; description?: string }) {
@@ -83,8 +84,10 @@ export class GddApiClient {
 
   // ── Sections ──────────────────────────────────────────────────────
 
-  async listSections(projectId: string) {
-    return this.request("GET", `/projects/${projectId}/sections`);
+  /** `addons: "types"` keeps the heavy balance_addons payload off the wire. */
+  async listSections(projectId: string, addons?: "types" | "none") {
+    const qs = addons ? `?addons=${addons}` : "";
+    return this.request("GET", `/projects/${projectId}/sections${qs}`);
   }
 
   async getSection(projectId: string, sectionId: string) {

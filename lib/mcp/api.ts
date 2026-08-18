@@ -46,13 +46,15 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
   return {
     // Projects
     listProjects: () => api("GET", "/projects"),
-    getProject: (id: string) => api("GET", `/projects/${id}`),
+    getProject: (id: string, addons?: "types" | "none") => api("GET", `/projects/${id}${addons ? `?addons=${addons}` : ""}`),
     createProject: (params: { title: string; description?: string }) => api("POST", "/projects", params),
     updateProject: (id: string, params: Record<string, unknown>) => api("PATCH", `/projects/${id}`, params),
     deleteProject: (id: string) => api("DELETE", `/projects/${id}`),
 
     // Sections
-    listSections: (projectId: string) => api("GET", `/projects/${projectId}/sections`),
+    // `addons: "types"` keeps the heavy balance_addons payload off the wire.
+    listSections: (projectId: string, addons?: "types" | "none") =>
+      api("GET", `/projects/${projectId}/sections${addons ? `?addons=${addons}` : ""}`),
     getSection: (projectId: string, sectionId: string) => api("GET", `/projects/${projectId}/sections/${sectionId}`),
     createSection: (projectId: string, params: Record<string, unknown>) => api("POST", `/projects/${projectId}/sections`, params),
     updateSection: (projectId: string, sectionId: string, params: Record<string, unknown>) => api("PATCH", `/projects/${projectId}/sections/${sectionId}`, params),

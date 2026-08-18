@@ -39,8 +39,12 @@ const SECTION_NOISE = [
 /** One index row: enough to navigate and to decide what to open next. */
 export function sectionRow(section) {
     const s = asRec(section);
-    const addons = Array.isArray(s.addons) ? s.addons : [];
     const blocks = Array.isArray(s.contentBlocks) ? s.contentBlocks : [];
+    // The REST layer sends either full addon objects or, when asked for
+    // `?addons=types`, just their type names. Either way the row shows types.
+    const types = Array.isArray(s.addonTypes)
+        ? s.addonTypes.filter((t) => typeof t === "string")
+        : (Array.isArray(s.addons) ? s.addons : []).map((a) => asRec(a).type).filter((t) => typeof t === "string");
     return {
         id: s.id,
         title: s.title,
@@ -48,7 +52,7 @@ export function sectionRow(section) {
         order: s.order,
         ...(s.dataId ? { dataId: s.dataId } : {}),
         ...(s.content || blocks.length ? { hasDescription: true } : {}),
-        ...(addons.length ? { addons: addons.map((a) => asRec(a).type) } : {}),
+        ...(types.length ? { addons: types } : {}),
     };
 }
 /**
@@ -85,8 +89,10 @@ export function filterSections(sections, opts = {}) {
     }
     if (opts.hasAddonType) {
         out = out.filter((section) => {
-            const addons = asRec(section).addons;
-            return Array.isArray(addons) && addons.some((a) => asRec(a).type === opts.hasAddonType);
+            const s = asRec(section);
+            if (Array.isArray(s.addonTypes))
+                return s.addonTypes.includes(opts.hasAddonType);
+            return Array.isArray(s.addons) && s.addons.some((a) => asRec(a).type === opts.hasAddonType);
         });
     }
     return out;

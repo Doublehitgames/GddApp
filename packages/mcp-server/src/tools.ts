@@ -65,7 +65,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
     async ({ projectId, includeAddons }) => {
       try {
-        const project = await client.getProject(projectId);
+        // Ask the API to leave the addon payload behind unless it is wanted.
+        const project = await client.getProject(projectId, includeAddons ? undefined : "types");
         return json(includeAddons ? projectFull(project) : projectIndex(project));
       }
       catch (e) { return err(e); }
@@ -144,7 +145,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
     async ({ projectId, includeAddons, ...filters }) => {
       try {
-        const sections = (await client.listSections(projectId)) as unknown[];
+        const sections = (await client.listSections(projectId, includeAddons ? undefined : "types")) as unknown[];
         return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
       }
       catch (e) { return err(e); }

@@ -6,6 +6,8 @@ import {
   apiJson,
   apiError,
   sectionToApi,
+  addonDetailParam,
+  sectionMapper,
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
@@ -15,6 +17,10 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/v1/projects/:id/sections — list sections of a project.
+ *
+ * `?addons=types` replaces each section's addon data with its addon type names,
+ * and `?addons=none` drops it altogether — on a 185-section project that is the
+ * difference between 1.17 MB and ~150 KB. Defaults to `full`.
  */
 export async function GET(request: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
@@ -25,11 +31,16 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const pResult = await requireProject(auth.supabase, id, auth.userId);
   if ("response" in pResult) return pResult.response;
 
-  const { data: sections, error } = await selectSections(auth.supabase, { projectId: id });
+  const detail = addonDetailParam(request);
+  const { data: sections, error } = await selectSections(
+    auth.supabase,
+    { projectId: id },
+    { withAddons: detail !== "none" },
+  );
 
   if (error) return apiError("Failed to fetch sections", 500, "db_error");
 
-  return apiJson((sections ?? []).map(sectionToApi));
+  return apiJson((sections ?? []).map(sectionMapper(detail)));
 }
 
 /**

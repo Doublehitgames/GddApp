@@ -296,6 +296,39 @@ describe("list_sections filters", () => {
     const h = harness({ listSections: tree });
     expect(ids(await h.call("list_sections", { projectId: "p1" }))).toHaveLength(5);
   });
+
+  it("hasAddonType works on the lean shape the API now returns", async () => {
+    const lean = [
+      { id: "a", title: "A", order: 0, content: "x", addonTypes: ["progressionTable"] },
+      { id: "b", title: "B", order: 1, content: "x", addonTypes: ["currency"] },
+    ];
+    const h = harness({ listSections: lean });
+    expect(ids(await h.call("list_sections", { projectId: "p1", hasAddonType: "currency" }))).toEqual(["b"]);
+  });
+});
+
+describe("the API is asked to leave the addon payload behind", () => {
+  it("list_sections requests addons=types by default", async () => {
+    const h = harness({ listSections: [] });
+    await h.call("list_sections", { projectId: "p1" });
+    expect(h.sent[0]).toEqual({ method: "listSections", args: ["p1", "types"] });
+  });
+
+  it("list_sections asks for the full payload under includeAddons", async () => {
+    const h = harness({ listSections: [] });
+    await h.call("list_sections", { projectId: "p1", includeAddons: true });
+    expect(h.sent[0].args).toEqual(["p1", undefined]);
+  });
+
+  it("get_project does the same", async () => {
+    const lean = harness({ getProject: { id: "p1", sections: [] } });
+    await lean.call("get_project", { projectId: "p1" });
+    expect(lean.sent[0].args).toEqual(["p1", "types"]);
+
+    const fat = harness({ getProject: { id: "p1", sections: [] } });
+    await fat.call("get_project", { projectId: "p1", includeAddons: true });
+    expect(fat.sent[0].args).toEqual(["p1", undefined]);
+  });
 });
 
 describe("listings return index rows", () => {

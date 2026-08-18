@@ -115,6 +115,25 @@ describe("sectionRow", () => {
     expect(row.hasDescription).toBe(true);
   });
 
+  it("reads addonTypes when the API was asked for ?addons=types", () => {
+    // The lean REST response has no `addons` key at all.
+    const lean = { id: "sec-1", title: "Galinha", order: 3, content: "x", addonTypes: ["progressionTable", "dataSchema"] };
+    expect(sectionRow(lean)).toEqual({
+      id: "sec-1", title: "Galinha", order: 3, hasDescription: true,
+      addons: ["progressionTable", "dataSchema"],
+    });
+  });
+
+  it("produces the same row from a lean and a full response", () => {
+    const full = makeSection();
+    const lean = {
+      id: full.id, title: full.title, parentId: full.parentId, order: full.order,
+      dataId: full.dataId, content: full.content, contentBlocks: full.contentBlocks,
+      addonTypes: full.addons.map((a) => a.type),
+    };
+    expect(sectionRow(lean)).toEqual(sectionRow(full));
+  });
+
   it("drops the 100-level table it would otherwise carry", () => {
     const full = JSON.stringify(makeSection()).length;
     const row = JSON.stringify(sectionRow(makeSection())).length;

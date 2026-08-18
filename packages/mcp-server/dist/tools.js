@@ -33,7 +33,8 @@ export function registerTools(server, client) {
         includeAddons: z.boolean().optional().describe("Return every section's full addon data instead of the index (very large)"),
     }, async ({ projectId, includeAddons }) => {
         try {
-            const project = await client.getProject(projectId);
+            // Ask the API to leave the addon payload behind unless it is wanted.
+            const project = await client.getProject(projectId, includeAddons ? undefined : "types");
             return json(includeAddons ? projectFull(project) : projectIndex(project));
         }
         catch (e) {
@@ -96,7 +97,7 @@ export function registerTools(server, client) {
         includeAddons: z.boolean().optional().describe("Return each section's full fields and addon data instead of the index (very large)"),
     }, async ({ projectId, includeAddons, ...filters }) => {
         try {
-            const sections = (await client.listSections(projectId));
+            const sections = (await client.listSections(projectId, includeAddons ? undefined : "types"));
             return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
         }
         catch (e) {

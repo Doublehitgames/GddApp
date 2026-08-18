@@ -15,7 +15,7 @@ export declare class GddApiClient {
     constructor();
     private request;
     listProjects(): Promise<unknown>;
-    getProject(id: string): Promise<unknown>;
+    getProject(id: string, addons?: "types" | "none"): Promise<unknown>;
     createProject(params: {
         title: string;
         description?: string;
@@ -23,7 +23,8 @@ export declare class GddApiClient {
     updateProject(id: string, params: Record<string, unknown>): Promise<unknown>;
     deleteProject(id: string): Promise<unknown>;
     listLinkedSpreadsheets(id: string): Promise<unknown>;
-    listSections(projectId: string): Promise<unknown>;
+    /** `addons: "types"` keeps the heavy balance_addons payload off the wire. */
+    listSections(projectId: string, addons?: "types" | "none"): Promise<unknown>;
     getSection(projectId: string, sectionId: string): Promise<unknown>;
     createSection(projectId: string, params: Record<string, unknown>): Promise<unknown>;
     updateSection(projectId: string, sectionId: string, params: Record<string, unknown>): Promise<unknown>;

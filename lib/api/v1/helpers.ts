@@ -197,6 +197,11 @@ const SECTION_COLUMNS_MID =
 const SECTION_COLUMNS_SAFE =
   "id, project_id, parent_id, title, content, sort_order, color, created_at, updated_at";
 
+// Everything except balance_addons, which is 84% of a section listing's bytes.
+// Used when the caller asked not to receive addon data at all.
+const SECTION_COLUMNS_NO_ADDONS =
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, linked_spreadsheet_id, content_blocks";
+
 export { SECTION_COLUMNS_FULL as SECTION_COLUMNS };
 
 function buildQuery(
@@ -217,7 +222,22 @@ function buildQuery(
 export async function selectSections(
   supabase: SupabaseClient,
   filter: { projectId?: string; sectionId?: string },
+  opts: { withAddons?: boolean } = {},
 ): Promise<{ data: SectionRow[] | null; error: unknown }> {
+  // Skipping balance_addons keeps the heavy jsonb out of the read entirely,
+  // not just out of the response.
+  if (opts.withAddons === false) {
+    const lean = await buildQuery(supabase, SECTION_COLUMNS_NO_ADDONS, filter);
+    if (!lean.error) {
+      const rows = ((lean.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        balance_addons: null,
+      })) as unknown as SectionRow[];
+      return { data: rows, error: null };
+    }
+    // Fall through to the progressive fallback below if those columns are missing.
+  }
+
   const result = await buildQuery(supabase, SECTION_COLUMNS_FULL, filter);
 
   if (result.error) {
@@ -323,6 +343,38 @@ export function sectionToApi(s: SectionRow) {
     linkedSpreadsheetId: s.linked_spreadsheet_id ?? null,
     contentBlocks: Array.isArray(s.content_blocks) ? s.content_blocks : null,
   };
+}
+
+export type AddonDetail = "full" | "types" | "none";
+
+/**
+ * How much addon data a section listing should carry.
+ *
+ * `balance_addons` is 84% of the bytes in a 185-section listing — a caller that
+ * only needs the shape of the document should not have to receive every
+ * progression table to find out which pages have one.
+ *
+ * Returns a mapper rather than taking a second argument, because the callers
+ * pass it straight to `.map()`, where a positional parameter would silently
+ * receive the array index.
+ */
+export function sectionMapper(detail: AddonDetail = "full") {
+  if (detail === "full") return (row: SectionRow) => sectionToApi(row);
+
+  return (row: SectionRow) => {
+    const { addons, ...section } = sectionToApi(row);
+    if (detail === "none") return section;
+    const types = (Array.isArray(addons) ? addons : [])
+      .map((a) => (a && typeof a === "object" ? (a as { type?: unknown }).type : undefined))
+      .filter((t): t is string => typeof t === "string");
+    return { ...section, addonTypes: types };
+  };
+}
+
+/** Reads `?addons=`. Defaults to `full`, so existing callers see no change. */
+export function addonDetailParam(request: NextRequest): AddonDetail {
+  const value = request.nextUrl.searchParams.get("addons");
+  return value === "types" || value === "none" ? value : "full";
 }
 
 // ── Rate limiter ──────────────────────────────────────────────────────
