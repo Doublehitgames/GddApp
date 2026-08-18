@@ -14,6 +14,7 @@ import {
   addonReceipt,
   addonRow,
   deleted,
+  filterSections,
   json,
   projectCreated,
   projectFull,
@@ -25,6 +26,7 @@ import {
   sectionFull,
   sectionReceipt,
   sectionRow,
+  text,
   touched,
 } from "./project.js";
 
@@ -58,7 +60,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "get_project",
     "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, whether it has a description, and which addon types it carries). This is the map of the document — use it to find the section you need, then get_section for its contents. Pass includeAddons=true only when you genuinely need every addon's data at once; on a large project that response can exceed a megabyte.",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       includeAddons: z.boolean().optional().describe("Return every section's full addon data instead of the index (very large)"),
     },
     async ({ projectId, includeAddons }) => {
@@ -91,7 +93,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "update_project",
     "Update project metadata (title, description, cover image, or mindmap settings)",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       title: z.string().optional().describe("New title"),
       description: z.string().optional().describe("New description"),
       coverImageUrl: z.string().optional().describe("Cover image URL"),
@@ -110,7 +112,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
   server.tool(
     "delete_project",
     "Delete a project and all its sections (owner only, irreversible)",
-    { projectId: z.string().describe("Project UUID") },
+    { projectId: z.string() },
     async ({ projectId }) => {
       try { await client.deleteProject(projectId); return json(deleted("project", projectId)); }
       catch (e) { return err(e); }
@@ -121,7 +123,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "list_linked_spreadsheets",
     "List the Google Spreadsheets registered in a project's settings (Linked Spreadsheets). Returns each spreadsheet's id (the UUID to set as a section's linkedSpreadsheetId), name, url, spreadsheetId, sheets (tab names), and columnsBySheet (header row per tab). Use this to discover the UUID and the exact sheet/column names needed to build field bindings. Leaner than get_project when you only need spreadsheet metadata. " +
       "NOTES on columnsBySheet: (1) It is keyed by tab name and each value is the tab's row-1 headers as an array that is POSITION-ALIGNED to the column index — array index 0 = column A, 1 = B, 2 = C, etc. Leading empty columns appear as empty strings (e.g. ['','','Name'] means the 'Name' header is in column C). (2) A tab is OMITTED from columnsBySheet when its row 1 is entirely empty, so columnsBySheet may have FEWER keys than `sheets` — never assume every tab in `sheets` has a columnsBySheet entry. (3) columnsBySheet is a SNAPSHOT captured when the spreadsheet was registered/refreshed, not live — added columns won't appear until refreshed. (4) The field is optional: spreadsheets registered before this feature (or never refreshed) may lack columnsBySheet entirely. When columns are missing or stale, ask the user to open Project Settings → Linked Spreadsheets and click 'Atualizar abas' (refresh) on that spreadsheet.",
-    { projectId: z.string().describe("Project UUID") },
+    { projectId: z.string() },
     async ({ projectId }) => {
       try { return json(await client.listLinkedSpreadsheets(projectId)); }
       catch (e) { return err(e); }
@@ -132,15 +134,18 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "list_sections",
-    "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).",
+    "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription / hasAddonType instead of listing everything and filtering yourself. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
+      subtreeOf: z.string().optional().describe("Only this section and its descendants"),
+      withoutDescription: z.boolean().optional().describe("Only sections with no description yet — useful for finding what still needs writing"),
+      hasAddonType: z.string().optional().describe("Only sections carrying this addon type (e.g. progressionTable)"),
       includeAddons: z.boolean().optional().describe("Return each section's full fields and addon data instead of the index (very large)"),
     },
-    async ({ projectId, includeAddons }) => {
+    async ({ projectId, includeAddons, ...filters }) => {
       try {
         const sections = (await client.listSections(projectId)) as unknown[];
-        return json(sections.map(includeAddons ? sectionFull : sectionRow));
+        return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
       }
       catch (e) { return err(e); }
     },
@@ -150,8 +155,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "get_section",
     "Get a single section in full — description, contentBlocks, and every addon's data. This is the right place to read a page's contents; the write tools deliberately do not echo it back.",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
     },
     async ({ projectId, sectionId }) => {
       try { return json(sectionFull(await client.getSection(projectId, sectionId))); }
@@ -159,9 +164,12 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     },
   );
 
-  const CONTENT_BLOCKS_DESC =
-    "Rich BlockNote JSON blocks for the section description. " +
-    "Takes priority over auto-generating from `content`. " +
+  // Reference material, not schema. It used to be inlined in both
+  // create_section and update_section — 8.5 KB shipped to the model on every
+  // request, whether or not the turn had anything to do with rich text.
+  const CONTENT_BLOCKS_GUIDE =
+    "Rich BlockNote JSON blocks for a section description. " +
+    "`contentBlocks` takes priority over auto-generating from `content`. " +
     "Always also provide `content` as a plain-text/markdown mirror used for search and fallback. " +
     "\n\nEach block: { type, props?, content, children }. " +
     "\n\nSUPPORTED BLOCK TYPES:" +
@@ -182,15 +190,27 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
     '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"emoji":"⚠️","variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
 
+  const CONTENT_BLOCKS_FIELD = z
+    .array(z.record(z.unknown()))
+    .optional()
+    .describe("Rich BlockNote JSON blocks for the description. Call get_content_blocks_guide once for the block types, inline styles and a worked example. Always pair it with a plain-text `content` for search.");
+
+  server.tool(
+    "get_content_blocks_guide",
+    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before writing rich descriptions with create_section or update_section.",
+    {},
+    async () => text(CONTENT_BLOCKS_GUIDE),
+  );
+
   server.tool(
     "create_section",
     "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, lists, etc.). Always pair it with a plain-text `content` for search. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       title: z.string().describe("Section title"),
       content: z.string().optional().describe("Plain-text / markdown version of the description — used for search and as fallback when blocks are unavailable. If omitted and contentBlocks is provided, leave empty."),
-      contentBlocks: z.array(z.record(z.unknown())).optional().describe(CONTENT_BLOCKS_DESC),
-      parentId: z.string().optional().describe("Parent section UUID for sub-sections"),
+      contentBlocks: CONTENT_BLOCKS_FIELD,
+      parentId: z.string().optional().describe("Parent section for sub-sections"),
       order: z.number().optional().describe("Sort order (0-based)"),
       color: z.string().optional().describe("Hex color (#rrggbb)"),
       domainTags: z.array(z.string()).optional().describe("Game design domain tags (e.g. combat, economy)"),
@@ -210,12 +230,12 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "update_section",
     "Update a section's fields (title, content, color, tags, etc.). Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section: echoing a page that carries a 100-level progression table costs ~78 KB. Call get_section when you actually need to read the result back.",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
       title: z.string().optional().describe("New title"),
       content: z.string().optional().describe("Plain-text / markdown version of the description"),
-      contentBlocks: z.array(z.record(z.unknown())).optional().describe(CONTENT_BLOCKS_DESC),
-      parentId: z.string().optional().describe("New parent section UUID"),
+      contentBlocks: CONTENT_BLOCKS_FIELD,
+      parentId: z.string().optional().describe("New parent section"),
       order: z.number().optional().describe("New sort order"),
       color: z.string().optional().describe("New hex color"),
       domainTags: z.array(z.string()).optional().describe("New domain tags"),
@@ -236,8 +256,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "delete_section",
     "Delete a section and all its sub-sections (irreversible)",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
     },
     async ({ projectId, sectionId }) => {
       try { await client.deleteSection(projectId, sectionId); return json(deleted("section", sectionId)); }
@@ -251,8 +271,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "list_addons",
     "List a section's addons by identity only — id, type, name, group. Their data is omitted; get_section returns the whole page including every addon's values. Pass includeData=true to inline the data anyway (a progression table alone is ~54 KB).",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
       includeData: z.boolean().optional().describe("Inline each addon's full data instead of just its identity"),
     },
     async ({ projectId, sectionId, includeData }) => {
@@ -268,8 +288,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "create_addon",
     "Add an addon to a section. Types: xpBalance, progressionTable, economyLink, currency, globalVariable, inventory, production, craftTable, crop, dataSchema, attributeDefinitions, attributeProfile, attributeModifiers, fieldLibrary, exportSchema, richDoc",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
       type: z.string().describe("Addon type (e.g. currency, inventory, progressionTable)"),
       name: z.string().describe("Display name for the addon"),
       group: z.string().optional().describe("Optional group name"),
@@ -289,9 +309,9 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "update_addon",
     "Update an addon's name, group, or data. Returns a receipt — {ok, id, type, name, sectionId, updated} — not the addon: a progression table would echo back ~54 KB. Read it back with get_section when you need the saved values.",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
-      addonId: z.string().describe("Addon UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
+      addonId: z.string(),
       name: z.string().optional().describe("New display name"),
       group: z.string().optional().describe("New group name"),
       data: z.record(z.unknown()).optional().describe("Updated addon data (merged with existing)"),
@@ -311,9 +331,9 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "delete_addon",
     "Remove an addon from a section",
     {
-      projectId: z.string().describe("Project UUID"),
-      sectionId: z.string().describe("Section UUID"),
-      addonId: z.string().describe("Addon UUID"),
+      projectId: z.string(),
+      sectionId: z.string(),
+      addonId: z.string(),
     },
     async ({ projectId, sectionId, addonId }) => {
       try { await client.deleteAddon(projectId, sectionId, addonId); return json(deleted("addon", addonId)); }
@@ -325,7 +345,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "copy_addon",
     "Copy an addon from one section to another. Generates a new addon ID, deep-clones the data, and re-links intra-section refs (production/progression/economyLink bindings, exportSchema addonIds) to the destination's equivalent addons so value bindings keep working when the target page already has the needed addons (cross-section refs are preserved). Singleton addon types (one-per-page: dataSchema, production, economyLink, currency, progressionTable, etc.) already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). TIP: to copy a RemoteConfig (exportSchema) into a page that lacks the addons it references (e.g. its DataSchema or ProgressionTable), copy those dependency addons FIRST, then copy the RemoteConfig — its bindings will re-link to them in the destination. Returns a receipt identifying the inserted (or overwritten) addon; read the destination page with get_section to inspect it.",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       sectionId: z.string().describe("Section UUID where the source addon lives"),
       addonId: z.string().describe("Addon UUID to copy"),
       toSectionId: z.string().describe("Destination section UUID"),
@@ -345,7 +365,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "move_addon",
     "Move an addon from one section to another, keeping its ID. Re-links intra-section refs in the moved addon to the destination's equivalent addons, and when the source section is left without another addon of the same type, rewrites reverse-refs across the project to point at the destination. Singleton addon types already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). Returns a receipt: { ok, id, type, name, toSectionId, reverseRefsUpdated }.",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       sectionId: z.string().describe("Section UUID where the source addon lives"),
       addonId: z.string().describe("Addon UUID to move"),
       toSectionId: z.string().describe("Destination section UUID (must differ from origin)"),
@@ -383,7 +403,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "get_remote_config",
     "Resolve Remote Config (exportSchema) addons and return the RESOLVED economy JSON (actual values, not the blueprint). Scope: no sectionId/addonId → every config in the project; sectionId → every config in that section's subtree; addonId → a single config. Use this to get all balancing data in one call.",
     {
-      projectId: z.string().describe("Project UUID"),
+      projectId: z.string(),
       sectionId: z.string().optional().describe("Limit to this section's subtree"),
       addonId: z.string().optional().describe("Resolve a single exportSchema addon by its id"),
     },

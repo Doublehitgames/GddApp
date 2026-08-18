@@ -15,9 +15,14 @@
  * servers are independent copies — keep both in sync.
  */
 
+/** A plain-text tool result, for reference material that is not data. */
+export function text(content: string) {
+  return { content: [{ type: "text" as const, text: content }] };
+}
+
 /** Compact JSON. Pretty-printing costs ~45% more tokens and buys the agent nothing. */
 export function json(data: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(data) }] };
+  return text(JSON.stringify(data));
 }
 
 type Rec = Record<string, unknown>;
@@ -54,6 +59,54 @@ export function sectionRow(section: unknown): Rec {
     ...(s.content || blocks.length ? { hasDescription: true } : {}),
     ...(addons.length ? { addons: addons.map((a) => asRec(a).type) } : {}),
   };
+}
+
+/**
+ * Narrows a section listing before it is projected. The REST API has no
+ * filtering, so this happens here: an agent asking "which pages still need a
+ * description" should not pay for the 166 that do not.
+ */
+export function filterSections(
+  sections: unknown[],
+  opts: { subtreeOf?: string; withoutDescription?: boolean; hasAddonType?: string } = {},
+): unknown[] {
+  let out = sections;
+
+  if (opts.subtreeOf) {
+    // Walk down from the root by parentId; a page's children may sit anywhere
+    // in the array, so keep sweeping until the set stops growing.
+    const keep = new Set([opts.subtreeOf]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const section of out) {
+        const s = asRec(section);
+        const id = String(s.id);
+        if (!keep.has(id) && typeof s.parentId === "string" && keep.has(s.parentId)) {
+          keep.add(id);
+          grew = true;
+        }
+      }
+    }
+    out = out.filter((section) => keep.has(String(asRec(section).id)));
+  }
+
+  if (opts.withoutDescription) {
+    out = out.filter((section) => {
+      const s = asRec(section);
+      const blocks = Array.isArray(s.contentBlocks) ? s.contentBlocks : [];
+      return !s.content && blocks.length === 0;
+    });
+  }
+
+  if (opts.hasAddonType) {
+    out = out.filter((section) => {
+      const addons = asRec(section).addons;
+      return Array.isArray(addons) && addons.some((a) => asRec(a).type === opts.hasAddonType);
+    });
+  }
+
+  return out;
 }
 
 /** Full section, minus the columns that only the web app reads. */

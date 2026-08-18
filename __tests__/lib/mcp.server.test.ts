@@ -10,11 +10,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiFetcher } from "@/lib/mcp/api";
 import { registerAddonTools, registerGenericTools } from "@/lib/mcp/server";
 
-type Handler = (args: Record<string, unknown>) => Promise<{ content: { text: string }[] }>;
+type Handler = (args: Record<string, unknown>) => Promise<{ content: { text: string }[]; isError?: boolean }>;
 
 interface Harness {
   call: (tool: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  /** For results that are not JSON — a refusal, or reference text. */
+  callRaw: (tool: string, args: Record<string, unknown>) => Promise<{ text: string; isError: boolean }>;
   sent: { method: string; args: unknown[] }[];
+  names: string[];
   descriptionOf: (tool: string) => string;
   schemaOf: (tool: string) => Record<string, unknown>;
 }
@@ -48,15 +51,21 @@ function harness(responses: Partial<Record<keyof ApiFetcher, unknown>> = {}): Ha
   registerGenericTools(server, api);
   registerAddonTools(server, api);
 
+  function invoke(tool: string, args: Record<string, unknown>) {
+    const handler = handlers.get(tool);
+    if (!handler) throw new Error(`tool not registered: ${tool}`);
+    return handler(args);
+  }
+
   return {
     sent,
+    names: [...handlers.keys()],
     descriptionOf: (tool) => descriptions.get(tool) ?? "",
     schemaOf: (tool) => schemas.get(tool) ?? {},
-    call: async (tool, args) => {
-      const handler = handlers.get(tool);
-      if (!handler) throw new Error(`tool not registered: ${tool}`);
-      const out = await handler(args);
-      return JSON.parse(out.content[0].text) as Record<string, unknown>;
+    call: async (tool, args) => JSON.parse((await invoke(tool, args)).content[0].text) as Record<string, unknown>,
+    callRaw: async (tool, args) => {
+      const out = await invoke(tool, args);
+      return { text: out.content[0].text, isError: out.isError === true };
     },
   };
 }
@@ -110,9 +119,9 @@ describe("write tools return receipts, not records", () => {
     expect(fields).toEqual({ content: "x" });
   });
 
-  it("update_progression_table_addon receipts the data keys it wrote", async () => {
+  it("upsert_progression_table_addon receipts the data keys it wrote", async () => {
     const h = harness({ updateAddon: ADDON });
-    const out = await h.call("update_progression_table_addon", {
+    const out = await h.call("upsert_progression_table_addon", {
       projectId: "p1", sectionId: "sec-1", addonId: "a1", rows: [{ level: 1 }],
     });
     expect(out).toEqual({
@@ -141,9 +150,9 @@ describe("`mode` is an addon field, not the returning flag", () => {
   // progressionTable, production, attributeModifiers and xpBalance all take a
   // `mode`. Destructuring the returning flag as `mode` would swallow it.
   it.each([
-    ["update_progression_table_addon", "linear"],
-    ["update_production_addon", "recipe"],
-    ["update_attribute_modifiers_addon", "mult"],
+    ["upsert_progression_table_addon", "linear"],
+    ["upsert_production_addon", "recipe"],
+    ["upsert_attribute_modifiers_addon", "mult"],
   ])("%s forwards mode=%s to the API", async (tool, value) => {
     const h = harness({ updateAddon: ADDON });
     await h.call(tool, { projectId: "p1", sectionId: "sec-1", addonId: "a1", mode: value });
@@ -151,9 +160,9 @@ describe("`mode` is an addon field, not the returning flag", () => {
     expect(fields.data?.mode).toBe(value);
   });
 
-  it("update_xp_balance_addon forwards mode and still nests params", async () => {
+  it("upsert_xp_balance_addon forwards mode and still nests params", async () => {
     const h = harness({ updateAddon: { ...ADDON, type: "xpBalance" } });
-    await h.call("update_xp_balance_addon", {
+    await h.call("upsert_xp_balance_addon", {
       projectId: "p1", sectionId: "sec-1", addonId: "a1", mode: "advanced", base: 250,
     });
     const [, , , fields] = h.sent[0].args as [string, string, string, { data?: Record<string, unknown> }];
@@ -161,14 +170,131 @@ describe("`mode` is an addon field, not the returning flag", () => {
     expect(fields.data?.params).toEqual({ base: 250 });
   });
 
-  it("create_xp_balance_addon forwards mode", async () => {
+  it("upsert_xp_balance_addon forwards mode", async () => {
     const h = harness({ createAddon: { ...ADDON, type: "xpBalance" } });
-    await h.call("create_xp_balance_addon", {
+    await h.call("upsert_xp_balance_addon", {
       projectId: "p1", sectionId: "sec-1", name: "Curva", mode: "advanced", expression: "n^2",
     });
     const [, , payload] = h.sent[0].args as [string, string, { data: Record<string, unknown> }];
     expect(payload.data.mode).toBe("advanced");
     expect(payload.data.expression).toBe("n^2");
+  });
+});
+
+describe("one upsert tool per addon type", () => {
+  it("routes to createAddon when addonId is absent", async () => {
+    const h = harness({ createAddon: ADDON });
+    const out = await h.call("upsert_currency_addon", {
+      projectId: "p1", sectionId: "sec-1", name: "Moedas",
+      code: "GOLD", displayName: "Ouro", kind: "soft",
+    });
+    expect(h.sent[0].method).toBe("createAddon");
+    expect(out).toMatchObject({ ok: true, id: "a1", sectionId: "sec-1" });
+  });
+
+  it("a partial create is refused rather than written half-formed", async () => {
+    const h = harness();
+    // currency needs code + displayName + kind
+    const raw = await h.callRaw("upsert_currency_addon", {
+      projectId: "p1", sectionId: "sec-1", name: "Moedas", code: "GOLD",
+    });
+    expect(raw.isError).toBe(true);
+    expect(raw.text).toContain("displayName");
+    expect(raw.text).toContain("kind");
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it("routes to updateAddon when addonId is present", async () => {
+    const h = harness({ updateAddon: ADDON });
+    await h.call("upsert_currency_addon", {
+      projectId: "p1", sectionId: "sec-1", addonId: "a1", code: "GEM",
+    });
+    expect(h.sent[0].method).toBe("updateAddon");
+  });
+
+  it("refuses to create without a name, and does not call the API", async () => {
+    const h = harness();
+    const raw = await h.callRaw("upsert_currency_addon", { projectId: "p1", sectionId: "sec-1", code: "GOLD" });
+    expect(raw.isError).toBe(true);
+    expect(raw.text).toContain("name is required");
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it("names the type's missing required fields instead of writing undefined", async () => {
+    const h = harness();
+    // attributeDefinitions requires `attributes`
+    const raw = await h.callRaw("upsert_attribute_definitions_addon", {
+      projectId: "p1", sectionId: "sec-1", name: "Atributos",
+    });
+    expect(raw.isError).toBe(true);
+    expect(raw.text).toContain("attributes");
+    expect(h.sent).toHaveLength(0);
+  });
+
+  it("an update stays partial — no defaults leak in", async () => {
+    const h = harness({ updateAddon: ADDON });
+    await h.call("upsert_production_addon", {
+      projectId: "p1", sectionId: "sec-1", addonId: "a1", capacity: 12,
+    });
+    const [, , , fields] = h.sent[0].args as [string, string, string, { data: Record<string, unknown> }];
+    expect(fields.data).toEqual({ capacity: 12 });
+  });
+
+  it("the old create_/update_ pairs are gone", () => {
+    const h = harness();
+    for (const gone of ["create_currency_addon", "update_currency_addon", "create_xp_balance_addon", "update_crop_addon"]) {
+      expect(h.names).not.toContain(gone);
+    }
+    for (const kept of ["upsert_currency_addon", "upsert_xp_balance_addon", "upsert_crop_addon"]) {
+      expect(h.names).toContain(kept);
+    }
+  });
+
+  it("halves the addon tool count", () => {
+    const h = harness();
+    expect(h.names.filter((n) => n.endsWith("_addon") && /^(create|update)_/.test(n)))
+      .toEqual(["create_addon", "update_addon", "delete_addon", "copy_addon", "move_addon"].filter((n) => /^(create|update)_/.test(n)));
+    expect(h.names.filter((n) => n.startsWith("upsert_"))).toHaveLength(18);
+  });
+});
+
+describe("list_sections filters", () => {
+  const tree = [
+    { id: "root", title: "Animais", order: 0, content: "x", addons: [] },
+    { id: "kid1", parentId: "root", title: "Galinha", order: 1, content: "tem texto", addons: [{ type: "progressionTable" }] },
+    { id: "kid2", parentId: "root", title: "Vaca", order: 2, content: "", contentBlocks: [], addons: [] },
+    { id: "grand", parentId: "kid2", title: "Leite", order: 3, content: "", contentBlocks: [], addons: [] },
+    { id: "other", title: "Economia", order: 4, content: "y", addons: [{ type: "currency" }] },
+  ];
+  const ids = (rows: unknown) => (rows as unknown as Record<string, unknown>[]).map((r) => r.id);
+
+  it("subtreeOf keeps the root and every descendant, however deep", async () => {
+    const h = harness({ listSections: tree });
+    expect(ids(await h.call("list_sections", { projectId: "p1", subtreeOf: "root" })))
+      .toEqual(["root", "kid1", "kid2", "grand"]);
+  });
+
+  it("withoutDescription finds the pages that still need writing", async () => {
+    const h = harness({ listSections: tree });
+    expect(ids(await h.call("list_sections", { projectId: "p1", withoutDescription: true })))
+      .toEqual(["kid2", "grand"]);
+  });
+
+  it("hasAddonType narrows to pages carrying that addon", async () => {
+    const h = harness({ listSections: tree });
+    expect(ids(await h.call("list_sections", { projectId: "p1", hasAddonType: "progressionTable" })))
+      .toEqual(["kid1"]);
+  });
+
+  it("filters compose", async () => {
+    const h = harness({ listSections: tree });
+    expect(ids(await h.call("list_sections", { projectId: "p1", subtreeOf: "root", withoutDescription: true })))
+      .toEqual(["kid2", "grand"]);
+  });
+
+  it("no filters means everything, as before", async () => {
+    const h = harness({ listSections: tree });
+    expect(ids(await h.call("list_sections", { projectId: "p1" }))).toHaveLength(5);
   });
 });
 
@@ -235,7 +361,7 @@ describe("responses are compact", () => {
 describe("tool descriptions teach the new defaults", () => {
   it("the write tools say they return a receipt", () => {
     const h = harness();
-    for (const tool of ["update_section", "update_addon", "update_progression_table_addon", "create_section"]) {
+    for (const tool of ["update_section", "update_addon", "upsert_progression_table_addon", "create_section"]) {
       expect(h.descriptionOf(tool).toLowerCase()).toContain("receipt");
     }
   });
@@ -252,8 +378,8 @@ describe("tool descriptions teach the new defaults", () => {
     for (const tool of [
       "update_section", "create_section", "update_project", "create_project",
       "update_addon", "create_addon", "copy_addon", "move_addon",
-      "update_currency_addon", "create_currency_addon",
-      "update_xp_balance_addon", "create_xp_balance_addon",
+      "upsert_currency_addon",
+      "upsert_xp_balance_addon",
     ]) {
       expect(Object.keys(h.schemaOf(tool))).toContain("returning");
     }

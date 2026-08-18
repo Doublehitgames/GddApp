@@ -14,6 +14,13 @@
  * NOTE: twin of lib/mcp/project.ts (the remote /api/mcp server). The two MCP
  * servers are independent copies — keep both in sync.
  */
+/** A plain-text tool result, for reference material that is not data. */
+export declare function text(content: string): {
+    content: {
+        type: "text";
+        text: string;
+    }[];
+};
 /** Compact JSON. Pretty-printing costs ~45% more tokens and buys the agent nothing. */
 export declare function json(data: unknown): {
     content: {
@@ -26,6 +33,16 @@ type Rec = Record<string, unknown>;
 export declare function touched(fields: Rec): string[];
 /** One index row: enough to navigate and to decide what to open next. */
 export declare function sectionRow(section: unknown): Rec;
+/**
+ * Narrows a section listing before it is projected. The REST API has no
+ * filtering, so this happens here: an agent asking "which pages still need a
+ * description" should not pay for the 166 that do not.
+ */
+export declare function filterSections(sections: unknown[], opts?: {
+    subtreeOf?: string;
+    withoutDescription?: boolean;
+    hasAddonType?: string;
+}): unknown[];
 /** Full section, minus the columns that only the web app reads. */
 export declare function sectionFull(section: unknown): Rec;
 export declare function sectionReceipt(section: unknown, updated: string[]): Rec;

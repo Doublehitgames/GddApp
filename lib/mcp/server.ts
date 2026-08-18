@@ -12,6 +12,7 @@ import {
   addonReceipt,
   addonRow,
   deleted,
+  filterSections,
   json,
   projectCreated,
   projectFull,
@@ -37,6 +38,11 @@ function err(e: unknown) {
     return { content: [{ type: "text" as const, text: `Error (${e.code}): ${e.message}` }], isError: true };
   }
   return { content: [{ type: "text" as const, text: String(e) }], isError: true };
+}
+
+/** A caller mistake, not a transport failure — say what is missing and stop. */
+function fail(message: string) {
+  return { content: [{ type: "text" as const, text: message }], isError: true };
 }
 
 // ── Generic tools ─────────────────────────────────────────────────
@@ -76,12 +82,18 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     { projectId: z.string().describe("Project UUID") },
     async ({ projectId }) => { try { await api.deleteProject(projectId); return json(deleted("project", projectId)); } catch (e) { return err(e); } });
 
-  server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).",
-    { projectId: z.string().describe("Project UUID"), includeAddons: z.boolean().optional().describe("Return each section's full fields and addon data instead of the index (very large)") },
-    async ({ projectId, includeAddons }) => {
+  server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription / hasAddonType instead of listing everything and filtering yourself. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).",
+    {
+      projectId: z.string(),
+      subtreeOf: z.string().optional().describe("Only this section and its descendants"),
+      withoutDescription: z.boolean().optional().describe("Only sections with no description yet — useful for finding what still needs writing"),
+      hasAddonType: z.string().optional().describe("Only sections carrying this addon type (e.g. progressionTable)"),
+      includeAddons: z.boolean().optional().describe("Return each section's full fields and addon data instead of the index (very large)"),
+    },
+    async ({ projectId, includeAddons, ...filters }) => {
       try {
         const sections = (await api.listSections(projectId)) as unknown[];
-        return json(sections.map(includeAddons ? sectionFull : sectionRow));
+        return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
       } catch (e) { return err(e); }
     });
 
@@ -178,34 +190,51 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
 
 export function registerAddonTools(server: McpServer, api: ApiFetcher) {
   const ps = { projectId: z.string(), sectionId: z.string() };
-  const psa = { ...ps, addonId: z.string() };
 
-  function pair(
+  /**
+   * One tool per addon type instead of a create/update pair. The two schemas
+   * were near-identical — update was just the optional version of create — and
+   * each is sent to the model in every request. The exposed schema is the
+   * all-optional one; create still gets its required fields and zod defaults,
+   * applied in the handler.
+   */
+  function upsert(
     typeName: string, addonType: string, desc: string,
     createFields: Record<string, z.ZodTypeAny>,
     updateFields: Record<string, z.ZodTypeAny>,
   ) {
-    server.tool(`create_${typeName}_addon`, `Create a ${desc} addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored values.`, {
-      ...ps, name: z.string(), group: z.string().optional(), ...createFields, returning,
-    }, async ({ projectId, sectionId, name, group, returning: returnMode, ...data }) => {
-      try {
-        const created = await api.createAddon(projectId, sectionId, {
-          type: addonType, name, ...(group ? { group } : {}), data,
-        });
-        return json(returnMode === "full" ? created : addonCreated(created, sectionId));
-      } catch (e) { return err(e); }
-    });
+    const createSchema = z.object(createFields);
 
-    server.tool(`update_${typeName}_addon`, `Update a ${desc} addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored values.`, {
-      ...psa, name: z.string().optional(), group: z.string().optional(), ...updateFields, returning,
+    server.tool(`upsert_${typeName}_addon`, `Create or update a ${desc} addon. Pass addonId to update an existing addon — only the fields you send change. Omit addonId to create a new one, in which case name and the type's required fields must be present. Returns a receipt; read the stored values back with get_section.`, {
+      ...ps,
+      addonId: z.string().optional().describe("Update this addon; omit to create a new one"),
+      name: z.string().optional().describe("Display name (required when creating)"),
+      group: z.string().optional(),
+      ...updateFields,
+      returning,
     }, async ({ projectId, sectionId, addonId, name, group, returning: returnMode, ...data }) => {
       try {
-        const fields: Record<string, unknown> = {};
-        if (name !== undefined) fields.name = name;
-        if (group !== undefined) fields.group = group;
-        if (Object.keys(data).length > 0) fields.data = data;
-        const saved = await api.updateAddon(projectId, sectionId, addonId, fields);
-        return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+        if (addonId) {
+          const fields: Record<string, unknown> = {};
+          if (name !== undefined) fields.name = name;
+          if (group !== undefined) fields.group = group;
+          if (Object.keys(data).length > 0) fields.data = data;
+          const saved = await api.updateAddon(projectId, sectionId, addonId, fields);
+          return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+        }
+
+        if (!name) return fail(`name is required when creating a ${addonType} addon (pass addonId to update an existing one instead)`);
+
+        const parsed = createSchema.safeParse(data);
+        if (!parsed.success) {
+          const problems = parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+          return fail(`cannot create a ${addonType} addon — ${problems}`);
+        }
+
+        const created = await api.createAddon(projectId, sectionId, {
+          type: addonType, name, ...(group ? { group } : {}), data: parsed.data,
+        });
+        return json(returnMode === "full" ? created : addonCreated(created, sectionId));
       } catch (e) { return err(e); }
     });
   }
@@ -218,7 +247,7 @@ export function registerAddonTools(server: McpServer, api: ApiFetcher) {
 
   // 1. Currency
   const cur = { code: z.string(), displayName: z.string(), kind: z.enum(["soft", "premium", "event", "other"]), decimals: z.number().optional(), notes: z.string().optional() };
-  pair("currency", "currency", "currency", cur, opt(cur));
+  upsert("currency", "currency", "currency", cur, opt(cur));
 
   // Binding Google Sheets reutilizável (campo escalar boolean/numérico). O sync in-app
   // ("Sincronizar tudo") lê a célula e sobrescreve o escalar (bool: TRUE/1/YES/SIM → true).
@@ -244,59 +273,63 @@ export function registerAddonTools(server: McpServer, api: ApiFetcher) {
 
   // 2. Inventory
   const inv = { weight: z.number().optional(), stackable: z.boolean().optional(), maxStack: z.number().optional(), inventoryCategory: z.string().optional(), slotSize: z.number().optional(), durability: z.number().optional(), bindType: z.enum(["none", "onPickup", "onEquip"]).optional(), showInShop: z.boolean().optional(), showInShopBinding: sheetsBind, consumable: z.boolean().optional(), consumableBinding: sheetsBind, discardable: z.boolean().optional(), discardableBinding: sheetsBind, notes: z.string().optional() };
-  pair("inventory", "inventory", "inventory item", inv, opt(inv));
+  upsert("inventory", "inventory", "inventory item", inv, opt(inv));
 
   // 3. Economy Link
   const eco = { hasBuyConfig: z.boolean().optional(), buyCurrencyRef: z.string().optional(), buyValue: z.number().optional(), buyValueBinding: valueBind, hasSellConfig: z.boolean().optional(), sellCurrencyRef: z.string().optional(), sellValue: z.number().optional(), sellValueBinding: valueBind, hasProductionConfig: z.boolean().optional(), hasUnlockConfig: z.boolean().optional(), notes: z.string().optional() };
-  pair("economy_link", "economyLink", "economy link (buy/sell)", eco, opt(eco));
+  upsert("economy_link", "economyLink", "economy link (buy/sell)", eco, opt(eco));
 
   // 4. Global Variable
   const gv = { key: z.string(), displayName: z.string(), valueType: z.enum(["percent", "multiplier", "flat", "boolean"]), defaultValue: z.union([z.number(), z.boolean()]), scope: z.enum(["global", "mode", "event", "season"]).optional(), notes: z.string().optional() };
-  pair("global_variable", "globalVariable", "global variable", gv, opt(gv));
+  upsert("global_variable", "globalVariable", "global variable", gv, opt(gv));
 
   // 5. Progression Table
   const col = z.object({ id: z.string(), name: z.string(), decimals: z.number().optional(), generator: z.object({ mode: z.enum(["manual", "linear", "exponential", "formula"]), base: z.number().optional(), step: z.number().optional(), growth: z.number().optional(), expression: z.string().optional() }).optional() });
   const row = z.object({ level: z.number(), values: z.record(z.string(), z.union([z.number(), z.string()])) });
   const pt = { startLevel: z.number().optional(), endLevel: z.number().optional(), columns: z.array(col), rows: z.array(row).optional() };
-  pair("progression_table", "progressionTable", "progression table", pt, opt(pt));
+  upsert("progression_table", "progressionTable", "progression table", pt, opt(pt));
 
-  // 6. XP Balance (special: params nested)
-  server.tool("create_xp_balance_addon", "Create an XP balance curve addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored curve.", {
-    ...ps, name: z.string(), group: z.string().optional(), returning,
+  // 6. XP Balance — the one type whose curve params live nested under `params`,
+  // so it gets its own upsert instead of going through the generic helper.
+  const XP_PARAMS = ["base", "growth", "offset", "tierStep", "tierMultiplier"] as const;
+  const XP_DEFAULTS: Record<string, number> = { base: 100, growth: 1.15, offset: 0, tierStep: 10, tierMultiplier: 1.5 };
+
+  server.tool("upsert_xp_balance_addon", "Create or update an XP balance curve addon. Pass addonId to update an existing addon — only the fields you send change. Omit addonId to create a new one, in which case name must be present. Returns a receipt; read the stored curve back with get_section.", {
+    ...ps,
+    addonId: z.string().optional().describe("Update this addon; omit to create a new one"),
+    name: z.string().optional().describe("Display name (required when creating)"),
+    group: z.string().optional(), returning,
     mode: z.enum(["preset", "advanced"]).optional(), preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap"]).optional(),
     expression: z.string().optional(), startLevel: z.number().optional(), endLevel: z.number().optional(), decimals: z.number().optional(),
     base: z.number().optional(), growth: z.number().optional(), offset: z.number().optional(), tierStep: z.number().optional(), tierMultiplier: z.number().optional(),
-  }, async ({ projectId, sectionId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, ...rest }) => {
+  }, async ({ projectId, sectionId, addonId, name, group, returning: returnMode, ...raw }) => {
     try {
+      const args = raw as Record<string, unknown>;
+      const data: Record<string, unknown> = {};
+      const params: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(args)) {
+        if (v === undefined) continue;
+        (XP_PARAMS.includes(k as (typeof XP_PARAMS)[number]) ? params : data)[k] = v;
+      }
+
+      if (addonId) {
+        const fields: Record<string, unknown> = {};
+        if (name !== undefined) fields.name = name;
+        if (group !== undefined) fields.group = group;
+        if (Object.keys(params).length > 0) data.params = params;
+        if (Object.keys(data).length > 0) fields.data = data;
+        const saved = await api.updateAddon(projectId, sectionId, addonId, fields);
+        return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+      }
+
+      if (!name) return fail("name is required when creating an xpBalance addon (pass addonId to update an existing one instead)");
+
+      // A curve with holes in its params does not render, so fill them.
       const created = await api.createAddon(projectId, sectionId, {
         type: "xpBalance", name, ...(group ? { group } : {}),
-        data: { ...rest, params: { base: base ?? 100, growth: growth ?? 1.15, offset: offset ?? 0, tierStep: tierStep ?? 10, tierMultiplier: tierMultiplier ?? 1.5 } },
+        data: { ...data, params: { ...XP_DEFAULTS, ...params } },
       });
       return json(returnMode === "full" ? created : addonCreated(created, sectionId));
-    } catch (e) { return err(e); }
-  });
-
-  server.tool("update_xp_balance_addon", "Update an XP balance curve addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored curve.", {
-    ...psa, name: z.string().optional(), group: z.string().optional(), returning,
-    mode: z.enum(["preset", "advanced"]).optional(), preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap"]).optional(),
-    expression: z.string().optional(), startLevel: z.number().optional(), endLevel: z.number().optional(), decimals: z.number().optional(),
-    base: z.number().optional(), growth: z.number().optional(), offset: z.number().optional(), tierStep: z.number().optional(), tierMultiplier: z.number().optional(),
-  }, async ({ projectId, sectionId, addonId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, ...rest }) => {
-    try {
-      const fields: Record<string, unknown> = {};
-      if (name !== undefined) fields.name = name;
-      if (group !== undefined) fields.group = group;
-      const data: Record<string, unknown> = { ...rest };
-      const params: Record<string, unknown> = {};
-      if (base !== undefined) params.base = base;
-      if (growth !== undefined) params.growth = growth;
-      if (offset !== undefined) params.offset = offset;
-      if (tierStep !== undefined) params.tierStep = tierStep;
-      if (tierMultiplier !== undefined) params.tierMultiplier = tierMultiplier;
-      if (Object.keys(params).length > 0) data.params = params;
-      if (Object.keys(data).length > 0) fields.data = data;
-      const saved = await api.updateAddon(projectId, sectionId, addonId, fields);
-      return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
     } catch (e) { return err(e); }
   });
 
@@ -304,30 +337,30 @@ export function registerAddonTools(server: McpServer, api: ApiFetcher) {
   const ing = z.object({ itemRef: z.string(), quantity: z.number() });
   const out = z.object({ itemRef: z.string(), quantity: z.number() });
   const prod = { mode: z.enum(["passive", "recipe"]).optional(), outputRef: z.string().optional(), minOutput: z.number().optional(), minOutputBinding: valueBind, maxOutput: z.number().optional(), maxOutputBinding: valueBind, intervalSeconds: z.number().optional(), intervalSecondsBinding: valueBind, capacity: z.number().optional(), capacityBinding: valueBind, ingredients: z.array(ing).optional(), outputs: z.array(out).optional(), craftTimeSeconds: z.number().optional(), craftTimeSecondsBinding: valueBind, notes: z.string().optional() };
-  pair("production", "production", "production", prod, opt(prod));
+  upsert("production", "production", "production", prod, opt(prod));
 
   // 8. Data Schema
   const dsEntry = z.object({ id: z.string().optional(), key: z.string(), label: z.string(), valueType: z.enum(["int", "float", "seconds", "percent", "boolean", "string"]), value: z.union([z.number(), z.boolean(), z.string()]), min: z.number().optional(), max: z.number().optional(), notes: z.string().optional() });
   const ds = { entries: z.array(dsEntry) };
-  pair("data_schema", "dataSchema", "data schema", ds, opt(ds));
+  upsert("data_schema", "dataSchema", "data schema", ds, opt(ds));
 
   // 9. Attribute Definitions
   const adEntry = z.object({ id: z.string().optional(), key: z.string(), label: z.string(), valueType: z.enum(["int", "float", "percent", "boolean"]), defaultValue: z.union([z.number(), z.boolean()]), min: z.number().optional(), max: z.number().optional() });
-  pair("attribute_definitions", "attributeDefinitions", "attribute definitions", { attributes: z.array(adEntry) }, { attributes: z.array(adEntry).optional() });
+  upsert("attribute_definitions", "attributeDefinitions", "attribute definitions", { attributes: z.array(adEntry) }, { attributes: z.array(adEntry).optional() });
 
   // 10. Attribute Profile
   const apVal = z.object({ id: z.string().optional(), attributeKey: z.string(), value: z.union([z.number(), z.boolean()]) });
-  pair("attribute_profile", "attributeProfile", "attribute profile", { definitionsRef: z.string().optional(), values: z.array(apVal) }, { definitionsRef: z.string().optional(), values: z.array(apVal).optional() });
+  upsert("attribute_profile", "attributeProfile", "attribute profile", { definitionsRef: z.string().optional(), values: z.array(apVal) }, { definitionsRef: z.string().optional(), values: z.array(apVal).optional() });
 
   // 11. Attribute Modifiers
   const amEntry = z.object({ id: z.string().optional(), attributeKey: z.string(), mode: z.enum(["add", "mult", "set"]), value: z.union([z.number(), z.boolean()]) });
-  pair("attribute_modifiers", "attributeModifiers", "attribute modifiers", { definitionsRef: z.string().optional(), modifiers: z.array(amEntry) }, { definitionsRef: z.string().optional(), modifiers: z.array(amEntry).optional() });
+  upsert("attribute_modifiers", "attributeModifiers", "attribute modifiers", { definitionsRef: z.string().optional(), modifiers: z.array(amEntry) }, { definitionsRef: z.string().optional(), modifiers: z.array(amEntry).optional() });
 
   // 12. Export Schema
   const esBinding = z.object({ source: z.enum(["manual", "dataSchema", "rowLevel", "rowColumn", "entryField", "productionField", "itemField", "skillField", "skillCostField", "skillEffectField"]), value: z.union([z.string(), z.number(), z.boolean()]).optional(), valueType: z.enum(["string", "number", "boolean"]).optional(), addonId: z.string().optional(), addonName: z.string().optional(), entryKey: z.string().optional(), entryId: z.string().optional(), columnId: z.string().optional(), field: z.string().optional() });
   const esArraySource = z.object({ type: z.enum(["progressionTable", "xpBalance", "craftTable", "productionIngredients", "productionOutputs", "skills", "skillCosts", "skillEffects", "sections"]), addonId: z.string().optional(), addonName: z.string().optional(), parentSectionId: z.string().optional(), parentSectionName: z.string().optional() });
   const esNode: z.ZodTypeAny = z.lazy(() => z.object({ id: z.string().optional(), key: z.string(), nodeType: z.enum(["object", "array", "value"]), children: z.array(esNode).optional(), arraySource: esArraySource.optional(), itemTemplate: z.array(esNode).optional(), binding: esBinding.optional(), abs: z.boolean().optional(), multiplier: z.number().optional() }));
-  pair("export_schema", "exportSchema", "export schema", { nodes: z.array(esNode), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() }, { nodes: z.array(esNode).optional(), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() });
+  upsert("export_schema", "exportSchema", "export schema", { nodes: z.array(esNode), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() }, { nodes: z.array(esNode).optional(), arrayFormat: z.enum(["rowMajor", "columnMajor", "keyedByLevel", "matrix"]).optional() });
 
   // 13. Craft Table
   const ctUnlock = z.object({
@@ -337,7 +370,7 @@ export function registerAddonTools(server: McpServer, api: ApiFetcher) {
   });
   const ctEntry = z.object({ id: z.string().optional(), productionRef: z.string().optional(), category: z.string().optional(), order: z.number(), unlock: ctUnlock.optional(), hidden: z.boolean().optional() });
   const craft = { entries: z.array(ctEntry) };
-  pair("craft_table", "craftTable", "craft table (aggregates Production recipes with unlock conditions)", craft, opt(craft));
+  upsert("craft_table", "craftTable", "craft table (aggregates Production recipes with unlock conditions)", craft, opt(craft));
 
   // 14. Crop (plant & harvest)
   const cropXpEvent = z.object({ xpAddonRef: z.string().optional(), xp: z.number().optional(), xpBinding: valueBind });
@@ -357,28 +390,28 @@ export function registerAddonTools(server: McpServer, api: ApiFetcher) {
     seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "greenhouse"])).optional(),
     notes: z.string().optional(),
   };
-  pair("crop", "crop", "crop / plant-and-harvest mechanic", crop, opt(crop));
+  upsert("crop", "crop", "crop / plant-and-harvest mechanic", crop, opt(crop));
 
   // 15. Field Library
   const flEntry = z.object({ id: z.string().optional(), key: z.string(), label: z.string(), description: z.string().optional() });
   const fieldLib = { entries: z.array(flEntry) };
-  pair("field_library", "fieldLibrary", "field library (reusable field definitions)", fieldLib, opt(fieldLib));
+  upsert("field_library", "fieldLibrary", "field library (reusable field definitions)", fieldLib, opt(fieldLib));
 
   // 16. Rich Doc
   const richDoc = { blocks: z.array(z.record(z.string(), z.unknown())), schemaVersion: z.literal(1).optional() };
-  pair("rich_doc", "richDoc", "rich document (Notion-style blocks)", richDoc, opt(richDoc));
+  upsert("rich_doc", "richDoc", "rich document (Notion-style blocks)", richDoc, opt(richDoc));
 
   // 17. Currency Exchange
   const ceEntry = z.object({ id: z.string().optional(), fromCurrencyRef: z.string().optional(), fromAmount: z.number(), toCurrencyRef: z.string().optional(), toAmount: z.number(), direction: z.enum(["oneWay", "bidirectional"]), notes: z.string().optional() });
   const currencyExchange = { entries: z.array(ceEntry) };
-  pair("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchange, opt(currencyExchange));
+  upsert("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchange, opt(currencyExchange));
 
   // 18. Skills
   const skillCost = z.object({ id: z.string().optional(), type: z.enum(["currency", "attribute", "charges"]), amount: z.number(), currencyRef: z.string().optional(), definitionsRef: z.string().optional(), attributeKey: z.string().optional() });
   const skillEffect = z.object({ id: z.string().optional(), attributeModifiersSectionId: z.string(), attributeModifiersAddonId: z.string(), modifierEntryId: z.string() });
   const skillEntry = z.object({ id: z.string().optional(), name: z.string(), description: z.string().optional(), kind: z.enum(["active", "passive"]), cooldownSeconds: z.number().optional(), costs: z.array(skillCost).optional(), effects: z.array(skillEffect).optional(), unlock: ctUnlock.optional(), tags: z.array(z.string()).optional() });
   const skills = { entries: z.array(skillEntry) };
-  pair("skills", "skills", "skills (active/passive abilities with costs, effects, unlocks)", skills, opt(skills));
+  upsert("skills", "skills", "skills (active/passive abilities with costs, effects, unlocks)", skills, opt(skills));
 }
 
 // ── Factory ───────────────────────────────────────────────────────

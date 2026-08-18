@@ -11,6 +11,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GddApiClient, GddApiError } from "./client.js";
 import { addonCreated, addonReceipt, json, touched } from "./project.js";
 
+/** A caller mistake, not a transport failure — say what is missing and stop. */
+function fail(message: string) {
+  return { content: [{ type: "text" as const, text: message }], isError: true };
+}
+
 function err(e: unknown) {
   if (e instanceof GddApiError) {
     return { content: [{ type: "text" as const, text: `Error (${e.code}): ${e.message}` }], isError: true };
@@ -26,68 +31,69 @@ const returning = z
 
 // Shared params present in every create/update tool
 const projSec = {
-  projectId: z.string().describe("Project UUID"),
-  sectionId: z.string().describe("Section UUID"),
-};
-
-const projSecAddon = {
-  ...projSec,
-  addonId: z.string().describe("Addon UUID"),
+  projectId: z.string(),
+  sectionId: z.string(),
 };
 
 export function registerAddonTools(server: McpServer, client: GddApiClient) {
   // ── Helper to register a create + update pair ──────────────────
 
-  function pair(
+  /**
+   * One tool per addon type instead of a create/update pair.
+   *
+   * The two schemas were near-identical — update was just the optional version
+   * of create — and each one is sent to the model in every request. Merging
+   * them halves that. The exposed schema is the all-optional one; create still
+   * gets its required fields and zod defaults, applied in the handler.
+   */
+  function upsert(
     typeName: string,
     addonType: string,
     description: string,
     createFields: Record<string, z.ZodTypeAny>,
     updateFields: Record<string, z.ZodTypeAny>,
   ) {
-    // CREATE
+    const createSchema = z.object(createFields);
+
     server.tool(
-      `create_${typeName}_addon`,
-      `Create a ${description} addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored values.`,
+      `upsert_${typeName}_addon`,
+      `Create or update a ${description} addon. Pass addonId to update an existing addon — only the fields you send change. Omit addonId to create a new one, in which case name and the type's required fields must be present. Returns a receipt; read the stored values back with get_section.`,
       {
         ...projSec,
-        name: z.string().describe("Display name for the addon"),
-        group: z.string().optional().describe("Optional group name"),
-        ...createFields,
-        returning,
-      },
-      async ({ projectId, sectionId, name, group, returning: returnMode, ...data }) => {
-        try {
-          const created = await client.createAddon(projectId, sectionId, {
-            type: addonType,
-            name,
-            ...(group ? { group } : {}),
-            data,
-          });
-          return json(returnMode === "full" ? created : addonCreated(created, sectionId));
-        } catch (e) { return err(e); }
-      },
-    );
-
-    // UPDATE
-    server.tool(
-      `update_${typeName}_addon`,
-      `Update a ${description} addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored values.`,
-      {
-        ...projSecAddon,
-        name: z.string().optional().describe("New display name"),
-        group: z.string().optional().describe("New group name"),
+        addonId: z.string().optional().describe("Update this addon; omit to create a new one"),
+        name: z.string().optional().describe("Display name (required when creating)"),
+        group: z.string().optional(),
         ...updateFields,
         returning,
       },
       async ({ projectId, sectionId, addonId, name, group, returning: returnMode, ...data }) => {
         try {
-          const fields: Record<string, unknown> = {};
-          if (name !== undefined) fields.name = name;
-          if (group !== undefined) fields.group = group;
-          if (Object.keys(data).length > 0) fields.data = data;
-          const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
-          return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+          if (addonId) {
+            const fields: Record<string, unknown> = {};
+            if (name !== undefined) fields.name = name;
+            if (group !== undefined) fields.group = group;
+            if (Object.keys(data).length > 0) fields.data = data;
+            const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
+            return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+          }
+
+          if (!name) return fail(`name is required when creating a ${addonType} addon (pass addonId to update an existing one instead)`);
+
+          // Re-parse through the create schema so defaults land and missing
+          // required fields are reported rather than written as undefined.
+          const parsed = createSchema.safeParse(data);
+          if (!parsed.success) {
+            const problems = parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+            return fail(`cannot create a ${addonType} addon — ${problems}`);
+          }
+
+          const created = await client.createAddon(projectId, sectionId, {
+            type: addonType,
+            name,
+            ...(group ? { group } : {}),
+            data: parsed.data,
+          });
+          return json(returnMode === "full" ? created : addonCreated(created, sectionId));
         } catch (e) { return err(e); }
       },
     );
@@ -154,7 +160,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     decimals: z.number().default(0).describe("Decimal places (0 for integer currencies)"),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("currency", "currency", "currency (in-game money)", currencyFields, optional(currencyFields));
+  upsert("currency", "currency", "currency (in-game money)", currencyFields, optional(currencyFields));
 
   // ── 2. Inventory ────────────────────────────────────────────────
 
@@ -182,7 +188,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     discardableBinding: sheetsBinding.describe("Optional Google Sheets binding for discardable."),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("inventory", "inventory", "inventory item", inventoryFields, optional(inventoryFields));
+  upsert("inventory", "inventory", "inventory item", inventoryFields, optional(inventoryFields));
 
   // ── 3. Economy Link ─────────────────────────────────────────────
 
@@ -221,7 +227,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     unlockValueMax: z.number().optional().describe("Maximum unlock cost"),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("economy_link", "economyLink", "economy link (buy/sell prices)", economyLinkFields, optional(economyLinkFields));
+  upsert("economy_link", "economyLink", "economy link (buy/sell prices)", economyLinkFields, optional(economyLinkFields));
 
   // ── 4. Global Variable ──────────────────────────────────────────
 
@@ -233,7 +239,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     scope: z.enum(["global", "mode", "event", "season"]).default("global").describe("Variable scope"),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("global_variable", "globalVariable", "global variable", globalVariableFields, optional(globalVariableFields));
+  upsert("global_variable", "globalVariable", "global variable", globalVariableFields, optional(globalVariableFields));
 
   // ── 5. Progression Table ────────────────────────────────────────
 
@@ -272,7 +278,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     rows: z.array(progressionRowSchema).optional().describe("Row data (auto-generated if omitted)"),
     overrides: z.record(z.record(z.number())).optional().describe("Manual cell overrides: overrides[levelString][columnId] = value. Cells with overrides are preserved when regenerating."),
   };
-  pair("progression_table", "progressionTable", "progression/balance table", progressionTableFields, optional(progressionTableFields));
+  upsert("progression_table", "progressionTable", "progression/balance table", progressionTableFields, optional(progressionTableFields));
 
   // ── 6. XP Balance ───────────────────────────────────────────────
 
@@ -296,80 +302,63 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     plateauStartLevel: z.number().default(60).describe("Plateau start level (piecewise preset)"),
     plateauFactor: z.number().default(0.35).describe("Plateau factor (piecewise preset)"),
   };
-  // For xpBalance, the params are nested under a `params` object in the API
+  // xpBalance is the one type whose curve params live nested under `params`,
+  // so it gets its own upsert instead of going through the generic helper.
+  const XP_PARAM_KEYS = ["base","growth","offset","tierStep","tierMultiplier","capValue","capStrength","plateauStartLevel","plateauFactor"] as const;
+  const xpCreateSchema = z.object(xpBalanceFields);
+
   server.tool(
-    "create_xp_balance_addon",
-    "Create an XP balance curve addon. Returns a receipt with the new addon's id; read the page back with get_section to see the stored curve.",
+    "upsert_xp_balance_addon",
+    "Create or update an XP balance curve addon. Pass addonId to update an existing addon — only the fields you send change. Omit addonId to create a new one, in which case name must be present. Returns a receipt; read the stored curve back with get_section.",
     {
       ...projSec,
-      name: z.string().describe("Display name"),
-      group: z.string().optional().describe("Optional group name"),
-      ...xpBalanceFields,
+      addonId: z.string().optional().describe("Update this addon; omit to create a new one"),
+      name: z.string().optional().describe("Display name (required when creating)"),
+      group: z.string().optional(),
+      ...optional(xpBalanceFields),
       returning,
     },
-    async ({ projectId, sectionId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
+    async ({ projectId, sectionId, addonId, name, group, returning: returnMode, ...raw }) => {
       try {
+        /** Splits the flat args into the addon's own fields and its nested curve params. */
+        function split(source: Record<string, unknown>, keepUndefined: boolean) {
+          const data: Record<string, unknown> = {};
+          const params: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(source)) {
+            if (!keepUndefined && v === undefined) continue;
+            (XP_PARAM_KEYS.includes(k as (typeof XP_PARAM_KEYS)[number]) ? params : data)[k] = v;
+          }
+          return { data, params };
+        }
+
+        if (addonId) {
+          const fields: Record<string, unknown> = {};
+          if (name !== undefined) fields.name = name;
+          if (group !== undefined) fields.group = group;
+          const { data, params } = split(raw as Record<string, unknown>, false);
+          if (Object.keys(params).length > 0) data.params = params;
+          if (Object.keys(data).length > 0) fields.data = data;
+          const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
+          return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
+        }
+
+        if (!name) return fail("name is required when creating an xpBalance addon (pass addonId to update an existing one instead)");
+
+        // Defaults matter more here than anywhere else — a curve with holes in
+        // its params does not render.
+        const parsed = xpCreateSchema.safeParse(raw);
+        if (!parsed.success) {
+          const problems = parsed.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
+          return fail(`cannot create an xpBalance addon — ${problems}`);
+        }
+        const { data, params } = split(parsed.data as Record<string, unknown>, true);
         const created = await client.createAddon(projectId, sectionId, {
           type: "xpBalance",
           name,
           ...(group ? { group } : {}),
-          data: {
-            ...rest,
-            params: { base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor },
-          },
+          data: { ...data, params },
         });
         return json(returnMode === "full" ? created : addonCreated(created, sectionId));
-      } catch (e) { return err(e); }
-    },
-  );
-
-  server.tool(
-    "update_xp_balance_addon",
-    "Update an XP balance curve addon. Returns a receipt naming the fields that were written, not the addon — read it back with get_section when you need the stored curve.",
-    {
-      ...projSecAddon,
-      name: z.string().optional().describe("New display name"),
-      group: z.string().optional().describe("New group name"),
-      mode: z.enum(["preset", "advanced"]).optional().describe("Formula mode"),
-      preset: z.enum(["linear", "exponential", "tiered", "softCap", "hardCap", "diminishingReturns", "piecewise"]).optional().describe("Curve preset"),
-      expression: z.string().optional().describe("Custom expression (advanced mode)"),
-      startLevel: z.number().optional().describe("First level"),
-      endLevel: z.number().optional().describe("Last level"),
-      decimals: z.number().optional().describe("Decimal places"),
-      clampMin: z.number().optional().describe("Minimum value clamp"),
-      clampMax: z.number().optional().describe("Maximum value clamp"),
-      startAtZero: z.boolean().optional().describe("When true, the first level costs 0 XP and the curve shifts one step. Default false."),
-      base: z.number().optional().describe("Base XP value"),
-      growth: z.number().optional().describe("Growth factor"),
-      offset: z.number().optional().describe("Offset"),
-      tierStep: z.number().optional().describe("Tier step size (tiered preset)"),
-      tierMultiplier: z.number().optional().describe("Tier multiplier (tiered preset)"),
-      capValue: z.number().optional().describe("Cap value (softCap/hardCap/diminishingReturns presets)"),
-      capStrength: z.number().optional().describe("Cap strength (softCap preset)"),
-      plateauStartLevel: z.number().optional().describe("Plateau start level (piecewise preset)"),
-      plateauFactor: z.number().optional().describe("Plateau factor (piecewise preset)"),
-      returning,
-    },
-    async ({ projectId, sectionId, addonId, name, group, returning: returnMode, base, growth, offset, tierStep, tierMultiplier, capValue, capStrength, plateauStartLevel, plateauFactor, ...rest }) => {
-      try {
-        const fields: Record<string, unknown> = {};
-        if (name !== undefined) fields.name = name;
-        if (group !== undefined) fields.group = group;
-        const data: Record<string, unknown> = { ...rest };
-        const params: Record<string, unknown> = {};
-        if (base !== undefined) params.base = base;
-        if (growth !== undefined) params.growth = growth;
-        if (offset !== undefined) params.offset = offset;
-        if (tierStep !== undefined) params.tierStep = tierStep;
-        if (tierMultiplier !== undefined) params.tierMultiplier = tierMultiplier;
-        if (capValue !== undefined) params.capValue = capValue;
-        if (capStrength !== undefined) params.capStrength = capStrength;
-        if (plateauStartLevel !== undefined) params.plateauStartLevel = plateauStartLevel;
-        if (plateauFactor !== undefined) params.plateauFactor = plateauFactor;
-        if (Object.keys(params).length > 0) data.params = params;
-        if (Object.keys(data).length > 0) fields.data = data;
-        const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
-        return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name, group }), ...Object.keys(data)]));
       } catch (e) { return err(e); }
     },
   );
@@ -417,7 +406,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     craftTimeSecondsProgressionLink: productionProgressionLinkSchema.optional().describe("Link craftTimeSeconds to a progression table column (level-scaled)."),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("production", "production", "production (passive or recipe)", productionFields, optional(productionFields));
+  upsert("production", "production", "production (passive or recipe)", productionFields, optional(productionFields));
 
   // ── 7b. Craft Table ─────────────────────────────────────────────
 
@@ -451,7 +440,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const craftTableFields = {
     entries: z.array(craftTableEntrySchema).default([]).describe("Recipes available on this table"),
   };
-  pair("craft_table", "craftTable", "craft table (station aggregating Production recipes with unlock conditions)", craftTableFields, optional(craftTableFields));
+  upsert("craft_table", "craftTable", "craft table (station aggregating Production recipes with unlock conditions)", craftTableFields, optional(craftTableFields));
 
   // ── 7c. Crop (Plantar e Colher) ─────────────────────────────────
 
@@ -513,7 +502,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     seasons: z.array(z.enum(["spring", "summer", "fall", "winter", "greenhouse"])).optional().describe("Seasons in which this crop can be planted"),
     notes: z.string().optional().describe("Design notes"),
   };
-  pair("crop", "crop", "crop / plant-and-harvest mechanic", cropFields, optional(cropFields));
+  upsert("crop", "crop", "crop / plant-and-harvest mechanic", cropFields, optional(cropFields));
 
   // ── 8. Data Schema ──────────────────────────────────────────────
 
@@ -578,7 +567,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const dataSchemaFields = {
     entries: z.array(dataSchemaEntrySchema).describe("Data entries"),
   };
-  pair("data_schema", "dataSchema", "data schema (key-value stats)", dataSchemaFields, optional(dataSchemaFields));
+  upsert("data_schema", "dataSchema", "data schema (key-value stats)", dataSchemaFields, optional(dataSchemaFields));
 
   // ── 9. Attribute Definitions ────────────────────────────────────
 
@@ -596,7 +585,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const attrDefsFields = {
     attributes: z.array(attrDefEntrySchema).describe("Attribute definitions"),
   };
-  pair("attribute_definitions", "attributeDefinitions", "attribute definitions (STR, DEX, etc.)", attrDefsFields, optional(attrDefsFields));
+  upsert("attribute_definitions", "attributeDefinitions", "attribute definitions (STR, DEX, etc.)", attrDefsFields, optional(attrDefsFields));
 
   // ── 10. Attribute Profile ───────────────────────────────────────
 
@@ -610,7 +599,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     definitionsRef: z.string().optional().describe("Section ID of the attribute definitions addon"),
     values: z.array(attrProfileValueSchema).describe("Attribute values"),
   };
-  pair("attribute_profile", "attributeProfile", "attribute profile (character stats)", attrProfileFields, optional(attrProfileFields));
+  upsert("attribute_profile", "attributeProfile", "attribute profile (character stats)", attrProfileFields, optional(attrProfileFields));
 
   // ── 11. Attribute Modifiers ─────────────────────────────────────
 
@@ -626,7 +615,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
     definitionsRef: z.string().optional().describe("Section ID of the attribute definitions addon"),
     modifiers: z.array(attrModEntrySchema).describe("Attribute modifiers"),
   };
-  pair("attribute_modifiers", "attributeModifiers", "attribute modifiers (+10 STR, x1.5 DEX)", attrModsFields, optional(attrModsFields));
+  upsert("attribute_modifiers", "attributeModifiers", "attribute modifiers (+10 STR, x1.5 DEX)", attrModsFields, optional(attrModsFields));
 
   // ── 12. Field Library ───────────────────────────────────────────
 
@@ -640,7 +629,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const fieldLibraryFields = {
     entries: z.array(fieldLibraryEntrySchema).describe("Reusable field definitions"),
   };
-  pair("field_library", "fieldLibrary", "field library (reusable field definitions for progression tables and data schemas)", fieldLibraryFields, optional(fieldLibraryFields));
+  upsert("field_library", "fieldLibrary", "field library (reusable field definitions for progression tables and data schemas)", fieldLibraryFields, optional(fieldLibraryFields));
 
   // ── 13. Export Schema ───────────────────────────────────────────
 
@@ -754,7 +743,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       "arrays are always rowMajor)."
     ),
   };
-  pair("export_schema", "exportSchema", "export/remote config schema", exportSchemaFields, optional(exportSchemaFields));
+  upsert("export_schema", "exportSchema", "export/remote config schema", exportSchemaFields, optional(exportSchemaFields));
 
   // ── 14. Rich Doc ────────────────────────────────────────────────
 
@@ -764,7 +753,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
       .describe("BlockNote document blocks (each block is an object with id/type/props/content/children). Opaque — forwarded as-is."),
     schemaVersion: z.literal(1).optional().describe("Schema version, always 1"),
   };
-  pair("rich_doc", "richDoc", "rich document (Notion-style blocks: headings, lists, images, embeds, columns)", richDocFields, optional(richDocFields));
+  upsert("rich_doc", "richDoc", "rich document (Notion-style blocks: headings, lists, images, embeds, columns)", richDocFields, optional(richDocFields));
 
   // ── 15. Currency Exchange ───────────────────────────────────────
 
@@ -780,7 +769,7 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const currencyExchangeFields = {
     entries: z.array(currencyExchangeEntrySchema).describe("Exchange rates offered"),
   };
-  pair("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchangeFields, optional(currencyExchangeFields));
+  upsert("currency_exchange", "currencyExchange", "currency exchange (convert one currency into another)", currencyExchangeFields, optional(currencyExchangeFields));
 
   // ── 16. Skills ──────────────────────────────────────────────────
 
@@ -812,5 +801,5 @@ export function registerAddonTools(server: McpServer, client: GddApiClient) {
   const skillsFields = {
     entries: z.array(skillEntrySchema).describe("Skills defined on this page"),
   };
-  pair("skills", "skills", "skills (active/passive abilities with costs, effects, and unlock conditions)", skillsFields, optional(skillsFields));
+  upsert("skills", "skills", "skills (active/passive abilities with costs, effects, and unlock conditions)", skillsFields, optional(skillsFields));
 }
