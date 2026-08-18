@@ -45,3 +45,9 @@ next-env.d.ts
 # uploads
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# workspace deps
+packages/*/node_modules/
+
+# claude runtime
+.claude/scheduled_tasks.lock
