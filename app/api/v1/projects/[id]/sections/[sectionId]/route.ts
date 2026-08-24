@@ -7,9 +7,11 @@ import {
   apiJson,
   apiError,
   sectionToApi,
+  addonDetailParam,
+  sectionMapper,
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
-import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
+import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
 
@@ -83,29 +85,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
-  const updates: Record<string, unknown> = {
-    updated_at: now,
-    updated_by: auth.userId,
-  };
-
-  if (parsed.data.title !== undefined) updates.title = parsed.data.title;
-  if (parsed.data.contentBlocks !== undefined) {
-    // Caller supplied explicit blocks — use them directly.
-    updates.content_blocks = parsed.data.contentBlocks.length > 0 ? parsed.data.contentBlocks : null;
-  } else if (parsed.data.content !== undefined) {
-    // No explicit blocks — auto-generate from markdown.
-    const blocks = markdownToBlocks(parsed.data.content);
-    updates.content_blocks = blocks.length > 0 ? blocks : null;
-  }
-  if (parsed.data.content !== undefined) updates.content = parsed.data.content;
-  if (parsed.data.parentId !== undefined) updates.parent_id = parsed.data.parentId;
-  if (parsed.data.order !== undefined) updates.sort_order = parsed.data.order;
-  if (parsed.data.color !== undefined) updates.color = parsed.data.color;
-  if (parsed.data.domainTags !== undefined) updates.domain_tags = parsed.data.domainTags;
-  if (parsed.data.dataId !== undefined) updates.data_id = parsed.data.dataId;
-  if (parsed.data.thumbImageUrl !== undefined) updates.thumb_image_url = parsed.data.thumbImageUrl;
-  if (parsed.data.addonGroupNotes !== undefined) updates.addon_group_notes = parsed.data.addonGroupNotes;
-  if (parsed.data.linkedSpreadsheetId !== undefined) updates.linked_spreadsheet_id = parsed.data.linkedSpreadsheetId;
+  const { updates } = buildSectionUpdates(parsed.data, { userId: auth.userId, now });
 
   const { error } = await auth.supabase
     .from("sections")
@@ -115,8 +95,14 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 
   if (error) return apiError("Failed to update section", 500, "db_error");
 
-  // Re-read to get the full row with fallback columns
-  const { data: rows } = await selectSections(auth.supabase, { projectId: id, sectionId });
+  // Re-read for the response. When the caller asked for addons=none the heavy
+  // jsonb stays out of the read entirely — a receipt does not need it.
+  const detail = addonDetailParam(request);
+  const { data: rows } = await selectSections(
+    auth.supabase,
+    { projectId: id, sectionId },
+    { withAddons: detail !== "none" },
+  );
   if (!rows || rows.length === 0) {
     return apiError("Section not found after update", 500, "db_error");
   }
@@ -127,7 +113,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     .update({ updated_at: now })
     .eq("id", id);
 
-  return apiJson(sectionToApi(rows[0]));
+  return apiJson(sectionMapper(detail)(rows[0]));
 }
 
 /**

@@ -63,5 +63,10 @@ export declare function projectReceipt(project: unknown, updated: string[]): Rec
 export declare function projectCreated(project: unknown): Rec;
 /** Search hits as pointers: what matched and where, not the whole page. */
 export declare function searchProjection(result: unknown): Rec;
+/**
+ * A batch write reports per section. Failures carry their reason; successes are
+ * one line each, so a 50-page batch still answers in a few hundred characters.
+ */
+export declare function batchReceipt(result: unknown): Rec;
 export declare function deleted(kind: string, id: string): Rec;
 export {};

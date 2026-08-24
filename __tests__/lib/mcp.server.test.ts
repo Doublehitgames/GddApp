@@ -307,7 +307,70 @@ describe("list_sections filters", () => {
   });
 });
 
+describe("batch_update_sections", () => {
+  const okRow = (sectionId: string) => ({ sectionId, ok: true, title: "T", updated: ["content"], updatedAt: "2026-08-18T12:00:00Z" });
+
+  it("sends one request for the whole list", async () => {
+    const h = harness({ batchUpdateSections: { updated: 2, failed: 0, results: [okRow("s1"), okRow("s2")] } });
+    const out = await h.call("batch_update_sections", {
+      projectId: "p1",
+      sections: [{ sectionId: "s1", content: "a" }, { sectionId: "s2", content: "b" }],
+    });
+    expect(h.sent).toHaveLength(1);
+    expect(h.sent[0].method).toBe("batchUpdateSections");
+    expect(out).toEqual({ ok: true, updated: 2, failed: 0 });
+  });
+
+  it("stays quiet about the rows that worked, and names the ones that did not", async () => {
+    const h = harness({
+      batchUpdateSections: {
+        updated: 1, failed: 2,
+        results: [
+          okRow("s1"),
+          { sectionId: "s2", ok: false, error: "Section not found in this project", code: "not_found" },
+          { sectionId: "s3", ok: false, error: "No fields to update", code: "empty_update" },
+        ],
+      },
+    });
+    const out = await h.call("batch_update_sections", { projectId: "p1", sections: [{ sectionId: "s1", content: "a" }] });
+    expect(out).toEqual({
+      ok: false, updated: 1, failed: 2,
+      failures: [
+        { sectionId: "s2", error: "Section not found in this project" },
+        { sectionId: "s3", error: "No fields to update" },
+      ],
+    });
+  });
+
+  it("a 50-page batch still answers in a few hundred characters", async () => {
+    const results = Array.from({ length: 50 }, (_, i) => okRow(`s${i}`));
+    const h = harness({ batchUpdateSections: { updated: 50, failed: 0, results } });
+    const out = await h.call("batch_update_sections", { projectId: "p1", sections: [{ sectionId: "s0", content: "a" }] });
+    expect(JSON.stringify(out).length).toBeLessThan(120);
+  });
+
+  it("tells the agent to prefer it over a loop", () => {
+    const h = harness();
+    const desc = h.descriptionOf("batch_update_sections");
+    expect(desc).toContain("ONE request");
+    expect(desc).toContain("update_section");
+    expect(desc).toContain("50");
+  });
+});
+
 describe("the API is asked to leave the addon payload behind", () => {
+  it("update_section asks for addons=none when returning a receipt", async () => {
+    const h = harness({ updateSection: SECTION });
+    await h.call("update_section", { projectId: "p1", sectionId: "sec-1", content: "x" });
+    expect(h.sent[0].args).toEqual(["p1", "sec-1", { content: "x" }, "none"]);
+  });
+
+  it("update_section asks for the full row under returning:'full'", async () => {
+    const h = harness({ updateSection: SECTION });
+    await h.call("update_section", { projectId: "p1", sectionId: "sec-1", content: "x", returning: "full" });
+    expect(h.sent[0].args).toEqual(["p1", "sec-1", { content: "x" }, undefined]);
+  });
+
   it("list_sections requests addons=types by default", async () => {
     const h = harness({ listSections: [] });
     await h.call("list_sections", { projectId: "p1" });

@@ -98,8 +98,15 @@ export class GddApiClient {
     return this.request("POST", `/projects/${projectId}/sections`, params);
   }
 
-  async updateSection(projectId: string, sectionId: string, params: Record<string, unknown>) {
-    return this.request("PATCH", `/projects/${projectId}/sections/${sectionId}`, params);
+  /** `addons: "none"` keeps the re-read light when the caller only wants a receipt. */
+  async updateSection(projectId: string, sectionId: string, params: Record<string, unknown>, addons?: "types" | "none") {
+    const qs = addons ? `?addons=${addons}` : "";
+    return this.request("PATCH", `/projects/${projectId}/sections/${sectionId}${qs}`, params);
+  }
+
+  /** One request for many sections: see PATCH /projects/:id/sections. */
+  async batchUpdateSections(projectId: string, sections: Record<string, unknown>[]) {
+    return this.request("PATCH", `/projects/${projectId}/sections`, { sections });
   }
 
   async deleteSection(projectId: string, sectionId: string) {

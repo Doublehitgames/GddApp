@@ -57,7 +57,11 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
       api("GET", `/projects/${projectId}/sections${addons ? `?addons=${addons}` : ""}`),
     getSection: (projectId: string, sectionId: string) => api("GET", `/projects/${projectId}/sections/${sectionId}`),
     createSection: (projectId: string, params: Record<string, unknown>) => api("POST", `/projects/${projectId}/sections`, params),
-    updateSection: (projectId: string, sectionId: string, params: Record<string, unknown>) => api("PATCH", `/projects/${projectId}/sections/${sectionId}`, params),
+    // `addons: "none"` keeps the re-read light when only a receipt is wanted.
+    updateSection: (projectId: string, sectionId: string, params: Record<string, unknown>, addons?: "types" | "none") =>
+      api("PATCH", `/projects/${projectId}/sections/${sectionId}${addons ? `?addons=${addons}` : ""}`, params),
+    batchUpdateSections: (projectId: string, sections: Record<string, unknown>[]) =>
+      api("PATCH", `/projects/${projectId}/sections`, { sections }),
     deleteSection: (projectId: string, sectionId: string) => api("DELETE", `/projects/${projectId}/sections/${sectionId}`),
 
     // Addons

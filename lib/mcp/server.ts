@@ -11,6 +11,7 @@ import {
   addonMoved,
   addonReceipt,
   addonRow,
+  batchReceipt,
   deleted,
   filterSections,
   json,
@@ -115,9 +116,30 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: z.string().optional(), parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
-        const saved = await api.updateSection(projectId, sectionId, f);
-        return json(returnMode === "full" ? sectionFull(saved) : sectionReceipt(saved, touched(f)));
+        const full = returnMode === "full";
+        const saved = await api.updateSection(projectId, sectionId, f, full ? undefined : "none");
+        return json(full ? sectionFull(saved) : sectionReceipt(saved, touched(f)));
       } catch (e) { return err(e); }
+    });
+
+  server.tool("batch_update_sections",
+    "Update many sections in ONE request. Strongly preferred over calling update_section in a loop: a sweep of 96 pages is 96 round-trips that way, versus one here. Each entry needs a sectionId plus the fields to change; entries are independent, so a bad id fails on its own without discarding the rest. Returns {ok, updated, failed} plus a failures list when something did not land. Max 50 sections per call — split larger sweeps.",
+    {
+      projectId: z.string(),
+      sections: z.array(z.object({
+        sectionId: z.string(),
+        title: z.string().optional(),
+        content: z.string().optional(),
+        parentId: z.string().nullable().optional(),
+        order: z.number().optional(),
+        color: z.string().optional(),
+        domainTags: z.array(z.string()).optional(),
+        dataId: z.string().optional(),
+      })).describe("One entry per section to update (max 50)"),
+    },
+    async ({ projectId, sections }) => {
+      try { return json(batchReceipt(await api.batchUpdateSections(projectId, sections))); }
+      catch (e) { return err(e); }
     });
 
   server.tool("delete_section", "Delete a section and all sub-sections (irreversible)",

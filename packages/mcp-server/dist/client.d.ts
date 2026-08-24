@@ -27,7 +27,10 @@ export declare class GddApiClient {
     listSections(projectId: string, addons?: "types" | "none"): Promise<unknown>;
     getSection(projectId: string, sectionId: string): Promise<unknown>;
     createSection(projectId: string, params: Record<string, unknown>): Promise<unknown>;
-    updateSection(projectId: string, sectionId: string, params: Record<string, unknown>): Promise<unknown>;
+    /** `addons: "none"` keeps the re-read light when the caller only wants a receipt. */
+    updateSection(projectId: string, sectionId: string, params: Record<string, unknown>, addons?: "types" | "none"): Promise<unknown>;
+    /** One request for many sections: see PATCH /projects/:id/sections. */
+    batchUpdateSections(projectId: string, sections: Record<string, unknown>[]): Promise<unknown>;
     deleteSection(projectId: string, sectionId: string): Promise<unknown>;
     listAddons(projectId: string, sectionId: string): Promise<unknown>;
     createAddon(projectId: string, sectionId: string, params: Record<string, unknown>): Promise<unknown>;

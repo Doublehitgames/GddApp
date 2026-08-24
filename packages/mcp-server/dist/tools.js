@@ -6,7 +6,7 @@
  */
 import { z } from "zod/v3";
 import { GddApiError } from "./client.js";
-import { addonCreated, addonMoved, addonReceipt, addonRow, deleted, filterSections, json, projectCreated, projectFull, projectIndex, projectReceipt, projectRow, searchProjection, sectionCreated, sectionFull, sectionReceipt, sectionRow, text, touched, } from "./project.js";
+import { addonCreated, addonMoved, addonReceipt, addonRow, batchReceipt, deleted, filterSections, json, projectCreated, projectFull, projectIndex, projectReceipt, projectRow, searchProjection, sectionCreated, sectionFull, sectionReceipt, sectionRow, text, touched, } from "./project.js";
 function err(e) {
     if (e instanceof GddApiError) {
         return { content: [{ type: "text", text: `Error (${e.code}): ${e.message}` }], isError: true };
@@ -179,8 +179,32 @@ export function registerTools(server, client) {
         returning,
     }, async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
         try {
-            const saved = await client.updateSection(projectId, sectionId, fields);
-            return json(returnMode === "full" ? sectionFull(saved) : sectionReceipt(saved, touched(fields)));
+            const full = returnMode === "full";
+            const saved = await client.updateSection(projectId, sectionId, fields, full ? undefined : "none");
+            return json(full ? sectionFull(saved) : sectionReceipt(saved, touched(fields)));
+        }
+        catch (e) {
+            return err(e);
+        }
+    });
+    server.tool("batch_update_sections", "Update many sections in ONE request. Strongly preferred over calling update_section in a loop: a sweep of 96 pages is 96 round-trips that way, versus one here. Each entry needs a sectionId plus the fields to change; entries are independent, so a bad id fails on its own without discarding the rest. Returns {ok, updated, failed} plus a failures list when something did not land. Max 50 sections per call — split larger sweeps.", {
+        projectId: z.string(),
+        sections: z
+            .array(z.object({
+            sectionId: z.string(),
+            title: z.string().optional(),
+            content: z.string().optional().describe("Plain-text / markdown description"),
+            contentBlocks: CONTENT_BLOCKS_FIELD,
+            parentId: z.string().nullable().optional(),
+            order: z.number().optional(),
+            color: z.string().optional(),
+            domainTags: z.array(z.string()).optional(),
+            dataId: z.string().optional(),
+        }))
+            .describe("One entry per section to update (max 50)"),
+    }, async ({ projectId, sections }) => {
+        try {
+            return json(batchReceipt(await client.batchUpdateSections(projectId, sections)));
         }
         catch (e) {
             return err(e);
