@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const { data: rows } = await selectSections(
     auth.supabase,
     { projectId: id, sectionId },
-    { withAddons: detail !== "none" },
+    { addons: detail },
   );
   if (!rows || rows.length === 0) {
     return apiError("Section not found after update", 500, "db_error");

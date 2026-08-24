@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { data: sections } = await selectSections(
     auth.supabase,
     { projectId: id },
-    { withAddons: detail !== "none" },
+    { addons: detail },
   );
 
   return apiJson({

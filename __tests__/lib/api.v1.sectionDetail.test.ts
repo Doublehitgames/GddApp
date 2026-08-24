@@ -103,6 +103,45 @@ describe("sectionMapper", () => {
     expect(out.addonTypes).toEqual(["currency"]);
   });
 
+  // add_sections_addon_types.sql adds a generated column holding just the type
+  // names. Until it is run, the read falls back to the jsonb and derives them.
+  it("prefers the generated column when the read supplied it", () => {
+    const row = makeRow({ balance_addons: null, addon_types: ["currency", "inventory"] });
+    const out = sectionMapper("types")(row) as Record<string, unknown>;
+    expect(out.addonTypes).toEqual(["currency", "inventory"]);
+  });
+
+  it("derives from the jsonb when the column is not there yet", () => {
+    const out = sectionMapper("types")(makeRow()) as Record<string, unknown>;
+    expect(out.addonTypes).toEqual(["progressionTable", "dataSchema"]);
+  });
+
+  it("both paths agree, which is what makes the migration safe to run late", () => {
+    const beforeMigration = sectionMapper("types")(makeRow());
+    const afterMigration = sectionMapper("types")(makeRow({
+      balance_addons: null,
+      addon_types: ["progressionTable", "dataSchema"],
+    }));
+    expect(afterMigration).toEqual(beforeMigration);
+  });
+
+  it("an empty generated column means no addons, not 'fall back and guess'", () => {
+    const out = sectionMapper("types")(makeRow({ addon_types: [] })) as Record<string, unknown>;
+    expect(out.addonTypes).toEqual([]);
+  });
+
+  it("ignores a malformed generated value and derives instead", () => {
+    const out = sectionMapper("types")(makeRow({ addon_types: "nao-e-array" })) as Record<string, unknown>;
+    expect(out.addonTypes).toEqual(["progressionTable", "dataSchema"]);
+  });
+
+  it("never leaks the generated column into the response", () => {
+    for (const detail of ["full", "types", "none"] as const) {
+      const out = sectionMapper(detail)(makeRow({ addon_types: ["currency"] }));
+      expect(out).not.toHaveProperty("addon_types");
+    }
+  });
+
   it("is the whole point: types is a fraction of the bytes", () => {
     const heavy = makeRow({
       balance_addons: [{

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { data: sections, error } = await selectSections(
     auth.supabase,
     { projectId: id },
-    { withAddons: detail !== "none" },
+    { addons: detail },
   );
 
   if (error) return apiError("Failed to fetch sections", 500, "db_error");

@@ -182,6 +182,8 @@ export type SectionRow = {
   updated_by_name: string | null;
   linked_spreadsheet_id?: string | null;
   content_blocks?: unknown[] | null;
+  /** Generated column (see add_sections_addon_types.sql). Absent until it is run. */
+  addon_types?: unknown;
 };
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
@@ -201,6 +203,38 @@ const SECTION_COLUMNS_SAFE =
 // Used when the caller asked not to receive addon data at all.
 const SECTION_COLUMNS_NO_ADDONS =
   "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, linked_spreadsheet_id, content_blocks";
+
+/**
+ * Whether `sections.addon_types` exists, remembered per process.
+ *
+ * Before add_sections_addon_types.sql is run, probing for the column on every
+ * request costs an extra failed round-trip and makes `?addons=types` slower
+ * than not having the optimisation at all. A negative answer is cached, but
+ * only for a few minutes, so the API picks the column up on its own once the
+ * migration is run — no redeploy needed.
+ */
+const ADDON_TYPES_RECHECK_MS = 5 * 60_000;
+let addonTypesColumn: { present: boolean; checkedAtMs: number } | null = null;
+
+function addonTypesColumnMayExist(): boolean {
+  if (!addonTypesColumn) return true;
+  if (addonTypesColumn.present) return true;
+  return Date.now() - addonTypesColumn.checkedAtMs > ADDON_TYPES_RECHECK_MS;
+}
+
+function rememberAddonTypesColumn(present: boolean) {
+  addonTypesColumn = { present, checkedAtMs: Date.now() };
+}
+
+/** Test seam: forget what we learned about the column. */
+export function resetAddonTypesColumnCache() {
+  addonTypesColumn = null;
+}
+
+// The generated column carries the addon type names without the jsonb behind
+// them, so a listing can answer "which pages have a progression table" without
+// reading a single progression table.
+const SECTION_COLUMNS_TYPES = `${SECTION_COLUMNS_NO_ADDONS}, addon_types`;
 
 export { SECTION_COLUMNS_FULL as SECTION_COLUMNS };
 
@@ -222,11 +256,13 @@ function buildQuery(
 export async function selectSections(
   supabase: SupabaseClient,
   filter: { projectId?: string; sectionId?: string },
-  opts: { withAddons?: boolean } = {},
+  opts: { addons?: AddonDetail } = {},
 ): Promise<{ data: SectionRow[] | null; error: unknown }> {
+  const detail = opts.addons ?? "full";
+
   // Skipping balance_addons keeps the heavy jsonb out of the read entirely,
   // not just out of the response.
-  if (opts.withAddons === false) {
+  if (detail === "none") {
     const lean = await buildQuery(supabase, SECTION_COLUMNS_NO_ADDONS, filter);
     if (!lean.error) {
       const rows = ((lean.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
@@ -236,6 +272,24 @@ export async function selectSections(
       return { data: rows, error: null };
     }
     // Fall through to the progressive fallback below if those columns are missing.
+  }
+
+  // Same idea, but keeping the addon type names — only possible once the
+  // generated column exists. Until add_sections_addon_types.sql is run this
+  // query fails and we fall back to reading the jsonb and deriving the types.
+  if (detail === "types" && addonTypesColumnMayExist()) {
+    const withTypes = await buildQuery(supabase, SECTION_COLUMNS_TYPES, filter);
+    if (!withTypes.error) {
+      rememberAddonTypesColumn(true);
+      const rows = ((withTypes.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        balance_addons: null,
+      })) as unknown as SectionRow[];
+      return { data: rows, error: null };
+    }
+    // Probing on every request would double the round-trips for as long as the
+    // migration is unrun, which is worse than not having it at all.
+    rememberAddonTypesColumn(false);
   }
 
   const result = await buildQuery(supabase, SECTION_COLUMNS_FULL, filter);
@@ -364,9 +418,15 @@ export function sectionMapper(detail: AddonDetail = "full") {
   return (row: SectionRow) => {
     const { addons, ...section } = sectionToApi(row);
     if (detail === "none") return section;
-    const types = (Array.isArray(addons) ? addons : [])
-      .map((a) => (a && typeof a === "object" ? (a as { type?: unknown }).type : undefined))
-      .filter((t): t is string => typeof t === "string");
+    // Prefer the generated column when the read supplied it; otherwise derive
+    // the names from the addon objects, which is what happens before the
+    // migration has been run.
+    const generated = row.addon_types;
+    const types = Array.isArray(generated)
+      ? generated.filter((t): t is string => typeof t === "string")
+      : (Array.isArray(addons) ? addons : [])
+          .map((a) => (a && typeof a === "object" ? (a as { type?: unknown }).type : undefined))
+          .filter((t): t is string => typeof t === "string");
     return { ...section, addonTypes: types };
   };
 }
