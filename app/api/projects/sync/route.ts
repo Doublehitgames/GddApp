@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
 import { getRemoteConfig } from "@/lib/remoteConfig";
-import { normalizeSectionAddons, stableAddonsForCompare } from "@/lib/addons/normalize";
 
 /** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
 const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
@@ -57,18 +56,10 @@ type CloudSyncQuotaStatus = {
   consumedThisSync: number;
 };
 
-type SyncAddonChange = {
-  action: "added" | "updated" | "removed";
-  addonId: string;
-  addonType: string;
-  addonName: string;
-};
-
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart" | "dataId" | "linkedSpreadsheet">;
-  addons: SyncAddonChange[];
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId">;
 };
 
 function getHourlyCreditLimit(): number {
@@ -112,19 +103,6 @@ function isMissingUsageTable(error: unknown) {
     combined.includes("supabase_non_json_response") ||
     combined.includes("supabase_unavailable")
   );
-}
-
-function isMissingBalanceAddonsColumn(error: unknown) {
-  const message =
-    typeof error === "object" && error && "message" in error
-      ? String((error as { message?: unknown }).message || "")
-      : "";
-  const details =
-    typeof error === "object" && error && "details" in error
-      ? String((error as { details?: unknown }).details || "")
-      : "";
-  const combined = `${message} ${details}`.toLowerCase();
-  return combined.includes("balance_addons") && combined.includes("column");
 }
 
 function isMissingProjectCoverImageColumn(error: unknown) {
@@ -210,35 +188,6 @@ function getSupabaseErrorMessage(err: unknown, fallback: string): string {
     if (s && s !== "{}") return s;
   } catch {}
   return fallback;
-}
-
-function getDefaultAddonNameByType(type: string): string {
-  switch (type) {
-    case "xpBalance":
-      return "Balanceamento";
-    case "progressionTable":
-      return "Tabela";
-    case "economyLink":
-      return "Economia";
-    case "currency":
-      return "Moeda";
-    case "globalVariable":
-      return "Variável";
-    case "inventory":
-      return "Inventário";
-    case "production":
-      return "Produção";
-    default:
-      return "Addon";
-  }
-}
-
-function getAddonNameForSummary(rawAddon: unknown): string {
-  if (!rawAddon || typeof rawAddon !== "object") return "Addon";
-  const addon = rawAddon as { name?: unknown; type?: unknown };
-  if (typeof addon.name === "string" && addon.name.trim()) return addon.name.trim();
-  if (typeof addon.type === "string" && addon.type.trim()) return getDefaultAddonNameByType(addon.type.trim());
-  return "Addon";
 }
 
 export async function POST(request: NextRequest) {
@@ -395,7 +344,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let includeBalanceAddonsColumn = true;
     let includeThumbImageColumn = true;
     let includeFlowchartStateColumn = true;
     let includeContentBlocksColumn = true;
@@ -412,8 +360,6 @@ export async function POST(request: NextRequest) {
         "color",
         "domain_tags",
         "data_id",
-        "linked_spreadsheet_id",
-        includeBalanceAddonsColumn ? "balance_addons" : null,
         includeThumbImageColumn ? "thumb_image_url" : null,
         includeFlowchartStateColumn ? "flowchart_state" : null,
         includeContentBlocksColumn ? "content_blocks" : null,
@@ -430,7 +376,6 @@ export async function POST(request: NextRequest) {
       if (!existingErr) {
         existingSections = (current.data || []).map((section: any) => ({
           ...section,
-          balance_addons: includeBalanceAddonsColumn ? section.balance_addons ?? null : null,
           thumb_image_url: includeThumbImageColumn ? section.thumb_image_url ?? null : null,
           flowchart_state: includeFlowchartStateColumn ? section.flowchart_state ?? null : null,
           content_blocks: includeContentBlocksColumn ? section.content_blocks ?? null : null,
@@ -439,10 +384,6 @@ export async function POST(request: NextRequest) {
       }
 
       let retried = false;
-      if (includeBalanceAddonsColumn && isMissingBalanceAddonsColumn(existingErr)) {
-        includeBalanceAddonsColumn = false;
-        retried = true;
-      }
       if (includeThumbImageColumn && isMissingSectionThumbImageColumn(existingErr)) {
         includeThumbImageColumn = false;
         retried = true;
@@ -497,11 +438,9 @@ export async function POST(request: NextRequest) {
       if (arrA.length !== arrB.length) return false;
       return arrA.every((v, i) => v === arrB[i]);
     };
-    const addonsEqual = (a: unknown, b: unknown): boolean => stableAddonsForCompare(a) === stableAddonsForCompare(b);
     const flowchartStateEqual = (a: unknown, b: unknown): boolean => stableSerialize(a) === stableSerialize(b);
     const getSectionChangeSummary = (existing: any | undefined, section: any): SyncSectionChangeSummary => {
       const facets: SyncSectionChangeSummary["facets"] = [];
-      const addons: SyncAddonChange[] = [];
 
       if (!existing) {
         facets.push("created");
@@ -514,55 +453,14 @@ export async function POST(request: NextRequest) {
         if ((existing.color || null) !== (section.color || null)) facets.push("color");
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
         if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
-        if ((existing.linked_spreadsheet_id || null) !== (section.linkedSpreadsheetId || null)) facets.push("linkedSpreadsheet");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
-
-      const previousAddons = normalizeSectionAddons(existing?.balance_addons) || [];
-      const incomingAddons = normalizeSectionAddons(section?.addons) || [];
-      const previousById = new Map(previousAddons.map((addon) => [addon.id, addon]));
-      const incomingById = new Map(incomingAddons.map((addon) => [addon.id, addon]));
-
-      for (const incomingAddon of incomingAddons) {
-        const previousAddon = previousById.get(incomingAddon.id);
-        if (!previousAddon) {
-          addons.push({
-            action: "added",
-            addonId: incomingAddon.id,
-            addonType: incomingAddon.type,
-            addonName: getAddonNameForSummary(incomingAddon),
-          });
-          continue;
-        }
-        if (stableAddonsForCompare([previousAddon]) !== stableAddonsForCompare([incomingAddon])) {
-          addons.push({
-            action: "updated",
-            addonId: incomingAddon.id,
-            addonType: incomingAddon.type,
-            addonName: getAddonNameForSummary(incomingAddon),
-          });
-        }
-      }
-
-      for (const previousAddon of previousAddons) {
-        if (!incomingById.has(previousAddon.id)) {
-          addons.push({
-            action: "removed",
-            addonId: previousAddon.id,
-            addonType: previousAddon.type,
-            addonName: getAddonNameForSummary(previousAddon),
-          });
-        }
-      }
-
-      if (addons.length > 0) facets.push("addons");
 
       const uniqueFacets = Array.from(new Set(facets));
       return {
         sectionId: String(section.id),
         sectionTitle: (section.title && String(section.title).trim()) || "Sem título",
         facets: uniqueFacets,
-        addons,
       };
     };
 
@@ -578,9 +476,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) !== (section.color || null) ||
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         (existing.data_id || null) !== (section.dataId || null) ||
-        (existing.linked_spreadsheet_id || null) !== (section.linkedSpreadsheetId || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
-        !addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
         stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
           stableSerialize(section.contentBlocks ?? null)
@@ -614,9 +510,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) === (section.color || null) &&
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         (existing.data_id || null) === (section.dataId || null) &&
-        (existing.linked_spreadsheet_id || null) === (section.linkedSpreadsheetId || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
-        addonsEqual((existing as { balance_addons?: unknown }).balance_addons, section.addons) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
       if (onlyOrderChanged) {
         orderOnlyList.push(section);
@@ -756,7 +650,6 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: mergedMindmapSettings,
         ai_instructions: project.aiInstructions || "",
-        linked_spreadsheets: project.linkedSpreadsheets ?? [],
         updated_at: project.updatedAt,
       };
       let { error: pErr } = await supabase
@@ -781,7 +674,6 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: project.mindMapSettings || {},
         ai_instructions: project.aiInstructions || "",
-        linked_spreadsheets: project.linkedSpreadsheets ?? [],
         created_at: project.createdAt,
         updated_at: project.updatedAt,
       };
@@ -841,14 +733,10 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         data_id: s.dataId != null ? String(s.dataId) : null,
-        linked_spreadsheet_id: s.linkedSpreadsheetId != null ? String(s.linkedSpreadsheetId) : null,
-        addon_group_notes: s.addonGroupNotes && Object.keys(s.addonGroupNotes).length > 0 ? s.addonGroupNotes : null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
-        balance_addons: normalizeSectionAddons(s.addons) || [],
         flowchart_state: s.flowchartState ?? null,
         content_blocks: Array.isArray(s.contentBlocks) && s.contentBlocks.length > 0 ? s.contentBlocks : null,
       }));
-      const hasAnyAddonPayload = rows.some((row) => Array.isArray(row.balance_addons) && row.balance_addons.length > 0);
       const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
       const hasAnyFlowchartPayload = rows.some((row) => row.flowchart_state != null);
       const hasAnyContentBlocksPayload = rows.some((row) => row.content_blocks != null);
@@ -868,7 +756,6 @@ export async function POST(request: NextRequest) {
         if (upsertBatchIds.has(pid) || existingDbIds.has(pid)) return r;
         return { ...r, parent_id: null };
       });
-      let droppedAddonsColumn = false;
       let droppedThumbColumn = false;
       let droppedFlowchartColumn = false;
       let droppedContentBlocksColumn = false;
@@ -881,11 +768,6 @@ export async function POST(request: NextRequest) {
         if (!sErr) break;
 
         let retried = false;
-        if (!droppedAddonsColumn && isMissingBalanceAddonsColumn(sErr)) {
-          rowsForUpsert = rowsForUpsert.map(({ balance_addons: _ignored, ...rest }) => rest);
-          droppedAddonsColumn = true;
-          retried = true;
-        }
         if (!droppedThumbColumn && isMissingSectionThumbImageColumn(sErr)) {
           rowsForUpsert = rowsForUpsert.map(({ thumb_image_url: _ignored, ...rest }) => rest);
           droppedThumbColumn = true;
@@ -902,17 +784,6 @@ export async function POST(request: NextRequest) {
           retried = true;
         }
         if (!retried) break;
-      }
-
-      if (!sErr && droppedAddonsColumn && hasAnyAddonPayload) {
-        return NextResponse.json(
-          {
-            error: "addons_column_missing_in_sections",
-            code: "sections_balance_addons_column_missing",
-            hint: "Aplique a migração de addons (coluna sections.balance_addons) no Supabase para persistir os addons.",
-          },
-          { status: 500 }
-        );
       }
       if (!sErr && droppedThumbColumn && hasAnyThumbPayload) {
         console.warn("[api/projects/sync] sections.thumb_image_url ausente; sincronizando sem thumbs.");
@@ -964,18 +835,12 @@ export async function POST(request: NextRequest) {
           content: r.content ?? "",
           sort_order: r.sort_order ?? 0,
           color: r.color ?? null,
-          balance_addons: r.balance_addons ?? [],
           created_at: r.updated_at ?? nowIso,
           updated_by: r.updated_by ?? null,
           updated_by_name: r.updated_by_name ?? null,
         }));
       if (versionRows.length > 0) {
-        let { error: verErr } = await supabase.from("section_versions").insert(versionRows);
-        if (verErr && isMissingBalanceAddonsColumn(verErr)) {
-          const versionRowsWithoutAddons = versionRows.map(({ balance_addons: _ignored, ...rest }) => rest);
-          const retry = await supabase.from("section_versions").insert(versionRowsWithoutAddons);
-          verErr = retry.error;
-        }
+        const { error: verErr } = await supabase.from("section_versions").insert(versionRows);
         if (verErr) console.error("[api/projects/sync] section_versions insert failed:", verErr);
       }
     }

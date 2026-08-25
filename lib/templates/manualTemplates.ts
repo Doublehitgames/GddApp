@@ -1,6 +1,5 @@
 import type { AppLocale } from "@/lib/i18n/config";
-import type { BuildPageTypeAddonsOptions, PageTypeId } from "@/lib/pageTypes/registry";
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 
 export type WizardProjectType = "digital_game";
 export type WizardGenre = "rpg" | "roguelike" | "platformer" | "puzzle" | "simulation";
@@ -22,17 +21,11 @@ export type TemplateSection = {
   content: string;
   subsections?: TemplateSection[];
   /**
-   * Optional page type assignment. When present, the section is created with
-   * the page type's default addons seeded — the same way the sidebar's
-   * page-type picker does — instead of a plain text-only section.
-   *
-   * `options` is fed into `buildPageTypeAddons` to pre-seed the addons
-   * (e.g. attribute presets, seeded currency defaults, etc.).
+   * Descrição da página em blocos nativos (BlockNote). Quando presente, vira
+   * o `contentBlocks` da seção criada; `content` continua sendo o espelho
+   * markdown usado em busca e prévias.
    */
-  pageType?: {
-    id: PageTypeId;
-    options?: BuildPageTypeAddonsOptions;
-  };
+  contentBlocks?: RichDocBlock[];
 };
 
 export type ResolvedTemplate = {
@@ -56,8 +49,8 @@ const section = (
   title: string,
   content: string,
   subsections?: TemplateSection[],
-  pageType?: TemplateSection["pageType"]
-): TemplateSection => ({ id, title, content, subsections, pageType });
+  contentBlocks?: RichDocBlock[]
+): TemplateSection => ({ id, title, content, subsections, contentBlocks });
 
 const GENRE_META: Record<WizardGenre, GenreMeta> = {
   rpg: {
@@ -199,91 +192,6 @@ const TEMPLATE_TEXT_TRANSLATIONS: Record<string, LocaleText> = {
 };
 
 // ───────────────────────────────────────────────────────────────────
-// Page-type seed helpers
-// ───────────────────────────────────────────────────────────────────
-// Small factories that build `BuildPageTypeAddonsOptions` payloads used
-// to pre-seed addons on page-typed template sections. Kept here — not in
-// the registry — because they're opinionated defaults scoped to template
-// starter kits, not to the app-wide page type system.
-
-/**
- * Progression table seed covering the most common 1→20 level range with a
- * gentle exponential growth. Good default for starter kits because it shows
- * the progression curve visibly without feeling overwhelming.
- */
-function seedProgression1to20(): TemplateSection["pageType"] {
-  return {
-    id: "progression",
-    // progression page type seeds xpBalance + progressionTable with its own
-    // defaults; we don't need to override here — tuning is done in the UI.
-  };
-}
-
-/** RPG-style attributes: HP, ATK, DEF, MAG, SPD. */
-function seedRpgAttributes(): TemplateSection["pageType"] {
-  return {
-    id: "attributeDefinitions",
-    options: {
-      attributeDefinitionsOverrides: {
-        attributes: [
-          { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
-          { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
-          { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
-          { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
-          { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
-        ],
-      },
-    },
-  };
-}
-
-/** Platformer-style attributes: HP and Speed — simpler, movement-centric. */
-function seedPlatformerAttributes(): TemplateSection["pageType"] {
-  return {
-    id: "attributeDefinitions",
-    options: {
-      attributeDefinitionsOverrides: {
-        attributes: [
-          { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
-          { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
-          { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
-        ],
-      },
-    },
-  };
-}
-
-/** Simple economy page — defaults to the registry's seeded currency. */
-function seedEconomy(): TemplateSection["pageType"] {
-  return { id: "economy" };
-}
-
-/** Single character example (class/enemy) — relies on registry defaults. */
-function seedCharacterExample(): TemplateSection["pageType"] {
-  return { id: "characters" };
-}
-
-/** Single equipment item example. */
-function seedEquipmentExample(): TemplateSection["pageType"] {
-  return { id: "equipmentItem" };
-}
-
-/** Single consumable/collectible item example. */
-function seedItemExample(): TemplateSection["pageType"] {
-  return { id: "items" };
-}
-
-/** Craft table example — starts empty, user links recipes later. */
-function seedCraftTableExample(): TemplateSection["pageType"] {
-  return { id: "craftTable" };
-}
-
-/** Narrative rich-doc page for lore/script content. */
-function seedNarrative(): TemplateSection["pageType"] {
-  return { id: "narrative" };
-}
-
-// ───────────────────────────────────────────────────────────────────
 // Rich doc block builders — short, readable helpers for authoring the
 // templates below. We keep the output as BlockNote-compatible blocks
 // (matching the editor's document shape). Minimal metadata: the editor
@@ -333,7 +241,7 @@ function callout(
  * show a worked example from a fictional game.
  *
  * `shortSummary` fills the section's plain `content` markdown (used in
- * search + list previews). The `blocks` become the richDoc addon body.
+ * search + list previews). The `blocks` become the page's description.
  */
 function narrative(
   id: string,
@@ -347,10 +255,7 @@ function narrative(
     title,
     content: shortSummary,
     subsections,
-    pageType: {
-      id: "narrative",
-      options: { richDocBlocks: blocks },
-    },
+    contentBlocks: blocks,
   };
 }
 
@@ -375,10 +280,7 @@ function groupContainer(
     title,
     content: summary,
     subsections: children,
-    pageType: {
-      id: "narrative",
-      options: {
-        richDocBlocks: [
+    contentBlocks: [
           h(title, 2),
           p(intro),
           h("O que tem aqui", 3),
@@ -388,8 +290,6 @@ function groupContainer(
             "Abra as subpaginas ao lado pra ver detalhes. Voce pode preencher nessa ordem ou saltar pro que quer atacar primeiro."
           ),
         ],
-      },
-    },
   };
 }
 
@@ -429,10 +329,7 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
       id: "common-mini-progressao",
       title: "Progressao",
       content: "Como o jogador evolui, desbloqueia conteudo e percebe ganho de poder.",
-      pageType: {
-        id: "progression",
-        options: {
-          richDocBlocks: [
+      contentBlocks: [
             h("O que e Progressao?", 2),
             p(
               "Progressao e a sensacao de \"estou ficando melhor\" que o jogador percebe ao longo da sessao e entre sessoes. Pode ser numerica (nivel/stats), de habilidade (player aprende melhor), de conteudo (novas areas), ou narrativa (historia avanca)."
@@ -455,8 +352,6 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
               "Progressao e o que faz o jogador VOLTAR amanha. Se ele nao tem claro o que ganha por jogar mais 30min, voce perde retencao."
             ),
           ],
-        },
-      },
     },
     narrative(
       "common-mini-controles",
@@ -607,10 +502,7 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
       id: "common-medio-progressao",
       title: "Progressao e Dificuldade",
       content: "Curva de progressao + dificuldade calibrada + marcos de desbloqueio.",
-      pageType: {
-        id: "progression",
-        options: {
-          richDocBlocks: [
+      contentBlocks: [
             h("Progressao e Dificuldade", 2),
             p(
               "Progressao e \"o que o jogador ganha ao jogar\". Dificuldade e \"qual desafio e apresentado\". As duas precisam andar juntas: se so sobe progressao, jogo vira trivial; se so sobe dificuldade, vira frustrante."
@@ -638,8 +530,6 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
               "Dificuldade deve subir MAIS LENTAMENTE que progressao. Senao, o jogador nao sente ganho — continua no mesmo nivel de desafio relativo."
             ),
           ],
-        },
-      },
     },
     narrative(
       "common-medio-controles",
@@ -1028,10 +918,7 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
           id: "common-completo-balance-xp",
           title: "Balanceamento de XP",
           content: "Custos de nivel, pacing de level up e power spikes.",
-          pageType: {
-            id: "progression",
-            options: {
-              richDocBlocks: [
+          contentBlocks: [
                 h("Balanceamento de XP", 2),
                 p(
                   "XP e a moeda de tempo do jogador. Cada atividade (matar, quest, boss) da XP. Curva define quanto XP subir de nivel. Erros aqui afetam a experiencia inteira."
@@ -1058,17 +945,12 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
                   "A tabela ao lado comeca com exponencial 1.15. Ajuste apos PRIMEIRO playtest — nunca em teoria pura. Seu jogo concreto tem demandas que numero sozinho nao prevê."
                 ),
               ],
-            },
-          },
         },
         {
           id: "common-completo-balance-economia",
           title: "Balanceamento de Economia",
           content: "Fontes/sinks de moeda, inflacao e controles antifarming.",
-          pageType: {
-            id: "economy",
-            options: {
-              richDocBlocks: [
+          contentBlocks: [
                 h("Balanceamento de Economia", 2),
                 p(
                   "Economia saudavel e circular: moeda entra (fontes), moeda sai (sinks). Se entra mais que sai, inflacao (moeda vira lixo). Se sai mais que entra, escassez (jogador nao consegue nada)."
@@ -1100,8 +982,6 @@ const COMMON_BY_SCOPE: Record<WizardScope, TemplateSection[]> = {
                   "Economia e sistema VIVO. Monitore apos lancamento: se preco de item X na trade/auction house disparar, algum sink quebrou."
                 ),
               ],
-            },
-          },
         },
       ]
     ),
@@ -1476,19 +1356,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "rpg-mini-classes",
         title: "Classes e Atributos",
         content: "5 atributos base + identidade de classe (Kael, Aria, Bran).",
-        pageType: {
-          id: "attributeDefinitions",
-          options: {
-            attributeDefinitionsOverrides: {
-              attributes: [
-                { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
-                { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
-                { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
-                { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
-                { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
-              ],
-            },
-            richDocBlocks: [
+        contentBlocks: [
               h("Classes e Atributos", 2),
               p(
                 "Elder Realms usa cinco atributos base (HP/ATK/DEF/MAG/SPD) compartilhados por todas as classes."
@@ -1505,8 +1373,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Como mini-template, esta versao nao gera paginas individuais de classes — crie-as manualmente usando o tipo \"Personagem\" no sidebar."
               ),
             ],
-          },
-        },
       },
       narrative(
         "rpg-mini-combate",
@@ -1548,7 +1414,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
           callout(
             "warning",
-            "Esta e uma pagina Narrativa — o addon Rich Doc abaixo e seu espaco principal pra lore. Use headings (H2, H3) pra organizar por capitulos, regioes ou personagens."
+            "Esta e uma pagina de lore — a descricao abaixo e seu espaco principal. Use headings (H2, H3) pra organizar por capitulos, regioes ou personagens."
           ),
         ]
       ),
@@ -1652,26 +1518,14 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
         ],
         [
-          // Typed page (attributeDefinitions) + richDoc addon added by registry
+          // Pagina de atributos: a ficha vive na propria descricao
           // because richDocBlocks is present. Kept as a plain object literal
           // because `narrative()` hardcodes page type to "narrative".
           {
             id: "rpg-medio-atributos",
             title: "Atributos Base",
             content: "Os cinco atributos compartilhados por Kael, Aria e Bran.",
-            pageType: {
-              id: "attributeDefinitions",
-              options: {
-                attributeDefinitionsOverrides: {
-                  attributes: [
-                    { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
-                    { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
-                    { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
-                    { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
-                    { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
-                  ],
-                },
-                richDocBlocks: [
+            contentBlocks: [
                   h("Atributos Base", 2),
                   p(
                     "Elder Realms usa cinco atributos numericos que afetam combate e exploracao. O painel ao lado mostra os valores iniciais; os reais escalam pela tabela de progressao (nivel 1 a 20)."
@@ -1690,17 +1544,12 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                     "SPD afeta ordem E esquiva de proposito: um unico atributo com dois efeitos simplifica o mental model sem empobrecer o balanceamento."
                   ),
                 ],
-              },
-            },
           },
           {
             id: "rpg-medio-kael",
             title: "Kael, o Guerreiro Solar",
             content: "Ficha completa do protagonista tanque/DPS corpo-a-corpo.",
-            pageType: {
-              id: "characters",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Kael, o Guerreiro Solar", 2),
                   p(
                     "Kael acordou sem memorias no topo da Torre Vermelha, com a Reliquia do Sol fundida ao peito. Ele nao escolheu ser o portador — mas e o unico que pode selar as fendas."
@@ -1711,15 +1560,13 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                   li("Contra: inimigos com SPD alto que evitam seus golpes pesados."),
                   callout(
                     "note",
-                    "Esta pagina ja vem com os addons de Perfil de Atributos, Curva de XP, Tabela de Progressao e Efeitos por Personagem. Use-os pra balancear numeros sem mexer na ficha narrativa."
+                    "Separe os numeros do texto: uma tabela pra atributos e curva de nivel, e a prosa pra explicar o papel do personagem no jogo."
                   ),
                   callout(
                     "warning",
                     "Esta e uma classe de exemplo pra voce duplicar. Crie Aria, Bran e quantos mais precisar — cada uma com Perfil de Atributos proprio linkado a mesma pagina de Atributos Base."
                   ),
                 ],
-              },
-            },
           },
           narrative(
             "rpg-medio-skills",
@@ -1821,10 +1668,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "rpg-medio-item-exemplo",
             title: "Lamina do Crepusculo",
             content: "Espada lendaria de Bran — equipamento de exemplo com efeitos.",
-            pageType: {
-              id: "equipmentItem",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Lamina do Crepusculo", 2),
                   p(
                     "A Lamina do Crepusculo foi forjada pelos Nomades do Veu no ultimo eclipse. So quem ja matou um ser do Veu pode empunha-la — uma condicao que Bran cumpre no capitulo 3 da historia principal."
@@ -1838,7 +1682,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                   ),
                   callout(
                     "note",
-                    "Esta pagina ja vem com os addons de Inventario, Economia e Efeitos por Personagem. Voce ajusta preco, atributos e inventario nos paineis laterais."
+                    "Descreva o item em prosa e use uma tabela pra preco, categoria e efeitos. Assim da pra bater o olho e comparar com os outros itens."
                   ),
                   callout(
                     "design-decision",
@@ -1849,8 +1693,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                     "Duplique esta pagina pra criar mais equipamentos. Mantenha o padrao: 1-2 atributos + 1 efeito ativo ou passivo + descricao com gancho narrativo."
                   ),
                 ],
-              },
-            },
           },
         ]
       ),
@@ -1881,7 +1723,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
           callout(
             "warning",
-            "Este addon Rich Doc e perfeito pra desenvolver lore extensa. Use headings (H2, H3) pra organizar por capitulos, personagens ou regioes. Callouts tipo design-decision ajudam voce a lembrar POR QUE tomou certas decisoes narrativas."
+            "A descricao da pagina aguenta lore extensa. Use headings (H2, H3) pra organizar por capitulos, personagens ou regioes. Callouts tipo design-decision ajudam voce a lembrar POR QUE tomou certas decisoes narrativas."
           ),
         ]
       ),
@@ -1890,10 +1732,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "rpg-medio-economia",
         title: "Economia",
         content: "Moeda Ouro de Elder Realms, fontes, sinks e regras de progressao.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia — Elder Realms", 2),
               p(
                 "Elder Realms usa uma unica moeda, o Ouro. Ela e ganha em combate, explorando baus e vendendo itens. E gasta comprando consumiveis, reparando equipamentos e em servicos de cidade (tavernas, fast-travel)."
@@ -1911,7 +1750,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
 
               callout(
                 "note",
-                "Esta pagina ja vem com o addon de Moeda configurado. Use o painel lateral pra ajustar nome (\"Ouro\" virou \"Coins\" por padrao — renomeie), codigo e tipo."
+                "Defina aqui o nome da moeda, o codigo curto que a programacao usa e onde o jogador ganha e gasta. Uma moeda por pagina deixa mais facil de achar depois."
               ),
               callout(
                 "design-decision",
@@ -1926,8 +1765,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Se seu jogo precisa de mais moedas, crie novas paginas de Economia — nao empilhe tudo nesta. Paginas separadas tornam mais facil linkar regras de conversao entre elas."
               ),
             ],
-          },
-        },
       },
     ],
     completo: [
@@ -2042,19 +1879,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "rpg-completo-atributos-base",
             title: "Atributos Base",
             content: "5 atributos compartilhados: HP, ATK, DEF, MAG, SPD.",
-            pageType: {
-              id: "attributeDefinitions",
-              options: {
-                attributeDefinitionsOverrides: {
-                  attributes: [
-                    { key: "hp", label: "HP", valueType: "int", defaultValue: 100, min: 0 },
-                    { key: "atk", label: "ATK", valueType: "int", defaultValue: 10, min: 0 },
-                    { key: "def", label: "DEF", valueType: "int", defaultValue: 5, min: 0 },
-                    { key: "mag", label: "MAG", valueType: "int", defaultValue: 8, min: 0 },
-                    { key: "spd", label: "SPD", valueType: "int", defaultValue: 5, min: 0 },
-                  ],
-                },
-                richDocBlocks: [
+            contentBlocks: [
                   h("Atributos Base — Elder Realms", 2),
                   li("HP — pontos de vida. Morre em 0."),
                   li("ATK — dano fisico por golpe."),
@@ -2066,8 +1891,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                     "Esta pagina e referenciada por todas as classes. Adicionar atributo aqui (ex: LUK) afeta todos os personagens."
                   ),
                 ],
-              },
-            },
           },
           narrative(
             "rpg-completo-classes",
@@ -2092,10 +1915,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 id: "rpg-completo-kael",
                 title: "Kael, o Guerreiro Solar",
                 content: "Tanque e atacante corpo-a-corpo, portador da Reliquia do Sol.",
-                pageType: {
-                  id: "characters",
-                  options: {
-                    richDocBlocks: [
+                contentBlocks: [
                       h("Kael, o Guerreiro Solar", 2),
                       p(
                         "Guerreiro amnesico que acorda no topo da Torre Vermelha com a Reliquia do Sol fundida ao peito. Tanque + DPS corpo-a-corpo."
@@ -2108,8 +1928,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                         "Esta pagina ja vem com Perfil de Atributos, Curva de XP, Tabela de Progressao e Efeitos. Duplique-a pra criar Aria e Bran."
                       ),
                     ],
-                  },
-                },
               },
             ]
           ),
@@ -2216,10 +2034,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "rpg-completo-lamina",
             title: "Lamina do Crepusculo",
             content: "Espada lendaria de Bran, ganha no capitulo 3.",
-            pageType: {
-              id: "equipmentItem",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Lamina do Crepusculo", 2),
                   p(
                     "Forjada pelos Nomades do Veu no ultimo eclipse. So quem ja matou um ser do Veu pode empunha-la."
@@ -2231,8 +2046,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                     "Pre-requisito narrativo (matar um ser do Veu) em vez de nivel. Quando Bran recebe a lamina, ja tem contexto — ele ganhou."
                   ),
                 ],
-              },
-            },
           },
           narrative(
             "rpg-completo-loot",
@@ -2295,7 +2108,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
           ),
           callout(
             "warning",
-            "Esta pagina e o lar da lore. Use o addon Rich Doc abaixo pra escrever backstories de NPCs, descricoes de regioes e roteiros de quest. Callouts de design-decision ajudam a lembrar POR QUE tomou certas decisoes narrativas."
+            "Esta pagina e o lar da lore. Use a descricao abaixo pra escrever backstories de NPCs, descricoes de regioes e roteiros de quest. Callouts de design-decision ajudam a lembrar POR QUE tomou certas decisoes narrativas."
           ),
         ]
       ),
@@ -2322,25 +2135,20 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "rpg-completo-mesa-forja",
             title: "Mesa de Forja",
             content: "Estacao de crafting — agrega receitas de equipamento.",
-            pageType: {
-              id: "craftTable",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Mesa de Forja", 2),
                   p(
                     "Local em Cidade Portal onde o jogador transforma materiais em equipamentos. Cada receita tem ingredientes, saida e tempo de produc ao."
                   ),
                   callout(
                     "note",
-                    "Esta mesa comeca vazia. Crie paginas de Receita no sidebar e depois ligue-as aqui pelo addon Mesa de Producao."
+                    "Esta mesa comeca vazia. Crie uma pagina por receita no sidebar e cite cada uma aqui com $[Nome da Receita]."
                   ),
                   callout(
                     "warning",
                     "Se seu jogo nao tem crafting, remova esta subsection inteira."
                   ),
                 ],
-              },
-            },
           },
         ]
       ),
@@ -2349,10 +2157,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "rpg-completo-economia",
         title: "Economia",
         content: "Moeda Ouro de Elder Realms, fontes, sinks e limites.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia — Elder Realms", 2),
               p(
                 "Moeda unica (Ouro). Fontes: combate, baus, venda de itens. Sinks: reparo, consumiveis, fast-travel, upgrade."
@@ -2379,8 +2184,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Monetizacao em RPG premium e diferente de F2P. Esta pagina cobre economia IN-GAME. Se seu jogo tem store real (DLCs, skins pagas), crie pagina separada pra modelo de monetizacao."
               ),
             ],
-          },
-        },
       },
     ],
   },
@@ -2572,10 +2375,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "rogue-medio-economia",
         title: "Economia de Run",
         content: "Vestigios (moeda de run) em Abyss Descent: drops, lojas, rerolls.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia de Run", 2),
               p(
                 "Abyss Descent tem DUAS moedas com ciclos diferentes:"
@@ -2602,8 +2402,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Esta pagina de Economia ja vem configurada com UMA moeda. Pra Abyss Descent, crie uma SEGUNDA pagina de Economia pra Essence."
               ),
             ],
-          },
-        },
       },
     ],
     completo: [
@@ -2802,10 +2600,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "rogue-completo-economia",
         title: "Economia e Loja de Run",
         content: "Vestigios (run) + Essence (meta) em Abyss Descent.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia — Abyss Descent", 2),
               p("Duas moedas, ciclos diferentes:"),
               li("Vestigios — moeda de run. Some ao morrer."),
@@ -2827,8 +2622,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Esta pagina representa UMA moeda. Crie segunda pagina de Economia pra Essence (meta currency) com configuracao diferente."
               ),
             ],
-          },
-        },
       },
     ],
   },
@@ -2953,17 +2746,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "plat-medio-atributos",
         title: "Atributos do Jogador",
         content: "HP, Speed e Jump Height de Spark — valores base ajustaveis.",
-        pageType: {
-          id: "attributeDefinitions",
-          options: {
-            attributeDefinitionsOverrides: {
-              attributes: [
-                { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
-                { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
-                { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
-              ],
-            },
-            richDocBlocks: [
+        contentBlocks: [
               h("Atributos do Jogador — Spark the Fox", 2),
               p(
                 "Platformer tem atributos mais simples que RPG — o foco e movimento, nao numeros. Spark tem 3 atributos base."
@@ -2984,8 +2767,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Platformer pode viver com 2-3 atributos. Evite o impulso de \"RPG-izar\" — em platformer, design da FASE e muito mais importante que stats do personagem."
               ),
             ],
-          },
-        },
       },
       narrative(
         "plat-medio-level-design",
@@ -3071,10 +2852,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "plat-medio-moeda-exemplo",
             title: "Moeda Estelar",
             content: "Colecionavel basico de Spark the Fox — 100 delas dao vida extra.",
-            pageType: {
-              id: "items",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Moeda Estelar", 2),
                   p(
                     "Moedas brilhantes espalhadas por todas as fases. 100 moedas coletadas dao uma vida extra. Elas nao sao necessarias pra clear o jogo — sao recompensa de exploracao."
@@ -3094,8 +2872,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                     "Duplique esta pagina pra criar os outros colecionaveis (Cristais, Relicarios) — cada um com sua mecanica e raridade."
                   ),
                 ],
-              },
-            },
           },
         ]
       ),
@@ -3219,17 +2995,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "plat-completo-atributos",
         title: "Atributos do Jogador",
         content: "HP + Speed + Jump Height de Spark, com notas de balanceamento.",
-        pageType: {
-          id: "attributeDefinitions",
-          options: {
-            attributeDefinitionsOverrides: {
-              attributes: [
-                { key: "hp", label: "HP", valueType: "int", defaultValue: 3, min: 0 },
-                { key: "spd", label: "Speed", valueType: "float", defaultValue: 1.0, min: 0 },
-                { key: "jump", label: "Jump Height", valueType: "float", defaultValue: 1.5, min: 0 },
-              ],
-            },
-            richDocBlocks: [
+        contentBlocks: [
               h("Atributos do Jogador — Detalhe", 2),
               p(
                 "Spark tem 3 atributos minimalistas. Aqui detalhamos interacao com itens, power-ups e modo assist."
@@ -3259,8 +3025,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Em fases de boss, alguns atributos sao OVERRIDEN (ex: speed fixo no boss pra consistencia). Documente excecoes por fase."
               ),
             ],
-          },
-        },
       },
       narrative(
         "plat-completo-combate",
@@ -3311,10 +3075,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "plat-completo-colecionaveis",
         title: "Economia de Colecionaveis",
         content: "Moedas + Cristais + Relicarios em Spark the Fox.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia de Colecionaveis", 2),
               p(
                 "Spark tem 3 moedas/colecionaveis, cada um com publico diferente."
@@ -3340,8 +3101,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Platformer com UM unico colecionavel (ex: so moedas) atende um publico so. Multiplicar e barato (e design, nao arte) e amplia enormemente rejogabilidade."
               ),
             ],
-          },
-        },
       },
       narrative(
         "plat-completo-qa",
@@ -3862,10 +3621,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
             id: "sim-medio-carpintaria",
             title: "Carpintaria",
             content: "Workshop de exemplo de Harbor Town — agrupa receitas de madeira.",
-            pageType: {
-              id: "craftTable",
-              options: {
-                richDocBlocks: [
+            contentBlocks: [
                   h("Carpintaria", 2),
                   p(
                     "Primeiro workshop de Harbor Town. Transforma madeira bruta em tabuas e moveis. Requer 1 Lenhador alocado. Produz uma tabua a cada 20s."
@@ -3876,15 +3632,13 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                   li("Movel Simples — 2 tabua + 1 prego → 1 movel (60s)."),
                   callout(
                     "note",
-                    "Este craftTable comeca vazio. Crie paginas de Receita no sidebar (Tabua, Barril, Movel) e linke-as aqui pelo addon Mesa de Producao."
+                    "Esta mesa comeca vazia. Crie uma pagina por receita no sidebar (Tabua, Barril, Movel) e cite cada uma aqui com $[Nome da Receita]."
                   ),
                   callout(
                     "design-decision",
                     "Tempo de produc ao crescente por complexidade (20s → 40s → 60s) cria decisao: produzir muitos simples ou alguns complexos?"
                   ),
                 ],
-              },
-            },
           },
         ]
       ),
@@ -3892,10 +3646,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "sim-medio-economia",
         title: "Economia Sistemica",
         content: "Moeda Ouro + sistema de fontes/sinks em Harbor Town.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia Sistemica — Harbor Town", 2),
               p(
                 "Moeda unica: Ouro. Fontes: vendas externas (mercadorias exportadas), impostos coletados. Sinks: salarios, manutencao de workshops, compra de recursos em emergencia."
@@ -3917,8 +3668,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Se o jogador chega a ter ouro ilimitado sem pressao, quebrou. Alvo de \"breathing room\": jogador bem-sucedido tem reserva de 1-3 dias de despesas. Menos vira estressante; mais vira snowball."
               ),
             ],
-          },
-        },
       },
       narrative(
         "sim-medio-agentes",
@@ -4049,10 +3798,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 id: "sim-completo-carpintaria",
                 title: "Carpintaria",
                 content: "Workshop de madeira em Harbor Town — exemplo.",
-                pageType: {
-                  id: "craftTable",
-                  options: {
-                    richDocBlocks: [
+                contentBlocks: [
                       h("Carpintaria", 2),
                       p(
                         "Primeiro workshop de Harbor Town. Transforma madeira em tabua, barris, moveis. Tempo varia por complexidade da receita."
@@ -4062,8 +3808,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                         "Este craftTable comeca vazio. Crie paginas de Receita e linke-as aqui."
                       ),
                     ],
-                  },
-                },
               },
             ]
           ),
@@ -4092,10 +3836,7 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
         id: "sim-completo-economia",
         title: "Economia de Simulacao",
         content: "Politica de preco, inflacao e sinks estruturais em Harbor Town.",
-        pageType: {
-          id: "economy",
-          options: {
-            richDocBlocks: [
+        contentBlocks: [
               h("Economia — Harbor Town", 2),
               p(
                 "Economia tem Ouro interno (circulacao na vila) + Ouro de exportacao (ganho ao vender pro mercado externo). Precos flutuam com oferta/demanda."
@@ -4118,8 +3859,6 @@ const GENRE_BY_SCOPE: Record<WizardGenre, Record<WizardScope, TemplateSection[]>
                 "Cap de ouro util: 500-1000 em reserva e suficiente pra qualquer evento. Mais que isso, jogador deveria estar reinvestindo."
               ),
             ],
-          },
-        },
       },
       narrative(
         "sim-completo-agentes",

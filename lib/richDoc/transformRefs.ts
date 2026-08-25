@@ -1,4 +1,4 @@
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import { extractSectionReferences, findSection } from "@/utils/sectionReferences";
 
 /**

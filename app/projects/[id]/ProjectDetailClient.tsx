@@ -321,9 +321,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [showSectionTopFade, setShowSectionTopFade] = useState(false);
     const [showSectionBottomFade, setShowSectionBottomFade] = useState(false);
     const [selectedTagFilters, setSelectedTagFilters] = useState<string[]>([]);
-    const [selectedAddonFilters, setSelectedAddonFilters] = useState<string[]>([]);
     const [tagFilterMenuOpen, setTagFilterMenuOpen] = useState(false);
-    const [addonFilterMenuOpen, setAddonFilterMenuOpen] = useState(false);
     const [showSpotlightEditor, setShowSpotlightEditor] = useState(false);
     const [featureEnabled, setFeatureEnabled] = useState<Record<string, boolean>>({});
     const [detailState, setDetailState] = useState<Record<string, { enabled: boolean; value: string }>>({});
@@ -336,7 +334,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [spotlightSaved, setSpotlightSaved] = useState(false);
     const sectionListRef = useRef<HTMLDivElement | null>(null);
     const tagFilterMenuRef = useRef<HTMLDivElement | null>(null);
-    const addonFilterMenuRef = useRef<HTMLDivElement | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -562,7 +559,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
             parentId: s.parentId,
             domainTags: s.domainTags,
             pageTypeId: s.pageTypeId,
-            addonTypes: Array.from(new Set((s.addons || []).map((addon) => addon.type))).filter(Boolean) as string[],
         })),
     } : undefined;
 
@@ -678,25 +674,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         });
         return Array.from(tags).sort((a, b) => a.localeCompare(b));
     }, [project?.sections]);
-    const availableAddonTypes = useMemo(() => {
-        const addonTypes = new Set<string>();
-        (project?.sections || []).forEach((section: any) => {
-            const sectionAddons = Array.isArray(section?.addons)
-                ? section.addons
-                : Array.isArray(section?.balanceAddons)
-                    ? section.balanceAddons
-                    : [];
-            sectionAddons.forEach((addon: any) => {
-                const type = typeof addon?.type === "string" ? addon.type.trim() : "";
-                if (type) addonTypes.add(type);
-            });
-        });
-        return Array.from(addonTypes).sort((a, b) =>
-            t(`sectionDetail.history.addonType.${a}`, a).localeCompare(
-                t(`sectionDetail.history.addonType.${b}`, b)
-            )
-        );
-    }, [project?.sections, t]);
     const updateSectionFades = useCallback(() => {
         const el = sectionListRef.current;
         if (!el) {
@@ -724,9 +701,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         setSelectedTagFilters((prev) => prev.filter((tag) => availableDomainTags.includes(tag)));
     }, [availableDomainTags]);
     useEffect(() => {
-        setSelectedAddonFilters((prev) => prev.filter((type) => availableAddonTypes.includes(type)));
-    }, [availableAddonTypes]);
-    useEffect(() => {
         if (!tagFilterMenuOpen) return;
         const onPointerDown = (event: MouseEvent) => {
             if (tagFilterMenuRef.current?.contains(event.target as Node)) return;
@@ -735,15 +709,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         document.addEventListener("mousedown", onPointerDown);
         return () => document.removeEventListener("mousedown", onPointerDown);
     }, [tagFilterMenuOpen]);
-    useEffect(() => {
-        if (!addonFilterMenuOpen) return;
-        const onPointerDown = (event: MouseEvent) => {
-            if (addonFilterMenuRef.current?.contains(event.target as Node)) return;
-            setAddonFilterMenuOpen(false);
-        };
-        document.addEventListener("mousedown", onPointerDown);
-        return () => document.removeEventListener("mousedown", onPointerDown);
-    }, [addonFilterMenuOpen]);
     const canExpandAll = sectionIds.some((id: string) => !expandedSections.has(id));
     const canCollapseAll = expandedSections.size > 0;
     const handleExpandAllSections = () => {
@@ -755,11 +720,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const toggleTagFilter = (tag: string) => {
         setSelectedTagFilters((prev) =>
             prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-        );
-    };
-    const toggleAddonFilter = (type: string) => {
-        setSelectedAddonFilters((prev) =>
-            prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
         );
     };
 
@@ -1268,14 +1228,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
 }
 
 // Componente auxiliar para renderizar árvore de seções (somente links)
-function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, selectedTagFilters, selectedAddonFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
+function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, selectedTagFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
     sections: any[]; 
     projectId: string; 
     reorderSections: any; 
     sensors: any; 
     searchTerm: string;
     selectedTagFilters: string[];
-    selectedAddonFilters: string[];
     activeSectionId: string | null;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -1299,19 +1258,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
         const sectionTags = Array.isArray(section?.domainTags) ? section.domainTags : [];
         return sectionTags.some((tag: string) => selectedTagFilters.includes(tag));
     };
-    const matchesAddons = (section: any): boolean => {
-        if (selectedAddonFilters.length === 0) return true;
-        const sectionAddons = Array.isArray(section?.addons)
-            ? section.addons
-            : Array.isArray(section?.balanceAddons)
-                ? section.balanceAddons
-                : [];
-        const addonTypes = sectionAddons
-            .map((addon: any) => (typeof addon?.type === "string" ? addon.type : ""))
-            .filter(Boolean);
-        return addonTypes.some((type: string) => selectedAddonFilters.includes(type));
-    };
-    const matchesFilters = (section: any): boolean => matchesSearch(section) && matchesTags(section) && matchesAddons(section);
+    const matchesFilters = (section: any): boolean => matchesSearch(section) && matchesTags(section);
 
     // Filtrar raízes que correspondem ou têm filhos que correspondem
     const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
@@ -1328,7 +1275,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
         .filter(s => sectionMatchesOrHasMatchingChildren(s.id, sections))
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    const totalMatches = (searchTerm.trim() || selectedTagFilters.length > 0 || selectedAddonFilters.length > 0) ? sections.filter(matchesFilters).length : 0;
+    const totalMatches = (searchTerm.trim() || selectedTagFilters.length > 0) ? sections.filter(matchesFilters).length : 0;
 
     function handleDragEnd(event: DragEndEvent) {
         const { active, over } = event;
@@ -1344,7 +1291,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
 
     return (
         <>
-            {(searchTerm.trim() || selectedTagFilters.length > 0 || selectedAddonFilters.length > 0) && totalMatches > 0 && (
+            {(searchTerm.trim() || selectedTagFilters.length > 0) && totalMatches > 0 && (
                 <p className="text-sm text-gray-400 mb-2 ml-1">
                     {totalMatches} {totalMatches === 1 ? labels.resultsFoundOne : labels.resultsFoundMany}
                 </p>
@@ -1360,7 +1307,6 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
                                 projectId={projectId} 
                                 searchTerm={searchTerm}
                                 selectedTagFilters={selectedTagFilters}
-                                selectedAddonFilters={selectedAddonFilters}
                                 activeSectionId={activeSectionId}
                                 expandedSections={expandedSections}
                                 setExpandedSections={setExpandedSections}
@@ -1374,13 +1320,12 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     );
 }
 
-function SortableRootItem({ section, sections, projectId, searchTerm, selectedTagFilters, selectedAddonFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
+function SortableRootItem({ section, sections, projectId, searchTerm, selectedTagFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
     section: any; 
     sections: any[]; 
     projectId: string; 
     searchTerm: string;
     selectedTagFilters: string[];
-    selectedAddonFilters: string[];
     activeSectionId: string | null;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -1423,7 +1368,7 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
     const isActiveSection = activeSectionId === section.id;
     
     const hasChildren = sections.some((s: any) => s.parentId === section.id);
-    const isExpanded = expandedSections.has(section.id) || searchTerm.trim() || selectedTagFilters.length > 0 || selectedAddonFilters.length > 0;
+    const isExpanded = expandedSections.has(section.id) || searchTerm.trim() || selectedTagFilters.length > 0;
 
     const {
         attributes,
@@ -1500,7 +1445,6 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
                             projectId={projectId} 
                             searchTerm={searchTerm}
                             selectedTagFilters={selectedTagFilters}
-                            selectedAddonFilters={selectedAddonFilters}
                             activeSectionId={activeSectionId}
                             expandedSections={expandedSections}
                             setExpandedSections={setExpandedSections}
@@ -1513,13 +1457,12 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
     );
 }
 
-function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTagFilters, selectedAddonFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
+function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTagFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 
     parentId: string; 
     sections: any[]; 
     projectId: string; 
     searchTerm?: string;
     selectedTagFilters: string[];
-    selectedAddonFilters: string[];
     activeSectionId: string | null;
     expandedSections: Set<string>;
     setExpandedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -1539,19 +1482,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
         const sectionTags = Array.isArray(section?.domainTags) ? section.domainTags : [];
         return sectionTags.some((tag: string) => selectedTagFilters.includes(tag));
     };
-    const matchesAddons = (section: any): boolean => {
-        if (selectedAddonFilters.length === 0) return true;
-        const sectionAddons = Array.isArray(section?.addons)
-            ? section.addons
-            : Array.isArray(section?.balanceAddons)
-                ? section.balanceAddons
-                : [];
-        const addonTypes = sectionAddons
-            .map((addon: any) => (typeof addon?.type === "string" ? addon.type : ""))
-            .filter(Boolean);
-        return addonTypes.some((type: string) => selectedAddonFilters.includes(type));
-    };
-    const matchesFilters = (section: any): boolean => matchesSearch(section) && matchesTags(section) && matchesAddons(section);
+    const matchesFilters = (section: any): boolean => matchesSearch(section) && matchesTags(section);
 
     const sectionMatchesOrHasMatchingChildren = (sectionId: string, allSections: any[]): boolean => {
         const section = allSections.find(s => s.id === sectionId);
@@ -1597,7 +1528,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                 const directMatch = matchesSearch(sec);
                 const contentSnippet = directMatch && sec.content && searchTerm ? getContentSnippet(sec.content, searchTerm) : '';
                 const hasChildren = sections.some((s: any) => s.parentId === sec.id);
-                const isExpanded = expandedSections.has(sec.id) || searchTerm?.trim() || selectedTagFilters.length > 0 || selectedAddonFilters.length > 0;
+                const isExpanded = expandedSections.has(sec.id) || searchTerm?.trim() || selectedTagFilters.length > 0;
                 const isActiveSection = activeSectionId === sec.id;
                 
                 return (
@@ -1651,7 +1582,6 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                                         projectId={projectId} 
                                         searchTerm={searchTerm}
                                         selectedTagFilters={selectedTagFilters}
-                                        selectedAddonFilters={selectedAddonFilters}
                                         activeSectionId={activeSectionId}
                                         expandedSections={expandedSections}
                                         setExpandedSections={setExpandedSections}

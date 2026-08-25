@@ -3,7 +3,7 @@
 /**
  * GDD Manager MCP Server
  *
- * Exposes GDD Manager projects, sections, and addons as MCP tools.
+ * Exposes GDD Manager projects and sections as MCP tools.
  * Communicates via stdio transport.
  *
  * Required env:
@@ -17,7 +17,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { GddApiClient } from "./client.js";
 import { registerTools } from "./tools.js";
-import { registerAddonTools } from "./addon-tools.js";
 import { registerPrompts } from "./prompts.js";
 
 async function main() {
@@ -35,7 +34,6 @@ async function main() {
   });
 
   registerTools(server, client);
-  registerAddonTools(server, client);
   registerPrompts(server);
 
   const transport = new StdioServerTransport();

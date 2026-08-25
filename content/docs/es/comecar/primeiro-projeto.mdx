@@ -1,206 +1,122 @@
 ---
 title: "Tu primer proyecto"
-description: "Crea un RPG mínimo desde cero usando los wizards — en ~15 minutos."
+description: "Del proyecto vacío a un GDD navegable — en ~15 minutos."
 emoji: "🌱"
 order: 2
 ---
 
 # Tu primer proyecto
 
-Vamos a crear un GDD pequeño (una decena de páginas) para que sientas el flujo. El ejemplo es un **RPG de fantasía** con economía simple, atributos, una habilidad y un ítem.
+Vamos a montar un GDD pequeño (una docena de páginas) para que le tomes el ritmo. El ejemplo es un **RPG de fantasía**, pero el guion sirve para cualquier género.
 
-<Callout type="info" title="Sin apuro">
-  No hace falta crear todo de una vez. La app guarda automáticamente con cada
-  cambio y puedes volver a los pasos cuando quieras.
+<Callout type="info" title="Sin prisa">
+  No hace falta crear todo de una vez. La app guarda sola en cada cambio y
+  puedes volver a los pasos cuando quieras.
 </Callout>
 
-## Antes de comenzar
+## Antes de empezar
 
-Requisitos previos:
+Requisitos:
 
-- Cuenta en GDD Manager (registro gratuito en <a href="/login">/login</a>)
+- Cuenta en GDD Manager (registro gratis en <a href="/login">/login</a>)
 - 15 minutos
-- Ganas de inventar buenos nombres (los vas a necesitar)
+- Ganas de inventar nombres chulos (los vas a necesitar)
 
 ## Paso 1 — Crea el proyecto
 
-En la página principal (`/`), haz clic en **"+ Nuevo proyecto"**.
+En la página de inicio (`/`), haz clic en **"+ Nuevo proyecto"**.
 
-Dale un nombre (ej.: `Tutorial Aventura`) y una descripción corta. El proyecto nace vacío, con la estructura estándar de **5 grupos** (Visión General, Diseño, Contenido, Presentación, Producción) — puedes ignorarlos por ahora.
+Dale un nombre (ej.: `Tutorial Aventura`) y una descripción corta. El proyecto nace con la estructura por defecto de **cinco grupos**:
 
-## Paso 2 — Página de Atributos
+| Grupo | Qué va dentro |
+|---|---|
+| 📖 Visión General | Pitch, público objetivo, el diferencial del juego |
+| 🎮 Diseño de Juego | Core loop, mecánicas centrales, progresión |
+| 📦 Contenido del Juego | Personajes, ítems, enemigos, mundo, narrativa |
+| 🎨 Presentación | Arte, audio, UX/UI, controles |
+| 🏭 Producción | Tecnología, roadmap, riesgos, monetización |
 
-La primera página *real* es la de Atributos, porque todo en el juego va a depender de ella.
+Esos cinco son el esqueleto. Todo lo que escribas de aquí en adelante encuentra su lugar dentro de alguno.
 
-1. En el sidebar, haz clic en el `+` al lado de **Contenido** (u otro grupo).
-2. En el selector, elige el tipo `🎯 Atributos`.
-3. Dale el nombre `Atributos Base`.
+## Paso 2 — Escribe la Visión General
 
-La página nace con una tabla de atributos pre-poblada (HP, ATK, DEF, SPD). Edita los valores por defecto si quieres:
+Empieza por la página que da contexto a todas las demás.
 
-```
-HP   100
-ATK  10
-DEF  5
-SPD  5
-```
+1. Haz clic en **📖 Visión General** en la barra lateral.
+2. Haz clic en el área de descripción y empieza a escribir.
 
-<Callout type="tip" title="Define un DataID — es importante">
-  **Justo debajo del título de la página** hay un campo discreto: haz clic en
-  **"+ DataID"**. La app sugiere automáticamente algo como `DATA_ATRIBUTOS_BASE`
-  basado en el título — puedes aceptarlo o editarlo a `DATA_BASIC_ATTR`.
+El editor funciona como un documento moderno: escribe `/` para abrir el menú de bloques (título, lista, tabla, imagen, callout). Escribe el pitch en dos o tres frases, para quién es, y qué hace diferente al juego.
 
-  **Por qué importa**: el DataID es el identificador **estable** que el motor
-  usará para encontrar esa página en el JSON exportado. Sin él, las referencias
-  apuntan a UUIDs internos ilegibles. Con él, el JSON tiene claves legibles como
-  `DATA_BASIC_ATTR` que se mantienen estables aunque renombres, muevas o
-  reorganices la página.
-
-  **Define el DataID en todas las páginas que vayan al export.** Atributos,
-  monedas, ítems, habilidades — todas. Toma 2 segundos por página y te ahorra
-  horas de debug después.
+<Callout type="tip" title="Usa callouts para cambiar de tono">
+  Escribe <code>/callout</code> y elige la variante. <strong>Nota</strong> para
+  contexto, <strong>Atención</strong> para una trampa, <strong>Decisión de
+  diseño</strong> para dejar registrado por qué elegiste un camino y no otro.
+  Seis meses después, el "por qué" es lo que más vas a agradecer haber escrito.
 </Callout>
 
-## Paso 3 — Página de Moneda
+## Paso 3 — Monta el árbol antes de escribirlo todo
 
-A continuación, una moneda para que la economía funcione.
+Resiste las ganas de terminar cada página ahora. Primero crea los **títulos** de las páginas que sabes que van a existir.
 
-1. `+ Nueva página` → tipo `🪙 Economía`.
-2. Nombre: `Oro`.
-3. Configura en el panel: código `GOLD`, nombre `Oro`, ícono si quieres.
-4. **Define el DataID** haciendo clic en "+ DataID" debajo del título — la sugerencia por defecto es `DATA_ORO`, edítala a `DATA_GOLD` si prefieres consistencia.
+1. Pasa el ratón sobre un grupo en la barra lateral y haz clic en el `+`.
+2. Escribe el nombre y pulsa Enter.
+3. Repite.
 
-Listo — ahora tienes una moneda que otros addons pueden referenciar.
+Para `📦 Contenido del Juego`, por ejemplo: `Personajes`, `Enemigos`, `Ítems`, `Economía`, `Mundo`. Dentro de `Personajes`, crea `Guerrero` y `Maga`.
 
-## Paso 4 — Página de Ítem
+En cinco minutos tienes el mapa del documento. Escribir se vuelve mucho más fácil cuando ya sabes dónde vive cada cosa.
 
-Vamos a crear un ítem: **Espada de Hierro**.
-
-1. `+ Nueva página` → tipo `⚔️ Ítems con efecto`.
-2. **El wizard se abrirá** preguntando por dos dependencias:
-   - **Moneda**: elige `Oro` (creada en el paso 3).
-   - **Atributos**: elige `Atributos Base` (creada en el paso 2).
-3. Nombre de la página: `Espada de Hierro`. Haz clic en "+ DataID" debajo del título y edítalo a `DATA_IRON_SWORD` (la sugerencia automática será algo como `DATA_ESPADA_DE_HIERRO`).
-
-La página nace con **3 addons** ya configurados:
-
-- **Inventario** — peso, categoría, apilado
-- **Economía** — precio de compra (ej.: 100 GOLD), precio de venta (50 GOLD)
-- **Modificadores de Atributos** — `+5 ATK` al equipar
-
-Configura los campos. Cada cambio se guarda automáticamente.
-
-## Paso 5 — Página de Habilidad
-
-Ahora la parte divertida: una habilidad de fuego.
-
-1. `+ Nueva página` → tipo `⚡ Habilidades`.
-2. **El wizard pregunta**: ¿qué página de Atributos? Elige `Atributos Base`.
-3. Nombre: `Fireball`. DataID (haz clic debajo del título): `DATA_FIRE_BALL`.
-
-La página nace con 2 addons:
-
-- **Habilidades** (vacío)
-- **Efectos de Habilidades** (Modificadores de Atributos, vacío)
-
-Vamos a completarlos:
-
-**En el addon de Modificadores**, agrega una entrada:
-- Nombre: `Fireball Impact`
-- Atributo: `hp`
-- Modo: `add`
-- Valor: `-30`
-
-**En el addon de Habilidades**, agrega una habilidad:
-- Nombre: `Fireball`
-- Tipo: activa
-- Cooldown: `5` (segundos)
-- **Costos**: ninguno por ahora
-- **Efectos**: marca el checkbox `Fireball Impact` (del modificador de arriba)
-
-Listo. Cuando el juego ejecute Fireball, aplicará `-30` en el `hp` del objetivo.
-
-<Callout type="tip" title="¿Burst + DoT?">
-  Para hacer una Fireball más rica (impacto + quemadura a lo largo del tiempo),
-  solo agrega **2 entradas** en Modificadores: una instantánea (burst) y una
-  con `temporary: true, durationSeconds: 6, tickIntervalSeconds: 1`. Marca
-  ambas en el checklist de efectos de la habilidad.
+<Callout type="tip" title="Atajo">
+  Pulsa <code>N</code> en cualquier parte del proyecto para abrir el modal rápido
+  de nueva página — puedes elegir el nombre y dónde encaja sin soltar el teclado.
 </Callout>
 
-## Paso 6 — Remote Config (export)
+## Paso 4 — Conecta las páginas
 
-El último paso: configurar el JSON que consume el motor.
+Aquí el GDD deja de ser una pila de archivos.
 
-1. En cualquier página (recomiendo crear una `📤 Configuración de Export`), agrega un addon **Remote Config**.
-2. En el panel, construye un árbol como este:
+Dentro del texto de cualquier página, escribe `$[` y el nombre de otra página. La app autocompleta y lo convierte en un enlace clicable.
 
-```json
-{
-  "skills": [        ← array, source: skills:DATA_FIRE_BALL
-    {
-      "id": "...",       ← skillField/id (resuelve al dataId)
-      "name": "...",     ← skillField/name
-      "cooldown": 0,     ← skillField/cooldownSeconds
-      "effects": [       ← array, source: skillEffects
-        {
-          "name": "",        ← skillEffectField/resolvedName
-          "attr_id": "",     ← skillEffectField/resolvedDefinitionsRef
-          "attr_key": "",    ← skillEffectField/resolvedAttributeKey
-          "attr_value": 0,   ← skillEffectField/resolvedValue
-          "attr_stack": ""   ← skillEffectField/resolvedStacking
-        }
-      ]
-    }
-  ]
-}
-```
+Ejemplo, en la página `Guerrero`:
 
-3. Haz clic en **Exportar** — el JSON listo cae en tu portapapeles o archivo.
+> El Guerrero depende del daño cuerpo a cuerpo y del aguante. Es el contrapunto directo de la $[Maga], que cambia resistencia por alcance. Su equipo sale de la $[Economía] con un precio por encima de la media.
 
-Resultado:
+Ahora, cuando alguien lee la página del Guerrero, llega a la Maga con un clic — y la Maga sabe que la referencian.
 
-```json
-{
-  "skills": [
-    {
-      "id": "DATA_FIRE_BALL",
-      "name": "Fireball",
-      "cooldown": 5,
-      "effects": [
-        {
-          "name": "Fireball Impact",
-          "attr_id": "DATA_BASIC_ATTR",
-          "attr_key": "hp",
-          "attr_value": -30,
-          "attr_stack": ""
-        }
-      ]
-    }
-  ]
-}
-```
+## Paso 5 — Dale un DataID a las páginas que importan
 
-**Este JSON es lo que lee tu motor.** Tiene identificadores estables (`DATA_*`), valores resueltos, referencias cross-section traducidas — todo listo para consumir sin resolver en tiempo de ejecución.
+En las páginas que representan cosas concretas del juego (un ítem, un enemigo, una moneda), vale la pena definir un apodo estable.
+
+1. **Justo debajo del título** hay un campo discreto: haz clic en **"+ DataID"**.
+2. La app sugiere algo según el título — ej.: `DATA_GUERRERO`.
+3. Acéptalo o edítalo (vale la pena estandarizar todo en inglés: `DATA_WARRIOR`).
+
+No hace falta en páginas de lore o de proceso. Sirve para las que citas mucho y para las que la IA va a necesitar encontrar después.
+
+## Paso 6 — Mira el documento desde otro ángulo
+
+Con el árbol montado y algunas páginas escritas, vale la pena mirar lo que hiciste desde lejos:
+
+- **Mapa mental** (`/mindmap`) — el árbol se vuelve grafo. Las ramas vacías saltan a la vista, y ves qué partes del juego siguen siendo solo un título.
+- **Modo documento** (`/view`) — el GDD entero en una lectura continua, en el orden del árbol. Esa es la vista que mandas a alguien de fuera.
+- **Exportar** (`/export`) — el mismo documento como Markdown, PDF o Word.
 
 ## ¿Y ahora?
 
 Hiciste:
 
-✅ Atributos · ✅ Moneda · ✅ Ítem con efecto · ✅ Habilidad · ✅ Remote Config
+✅ Proyecto creado · ✅ Visión General escrita · ✅ Árbol montado · ✅ Páginas conectadas · ✅ Documento revisado
 
 Próximas direcciones:
 
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
-  <FeatureCard emoji="📦" title="Referencia de addons" href="/docs/referencia/addons">
-    Profundiza en cada addon que usaste. Cada uno tiene más opciones de las que mostramos aquí.
+  <FeatureCard emoji="🤖" title="Deja que la IA ayude" href="/docs/referencia/ai">
+    Generar un GDD inicial, mejorar la prosa de una página, o conversar sobre el proyecto.
   </FeatureCard>
-  <FeatureCard emoji="📤" title="Remote Config completo" href="/docs/referencia/addons/remote-config">
-    Aprende los 4 formatos de export (row, column, matrix, keyed) y cómo reimportar.
+  <FeatureCard emoji="⌨️" title="Atajos de teclado" href="/docs/referencia/atalhos">
+    La app entera se navega con el teclado. Pulsa `?` en cualquier momento.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="Conceptos clave" href="/docs/comecar/conceitos-chave">
     Vuelve al vocabulario si algún término quedó confuso.
-  </FeatureCard>
-  <FeatureCard emoji="🍳" title="Cookbook" href="/docs/cookbook">
-    Snippets listos para escenarios comunes *(próximamente)*.
   </FeatureCard>
 </div>

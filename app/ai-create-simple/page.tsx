@@ -28,6 +28,7 @@ export default function AICreateSimple() {
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
+  const updateSectionDescription = useProjectStore((s) => s.updateSectionDescription);
 
   // Form fields
   const [gameName, setGameName] = useState("");
@@ -441,7 +442,7 @@ ${mechanicsText}
         addProject,
         addSection,
         addSubsection,
-        t,
+        updateSectionDescription,
       });
 
       router.push(`/projects/${toSlug(resolved.projectTitle)}/view?new=true`);

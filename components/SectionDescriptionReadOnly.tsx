@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
 import { sectionPathById } from "@/lib/utils/slug";
@@ -13,7 +13,7 @@ import {
   type SectionLike,
 } from "@/lib/richDoc/transformRefs";
 import { resolveTokensInBlocks } from "@/lib/richDoc/resolveTokens";
-import type { ProjectTokenSource } from "@/lib/addons/projectSpecialTokens";
+import type { ProjectTokenSource } from "@/lib/sections/specialTokens";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import BlocksReadOnly from "@/components/BlocksReadOnly";
@@ -78,7 +78,7 @@ interface SectionDescriptionReadOnlyProps {
 /**
  * Read-only renderer for a section description, rendering native BlockNote
  * blocks (the Fase 2 replacement for MarkdownWithReferences). Reuses the shared
- * RichDocEditor in non-editable mode — the same proven path the richDoc addon
+ * RichDocEditor in non-editable mode — the same proven path the editor
  * read-only view already uses — so embeds, callouts, images and tables render
  * with full parity. Descriptions not yet migrated fall back to parsing their
  * markdown mirror once, on the fly.

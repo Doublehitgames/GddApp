@@ -28,6 +28,7 @@ export default function AICreateProject() {
   const addProject = useProjectStore((s) => s.addProject);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
+  const updateSectionDescription = useProjectStore((s) => s.updateSectionDescription);
 
   const [step, setStep] = useState<"input" | "generating" | "preview">("input");
   const [gameType, setGameType] = useState("");
@@ -79,15 +80,15 @@ export default function AICreateProject() {
 
     try {
       // Adapt the AI output to the shared ResolvedTemplate shape so we can
-      // reuse the same path that manual templates use — which handles
-      // pageType + seeded addons + richDocBlocks + hierarchy.
+      // reuse the same path that manual templates use — hierarquia + blocos
+      // de descrição.
       const resolved = adaptAIGeneratedTemplate(template);
       createProjectFromTemplate({
         template: resolved,
         addProject,
         addSection,
         addSubsection,
-        t,
+        updateSectionDescription,
       });
 
       router.push(`/projects/${toSlug(resolved.projectTitle)}/view?new=true`);

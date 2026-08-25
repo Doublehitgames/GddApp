@@ -47,9 +47,8 @@ export class GddApiClient {
     async listProjects() {
         return this.request("GET", "/projects");
     }
-    async getProject(id, addons) {
-        const qs = addons ? `?addons=${addons}` : "";
-        return this.request("GET", `/projects/${id}${qs}`);
+    async getProject(id) {
+        return this.request("GET", `/projects/${id}`);
     }
     async createProject(params) {
         return this.request("POST", "/projects", params);
@@ -60,18 +59,13 @@ export class GddApiClient {
     async deleteProject(id) {
         return this.request("DELETE", `/projects/${id}`);
     }
-    async listLinkedSpreadsheets(id) {
-        return this.request("GET", `/projects/${id}/spreadsheets`);
-    }
     async listProjectImages(id, match) {
         const qs = match ? `?match=${encodeURIComponent(match)}` : "";
         return this.request("GET", `/projects/${id}/images${qs}`);
     }
     // ── Sections ──────────────────────────────────────────────────────
-    /** `addons: "types"` keeps the heavy balance_addons payload off the wire. */
-    async listSections(projectId, addons) {
-        const qs = addons ? `?addons=${addons}` : "";
-        return this.request("GET", `/projects/${projectId}/sections${qs}`);
+    async listSections(projectId) {
+        return this.request("GET", `/projects/${projectId}/sections`);
     }
     async getSection(projectId, sectionId) {
         return this.request("GET", `/projects/${projectId}/sections/${sectionId}`);
@@ -79,10 +73,8 @@ export class GddApiClient {
     async createSection(projectId, params) {
         return this.request("POST", `/projects/${projectId}/sections`, params);
     }
-    /** `addons: "none"` keeps the re-read light when the caller only wants a receipt. */
-    async updateSection(projectId, sectionId, params, addons) {
-        const qs = addons ? `?addons=${addons}` : "";
-        return this.request("PATCH", `/projects/${projectId}/sections/${sectionId}${qs}`, params);
+    async updateSection(projectId, sectionId, params) {
+        return this.request("PATCH", `/projects/${projectId}/sections/${sectionId}`, params);
     }
     /** One request for many sections: see PATCH /projects/:id/sections. */
     async batchUpdateSections(projectId, sections) {
@@ -90,35 +82,6 @@ export class GddApiClient {
     }
     async deleteSection(projectId, sectionId) {
         return this.request("DELETE", `/projects/${projectId}/sections/${sectionId}`);
-    }
-    // ── Addons ────────────────────────────────────────────────────────
-    async listAddons(projectId, sectionId) {
-        return this.request("GET", `/projects/${projectId}/sections/${sectionId}/addons`);
-    }
-    async createAddon(projectId, sectionId, params) {
-        return this.request("POST", `/projects/${projectId}/sections/${sectionId}/addons`, params);
-    }
-    async updateAddon(projectId, sectionId, addonId, params) {
-        return this.request("PATCH", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`, params);
-    }
-    async deleteAddon(projectId, sectionId, addonId) {
-        return this.request("DELETE", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`);
-    }
-    async copyAddon(projectId, sectionId, addonId, toSectionId, overwrite) {
-        return this.request("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/copy`, { toSectionId, overwrite });
-    }
-    async moveAddon(projectId, sectionId, addonId, toSectionId, overwrite) {
-        return this.request("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`, { toSectionId, overwrite });
-    }
-    // ── Remote Config (resolved economy) ──────────────────────────────
-    async getRemoteConfig(projectId, opts = {}) {
-        const params = new URLSearchParams();
-        if (opts.sectionId)
-            params.set("sectionId", opts.sectionId);
-        if (opts.addonId)
-            params.set("addonId", opts.addonId);
-        const qs = params.toString();
-        return this.request("GET", `/projects/${projectId}/remote-config${qs ? `?${qs}` : ""}`);
     }
     // ── Search ────────────────────────────────────────────────────────
     async search(q, type, limit) {

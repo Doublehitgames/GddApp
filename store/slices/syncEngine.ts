@@ -116,7 +116,6 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
         order: section.order,
         color: section.color || null,
         dataId: section.dataId || null,
-        addons: section.addons || [],
       }));
 
     const payload = {

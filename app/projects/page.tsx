@@ -100,6 +100,7 @@ export default function ProjectsPage() {
   const addProject = useProjectStore((state) => state.addProject);
   const addSection = useProjectStore((state) => state.addSection);
   const addSubsection = useProjectStore((state) => state.addSubsection);
+  const updateSectionDescription = useProjectStore((state) => state.updateSectionDescription);
 
   const [step, setStep] = useState<WizardStep>(1);
   const [error, setError] = useState("");
@@ -246,8 +247,8 @@ export default function ProjectsPage() {
         addProject,
         addSection,
         addSubsection,
+        updateSectionDescription,
         selectedRootSectionIds,
-        t,
       });
       router.push(`/projects/${toSlug(projectName.trim())}`);
     } catch (e) {

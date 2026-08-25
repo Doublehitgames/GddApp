@@ -33,7 +33,7 @@ function adaptSection(
     id: idFor(prefix, ai.title, index),
     title: ai.title,
     content: ai.content,
-    pageType: ai.pageType,
+    contentBlocks: ai.contentBlocks,
     subsections: ai.subsections?.map((sub, i) =>
       adaptSection(sub, `${prefix}-${index}`, i)
     ),

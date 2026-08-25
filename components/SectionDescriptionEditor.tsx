@@ -9,7 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
 } from "react";
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 
 const RichDocEditor = dynamic(() => import("@/components/RichDocEditor"), {
   ssr: false,

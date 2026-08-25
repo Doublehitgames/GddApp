@@ -305,15 +305,7 @@ describe('ProjectStore sync behavior', () => {
             {
               sectionId: 'section-1',
               sectionTitle: 'Gameplay',
-              facets: ['content', 'addons'],
-              addons: [
-                {
-                  action: 'updated',
-                  addonId: 'eco-1',
-                  addonType: 'economyLink',
-                  addonName: 'Economia',
-                },
-              ],
+              facets: ['content', 'domainTags'],
             },
           ],
         },
@@ -329,7 +321,7 @@ describe('ProjectStore sync behavior', () => {
     const history = useProjectStore.getState().lastSyncStatsHistory
     expect(history.length).toBeGreaterThan(0)
     expect(history[0].changeSummary?.sections).toHaveLength(1)
-    expect(history[0].changeSummary?.sections[0].facets).toContain('addons')
+    expect(history[0].changeSummary?.sections[0].facets).toContain('domainTags')
   })
 
   it('marks project dirty and autosyncs when section flowchart changes', async () => {

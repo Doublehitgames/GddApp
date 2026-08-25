@@ -57,13 +57,12 @@ export type ProjectRow = {
   cover_image_url: string | null;
   mindmap_settings: Record<string, unknown> | null;
   ai_instructions: string | null;
-  linked_spreadsheets: unknown[] | null;
   image_library: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
 
-export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, linked_spreadsheets, image_library, created_at, updated_at";
+export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, image_library, created_at, updated_at";
 export const PROJECT_COLUMNS_SAFE = "id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at";
 
 /** Select projects with fallback if ai_instructions column doesn't exist. */
@@ -89,7 +88,7 @@ export async function selectProjects(
     const fbResult = await fb;
     if (fbResult.error) return { data: null, error: fbResult.error };
     const rows = (fbResult.data ?? []).map((r: Record<string, unknown>) => ({
-      ...r, ai_instructions: null, linked_spreadsheets: null, image_library: null,
+      ...r, ai_instructions: null, image_library: null,
     })) as unknown as ProjectRow[];
     return { data: rows, error: null };
   }
@@ -124,7 +123,7 @@ export async function requireProject(
       .eq("id", projectId)
       .maybeSingle();
     if (fb.data) {
-      project = { ...fb.data, ai_instructions: null, linked_spreadsheets: null, image_library: null } as unknown as typeof project;
+      project = { ...fb.data, ai_instructions: null, image_library: null } as unknown as typeof project;
       error = null;
     }
   }
@@ -171,8 +170,6 @@ export type SectionRow = {
   color: string | null;
   thumb_image_url: string | null;
   domain_tags: string[];
-  balance_addons: unknown[] | null;
-  addon_group_notes: Record<string, string> | null;
   data_id: string | null;
   flowchart_state: unknown | null;
   created_at: string;
@@ -181,61 +178,21 @@ export type SectionRow = {
   created_by_name: string | null;
   updated_by: string | null;
   updated_by_name: string | null;
-  linked_spreadsheet_id?: string | null;
   content_blocks?: unknown[] | null;
-  /** Generated column (see add_sections_addon_types.sql). Absent until it is run. */
-  addon_types?: unknown;
 };
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
 const SECTION_COLUMNS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, balance_addons, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, linked_spreadsheet_id, content_blocks";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks";
 
 // Progressive fallback: drop the newest/most optional columns first.
-// Level 1: drop flowchart_state, data_id, addon_group_notes, audit columns
+// Level 1: drop flowchart_state, data_id, audit columns
 const SECTION_COLUMNS_MID =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, balance_addons, created_at, updated_at";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, created_at, updated_at";
 
 // Level 2: bare minimum
 const SECTION_COLUMNS_SAFE =
   "id, project_id, parent_id, title, content, sort_order, color, created_at, updated_at";
-
-// Everything except balance_addons, which is 84% of a section listing's bytes.
-// Used when the caller asked not to receive addon data at all.
-const SECTION_COLUMNS_NO_ADDONS =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, linked_spreadsheet_id, content_blocks";
-
-/**
- * Whether `sections.addon_types` exists, remembered per process.
- *
- * Before add_sections_addon_types.sql is run, probing for the column on every
- * request costs an extra failed round-trip and makes `?addons=types` slower
- * than not having the optimisation at all. A negative answer is cached, but
- * only for a few minutes, so the API picks the column up on its own once the
- * migration is run — no redeploy needed.
- */
-const ADDON_TYPES_RECHECK_MS = 5 * 60_000;
-let addonTypesColumn: { present: boolean; checkedAtMs: number } | null = null;
-
-function addonTypesColumnMayExist(): boolean {
-  if (!addonTypesColumn) return true;
-  if (addonTypesColumn.present) return true;
-  return Date.now() - addonTypesColumn.checkedAtMs > ADDON_TYPES_RECHECK_MS;
-}
-
-function rememberAddonTypesColumn(present: boolean) {
-  addonTypesColumn = { present, checkedAtMs: Date.now() };
-}
-
-/** Test seam: forget what we learned about the column. */
-export function resetAddonTypesColumnCache() {
-  addonTypesColumn = null;
-}
-
-// The generated column carries the addon type names without the jsonb behind
-// them, so a listing can answer "which pages have a progression table" without
-// reading a single progression table.
-const SECTION_COLUMNS_TYPES = `${SECTION_COLUMNS_NO_ADDONS}, addon_types`;
 
 export { SECTION_COLUMNS_FULL as SECTION_COLUMNS };
 
@@ -257,51 +214,15 @@ function buildQuery(
 export async function selectSections(
   supabase: SupabaseClient,
   filter: { projectId?: string; sectionId?: string },
-  opts: { addons?: AddonDetail } = {},
 ): Promise<{ data: SectionRow[] | null; error: unknown }> {
-  const detail = opts.addons ?? "full";
-
-  // Skipping balance_addons keeps the heavy jsonb out of the read entirely,
-  // not just out of the response.
-  if (detail === "none") {
-    const lean = await buildQuery(supabase, SECTION_COLUMNS_NO_ADDONS, filter);
-    if (!lean.error) {
-      const rows = ((lean.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
-        ...r,
-        balance_addons: null,
-      })) as unknown as SectionRow[];
-      return { data: rows, error: null };
-    }
-    // Fall through to the progressive fallback below if those columns are missing.
-  }
-
-  // Same idea, but keeping the addon type names — only possible once the
-  // generated column exists. Until add_sections_addon_types.sql is run this
-  // query fails and we fall back to reading the jsonb and deriving the types.
-  if (detail === "types" && addonTypesColumnMayExist()) {
-    const withTypes = await buildQuery(supabase, SECTION_COLUMNS_TYPES, filter);
-    if (!withTypes.error) {
-      rememberAddonTypesColumn(true);
-      const rows = ((withTypes.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
-        ...r,
-        balance_addons: null,
-      })) as unknown as SectionRow[];
-      return { data: rows, error: null };
-    }
-    // Probing on every request would double the round-trips for as long as the
-    // migration is unrun, which is worse than not having it at all.
-    rememberAddonTypesColumn(false);
-  }
-
   const result = await buildQuery(supabase, SECTION_COLUMNS_FULL, filter);
 
   if (result.error) {
-    // Progressive fallback: try mid-level columns (includes balance_addons)
+    // Progressive fallback: try mid-level columns
     const midResult = await buildQuery(supabase, SECTION_COLUMNS_MID, filter);
     if (!midResult.error) {
       const rows = ((midResult.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
         ...r,
-        addon_group_notes: null,
         data_id: null,
         flowchart_state: null,
         content_blocks: null,
@@ -321,8 +242,6 @@ export async function selectSections(
       ...r,
       thumb_image_url: null,
       domain_tags: [] as string[],
-      balance_addons: null,
-      addon_group_notes: null,
       data_id: null,
       flowchart_state: null,
       content_blocks: null,
@@ -358,10 +277,7 @@ export function imageLibraryCount(p: { image_library?: Record<string, unknown> |
   return Array.isArray(files) ? files.length : null;
 }
 
-export function projectToApi(
-  p: ProjectRow,
-  opts: { includeLinkedSpreadsheets?: boolean } = {}
-) {
+export function projectToApi(p: ProjectRow) {
   return {
     id: p.id,
     ownerId: p.owner_id,
@@ -370,11 +286,6 @@ export function projectToApi(
     coverImageUrl: p.cover_image_url,
     mindmapSettings: p.mindmap_settings,
     aiInstructions: p.ai_instructions ?? "",
-    // Opt-in to keep `list_projects` lean — only the single-project GET and the
-    // dedicated /spreadsheets endpoint pull the (potentially large) registry.
-    ...(opts.includeLinkedSpreadsheets
-      ? { linkedSpreadsheets: Array.isArray(p.linked_spreadsheets) ? p.linked_spreadsheets : [] }
-      : {}),
     // Only the count: the index itself can be hundreds of files, and it has its
     // own endpoint (/images). The count is what tells a caller it exists at all.
     ...(imageLibraryCount(p) !== null ? { imageCount: imageLibraryCount(p) } : {}),
@@ -394,8 +305,6 @@ export function sectionToApi(s: SectionRow) {
     color: s.color,
     thumbImageUrl: s.thumb_image_url,
     domainTags: s.domain_tags ?? [],
-    addons: s.balance_addons ?? [],
-    addonGroupNotes: s.addon_group_notes ?? {},
     dataId: s.data_id,
     flowchartState: s.flowchart_state,
     createdAt: s.created_at,
@@ -404,48 +313,10 @@ export function sectionToApi(s: SectionRow) {
     createdByName: s.created_by_name,
     updatedBy: s.updated_by,
     updatedByName: s.updated_by_name,
-    linkedSpreadsheetId: s.linked_spreadsheet_id ?? null,
     contentBlocks: Array.isArray(s.content_blocks) ? s.content_blocks : null,
   };
 }
 
-export type AddonDetail = "full" | "types" | "none";
-
-/**
- * How much addon data a section listing should carry.
- *
- * `balance_addons` is 84% of the bytes in a 185-section listing — a caller that
- * only needs the shape of the document should not have to receive every
- * progression table to find out which pages have one.
- *
- * Returns a mapper rather than taking a second argument, because the callers
- * pass it straight to `.map()`, where a positional parameter would silently
- * receive the array index.
- */
-export function sectionMapper(detail: AddonDetail = "full") {
-  if (detail === "full") return (row: SectionRow) => sectionToApi(row);
-
-  return (row: SectionRow) => {
-    const { addons, ...section } = sectionToApi(row);
-    if (detail === "none") return section;
-    // Prefer the generated column when the read supplied it; otherwise derive
-    // the names from the addon objects, which is what happens before the
-    // migration has been run.
-    const generated = row.addon_types;
-    const types = Array.isArray(generated)
-      ? generated.filter((t): t is string => typeof t === "string")
-      : (Array.isArray(addons) ? addons : [])
-          .map((a) => (a && typeof a === "object" ? (a as { type?: unknown }).type : undefined))
-          .filter((t): t is string => typeof t === "string");
-    return { ...section, addonTypes: types };
-  };
-}
-
-/** Reads `?addons=`. Defaults to `full`, so existing callers see no change. */
-export function addonDetailParam(request: NextRequest): AddonDetail {
-  const value = request.nextUrl.searchParams.get("addons");
-  return value === "types" || value === "none" ? value : "full";
-}
 
 // ── Rate limiter ──────────────────────────────────────────────────────
 

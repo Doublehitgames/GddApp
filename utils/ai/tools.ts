@@ -135,9 +135,6 @@ REMOVER: id-da-secao
 - **SUBSECAO:** título | pai | conteúdo - Cria subseção dentro de uma seção
 - **EDITAR:** id | conteúdo - Edita conteúdo de seção existente
 - **REMOVER:** id - Remove uma seção
-- **ADDON_CRIAR:** sectionId | addonType | jsonData - Cria addon em uma seção
-- **ADDON_EDITAR:** sectionId | addonId | jsonPatch - Edita parcialmente um addon existente
-- **ADDON_REMOVER:** sectionId | addonId - Remove addon da seção
 
 **Regras:**
 - Uma linha por comando
@@ -145,40 +142,6 @@ REMOVER: id-da-secao
 - Pode usar aspas, quebras, o que quiser no conteúdo
 - Para SUBSECAO, o pai pode ser nome exato da seção
 - Para EDITAR/REMOVER, use o ID que você viu na lista de seções
-- Para ADDON_*, use IDs reais de seção/addon e JSON válido (aspas duplas)
-
-**Tipos de addon suportados nesta versão:**
-- currency
-- globalVariable
-- economyLink
-- xpBalance
-- progressionTable
-- inventory
-- production
-- dataSchema (alias legado aceito: genericStats)
-- attributeDefinitions
-- attributeProfile
-- attributeModifiers
-- fieldLibrary
-- exportSchema
-- richDoc
-
-**JSON esperado (resumo):**
-- ADDON_CRIAR currency: {"name":"Moeda Base","code":"GOLD","displayName":"Ouro","kind":"soft","decimals":0}
-- ADDON_CRIAR globalVariable: {"name":"Bonus de Venda","key":"sell_bonus_pct","displayName":"Bonus Venda","valueType":"percent","defaultValue":10,"scope":"global"}
-- ADDON_CRIAR economyLink: {"name":"Preco Trigo","hasBuyConfig":true,"buyCurrencyRef":"section-id-moeda","buyValue":15,"buyModifiers":[],"hasSellConfig":true,"sellCurrencyRef":"section-id-moeda","sellValue":8,"sellModifiers":[]}
-- ADDON_CRIAR xpBalance: {"name":"XP Fazenda","mode":"preset","preset":"linear","startLevel":1,"endLevel":30}
-- ADDON_CRIAR progressionTable: {"name":"Tabela de Atributos","startLevel":1,"endLevel":20}
-- ADDON_CRIAR inventory: {"name":"Item Basico","inventoryCategory":"consumivel","maxStack":99,"stackable":true}
-- ADDON_CRIAR production: {"name":"Receita Trigo","mode":"recipe","ingredients":[],"outputs":[]}
-- ADDON_CRIAR dataSchema: {"name":"Schema da Semente","entries":[{"key":"harvest_xp","label":"Harvest XP","valueType":"int","value":9},{"key":"growth_seconds","label":"Growth Seconds","valueType":"seconds","value":181}]}
-- ADDON_CRIAR attributeDefinitions: {"name":"Atributos Base","attributes":[{"key":"strength","label":"Força","valueType":"int","defaultValue":0,"min":0},{"key":"stamina","label":"Stamina","valueType":"float","defaultValue":100}]}
-- ADDON_CRIAR attributeProfile: {"name":"Perfil do Personagem","definitionsRef":"section-id-definicoes","values":[{"attributeKey":"strength","value":12},{"attributeKey":"stamina","value":95}]}
-- ADDON_CRIAR attributeModifiers: {"name":"Buff da Espada","definitionsRef":"section-id-definicoes","modifiers":[{"attributeKey":"strength","mode":"add","value":5},{"attributeKey":"stamina","mode":"mult","value":1.1}]}
-- ADDON_CRIAR fieldLibrary: {"name":"Biblioteca de Campos","entries":[{"key":"sell_price","label":"Preço de Venda","description":"Preço pelo qual o item é vendido ao NPC"},{"key":"buy_price","label":"Preço de Compra"}]}
-- ADDON_CRIAR richDoc: {"name":"Resumo do Sistema","blocks":[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Visão Geral"}]},{"type":"paragraph","content":[{"type":"text","text":"Descrição rica em Markdown/BlockNote."}]}],"schemaVersion":1}
-- ADDON_EDITAR: envie apenas campos que precisam mudar no jsonPatch
-- ADDON_REMOVER: remove pelo addonId
 
 Depois dos comandos, pule duas linhas e escreva:
 
@@ -212,41 +175,6 @@ Repara que usei $[referências] para conectar com outras seções! 🎮
    - Se existir seção como "Moedas", "Currency", "Economia > Moedas" ou similar, use SUBSECAO nessa seção.
    - Só use CRIAR na raiz quando não houver contêiner apropriado.
 
-6. **REGRA DE ADDON (OBRIGATÓRIA PARA MOEDA):**
-   - Se a seção criada representa uma moeda (Diamante, Ouro, Coin, Gem, etc.), inclua também ADDON_CRIAR do tipo currency.
-   - Para seção criada no mesmo lote, pode referenciar o título no sectionId do comando ADDON_CRIAR; o cliente resolve para o ID criado.
-   - Exemplo:
-     - SUBSECAO: Diamante | Moedas | ...
-     - ADDON_CRIAR: Diamante | currency | {"name":"Diamante","code":"GEM","displayName":"Diamante","kind":"premium","decimals":0}
-
-7. **REGRA GERAL DE OPORTUNIDADE DE ADDON (OBRIGATÓRIA):**
-   - Sempre avalie se a nova seção precisa de addons, especialmente em: economia, moedas, balanceamento, itens, produção, crafting, progressão, pets/animais.
-   - Se houver sinal claro, inclua os comandos ADDON_CRIAR/ADDON_EDITAR já na proposta executável.
-   - Não trate addon como opcional quando o caso for óbvio (ex.: item com estoque, compra/venda, produção passiva, curva de nível).
-
-8. **PROTOCOLO HÍBRIDO (PERGUNTAR O ESSENCIAL + PROPOR):**
-   - Quando faltar informação crítica para configurar addon corretamente, faça 2-5 perguntas objetivas antes de [EXECUTAR].
-   - Em seguida, traga uma proposta inicial com suposições explícitas (ex.: "se não responder, assumo X").
-   - Só gere [EXECUTAR] com ações finais quando o usuário confirmar.
-
-9. **CHECKLIST DE DESCOBERTA DE ADDONS POR DOMÍNIO:**
-   - Itens/sementes/armas/equipamentos/consumíveis -> avaliar inventory.
-   - Compra/venda/preço/loja/moeda -> avaliar economyLink (e currency/globalVariable quando necessário).
-   - Produção passiva/receita/crafting/ingredientes/outputs -> avaliar production.
-   - XP/nível/desbloqueio por nível/curva de progressão -> avaliar xpBalance e/ou progressionTable.
-   - Regras globais de economia (taxa, bônus, multiplicadores) -> avaliar globalVariable.
-   - Pets/animais:
-     - Se virarem entidade com armazenamento -> inventory;
-     - Se gerarem recursos ao longo do tempo -> production passivo;
-     - Se tiverem compra/venda -> economyLink.
-
-10. **PERGUNTAS ESSENCIAIS SUGERIDAS (USE QUANDO FALTAR CONTEXTO):**
-   - "Esse elemento é comprável? Com qual moeda?"
-   - "Pode ser vendido? Existe preço mínimo/máximo?"
-   - "Fica no inventário/estoque? Qual categoria?"
-   - "Produz algo passivamente ou por receita?"
-   - "Serve como ingrediente de alguma receita existente?"
-   - "Tem desbloqueio por nível/XP?"
 
 📎 SISTEMA DE REFERÊNCIAS CRUZADAS:
 

@@ -1,13 +1,13 @@
 ---
 title: "Documentación de GDD Manager"
 sidebarLabel: "🏠 Home"
-description: "Todo lo que necesitas para mantener tus Game Design Documents vivos y sincronizados con tu juego."
+description: "Todo lo que necesitas para escribir un Game Design Document que siga legible seis meses después."
 order: 0
 ---
 
 # Documentación
 
-**GDD Manager** convierte tu cuaderno caótico de ideas en un documento estructurado, exportable y que habla directamente con tu motor de juego. Esta documentación cubre cada función de la app, **por qué existe** y **cómo aprovecharla al máximo** en tu proyecto.
+**GDD Manager** convierte tu cuaderno caótico de ideas en un documento estructurado, navegable y agradable de leer. Esta documentación cubre cada parte de la app, **por qué existe** y **cómo aprovecharla al máximo** en tu proyecto.
 
 ## Por dónde empezar
 
@@ -18,36 +18,37 @@ Si es tu primera vez aquí, sigue este camino **en orden**:
     Un resumen de 5 minutos de la app — qué problema resuelve y cómo se compara con un Notion/Confluence común.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="2. Conceptos clave" href="/docs/comecar/conceitos-chave">
-    Entiende **page type**, **addon**, **wizard** y **Remote Config** — vocabulario que aparece en toda la documentación.
+    Proyecto, página y DataID — el vocabulario que aparece en toda la documentación.
   </FeatureCard>
   <FeatureCard emoji="🌱" title="3. Tu primer proyecto" href="/docs/comecar/primeiro-projeto">
-    Un recorrido paso a paso para crear un GDD desde cero usando los wizards de páginas tipadas.
+    Un recorrido paso a paso para crear un GDD desde cero, de la estructura a las primeras páginas escritas.
   </FeatureCard>
-  <FeatureCard emoji="📦" title="4. Referencia de addons" href="/docs/referencia/addons">
-    Una página por tipo de addon (Skills, Currency, Production, etc.) con schema, ejemplos y detalles importantes.
+  <FeatureCard emoji="📖" title="4. Referencia" href="/docs/referencia">
+    IA, atajos de teclado y el resto de la app, en formato de diccionario.
   </FeatureCard>
 </div>
 
 ## Qué hay en la app
 
-GDD Manager se organiza en tres capas:
+El documento es un **árbol de páginas**. Cada página representa un tema de tu juego — una clase, una mecánica, la economía, el roadmap — y lleva un título, una descripción en bloques y etiquetas de dominio.
 
-1. **Páginas** — cada una representa un concepto de tu juego (una clase, una habilidad, una economía). Tipadas (con wizard) o en blanco.
-2. **Addons** — bloques especializados dentro de una página. Skills, Currency, Modificadores de Atributos, Tabla de Progresión, etc. Hoy hay más de 16 tipos.
-3. **Remote Config** — exporta todo a JSON que tu motor puede consumir (Unity, Godot, Unreal, web). Schema flexible, múltiples formatos.
+Encima de eso, la app te ofrece tres formas de mirar el mismo documento:
 
-La verdadera potencia está en la **integración entre capas**: una habilidad referencia un modificador de atributo, que apunta a una definición de atributo, que se convierte en un campo en el JSON exportado — todo navegable y validado.
+1. **Modo edición** — el árbol al lado y el editor de bloques en el centro, para escribir.
+2. **Modo documento** — el GDD entero en una lectura continua, listo para enviar a alguien.
+3. **Mapa mental** — el mismo árbol como grafo, para ver estructura y conexiones de una vez.
+
+La fuerza de la app está en las **referencias cruzadas**: escribe `$[Nombre de la Página]` en el texto y se convierte en un enlace. Eso es lo que convierte el documento en una red navegable en vez de una pila de archivos.
 
 ## Links rápidos
 
-- **Cobertura completa de addons** → [Referencia de addons](/docs/referencia/addons)
-- **Cómo exportar a tu motor** → [Remote Config](/docs/referencia/addons/remote-config)
-- **Modelando un RPG completo** → [Guías](/docs/guias) *(próximamente)*
-- **Snippets listos para copiar** → [Cookbook](/docs/cookbook)
+- **Empezar desde cero** → [Tu primer proyecto](/docs/comecar/primeiro-projeto)
+- **Cómo la IA ayuda a escribir** → [Referencia → AI](/docs/referencia/ai)
+- **Todos los atajos de teclado** → [Referencia → Atajos](/docs/referencia/atalhos)
 
 <Callout type="tip" title="Atajos de teclado">
   Presiona <code>Ctrl + K</code> en cualquier página de la app para abrir el
-  buscador rápido (páginas, addons y más). Presiona <code>?</code> para ver la
-  lista flotante de **todos los atajos**, o consulta la página completa en
+  buscador rápido. Presiona <code>?</code> para ver la lista flotante de
+  **todos los atajos**, o consulta la página completa en
   [Referencia → Atajos](/docs/referencia/atalhos).
 </Callout>

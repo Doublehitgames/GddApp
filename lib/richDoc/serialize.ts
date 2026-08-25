@@ -1,4 +1,4 @@
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 
 /**
  * Extract plain text from a richDoc block tree, recursively.

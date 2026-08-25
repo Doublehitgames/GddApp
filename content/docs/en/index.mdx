@@ -1,13 +1,13 @@
 ---
 title: "GDD Manager Documentation"
 sidebarLabel: "🏠 Home"
-description: "Everything you need to keep your Game Design Documents alive and in sync with your game."
+description: "Everything you need to write a Game Design Document that still reads well six months later."
 order: 0
 ---
 
 # Documentation
 
-**GDD Manager** turns your messy notebook of ideas into a structured, exportable document that talks directly to your game engine. This documentation covers every feature in the app, **why it exists**, and **how to get the most out of it** in your project.
+**GDD Manager** turns your messy notebook of ideas into a structured document that's navigable and pleasant to read. This documentation covers every part of the app, **why it exists**, and **how to get the most out of it** in your project.
 
 ## Where to start
 
@@ -18,36 +18,36 @@ If this is your first time here, follow this path **in order**:
     A 5-minute overview of the app — what problem it solves and how it compares to a regular Notion/Confluence doc.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="2. Key concepts" href="/docs/comecar/conceitos-chave">
-    Understand **page type**, **addon**, **wizard**, and **Remote Config** — vocabulary that comes up everywhere in the docs.
+    Project, page and DataID — the vocabulary that comes up everywhere in the docs.
   </FeatureCard>
   <FeatureCard emoji="🌱" title="3. Your first project" href="/docs/comecar/primeiro-projeto">
-    A walkthrough for creating a GDD from scratch using typed page wizards.
+    A walkthrough for creating a GDD from scratch, from the structure to your first written pages.
   </FeatureCard>
-  <FeatureCard emoji="📦" title="4. Addon reference" href="/docs/referencia/addons">
-    One page per addon type (Skills, Currency, Production, etc.) with schema, examples, and gotchas.
+  <FeatureCard emoji="📖" title="4. Reference" href="/docs/referencia">
+    AI, keyboard shortcuts and the rest of the app, in dictionary form.
   </FeatureCard>
 </div>
 
 ## What's in the app
 
-GDD Manager is organized into three layers:
+The document is a **tree of pages**. Each page stands for a subject in your game — a class, a mechanic, the economy, the roadmap — and carries a title, a block-based description and domain tags.
 
-1. **Pages** — each one represents a concept in your game (a class, a skill, an economy). Typed (with wizard) or blank.
-2. **Addons** — specialized blocks inside a page. Skills, Currency, Attribute Modifiers, Progression Table, etc. There are 16+ types today.
-3. **Remote Config** — exports everything to JSON that your engine can consume (Unity, Godot, Unreal, web). Flexible schema, multiple formats.
+On top of that, the app gives you three ways to look at the same document:
 
-The real power comes from the **integration between layers**: a skill references an attribute modifier, which points to an attribute definition, which becomes a field in an exported JSON — all navigable and validated.
+1. **Edit mode** — the tree on the side and the block editor in the middle, for writing.
+2. **Document mode** — the whole GDD as one continuous read, ready to send to someone.
+3. **Mind map** — the same tree as a graph, so you can see structure and connections at a glance.
+
+The app's real strength is **cross-references**: write `$[Page Name]` in your text and it becomes a link. That's what turns the document into a navigable web instead of a pile of files.
 
 ## Quick links
 
-- **Full addon coverage** → [Addon reference](/docs/referencia/addons)
-- **How to export to your engine** → [Remote Config](/docs/referencia/addons/remote-config)
-- **Modeling a full RPG** → [Guides](/docs/guias) *(coming soon)*
-- **Ready-to-copy snippets** → [Cookbook](/docs/cookbook)
+- **Start from scratch** → [Your first project](/docs/comecar/primeiro-projeto)
+- **How the AI helps you write** → [Reference → AI](/docs/referencia/ai)
+- **Every keyboard shortcut** → [Reference → Shortcuts](/docs/referencia/atalhos)
 
 <Callout type="tip" title="Keyboard shortcuts">
-  Press <code>Ctrl + K</code> on any page in the app to open the quick search
-  (pages, addons, and more). Press <code>?</code> to see a floating list of
-  **all shortcuts**, or check the full reference at
-  [Reference → Shortcuts](/docs/referencia/atalhos).
+  Press <code>Ctrl + K</code> on any page in the app to open the quick search.
+  Press <code>?</code> to see a floating list of **all shortcuts**, or check the
+  full reference at [Reference → Shortcuts](/docs/referencia/atalhos).
 </Callout>

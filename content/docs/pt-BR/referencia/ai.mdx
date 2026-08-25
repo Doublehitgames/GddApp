@@ -47,9 +47,9 @@ Toda geração da IA aparece em **modo preview**. Você lê, edita se quiser, e 
 
 Os prompts foram afinados pra ela entender:
 
-- Que existem **page types** específicos (não inventar tipos)
-- Que page types vêm com **addons certos** (ex.: `attributeDefinitions` cria com 4 stats típicos pré-populados)
-- Que callouts têm **4 variants intencionais** (note/warning/design-decision/balance-note) — usar com critério
+- Que um GDD se organiza nos **cinco grupos canônicos** (Visão Geral, Design, Conteúdo, Apresentação, Produção)
+- Que conceitos importantes viram **página própria**, citada com `$[...]` em vez de repetida no texto
+- Que callouts têm **4 variantes intencionais** (nota / atenção / decisão de design / nota de balanceamento) — usar com critério
 - Que o doc é **fictício mas concreto** — inventa nomes, números, cenários (não placeholders genéricos tipo "Personagem 1")
 
 ### 3. Não inventa sistemas fora do tema
@@ -103,7 +103,7 @@ Informações adicionais: Pixel art, single player, foco em build-craft.
   └── Tecnologia / Roadmap / Riscos / KPIs
 ```
 
-Cada página vem com prosa rica, callouts explicando jargão, e estrutura de addon configurada.
+Cada página vem com prosa rica, callouts explicando jargão, e referências cruzadas entre os assuntos.
 
 ## Chat com contexto
 
@@ -147,18 +147,18 @@ Roda heurísticas + IA pra apontar:
 
 ## Melhoria de prosa
 
-Em qualquer richDoc, o botão **"Melhorar com IA"** envia o conteúdo atual + um pedido de refinamento (mais conciso, mais técnico, mais visual, etc.) e devolve uma versão revisada. Você compara lado a lado e aceita ou descarta.
+Na descrição de qualquer página, o botão **"Melhorar com IA"** envia o conteúdo atual + um pedido de refinamento (mais conciso, mais técnico, mais visual, etc.) e devolve uma versão revisada. Você compara lado a lado e aceita ou descarta.
 
 ## Conexão com outros assistentes de IA
 
 O GDD Manager pode ser **conectado a outros assistentes de IA** que você (ou seu time de programação) já usem — Claude Code, Cursor, e similares. Quando conectado, esses assistentes conseguem:
 
 - Listar e ler o conteúdo das suas páginas
-- Criar páginas novas e adicionar addons
-- Atualizar valores específicos
-- Gerar o JSON de exportação sob demanda
+- Criar páginas novas e reorganizar a árvore
+- Reescrever ou completar descrições
+- Buscar por assunto em todos os seus projetos
 
-Cenário comum: o programador do seu jogo abre o assistente dele, pede pra ler a tabela de balanceamento que você criou aqui e gerar o código que consome esses valores no motor. Você nem precisa exportar manualmente.
+Cenário comum: o programador do seu jogo abre o assistente dele, pede pra ler a página onde você descreveu o core loop, e já implementa a partir dali. Você nem precisa mandar o documento.
 
 <Callout type="info" title="Integração ainda evoluindo">
   Essa conexão está sendo expandida feature por feature. Quando o seu time
@@ -175,8 +175,8 @@ Cenário comum: o programador do seu jogo abre o assistente dele, pede pra ler a
 ## Veja também
 
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
-  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
-    Use a IA pra gerar páginas, depois exporte tudo pro motor.
+  <FeatureCard emoji="⌨️" title="Atalhos de teclado" href="/docs/referencia/atalhos">
+    Chame a IA sem tirar a mão do teclado.
   </FeatureCard>
   <FeatureCard emoji="🌱" title="Seu primeiro projeto" href="/docs/comecar/primeiro-projeto">
     Walkthrough manual — útil pra entender o que a IA faz por baixo.

@@ -5,17 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project, Section } from '@/store/projectStore';
 import { useI18n } from '@/lib/i18n/provider';
 import { ToggleSwitch } from '@/components/ToggleSwitch';
-import { resolveProjectSpecialTokensForProject } from '@/lib/addons/projectSpecialTokens';
-import {
-  extractSectionRichDocMarkdown,
-  sectionHasExportableContent,
-} from '@/lib/richDoc/exportSection';
-import {
-  collectEconomyConfigs,
-  listEconomyConfigs,
-} from '@/lib/addons/economySnapshot';
+import { resolveProjectSpecialTokensForProject } from '@/lib/sections/specialTokens';
+type ExportFormat = 'markdown' | 'pdf' | 'word';
 
-type ExportFormat = 'markdown' | 'pdf' | 'word' | 'economy';
+/** Uma seção entra no export quando tem título e algum texto. */
+function sectionHasExportableContent(section: { content?: string } | null | undefined): boolean {
+  return Boolean(section && typeof section.content === 'string' && section.content.trim());
+}
 
 function sanitizeFilename(name: string): string {
   return (name || 'export').replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '') || 'export';
@@ -23,8 +19,7 @@ function sanitizeFilename(name: string): string {
 
 /**
  * Trigger a browser download for a Blob without the `file-saver` dependency
- * (its `saveAs` export doesn't resolve in this build). Mirrors the Remote
- * Config panel's own download handler.
+ * (its `saveAs` export doesn't resolve in this build).
  */
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -48,32 +43,9 @@ export default function ExportPage() {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [includeEmptySections, setIncludeEmptySections] = useState(false);
-  const [selectedConfigIds, setSelectedConfigIds] = useState<string[]>([]);
 
   const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
   const realProjectId = project?.id ?? "";
-
-  const economyConfigs = useMemo(
-    () => (realProjectId ? listEconomyConfigs(projects, realProjectId) : []),
-    [projects, realProjectId]
-  );
-
-  // Default to "all selected". Re-syncs if configs are added/removed, dropping
-  // stale ids and keeping the user's picks among the ones that still exist.
-  useEffect(() => {
-    const ids = economyConfigs.map((c) => c.addonId);
-    setSelectedConfigIds((prev) => {
-      if (prev.length === 0) return ids;
-      const known = new Set(ids);
-      const kept = prev.filter((id) => known.has(id));
-      return kept.length === prev.length ? prev : kept.length ? kept : ids;
-    });
-  }, [economyConfigs]);
-
-  const toggleConfig = (addonId: string) =>
-    setSelectedConfigIds((prev) =>
-      prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]
-    );
 
   if (!project) {
     return (
@@ -124,11 +96,6 @@ export default function ExportPage() {
 
       if (section.content) {
         md += `${resolveExportContent(section.content, section.id)}\n\n`;
-      }
-
-      const richDocMd = extractSectionRichDocMarkdown(section);
-      if (richDocMd) {
-        md += `${richDocMd}\n\n`;
       }
 
       if (section.subsections) {
@@ -210,20 +177,6 @@ export default function ExportPage() {
         yPosition += 5;
       }
 
-      // RichDoc addons (rendered as raw markdown text — PDF output is
-      // text-only so headings/bold/etc. appear as plain ASCII).
-      const richDocMd = extractSectionRichDocMarkdown(section);
-      if (richDocMd) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        const lines = doc.splitTextToSize(richDocMd, 170 - (level - 1) * 10);
-        lines.forEach((line: string) => {
-          checkPageBreak(lineHeight);
-          doc.text(line, indent, yPosition);
-          yPosition += lineHeight;
-        });
-        yPosition += 5;
-      }
 
       // Subsecoes
       if (section.subsections) {
@@ -297,21 +250,6 @@ export default function ExportPage() {
         });
       }
 
-      // RichDoc addons — emit each markdown paragraph as a Word paragraph.
-      const richDocMd = extractSectionRichDocMarkdown(section);
-      if (richDocMd) {
-        richDocMd.split('\n\n').forEach(para => {
-          const trimmed = para.trim();
-          if (!trimmed) return;
-          children.push(
-            new Paragraph({
-              text: trimmed,
-              spacing: { after: 200 }
-            })
-          );
-        });
-      }
-
       // Subsecoes
       if (section.subsections) {
         section.subsections.forEach(sub => {
@@ -335,39 +273,6 @@ export default function ExportPage() {
     downloadBlob(blob, `${sanitizeFilename(project.title)}.docx`);
   };
 
-  // Exportar economia (Remote Configs resolvidos) como JSON
-  const exportEconomy = async () => {
-    if (selectedConfigIds.length === 0) {
-      alert(
-        t('projectExport.economy.empty', 'Selecione ao menos um Remote Config para exportar.')
-      );
-      return;
-    }
-
-    const configs = collectEconomyConfigs(projects, realProjectId, {
-      addonIds: selectedConfigIds,
-    });
-
-    if (configs.length === 0) {
-      alert(t('projectExport.economy.empty', 'Nenhum Remote Config encontrado.'));
-      return;
-    }
-
-    const allSelected = selectedConfigIds.length >= economyConfigs.length;
-    const snapshot = {
-      project: project.title,
-      scope: allSelected
-        ? t('projectExport.economy.wholeEconomy', 'Economia inteira')
-        : t('projectExport.economy.customScope', 'Seleção personalizada'),
-      exportedAt: new Date().toISOString(),
-      configCount: configs.length,
-      configs,
-    };
-
-    const suffix = allSelected ? 'economia' : `economia_${configs.length}`;
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, `${sanitizeFilename(project.title)}_${suffix}.json`);
-  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -382,18 +287,12 @@ export default function ExportPage() {
         case 'word':
           await exportWord();
           break;
-        case 'economy':
-          await exportEconomy();
-          break;
       }
 
-      // Aguardar um pouco para o download comecar. A economia mantem o usuario
-      // na pagina (ele pode querer exportar varios escopos em sequencia).
-      if (selectedFormat !== 'economy') {
-        setTimeout(() => {
-          router.push(`/projects/${projectId}`);
-        }, 1000);
-      }
+      // Aguardar um pouco para o download comecar.
+      setTimeout(() => {
+        router.push(`/projects/${projectId}`);
+      }, 1000);
     } catch (error) {
       console.error('Erro ao exportar:', error);
       const detail = error instanceof Error ? `${error.message}` : String(error);
@@ -408,9 +307,7 @@ export default function ExportPage() {
       ? t('projectExport.formats.markdown.label')
       : selectedFormat === 'pdf'
         ? t('projectExport.formats.pdf.label')
-        : selectedFormat === 'word'
-          ? t('projectExport.formats.word.label')
-          : t('projectExport.formats.economy.label', 'Economia (JSON)');
+        : t('projectExport.formats.word.label');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-12 px-4">
@@ -489,95 +386,10 @@ export default function ExportPage() {
                 </div>
               </div>
             </button>
-
-            {/* Economia (Remote Config JSON) */}
-            <button
-              onClick={() => setSelectedFormat('economy')}
-              className={`p-6 rounded-lg border-2 transition-all ${
-                selectedFormat === 'economy'
-                  ? 'border-emerald-500 bg-emerald-50'
-                  : 'border-gray-300 hover:border-emerald-300'
-              }`}
-            >
-              <div className="text-center">
-                <div className="text-4xl mb-2">📊</div>
-                <div className="font-semibold text-gray-900 mb-1">
-                  {t('projectExport.formats.economy.label', 'Economia (JSON)')}
-                </div>
-                <div className="text-xs text-gray-600">
-                  {t(
-                    'projectExport.formats.economy.description',
-                    'Remote Configs resolvidos, prontos pra dar a um agente externo'
-                  )}
-                </div>
-              </div>
-            </button>
           </div>
 
           {/* Options */}
           <div className="border-t pt-4">
-            {selectedFormat === 'economy' ? (
-              <div className="text-sm text-gray-700">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="font-medium">
-                    {t('projectExport.economy.scopeLabel', 'O que exportar')}{' '}
-                    <span className="text-gray-500">
-                      ({selectedConfigIds.length}/{economyConfigs.length})
-                    </span>
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedConfigIds(economyConfigs.map((c) => c.addonId))}
-                      className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
-                    >
-                      {t('projectExport.economy.selectAll', 'Marcar tudo')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedConfigIds([])}
-                      className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
-                    >
-                      {t('projectExport.economy.clear', 'Limpar')}
-                    </button>
-                  </div>
-                </div>
-                {economyConfigs.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-xs text-gray-500">
-                    {t('projectExport.economy.none', 'Este projeto nao tem Remote Configs.')}
-                  </p>
-                ) : (
-                  <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-                    {economyConfigs.map((c) => (
-                      <label
-                        key={c.addonId}
-                        className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
-                        style={{ paddingLeft: (12 + c.depth * 16) + 'px' }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedConfigIds.includes(c.addonId)}
-                          onChange={() => toggleConfig(c.addonId)}
-                          className="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <span className="min-w-0 flex-1 truncate">
-                          <span className="text-gray-900">{c.sectionTitle}</span>
-                          {c.addonName && c.addonName !== c.sectionTitle && (
-                            <span className="text-gray-400"> - {c.addonName}</span>
-                          )}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <span className="mt-1.5 block text-xs text-gray-500">
-                  {t(
-                    'projectExport.economy.scopeHint',
-                    'Baixa um .json so com os Remote Configs marcados. Entregue esse arquivo a um agente (ex: ChatGPT) para analisar o balanceamento.'
-                  )}
-                </span>
-              </div>
-            ) : (
               <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                 <ToggleSwitch
                   checked={includeEmptySections}
@@ -586,7 +398,6 @@ export default function ExportPage() {
                 />
                 {t('projectExport.includeEmptySections')}
               </label>
-            )}
           </div>
         </div>
 
@@ -594,10 +405,8 @@ export default function ExportPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="font-semibold text-blue-900 mb-2">ℹ️ {t('projectExport.infoTitle')}</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• <strong>{t('projectExport.formats.markdown.label')}:</strong> {t('projectExport.info.markdown')}</li>
             <li>• <strong>{t('projectExport.formats.pdf.label')}:</strong> {t('projectExport.info.pdf')}</li>
             <li>• <strong>{t('projectExport.formats.word.label')}:</strong> {t('projectExport.info.word')}</li>
-            <li>• <strong>{t('projectExport.formats.economy.label', 'Economia (JSON)')}:</strong> {t('projectExport.info.economy', 'Junta todos os Remote Configs resolvidos num arquivo pra dar a um agente externo balancear.')}</li>
           </ul>
         </div>
 

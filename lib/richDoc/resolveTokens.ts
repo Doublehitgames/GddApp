@@ -1,8 +1,8 @@
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import {
   resolveProjectSpecialTokens,
   type ProjectTokenSource,
-} from "@/lib/addons/projectSpecialTokens";
+} from "@/lib/sections/specialTokens";
 
 /**
  * Walk a richDoc block tree and resolve `@[token]` special tokens inside every

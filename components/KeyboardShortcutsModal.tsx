@@ -60,11 +60,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
         descriptionFallback: "Criar uma nova página (modal rápido)",
       },
       {
-        keys: [MOD, "I"],
-        descriptionKey: "shortcuts.keys.addAddon",
-        descriptionFallback: "Adicionar um addon nesta página",
-      },
-      {
         keys: [MOD, "D"],
         descriptionKey: "shortcuts.keys.duplicateSection",
         descriptionFallback: "Duplicar a página atual",

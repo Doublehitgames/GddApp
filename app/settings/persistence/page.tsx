@@ -64,7 +64,6 @@ export default function PersistenceSettingsPage() {
 
     for (const section of sections) {
       for (const facet of section.facets || []) {
-        if (facet === "addons") continue;
         if (facet === "created") pushUnique(t("settings.persistencePage.history.changeFacets.created"));
         if (facet === "title") pushUnique(t("settings.persistencePage.history.changeFacets.title"));
         if (facet === "content") pushUnique(t("settings.persistencePage.history.changeFacets.content"));
@@ -73,14 +72,6 @@ export default function PersistenceSettingsPage() {
         if (facet === "order") pushUnique(t("settings.persistencePage.history.changeFacets.order"));
         if (facet === "color") pushUnique(t("settings.persistencePage.history.changeFacets.color"));
         if (facet === "thumbnail") pushUnique(t("settings.persistencePage.history.changeFacets.thumbnail"));
-      }
-
-      for (const addon of section.addons || []) {
-        const addonLabel = t("settings.persistencePage.history.changeFacets.addonLabel").replace(
-          "{{name}}",
-          addon.addonName || addon.addonType
-        );
-        pushUnique(addonLabel);
       }
     }
 

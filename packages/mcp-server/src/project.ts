@@ -8,7 +8,7 @@
  *
  * The rule: a write returns a receipt (proof it saved, plus the ids the agent
  * could not know), a listing returns index rows, a read returns everything.
- * Fat payloads belong to get_section / get_project(includeAddons) /
+ * Fat payloads belong a get_section /
  * get_remote_config, which is where an agent asks for them on purpose.
  *
  * NOTE: twin of lib/mcp/project.ts (the remote /api/mcp server). The two MCP
@@ -49,11 +49,6 @@ const SECTION_NOISE = [
 export function sectionRow(section: unknown): Rec {
   const s = asRec(section);
   const blocks = Array.isArray(s.contentBlocks) ? s.contentBlocks : [];
-  // The REST layer sends either full addon objects or, when asked for
-  // `?addons=types`, just their type names. Either way the row shows types.
-  const types = Array.isArray(s.addonTypes)
-    ? s.addonTypes.filter((t): t is string => typeof t === "string")
-    : (Array.isArray(s.addons) ? s.addons : []).map((a) => asRec(a).type).filter((t): t is string => typeof t === "string");
   return {
     id: s.id,
     title: s.title,
@@ -61,7 +56,6 @@ export function sectionRow(section: unknown): Rec {
     order: s.order,
     ...(s.dataId ? { dataId: s.dataId } : {}),
     ...(s.content || blocks.length ? { hasDescription: true } : {}),
-    ...(types.length ? { addons: types } : {}),
   };
 }
 
@@ -72,7 +66,7 @@ export function sectionRow(section: unknown): Rec {
  */
 export function filterSections(
   sections: unknown[],
-  opts: { subtreeOf?: string; withoutDescription?: boolean; hasAddonType?: string } = {},
+  opts: { subtreeOf?: string; withoutDescription?: boolean } = {},
 ): unknown[] {
   let out = sections;
 
@@ -100,14 +94,6 @@ export function filterSections(
       const s = asRec(section);
       const blocks = Array.isArray(s.contentBlocks) ? s.contentBlocks : [];
       return !s.content && blocks.length === 0;
-    });
-  }
-
-  if (opts.hasAddonType) {
-    out = out.filter((section) => {
-      const s = asRec(section);
-      if (Array.isArray(s.addonTypes)) return s.addonTypes.includes(opts.hasAddonType);
-      return Array.isArray(s.addons) && s.addons.some((a) => asRec(a).type === opts.hasAddonType);
     });
   }
 
@@ -139,46 +125,9 @@ export function sectionCreated(section: unknown): Rec {
   };
 }
 
-// ── Addons ────────────────────────────────────────────────────────
-
-/** One index row: identity only. The data lives in get_section. */
-export function addonRow(addon: unknown): Rec {
-  const a = asRec(addon);
-  return {
-    id: a.id,
-    type: a.type,
-    name: a.name,
-    ...(a.group ? { group: a.group } : {}),
-  };
-}
-
-export function addonReceipt(addon: unknown, sectionId: string, updated: string[]): Rec {
-  const a = asRec(addon);
-  return { ok: true, id: a.id, type: a.type, name: a.name, sectionId, updated };
-}
-
-export function addonCreated(addon: unknown, sectionId: string): Rec {
-  const a = asRec(addon);
-  return { ok: true, id: a.id, type: a.type, name: a.name, sectionId };
-}
-
-/** copy_addon returns the inserted addon; move_addon wraps it with a ref count. */
-export function addonMoved(result: unknown, toSectionId: string): Rec {
-  const r = asRec(result);
-  const addon = "addon" in r ? asRec(r.addon) : r;
-  return {
-    ok: true,
-    id: addon.id,
-    type: addon.type,
-    name: addon.name,
-    toSectionId,
-    ...(typeof r.reverseRefsUpdated === "number" ? { reverseRefsUpdated: r.reverseRefsUpdated } : {}),
-  };
-}
-
 // ── Projects ──────────────────────────────────────────────────────
 
-/** One index row. Settings (aiInstructions, mindmap, sheets) live in get_project. */
+/** One index row. Settings (aiInstructions, mindmap) live in get_project. */
 export function projectRow(project: unknown): Rec {
   const p = asRec(project);
   return {
@@ -199,20 +148,12 @@ export function projectIndex(project: unknown): Rec {
     ...(p.description ? { description: p.description } : {}),
     ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
     ...(p.mindmapSettings ? { mindmapSettings: p.mindmapSettings } : {}),
-    ...(p.linkedSpreadsheets ? { linkedSpreadsheets: p.linkedSpreadsheets } : {}),
     // Just the count — the library itself lives in list_project_images.
     ...(p.imageCount ? { imageCount: p.imageCount } : {}),
     updatedAt: p.updatedAt,
     sectionCount: sections.length,
     sections: sections.map(sectionRow),
   };
-}
-
-/** Full project with every addon, minus the per-section UI/audit noise. */
-export function projectFull(project: unknown): Rec {
-  const p = { ...asRec(project) };
-  if (Array.isArray(p.sections)) p.sections = p.sections.map(sectionFull);
-  return p;
 }
 
 export function projectReceipt(project: unknown, updated: string[]): Rec {

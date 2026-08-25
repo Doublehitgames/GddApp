@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Atualiza só as configurações leves do projeto: mindmap_settings (mapa mental,
- * compartilhamento público), linked_spreadsheets e image_library.
+ * compartilhamento público) e image_library.
  * Não consome créditos de sync e não envia seções.
  *
  * Acesso: dono OU membro com papel `editor` — a mesma regra do resto das
@@ -26,25 +26,17 @@ export async function PATCH(
 
     const body = await request.json().catch(() => ({}));
     const mindmap_settings = body.mindmap_settings;
-    const linked_spreadsheets = body.linked_spreadsheets;
     const image_library = body.image_library;
 
     // At least one recognised field must be present
-    if (
-      mindmap_settings === undefined &&
-      linked_spreadsheets === undefined &&
-      image_library === undefined
-    ) {
+    if (mindmap_settings === undefined && image_library === undefined) {
       return NextResponse.json(
-        { error: "mindmap_settings, linked_spreadsheets or image_library required" },
+        { error: "mindmap_settings or image_library required" },
         { status: 400 }
       );
     }
     if (mindmap_settings !== undefined && typeof mindmap_settings !== "object") {
       return NextResponse.json({ error: "mindmap_settings must be an object" }, { status: 400 });
-    }
-    if (linked_spreadsheets !== undefined && !Array.isArray(linked_spreadsheets)) {
-      return NextResponse.json({ error: "linked_spreadsheets must be an array" }, { status: 400 });
     }
     // null é válido: é como a UI descadastra a pasta.
     if (image_library !== undefined && image_library !== null && typeof image_library !== "object") {
@@ -99,7 +91,6 @@ export async function PATCH(
         };
       }
     }
-    if (linked_spreadsheets !== undefined) updateFields.linked_spreadsheets = linked_spreadsheets;
     if (image_library !== undefined) updateFields.image_library = image_library;
 
     const { error: updateErr } = await supabase

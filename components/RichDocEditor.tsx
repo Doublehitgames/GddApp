@@ -20,7 +20,7 @@ import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { CalloutBlock, CALLOUT_VARIANTS, type CalloutVariant } from "@/lib/richDoc/calloutBlock";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
-import type { RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import { useI18n } from "@/lib/i18n/provider";
 
 interface RichDocEditorProps {
@@ -34,7 +34,7 @@ interface RichDocEditorProps {
    * Called once with the live BlockNote editor instance after it mounts.
    * Lets a wrapper drive imperative APIs (markdown import/export, cursor
    * insertion) without this component knowing about them. Optional — the
-   * richDoc addon doesn't use it.
+   * the description editor doesn't use it.
    */
   onReady?: (editor: unknown) => void;
 }
@@ -135,8 +135,8 @@ export default function RichDocEditor({
       const defaults = getDefaultReactSlashMenuItems(editor);
       const embedItem = {
         key: "embed",
-        title: t("richDocAddon.slashMenu.embed.title", "Embed"),
-        subtext: t("richDocAddon.slashMenu.embed.subtext", "YouTube, Vimeo, Loom, Streamable"),
+        title: t("blockEditor.slashMenu.embed.title", "Embed"),
+        subtext: t("blockEditor.slashMenu.embed.subtext", "YouTube, Vimeo, Loom, Streamable"),
         aliases: ["video", "youtube", "vimeo", "iframe", "embed"],
         group: mediaGroupLabel,
         icon: <span style={{ fontSize: 18 }}>🎬</span>,
@@ -151,8 +151,8 @@ export default function RichDocEditor({
       };
       const driveImageItem = {
         key: "drive-image",
-        title: t("richDocAddon.slashMenu.driveImage.title", "Drive Image"),
-        subtext: t("richDocAddon.slashMenu.driveImage.subtext", "Pick an image from Google Drive"),
+        title: t("blockEditor.slashMenu.driveImage.title", "Drive Image"),
+        subtext: t("blockEditor.slashMenu.driveImage.subtext", "Pick an image from Google Drive"),
         aliases: ["image", "drive", "google", "upload", "picture", "img"],
         group: mediaGroupLabel,
         icon: <span style={{ fontSize: 18 }}>🖼️</span>,
@@ -187,11 +187,11 @@ export default function RichDocEditor({
           break;
         }
       }
-      const calloutsGroup = t("richDocAddon.slashMenu.calloutsGroup", "Callouts");
+      const calloutsGroup = t("blockEditor.slashMenu.calloutsGroup", "Callouts");
       const calloutItems = CALLOUT_VARIANTS.map((variant: CalloutVariant) => ({
         key: `callout-${variant.id}`,
-        title: t(`richDocAddon.slashMenu.callout.${variant.id}.title`, variant.defaultTitle),
-        subtext: t(`richDocAddon.slashMenu.callout.${variant.id}.subtext`, variant.defaultSubtext),
+        title: t(`blockEditor.slashMenu.callout.${variant.id}.title`, variant.defaultTitle),
+        subtext: t(`blockEditor.slashMenu.callout.${variant.id}.subtext`, variant.defaultSubtext),
         aliases: variant.aliases,
         group: calloutsGroup,
         icon: <span style={{ fontSize: 18 }}>{variant.icon}</span>,

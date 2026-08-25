@@ -46,48 +46,23 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
   return {
     // Projects
     listProjects: () => api("GET", "/projects"),
-    getProject: (id: string, addons?: "types" | "none") => api("GET", `/projects/${id}${addons ? `?addons=${addons}` : ""}`),
+    getProject: (id: string) => api("GET", `/projects/${id}`),
     createProject: (params: { title: string; description?: string }) => api("POST", "/projects", params),
     updateProject: (id: string, params: Record<string, unknown>) => api("PATCH", `/projects/${id}`, params),
     deleteProject: (id: string) => api("DELETE", `/projects/${id}`),
 
     // Sections
-    // `addons: "types"` keeps the heavy balance_addons payload off the wire.
-    listSections: (projectId: string, addons?: "types" | "none") =>
-      api("GET", `/projects/${projectId}/sections${addons ? `?addons=${addons}` : ""}`),
+    listSections: (projectId: string) => api("GET", `/projects/${projectId}/sections`),
     getSection: (projectId: string, sectionId: string) => api("GET", `/projects/${projectId}/sections/${sectionId}`),
     createSection: (projectId: string, params: Record<string, unknown>) => api("POST", `/projects/${projectId}/sections`, params),
-    // `addons: "none"` keeps the re-read light when only a receipt is wanted.
-    updateSection: (projectId: string, sectionId: string, params: Record<string, unknown>, addons?: "types" | "none") =>
-      api("PATCH", `/projects/${projectId}/sections/${sectionId}${addons ? `?addons=${addons}` : ""}`, params),
+    updateSection: (projectId: string, sectionId: string, params: Record<string, unknown>) =>
+      api("PATCH", `/projects/${projectId}/sections/${sectionId}`, params),
     batchUpdateSections: (projectId: string, sections: Record<string, unknown>[]) =>
       api("PATCH", `/projects/${projectId}/sections`, { sections }),
     deleteSection: (projectId: string, sectionId: string) => api("DELETE", `/projects/${projectId}/sections/${sectionId}`),
 
-    // Addons
-    listAddons: (projectId: string, sectionId: string) => api("GET", `/projects/${projectId}/sections/${sectionId}/addons`),
-    createAddon: (projectId: string, sectionId: string, params: Record<string, unknown>) => api("POST", `/projects/${projectId}/sections/${sectionId}/addons`, params),
-    updateAddon: (projectId: string, sectionId: string, addonId: string, params: Record<string, unknown>) => api("PATCH", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`, params),
-    deleteAddon: (projectId: string, sectionId: string, addonId: string) => api("DELETE", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}`),
-    copyAddon: (projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) =>
-      api("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/copy`, { toSectionId, overwrite }),
-    moveAddon: (projectId: string, sectionId: string, addonId: string, toSectionId: string, overwrite?: boolean) =>
-      api("POST", `/projects/${projectId}/sections/${sectionId}/addons/${addonId}/move`, { toSectionId, overwrite }),
-
-    // Linked spreadsheets
-    listLinkedSpreadsheets: (projectId: string) => api("GET", `/projects/${projectId}/spreadsheets`),
-
     listProjectImages: (projectId: string, match?: string) =>
       api("GET", `/projects/${projectId}/images${match ? `?match=${encodeURIComponent(match)}` : ""}`),
-
-    // Remote Config (resolved economy)
-    getRemoteConfig: (projectId: string, opts: { sectionId?: string; addonId?: string } = {}) => {
-      const params = new URLSearchParams();
-      if (opts.sectionId) params.set("sectionId", opts.sectionId);
-      if (opts.addonId) params.set("addonId", opts.addonId);
-      const qs = params.toString();
-      return api("GET", `/projects/${projectId}/remote-config${qs ? `?${qs}` : ""}`);
-    },
 
     // Search
     search: (q: string, type?: string, limit?: number) => {

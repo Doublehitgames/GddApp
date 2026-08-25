@@ -8,7 +8,7 @@
  *
  * The rule: a write returns a receipt (proof it saved, plus the ids the agent
  * could not know), a listing returns index rows, a read returns everything.
- * Fat payloads belong to get_section / get_project(includeAddons) /
+ * Fat payloads belong a get_section /
  * get_remote_config, which is where an agent asks for them on purpose.
  *
  * NOTE: twin of lib/mcp/project.ts (the remote /api/mcp server). The two MCP
@@ -40,11 +40,6 @@ const SECTION_NOISE = [
 export function sectionRow(section) {
     const s = asRec(section);
     const blocks = Array.isArray(s.contentBlocks) ? s.contentBlocks : [];
-    // The REST layer sends either full addon objects or, when asked for
-    // `?addons=types`, just their type names. Either way the row shows types.
-    const types = Array.isArray(s.addonTypes)
-        ? s.addonTypes.filter((t) => typeof t === "string")
-        : (Array.isArray(s.addons) ? s.addons : []).map((a) => asRec(a).type).filter((t) => typeof t === "string");
     return {
         id: s.id,
         title: s.title,
@@ -52,7 +47,6 @@ export function sectionRow(section) {
         order: s.order,
         ...(s.dataId ? { dataId: s.dataId } : {}),
         ...(s.content || blocks.length ? { hasDescription: true } : {}),
-        ...(types.length ? { addons: types } : {}),
     };
 }
 /**
@@ -87,14 +81,6 @@ export function filterSections(sections, opts = {}) {
             return !s.content && blocks.length === 0;
         });
     }
-    if (opts.hasAddonType) {
-        out = out.filter((section) => {
-            const s = asRec(section);
-            if (Array.isArray(s.addonTypes))
-                return s.addonTypes.includes(opts.hasAddonType);
-            return Array.isArray(s.addons) && s.addons.some((a) => asRec(a).type === opts.hasAddonType);
-        });
-    }
     return out;
 }
 /** Full section, minus the columns that only the web app reads. */
@@ -120,40 +106,8 @@ export function sectionCreated(section) {
         createdAt: s.createdAt,
     };
 }
-// ── Addons ────────────────────────────────────────────────────────
-/** One index row: identity only. The data lives in get_section. */
-export function addonRow(addon) {
-    const a = asRec(addon);
-    return {
-        id: a.id,
-        type: a.type,
-        name: a.name,
-        ...(a.group ? { group: a.group } : {}),
-    };
-}
-export function addonReceipt(addon, sectionId, updated) {
-    const a = asRec(addon);
-    return { ok: true, id: a.id, type: a.type, name: a.name, sectionId, updated };
-}
-export function addonCreated(addon, sectionId) {
-    const a = asRec(addon);
-    return { ok: true, id: a.id, type: a.type, name: a.name, sectionId };
-}
-/** copy_addon returns the inserted addon; move_addon wraps it with a ref count. */
-export function addonMoved(result, toSectionId) {
-    const r = asRec(result);
-    const addon = "addon" in r ? asRec(r.addon) : r;
-    return {
-        ok: true,
-        id: addon.id,
-        type: addon.type,
-        name: addon.name,
-        toSectionId,
-        ...(typeof r.reverseRefsUpdated === "number" ? { reverseRefsUpdated: r.reverseRefsUpdated } : {}),
-    };
-}
 // ── Projects ──────────────────────────────────────────────────────
-/** One index row. Settings (aiInstructions, mindmap, sheets) live in get_project. */
+/** One index row. Settings (aiInstructions, mindmap) live in get_project. */
 export function projectRow(project) {
     const p = asRec(project);
     return {
@@ -173,20 +127,12 @@ export function projectIndex(project) {
         ...(p.description ? { description: p.description } : {}),
         ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
         ...(p.mindmapSettings ? { mindmapSettings: p.mindmapSettings } : {}),
-        ...(p.linkedSpreadsheets ? { linkedSpreadsheets: p.linkedSpreadsheets } : {}),
         // Just the count — the library itself lives in list_project_images.
         ...(p.imageCount ? { imageCount: p.imageCount } : {}),
         updatedAt: p.updatedAt,
         sectionCount: sections.length,
         sections: sections.map(sectionRow),
     };
-}
-/** Full project with every addon, minus the per-section UI/audit noise. */
-export function projectFull(project) {
-    const p = { ...asRec(project) };
-    if (Array.isArray(p.sections))
-        p.sections = p.sections.map(sectionFull);
-    return p;
 }
 export function projectReceipt(project, updated) {
     const p = asRec(project);

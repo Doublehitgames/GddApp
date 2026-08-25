@@ -6,10 +6,9 @@ import { useProjectStore, LevelConfig, type Project } from "@/store/projectStore
 import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
-import { pushProjectMindMapSettings, pushProjectLinkedSpreadsheets, pushProjectImageLibrary } from "@/lib/supabase/projectSync";
-import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadsheetsSettings";
+import { pushProjectMindMapSettings, pushProjectImageLibrary } from "@/lib/supabase/projectSync";
 import { ImageLibrarySettings } from "@/components/common/ImageLibrarySettings";
-import type { LinkedSpreadsheet, ProjectImageLibrary } from "@/store/slices/types";
+import type { ProjectImageLibrary } from "@/store/slices/types";
 import {
   DOCUMENT_THEME_OPTIONS,
   normalizeDocumentTheme,
@@ -43,7 +42,6 @@ export default function SettingsClient({ projectId }: Props) {
     getProjectBySlug,
     updateProjectSettings,
     updateProjectMindMapSettingsOnly,
-    updateProjectLinkedSpreadsheets,
     setProjectImageLibrary,
     removeProject,
     loadFromSupabase,
@@ -588,20 +586,6 @@ export default function SettingsClient({ projectId }: Props) {
           <button onClick={() => fileInputRef.current?.click()} className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold">📤 {t("settings.actions.import", "Import")}</button>
         </div>
         <div className="space-y-8">
-          {/* Planilhas Vinculadas */}
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-1">{t("settings.linkedSheets.title")}</h2>
-            <p className="text-sm text-gray-400 mb-4">{t("settings.linkedSheets.description")}</p>
-            <LinkedSpreadsheetsSettings
-              projectId={realProjectId}
-              spreadsheets={project.linkedSpreadsheets ?? []}
-              onChange={async (next: LinkedSpreadsheet[]) => {
-                updateProjectLinkedSpreadsheets(realProjectId, next);
-                await pushProjectLinkedSpreadsheets(realProjectId, next);
-              }}
-            />
-          </div>
-
           {/* Biblioteca de Imagens (pasta do Drive) */}
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-1">{t("settings.imageLibrary.title")}</h2>

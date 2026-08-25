@@ -914,18 +914,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         return pt;
     }
   };
-  const getAddonTypeLabel = useCallback(
-    (type: string) => {
-      if (type === "progressionTable") return t("progressionTableAddon.addonTypeLabel", "Tabela de balanceamento");
-      if (type === "economyLink") return t("economyLinkAddon.addonTypeLabel", "Economia vinculada");
-      if (type === "currency") return t("currencyAddon.addonTypeLabel", "Moeda");
-      if (type === "globalVariable") return t("globalVariableAddon.addonTypeLabel", "Variavel global");
-      if (type === "inventory") return t("inventoryAddon.addonTypeLabel", "Estoque");
-      if (type === "production") return t("productionAddon.addonTypeLabel", "Producao");
-      return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
-    },
-    [t]
-  );
   const { getProjectBySlug } = useProjectStore();
   const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
@@ -2099,23 +2087,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </>
               )}
             </div>
-            {selectedNode.id !== "project" && Array.isArray((selectedNode as Section).addons) && (selectedNode as Section).addons!.length > 0 && (
-              <div className="mt-4 rounded-lg border border-gray-600/70 bg-gray-700/40 p-3">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-300">
-                  {tr("Addons em uso", "Addons in use", "Addons en uso")}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(new Set((selectedNode as Section).addons!.map((addon) => addon.type))).map((type) => (
-                    <span
-                      key={type}
-                      className="inline-flex items-center rounded-full border border-gray-500/70 bg-gray-800 px-2 py-0.5 text-xs text-gray-200"
-                    >
-                      {getAddonTypeLabel(type)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Seção de Referenciado por */}
             {selectedNode.id !== 'project' && (() => {

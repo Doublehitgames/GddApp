@@ -6,7 +6,6 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { Project, Section } from "@/store/projectStore";
-import { normalizeSectionAddons } from "@/lib/addons/normalize";
 
 const isProduction = process.env.NODE_ENV === "production";
 const logInfo = (...args: unknown[]) => {
@@ -27,13 +26,7 @@ export type SyncStats = {
     sections: Array<{
       sectionId: string;
       sectionTitle: string;
-      facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "addons" | "flowchart">;
-      addons: Array<{
-        action: "added" | "updated" | "removed";
-        addonId: string;
-        addonType: string;
-        addonName: string;
-      }>;
+      facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart">;
     }>;
   };
 };
@@ -168,28 +161,6 @@ export async function fetchQuotaStatus(projectId: string): Promise<CloudSyncQuot
     };
   } catch {
     return null;
-  }
-}
-
-/** Envia apenas linked_spreadsheets para o Supabase (sem seções, sem consumir créditos). */
-export async function pushProjectLinkedSpreadsheets(
-  projectId: string,
-  linkedSpreadsheets: unknown[]
-): Promise<{ error: string | null }> {
-  try {
-    const base = getSyncRouteBase();
-    const response = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/settings`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ linked_spreadsheets: linkedSpreadsheets }),
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      return { error: (body?.error as string) || `settings_push_failed_${response.status}` };
-    }
-    return { error: null };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "settings_push_exception" };
   }
 }
 
@@ -366,9 +337,6 @@ function dbProjectToStore(
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
     ownerId: (row.owner_id as string) || undefined,
     aiInstructions: (row.ai_instructions as string) || undefined,
-    linkedSpreadsheets: Array.isArray(row.linked_spreadsheets)
-      ? (row.linked_spreadsheets as Project["linkedSpreadsheets"])
-      : undefined,
     // Coluna nova: ausente até rodar add_project_image_library.sql, e o select é
     // "*", então isso simplesmente vira undefined em vez de quebrar.
     imageLibrary:
@@ -387,7 +355,6 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     Array.isArray(rawTags) && rawTags.length > 0
       ? (rawTags as string[])
       : undefined;
-  const addons = normalizeSectionAddons(row.balance_addons);
   const contentBlocks = Array.isArray(row.content_blocks)
     ? (row.content_blocks as Section["contentBlocks"])
     : undefined;
@@ -409,10 +376,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
     dataId: (row.data_id as string) || undefined,
-    linkedSpreadsheetId: (row.linked_spreadsheet_id as string) || undefined,
-    addonGroupNotes: (row.addon_group_notes && typeof row.addon_group_notes === "object") ? row.addon_group_notes as Record<string, string> : undefined,
     domainTags,
-    addons: addons as Section["addons"],
   };
 }
 

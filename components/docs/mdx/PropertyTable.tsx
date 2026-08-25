@@ -18,7 +18,7 @@ interface PropertyTableProps {
 }
 
 /**
- * Compact reference table for documenting addon/schema fields. Built as
+ * Compact reference table for documenting schema fields. Built as
  * a real <table> so screen-readers announce headers correctly. Used
  * inside MDX without needing an explicit import.
  */

@@ -3,11 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAIClient } from '@/utils/ai/client';
 import { AIMessage } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
-import {
-  buildSectionContextBlock,
-  getPageTypeWritingGuidance,
-  type PromptAddonSummary,
-} from '@/utils/ai/contextBuilders';
+import { buildSectionContextBlock } from '@/utils/ai/contextBuilders';
 
 interface ImproveContentRequest {
   currentContent: string;
@@ -18,12 +14,9 @@ interface ImproveContentRequest {
     breadcrumb?: string[];
     /** Conteúdo/resumo da seção pai para a IA entender o tema do ramo */
     parentContent?: string;
-    subsections?: Array<{ title: string; content?: string; pageTypeId?: string }>;
+    subsections?: Array<{ title: string; content?: string }>;
     otherSections?: Array<{ title: string; isEmpty?: boolean; isSubsection?: boolean }>;
     /** Page type da seção atual (se tipada). Permite ao prompt respeitar a estrutura. */
-    pageTypeId?: string;
-    /** Resumo dos addons já configurados na seção (tipo + nome). Evita que a IA duplique dados estruturados. */
-    addons?: PromptAddonSummary[];
     /** Descrição curta do projeto (para contexto temático). */
     projectDescription?: string;
   };
@@ -62,25 +55,20 @@ export async function POST(req: NextRequest) {
 
     const sectionContextBlock = buildSectionContextBlock({
       sectionTitle,
-      pageTypeId: sectionContext.pageTypeId,
-      addons: sectionContext.addons,
       breadcrumb: sectionContext.breadcrumb,
       parentTitle: sectionContext.parentTitle,
       parentContent: sectionContext.parentContent,
-      subsections: sectionContext.subsections?.map(s => ({ title: s.title, pageTypeId: s.pageTypeId })),
+      subsections: sectionContext.subsections?.map(s => ({ title: s.title })),
       projectTitle,
       projectDescription: sectionContext.projectDescription,
     });
 
-    const pageTypeGuidance = getPageTypeWritingGuidance(sectionContext.pageTypeId);
-
     const systemPrompt = `Você é um assistente especializado em Game Design Documents (GDD).
 
-**TAREFA:** Melhorar o conteúdo narrativo de uma seção de GDD, respeitando os dados estruturados (addons) e elementos existentes.
+**TAREFA:** Melhorar o conteúdo narrativo de uma seção de GDD, respeitando os elementos existentes.
 
 ${sectionContextBlock}
 
-${pageTypeGuidance ? `\n${pageTypeGuidance}\n` : ""}
 **🔴 MENTALIDADE GDD – ESTRUTURA E USABILIDADE:** Ao escrever ou melhorar o conteúdo, avalie sempre como um GDD de verdade: será que o que estou citando faria sentido ter uma página própria? O usuário precisa encontrar e gerenciar esse tópico no documento? Se um conceito, sistema, item, inimigo, local ou mecânica for relevante o suficiente para alguém querer abrir, editar ou navegar até uma seção dedicada, use $[Nome] — assim a estrutura do documento fica clara e o conteúdo fica fácil de localizar e gerenciar. Pense na usabilidade: referências bem usadas tornam o GDD navegável e organizado.
 
 **REGRAS CRÍTICAS:**

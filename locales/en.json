@@ -55,132 +55,6 @@
     "copyTooltip": "Copy public link",
     "copied": "Link copied!"
   },
-  "currencyExchangePair": {
-    "title": "Set up Currency Exchange",
-    "titleFor": "Set up conversion for {name}",
-    "intro": "Pick the two currencies involved and the initial rate. You can add more conversions later.",
-    "useExisting": "Use an existing currency",
-    "createNewPlaceholder": "Create a new currency",
-    "nameLabel": "Name",
-    "namePlaceholder": "e.g. Gold",
-    "codeLabel": "Code",
-    "codePlaceholder": "GOLD",
-    "firstStep": "Currency 1 — what the player spends",
-    "firstHint": "Link an existing currency or create a new one (becomes its own project page).",
-    "secondStep": "Currency 2 — what the player receives",
-    "secondHint": "Link another existing currency or create a new one. Can't be the same as Currency 1.",
-    "ratioLabel": "Conversion rate",
-    "ratioHint": "How much of Currency 1 equals how much of Currency 2. Use ⇄ if the trade also works the other way.",
-    "fromAmount": "Spend",
-    "toAmount": "Receive",
-    "makeOneWay": "Make one-way",
-    "makeBidirectional": "Make two-way",
-    "confirm": "Confirm and create"
-  },
-  "skillsAddon": {
-    "addonTypeLabel": "Skills",
-    "defaultName": "Skills",
-    "selectNone": "Select",
-    "entriesTitle": "Skills",
-    "addEntryButton": "+ Skill",
-    "removeEntryButton": "Remove skill",
-    "emptyState": "No skill yet. Add one to start.",
-    "untitled": "(unnamed)",
-    "dragAria": "Drag skill",
-    "kindLabel": "Kind",
-    "kindActive": "active",
-    "kindPassive": "passive",
-    "nameLabel": "Name",
-    "namePlaceholder": "e.g. Fireball",
-    "descriptionLabel": "Description",
-    "descriptionPlaceholder": "What does this skill do?",
-    "cooldownLabel": "Cooldown (seconds)",
-    "cooldownShort": "Cooldown:",
-    "cooldownSectionLabel": "Recharge between uses",
-    "cooldownPlaceholder": "empty = no limit",
-    "cooldownDerivedNoLimit": "No limit — fires while the input is held",
-    "cooldownDerivedZero": "0s — no wait between uses (autofire)",
-    "cooldownDerivedSubSecond": "≈ {perSec} uses per second (rate-limited autofire)",
-    "cooldownDerivedOne": "1 use per second",
-    "cooldownDerivedManySeconds": "1 use every {seconds}s",
-    "cooldownDerivedUlti": "Ultimate — 1 use every {minutes}min",
-    "cooldownPresetNone": "♾ No limit",
-    "cooldownPresetAttack": "⚔ Attack (1s)",
-    "cooldownPresetSkill": "✨ Skill (5s)",
-    "cooldownPresetUlti": "🔥 Ultimate (60s)",
-    "cooldownTimelineLabel": "Timeline",
-    "cooldownCasterShort": "You",
-    "cooldownCasterTooltip": "Caster time — when you can use it again",
-    "cooldownTargetShort": "Target",
-    "cooldownTargetTooltip": "Target time — how long the effect stays applied",
-    "cooldownTimelineCasterLabel": "recharge {seconds}s",
-    "cooldownTimelineCasterNoLimit": "no limit — always ready",
-    "cooldownTimelineTargetLabel": "effect {seconds}s",
-    "cooldownTimelineTargetPermanent": "permanent",
-    "cooldownTimelineTargetInstant": "instant",
-    "cooldownTimelineTargetWithTicks": "effect {seconds}s · {ticks} ticks",
-    "stackingHintUnique": "\"unique\" stacking: recasts before {duration}s are ignored. Effective cooldown = {effective}s.",
-    "stackingHintStack": "\"stack\" stacking: in {duration}s up to {casts} effect instances can coexist.",
-    "stackingHintRefresh": "\"refresh\" stacking: each cast resets the {duration}s window. In {duration}s up to {casts} casts can fire.",
-    "stackingHintNoLimitUnique": "No recharge + \"unique\" stacking: only the first cast in each {duration}s window applies.",
-    "stackingHintNoLimitStack": "No recharge + \"stack\" stacking: can accumulate unbounded effect instances while the input is held.",
-    "stackingHintNoLimitRefresh": "No recharge limit: the {duration}s effect reapplies on every input.",
-    "stackingHintMixed": "Heads up: linked effects use different stacking rules.",
-    "stackingHintMixedDurations": "Durations range from {shortest}s to {longest}s.",
-    "costsLabel": "Costs",
-    "costsShort": "Costs:",
-    "costsEmpty": "No costs. Use the buttons above to add some.",
-    "costType": "Type",
-    "costTypeCurrency": "Currency",
-    "costTypeAttribute": "Attribute",
-    "costTypeCharges": "Charges",
-    "costCurrencyRef": "Currency",
-    "costDefinitionsRef": "Attribute Definition",
-    "costAttributeKey": "Attribute",
-    "costChargesNote": "Charges (no ref)",
-    "costAmount": "Amount",
-    "costNoDefinitionsHint": "No Attributes page in this project. Create one to use attributes as costs.",
-    "chargesHelp": "Only the amount — no cross-reference.",
-    "chargesShort": "charge(s)",
-    "effectsLabel": "Effects",
-    "effectsShort": "Effects:",
-    "effectsHintLocal": "Tick the modifiers on this page that this skill applies.",
-    "selectAll": "Select all",
-    "deselectAll": "Deselect all",
-    "addEffectPlaceholder": "+ Link an Attribute Modifiers effect...",
-    "noEffectsHintLocal": "Add an Attribute Modifiers addon on this same page to link effects here.",
-    "brokenEffect": "Broken effect",
-    "unlockLabel": "Unlock",
-    "unlockLevel": "Minimum level",
-    "unlockCurrency": "Currency cost (optional)",
-    "unlockItem": "Required item (optional)",
-    "unlockLvShort": "Lv",
-    "selectXpPage": "Select XP page",
-    "tagsLabel": "Tags (comma-separated)",
-    "tagsPlaceholder": "e.g. fire, single-target",
-    "readOnlyEmpty": "No skill configured."
-  },
-  "currencyExchangeAddon": {
-    "addonTypeLabel": "Currency Exchange",
-    "defaultName": "Currency Exchange",
-    "entriesTitle": "Conversions",
-    "addEntryButton": "+ Conversion",
-    "removeEntryButton": "Remove",
-    "emptyState": "No conversion configured yet. Add one to define a rate between two currencies.",
-    "fromLabel": "Spend",
-    "toLabel": "Receive",
-    "selectNone": "Select the currency",
-    "notesLabel": "Notes (limits, conditions)",
-    "notesPlaceholder": "e.g. up to 5x per day",
-    "makeOneWay": "Make one-way (only From → To)",
-    "makeBidirectional": "Make two-way (To → From also works)",
-    "currencyEmptyHint": "No page with Currency in this project. Create at least two to define a conversion.",
-    "currencyOnlyOneHint": "Only 1 currency in the project. Create one more to define a conversion.",
-    "createCurrencyCta": "Create a Currency page",
-    "brokenCurrency": "Removed currency",
-    "brokenLinkExplain": "One of the currencies no longer exists. Pick another or remove this conversion.",
-    "readOnlyEmpty": "No conversion configured."
-  },
   "linkedField": {
     "noLink": "No link",
     "addLink": "Link to a progression table",
@@ -264,7 +138,6 @@
       "openHelp": "Open this shortcut list",
       "closeDialog": "Close open dialogs and menus",
       "newPage": "Create a new page (quick modal)",
-      "addAddon": "Add an addon to this page",
       "duplicateSection": "Duplicate the current page",
       "moveSection": "Move the section elsewhere",
       "undo": "Undo",
@@ -289,232 +162,6 @@
     "tabWrite": "Write",
     "tabPreview": "Preview",
     "confirmDelete": "Confirm delete"
-  },
-  "pageTypes": {
-    "sidebar": {
-      "pickerHeader": "Page type",
-      "pickerButtonTitlePrefix": "Page type:",
-      "addonsBadgeOne": "{n} addon",
-      "addonsBadgeMany": "{n} addons"
-    },
-    "ids": {
-      "blank": {
-        "label": "Blank",
-        "description": "Empty page, no pre-configured addons."
-      },
-      "items": {
-        "label": "Items",
-        "description": "List of your game's items (wood, potion, key). Comes with inventory and buy/sell price ready."
-      },
-      "equipmentItem": {
-        "label": "Items with Effect",
-        "description": "Items that change attributes when equipped or used (armor, amulet, potion). Comes with inventory, price and attribute bonuses."
-      },
-      "characters": {
-        "label": "Characters",
-        "description": "Game characters with attributes (HP, ATK, DEF...) and per-level progression. Works for heroes, enemies or NPCs."
-      },
-      "attributeDefinitions": {
-        "label": "Attributes",
-        "description": "A list of attributes (HP, ATK, DEF...) that can be reused across many characters."
-      },
-      "economy": {
-        "label": "Economy",
-        "description": "Game currency (gold, gems, energy). Sets the name, symbol and basic rules.",
-        "defaultSectionTitle": "Coin"
-      },
-      "progression": {
-        "label": "Progression",
-        "description": "XP and level table — how much XP each level needs and what each level gives."
-      },
-      "recipe": {
-        "label": "Recipe",
-        "description": "A recipe: ingredients in, item out. E.g. '2 Woods → 1 Plank'.",
-        "sidebarInputPlaceholder": "Output name (e.g. Planks)"
-      },
-      "craftTable": {
-        "label": "Crafting Table",
-        "description": "A station that groups several recipes (Sawmill, Forge, Workbench). You pick which recipes it produces."
-      },
-      "narrative": {
-        "label": "Narrative",
-        "description": "Free-form text for lore, script or description — like a text document."
-      }
-    },
-    "addonNames": {
-      "inventory": "Inventory",
-      "economy": "Economy",
-      "attributeDefinitionsBase": "Base attributes",
-      "fieldLibrary": "Field Library",
-      "currency": "Currency",
-      "currencyExchange": "Exchange House",
-      "xpCurve": "XP Curve",
-      "equipmentEffects": "Effects",
-      "variantModifiers": "Character effects",
-      "production": "Production",
-      "craftTable": "Crafting Table",
-      "skills": "Skills",
-      "skillEffects": "Skill Effects"
-    },
-    "autoSections": {
-      "buyDiscount": "📉 Buy Discount",
-      "sellMarkup": "📈 Sell Bonus",
-      "newIngredientItem": "New Ingredient",
-      "newOutputItem": "New Output Item",
-      "recipePrefix": "Recipe:"
-    },
-    "craftTablePicker": {
-      "title": "Select recipes for this Crafting Table",
-      "intro": "Pick which existing recipes belong on this table. You can adjust later.",
-      "selectedCount": "{n} selected",
-      "selectAll": "Select all",
-      "clearAll": "Clear",
-      "ingredientsOne": "{n} ingredient",
-      "ingredientsMany": "{n} ingredients",
-      "outputsOne": "{n} output",
-      "outputsMany": "{n} outputs",
-      "craftTime": "{s}s",
-      "emptyState": "No recipes created yet. The table will be created empty — you can add recipes later."
-    },
-    "globalVariables": {
-      "buyDiscountDisplayName": "Buy Discount",
-      "buyDiscountNotes": "Reduces item buy value by 10%.",
-      "sellMarkupDisplayName": "Sell Bonus",
-      "sellMarkupNotes": "Increases item sell value by 10%."
-    },
-    "requiresDialog": {
-      "titlePrefix": "Link",
-      "titleConnector": "to",
-      "introDefault": "{page} pages usually need {required}. Pick how to link below.",
-      "introCurrency": "Every {page} page uses a currency for buy and sell values. Pick which currency to use — the page will also come with a ready discount and bonus.",
-      "introItemIngredient": "Which item goes into this recipe as an ingredient? You can use one that already exists or create a new one.",
-      "introItemOutput": "Which item comes out of this recipe? You can use one that already exists or create a new one.",
-      "ingredientNameLabel": "Ingredient name",
-      "ingredientNamePlaceholder": "e.g. Wood, Cloth, Iron",
-      "outputNameLabel": "Output item name",
-      "sectionNameLabel": "Page name",
-      "recipeSettings": {
-        "header": "Quantities and craft time",
-        "description": "How much goes in, how much comes out and how long it takes. You can change this later on the recipe page.",
-        "ingredientQtyLabel": "Ingredient qty",
-        "outputQtyLabel": "Output qty",
-        "craftTimeLabel": "Time (sec)"
-      },
-      "characterSettings": {
-        "header": "Character settings",
-        "description": "Which attributes to create, and from which level to which level the character goes. You can change everything later.",
-        "attributesLabel": "Attributes to create",
-        "startLevelLabel": "Start level",
-        "endLevelLabel": "End level",
-        "growthRateLabel": "Growth per level"
-      },
-      "economySettings": {
-        "header": "Price and discounts/bonuses",
-        "description": "Base buy and sell prices for this item. Discounts and bonuses are separate pages — pick which ones apply or create new ones just for this item.",
-        "buyValueLabel": "Buy price",
-        "sellValueLabel": "Sell price",
-        "modifiersHeader": "Discounts and bonuses",
-        "applyBuyDiscountLabel": "Apply buy discount",
-        "applySellMarkupLabel": "Apply sell bonus",
-        "useExistingLabel": "Use discounts/bonuses that already exist",
-        "useExistingDescription": "Tick which discounts and bonuses apply to this item. If you pick several, the percentages stack.",
-        "discountCandidatesLabel": "Available discounts",
-        "markupCandidatesLabel": "Available bonuses",
-        "createNewLabel": "Create a new discount and bonus just for this item",
-        "createNewDescription": "Creates a new discount and bonus that only affect this item. The existing ones stay the same.",
-        "buyDiscountPctLabel": "Buy discount %",
-        "sellMarkupPctLabel": "Sell bonus %",
-        "buyDiscountNameLabel": "Discount name",
-        "buyDiscountNamePlaceholder": "e.g. Premium Discount",
-        "sellMarkupNameLabel": "Bonus name",
-        "sellMarkupNamePlaceholder": "e.g. Premium Bonus"
-      },
-      "byKind": {
-        "attributeDefinitions": {
-          "title": "Attributes for {name}",
-          "linkExistingHeader": "Use attributes that already exist",
-          "createNewLabel": "Create a new attributes page",
-          "createNewDescription": "Creates a new Attributes page with 4 attributes ready: HP, ATK, DEF and SPD. You can rename them, add more or remove any later. The same page can be reused across characters.",
-          "skipLabel": "Skip for now",
-          "skipDescription": "Creates the character without attributes for now. You can link an attributes page later."
-        },
-        "currency": {
-          "title": "Currency for {name}",
-          "linkExistingHeader": "Use a currency that already exists",
-          "createNewLabel": "Create a new currency",
-          "createNewDescription": "Creates an Economy page with a basic currency (Coins). You can rename it, change the symbol and adjust later.",
-          "skipLabel": "Skip for now",
-          "skipDescription": "Creates the page with no currency. Buy and sell fields stay empty until you link one."
-        },
-        "itemIngredient": {
-          "title": "Ingredient for the {name} recipe",
-          "linkExistingHeader": "Use an item that already exists",
-          "createNewLabel": "Create a new item for the ingredient",
-          "createNewDescription": "Creates a new Item page for this ingredient, already with inventory and price. You can add more ingredients later on the recipe page itself.",
-          "skipLabel": "Skip for now",
-          "skipDescription": "Creates the recipe with no ingredient for now. You can link an item later on the recipe page."
-        },
-        "itemOutput": {
-          "title": "Output of the {name} recipe",
-          "linkExistingHeader": "Use an item that already exists",
-          "createNewLabel": "Create a new item for the output",
-          "createNewDescription": "Creates a new Item page for the recipe's output, already with inventory and price. The name below becomes the page title.",
-          "skipLabel": "Skip for now",
-          "skipDescription": "Creates the recipe with no output defined for now. You can link an item later on the recipe page."
-        }
-      },
-      "linkExistingHeader": "Link to an existing page",
-      "otherOptionsHeader": "Other options",
-      "createNewLabelPrefix": "Create a new page",
-      "createNewDescription": "Creates the new page and links it for you.",
-      "skipLabel": "Continue without linking",
-      "skipDescription": "Creates the page with no link. You can link later.",
-      "cancel": "Cancel",
-      "confirm": "Confirm and create",
-      "close": "Close",
-      "stepOf": "Step {current} of {total}",
-      "attrCountOne": "{n} attribute",
-      "attrCountMany": "{n} attributes",
-      "noAttrs": "no attributes",
-      "currencyNoName": "(no name)",
-      "currencyCodeLabel": "code",
-      "currencyKindLabel": "type"
-    }
-  },
-  "pageCreationReview": {
-    "ariaLabel": "Review creation",
-    "title": "Ready to create",
-    "description": "Double-check what's about to be created and linked before confirming. If something's off, hit Back to adjust.",
-    "existingTag": "(existing)",
-    "newTag": "new page",
-    "skip": "leave empty",
-    "currencyLabel": "Currency",
-    "economyLabel": "Economy",
-    "priceLine": "Buy {buy}, sell {sell}",
-    "discountDefaultName": "Discount",
-    "markupDefaultName": "Bonus",
-    "newDiscount": "new discount {name} ({pct}%)",
-    "newMarkup": "new bonus {name} (+{pct}%)",
-    "newDiscountLabel": "New discount page",
-    "newDiscountValue": "\"{name}\" ({pct}%)",
-    "newMarkupLabel": "New bonus page",
-    "newMarkupValue": "\"{name}\" (+{pct}%)",
-    "appliedModifiersLabel": "Modifiers applied",
-    "existingModifiers": "{buy} discount(s) and {sell} existing bonus(es)",
-    "attributesLabel": "Attributes",
-    "attrCountOne": "{n} attribute",
-    "attrCountMany": "{n} attributes",
-    "effectsLabel": "Effects",
-    "progressionLabel": "Progression",
-    "progressionValue": "levels {start}–{end}, growth {growth}",
-    "ingredientLabel": "Ingredient",
-    "recipeLabel": "Recipe",
-    "recipeValue": "{inQty} ingredient(s) → {outQty} output(s), {time}s",
-    "outputLabel": "Output",
-    "addonsLabel": "Addons",
-    "cancel": "Cancel everything",
-    "back": "Back",
-    "confirm": "Create everything"
   },
   "auth": {
     "login": {
@@ -553,9 +200,9 @@
       "authorizeTitle": "Authorize access",
       "signedInAs": "Signed in as",
       "clientWants": "{{client}} is asking for permission to:",
-      "permRead": "Read your projects, sections, and addons",
+      "permRead": "Read your projects and pages",
       "permWrite": "Create and edit content in your GDDs",
-      "permDelete": "Delete sections and addons when you ask",
+      "permDelete": "Delete pages when you ask",
       "deny": "Deny",
       "approve": "Authorize",
       "revokeNote": "You can revoke this access anytime in Settings."
@@ -837,10 +484,6 @@
     "tagFilterSelectedCount": "selected tags",
     "tagFilterClear": "Clear filter",
     "tagFilterNoTags": "No tags available.",
-    "addonFilterLabel": "Filter by addons",
-    "addonFilterSelectedCount": "selected addons",
-    "addonFilterClear": "Clear filter",
-    "addonFilterNoAddons": "No addons available.",
     "expandAllSections": "Expand all sections",
     "collapseAllSections": "Collapse all sections",
     "resultsFoundOne": "result found",
@@ -879,15 +522,7 @@
     "aiChat": {
       "invalidJsonObject": "Invalid JSON: expected an object.",
       "invalidJsonSyntax": "Invalid JSON: check quotes, commas, and braces.",
-      "commandFormatAddonCreate": "Invalid ADDON_CRIAR format. Use: ADDON_CRIAR: sectionId | addonType | jsonData",
-      "commandFormatAddonEdit": "Invalid ADDON_EDITAR format. Use: ADDON_EDITAR: sectionId | addonId | jsonPatch",
-      "commandFormatAddonRemove": "Invalid ADDON_REMOVER format. Use: ADDON_REMOVER: sectionId | addonId",
       "sectionNotFound": "Section not found",
-      "addonNotFound": "Addon not found",
-      "addonTypeNotSupported": "Addon type not supported in this version",
-      "addonCreated": "Addon created",
-      "addonUpdated": "Addon updated",
-      "addonRemoved": "Addon removed",
       "actionsExecuted": "of",
       "actionsExecutedSuffix": "actions executed",
       "actionsReadyPrefix": "Actions ready to run",
@@ -902,11 +537,6 @@
       "filterInfo": "Info",
       "noWarningsForFilter": "No warnings for this filter.",
       "criticalAcknowledgeLabel": "I understand the critical warnings and still want to continue.",
-      "opportunityInventoryMissing": "ADDON_OPPORTUNITY: \"{{title}}\" looks like an item/inventory entity, but there is no ADDON_CRIAR inventory in the plan.",
-      "opportunityEconomyLinkMissing": "ADDON_OPPORTUNITY: \"{{title}}\" mentions buy/sell/price, but there is no ADDON_CRIAR economyLink in the plan.",
-      "opportunityProductionMissing": "ADDON_OPPORTUNITY: \"{{title}}\" suggests production/recipe/passive generation, but there is no ADDON_CRIAR production in the plan.",
-      "opportunityProgressionMissing": "ADDON_OPPORTUNITY: \"{{title}}\" suggests level/XP progression, but there is no ADDON_CRIAR xpBalance or progressionTable in the plan.",
-      "opportunityPetAddonMissing": "ADDON_OPPORTUNITY: \"{{title}}\" looks like a pet/animal; evaluate inventory (storage), economyLink (buy/sell), and production (passive generation).",
       "confirmButton": "Confirm",
       "cancelButton": "Cancel"
     },
@@ -1069,746 +699,6 @@
       "exportFailed": "Error exporting document. Please try again."
     }
   },
-  "balanceAddon": {
-    "addonTypeLabel": "XP balancing",
-    "nameLabel": "Block name",
-    "namePlaceholder": "Ex.: XP per Level",
-    "removeButton": "Remove addon",
-    "removeConfirm": "Are you sure you want to remove this balance addon?",
-    "profile": {
-      "rpg": "RPG",
-      "idle": "Idle",
-      "roguelite": "Roguelite",
-      "casual": "Casual"
-    },
-    "simulation": {
-      "title": "Session simulation",
-      "xpRateMode": {
-        "fixed": "Fixed XP",
-        "byLevelRange": "XP by level ranges"
-      }
-    },
-    "target": {
-      "title": "Progression target"
-    },
-    "presets": {
-      "linear": {
-        "label": "Linear",
-        "tip": "Linear increases at a constant pace (ex.: +50 XP per level). Use it when you want simple and predictable progression."
-      },
-      "exponential": {
-        "label": "Exponential",
-        "tip": "Exponential starts smooth and becomes heavier later. Great when early levels should be fast and endgame should be challenging."
-      },
-      "tiered": {
-        "label": "Tiered",
-        "tip": "Tiered progression splits levels into ranges and can apply stronger growth in each range. Useful for clear difficulty milestones."
-      },
-      "softCap": {
-        "label": "Soft cap",
-        "tip": "Soft cap grows quickly early and slows down near a ceiling without a hard stop."
-      },
-      "hardCap": {
-        "label": "Hard cap",
-        "tip": "Hard cap enforces a strict maximum value. Useful to avoid runaway inflation."
-      },
-      "diminishingReturns": {
-        "label": "Diminishing returns",
-        "tip": "Each level increases less than the previous one. Good for stat/passive systems."
-      },
-      "piecewise": {
-        "label": "By stages",
-        "tip": "Uses one pace before a breakpoint and another after it. Good for midgame/endgame shifts."
-      }
-    },
-    "params": {
-      "base": {
-        "label": "base",
-        "tooltip": "Defines the starting point for values.",
-        "expected": "Higher base makes early levels heavier. Lower base makes early levels lighter."
-      },
-      "growth": {
-        "label": "growth",
-        "tooltip": "Controls how quickly values accelerate between levels.",
-        "expected": "Higher growth makes the curve ramp faster."
-      },
-      "offset": {
-        "label": "offset",
-        "tooltip": "Constant value added at the end.",
-        "expected": "Positive offset raises all values; negative offset lowers all values."
-      },
-      "tierStep": {
-        "label": "tierStep",
-        "tooltip": "How many levels each tier spans.",
-        "expected": "Lower tierStep changes tiers more often."
-      },
-      "tierMultiplier": {
-        "label": "tierMultiplier",
-        "tooltip": "How strong each tier jump is.",
-        "expected": "Higher multiplier creates sharper jumps."
-      },
-      "capValue": {
-        "label": "capValue",
-        "tooltip": "Ceiling value used by cap-based formulas.",
-        "expected": "Higher capValue allows stronger late game before stabilizing."
-      },
-      "capStrength": {
-        "label": "capStrength",
-        "tooltip": "Strength of convergence to the soft cap.",
-        "expected": "Higher capStrength reaches the ceiling earlier."
-      },
-      "plateauStartLevel": {
-        "label": "plateauStartLevel",
-        "tooltip": "Level where the second stage starts in piecewise mode.",
-        "expected": "Lower value makes the pacing shift happen earlier."
-      },
-      "plateauFactor": {
-        "label": "plateauFactor",
-        "tooltip": "Growth reducer in the second piecewise stage.",
-        "expected": "Lower plateauFactor makes the late segment smoother."
-      }
-    }
-  },
-  "progressionTableAddon": {
-    "addonTypeLabel": "Balance table",
-    "defaultName": "Balance table",
-    "nameLabel": "Table name",
-    "namePlaceholder": "Ex.: Chicken - General balancing",
-    "startLevelLabel": "Start level",
-    "endLevelLabel": "End level",
-    "columnsByLevel": "Attribute columns by level",
-    "generateAllColumns": "Generate all columns",
-    "exportButton": "Export JSON",
-    "addColumnButton": "+ Column",
-    "exportSuccess": "JSON exported successfully.",
-    "exportError": "Could not export JSON.",
-    "dragBlockAria": "Drag block",
-    "columnFallback": "Column",
-    "removeColumnButton": "Remove",
-    "duplicateColumnButton": "Duplicate",
-    "modeLabel": "Mode",
-    "mode": {
-      "manual": "Manual",
-      "linear": "Linear",
-      "exponential": "Exponential",
-      "formula": "Formula"
-    },
-    "decimalsLabel": "Decimal places",
-    "percentageLabel": "Percentage (%)",
-    "minLabel": "Minimum",
-    "maxLabel": "Maximum",
-    "noLimitPlaceholder": "No limit",
-    "baseLabel": "Base",
-    "stepLabel": "Step",
-    "growthLabel": "Growth",
-    "biasLabel": "Curve bias",
-    "growthHintWithBias": "With bias != 1, Growth is the effective rate between the endpoints. The per-level rate varies along the curve.",
-    "biasHelpAria": "Help about the curve bias parameter",
-    "biasHelpTitle": "Curve shape",
-    "biasHelpBody": "Keeps Base and the final value fixed but reshapes the curve between them. 1.0 = pure exponential. Greater than 1 = slow early growth, fast late (late-game grind). Less than 1 = fast early growth, flat late.",
-    "biasHelpBodyLinear": "Keeps Base and the final value fixed but reshapes the curve between them. 1.0 = pure linear. Greater than 1 = slow early growth, fast late. Less than 1 = fast early growth, flat late.",
-    "stepHintWithBias": "With bias != 1, Step is the average increment between the endpoints. The per-level delta varies along the curve.",
-    "baseColumnLabel": "Base column",
-    "selectPlaceholder": "Select...",
-    "expressionLabel": "Expression",
-    "formulaHelpAria": "Help about formula variables and functions",
-    "cheatsheetTitle": "Quick cheatsheet",
-    "formulaVariables": "Variables: base, level, delta",
-    "formulaFunctions": "Functions: min, max, round, floor, ceil, abs, pow",
-    "formulaRecipes": "Ready recipes",
-    "expressionPlaceholder": "base * 1.25 + delta * 2",
-    "generatedNow": "Generated now",
-    "overwritesColumn": "Overwrites the whole column",
-    "generateButton": "Generate",
-    "clampApplied": "Clamp applied to {count} value(s) in this column.",
-    "levelHeader": "Level",
-    "levelPrefix": "Lv",
-    "readOnlyShowAll": "Show all {count} levels",
-    "readOnlyShowLess": "Show less",
-    "removeAddonButton": "Remove addon",
-    "showValuesButton": "Show values",
-    "hideValuesButton": "Hide values",
-    "showingRows": "Showing {shown} of {total} levels.",
-    "autoIntervalButton": "Auto",
-    "autoIntervalAriaLabel": "Auto-generate base and step/growth from interval",
-    "autoIntervalTitle": "Fill interval",
-    "autoIntervalFromLabel": "Value at Lv {level}",
-    "autoIntervalToLabel": "Value at Lv {level}",
-    "autoIntervalApply": "Apply",
-    "autoIntervalCancel": "Cancel",
-    "linkLibraryButton": "Link to Field Library",
-    "linkLibraryAriaLabel": "Link to Field Library",
-    "unlinkLibraryAriaLabel": "Unlink from Library",
-    "libraryPickerTitle": "Select field from Library",
-    "libraryPickerSearchPlaceholder": "Search column...",
-    "libraryPickerEmpty": "No columns found",
-    "overrideCount": "{count} manual",
-    "resetOverrideAriaLabel": "Reset to generated value",
-    "resetAllOverridesButton": "↺ Reset",
-    "resetAllOverridesAriaLabel": "Reset all manual values in this column",
-    "warnings": {
-      "invalidLinearParams": "Invalid linear formula parameters.",
-      "invalidExponentialParams": "Invalid exponential formula parameters.",
-      "growthMustBePositive": "Growth must be greater than zero.",
-      "emptyExpression": "Formula expression cannot be empty.",
-      "invalidFormula": "Invalid formula. Use base/level/delta, min/max/round/floor/ceil/abs/pow and + - * / ( ) , operators.",
-      "selectBaseColumn": "Select the base column for the formula.",
-      "baseCannotBeSelf": "The base column cannot be itself.",
-      "baseNoLongerExists": "Selected base column no longer exists.",
-      "baseAfterColumn": "Base column is after this column. Reorder to generate correctly.",
-      "minGreaterThanMax": "Minimum is greater than maximum. Bounds will be swapped automatically.",
-      "outOfBounds": "{count} value(s) are outside configured bounds in this column.",
-      "hasNonNumeric": "There are non-numeric values (NaN) in this column.",
-      "hasNegative": "There are negative values in this column.",
-      "invalidBias": "Curve bias must be greater than zero. Falling back to 1.0.",
-      "brokenLibraryRef": "The linked library field was not found. Using the last saved name as fallback.",
-      "autoIntervalExpNeedsPositive": "Exponential requires both values to share the same sign and be different from zero.",
-      "autoIntervalRangeTooSmall": "End level must be greater than start level.",
-      "autoIntervalInvalidValues": "Invalid values."
-    },
-    "sheets": {
-      "syncAllButton": "⟳ Sync Sheets",
-      "syncingButton": "⟳ Syncing...",
-      "chipSynced": "Linked to Google Sheets",
-      "chipNotSynced": "Linked to Sheets — not synced yet",
-      "boundTitle": "Google Sheets linked",
-      "syncButton": "⟳ Sync",
-      "unbindButton": "Unlink",
-      "lastSyncLabel": "Last sync: {date}",
-      "neverSynced": "Never synced — click Sync to import values",
-      "formTitle": "Link to Google Sheets",
-      "spreadsheetLabel": "Spreadsheet",
-      "customUrlOption": "Custom URL...",
-      "urlLabel": "Spreadsheet URL",
-      "sheetLabel": "Sheet",
-      "sheetSelectPlaceholder": "Select...",
-      "rangeLabel": "Range",
-      "rangePlaceholder": "B2:B51",
-      "bindButton": "Link & Sync",
-      "bindingButton": "⟳ Linking...",
-      "openFormButton": "Link to Google Sheets",
-      "cancelButton": "Cancel",
-      "errorNoClientId": "Google Client ID not configured.",
-      "errorAuthFailed": "Google authentication failed.",
-      "errorFetchFailed": "Failed to fetch data from the spreadsheet.",
-      "errorSyncGeneric": "Unexpected error while syncing.",
-      "errorBindGeneric": "Unexpected error while linking.",
-      "errorInvalidUrl": "Invalid spreadsheet URL.",
-      "errorNoSheet": "Please enter the sheet name.",
-      "errorNoRange": "Please enter the range (e.g. B2:B51)."
-    }
-  },
-  "economyLinkAddon": {
-    "addonTypeLabel": "Linked economy",
-    "defaultName": "Economy Link",
-    "nameLabel": "Block name",
-    "namePlaceholder": "Ex.: Shop Economy",
-    "buyTitle": "How much it costs to buy",
-    "buySummaryLabel": "Buy",
-    "buySummaryStart": "Buy for",
-    "buySummaryModifierPrefix": ", with discount from ",
-    "buySummaryMinSuffix": " with final minimum of ",
-    "buyShortTitle": "Buy",
-    "hasBuyConfig": "Has buy configuration",
-    "buyCurrency": "Buy currency",
-    "buyCurrencyPlaceholder": "Ex.: Coins",
-    "buyValue": "Buy value",
-    "minBuyValue": "Minimum buy value",
-    "effectiveValueLabel": "Effective value",
-    "buyModifiers": "Buy variables (refs, comma separated)",
-    "openVariableLinkTitle": "Open global variable",
-    "sellTitle": "How much it returns when selling",
-    "sellSummaryLabel": "Sell",
-    "sellSummaryStart": "Sell for",
-    "sellSummaryModifierPrefix": ", with bonus from ",
-    "sellSummaryMaxSuffix": " with final maximum of ",
-    "sellShortTitle": "Sell",
-    "hasSellConfig": "Has sell configuration",
-    "sellCurrency": "Sell currency",
-    "sellCurrencyPlaceholder": "Ex.: Coins",
-    "sellValue": "Sell value",
-    "maxSellValue": "Maximum sell value",
-    "sellModifiers": "Sell variables (refs, comma separated)",
-    "modifiersPlaceholder": "Ex.: var-buy-discount, var-event-price",
-    "productionTitle": "Production",
-    "hasProductionConfig": "Has production configuration",
-    "producedItem": "Produced item (page ref)",
-    "producedItemPlaceholder": "Ex.: item-corn",
-    "produceMin": "Min qty",
-    "produceMax": "Max qty",
-    "produceRange": "Produced amount",
-    "productionTimeSeconds": "Production time (seconds)",
-    "productionTimeLabel": "Production time",
-    "productionSummaryLabel": "Produces",
-    "productionSummaryTo": "to",
-    "productionSummaryIn": "in",
-    "unlockTitle": "Unlock",
-    "unlockSummaryLabel": "Unlock",
-    "unlockSummaryStart": "Unlocks at LV",
-    "unlockSummaryRefOnly": "Unlocked by",
-    "hasUnlockConfig": "Has unlock configuration",
-    "unlockRef": "XP page",
-    "unlockRangeLabel": "Allowed LV",
-    "unlockRefPlaceholder": "Ex.: farm-progression",
-    "unlockValue": "Unlock level",
-    "priceMultiplierTitle": "Price Multiplier",
-    "priceMultiplierLabel": "Multiplier",
-    "priceMultiplierDefault": "default: ×1",
-    "unlockProgressionHint": "This level is used as an index in the linked price curves. Change the level to see values update automatically.",
-    "unlockProgressionWarning": "Price curves are linked, but Unlock is disabled. Enable it and set a level so the links can resolve their values.",
-    "notes": "Notes",
-    "notesPlaceholder": "Quick summary for the team",
-    "selectNone": "No reference",
-    "manualRef": "Manual reference",
-    "noInventoryPages": "No pages with inventory addon found.",
-    "invalidBuyCurrencyRef": "Invalid reference (buy currency not found)",
-    "invalidSellCurrencyRef": "Invalid reference (sell currency not found)",
-    "invalidProducedItemRef": "Invalid reference (not found in pages with inventory addon)",
-    "invalidProducedItemRefShort": "invalid inventory reference",
-    "invalidUnlockRef": "Invalid reference (not found in pages with XP addon)",
-    "invalidUnlockRefShort": "invalid XP reference",
-    "noXpPages": "No pages with XP addon found.",
-    "notConfigured": "not configured",
-    "boolean": {
-      "true": "Yes",
-      "false": "No"
-    },
-    "refNotFound": "reference not found",
-    "none": "none",
-    "emptyValue": "not informed",
-    "removeAddonButton": "Remove addon",
-    "validation": {
-      "buyCurrencyRequired": "Fill buy currency when buy value is informed.",
-      "sellCurrencyRequired": "Fill sell currency when sell value is informed.",
-      "produceRange": "Minimum quantity cannot be greater than maximum quantity."
-    }
-  },
-  "craftTableAddon": {
-    "addonTypeLabel": "Craft Table",
-    "defaultName": "Craft Table",
-    "entriesTitle": "Table recipes",
-    "addEntry": "Add recipe",
-    "removeEntry": "Remove",
-    "removeAddon": "Remove addon",
-    "noEntries": "No recipes yet. Click 'Add recipe' to start.",
-    "noEntriesReadOnly": "No recipes configured.",
-    "noProductionRef": "— no recipe —",
-    "productionRef": "Recipe (Production)",
-    "selectNone": "No recipe",
-    "invalidProductionRef": "Recipe not found",
-    "unknownRecipe": "Recipe not found",
-    "newRecipe": "New recipe",
-    "passiveHint": "passive",
-    "category": "Category",
-    "categoryPlaceholder": "e.g. Weapons, Consumables",
-    "uncategorized": "Uncategorized",
-    "dragAria": "Drag recipe",
-    "available": "Available in game",
-    "availableTitle": "When off, the recipe is flagged as unavailable in the game export.",
-    "unavailable": "Unavailable",
-    "unlockTitle": "Unlock",
-    "unlockLevel": "Level",
-    "unlockCurrency": "Currency",
-    "unlockItem": "Item",
-    "selectXp": "XP page",
-    "selectCurrency": "Select currency",
-    "selectItem": "Select item",
-    "invalidXpRef": "XP not found",
-    "invalidCurrencyRef": "Currency not found",
-    "invalidItemRef": "Item not found",
-    "levelPlaceholder": "LV",
-    "amountPlaceholder": "Amount",
-    "quantityPlaceholder": "Qty",
-    "alwaysUnlocked": "Always unlocked",
-    "refNotFound": "reference not found"
-  },
-  "productionAddon": {
-    "addonTypeLabel": "Production",
-    "defaultName": "Production",
-    "craftTablesBlockLabel": "Linked craft tables",
-    "craftTablesHint": "Check the tables where this recipe should appear. The table will list this recipe automatically.",
-    "craftTablesEmpty": "No craft table created in this project yet. Create one to register this recipe there.",
-    "openCraftTable": "Open craft table",
-    "createProgressionPageCta": "Create a page with a progression table",
-    "inventoryEmptyHint": "No page with Inventory in this project. Create an Items page first.",
-    "createItemsPageCta": "Create an Items page",
-    "modeLabel": "Production mode",
-    "mode": {
-      "passive": "Passive",
-      "recipe": "Recipe"
-    },
-    "outputRefLabel": "Produced item",
-    "openItemLinkLabel": "Open item",
-    "openItemLinkTitle": "Open item page",
-    "progressionColumnLinkLabel": "Balancing",
-    "noProgressionLinkOption": "No link",
-    "invalidProgressionLinkOption": "Invalid link (column removed)",
-    "levelMinBadge": "Lv min",
-    "levelMidBadge": "Lv mid",
-    "levelMaxBadge": "Lv max",
-    "minOutputLabel": "Min qty",
-    "maxOutputLabel": "Max qty",
-    "intervalSecondsLabel": "Time (seconds)",
-    "requiresCollectionLabel": "Requires manual collection",
-    "capacityLabel": "Max capacity",
-    "ingredientsLabel": "Ingredients",
-    "addIngredientButton": "+ Ingredient",
-    "outputsLabel": "Outputs",
-    "addOutputButton": "+ Output",
-    "craftTimeSecondsLabel": "Recipe time (seconds)",
-    "selectNone": "No reference",
-    "removeAddonButton": "Remove addon",
-    "emptyValue": "not informed",
-    "refNotFound": "reference not found",
-    "passiveSummaryStart": "Produces",
-    "passiveSummaryAdverb": "passively",
-    "toConnector": "to",
-    "inConnector": "in",
-    "recipeSummaryStart": "Recipe",
-    "producedOn": "Crafted on",
-    "recipeToConnector": "->",
-    "none": "none"
-  },
-  "dataSchemaAddon": {
-    "addonTypeLabel": "Data Schema",
-    "defaultName": "Data Schema",
-    "addStatButton": "+ Field",
-    "newStatLabel": "New field",
-    "emptyState": "No fields yet. Click \"+ Field\" to start.",
-    "keyLabel": "Key",
-    "keyPlaceholder": "harvest_xp",
-    "labelLabel": "Label",
-    "labelPlaceholder": "Harvest XP",
-    "typeLabel": "Type",
-    "valueLabel": "Value",
-    "minLabel": "Min",
-    "maxLabel": "Max",
-    "unitLabel": "Unit (optional)",
-    "unitXpRefLabel": "Link to XP page (optional)",
-    "unitPlaceholder": "s, kg, pts",
-    "selectNone": "No link",
-    "invalidUnitXpRef": "Invalid link (XP page not found)",
-    "removeStatButton": "Remove field",
-    "removeAddonButton": "Remove addon",
-    "readOnlyEmpty": "No fields configured.",
-    "readOnlyLabelKey": "Label / Key",
-    "readOnlyValue": "Value",
-    "readOnlyTypeUnit": "Type / Unit",
-    "linkLibraryButton": "Link to Field Library",
-    "linkLibraryAriaLabel": "Link to Field Library",
-    "unlinkLibraryAriaLabel": "Unlink from Library",
-    "libraryPickerTitle": "Select field from Library",
-    "libraryPickerSearchPlaceholder": "Search field...",
-    "libraryPickerEmpty": "No fields found",
-    "validation": {
-      "keyRequired": "Key is required.",
-      "keyUnique": "Key must be unique."
-    },
-    "warnings": {
-      "brokenLibraryRef": "The linked library field was not found. Using the last saved name as fallback."
-    }
-  },
-  "richDocAddon": {
-    "addonTypeLabel": "Doc",
-    "defaultName": "Document",
-    "namePlaceholder": "Document name",
-    "editorPlaceholder": "Rich editor (BlockNote)",
-    "blocksSuffix": "block(s)",
-    "blocksLabel": "rich content block(s)",
-    "emptyState": "Empty document",
-    "slashMenu": {
-      "calloutsGroup": "Callouts",
-      "embed": {
-        "title": "Embed",
-        "subtext": "YouTube, Vimeo, Loom, Streamable"
-      },
-      "driveImage": {
-        "title": "Drive Image",
-        "subtext": "Pick an image from Google Drive"
-      },
-      "callout": {
-        "note": {
-          "title": "Note",
-          "subtext": "General info or annotation"
-        },
-        "warning": {
-          "title": "Warning",
-          "subtext": "Caution, gotcha, or risk to flag"
-        },
-        "design-decision": {
-          "title": "Design decision",
-          "subtext": "A documented call — why we chose this"
-        },
-        "balance-note": {
-          "title": "Balance note",
-          "subtext": "Playtesting observation or balance concern"
-        }
-      }
-    }
-  },
-  "fieldLibraryAddon": {
-    "addonTypeLabel": "Field Library",
-    "defaultName": "Field Library",
-    "addEntryButton": "+ Field",
-    "newEntryLabel": "New field",
-    "emptyState": "No fields defined yet.",
-    "fallbackTitle": "Field",
-    "dragAria": "Drag block",
-    "helpText": "Define reusable fields here. In a Progression Table or Data Schema, link a field to a library entry to inherit its name and key.",
-    "labelLabel": "Name",
-    "labelPlaceholder": "Sell Price",
-    "keyLabel": "Key",
-    "keyPlaceholder": "sell_price",
-    "descriptionLabel": "Description (optional)",
-    "descriptionPlaceholder": "What this field means in the game...",
-    "removeEntryButton": "Remove field",
-    "readOnlyEmpty": "No fields defined.",
-    "readOnlyColLabel": "Name",
-    "readOnlyColKey": "Key",
-    "readOnlyColDescription": "Description",
-    "readOnlyColUsage": "Used in",
-    "summaryCount": "{count} fields defined",
-    "summaryUsages": "{count} uses in the project",
-    "usedInBadge": "{count} uses",
-    "notUsedBadge": "Not used",
-    "validation": {
-      "keyRequired": "Key is required.",
-      "keyUnique": "Key must be unique."
-    }
-  },
-  "attributeDefinitionsAddon": {
-    "addonTypeLabel": "Attribute Definitions",
-    "defaultName": "Attribute Definitions",
-    "addButton": "+ Attribute",
-    "newAttribute": "New attribute",
-    "emptyState": "No attributes defined yet.",
-    "fallbackTitle": "Attribute",
-    "dragAria": "Drag block",
-    "identificationBlockLabel": "Identification",
-    "valueBlockLabel": "Value",
-    "boundsBlockLabel": "Bounds",
-    "useBoundsLabel": "Use",
-    "labelLabel": "Label",
-    "keyLabel": "Key",
-    "typeLabel": "Type",
-    "defaultValueLabel": "Default value",
-    "minLabel": "Min",
-    "maxLabel": "Max",
-    "unitLabel": "Unit (optional)",
-    "removeAttribute": "Remove attribute",
-    "removeAddonButton": "Remove addon",
-    "readOnlyEmpty": "No attributes defined."
-  },
-  "attributeProfileAddon": {
-    "addonTypeLabel": "Attribute Profile",
-    "defaultName": "Attribute Profile",
-    "definitionsRefBlockLabel": "Reference",
-    "definitionsRefLabel": "Definitions reference",
-    "fallbackTitle": "Value",
-    "dragAria": "Drag block",
-    "valueBlockLabel": "Value",
-    "selectNone": "No reference",
-    "valuesTitle": "Profile values",
-    "addValueButton": "+ Value",
-    "emptyState": "No values configured yet.",
-    "attributeLabel": "Attribute",
-    "selectAttribute": "Select an attribute",
-    "valueLabel": "Value",
-    "removeValueButton": "Remove value",
-    "removeAddonButton": "Remove addon",
-    "readOnlyEmpty": "No attribute values configured."
-  },
-  "attributeModifiersAddon": {
-    "addonTypeLabel": "Attribute Modifiers",
-    "defaultName": "Attribute Modifiers",
-    "definitionsRefBlockLabel": "Reference",
-    "definitionsRefLabel": "Definitions reference",
-    "fallbackTitle": "Modifier",
-    "dragAria": "Drag block",
-    "modifierBlockLabel": "Modifier",
-    "nameLabel": "Name (optional)",
-    "namePlaceholder": "E.g. Fireball impact, Burn DoT, Iron Skin...",
-    "selectNone": "No reference",
-    "modifiersTitle": "Modifiers",
-    "addModifierButton": "+ Modifier",
-    "emptyState": "No modifiers configured yet.",
-    "attributeLabel": "Attribute",
-    "selectAttribute": "Select an attribute",
-    "modeLabel": "Mode",
-    "valueLabel": "Value",
-    "removeModifierButton": "Remove modifier",
-    "removeAddonButton": "Remove addon",
-    "readOnlyEmpty": "No modifiers configured.",
-    "temporaryLabel": "Temporary",
-    "temporaryOn": "Time-limited",
-    "temporaryOff": "Permanent",
-    "durationLabel": "Duration (seconds)",
-    "durationSuffix": "for {seconds}s",
-    "tickDurationSuffix": "every {tick}s for {seconds}s",
-    "timingTickDuration": "every {tick}s for {seconds}s (~{count} ticks)",
-    "timingTickOnly": "every {tick}s",
-    "timingDurationOnly": "for {seconds}s",
-    "temporaryTag": "temporary",
-    "behaviorBlockLabel": "Behavior",
-    "stackingLabel": "Stacking",
-    "stackingDefault": "Default",
-    "stackingUnique": "Unique (ignore if already active)",
-    "stackingRefresh": "Refresh (reset duration)",
-    "stackingStack": "Stack",
-    "stacking_unique": "unique",
-    "stacking_refresh": "refresh",
-    "stacking_stack": "stack",
-    "categoryLabel": "Category",
-    "categoryNone": "Unset",
-    "categoryBuff": "Buff",
-    "categoryDebuff": "Debuff",
-    "categoryNeutral": "Neutral",
-    "category_buff": "Buff",
-    "category_debuff": "Debuff",
-    "category_neutral": "Neutral",
-    "tickIntervalLabel": "Tick interval (s)",
-    "tickIntervalTooltip": "Convention: trailing tick — the first tick fires at t=N (not t=0). Total = floor(duration / interval) ticks. E.g. duration=10, tick=1 → 10 applications at t=1..10.",
-    "tagsLabel": "Tags (comma-separated)",
-    "tagsPlaceholder": "e.g. poison, magical"
-  },
-  "currencyAddon": {
-    "addonTypeLabel": "Currency",
-    "defaultName": "Currency",
-    "nameLabel": "Block name",
-    "namePlaceholder": "Ex.: Coins",
-    "codeLabel": "Code",
-    "codePlaceholder": "Ex.: COINS",
-    "codeDuplicate": "This code is already used by another currency in this project.",
-    "displayNameLabel": "Display name",
-    "displayNamePlaceholder": "Ex.: Coins",
-    "summaryLabel": "Summary",
-    "summaryStart": "Currency",
-    "summaryTypePrefix": "type",
-    "summaryDecimalsNone": "no decimals",
-    "summaryDecimalsSomeSuffix": "decimal places",
-    "exchangesBlockLabel": "Available conversions",
-    "kindLabel": "Currency type",
-    "kind": {
-      "soft": "Soft",
-      "premium": "Premium",
-      "event": "Event",
-      "other": "Other"
-    },
-    "decimalsLabel": "Decimal places",
-    "notesLabel": "Notes",
-    "notesPlaceholder": "Additional information about this currency",
-    "none": "none",
-    "emptyValue": "not informed",
-    "removeAddonButton": "Remove addon",
-    "validation": {
-      "codeRequired": "Fill the currency code."
-    }
-  },
-  "globalVariableAddon": {
-    "addonTypeLabel": "Global variable",
-    "defaultName": "Global Variable",
-    "nameLabel": "Block name",
-    "namePlaceholder": "Ex.: Sell bonus",
-    "keyLabel": "Key",
-    "keyPlaceholder": "Ex.: sell_bonus_pct",
-    "displayNameLabel": "Display name",
-    "displayNamePlaceholder": "Ex.: Sell for more",
-    "summaryLabel": "Summary",
-    "summaryStart": "Variable",
-    "summaryTypePrefix": "type",
-    "summaryDefaultPrefix": "default value",
-    "summaryScopePrefix": "scope",
-    "usedByTitle": "Used by",
-    "openUsageLinkTitle": "Open section using this variable",
-    "usedByBuyBadge": "Buy",
-    "usedBySellBadge": "Sell",
-    "valueTypeLabel": "Value type",
-    "valueType": {
-      "percent": "Percent",
-      "multiplier": "Multiplier",
-      "flat": "Flat",
-      "boolean": "Boolean"
-    },
-    "defaultValueLabel": "Default value",
-    "boolean": {
-      "true": "True",
-      "false": "False"
-    },
-    "scopeLabel": "Scope",
-    "scope": {
-      "global": "Global",
-      "mode": "Mode",
-      "event": "Event",
-      "season": "Season"
-    },
-    "notesLabel": "Notes",
-    "notesPlaceholder": "Additional information about this variable",
-    "none": "none",
-    "emptyValue": "not informed",
-    "removeAddonButton": "Remove addon",
-    "validation": {
-      "keyRequired": "Fill the global variable key."
-    }
-  },
-  "inventoryAddon": {
-    "addonTypeLabel": "Inventory",
-    "defaultName": "Inventory",
-    "nameLabel": "Block name",
-    "namePlaceholder": "Ex.: Item Inventory",
-    "categoryLabel": "Inventory category",
-    "linkLibraryButton": "Link to Field Library",
-    "linkLibraryAriaLabel": "Link to Field Library",
-    "unlinkLibraryAriaLabel": "Unlink from Library",
-    "libraryPickerTitle": "Pick a field from the Library",
-    "brokenLibraryRef": "The linked Library field was not found. Falling back to the last saved name.",
-    "categoryPlaceholder": "Ex.: Consumable",
-    "summaryLabel": "Summary",
-    "summaryStart": "Item category",
-    "summaryWeightPrefix": "Weight",
-    "summarySlotPrefix": "uses",
-    "summaryStackable": "stackable",
-    "summaryNotStackable": "not stackable",
-    "summaryMaxStackPrefix": "max",
-    "summaryDurabilityPrefix": "Durability",
-    "summaryMaxDurabilityPrefix": "max durability",
-    "summaryVolumePrefix": "Volume",
-    "summaryBindPrefix": "binding",
-    "summaryShopPrefix": "Shop",
-    "summaryConsumablePrefix": "consumable",
-    "summaryDiscardablePrefix": "discardable",
-    "productionConnectionsTitle": "Production connections",
-    "openSectionLinkTitle": "Open related section",
-    "producedByLabel": "Produced by",
-    "ingredientForLabel": "Ingredient for",
-    "weightLabel": "Weight",
-    "slotSizeLabel": "Inventory space (slots)",
-    "stackableLabel": "Stack",
-    "maxStackLabel": "Max stack",
-    "hasDurabilityConfigLabel": "Uses durability",
-    "durabilityLabel": "Initial durability",
-    "maxDurabilityLabel": "Max durability",
-    "hasVolumeConfigLabel": "Uses volume",
-    "volumeLabel": "Occupied volume",
-    "bindTypeLabel": "Item binding",
-    "bindType": {
-      "none": "No binding",
-      "onPickup": "Bind on pickup",
-      "onEquip": "Bind on equip"
-    },
-    "showInShopLabel": "Can appear in Shop",
-    "consumableLabel": "Consumable",
-    "discardableLabel": "Discardable",
-    "sheetsBoundTooltip": "Linked to Google Sheets",
-    "boolean": {
-      "true": "Yes",
-      "false": "No"
-    },
-    "notesLabel": "Notes",
-    "notesPlaceholder": "Additional inventory information",
-    "none": "none",
-    "emptyValue": "not informed",
-    "removeAddonButton": "Remove addon"
-  },
   "sectionDetail": {
     "notFound": "Section not found.",
     "errors": {
@@ -1829,7 +719,6 @@
       "mapColor": "Mind map color",
       "resetLevelColor": "Reset to level default color",
       "editSectionName": "Edit section name",
-      "addAddon": "Add addon to this page",
       "moveSection": "Move section to another location",
       "moveChildren": "Move all children to...",
       "duplicateSection": "Duplicate page (Ctrl+D)",
@@ -1866,13 +755,6 @@
       "empty": "Thumb",
       "picking": "Opening...",
       "alt": "Page thumbnail"
-    },
-    "addons": {
-      "reorderAria": "Reorder addon",
-      "dragToReorder": "Drag to reorder",
-      "nameInputAria": "Addon name",
-      "editNameTitle": "Edit addon name",
-      "expandCollapseAria": "Expand/collapse addon"
     },
     "dataId": {
       "duplicate": "A page with this DataID already exists in this project."
@@ -1950,43 +832,6 @@
       "title": "Move children to...",
       "confirm": "Move children"
     },
-    "copy": {
-      "title": "Copy addon to...",
-      "description": "Copy",
-      "descriptionTo": "to another page",
-      "confirm": "Copy",
-      "success": "Copied to \"{section}\"",
-      "successBatch": "{count} addons copied to \"{section}\"",
-      "noSections": "No pages available.",
-      "overwriteTitle": "Page \"{section}\" already has:",
-      "overwriteWarning": "Copying will overwrite the values of these addon(s) in the destination. This action cannot be undone.",
-      "overwriteConfirm": "Overwrite",
-      "missingDepsTitle": "The destination is missing some addons this one needs. Copy them too?",
-      "missingDepsHint": "Checked ones are copied along so the bindings work. Unchecked ones will have no binding in the destination.",
-      "withDeps": " (+{n} dependencies)"
-    },
-    "bulk": {
-      "selected": "{n} selected",
-      "hint": "(Ctrl/Cmd+click adds, Shift+click range)",
-      "nAddons": "{n} addons",
-      "remove": "Remove",
-      "removeConfirm": "Remove {n} addons?",
-      "removeWarning": "This action cannot be undone.",
-      "clear": "Clear selection"
-    },
-    "moveAddon": {
-      "title": "Move addon to...",
-      "confirm": "Move",
-      "descriptionTo": "to another page",
-      "success": "Moved to \"{section}\"",
-      "successBatch": "{count} addons moved to \"{section}\"",
-      "successWithRefs": "Moved to \"{section}\". {n} references updated.",
-      "refsSuffix": " {n} references updated.",
-      "depsTitle": "This addon depends on addons in this page:",
-      "depsHint": "Check to move together. Unchecked stay in the current page (refs will be cleared).",
-      "overwriteWarning": "Moving will overwrite the values of these addon(s) in the destination. This action cannot be undone.",
-      "overwriteConfirm": "Overwrite"
-    },
     "picker": {
       "search": "Search pages...",
       "noMatch": "No pages found for \"{term}\"",
@@ -2031,23 +876,7 @@
         "content": "Description",
         "order": "Order",
         "color": "Color",
-        "thumbnail": "Thumbnail",
-        "addonLabel": "Addon {{name}}"
-      },
-      "addonType": {
-        "xpBalance": "Balancing",
-        "progressionTable": "Table",
-        "economyLink": "Economy",
-        "currency": "Currency",
-        "globalVariable": "Variable",
-        "inventory": "Inventory",
-        "production": "Production",
-        "dataSchema": "Data Schema",
-        "attributeDefinitions": "Attribute Definitions",
-        "attributeProfile": "Attribute Profile",
-        "attributeModifiers": "Attribute Modifiers",
-        "genericStats": "Data Schema",
-        "generic": "Addon"
+        "thumbnail": "Thumbnail"
       }
     },
     "backlinks": "Referenced by:"
@@ -2061,10 +890,6 @@
     "language": "Language",
     "ai": "AI settings",
     "persistence": "Persistence",
-    "linkedSheets": {
-      "title": "🔗 Linked Spreadsheets",
-      "description": "Register Google Sheets once and reuse them in any field binding — no need to paste the URL every time."
-    },
     "actions": {
       "backToProject": "Back",
       "save": "Save",
@@ -2275,8 +1100,7 @@
           "parent": "Hierarchy",
           "order": "Order",
           "color": "Color",
-          "thumbnail": "Thumbnail",
-          "addonLabel": "Addon {{name}}"
+          "thumbnail": "Thumbnail"
         }
       },
       "syncBadge": {
@@ -2426,56 +1250,6 @@
       "zoomOnClick": "Zoom on Click",
       "zoomOnClickHelp": "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked"
     }
-  },
-  "addonPicker": {
-    "title": "Add addon",
-    "subtitle": "Pick what you want to configure on this page",
-    "searchPlaceholder": "Search addon...",
-    "emptyResults": "No addon found",
-    "closeAriaLabel": "Close",
-    "singletonDisabled": "This page already has an addon of this type.",
-    "category": {
-      "content": "Content",
-      "progression": "Progression",
-      "economy": "Economy",
-      "items": "Items & Production",
-      "attributes": "Character Attributes",
-      "data": "Data & Reuse",
-      "export": "Export"
-    }
-  },
-  "addonStackedList": {
-    "empty": "No addons on this page.",
-    "dragHandleAria": "Drag to reorder",
-    "dragHandleTitle": "Drag",
-    "renameTitle": "Double-click to rename",
-    "edit": "Edit",
-    "confirmRemove": {
-      "question": "Remove",
-      "warning": "This action cannot be undone. All addon data will be lost."
-    }
-  },
-  "addonEditorDrawer": {
-    "closeAriaLabel": "Close editor"
-  },
-  "addonCatalog": {
-    "xpBalance": { "description": "XP curve per level with presets and formulas" },
-    "progressionTable": { "description": "Values per level in columns (price, damage, etc.)" },
-    "currency": { "description": "Defines a game currency (gold, gem, XP)" },
-    "economyLink": { "description": "Buy, sell and unlock prices for an item" },
-    "inventory": { "description": "Inventory params: stack, weight, category" },
-    "production": { "description": "Passive production or recipe (ingredients → output)" },
-    "globalVariable": { "description": "Global modifier: % sell bonus, x2 XP event" },
-    "dataSchema": { "description": "Free key-value fields attached to the page" },
-    "attributeDefinitions": { "description": "Attributes (Strength, Stamina) used by characters" },
-    "attributeProfile": { "description": "Concrete attribute values for a character/item" },
-    "attributeModifiers": { "description": "Buffs/debuffs that change attributes (+10 STR, x1.5 DEX)" },
-    "fieldLibrary": { "description": "Reusable names/keys shared across pages" },
-    "exportSchema": { "description": "Exports the final JSON consumed by the game" },
-    "richDoc": { "description": "Notion-style rich document with headings, lists, images, embeds, and columns" },
-    "skills": { "description": "Active/passive abilities with cooldown, costs, and effects linked to Modifiers" },
-    "craftTable": { "description": "Crafting station that aggregates recipes (forge, workbench, alchemy)" },
-    "currencyExchange": { "description": "Exchange house between two currencies with configurable rate" }
   },
   "agenda": {
     "pageTitle": "Daily",
@@ -2953,11 +1727,31 @@
       "taskCol": "What to do",
       "footer": "These times are estimates for small teams. With more data and automation (dashboards, alerts), the daily check can drop to 2 minutes.",
       "rows": [
-        { "day": "Daily", "time": "5 min", "task": "Open analytics, check previous day's D1, sessions/day and churn by level. If something is out of pattern, note it for investigation." },
-        { "day": "Monday", "time": "30 min", "task": "Deep review: D1/D7/D30 curve by weekly cohort. Compare with the previous week." },
-        { "day": "Wednesday", "time": "20 min", "task": "Check active A/B tests. Is there statistical significance? Continue, end or adjust?" },
-        { "day": "Thursday", "time": "30 min", "task": "Raise hypotheses for the weekly report. Build the narrative: what changed, why, what to test." },
-        { "day": "Friday", "time": "45 min", "task": "Write weekly report: numbers → hypotheses → learnings → next experiments." }
+        {
+          "day": "Daily",
+          "time": "5 min",
+          "task": "Open analytics, check previous day's D1, sessions/day and churn by level. If something is out of pattern, note it for investigation."
+        },
+        {
+          "day": "Monday",
+          "time": "30 min",
+          "task": "Deep review: D1/D7/D30 curve by weekly cohort. Compare with the previous week."
+        },
+        {
+          "day": "Wednesday",
+          "time": "20 min",
+          "task": "Check active A/B tests. Is there statistical significance? Continue, end or adjust?"
+        },
+        {
+          "day": "Thursday",
+          "time": "30 min",
+          "task": "Raise hypotheses for the weekly report. Build the narrative: what changed, why, what to test."
+        },
+        {
+          "day": "Friday",
+          "time": "45 min",
+          "task": "Write weekly report: numbers → hypotheses → learnings → next experiments."
+        }
       ]
     },
     "questions": {
@@ -2967,16 +1761,40 @@
       "experimentsTitle": "About experiments",
       "footer": "Remember to log each week's learning here in the \"Main KPIs\" tab — the decision history is more valuable than any dashboard.",
       "retention": [
-        { "q": "D1 below expectations?", "a": "Problem in the tutorial or first session. Player didn't feel the fun before leaving." },
-        { "q": "D7 drops a lot compared to D1?", "a": "Short-term loop isn't retaining. Missing goals to bring the player back on day 2 and 3." },
-        { "q": "D30 very low?", "a": "Empty mid-game. Ran out of things to do between levels 20 and 50." },
-        { "q": "Which level has the most churn?", "a": "That's your priority intervention point. Could be a difficulty spike or a content void." }
+        {
+          "q": "D1 below expectations?",
+          "a": "Problem in the tutorial or first session. Player didn't feel the fun before leaving."
+        },
+        {
+          "q": "D7 drops a lot compared to D1?",
+          "a": "Short-term loop isn't retaining. Missing goals to bring the player back on day 2 and 3."
+        },
+        {
+          "q": "D30 very low?",
+          "a": "Empty mid-game. Ran out of things to do between levels 20 and 50."
+        },
+        {
+          "q": "Which level has the most churn?",
+          "a": "That's your priority intervention point. Could be a difficulty spike or a content void."
+        }
       ],
       "experiments": [
-        { "q": "What did we test this week?", "a": "Always 1 active hypothesis. Never test everything at once — you won't know what worked." },
-        { "q": "Did the result confirm?", "a": "Yes → implement. No → discard or reformulate. Inconclusive → more data or clearer hypothesis." },
-        { "q": "What did we learn?", "a": "This is the real value of the weekly report. Without recorded learning, you'll repeat the same mistakes." },
-        { "q": "What's the next hypothesis?", "a": "Always leave with at least 1 defined experiment. Without an active hypothesis, the week is lost." }
+        {
+          "q": "What did we test this week?",
+          "a": "Always 1 active hypothesis. Never test everything at once — you won't know what worked."
+        },
+        {
+          "q": "Did the result confirm?",
+          "a": "Yes → implement. No → discard or reformulate. Inconclusive → more data or clearer hypothesis."
+        },
+        {
+          "q": "What did we learn?",
+          "a": "This is the real value of the weekly report. Without recorded learning, you'll repeat the same mistakes."
+        },
+        {
+          "q": "What's the next hypothesis?",
+          "a": "Always leave with at least 1 defined experiment. Without an active hypothesis, the week is lost."
+        }
       ]
     },
     "widget": {
@@ -3154,31 +1972,35 @@
     "timeMonths": "{n}mo ago",
     "timeYears": "{n}y ago"
   },
-  "exportSchemaAddon": {
-    "format": {
-      "disabledHint": "Format only applies to Progression Table arrays. Add an array with that source to enable it (column-major, keyed, matrix)."
-    },
-    "sections": {
-      "progressionGroup": "Table from each child page",
-      "xpBalanceGroup": "XP balance from each child page",
-      "craftGroup": "Crafting table from each child page",
-      "skillsGroup": "Skills from each child page",
-      "productionGroup": "Production (recipe) from each child page",
-      "matchByNameHint": "Matched by name in each child page — applies to every child that has an equivalent table, not just the sample page."
-    },
-    "production": {
-      "group": "Production (recipe)",
-      "ingredients": "Ingredients",
-      "outputs": "Outputs",
-      "currentRecipe": "(current recipe)",
-      "addonSelectTitle": "Which Production addon to read the field from",
-      "tagRecipe": "recipe",
-      "tagPassive": "passive"
-    },
-    "coverage": {
-      "title": "⚠ Some child pages don't have this schema's data",
-      "without": "missing",
-      "footer": "These fields will be empty/zero in those pages' JSON until the addon is added."
+  "blockEditor": {
+    "slashMenu": {
+      "calloutsGroup": "Callouts",
+      "embed": {
+        "title": "Embed",
+        "subtext": "YouTube, Vimeo, Loom, Streamable"
+      },
+      "driveImage": {
+        "title": "Drive Image",
+        "subtext": "Pick an image from Google Drive"
+      },
+      "callout": {
+        "note": {
+          "title": "Note",
+          "subtext": "General info or annotation"
+        },
+        "warning": {
+          "title": "Warning",
+          "subtext": "Caution, gotcha, or risk to flag"
+        },
+        "design-decision": {
+          "title": "Design decision",
+          "subtext": "A documented call — why we chose this"
+        },
+        "balance-note": {
+          "title": "Balance note",
+          "subtext": "Playtesting observation or balance concern"
+        }
+      }
     }
   }
 }

@@ -9,8 +9,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
-import { collectIntraSectionDeps } from "@/lib/addons/refs";
-import { GroupDiffModal } from "@/components/GroupDiffModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
 import {
@@ -50,19 +48,10 @@ import { useI18n } from "@/lib/i18n/provider";
 import { ImageLibraryPicker } from "@/components/common/ImageLibraryPicker";
 import type { ProjectImage } from "@/store/slices/types";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
-import { ADDON_REGISTRY } from "@/lib/addons/registry";
-import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
-import { AddonPickerModal } from "@/components/AddonPickerModal";
-import { AddonStackedList } from "@/components/addons/AddonStackedList";
-import { AddonEditorDrawer } from "@/components/addons/AddonEditorDrawer";
-import { SectionLinkedSpreadsheetBar } from "@/components/common/SectionLinkedSpreadsheetBar";
-import { useSyncSectionSheets } from "@/hooks/useSyncSectionSheets";
-import type { SectionAddon, SectionAddonType } from "@/lib/addons/types";
-import { normalizeSectionAddons } from "@/lib/addons/normalize";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
-import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
+import { normalizeSpecialTokenSyntax } from "@/lib/sections/specialTokens";
 
 interface Props {
   projectId: string;
@@ -77,7 +66,6 @@ type SectionVersionEntry = {
   content: string;
   color?: string | null;
   sort_order?: number | null;
-  balance_addons?: unknown;
   created_at: string;
   updated_by_name?: string | null;
 };
@@ -99,13 +87,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const setSectionThumbImage = useProjectStore((s) => s.setSectionThumbImage);
   const setSectionFlowchartEnabled = useProjectStore((s) => s.setSectionFlowchartEnabled);
   const disableSectionFlowchartAndClearDiagram = useProjectStore((s) => s.disableSectionFlowchartAndClearDiagram);
-  const addSectionAddon = useProjectStore((s) => s.addSectionAddon);
-  const updateSectionAddon = useProjectStore((s) => s.updateSectionAddon);
-  const removeSectionAddon = useProjectStore((s) => s.removeSectionAddon);
-  const setSectionAddons = useProjectStore((s) => s.setSectionAddons);
-  const copyAddonToSection = useProjectStore((s) => s.copyAddonToSection);
-  const moveAddonToSection = useProjectStore((s) => s.moveAddonToSection);
-  const moveAddonsToSection = useProjectStore((s) => s.moveAddonsToSection);
   const projects = useProjectStore((s) => s.projects);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
@@ -142,11 +123,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const [sectionVersionsLoading, setSectionVersionsLoading] = useState(false);
   const [restoreVersionId, setRestoreVersionId] = useState<string | null>(null);
   const [suggestDomainLoading, setSuggestDomainLoading] = useState(false);
-  const [showAddonMenu, setShowAddonMenu] = useState(false);
 
   // Page-level keyboard shortcuts. Bail when focus is on an editable field so
   // native keys (italic, etc.) keep working in inputs and the Toast UI editor.
-  //   Ctrl+I         → open addon picker
   //   Ctrl+M         → open "move section" modal (Ctrl+Shift+M on Mac, to avoid Cmd+M minimize)
   //   Ctrl+D         → duplicate page (overrides browser bookmark — confirmed with user)
   const duplicateRef = useRef<() => void>(() => {});
@@ -165,12 +144,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       if (target.closest?.(".toastui-editor, .ProseMirror, .CodeMirror, .cm-editor")) return;
 
       const key = event.key.toLowerCase();
-      // Ctrl+I → addon picker (plain, no Shift)
-      if (key === "i" && !event.shiftKey) {
-        event.preventDefault();
-        setShowAddonMenu(true);
-        return;
-      }
       // Ctrl+M (or Ctrl+Shift+M on Mac) → move section modal
       const wantsShift = isMac;
       if (key === "m" && event.shiftKey === wantsShift) {
@@ -195,7 +168,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const router = useRouter();
 
   const sections = project?.sections || [];
-  const addons = section?.addons || [];
   const sectionThumbCandidates = useMemo(
     () => getDriveImageDisplayCandidates(section?.thumbImageUrl || "", 240),
     [section?.thumbImageUrl]
@@ -258,13 +230,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       // Conteúdo base: usa o preview atual se existir, senão o conteúdo da seção
       const baseContent = String(showPreview ? previewContent : (section.content || ''));
 
-      // Resumo dos addons da seção atual (tipo + nome) — permite ao prompt evitar duplicar dados estruturados
-      const addonSummary = Array.isArray((section as any).addons)
-        ? ((section as any).addons as Array<{ type?: string; name?: string }>)
-            .filter((a) => a && typeof a.type === 'string')
-            .map((a) => ({ type: String(a.type), name: a.name ? String(a.name) : undefined }))
-        : undefined;
-
       // Cria payload com apenas dados primitivos
       const payload = {
         currentContent: baseContent,
@@ -276,7 +241,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
           subsections: subsections,
           otherSections: otherSections,
           pageTypeId: (section as any).pageTypeId ? String((section as any).pageTypeId) : undefined,
-          addons: addonSummary && addonSummary.length > 0 ? addonSummary : undefined,
           projectDescription: project?.description ? String(project.description) : undefined,
         },
         projectTitle: String(project.title || 'GDD'),
@@ -514,10 +478,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   }, [projectId, sectionId, getProjectBySlug, projects, router]);
 
   useEffect(() => {
-    setShowAddonMenu(false);
-  }, [sectionId]);
-
-  useEffect(() => {
     setSectionThumbCandidateIndex(0);
   }, [section?.thumbImageUrl]);
 
@@ -724,41 +684,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
   if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => project ? router.push(projectPath(project)) : router.push("/")}>{t('common.back')}</button></div>;
 
-  const addAddon = (type: SectionAddon["type"], group?: string) => {
-    const entry = ADDON_REGISTRY.find((item) => item.type === type);
-    if (!entry) return;
-    const newAddon = entry.createDefault();
-    if (group && group !== "A") {
-      (newAddon as any).group = group;
-    }
-    addSectionAddon(realProjectId, realSectionId,newAddon, sectionAuditBy);
-    setShowAddonMenu(false);
-  };
-
-  const updateAddon = (addonId: string, nextAddon: SectionAddon) => {
-    updateSectionAddon(realProjectId, realSectionId,addonId, nextAddon, sectionAuditBy);
-  };
-
-  const removeAddon = (addonId: string) => {
-    removeSectionAddon(realProjectId, realSectionId,addonId, sectionAuditBy);
-  };
-
-  const reorderAddons = (nextAddons: SectionAddon[]) => {
-    setSectionAddons(realProjectId, realSectionId,nextAddons, sectionAuditBy);
-  };
-
-  const copyAddonToSectionHandler = (toSectionId: string, addonId: string, overwrite?: boolean) => {
-    copyAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy, overwrite);
-  };
-
-  const moveAddonToSectionHandler = (toSectionId: string, addonId: string, overwrite?: boolean): { reverseRefsUpdated: number } => {
-    return moveAddonToSection(realProjectId, realSectionId,toSectionId, addonId, sectionAuditBy, overwrite);
-  };
-
-  const moveAddonsToSectionHandler = (toSectionId: string, addonIds: string[], overwrite?: boolean): { reverseRefsUpdated: number } => {
-    return moveAddonsToSection(realProjectId, realSectionId, toSectionId, addonIds, sectionAuditBy, overwrite);
-  };
-
   return (
     <>
       <SectionDetailContent 
@@ -827,8 +752,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setRestoreVersionId={setRestoreVersionId}
     suggestDomainLoading={suggestDomainLoading}
     setSuggestDomainLoading={setSuggestDomainLoading}
-    showAddonMenu={showAddonMenu}
-    setShowAddonMenu={setShowAddonMenu}
     isPickingSectionThumb={isPickingSectionThumb}
     sectionThumbError={sectionThumbError}
     sectionThumbCandidateIndex={sectionThumbCandidateIndex}
@@ -838,14 +761,6 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setSectionThumbImage={setSectionThumbImage}
     setSectionFlowchartEnabled={setSectionFlowchartEnabled}
     disableSectionFlowchartAndClearDiagram={disableSectionFlowchartAndClearDiagram}
-    addons={addons}
-    onAddAddon={addAddon}
-    onUpdateAddon={updateAddon}
-    onRemoveAddon={removeAddon}
-    onReorderAddons={reorderAddons}
-    onCopyAddonToSection={copyAddonToSectionHandler}
-    onMoveAddonToSection={moveAddonToSectionHandler}
-    onMoveAddonsToSection={moveAddonsToSectionHandler}
       />
       {showThumbLibrary && project?.imageLibrary && (
         <ImageLibraryPicker
@@ -1283,309 +1198,6 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
   );
 }
 
-function SortableAddonTab({
-  addon,
-  isActive,
-  isSelected,
-  onClick,
-  onSelectionClick,
-  onRemove,
-  onCopy,
-  onMove,
-  onRename,
-  label,
-  typeLabel,
-}: {
-  addon: SectionAddon;
-  isActive: boolean;
-  isSelected?: boolean;
-  onClick: () => void;
-  onSelectionClick?: (modifiers: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void;
-  onRemove: () => void;
-  onCopy?: () => void;
-  onMove?: () => void;
-  onRename: (name: string) => void;
-  label: string;
-  typeLabel: string;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: addon.id });
-  const [confirmRemove, setConfirmRemove] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftName, setDraftName] = useState(addon.name || "");
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const commitName = () => {
-    const trimmed = draftName.trim();
-    if (trimmed !== addon.name) {
-      onRename(trimmed);
-    }
-    setIsEditing(false);
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-t-lg cursor-pointer select-none whitespace-nowrap transition-colors ${
-        isSelected
-          ? "bg-emerald-900/30 border border-emerald-500/60 text-white"
-          : isActive
-            ? "bg-gray-800 border border-gray-600 border-b-transparent text-white"
-            : "bg-gray-900/50 border border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
-      }`}
-      onClick={(e) => {
-        if ((e.ctrlKey || e.metaKey || e.shiftKey) && onSelectionClick) {
-          e.preventDefault();
-          e.stopPropagation();
-          onSelectionClick({ ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
-          return;
-        }
-        onClick();
-      }}
-    >
-      <span
-        className="text-gray-500 cursor-grab active:cursor-grabbing text-[10px] leading-none"
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-      >
-        ⋮⋮
-      </span>
-      <div className="min-w-0">
-        {isEditing ? (
-          <input
-            autoFocus
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onBlur={commitName}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              else if (e.key === "Escape") { setDraftName(addon.name || ""); setIsEditing(false); }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-transparent border-b border-gray-500 text-xs font-medium text-white outline-none w-24 py-0"
-            placeholder={typeLabel}
-          />
-        ) : (
-          <div
-            className="text-xs font-medium truncate max-w-[120px]"
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              setDraftName(addon.name || "");
-              setIsEditing(true);
-            }}
-            title="Duplo clique para renomear"
-          >
-            {label}
-          </div>
-        )}
-        {!isEditing && (
-          <div className="text-[10px] text-gray-500 truncate max-w-[120px]">{typeLabel}</div>
-        )}
-      </div>
-      {onCopy && (
-        <button
-          type="button"
-          className="ml-1 text-gray-500 hover:text-sky-400 shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopy();
-          }}
-          title="Copiar para outra pagina"
-          aria-label="Copiar para outra pagina"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-        </button>
-      )}
-      {onMove && (
-        <button
-          type="button"
-          className="ml-1 text-gray-500 hover:text-emerald-400 shrink-0"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMove();
-          }}
-          title="Mover para outra pagina"
-          aria-label="Mover para outra pagina"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M20 12H4" />
-          </svg>
-        </button>
-      )}
-      <button
-        type="button"
-        className="ml-1 text-gray-500 hover:text-rose-400 text-[10px] leading-none shrink-0"
-        onClick={(e) => {
-          e.stopPropagation();
-          setConfirmRemove(true);
-        }}
-        title="Remover addon"
-      >
-        ✕
-      </button>
-      {confirmRemove && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={(e) => { e.stopPropagation(); setConfirmRemove(false); }} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[260px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm text-gray-200 mb-1">
-              Remover <strong className="text-white">{label}</strong>?
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Esta acao nao pode ser desfeita. Todos os dados deste addon serao perdidos.
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => setConfirmRemove(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
-                onClick={() => { setConfirmRemove(false); onRemove(); }}
-              >
-                Remover
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SortableAddonItem({
-  addon,
-  addonKey,
-  isCollapsed,
-  toggleAddonCollapsed,
-  getAddonTypeLabel,
-  t,
-  entry,
-  onUpdateAddon,
-  onRemoveAddon,
-}: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: addon.id });
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [draftName, setDraftName] = useState(addon.name || "");
-
-  useEffect(() => {
-    setDraftName(addon.name || "");
-    setIsEditingName(false);
-  }, [addon.id, addon.name]);
-
-  const commitAddonName = () => {
-    const nextName = draftName;
-    if (nextName !== addon.name) {
-      onUpdateAddon(addon.id, {
-        ...addon,
-        name: nextName,
-        data: addon?.data && typeof addon.data === "object" ? { ...addon.data, name: nextName } : addon?.data,
-      });
-    }
-    setIsEditingName(false);
-  };
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} className="ui-card-premium overflow-hidden">
-      <div
-        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/80 transition-colors cursor-pointer"
-        onClick={() => toggleAddonCollapsed(addonKey)}
-      >
-        <div className="min-w-0 flex items-center gap-2">
-          <span
-            className="text-gray-400 cursor-grab active:cursor-grabbing text-sm leading-none"
-            {...attributes}
-            {...listeners}
-            onClick={(event) => event.stopPropagation()}
-            aria-label={t("sectionDetail.addons.reorderAria", "Reordenar addon")}
-            title={t("sectionDetail.addons.dragToReorder", "Arrastar para reordenar")}
-          >
-            ⋮⋮
-          </span>
-          <div className="min-w-0">
-            {isEditingName ? (
-              <input
-                autoFocus
-                value={draftName}
-                onChange={(event) => setDraftName(event.target.value)}
-                onBlur={commitAddonName}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.currentTarget.blur();
-                  } else if (event.key === "Escape") {
-                    setDraftName(addon.name || "");
-                    setIsEditingName(false);
-                  }
-                }}
-                onClick={(event) => event.stopPropagation()}
-                className="ui-input-dark ui-focus-ring-indigo rounded px-2 py-1 text-sm font-semibold text-gray-100 max-w-[24rem]"
-                style={{ width: `${Math.max(10, draftName.length + 2)}ch` }}
-                placeholder={getAddonTypeLabel(addon.type)}
-                aria-label={t("sectionDetail.addons.nameInputAria", "Nome do addon")}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setIsEditingName(true);
-                }}
-                className="inline-block text-left text-sm font-semibold text-gray-200 hover:text-white"
-                title={t("sectionDetail.addons.editNameTitle", "Editar nome do addon")}
-              >
-                {addon.name || getAddonTypeLabel(addon.type)}
-              </button>
-            )}
-            <p className="text-xs text-gray-400">{getAddonTypeLabel(addon.type)}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            toggleAddonCollapsed(addonKey);
-          }}
-          className="text-gray-300 shrink-0 transition-transform duration-200"
-          style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)" }}
-          aria-expanded={!isCollapsed}
-          aria-label={t("sectionDetail.addons.expandCollapseAria", "Expandir/ocultar addon")}
-        >
-          ▼
-        </button>
-      </div>
-      {!isCollapsed && (
-        <div className="border-t border-gray-700/80 p-3 bg-gray-900/30">
-          {entry
-            ? entry.renderEditor(
-                addon,
-                (nextAddon: SectionAddon) => onUpdateAddon(addon.id, nextAddon),
-                () => onRemoveAddon(addon.id)
-              )
-            : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Componente principal de conteúdo
 function SectionDetailContent({ 
   project, projectId, section, sectionId, breadcrumbs, 
@@ -1613,8 +1225,6 @@ function SectionDetailContent({
   setRestoreVersionId,
   suggestDomainLoading,
   setSuggestDomainLoading,
-  showAddonMenu,
-  setShowAddonMenu,
   isPickingSectionThumb,
   sectionThumbError,
   sectionThumbCandidateIndex,
@@ -1624,91 +1234,12 @@ function SectionDetailContent({
   setSectionThumbImage,
   setSectionFlowchartEnabled,
   disableSectionFlowchartAndClearDiagram,
-  addons,
-  onAddAddon,
-  onUpdateAddon,
-  onRemoveAddon,
-  onReorderAddons,
-  onCopyAddonToSection,
-  onMoveAddonToSection,
-  onMoveAddonsToSection,
 }: any) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
-  const setSectionLinkedSpreadsheet = useProjectStore((s) => s.setSectionLinkedSpreadsheet);
   const realProjectId: string = project?.id ?? projectId ?? "";
   const realSectionId: string = section?.id ?? sectionId ?? "";
-  const linkedSpreadsheets: import("@/store/slices/types").LinkedSpreadsheet[] = project?.linkedSpreadsheets ?? [];
-  const sectionLinkedSpreadsheetId: string | undefined = (section as any)?.linkedSpreadsheetId;
-  const hasSheetCapableAddons: boolean = (addons as any[]).some(
-    (a: any) => a.type === "economyLink" || a.type === "progressionTable" || a.type === "production"
-  );
-  const {
-    sync: syncSectionSheets,
-    syncing: sectionSheetsSyncing,
-    result: sectionSheetsResult,
-    error: sectionSheetsError,
-  } = useSyncSectionSheets(realProjectId, realSectionId);
   const [historyExpanded, setHistoryExpanded] = useState(false);
-  const [copyAddonModal, setCopyAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
-  const [batchCopyConfirm, setBatchCopyConfirm] = useState<{
-    targetIds: string[];
-    addonIds: string[];
-    conflictPages: Array<{ id: string; title: string; conflictLabels: string[] }>;
-    missingDeps: Array<{ id: string; label: string; typeLabel: string }>;
-  } | null>(null);
-  const [batchCopyDepChecked, setBatchCopyDepChecked] = useState<Record<string, boolean>>({});
-  const [batchOverwriteConflicts, setBatchOverwriteConflicts] = useState<'overwrite' | 'skip'>('overwrite');
-  // Idem para mover.
-  const [moveOverwriteConfirm, setMoveOverwriteConfirm] = useState<{
-    target: string;
-    targetTitle: string;
-    ids: string[];
-    conflictLabels: string[];
-  } | null>(null);
-  const [moveAddonModal, setMoveAddonModal] = useState<{ addonId: string; addonLabel: string; bulkIds?: string[] } | null>(null);
-  const [moveAddonCascade, setMoveAddonCascade] = useState<Record<string, boolean>>({});
-  const [selectedAddonIds, setSelectedAddonIds] = useState<Set<string>>(() => new Set());
-  const [lastClickedAddonId, setLastClickedAddonId] = useState<string | null>(null);
-  const [bulkConfirmRemove, setBulkConfirmRemove] = useState(false);
-  const [copyAddonToast, setCopyAddonToast] = useState<string | null>(null);
-  useEffect(() => {
-    if (!copyAddonToast) return;
-    const handle = setTimeout(() => setCopyAddonToast(null), 3000);
-    return () => clearTimeout(handle);
-  }, [copyAddonToast]);
-  const getAddonTypeFallbackLabel = (type: string): string => {
-    switch (type) {
-      case "xpBalance":
-        return t("sectionDetail.history.addonType.xpBalance");
-      case "progressionTable":
-        return t("sectionDetail.history.addonType.progressionTable");
-      case "economyLink":
-        return t("sectionDetail.history.addonType.economyLink");
-      case "currency":
-        return t("sectionDetail.history.addonType.currency");
-      case "globalVariable":
-        return t("sectionDetail.history.addonType.globalVariable");
-      case "inventory":
-        return t("sectionDetail.history.addonType.inventory");
-      case "production":
-        return t("sectionDetail.history.addonType.production");
-      case "dataSchema":
-        return t("sectionDetail.history.addonType.dataSchema");
-      case "genericStats":
-        return t("sectionDetail.history.addonType.dataSchema");
-      case "attributeDefinitions":
-        return t("sectionDetail.history.addonType.attributeDefinitions");
-      case "attributeProfile":
-        return t("sectionDetail.history.addonType.attributeProfile");
-      case "attributeModifiers":
-        return t("sectionDetail.history.addonType.attributeModifiers");
-      case "exportSchema":
-        return "Remote Config";
-      default:
-        return t("sectionDetail.history.addonType.generic");
-    }
-  };
   const buildVersionChangeSummary = (current: SectionVersionEntry, previous?: SectionVersionEntry): string | null => {
     if (!previous) return null;
     const labels: string[] = [];
@@ -1733,29 +1264,6 @@ function SectionDetailContent({
       pushUnique(t("sectionDetail.history.changeFacets.order"));
     }
 
-    const currentAddons = normalizeSectionAddons(current.balance_addons) || [];
-    const previousAddons = normalizeSectionAddons(previous.balance_addons) || [];
-    const previousById = new Map(previousAddons.map((addon) => [addon.id, addon]));
-    const currentById = new Map(currentAddons.map((addon) => [addon.id, addon]));
-
-    for (const addon of currentAddons) {
-      const oldAddon = previousById.get(addon.id);
-      if (!oldAddon || JSON.stringify(oldAddon) !== JSON.stringify(addon)) {
-        const addonName = addon.name?.trim() || getAddonTypeFallbackLabel(addon.type);
-        pushUnique(
-          t("sectionDetail.history.changeFacets.addonLabel").replace("{{name}}", addonName)
-        );
-      }
-    }
-    for (const addon of previousAddons) {
-      if (!currentById.has(addon.id)) {
-        const addonName = addon.name?.trim() || getAddonTypeFallbackLabel(addon.type);
-        pushUnique(
-          t("sectionDetail.history.changeFacets.addonLabel").replace("{{name}}", addonName)
-        );
-      }
-    }
-
     if (labels.length === 0) return null;
     const maxLabels = 6;
     const visible = labels.slice(0, maxLabels);
@@ -1765,151 +1273,11 @@ function SectionDetailContent({
       : "";
     return `${t("sectionDetail.history.modifiedPrefix")}: ${visible.join(", ")}${suffix}`;
   };
-  // Mantém o estado de visibilidade por addon (chave: "tipo:id"), já escalável para futuros tipos.
-  const [collapsedAddonKeys, setCollapsedAddonKeys] = useState<Record<string, boolean>>({});
-  /**
-   * When non-null, the editor drawer is open for this addon.
-   * Null means no drawer open (list in read-only mode).
-   */
-  const [activeAddonId, setActiveAddonId] = useState<string | null>(null);
   const [isEditingDataId, setIsEditingDataId] = useState(false);
   const [dataIdDraft, setDataIdDraft] = useState("");
   const [dataIdError, setDataIdError] = useState<string | null>(null);
   const setSectionDataId = useProjectStore((s) => s.setSectionDataId);
   const hasDuplicateDataId = useProjectStore((s) => s.hasDuplicateDataId);
-  const [confirmRemoveAddon, setConfirmRemoveAddon] = useState<{ id: string; label: string } | null>(null);
-  const [activeGroup, setActiveGroup] = useState<string>("A");
-  const [confirmRemoveGroup, setConfirmRemoveGroup] = useState(false);
-  const [showGroupDiff, setShowGroupDiff] = useState(false);
-  const [showGroupNotes, setShowGroupNotes] = useState(false);
-  const [groupNotesDraft, setGroupNotesDraft] = useState("");
-  const setSectionAddonGroupNote = useProjectStore((s) => s.setSectionAddonGroupNote);
-  const renameSectionAddonGroup = useProjectStore((s) => s.renameSectionAddonGroup);
-  const prevAddonCountRef = useRef(addons.length);
-  useEffect(() => {
-    // Auto-select the last addon when a new one is added
-    if (addons.length > prevAddonCountRef.current && addons.length > 0) {
-      const newAddon = addons[addons.length - 1];
-      // Auto-open the editor drawer for the newly added addon
-      setActiveAddonId(newAddon.id);
-    }
-    prevAddonCountRef.current = addons.length;
-  }, [addons.length]);
-
-  // Addon group management.
-  // richDoc addons are group-agnostic: they never drive group tabs and are
-  // always visible regardless of which group is active.
-  const addonGroups = useMemo(() => {
-    const groups = new Set<string>();
-    for (const addon of addons) {
-      if (addon.type === "richDoc" || addon.type === "fieldLibrary") continue;
-      groups.add((addon as any).group || "A");
-    }
-    return Array.from(groups).sort();
-  }, [addons]);
-
-  const hasGroupableAddons = useMemo(
-    () => addons.some((a: SectionAddon) => a.type !== "richDoc" && a.type !== "fieldLibrary"),
-    [addons]
-  );
-
-  const groupAddons = addons.filter(
-    (a: any) => a.type === "richDoc" || a.type === "fieldLibrary" || ((a as any).group || "A") === activeGroup
-  );
-
-  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [editingGroupName, setEditingGroupName] = useState<string | null>(null);
-  const [editingGroupDraft, setEditingGroupDraft] = useState("");
-
-  const handleRenameGroup = (oldName: string, newName: string) => {
-    const trimmed = newName.trim();
-    if (!trimmed || trimmed === oldName) { setEditingGroupName(null); return; }
-    if (addonGroups.includes(trimmed)) { setEditingGroupName(null); return; } // duplicate name
-    const updated = addons.map((a: any) => ((a as any).group || "A") === oldName ? { ...a, group: trimmed } : a);
-    onReorderAddons(updated);
-    renameSectionAddonGroup(realProjectId, realSectionId, oldName, trimmed);
-    if (activeGroup === oldName) setActiveGroup(trimmed);
-    setEditingGroupName(null);
-  };
-
-  const handleCreateGroup = () => {
-    const groupName = newGroupName.trim();
-    if (!groupName || addonGroups.includes(groupName)) { setIsCreatingGroup(false); setNewGroupName(""); return; }
-    const currentGroupAddons = addons.filter((a: any) => ((a as any).group || "A") === activeGroup);
-    setIsCreatingGroup(false);
-    setNewGroupName("");
-
-    // Build old ID → new ID mapping (same ID for wrapper and data)
-    const idMap = new Map<string, string>();
-    for (const a of currentGroupAddons) {
-      const newId = `${(a as any).type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      idMap.set((a as any).id, newId);
-    }
-
-    // Helper to remap an ID
-    const remap = (oldId: string | undefined): string | undefined => {
-      if (!oldId) return oldId;
-      return idMap.get(oldId) ?? oldId;
-    };
-
-    // Deep clone data and remap internal references
-    const remapAddonData = (data: any, addonType: string): any => {
-      const d = JSON.parse(JSON.stringify(data));
-      // DataSchema entries: remap production binding addonId, economyLink binding sectionId
-      if (d.entries && Array.isArray(d.entries)) {
-        for (const entry of d.entries) {
-          if (entry.binding?.source === "production" && entry.binding.addonId) {
-            entry.binding.addonId = remap(entry.binding.addonId);
-          }
-        }
-      }
-      // ExportSchema nodes: remap addonId in bindings and array sources
-      if (d.nodes && Array.isArray(d.nodes)) {
-        const remapNodes = (nodes: any[]) => {
-          for (const node of nodes) {
-            if (node.binding?.source === "dataSchema" && node.binding.addonId) {
-              node.binding.addonId = remap(node.binding.addonId);
-            }
-            if (node.arraySource?.addonId) {
-              node.arraySource.addonId = remap(node.arraySource.addonId);
-            }
-            if (node.children) remapNodes(node.children);
-            if (node.itemTemplate) remapNodes(node.itemTemplate);
-          }
-        };
-        remapNodes(d.nodes);
-      }
-      // AttributeProfile/Modifiers: remap definitionsRef
-      if (d.definitionsRef) d.definitionsRef = remap(d.definitionsRef);
-      // Production: remap progressionColumn bindings
-      for (const key of ["minOutputBinding", "maxOutputBinding", "intervalSecondsBinding", "capacityBinding", "craftTimeSecondsBinding"]) {
-        if (d[key]?.source === "progressionColumn" && d[key].progressionAddonId) {
-          d[key].progressionAddonId = remap(d[key].progressionAddonId);
-        }
-      }
-      return d;
-    };
-
-    const duplicated = currentGroupAddons.map((addon: any) => {
-      const newId = idMap.get(addon.id)!;
-      const newData = remapAddonData(addon.data, addon.type);
-      newData.id = newId; // Same ID as wrapper so panels can find it
-      return { ...addon, id: newId, group: groupName, data: newData };
-    });
-
-    const allAddons = [...addons, ...duplicated];
-    onReorderAddons(allAddons);
-    setActiveGroup(groupName);
-  };
-
-  const handleRemoveGroup = () => {
-    const remaining = addons.filter((a: any) => ((a as any).group || "A") !== activeGroup);
-    onReorderAddons(remaining);
-    setActiveGroup("A");
-    setConfirmRemoveGroup(false);
-  };
-
   const { unresolvedNames, hasProjectTitleRef } = showPreview && previewContent
     ? getUnresolvedRefsFromContent(previewContent, sections || [], project?.title || "")
     : { unresolvedNames: [] as string[], hasProjectTitleRef: false };
@@ -1998,191 +1366,6 @@ function SectionDetailContent({
       </div>
     </div>
   );
-
-  useEffect(() => {
-      const addonKeys = new Set(
-      (Array.isArray(addons) ? addons : []).map((addon: SectionAddon) => `${addon.type}:${addon.id}`)
-    );
-    setCollapsedAddonKeys((prev) => {
-      const next = { ...prev };
-
-      // Novos addons iniciam ocultos por padrão.
-      for (const key of addonKeys) {
-        if (next[key] === undefined) next[key] = true;
-      }
-
-      // Remove chaves antigas de addons removidos.
-      for (const key of Object.keys(next)) {
-        if (!addonKeys.has(key)) {
-          delete next[key];
-        }
-      }
-
-      return next;
-    });
-  }, [addons]);
-
-  const toggleAddonCollapsed = (addonKey: string) => {
-    setCollapsedAddonKeys((prev) => ({
-      ...prev,
-      [addonKey]: !(prev[addonKey] ?? true),
-    }));
-  };
-
-  const addonSensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleAddonDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    // Reorder within the active group, then reconstruct full addons array
-    const oldIndex = groupAddons.findIndex((addon: SectionAddon) => addon.id === String(active.id));
-    const newIndex = groupAddons.findIndex((addon: SectionAddon) => addon.id === String(over.id));
-    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
-    const reorderedGroup = arrayMove(groupAddons, oldIndex, newIndex);
-    // Rebuild: keep non-group addons in place, replace group addons with reordered
-    const otherAddons = addons.filter((a: any) => ((a as any).group || "A") !== activeGroup);
-    onReorderAddons([...otherAddons, ...reorderedGroup]);
-  };
-
-  const getAddonTypeLabel = (type: SectionAddonType) => {
-    if (type === "xpBalance") {
-      return t("balanceAddon.addonTypeLabel", "Balanceamento de XP");
-    }
-    if (type === "progressionTable") {
-      return t("progressionTableAddon.addonTypeLabel", "Tabela de balanceamento");
-    }
-    if (type === "economyLink") {
-      return t("economyLinkAddon.addonTypeLabel", "Economia vinculada");
-    }
-    if (type === "currency") {
-      return t("currencyAddon.addonTypeLabel", "Moeda");
-    }
-    if (type === "currencyExchange") {
-      return t("currencyExchangeAddon.addonTypeLabel", "Casa de Câmbio");
-    }
-    if (type === "globalVariable") {
-      return t("globalVariableAddon.addonTypeLabel", "Variavel global");
-    }
-    if (type === "inventory") {
-      return t("inventoryAddon.addonTypeLabel", "Estoque");
-    }
-    if (type === "production") {
-      return t("productionAddon.addonTypeLabel", "Producao");
-    }
-    if (type === "craftTable") {
-      return t("craftTableAddon.addonTypeLabel", "Craft Table");
-    }
-    if (type === "richDoc") {
-      return t("richDocAddon.addonTypeLabel", "Doc");
-    }
-    if (type === "dataSchema" || type === "genericStats") {
-      return t("dataSchemaAddon.addonTypeLabel", "Schema de Dados");
-    }
-    if (type === "attributeDefinitions") {
-      return t("attributeDefinitionsAddon.addonTypeLabel", "Definições de Atributos");
-    }
-    if (type === "attributeProfile") {
-      return t("attributeProfileAddon.addonTypeLabel", "Perfil de Atributos");
-    }
-    if (type === "attributeModifiers") {
-      return t("attributeModifiersAddon.addonTypeLabel", "Modificadores de Atributos");
-    }
-    if (type === "skills") {
-      return t("skillsAddon.addonTypeLabel", "Habilidades");
-    }
-    if (type === "fieldLibrary") {
-      return t("fieldLibraryAddon.addonTypeLabel", "Biblioteca de Campos");
-    }
-    if (type === "exportSchema") {
-      return t("exportSchemaAddon.addonTypeLabel", "Remote Config");
-    }
-    return t("sectionDetail.history.addonType.generic");
-  };
-
-  const performBatchCopy = (
-    targetIds: string[],
-    addonIds: string[],
-    depIds: string[],
-    overwriteConflicting: boolean,
-    conflictPageIds: Set<string>
-  ) => {
-    let successCount = 0;
-    let skipCount = 0;
-    for (const targetId of targetIds) {
-      const hasConflict = conflictPageIds.has(targetId);
-      if (hasConflict && !overwriteConflicting) {
-        skipCount++;
-        continue;
-      }
-      const shouldOverwrite = hasConflict && overwriteConflicting;
-      for (const depId of depIds) {
-        const dep = (addons as SectionAddon[]).find((a) => a.id === depId);
-        if (!dep) continue;
-        const targetSection = (sections as any[]).find((s) => s.id === targetId);
-        const targetAddons: SectionAddon[] = targetSection?.addons || [];
-        const depPresent = targetAddons.some(
-          (a) => a.type === dep.type
-            || ((dep.type === 'dataSchema' || dep.type === 'genericStats') && (a.type === 'dataSchema' || a.type === 'genericStats'))
-        );
-        if (!depPresent) onCopyAddonToSection?.(targetId, depId, false);
-      }
-      for (const addonId of addonIds) {
-        onCopyAddonToSection?.(targetId, addonId, shouldOverwrite);
-      }
-      successCount++;
-    }
-    const depSuffix = depIds.length > 0
-      ? t('sectionDetail.copy.withDeps', ' (+{n} dependências)').replace('{n}', String(depIds.length))
-      : '';
-    let msg: string;
-    if (targetIds.length === 1) {
-      const targetTitle = (sections as any[]).find((s) => s.id === targetIds[0])?.title || '';
-      msg = (addonIds.length > 1
-        ? t('sectionDetail.copy.successBatch', '{count} addons copiados para "{section}"')
-            .replace('{count}', String(addonIds.length)).replace('{section}', targetTitle)
-        : t('sectionDetail.copy.success', 'Copiado para "{section}"').replace('{section}', targetTitle))
-        + depSuffix;
-    } else {
-      msg = `Copiado para ${successCount} página${successCount !== 1 ? 's' : ''}${depSuffix}`;
-      if (skipCount > 0) msg += `. ${skipCount} ${skipCount === 1 ? 'página pulada' : 'páginas puladas'} (já existia)`;
-    }
-    setCopyAddonToast(msg);
-    setCopyAddonModal(null);
-    setBatchCopyConfirm(null);
-    setBatchCopyDepChecked({});
-    setBatchOverwriteConflicts('overwrite');
-    setSelectedAddonIds(new Set());
-    setLastClickedAddonId(null);
-  };
-
-  // Executa o movimento de uma lista de addons para a página destino e exibe o toast.
-  const performMove = (target: string, addonIds: string[], targetTitle: string, overwrite: boolean) => {
-    const result = onMoveAddonsToSection?.(target, addonIds, overwrite)
-      ?? onMoveAddonToSection?.(target, addonIds[0], overwrite);
-    const count = result?.reverseRefsUpdated ?? 0;
-    const movedCount = addonIds.length;
-    const baseKey = movedCount > 1 ? 'sectionDetail.moveAddon.successBatch' : 'sectionDetail.moveAddon.success';
-    const baseFallback = movedCount > 1 ? '{count} addons movidos para "{section}"' : 'Movido para "{section}"';
-    let msg = t(baseKey, baseFallback)
-      .replace('{section}', targetTitle)
-      .replace('{count}', String(movedCount));
-    if (count > 0) {
-      msg += t('sectionDetail.moveAddon.refsSuffix', ' {n} referencias atualizadas.').replace('{n}', String(count));
-    }
-    setCopyAddonToast(msg);
-    setMoveAddonModal(null);
-    setMoveAddonCascade({});
-    setMoveOverwriteConfirm(null);
-    setSelectedAddonIds(new Set());
-    setLastClickedAddonId(null);
-  };
 
   return (
     <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
@@ -2453,25 +1636,6 @@ function SectionDetailContent({
             {!inlineEdit && !isEditingTitle && (
               <>
                 <button
-                  onClick={() => setShowAddonMenu((prev: boolean) => !prev)}
-                  className={`h-8 w-8 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${
-                    showAddonMenu ? "border-cyan-400/60 bg-cyan-600/80 text-white" : "border-gray-600 bg-gray-800/90 text-gray-100 hover:bg-gray-700 hover:border-cyan-400/50"
-                  }`}
-                  title={t("sectionDetail.actions.addAddon")}
-                  aria-expanded={showAddonMenu}
-                  aria-haspopup="true"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-                <AddonPickerModal
-                  open={showAddonMenu}
-                  onClose={() => setShowAddonMenu(false)}
-                  onPick={(type) => onAddAddon(type, activeGroup)}
-                  existingTypes={groupAddons.map((a: any) => a.type)}
-                />
-                <button
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}
                   className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg border border-purple-400/40 hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2708,280 +1872,6 @@ function SectionDetailContent({
             </button>
           )}
 
-          {/* Integrated addon area — cards stacked inline, so the reader sees
-              description + addon summaries as one continuous view (no tabs). */}
-          {addons.length > 0 && (
-            <div
-              className="border-t border-gray-800/60 space-y-2"
-              onDoubleClick={(event) => event.stopPropagation()}
-            >
-              {/* Planilha vinculada à seção — visível uma única vez para toda a seção */}
-              {hasSheetCapableAddons && linkedSpreadsheets.length > 0 && (
-                <SectionLinkedSpreadsheetBar
-                  linkedSpreadsheetId={sectionLinkedSpreadsheetId}
-                  spreadsheetRegistry={linkedSpreadsheets}
-                  onChange={(id) => setSectionLinkedSpreadsheet(realProjectId, realSectionId, id)}
-                  onSync={syncSectionSheets}
-                  syncing={sectionSheetsSyncing}
-                  syncResult={sectionSheetsResult}
-                  syncError={sectionSheetsError}
-                />
-              )}
-
-              {/* Bulk action bar */}
-              {selectedAddonIds.size > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/30 border border-emerald-500/40 text-sm">
-                  <span className="text-emerald-200 font-medium">
-                    {t('sectionDetail.bulk.selected', '{n} selecionados').replace('{n}', String(selectedAddonIds.size))}
-                  </span>
-                  <span className="text-[10px] text-gray-500">
-                    {t('sectionDetail.bulk.hint', '(Ctrl/Cmd+clique adiciona, Shift+clique range)')}
-                  </span>
-                  <div className="flex-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ids = Array.from(selectedAddonIds);
-                      const first = groupAddons.find((a: SectionAddon) => a.id === ids[0]);
-                      setMoveAddonModal({
-                        addonId: ids[0],
-                        addonLabel: ids.length > 1
-                          ? t('sectionDetail.bulk.nAddons', '{n} addons').replace('{n}', String(ids.length))
-                          : (first?.name || (first ? getAddonTypeLabel(first.type) : '')),
-                        bulkIds: ids.length > 1 ? ids : undefined,
-                      });
-                      setMoveAddonCascade({});
-                    }}
-                    className="px-2 py-1 text-xs rounded border border-emerald-600 text-emerald-100 hover:bg-emerald-900/50 flex items-center gap-1"
-                    title={t('sectionDetail.moveAddon.confirm', 'Mover')}
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M20 12H4" />
-                    </svg>
-                    {t('sectionDetail.moveAddon.confirm', 'Mover')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ids = Array.from(selectedAddonIds);
-                      const first = groupAddons.find((a: SectionAddon) => a.id === ids[0]);
-                      setCopyAddonModal({
-                        addonId: ids[0],
-                        addonLabel: ids.length > 1
-                          ? t('sectionDetail.bulk.nAddons', '{n} addons').replace('{n}', String(ids.length))
-                          : (first?.name || (first ? getAddonTypeLabel(first.type) : '')),
-                        bulkIds: ids.length > 1 ? ids : undefined,
-                      });
-                    }}
-                    className="px-2 py-1 text-xs rounded border border-sky-600 text-sky-100 hover:bg-sky-900/50 flex items-center gap-1"
-                    title={t('sectionDetail.copy.confirm', 'Copiar')}
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    {t('sectionDetail.copy.confirm', 'Copiar')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBulkConfirmRemove(true)}
-                    className="px-2 py-1 text-xs rounded border border-rose-700 text-rose-200 hover:bg-rose-900/40"
-                    title="Remover"
-                  >
-                    {t('sectionDetail.bulk.remove', 'Remover')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedAddonIds(new Set()); setLastClickedAddonId(null); }}
-                    className="px-2 py-1 text-xs rounded text-gray-400 hover:text-white"
-                    title={t('sectionDetail.bulk.clear', 'Limpar selecao')}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* Stacked addon cards */}
-              <AddonStackedList
-                addons={groupAddons}
-                drawerOpenAddonId={activeAddonId}
-                selectedIds={selectedAddonIds}
-                lastClickedId={lastClickedAddonId}
-                onReorder={(nextGroupOrder) => {
-                  const otherAddons = addons.filter((a: any) => ((a as any).group || "A") !== activeGroup);
-                  onReorderAddons([...otherAddons, ...nextGroupOrder]);
-                }}
-                onOpenEditor={(id) => setActiveAddonId(id)}
-                onRemove={(id) => {
-                  const target = groupAddons.find((a: SectionAddon) => a.id === id);
-                  setConfirmRemoveAddon({
-                    id,
-                    label: target?.name || (target ? getAddonTypeLabel(target.type) : ""),
-                  });
-                }}
-                onRename={(id, name) => {
-                  const target = groupAddons.find((a: SectionAddon) => a.id === id);
-                  if (!target) return;
-                  onUpdateAddon(id, {
-                    ...target,
-                    name,
-                    data:
-                      target.data && typeof target.data === "object"
-                        ? { ...target.data, name }
-                        : target.data,
-                  });
-                }}
-                onCopy={onCopyAddonToSection ? (addon) => {
-                  setCopyAddonModal({
-                    addonId: addon.id,
-                    addonLabel: addon.name || getAddonTypeLabel(addon.type),
-                  });
-                } : undefined}
-                onMove={onMoveAddonToSection ? (addon) => {
-                  setMoveAddonModal({
-                    addonId: addon.id,
-                    addonLabel: addon.name || getAddonTypeLabel(addon.type),
-                  });
-                  const deps = collectIntraSectionDeps(addon);
-                  const initial: Record<string, boolean> = {};
-                  for (const id of deps) initial[id] = true;
-                  setMoveAddonCascade(initial);
-                } : undefined}
-                onSelectionToggle={(addonId, mods) => {
-                  setSelectedAddonIds((prev) => {
-                    const next = new Set(prev);
-                    if (mods.shiftKey && lastClickedAddonId) {
-                      const startIdx = groupAddons.findIndex((a: SectionAddon) => a.id === lastClickedAddonId);
-                      const endIdx = groupAddons.findIndex((a: SectionAddon) => a.id === addonId);
-                      if (startIdx >= 0 && endIdx >= 0) {
-                        const [lo, hi] = startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
-                        for (let i = lo; i <= hi; i += 1) next.add(groupAddons[i].id);
-                      } else {
-                        next.add(addonId);
-                      }
-                    } else {
-                      if (next.has(addonId)) next.delete(addonId);
-                      else next.add(addonId);
-                    }
-                    return next;
-                  });
-                  setLastClickedAddonId(addonId);
-                }}
-                getAddonTypeLabel={getAddonTypeLabel}
-                renderReadOnly={(addon, entry) =>
-                  entry.renderReadOnly(addon, {
-                    theme: "dark",
-                    compact: true,
-                    showChart: false,
-                    maxRows: 10,
-                    showSummary: true,
-                    showTable: true,
-                    bare: true,
-                    // Persist the JSON display format chosen in the read-only
-                    // card so it survives navigation (saved per addon).
-                    onArrayFormatChange: (next) =>
-                      onUpdateAddon(addon.id, {
-                        ...addon,
-                        data: { ...(addon.data as Record<string, unknown>), arrayFormat: next },
-                      } as SectionAddon),
-                  })
-                }
-              />
-
-              {/* Group tabs + notes + compare — rendered last so the cards stay the main focus.
-                  Hidden when the section only contains richDoc addons (A/B testing is irrelevant there). */}
-              {hasGroupableAddons && (
-              <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                {addonGroups.map((g: string) => (
-                  editingGroupName === g ? (
-                    <input
-                      key={g}
-                      autoFocus
-                      value={editingGroupDraft}
-                      onChange={(e) => setEditingGroupDraft(e.target.value)}
-                      onBlur={() => handleRenameGroup(g, editingGroupDraft)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                        else if (e.key === "Escape") setEditingGroupName(null);
-                      }}
-                      className="rounded-lg border border-indigo-500 bg-gray-900 px-2.5 py-1 text-[10px] font-medium text-white outline-none w-24"
-                    />
-                  ) : (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => { setActiveGroup(g); setActiveAddonId(null); }}
-                      onDoubleClick={(e) => { e.stopPropagation(); setEditingGroupName(g); setEditingGroupDraft(g); }}
-                      title="Duplo clique para renomear"
-                      className={`rounded-lg border px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                        g === activeGroup
-                          ? "border-indigo-500 bg-indigo-600 text-white"
-                          : "border-gray-700 bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  )
-                ))}
-                {isCreatingGroup ? (
-                  <input
-                    autoFocus
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    onBlur={() => { if (newGroupName.trim()) handleCreateGroup(); else setIsCreatingGroup(false); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { if (newGroupName.trim()) handleCreateGroup(); else setIsCreatingGroup(false); }
-                      else if (e.key === "Escape") { setIsCreatingGroup(false); setNewGroupName(""); }
-                    }}
-                    className="rounded-lg border border-dashed border-indigo-500 bg-gray-900 px-2.5 py-1 text-[10px] text-white outline-none w-24"
-                    placeholder="Nome do grupo"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingGroup(true)}
-                    className="rounded-lg border border-dashed border-gray-600 bg-gray-800/50 px-2.5 py-1 text-[10px] text-gray-500 hover:border-gray-500 hover:text-gray-300 transition-colors"
-                  >
-                    +
-                  </button>
-                )}
-                {activeGroup !== "A" && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmRemoveGroup(true)}
-                    className="rounded-lg border border-rose-700/40 bg-rose-900/20 px-2.5 py-1 text-[10px] text-rose-400 hover:bg-rose-900/40 transition-colors"
-                  >
-                    Remover
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGroupNotesDraft(section?.addonGroupNotes?.[activeGroup] ?? "");
-                    setShowGroupNotes(true);
-                  }}
-                  className={`rounded-lg border px-2.5 py-1 text-[10px] transition-colors ${
-                    section?.addonGroupNotes?.[activeGroup]
-                      ? "border-sky-600/50 bg-sky-900/20 text-sky-300 hover:bg-sky-900/40"
-                      : "border-gray-700 bg-gray-800/50 text-gray-500 hover:text-gray-300"
-                  }`}
-                  title="Notas do grupo"
-                >
-                  {section?.addonGroupNotes?.[activeGroup] ? "📝 Notas" : "+ Notas"}
-                </button>
-                {addonGroups.length >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowGroupDiff(true)}
-                    className="ml-auto rounded-lg border border-amber-600/50 bg-amber-900/20 px-2.5 py-1 text-[10px] text-amber-300 hover:bg-amber-900/40 transition-colors"
-                  >
-                    Comparar
-                  </button>
-                )}
-              </div>
-              )}
-            </div>
-          )}
-
           {(section?.created_by_name != null || section?.created_at != null || section?.updated_by_name != null || section?.updated_at != null) && (
             <div className="mt-4 pt-3 border-t border-gray-700/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
               {section?.created_by_name != null && section?.created_at != null && (
@@ -3066,163 +1956,6 @@ function SectionDetailContent({
           )}
         </div>
       )}
-      {/* Page-level modals for addon/group removal confirmations */}
-      {confirmRemoveAddon && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setConfirmRemoveAddon(null)} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[260px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm text-gray-200 mb-1">
-              Remover <strong className="text-white">{confirmRemoveAddon.label}</strong>?
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Esta ação não pode ser desfeita. Todos os dados deste addon serão perdidos.
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => setConfirmRemoveAddon(null)}
-              >
-                {t("common.cancel", "Cancelar")}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
-                onClick={() => {
-                  const id = confirmRemoveAddon.id;
-                  if (activeAddonId === id) setActiveAddonId(null);
-                  onRemoveAddon(id);
-                  setConfirmRemoveAddon(null);
-                }}
-              >
-                Remover
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-      {confirmRemoveGroup && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setConfirmRemoveGroup(false)} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[280px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm text-gray-200 mb-1">
-              Remover <strong className="text-white">Grupo {activeGroup}</strong>?
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Todos os addons deste grupo serão removidos. Esta ação não pode ser desfeita.
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => setConfirmRemoveGroup(false)}
-              >
-                {t("common.cancel", "Cancelar")}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
-                onClick={handleRemoveGroup}
-              >
-                Remover Grupo
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-      {/* Editor drawer — renders the active addon's editor on the right. */}
-      {(() => {
-        const drawerAddon = activeAddonId ? addons.find((a: SectionAddon) => a.id === activeAddonId) : null;
-        const drawerEntry = drawerAddon ? ADDON_REGISTRY.find((item) => item.type === drawerAddon.type) : null;
-        if (!drawerAddon || !drawerEntry) return null;
-        return (
-          <AddonEditorDrawer
-            open={true}
-            title={drawerAddon.name || getAddonTypeLabel(drawerAddon.type)}
-            subtitle={getAddonTypeLabel(drawerAddon.type)}
-            emoji={drawerEntry.emoji}
-            onClose={() => setActiveAddonId(null)}
-          >
-            {drawerEntry.renderEditor(
-              drawerAddon,
-              (nextAddon: SectionAddon) => onUpdateAddon(drawerAddon.id, nextAddon),
-              () =>
-                setConfirmRemoveAddon({
-                  id: drawerAddon.id,
-                  label: drawerAddon.name || getAddonTypeLabel(drawerAddon.type),
-                })
-            )}
-          </AddonEditorDrawer>
-        );
-      })()}
-
-      {/* Group diff modal */}
-      {showGroupDiff && (
-        <GroupDiffModal
-          addons={addons}
-          groups={addonGroups}
-          sectionDataId={section?.dataId}
-          onClose={() => setShowGroupDiff(false)}
-        />
-      )}
-
-      {/* Group notes modal */}
-      {showGroupNotes && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setShowGroupNotes(false)} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 w-full max-w-lg rounded-xl border border-gray-700 bg-gray-900 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 border-b border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-200">
-                Notas do grupo <span className="text-indigo-400">{activeGroup}</span>
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Documente a hipotese ou contexto deste grupo (ex: &quot;Testando producao mais alta para melhorar retencao D1&quot;).
-              </p>
-            </div>
-            <div className="px-5 py-4">
-              <textarea
-                autoFocus
-                value={groupNotesDraft}
-                onChange={(e) => setGroupNotesDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") setShowGroupNotes(false);
-                }}
-                className="w-full h-32 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-100 outline-none focus:border-indigo-500 resize-none"
-                placeholder="Escreva suas notas aqui..."
-              />
-            </div>
-            <div className="px-5 py-3 border-t border-gray-700 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowGroupNotes(false)}
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSectionAddonGroupNote(realProjectId, realSectionId, activeGroup, groupNotesDraft);
-                  setShowGroupNotes(false);
-                }}
-                className="rounded-lg border border-indigo-600 bg-indigo-700 px-4 py-1.5 text-xs text-white hover:bg-indigo-600"
-              >
-                Salvar
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* Backlinks Section */}
       {!(inlineEdit && isFullscreen) && (
         <BacklinksSection
@@ -3419,7 +2152,7 @@ function SectionDetailContent({
           />
           <div className="mt-3">
             <SpecialTokensHelp
-              title={t("sectionDetail.specialTokens.title", "Chaves especiais de addons")}
+              title={t("sectionDetail.specialTokens.title", "Chaves especiais")}
               onInsertToken={(token) => {
                 const inst = (editorRef as any).current;
                 if (inst?.insertText) {
@@ -3630,402 +2363,6 @@ function SectionDetailContent({
           />
         );
       })()}
-
-      {/* Modal: Mover Addon para outra pagina */}
-      {(() => {
-        const currentAddons: SectionAddon[] = addons || [];
-        const isBulk = !!moveAddonModal?.bulkIds && moveAddonModal.bulkIds.length > 1;
-        const mainAddon = moveAddonModal && !isBulk
-          ? currentAddons.find((a) => a.id === moveAddonModal.addonId) || null
-          : null;
-        const depEntries = mainAddon
-          ? collectIntraSectionDeps(mainAddon)
-              .map((id) => currentAddons.find((a) => a.id === id))
-              .filter((a): a is SectionAddon => Boolean(a))
-          : [];
-        const selectedDepCount = depEntries.filter((d) => moveAddonCascade[d.id]).length;
-        const totalToMove = isBulk ? (moveAddonModal?.bulkIds?.length ?? 0) : 1 + selectedDepCount;
-        // IDs que efetivamente serao movidos (principal + deps marcados, ou bulk).
-        const movingIds = isBulk
-          ? (moveAddonModal?.bulkIds ?? [])
-          : (moveAddonModal
-              ? [moveAddonModal.addonId, ...depEntries.filter((d) => moveAddonCascade[d.id]).map((d) => d.id)]
-              : []);
-        // Addons singleton ja presentes no destino que seriam sobrescritos pelo movimento.
-        const moveConflictLabelsFor = (target: string): string[] => {
-          const movingTypes = new Set(
-            movingIds
-              .map((id) => currentAddons.find((a) => a.id === id)?.type)
-              .filter((tp): tp is SectionAddonType => !!tp && SINGLETON_ADDON_TYPES.has(tp))
-          );
-          if (movingTypes.size === 0) return [];
-          const targetSection = sections.find((s: any) => s.id === target);
-          return ((targetSection?.addons || []) as SectionAddon[])
-            .filter((a) => movingTypes.has(a.type))
-            .map((a) => a.name || getAddonTypeLabel(a.type));
-        };
-        return (
-          <SectionPickerModal
-            open={!!moveAddonModal}
-            onClose={() => { setMoveAddonModal(null); setMoveAddonCascade({}); }}
-            onConfirm={(target) => {
-              if (!moveAddonModal) return;
-              if (target === sectionId) return;
-              const targetSection = sections.find((s: any) => s.id === target);
-              const targetTitle = targetSection?.title || '';
-              const addonIds = movingIds;
-              const conflictLabels = moveConflictLabelsFor(target);
-              if (conflictLabels.length > 0) {
-                setMoveOverwriteConfirm({ target, targetTitle, ids: addonIds, conflictLabels });
-                return;
-              }
-              performMove(target, addonIds, targetTitle, false);
-            }}
-            title={t('sectionDetail.moveAddon.title', 'Mover addon para...')}
-            description={moveAddonModal ? (<>{t('sectionDetail.copy.description', 'Mover')} <strong className="text-gray-100">{moveAddonModal.addonLabel}</strong> {!isBulk && totalToMove > 1 ? ` +${selectedDepCount} ` : ' '}{t('sectionDetail.moveAddon.descriptionTo', 'para outra pagina')}</>) : null}
-            confirmLabel={t('sectionDetail.moveAddon.confirm', 'Mover')}
-            confirmVariant="emerald"
-            sections={sections}
-            disabledSectionIds={[sectionId]}
-            disabledReason={() => t('sectionDetail.picker.disabledCurrent', 'atual')}
-            prelude={!isBulk && depEntries.length > 0 ? (
-              <div className="rounded-lg border border-emerald-700/40 bg-emerald-950/30 p-3">
-                <div className="text-xs font-semibold text-emerald-300 mb-2 flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  {t('sectionDetail.moveAddon.depsTitle', 'Este addon depende de addons desta pagina:')}
-                </div>
-                <div className="space-y-1">
-                  {depEntries.map((dep) => (
-                    <label key={dep.id} className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={!!moveAddonCascade[dep.id]}
-                        onChange={(e) => setMoveAddonCascade((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
-                        className="accent-emerald-500"
-                      />
-                      <span className="flex-1 truncate">{dep.name || getAddonTypeLabel(dep.type)}</span>
-                      <span className="text-[10px] text-gray-500 shrink-0">{getAddonTypeLabel(dep.type)}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">
-                  {t('sectionDetail.moveAddon.depsHint', 'Marque para mover junto. Desmarcados ficam na pagina atual (as referencias serao limpas).')}
-                </p>
-              </div>
-            ) : undefined}
-          />
-        );
-      })()}
-
-      {/* Modal: Copiar Addon para outra pagina (multi-select) */}
-      {(() => {
-        const copyIds = copyAddonModal
-          ? (copyAddonModal.bulkIds && copyAddonModal.bulkIds.length > 1
-              ? copyAddonModal.bulkIds
-              : [copyAddonModal.addonId])
-          : [];
-        const copySet = new Set(copyIds);
-        const copyConflictTypes = new Set(
-          copyIds
-            .map((id) => (addons as SectionAddon[]).find((a) => a.id === id)?.type)
-            .filter((tp): tp is SectionAddonType => !!tp && SINGLETON_ADDON_TYPES.has(tp))
-        );
-        const copyDepAddons = (() => {
-          const seen = new Set<string>();
-          const deps: SectionAddon[] = [];
-          for (const id of copyIds) {
-            const addon = (addons as SectionAddon[]).find((a) => a.id === id);
-            if (!addon) continue;
-            for (const depId of collectIntraSectionDeps(addon)) {
-              if (copySet.has(depId) || seen.has(depId)) continue;
-              const dep = (addons as SectionAddon[]).find((a) => a.id === depId);
-              if (dep) { seen.add(depId); deps.push(dep); }
-            }
-          }
-          return deps;
-        })();
-        const targetHasType = (targetAddons: SectionAddon[], type: SectionAddonType): boolean =>
-          targetAddons.some((a) => a.type === type
-            || ((type === 'dataSchema' || type === 'genericStats') && (a.type === 'dataSchema' || a.type === 'genericStats')));
-        return (
-          <SectionPickerModal
-            open={!!copyAddonModal}
-            onClose={() => setCopyAddonModal(null)}
-            onConfirm={() => {}}
-            multiSelect={true}
-            onConfirmMulti={(targetIds) => {
-              if (!copyAddonModal || targetIds.length === 0) return;
-              const conflictPages: Array<{ id: string; title: string; conflictLabels: string[] }> = [];
-              for (const targetId of targetIds) {
-                const targetSection = (sections as any[]).find((s) => s.id === targetId);
-                const targetAddons: SectionAddon[] = targetSection?.addons || [];
-                const conflictLabels = copyConflictTypes.size > 0
-                  ? targetAddons.filter((a) => copyConflictTypes.has(a.type)).map((a) => a.name || getAddonTypeLabel(a.type))
-                  : [];
-                if (conflictLabels.length > 0) conflictPages.push({ id: targetId, title: targetSection?.title || '', conflictLabels });
-              }
-              const missingDepsMap = new Map<string, { id: string; label: string; typeLabel: string }>();
-              for (const dep of copyDepAddons) {
-                const anyMissing = targetIds.some((targetId) => {
-                  const targetSection = (sections as any[]).find((s) => s.id === targetId);
-                  return !targetHasType(targetSection?.addons || [], dep.type);
-                });
-                if (anyMissing && !missingDepsMap.has(dep.id)) {
-                  missingDepsMap.set(dep.id, { id: dep.id, label: dep.name || getAddonTypeLabel(dep.type), typeLabel: getAddonTypeLabel(dep.type) });
-                }
-              }
-              const missingDeps = Array.from(missingDepsMap.values());
-              if (conflictPages.length > 0 || missingDeps.length > 0) {
-                setBatchCopyDepChecked(Object.fromEntries(missingDeps.map((d) => [d.id, true])));
-                setBatchCopyConfirm({ targetIds, addonIds: copyIds, conflictPages, missingDeps });
-                return;
-              }
-              performBatchCopy(targetIds, copyIds, [], false, new Set());
-            }}
-            title={t('sectionDetail.copy.title', 'Copiar addon para...')}
-            description={copyAddonModal ? (<>{t('sectionDetail.copy.description', 'Copiar')} <strong className="text-gray-100">{copyAddonModal.addonLabel}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
-            confirmLabel={t('sectionDetail.copy.confirm', 'Copiar')}
-            confirmVariant="sky"
-            sections={sections}
-            disabledSectionIds={[sectionId]}
-            disabledReason={() => t('sectionDetail.picker.disabledCurrent', 'atual')}
-          />
-        );
-      })()}
-
-      {/* Confirmacao de copia em lote: paginas com conflito + dependencias faltantes */}
-      {batchCopyConfirm && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => { setBatchCopyConfirm(null); setBatchCopyDepChecked({}); setBatchOverwriteConflicts('overwrite'); }} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[360px] max-w-lg w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {batchCopyConfirm.conflictPages.length > 0 && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-200 mb-2">
-                  {batchCopyConfirm.conflictPages.length === 1
-                    ? t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:').replace('{section}', batchCopyConfirm.conflictPages[0].title)
-                    : `${batchCopyConfirm.conflictPages.length} de ${batchCopyConfirm.targetIds.length} páginas já possuem este addon:`}
-                </p>
-                <div className="mb-3 max-h-28 overflow-y-auto space-y-1 pr-1">
-                  {batchCopyConfirm.conflictPages.slice(0, 6).map((p) => (
-                    <div key={p.id} className="text-xs text-amber-300 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
-                      <span className="truncate">{p.title}</span>
-                    </div>
-                  ))}
-                  {batchCopyConfirm.conflictPages.length > 6 && (
-                    <div className="text-xs text-gray-500 pl-2.5">...e mais {batchCopyConfirm.conflictPages.length - 6}</div>
-                  )}
-                </div>
-                <div className="rounded-lg border border-gray-700/60 bg-gray-800/40 p-3 space-y-2">
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="batchOverwrite"
-                      checked={batchOverwriteConflicts === 'overwrite'}
-                      onChange={() => setBatchOverwriteConflicts('overwrite')}
-                      className="mt-0.5 accent-amber-500 shrink-0"
-                    />
-                    <span className="text-xs text-gray-200">
-                      <span className="font-medium text-amber-200">Sobrescrever</span> — copia para todas as páginas, substituindo onde já existe
-                    </span>
-                  </label>
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="batchOverwrite"
-                      checked={batchOverwriteConflicts === 'skip'}
-                      onChange={() => setBatchOverwriteConflicts('skip')}
-                      className="mt-0.5 accent-amber-500 shrink-0"
-                    />
-                    <span className="text-xs text-gray-200">
-                      <span className="font-medium text-gray-100">Pular</span> — copia apenas para páginas que ainda não têm este addon
-                    </span>
-                  </label>
-                </div>
-              </div>
-            )}
-            {batchCopyConfirm.missingDeps.length > 0 && (
-              <div className="rounded-lg border border-sky-700/40 bg-sky-950/30 p-3 mb-4">
-                <p className="text-xs font-semibold text-sky-300 mb-2">
-                  {t('sectionDetail.copy.missingDepsTitle', 'O destino não tem alguns addons que este precisa. Copiar junto?')}
-                </p>
-                <div className="space-y-1">
-                  {batchCopyConfirm.missingDeps.map((dep) => (
-                    <label key={dep.id} className="flex items-center gap-2 text-xs text-gray-200 cursor-pointer hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={batchCopyDepChecked[dep.id] ?? false}
-                        onChange={(e) => setBatchCopyDepChecked((prev) => ({ ...prev, [dep.id]: e.target.checked }))}
-                        className="accent-sky-500"
-                      />
-                      <span className="flex-1 truncate">{dep.label}</span>
-                      <span className="text-[10px] text-gray-500 shrink-0">{dep.typeLabel}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">
-                  {t('sectionDetail.copy.missingDepsHint', 'Marcados são copiados junto para os vínculos funcionarem. Desmarcados ficam sem vínculo no destino.')}
-                </p>
-              </div>
-            )}
-            {batchCopyConfirm.targetIds.length > 1 && (
-              <p className="text-xs text-gray-500 mb-3">
-                {batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'skip'
-                  ? `Será copiado para ${batchCopyConfirm.targetIds.length - batchCopyConfirm.conflictPages.length} páginas (${batchCopyConfirm.conflictPages.length} puladas)`
-                  : `Será copiado para ${batchCopyConfirm.targetIds.length} página${batchCopyConfirm.targetIds.length !== 1 ? 's' : ''}`}
-              </p>
-            )}
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => { setBatchCopyConfirm(null); setBatchCopyDepChecked({}); setBatchOverwriteConflicts('overwrite'); }}
-              >
-                {t('common.cancel', 'Cancelar')}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-amber-700/60 bg-amber-900/40 px-4 py-1.5 text-xs text-amber-100 hover:bg-amber-900/60"
-                onClick={() => {
-                  const conflictPageIds = new Set(batchCopyConfirm.conflictPages.map((p) => p.id));
-                  const depIds = batchCopyConfirm.missingDeps.filter((d) => batchCopyDepChecked[d.id]).map((d) => d.id);
-                  performBatchCopy(
-                    batchCopyConfirm.targetIds,
-                    batchCopyConfirm.addonIds,
-                    depIds,
-                    batchOverwriteConflicts === 'overwrite',
-                    conflictPageIds
-                  );
-                }}
-              >
-                {batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'overwrite'
-                  ? t('sectionDetail.copy.overwriteConfirm', 'Sobrescrever')
-                  : t('sectionDetail.copy.confirm', 'Copiar')}
-                {batchCopyConfirm.targetIds.length > 1 && ` (${
-                  batchCopyConfirm.conflictPages.length > 0 && batchOverwriteConflicts === 'skip'
-                    ? batchCopyConfirm.targetIds.length - batchCopyConfirm.conflictPages.length
-                    : batchCopyConfirm.targetIds.length
-                } pág.)`}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Confirmacao: sobrescrever addon singleton existente no destino (mover) */}
-      {moveOverwriteConfirm && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setMoveOverwriteConfirm(null)} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-amber-700/60 bg-gray-900 p-5 shadow-2xl min-w-[320px] max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm text-gray-200 mb-2">
-              {t('sectionDetail.copy.overwriteTitle', 'A página "{section}" já possui:')
-                .replace('{section}', moveOverwriteConfirm.targetTitle)}
-            </p>
-            <ul className="mb-3 space-y-1">
-              {moveOverwriteConfirm.conflictLabels.map((label, idx) => (
-                <li key={idx} className="text-xs text-amber-300 flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
-                  <span className="truncate">{label}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-gray-400 mb-4">
-              {t('sectionDetail.moveAddon.overwriteWarning', 'Mover vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.')}
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => setMoveOverwriteConfirm(null)}
-              >
-                {t('common.cancel', 'Cancelar')}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-amber-700/60 bg-amber-900/40 px-4 py-1.5 text-xs text-amber-100 hover:bg-amber-900/60"
-                onClick={() => performMove(
-                  moveOverwriteConfirm.target,
-                  moveOverwriteConfirm.ids,
-                  moveOverwriteConfirm.targetTitle,
-                  true
-                )}
-              >
-                {t('sectionDetail.moveAddon.overwriteConfirm', 'Sobrescrever')}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Bulk remove confirmation */}
-      {bulkConfirmRemove && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setBulkConfirmRemove(false)} />
-          <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[300px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm text-gray-200 mb-1">
-              {t('sectionDetail.bulk.removeConfirm', 'Remover {n} addons?').replace('{n}', String(selectedAddonIds.size))}
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              {t('sectionDetail.bulk.removeWarning', 'Esta acao nao pode ser desfeita.')}
-            </p>
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700"
-                onClick={() => setBulkConfirmRemove(false)}
-              >
-                {t('common.cancel', 'Cancelar')}
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60"
-                onClick={() => {
-                  const ids = Array.from(selectedAddonIds);
-                  for (const id of ids) {
-                    onRemoveAddon(id);
-                  }
-                  setBulkConfirmRemove(false);
-                  setSelectedAddonIds(new Set());
-                  setLastClickedAddonId(null);
-                }}
-              >
-                {t('sectionDetail.bulk.remove', 'Remover')}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Toast: feedback de Copiar Addon */}
-      {copyAddonToast && (
-        <div className="fixed bottom-6 right-6 z-[80] pointer-events-none">
-          <div className="pointer-events-auto bg-emerald-700/95 border border-emerald-500/60 text-white text-sm px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 min-w-[220px]">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="flex-1">{copyAddonToast}</span>
-            <button
-              type="button"
-              onClick={() => setCopyAddonToast(null)}
-              className="text-white/80 hover:text-white text-xs"
-              aria-label="Fechar"
-            >
-              X
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

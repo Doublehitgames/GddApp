@@ -81,9 +81,7 @@ function ActivityCard({
         </p>
       )}
       {event.action === "modified" && event.detail && (
-        <p className="text-[11px] text-blue-500/70 truncate -mt-1">
-          {t(`sectionDetail.history.addonType.${event.detail}`, event.detail)}
-        </p>
+        <p className="text-[11px] text-blue-500/70 truncate -mt-1">{event.detail}</p>
       )}
 
       <div className="mt-auto flex flex-col gap-0.5 pt-0.5">

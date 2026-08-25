@@ -12,10 +12,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
-import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadsheetsSettings";
-import { pushProjectLinkedSpreadsheets } from "@/lib/supabase/projectSync";
-import type { LinkedSpreadsheet } from "@/store/slices/types";
-import { normalizeSpecialTokenSyntax } from "@/lib/addons/projectSpecialTokens";
+import { normalizeSpecialTokenSyntax } from "@/lib/sections/specialTokens";
 import { toSlug, projectPath } from "@/lib/utils/slug";
 import {
   convertYouTubeEmbedsToEditorPlaceholders,
@@ -32,7 +29,6 @@ export default function ProjectEditClient({ projectId }: Props) {
   const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
   const editProject = useProjectStore((s) => s.editProject);
-  const updateProjectLinkedSpreadsheets = useProjectStore((s) => s.updateProjectLinkedSpreadsheets);
 
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -249,7 +245,7 @@ export default function ProjectEditClient({ projectId }: Props) {
           }} />
           <div className="mt-3">
             <SpecialTokensHelp
-              title={t("projectEdit.specialTokens.title", "Chaves especiais de addons")}
+              title={t("projectEdit.specialTokens.title", "Chaves especiais")}
               theme="light"
               onInsertToken={insertSpecialToken}
             />
@@ -257,23 +253,6 @@ export default function ProjectEditClient({ projectId }: Props) {
         </div>
 
         {/* Planilhas Vinculadas */}
-        <div>
-          <label className="block text-sm font-semibold mb-1">
-            {t("settings.linkedSheets.title")}
-          </label>
-          <p className="text-xs text-gray-500 mb-3">
-            {t("settings.linkedSheets.description")}
-          </p>
-          <LinkedSpreadsheetsSettings
-            projectId={realProjectId}
-            spreadsheets={project?.linkedSpreadsheets ?? []}
-            onChange={async (next: LinkedSpreadsheet[]) => {
-              updateProjectLinkedSpreadsheets(realProjectId, next);
-              await pushProjectLinkedSpreadsheets(realProjectId, next);
-            }}
-          />
-        </div>
-
         {/* AI Instructions */}
         <div>
           <label className="block text-sm font-semibold mb-1">
@@ -281,7 +260,7 @@ export default function ProjectEditClient({ projectId }: Props) {
             <span className="text-xs text-gray-400 font-normal ml-2">(opcional)</span>
           </label>
           <p className="text-xs text-gray-500 mb-2">
-            Ensine o Claude como estruturar os dados deste projeto. Ex: quais addons usar para cada tipo de entidade, convenções de colunas em tabelas de progressão, etc.
+            Ensine o Claude como escrever neste projeto. Ex: tom das descrições, convenções de nomes de página, o que sempre citar por referência cruzada.
           </p>
           <textarea
             value={aiInstructions}

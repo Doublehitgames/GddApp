@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SPECIAL_TOKEN_HELP_ITEMS } from "@/lib/addons/projectSpecialTokens";
+import { SPECIAL_TOKEN_HELP_ITEMS } from "@/lib/sections/specialTokens";
 
 type SpecialTokensHelpProps = {
   title?: string;

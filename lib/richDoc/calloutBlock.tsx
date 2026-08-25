@@ -7,7 +7,7 @@ import { createReactBlockSpec } from "@blocknote/react";
  *  and used as the `data-variant` attribute that CSS keys off of.
  *  `defaultTitle` / `defaultSubtext` are the English fallbacks; the
  *  actual slash-menu copy comes from the app's i18n dictionary under
- *  `richDocAddon.slashMenu.callout.<id>.title/subtext`. */
+ *  `blockEditor.slashMenu.callout.<id>.title/subtext`. */
 export type CalloutVariantId = "note" | "warning" | "design-decision" | "balance-note";
 
 export interface CalloutVariant {

@@ -3,7 +3,7 @@
 
 import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync";
 import type { DocumentThemeId } from "@/lib/documentThemes";
-import type { SectionAddon, RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
 
@@ -285,14 +285,9 @@ export type Section = {
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
   /** Tags de domínio de game design (combat, economy, progression, etc.) para IA e relações entre sistemas. */
   domainTags?: string[];
-  /** Addons genéricos vinculados a esta seção. */
-  addons?: SectionAddon[];
   /** ID da planilha cadastrada no projeto usada como fonte de dados desta seção. */
-  linkedSpreadsheetId?: string;
   /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
   pageTypeId?: string;
-  /** Notas por grupo de addons (ex.: hipotese do teste A/B). Chave = nome do grupo. */
-  addonGroupNotes?: Record<string, string>;
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
@@ -300,22 +295,6 @@ export type Section = {
   updated_at?: string | null;
   updated_by?: string | null;
   updated_by_name?: string | null;
-};
-
-/** Uma planilha do Google Sheets cadastrada no projeto para reutilização em vínculos. */
-export type LinkedSpreadsheet = {
-  /** UUID gerado no cliente. */
-  id: string;
-  /** Nome amigável exibido nos selects (ex.: "Balance Sheet"). */
-  name: string;
-  /** ID extraído da URL da planilha. */
-  spreadsheetId: string;
-  /** URL original (para exibição e edição). */
-  url: string;
-  /** Nomes das abas, buscados via API ao cadastrar. */
-  sheets: string[];
-  /** Headers da linha 0 (row 1 no Sheets) por aba, preenchido ao registrar/atualizar. */
-  columnsBySheet?: Record<string, string[]>;
 };
 
 /** Uma imagem indexada da pasta do Drive. */
@@ -329,10 +308,9 @@ export type ProjectImage = {
 };
 
 /**
- * Índice cacheado de uma pasta pública do Drive. Mesmo princípio do
- * columnsBySheet de LinkedSpreadsheet: metadata do Google buscada no browser
- * (o picker já concede drive.readonly) e guardada aqui, para que servidor e
- * agente MCP leiam sem precisar de credencial Google.
+ * Índice cacheado de uma pasta pública do Drive: metadata do Google buscada no
+ * browser (o picker já concede drive.readonly) e guardada aqui, para que
+ * servidor e agente MCP leiam sem precisar de credencial Google.
  */
 export type ProjectImageLibrary = {
   folderId: string;
@@ -355,10 +333,9 @@ export type Project = {
   mindMapSettings?: MindMapSettings; // Configurações personalizadas do mapa mental
   /** Dono do projeto (id do usuário). Preenchido ao carregar do Supabase; em projetos só locais pode ser userId ao criar. */
   ownerId?: string | null;
-  /** Instruções específicas do projeto para a IA (convenções de addons, estrutura de dados, etc). */
+  /** Instruções específicas do projeto para a IA (tom, convenções de escrita, etc). */
   aiInstructions?: string;
   /** Planilhas do Google Sheets cadastradas para reutilização em vínculos de campos. */
-  linkedSpreadsheets?: LinkedSpreadsheet[];
   /** Índice de imagens da pasta do Drive, para escolher ícone sem abrir o picker. */
   imageLibrary?: ProjectImageLibrary;
 };
@@ -423,8 +400,8 @@ export interface ProjectStore {
   getProjectBySlug: (slug: string) => Project | undefined;
   getSectionById: (projectId: UUID, sectionId: UUID) => Section | undefined;
   getSectionBySlug: (projectId: UUID, slug: string) => Section | undefined;
-  addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
-  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => UUID;
+  addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, domainTags?: string[]) => UUID;
+  addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, domainTags?: string[]) => UUID;
   duplicateSection: (
     projectId: UUID,
     sectionId: UUID,
@@ -436,7 +413,6 @@ export interface ProjectStore {
   removeProjectLocally: (id: UUID) => void;
   editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
-  updateProjectLinkedSpreadsheets: (id: UUID, linkedSpreadsheets: LinkedSpreadsheet[]) => void;
   setProjectImageLibrary: (id: UUID, imageLibrary?: ProjectImageLibrary) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;
   editSection: (
@@ -448,7 +424,6 @@ export interface ProjectStore {
     color?: string,
     updatedBy?: SectionAuditBy,
     domainTags?: string[],
-    addons?: SectionAddon[],
     dataId?: string
   ) => void;
   /**
@@ -464,40 +439,6 @@ export interface ProjectStore {
     updatedBy?: SectionAuditBy
   ) => void;
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
-  setSectionLinkedSpreadsheet: (projectId: UUID, sectionId: UUID, linkedSpreadsheetId: string | undefined) => void;
-  setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => void;
-  renameSectionAddonGroup: (projectId: UUID, sectionId: UUID, oldGroup: string, newGroup: string) => void;
-  setSectionAddons: (projectId: UUID, sectionId: UUID, addons: SectionAddon[], updatedBy?: SectionAuditBy) => void;
-  addSectionAddon: (projectId: UUID, sectionId: UUID, addon: SectionAddon, updatedBy?: SectionAuditBy) => void;
-  updateSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, nextAddon: SectionAddon, updatedBy?: SectionAuditBy) => void;
-  removeSectionAddon: (projectId: UUID, sectionId: UUID, addonId: string, updatedBy?: SectionAuditBy) => void;
-  copyAddonToSection: (
-    projectId: UUID,
-    fromSectionId: UUID,
-    toSectionId: UUID,
-    addonId: string,
-    updatedBy?: SectionAuditBy,
-    /** Quando true, sobrescreve um addon singleton já existente no destino em vez de abortar. */
-    overwrite?: boolean
-  ) => void;
-  moveAddonToSection: (
-    projectId: UUID,
-    fromSectionId: UUID,
-    toSectionId: UUID,
-    addonId: string,
-    updatedBy?: SectionAuditBy,
-    /** Quando true, sobrescreve addons singleton já existentes no destino. */
-    overwrite?: boolean
-  ) => { reverseRefsUpdated: number };
-  moveAddonsToSection: (
-    projectId: UUID,
-    fromSectionId: UUID,
-    toSectionId: UUID,
-    addonIds: string[],
-    updatedBy?: SectionAuditBy,
-    /** Quando true, sobrescreve addons singleton já existentes no destino. */
-    overwrite?: boolean
-  ) => { reverseRefsUpdated: number };
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;
@@ -505,7 +446,6 @@ export interface ProjectStore {
   countDescendants: (projectId: UUID, sectionId: UUID) => number;
   hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => boolean;
   hasDuplicateDataId: (projectId: UUID, dataId: string, excludeId?: UUID) => boolean;
-  hasDuplicateCurrencyCode: (projectId: UUID, code: string, excludeAddonId?: string) => boolean;
   // Storage
   loadFromStorage: () => void;
   loadFromSupabase: () => Promise<"loaded" | "empty" | "error">;

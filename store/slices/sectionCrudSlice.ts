@@ -1,8 +1,6 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
-import type { SectionAddon, RichDocBlock } from "@/lib/addons/types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug } from "@/lib/utils/slug";
-import { duplicateAddonsForDuplicatedSection } from "@/lib/addons/copy";
-import { buildPageTypeAddons, type PageTypeId } from "@/lib/pageTypes/registry";
 import type { SyncEngineAPI } from "./syncEngine";
 
 export type DuplicateSectionOutcome = {
@@ -24,7 +22,7 @@ type StoreGet = () => ProjectStore;
 
 export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: SyncEngineAPI) {
   return {
-    addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => {
+    addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, domainTags?: string[]) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -41,14 +39,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const audit = createdBy
         ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
         : {};
-      const seededAddons: SectionAddon[] | undefined = customAddons?.length
-        ? customAddons
-        : pageTypeId
-        ? (() => {
-            const addons = buildPageTypeAddons(pageTypeId as PageTypeId);
-            return addons.length ? addons : undefined;
-          })()
-        : undefined;
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -67,8 +57,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                     created_at: now,
                     parentId: undefined,
                     order: maxOrder + 1,
-                    ...(pageTypeId && pageTypeId !== "blank" ? { pageTypeId } : {}),
-                    ...(seededAddons ? { addons: seededAddons } : {}),
                     ...(domainTags && domainTags.length ? { domainTags } : {}),
                     ...audit,
                   } as Section,
@@ -90,7 +78,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return newId;
     },
 
-    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, pageTypeId?: string, customAddons?: SectionAddon[], domainTags?: string[]) => {
+    addSubsection: (projectId: UUID, parentId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, domainTags?: string[]) => {
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
@@ -107,14 +95,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const audit = createdBy
         ? { created_by: createdBy.userId, created_by_name: createdBy.displayName ?? null, updated_at: now, updated_by: createdBy.userId, updated_by_name: createdBy.displayName ?? null }
         : {};
-      const seededAddons: SectionAddon[] | undefined = customAddons?.length
-        ? customAddons
-        : pageTypeId
-        ? (() => {
-            const addons = buildPageTypeAddons(pageTypeId as PageTypeId);
-            return addons.length ? addons : undefined;
-          })()
-        : undefined;
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) => {
@@ -133,8 +113,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                     created_at: now,
                     parentId,
                     order: maxOrder + 1,
-                    ...(pageTypeId && pageTypeId !== "blank" ? { pageTypeId } : {}),
-                    ...(seededAddons ? { addons: seededAddons } : {}),
                     ...(domainTags && domainTags.length ? { domainTags } : {}),
                     ...audit,
                   } as Section,
@@ -247,15 +225,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const newSections: Section[] = take.map((s) => {
         const newId = idMap.get(s.id)!;
         const isRoot = s.id === root.id;
-        const { addons: newAddons, idMap: addonIdMap } =
-          duplicateAddonsForDuplicatedSection(s.addons);
-
-        // Remap section.dataId if it pointed to an addon that was duplicated.
-        const newDataId =
-          s.dataId && addonIdMap.has(s.dataId)
-            ? addonIdMap.get(s.dataId)
-            : s.dataId;
-
         const cloned: Section = {
           ...s,
           id: newId,
@@ -263,9 +232,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           order: isRoot ? insertAfterOrder + 1 : s.order,
           title: isRoot ? `${s.title}${copySuffix}` : s.title,
           created_at: now,
-          addons: newAddons.length > 0 ? newAddons : undefined,
-          dataId: newDataId,
-          // Flowchart state references addon/section IDs we did not remap; drop it.
+          // Flowchart state references section IDs we did not remap; drop it.
           flowchartEnabled: undefined,
           flowchartState: undefined,
           ...audit,
@@ -312,7 +279,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       color?: string,
       updatedBy?: SectionAuditBy,
       domainTags?: string[],
-      addons?: SectionAddon[],
       dataId?: string
     ) => {
       const now = new Date().toISOString();
@@ -357,7 +323,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                       if (resolvedColor !== undefined) updated.color = resolvedColor;
                       else if (resolvedColor === undefined) delete updated.color;
                       if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
-                      if (addons !== undefined) updated.addons = addons.length ? addons : undefined;
                       if (dataId !== undefined) updated.dataId = dataId || undefined;
                       return updated;
                     }
@@ -428,80 +393,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                   sections: (p.sections || []).map((s) =>
                     s.id === sectionId ? { ...s, dataId: dataId || undefined, updated_at: new Date().toISOString() } : s
                   ),
-                }
-              : p
-          ),
-        projectId
-      );
-    },
-
-    setSectionLinkedSpreadsheet: (projectId: UUID, sectionId: UUID, linkedSpreadsheetId: string | undefined) => {
-      engine.wrappedSetWithSync(
-        (prev) =>
-          prev.map((p) =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  updatedAt: new Date().toISOString(),
-                  sections: (p.sections || []).map((s) =>
-                    s.id === sectionId
-                      ? { ...s, linkedSpreadsheetId: linkedSpreadsheetId || undefined, updated_at: new Date().toISOString() }
-                      : s
-                  ),
-                }
-              : p
-          ),
-        projectId
-      );
-    },
-
-    setSectionAddonGroupNote: (projectId: UUID, sectionId: UUID, group: string, note: string) => {
-      engine.wrappedSetWithSync(
-        (prev) =>
-          prev.map((p) =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  updatedAt: new Date().toISOString(),
-                  sections: (p.sections || []).map((s) => {
-                    if (s.id !== sectionId) return s;
-                    const currentNotes = { ...(s.addonGroupNotes || {}) };
-                    const trimmed = note.trim();
-                    if (trimmed) {
-                      currentNotes[group] = trimmed;
-                    } else {
-                      delete currentNotes[group];
-                    }
-                    return {
-                      ...s,
-                      addonGroupNotes: Object.keys(currentNotes).length > 0 ? currentNotes : undefined,
-                      updated_at: new Date().toISOString(),
-                    };
-                  }),
-                }
-              : p
-          ),
-        projectId
-      );
-    },
-
-    renameSectionAddonGroup: (projectId: UUID, sectionId: UUID, oldGroup: string, newGroup: string) => {
-      engine.wrappedSetWithSync(
-        (prev) =>
-          prev.map((p) =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  updatedAt: new Date().toISOString(),
-                  sections: (p.sections || []).map((s) => {
-                    if (s.id !== sectionId) return s;
-                    const notes = s.addonGroupNotes;
-                    if (!notes || !notes[oldGroup]) return s;
-                    const newNotes = { ...notes };
-                    newNotes[newGroup] = newNotes[oldGroup];
-                    delete newNotes[oldGroup];
-                    return { ...s, addonGroupNotes: newNotes, updated_at: new Date().toISOString() };
-                  }),
                 }
               : p
           ),
@@ -692,22 +583,6 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return (project.sections || []).some(
         (s) => s.id !== excludeId && (s.dataId || "").trim().toLowerCase() === target
       );
-    },
-
-    hasDuplicateCurrencyCode: (projectId: UUID, code: string, excludeAddonId?: string) => {
-      const trimmed = code.trim();
-      if (!trimmed) return false;
-      const project = get().projects.find((p) => p.id === projectId);
-      if (!project) return false;
-      const target = trimmed.toUpperCase();
-      for (const section of project.sections || []) {
-        for (const addon of section.addons || []) {
-          if (addon.type !== "currency") continue;
-          if (addon.id === excludeAddonId) continue;
-          if ((addon.data.code || "").trim().toUpperCase() === target) return true;
-        }
-      }
-      return false;
     },
   };
 }

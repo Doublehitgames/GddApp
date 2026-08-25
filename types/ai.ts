@@ -1,5 +1,5 @@
 // types/ai.ts
-import type { BuildPageTypeAddonsOptions, PageTypeId } from "@/lib/pageTypes/registry";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 
 export type AIProvider = 'groq' | 'openai' | 'claude';
 
@@ -35,21 +35,14 @@ export interface GDDTemplateRequest {
  * `TemplateSection` in `lib/templates/manualTemplates.ts` (minus the
  * `id` — IDs are generated when adapting to the manual-template format
  * for `createProjectFromTemplate`).
- *
- * When `pageType` is present, the section is created with the page
- * type's seeded addons (+ any richDocBlocks/attribute overrides passed
- * via options) — exactly like the manual template flow.
  */
 export interface GDDTemplateSection {
   title: string;
   content: string;
   /** Domínios de game design: combat, economy, progression, crafting, items, world, narrative, audio, ui, technology, other */
   domainTags?: string[];
-  /** When present, the section is created with this page type's addons seeded. */
-  pageType?: {
-    id: PageTypeId;
-    options?: BuildPageTypeAddonsOptions;
-  };
+  /** Descrição em blocos nativos, quando a IA gera conteúdo estruturado. */
+  contentBlocks?: RichDocBlock[];
   subsections?: GDDTemplateSection[];
 }
 

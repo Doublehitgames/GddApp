@@ -10,7 +10,7 @@ import {
 import { searchSchema } from "@/lib/api/v1/schemas";
 
 const SECTION_COLS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, balance_addons, addon_group_notes, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name";
 const SECTION_COLS_SAFE =
   "id, project_id, parent_id, title, content, sort_order, color, created_at, updated_at";
 
@@ -74,17 +74,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (type === "all" || type === "sections") {
-    // Try full columns, fallback to safe set.
-    // The OR also matches text inside addons (richDoc blocks, addon names,
-    // etc.) by casting the JSONB column to text — crude but indexed and
-    // good enough for free-text search; the structural keys in the JSON
-    // are unlikely to collide with real user queries. The fallback set
-    // omits balance_addons since the column may not exist yet.
+    // Try full columns, fallback to safe set (colunas novas podem não existir
+    // num banco antigo).
     let { data: sections, error } = await auth.supabase
       .from("sections")
       .select(SECTION_COLS_FULL)
       .in("project_id", ids)
-      .or(`title.ilike.${pattern},content.ilike.${pattern},balance_addons::text.ilike.${pattern}`)
+      .or(`title.ilike.${pattern},content.ilike.${pattern}`)
       .limit(limit);
 
     if (error) {
@@ -99,8 +95,6 @@ export async function GET(request: NextRequest) {
         ...r,
         thumb_image_url: null,
         domain_tags: [],
-        balance_addons: null,
-        addon_group_notes: null,
         data_id: null,
         flowchart_state: null,
         created_by: null,

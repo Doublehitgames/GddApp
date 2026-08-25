@@ -52,56 +52,9 @@ export const updateSectionSchema = z.object({
   domainTags: z.array(z.string().max(50)).max(20).optional(),
   dataId: z.string().max(200).nullable().optional(),
   thumbImageUrl: z.string().url().nullable().optional(),
-  addonGroupNotes: z.record(z.string(), z.string()).optional(),
-  linkedSpreadsheetId: z.string().nullable().optional(),
 });
-
-// ── Addons ────────────────────────────────────────────────────────────
-
-const addonTypes = [
-  "xpBalance",
-  "progressionTable",
-  "economyLink",
-  "currency",
-  "globalVariable",
-  "inventory",
-  "production",
-  "craftTable",
-  "crop",
-  "dataSchema",
-  "attributeDefinitions",
-  "attributeProfile",
-  "attributeModifiers",
-  "fieldLibrary",
-  "exportSchema",
-  "richDoc",
-  "genericStats",
-] as const;
-
-export const createAddonSchema = z.object({
-  type: z.enum(addonTypes),
-  name: z.string().min(1).max(200),
-  group: z.string().max(100).optional(),
-  data: z.record(z.string(), z.unknown()).optional(),
-});
-
-export const updateAddonSchema = z.object({
-  name: z.string().min(1).max(200).optional(),
-  group: z.string().max(100).nullable().optional(),
-  data: z.record(z.string(), z.unknown()).optional(),
-});
-
-// ── Remote Config (exportSchema resolution) ──────────────────────────
-
-export const remoteConfigQuerySchema = z.object({
-  // Lenient (min 1) rather than strict uuid: legacy addon/section ids may
-  // predate the randomUUID convention, and rejecting a valid id is worse
-  // than accepting a bogus one (which simply resolves to no match).
-  sectionId: z.string().min(1).max(200).optional(),
-  addonId: z.string().min(1).max(200).optional(),
-});
-
 // ── Search ────────────────────────────────────────────────────────────
+
 
 export const searchSchema = z.object({
   q: z.string().min(1).max(200),

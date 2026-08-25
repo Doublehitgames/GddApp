@@ -5,7 +5,6 @@ import { loadPersistenceConfig } from "./slices/storageHelpers";
 import { createSyncEngine } from "./slices/syncEngine";
 import { createProjectCrudSlice } from "./slices/projectCrudSlice";
 import { createSectionCrudSlice } from "./slices/sectionCrudSlice";
-import { createAddonSlice } from "./slices/addonSlice";
 import { createDiagramSlice } from "./slices/diagramSlice";
 import { createAnalysisSlice } from "./slices/analysisSlice";
 import { createCloudSyncSlice } from "./slices/cloudSyncSlice";
@@ -73,7 +72,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     // ── Composed actions ─────────────────────────────────────────────────
     ...createProjectCrudSlice(set, get, engine),
     ...createSectionCrudSlice(set, get, engine),
-    ...createAddonSlice(set, get),
     ...createDiagramSlice(set, get, engine),
     ...createAnalysisSlice(set, get),
     ...createCloudSyncSlice(set, get, engine),

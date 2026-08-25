@@ -6,8 +6,7 @@ import { AIMessage } from '@/types/ai';
 import { getAIConfigFromRequest } from '@/utils/ai/apiHelpers';
 import { assessThematicRelevance } from '@/utils/ai/thematicGuardrails';
 import {
-  PAGE_TYPES_PROMPT_BLOCK,
-  RICH_DOC_CALLOUTS_PROMPT_BLOCK,
+  CALLOUTS_PROMPT_BLOCK,
   FIVE_GROUP_HIERARCHY_PROMPT_BLOCK,
 } from '@/utils/ai/gddVocabulary';
 import { buildProjectTreeBlock } from '@/utils/ai/contextBuilders';
@@ -22,8 +21,6 @@ interface ProjectContext {
     content: string;
     parentId?: string;
     domainTags?: string[];
-    addonTypes?: string[];
-    pageTypeId?: string;
   }>;
 }
 
@@ -51,8 +48,6 @@ export async function POST(req: NextRequest) {
       ? buildProjectTreeBlock(projectContext.sections, {
           includeIds: true,
           showTags: true,
-          showPageType: true,
-          showAddons: true,
         })
       : '';
 
@@ -62,7 +57,7 @@ Projeto: ${projectContext.projectTitle} (ID: ${projectContext.projectId})
 Descrição: ${projectContext.projectDescription?.trim() || "Sem descrição informada."}
 Seções atuais: ${projectContext.sections.length}
 
-📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Anotações: {pageType}, [tags], {addons}:
+📋 SEÇÕES EXISTENTES (use os IDs para EDITAR/REMOVER). Anotações: [tags]:
 ${treeBlock}
 
 💡 DICAS:
@@ -73,26 +68,17 @@ ${treeBlock}
 - Só proponha sistemas aderentes ao tema descrito no projeto
 - Se sugerir algo fora do núcleo, explique claramente a conexão com a descrição do jogo
 
-🎯 QUANDO CRIAR SEÇÃO NOVA, PENSE EM 3 EIXOS:
-  1. **Onde colocar na hierarquia** — use os 5 grupos canônicos (Visão Geral / Design / Conteúdo / Apresentação / Produção). Não crie na raiz se houver contêiner adequado.
-  2. **Qual pageType atribuir** — a maioria é \`narrative\`; use tipados (\`economy\`, \`items\`, \`equipmentItem\`, \`characters\`, \`attributeDefinitions\`, \`progression\`, \`recipe\`, \`craftTable\`) apenas quando o conteúdo é estruturalmente aquele dado.
-  3. **Quais addons configurar** — avalie domínio (inventory, economyLink, production, currency, xpBalance/progressionTable, globalVariable). Não trate addon como opcional quando o caso é óbvio (item com estoque, compra/venda, curva de nível).
+🎯 QUANDO CRIAR SEÇÃO NOVA:
+  - **Onde colocar na hierarquia** — use os 5 grupos canônicos (Visão Geral / Design / Conteúdo / Apresentação / Produção). Não crie na raiz se houver contêiner adequado.
+  - **Quais domínios marcar** — escolha as tags que descrevem o assunto da página.
 
-📚 Para páginas \`narrative\`, use callouts em markdown (\`> [!note]\`, \`> [!warning]\`, \`> [!design-decision]\`, \`> [!balance-note]\`) — 3-5 por página — para ensinar jargão e documentar tradeoffs.
+📚 Use callouts em markdown na descrição (> [!note], > [!warning], > [!design-decision], > [!balance-note]) — 3-5 por página — para ensinar jargão e documentar tradeoffs.
 
-🔗 Pré-requisitos de addon (valide antes de emitir [EXECUTAR]):
-  - economyLink compra/venda → referência de moeda (seção com addon currency)
-  - production recipe/passive → referências para itens com addon inventory
-  - unlock por nível → referência para seção com addon xpBalance
-  - attributeProfile/attributeModifiers → referência para seção com addon attributeDefinitions
-
-- Se faltar dado pra configurar addon com segurança, faça perguntas curtas ANTES de emitir [EXECUTAR].
 ` : '';
 
     const vocabBlock = [
       FIVE_GROUP_HIERARCHY_PROMPT_BLOCK,
-      PAGE_TYPES_PROMPT_BLOCK,
-      RICH_DOC_CALLOUTS_PROMPT_BLOCK,
+      CALLOUTS_PROMPT_BLOCK,
     ].join('\n\n');
 
     const enhancedMessages: AIMessage[] = [

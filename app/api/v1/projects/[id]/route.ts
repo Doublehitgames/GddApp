@@ -7,19 +7,13 @@ import {
   apiJson,
   apiError,
   projectToApi,
-  addonDetailParam,
-  sectionMapper,
+  sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { updateProjectSchema } from "@/lib/api/v1/schemas";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/**
- * GET /api/v1/projects/:id — get project with its sections.
- *
- * `?addons=types` returns addon type names instead of addon data, `?addons=none`
- * omits them. Defaults to `full`.
- */
+/** GET /api/v1/projects/:id — get project with its sections. */
 export async function GET(request: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const result = await requireAuth(request);
@@ -29,16 +23,11 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const pResult = await requireProject(auth.supabase, id, auth.userId);
   if ("response" in pResult) return pResult.response;
 
-  const detail = addonDetailParam(request);
-  const { data: sections } = await selectSections(
-    auth.supabase,
-    { projectId: id },
-    { addons: detail },
-  );
+  const { data: sections } = await selectSections(auth.supabase, { projectId: id });
 
   return apiJson({
-    ...projectToApi(pResult.project, { includeLinkedSpreadsheets: true }),
-    sections: (sections ?? []).map(sectionMapper(detail)),
+    ...projectToApi(pResult.project),
+    sections: (sections ?? []).map(sectionToApi),
   });
 }
 

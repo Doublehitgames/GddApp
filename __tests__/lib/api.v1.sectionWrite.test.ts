@@ -26,14 +26,13 @@ describe("buildSectionUpdates", () => {
   it("maps the API names onto column names", () => {
     const { updates } = buildSectionUpdates({
       order: 4, dataId: "FARM_ANIMAL_CHICKEN", parentId: null,
-      thumbImageUrl: null, linkedSpreadsheetId: null, domainTags: ["economy"],
+      thumbImageUrl: null, domainTags: ["economy"],
     }, CTX);
     expect(updates).toMatchObject({
       sort_order: 4,
       data_id: "FARM_ANIMAL_CHICKEN",
       parent_id: null,
       thumb_image_url: null,
-      linked_spreadsheet_id: null,
       domain_tags: ["economy"],
     });
   });

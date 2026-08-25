@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
-import { PAGE_TYPES } from "@/lib/pageTypes/registry";
-import type { PageTypeId } from "@/lib/pageTypes/registry";
 import { toSlug, sectionPathById } from "@/lib/utils/slug";
 
 export const QUICK_NEW_PAGE_EVENT = "gdd:open-new-page";
@@ -47,7 +45,6 @@ export function QuickNewPageModal() {
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [pageTypeId, setPageTypeId] = useState<PageTypeId>("blank");
   const [parentId, setParentId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,7 +106,6 @@ export function QuickNewPageModal() {
   useEffect(() => {
     if (!open) {
       setTitle("");
-      setPageTypeId("blank");
       setParentId("");
       setError(null);
       setBusy(false);
@@ -133,8 +129,8 @@ export function QuickNewPageModal() {
     setBusy(true);
     try {
       const newId = parentId
-        ? addSubsection(realProjectId, parentId, trimmed, "", sectionAuditBy, pageTypeId)
-        : addSection(realProjectId, trimmed, "", sectionAuditBy, pageTypeId);
+        ? addSubsection(realProjectId, parentId, trimmed, "", sectionAuditBy)
+        : addSection(realProjectId, trimmed, "", sectionAuditBy);
       if (!newId) throw new Error("create_failed");
       setOpen(false);
       router.push(sectionPathById(project ?? { title: "", sections: [] }, newId));
@@ -202,23 +198,6 @@ export function QuickNewPageModal() {
               className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
               autoComplete="off"
             />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-300">
-              {t("quickNewPage.typeLabel", "Tipo da página")}
-            </span>
-            <select
-              value={pageTypeId}
-              onChange={(e) => setPageTypeId(e.target.value as PageTypeId)}
-              className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
-            >
-              {PAGE_TYPES.map((pt) => (
-                <option key={pt.id} value={pt.id}>
-                  {pt.emoji} {pt.label}
-                </option>
-              ))}
-            </select>
           </label>
 
           <label className="block">

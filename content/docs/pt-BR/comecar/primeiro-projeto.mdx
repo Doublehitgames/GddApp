@@ -1,13 +1,13 @@
 ---
 title: "Seu primeiro projeto"
-description: "Crie um RPG mínimo do zero usando os wizards — em ~15 minutos."
+description: "Do projeto vazio ao GDD navegável — em ~15 minutos."
 emoji: "🌱"
 order: 2
 ---
 
 # Seu primeiro projeto
 
-Vamos criar um GDD pequeno (uma dezena de páginas) pra você sentir o fluxo. O exemplo é um **RPG de fantasia** com economia simples, atributos, uma habilidade e um item.
+Vamos montar um GDD pequeno (uma dezena de páginas) pra você sentir o fluxo. O exemplo é um **RPG de fantasia**, mas o roteiro serve pra qualquer gênero.
 
 <Callout type="info" title="Sem pressa">
   Não precisa criar tudo de uma vez. O app salva sozinho a cada mudança e
@@ -26,181 +26,97 @@ Pré-requisitos:
 
 Na página inicial (`/`), clique em **"+ Novo projeto"**.
 
-Dê um nome (ex.: `Tutorial Aventura`) e uma descrição curta. O projeto nasce vazio, com a estrutura padrão de **5 grupos** (Visão Geral, Design, Conteúdo, Apresentação, Produção) — você pode ignorar esses por enquanto.
+Dê um nome (ex.: `Tutorial Aventura`) e uma descrição curta. O projeto nasce com a estrutura padrão de **cinco grupos**:
 
-## Passo 2 — Página de Atributos
+| Grupo | O que vai dentro |
+|---|---|
+| 📖 Visão Geral | Pitch, público-alvo, o diferencial do jogo |
+| 🎮 Design de Jogo | Core loop, mecânicas centrais, progressão |
+| 📦 Conteúdo do Jogo | Personagens, itens, inimigos, mundo, narrativa |
+| 🎨 Apresentação | Arte, áudio, UX/UI, controles |
+| 🏭 Produção | Tecnologia, roadmap, riscos, monetização |
 
-A primeira página *real* é a de Atributos, porque tudo no jogo vai depender dela.
+Esses cinco são o esqueleto. Tudo que você escrever daqui pra frente encontra o lugar dele dentro de um deles.
 
-1. No sidebar, clique no `+` ao lado de **Conteúdo** (ou outro grupo).
-2. No picker, escolha o tipo `🎯 Atributos`.
-3. Dê o nome `Atributos Base`.
+## Passo 2 — Escreva a Visão Geral
 
-A página nasce com uma tabela de atributos pré-populada (HP, ATK, DEF, SPD). Edite os valores padrão se quiser:
+Comece pela página que dá contexto pra todas as outras.
 
-```
-HP   100
-ATK  10
-DEF  5
-SPD  5
-```
+1. Clique em **📖 Visão Geral** no sidebar.
+2. Clique na área de descrição e comece a escrever.
 
-<Callout type="tip" title="Defina um DataID — é importante">
-  **Logo abaixo do título da página** tem um campo discreto: clique em
-  **"+ DataID"**. O app sugere automaticamente algo como `DATA_ATRIBUTOS_BASE`
-  baseado no título — você pode aceitar ou editar pra `DATA_BASIC_ATTR`.
+O editor funciona como um documento moderno: digite `/` pra abrir o menu de blocos (título, lista, tabela, imagem, callout). Escreva o pitch em duas ou três frases, quem é o público, e o que faz o jogo diferente.
 
-  **Por que isso importa**: o DataID é o identificador **estável** que o motor
-  vai usar pra encontrar essa página no JSON exportado. Sem ele, refs apontam
-  pra UUIDs internos ilegíveis. Com ele, o JSON tem chaves humanas tipo
-  `DATA_BASIC_ATTR` que ficam estáveis mesmo quando você renomeia, move ou
-  reorganiza a página.
-
-  **Defina o DataID em todas as páginas que vão pro export.** Atributos,
-  moedas, itens, habilidades — todas. Demora 2 segundos por página e poupa
-  horas de debug depois.
+<Callout type="tip" title="Use callouts pra separar o tom">
+  Digite <code>/callout</code> e escolha a variante. <strong>Nota</strong> pra
+  contexto, <strong>Atenção</strong> pra pegadinha, <strong>Decisão de
+  design</strong> pra registrar por que você escolheu um caminho e não outro.
+  Seis meses depois, o "por quê" é o que você mais vai querer ter escrito.
 </Callout>
 
-## Passo 3 — Página de Moeda
+## Passo 3 — Monte a árvore antes de escrever tudo
 
-Em seguida, uma moeda pra economia funcionar.
+Resista à vontade de escrever cada página até o fim agora. Primeiro crie os **títulos** das páginas que você sabe que vão existir.
 
-1. `+ Nova página` → tipo `🪙 Economia`.
-2. Nome: `Ouro`.
-3. Configure no painel: código `GOLD`, nome `Ouro`, ícone se quiser.
-4. **Defina o DataID** clicando em "+ DataID" abaixo do título — sugestão padrão `DATA_OURO`, edite pra `DATA_GOLD` se preferir consistência.
+1. Passe o mouse sobre um grupo no sidebar e clique no `+`.
+2. Digite o nome e dê Enter.
+3. Repita.
 
-Pronto — agora tem uma moeda que outros addons podem referenciar.
+Pra `📦 Conteúdo do Jogo`, por exemplo: `Personagens`, `Inimigos`, `Itens`, `Economia`, `Mundo`. Dentro de `Personagens`, crie `Guerreiro` e `Maga`.
 
-## Passo 4 — Página de Item
+Em cinco minutos você tem o mapa do documento. Escrever fica muito mais fácil quando você já sabe onde cada coisa mora.
 
-Vamos criar um item: **Espada de Ferro**.
-
-1. `+ Nova página` → tipo `⚔️ Itens com efeito`.
-2. **O wizard vai abrir** perguntando duas dependências:
-   - **Moeda**: escolha `Ouro` (criada no passo 3).
-   - **Atributos**: escolha `Atributos Base` (criada no passo 2).
-3. Nome da página: `Espada de Ferro`. Clique em "+ DataID" abaixo do título e edite pra `DATA_IRON_SWORD` (a sugestão automática vai ser algo tipo `DATA_ESPADA_DE_FERRO`).
-
-A página nasce com **3 addons** já configurados:
-
-- **Inventário** — peso, categoria, pilha
-- **Economia** — preço de compra (ex.: 100 GOLD), preço de venda (50 GOLD)
-- **Modificadores de Atributos** — `+5 ATK` quando equipada
-
-Configure os campos. Cada mudança salva automaticamente.
-
-## Passo 5 — Página de Habilidade
-
-Agora a parte divertida: uma habilidade de fogo.
-
-1. `+ Nova página` → tipo `⚡ Habilidades`.
-2. **Wizard pergunta**: qual página de Atributos? Escolha `Atributos Base`.
-3. Nome: `Fireball`. DataID (clique abaixo do título): `DATA_FIRE_BALL`.
-
-A página nasce com 2 addons:
-
-- **Habilidades** (vazia)
-- **Efeitos das Habilidades** (Modificadores de Atributos, vazio)
-
-Vamos preencher:
-
-**No addon de Modificadores**, adicione uma entry:
-- Nome: `Fireball Impact`
-- Atributo: `hp`
-- Modo: `add`
-- Valor: `-30`
-
-**No addon de Habilidades**, adicione uma skill:
-- Nome: `Fireball`
-- Tipo: ativa
-- Recarga entre usos: `5` (segundos)
-- **Custos**: nada por enquanto
-- **Efeitos**: marque a checkbox `Fireball Impact` (do modifier acima)
-
-Pronto. Quando o jogo executar a Fireball, vai aplicar `-30` em `hp` do alvo.
-
-<Callout type="tip" title="Burst + DoT?">
-  Pra fazer uma Fireball mais rica (impacto + queimadura ao longo do tempo),
-  basta adicionar **2 entries** no Modificadores: uma instantânea (burst) e uma
-  com `temporary: true, durationSeconds: 6, tickIntervalSeconds: 1`. Marque
-  ambas no checklist de efeitos da skill.
+<Callout type="tip" title="Atalho">
+  Aperte <code>N</code> em qualquer lugar do projeto pra abrir o modal rápido de
+  nova página — dá pra escolher o nome e onde encaixar sem tirar a mão do teclado.
 </Callout>
 
-## Passo 6 — Remote Config (export)
+## Passo 4 — Conecte as páginas
 
-O último passo: configurar o JSON que o motor consome.
+Aqui o GDD deixa de ser uma pilha de arquivos.
 
-1. Em qualquer página (recomendo criar uma `📤 Configuração de Export`), adicione um addon **Remote Config**.
-2. No painel, monte uma árvore tipo:
+Dentro do texto de qualquer página, escreva `$[` e o nome de outra página. O app autocompleta e vira um link clicável.
 
-```json
-{
-  "skills": [        ← array, source: skills:DATA_FIRE_BALL
-    {
-      "id": "...",       ← skillField/id (resolve pra dataId)
-      "name": "...",     ← skillField/name
-      "cooldown": 0,     ← skillField/cooldownSeconds
-      "effects": [       ← array, source: skillEffects
-        {
-          "name": "",        ← skillEffectField/resolvedName
-          "attr_id": "",     ← skillEffectField/resolvedDefinitionsRef
-          "attr_key": "",    ← skillEffectField/resolvedAttributeKey
-          "attr_value": 0,   ← skillEffectField/resolvedValue
-          "attr_stack": ""   ← skillEffectField/resolvedStacking
-        }
-      ]
-    }
-  ]
-}
-```
+Exemplo, na página `Guerreiro`:
 
-3. Clique em **Exportar** — o JSON pronto cai no seu clipboard ou arquivo.
+> O Guerreiro depende de dano corpo a corpo e sustentação. Ele é o contraponto direto da $[Maga], que troca resistência por alcance. Os equipamentos dele saem da $[Economia] com preço mais alto que a média.
 
-Resultado:
+Agora, quando alguém ler a página do Guerreiro, chega na Maga com um clique — e a Maga sabe que é referenciada.
 
-```json
-{
-  "skills": [
-    {
-      "id": "DATA_FIRE_BALL",
-      "name": "Fireball",
-      "cooldown": 5,
-      "effects": [
-        {
-          "name": "Fireball Impact",
-          "attr_id": "DATA_BASIC_ATTR",
-          "attr_key": "hp",
-          "attr_value": -30,
-          "attr_stack": ""
-        }
-      ]
-    }
-  ]
-}
-```
+## Passo 5 — Dê um DataID nas páginas que importam
 
-**Esse JSON é o que o seu motor lê.** Ele tem identificadores estáveis (`DATA_*`), valores resolvidos, refs cross-section traduzidas — tudo pronto pra consumir sem cross-resolver no runtime.
+Nas páginas que representam coisas concretas do jogo (um item, um inimigo, uma moeda), vale definir um apelido estável.
+
+1. **Logo abaixo do título** tem um campo discreto: clique em **"+ DataID"**.
+2. O app sugere algo baseado no título — ex.: `DATA_GUERREIRO`.
+3. Aceite ou edite (vale padronizar tudo em inglês: `DATA_WARRIOR`).
+
+Não precisa fazer isso em página de lore ou de processo. Serve pras que você cita muito e pras que a IA vai precisar encontrar depois.
+
+## Passo 6 — Olhe o documento de outro ângulo
+
+Com a árvore montada e algumas páginas escritas, vale ver o que você fez de longe:
+
+- **Mapa mental** (`/mindmap`) — a árvore vira grafo. Ramos vazios saltam aos olhos, e você enxerga quais partes do jogo ainda estão só no título.
+- **Modo documento** (`/view`) — o GDD inteiro numa leitura contínua, na ordem da árvore. É essa a visão que você manda pra alguém de fora.
+- **Exportar** (`/export`) — o mesmo documento como Markdown, PDF ou Word.
 
 ## E agora?
 
 Você fez:
 
-✅ Atributos · ✅ Moeda · ✅ Item com efeito · ✅ Habilidade · ✅ Remote Config
+✅ Projeto criado · ✅ Visão Geral escrita · ✅ Árvore montada · ✅ Páginas conectadas · ✅ Documento revisado
 
 Próximas direções:
 
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
-  <FeatureCard emoji="📦" title="Referência de addons" href="/docs/referencia/addons">
-    Mergulhe em cada addon que você usou. Cada um tem mais opções do que mostramos aqui.
+  <FeatureCard emoji="🤖" title="Deixe a IA ajudar" href="/docs/referencia/ai">
+    Gerar um GDD inicial, melhorar a prosa de uma página, ou conversar sobre o projeto.
   </FeatureCard>
-  <FeatureCard emoji="📤" title="Remote Config completo" href="/docs/referencia/addons/remote-config">
-    Aprenda os 4 formatos de export (row, column, matrix, keyed) e como importar de volta.
+  <FeatureCard emoji="⌨️" title="Atalhos de teclado" href="/docs/referencia/atalhos">
+    O app inteiro é navegável pelo teclado. Aperte `?` a qualquer momento.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="Conceitos chave" href="/docs/comecar/conceitos-chave">
     Volte ao vocabulário se algum termo ficou confuso.
-  </FeatureCard>
-  <FeatureCard emoji="🍳" title="Cookbook" href="/docs/cookbook">
-    Snippets prontos pra cenários comuns *(em breve)*.
   </FeatureCard>
 </div>

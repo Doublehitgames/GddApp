@@ -55,132 +55,6 @@
     "copyTooltip": "Copiar link público",
     "copied": "Link copiado!"
   },
-  "currencyExchangePair": {
-    "title": "Configurar Casa de Câmbio",
-    "titleFor": "Configurar conversão para {name}",
-    "intro": "Escolha as duas moedas envolvidas e a taxa inicial. Você pode adicionar mais conversões depois.",
-    "useExisting": "Usar moeda existente",
-    "createNewPlaceholder": "Criar nova moeda",
-    "nameLabel": "Nome",
-    "namePlaceholder": "Ex.: Gold",
-    "codeLabel": "Código",
-    "codePlaceholder": "GOLD",
-    "firstStep": "Moeda 1 — a que o jogador gasta",
-    "firstHint": "Linka uma moeda existente ou crie uma nova (vira uma página própria do projeto).",
-    "secondStep": "Moeda 2 — a que o jogador recebe",
-    "secondHint": "Linka outra moeda existente ou crie uma nova. Não pode ser a mesma da Moeda 1.",
-    "ratioLabel": "Taxa de conversão",
-    "ratioHint": "Quanto da Moeda 1 vale quanto da Moeda 2. Use ⇄ se a troca também valer no sentido oposto.",
-    "fromAmount": "Gasta",
-    "toAmount": "Recebe",
-    "makeOneWay": "Tornar mão única",
-    "makeBidirectional": "Tornar mão dupla",
-    "confirm": "Confirmar e criar"
-  },
-  "skillsAddon": {
-    "addonTypeLabel": "Habilidades",
-    "defaultName": "Skills",
-    "selectNone": "Selecione",
-    "entriesTitle": "Habilidades",
-    "addEntryButton": "+ Habilidade",
-    "removeEntryButton": "Remover habilidade",
-    "emptyState": "Nenhuma habilidade ainda. Adicione uma pra começar.",
-    "untitled": "(sem nome)",
-    "dragAria": "Arrastar habilidade",
-    "kindLabel": "Tipo",
-    "kindActive": "ativa",
-    "kindPassive": "passiva",
-    "nameLabel": "Nome",
-    "namePlaceholder": "Ex.: Fireball",
-    "descriptionLabel": "Descrição",
-    "descriptionPlaceholder": "O que essa habilidade faz?",
-    "cooldownLabel": "Cooldown (segundos)",
-    "cooldownShort": "Cooldown:",
-    "cooldownSectionLabel": "Recarga entre usos",
-    "cooldownPlaceholder": "vazio = sem limite",
-    "cooldownDerivedNoLimit": "Sem limite — dispara enquanto o input estiver ativo",
-    "cooldownDerivedZero": "0s — sem espera entre usos (autofire)",
-    "cooldownDerivedSubSecond": "≈ {perSec} usos por segundo (autofire limitado)",
-    "cooldownDerivedOne": "1 uso por segundo",
-    "cooldownDerivedManySeconds": "1 uso a cada {seconds}s",
-    "cooldownDerivedUlti": "Ultimate — 1 uso a cada {minutes}min",
-    "cooldownPresetNone": "♾ Sem limite",
-    "cooldownPresetAttack": "⚔ Ataque (1s)",
-    "cooldownPresetSkill": "✨ Skill (5s)",
-    "cooldownPresetUlti": "🔥 Ultimate (60s)",
-    "cooldownTimelineLabel": "Linha do tempo",
-    "cooldownCasterShort": "Você",
-    "cooldownCasterTooltip": "Tempo do caster — quando você pode usar de novo",
-    "cooldownTargetShort": "Alvo",
-    "cooldownTargetTooltip": "Tempo do alvo — quanto tempo o efeito permanece aplicado",
-    "cooldownTimelineCasterLabel": "recarga {seconds}s",
-    "cooldownTimelineCasterNoLimit": "sem limite — pronto sempre",
-    "cooldownTimelineTargetLabel": "efeito {seconds}s",
-    "cooldownTimelineTargetPermanent": "permanente",
-    "cooldownTimelineTargetInstant": "instantâneo",
-    "cooldownTimelineTargetWithTicks": "efeito {seconds}s · {ticks} ticks",
-    "stackingHintUnique": "Empilhamento \"único\": recasts antes de {duration}s são ignorados. Cooldown efetivo = {effective}s.",
-    "stackingHintStack": "Empilhamento \"stack\": em {duration}s podem coexistir até {casts} instâncias do efeito.",
-    "stackingHintRefresh": "Empilhamento \"refresh\": cada cast renova os {duration}s. Em {duration}s podem ocorrer {casts} casts.",
-    "stackingHintNoLimitUnique": "Sem limite de recarga + empilhamento \"único\": só vale o primeiro cast a cada janela de {duration}s.",
-    "stackingHintNoLimitStack": "Sem limite de recarga + empilhamento \"stack\": pode acumular incontáveis instâncias do efeito ao segurar o input.",
-    "stackingHintNoLimitRefresh": "Sem limite de recarga: o efeito de {duration}s é reaplicado a cada input.",
-    "stackingHintMixed": "Atenção: efeitos vinculados usam regras de empilhamento diferentes.",
-    "stackingHintMixedDurations": "Durações variam de {shortest}s a {longest}s.",
-    "costsLabel": "Custos",
-    "costsShort": "Custos:",
-    "costsEmpty": "Sem custos. Use os botões acima pra adicionar.",
-    "costType": "Tipo",
-    "costTypeCurrency": "Moeda",
-    "costTypeAttribute": "Atributo",
-    "costTypeCharges": "Cargas",
-    "costCurrencyRef": "Moeda",
-    "costDefinitionsRef": "Definição de Atributo",
-    "costAttributeKey": "Atributo",
-    "costChargesNote": "Cargas (sem ref)",
-    "costAmount": "Quantidade",
-    "costNoDefinitionsHint": "Nenhuma página de Atributos no projeto. Crie uma pra usar atributos como custo.",
-    "chargesHelp": "Apenas a quantidade — sem referência cruzada.",
-    "chargesShort": "carga(s)",
-    "effectsLabel": "Efeitos",
-    "effectsShort": "Efeitos:",
-    "effectsHintLocal": "Marque os modificadores desta página que esta habilidade aplica.",
-    "selectAll": "Marcar todos",
-    "deselectAll": "Desmarcar todos",
-    "addEffectPlaceholder": "+ Vincular efeito de Attribute Modifiers...",
-    "noEffectsHintLocal": "Adicione um addon de Modificadores de Atributos nesta mesma página pra poder vincular efeitos aqui.",
-    "brokenEffect": "Efeito quebrado",
-    "unlockLabel": "Desbloqueio",
-    "unlockLevel": "Nível mínimo",
-    "unlockCurrency": "Custo em moeda (opcional)",
-    "unlockItem": "Item necessário (opcional)",
-    "unlockLvShort": "Lv",
-    "selectXpPage": "Selecione página de XP",
-    "tagsLabel": "Tags (separadas por vírgula)",
-    "tagsPlaceholder": "Ex.: fire, single-target",
-    "readOnlyEmpty": "Nenhuma habilidade configurada."
-  },
-  "currencyExchangeAddon": {
-    "addonTypeLabel": "Casa de Câmbio",
-    "defaultName": "Currency Exchange",
-    "entriesTitle": "Conversões",
-    "addEntryButton": "+ Conversão",
-    "removeEntryButton": "Remover",
-    "emptyState": "Nenhuma conversão configurada ainda. Adicione uma para definir uma taxa entre duas moedas.",
-    "fromLabel": "Gasta",
-    "toLabel": "Recebe",
-    "selectNone": "Selecione a moeda",
-    "notesLabel": "Notas (limites, condições)",
-    "notesPlaceholder": "Ex.: até 5x por dia",
-    "makeOneWay": "Tornar mão única (somente De → Para)",
-    "makeBidirectional": "Tornar mão dupla (Para → De também)",
-    "currencyEmptyHint": "Nenhuma página com Moeda neste projeto. Crie pelo menos duas para definir uma conversão.",
-    "currencyOnlyOneHint": "Só tem 1 moeda no projeto. Crie mais uma para definir uma conversão.",
-    "createCurrencyCta": "Criar página de Moeda",
-    "brokenCurrency": "Moeda removida",
-    "brokenLinkExplain": "Uma das moedas não existe mais. Selecione outra ou remova esta conversão.",
-    "readOnlyEmpty": "Nenhuma conversão configurada."
-  },
   "linkedField": {
     "noLink": "Sem vínculo",
     "addLink": "Vincular a uma tabela de progressão",
@@ -264,7 +138,6 @@
       "openHelp": "Abrir esta lista de atalhos",
       "closeDialog": "Fechar diálogos e menus abertos",
       "newPage": "Criar uma nova página (modal rápido)",
-      "addAddon": "Adicionar um addon nesta página",
       "duplicateSection": "Duplicar a página atual",
       "moveSection": "Mover a seção para outro local",
       "undo": "Desfazer",
@@ -289,232 +162,6 @@
     "tabWrite": "Editar",
     "tabPreview": "Preview",
     "confirmDelete": "Confirmar exclusão"
-  },
-  "pageTypes": {
-    "sidebar": {
-      "pickerHeader": "Tipo de página",
-      "pickerButtonTitlePrefix": "Tipo de página:",
-      "addonsBadgeOne": "{n} addon",
-      "addonsBadgeMany": "{n} addons"
-    },
-    "ids": {
-      "blank": {
-        "label": "Em branco",
-        "description": "Página vazia, sem addons pré-configurados."
-      },
-      "items": {
-        "label": "Itens",
-        "description": "Lista de itens do seu jogo (madeira, poção, chave). Já vem com inventário e preço de compra/venda."
-      },
-      "equipmentItem": {
-        "label": "Itens com Efeito",
-        "description": "Itens que mudam atributos quando equipados ou usados (armadura, amuleto, poção). Já vem com inventário, preço e bônus de atributos."
-      },
-      "characters": {
-        "label": "Personagens",
-        "description": "Personagens do jogo com atributos (HP, ATK, DEF...) e progressão por nível. Funciona pra heróis, inimigos ou NPCs."
-      },
-      "attributeDefinitions": {
-        "label": "Atributos",
-        "description": "Lista de atributos (HP, ATK, DEF...) que pode ser reaproveitada por vários personagens."
-      },
-      "economy": {
-        "label": "Economia",
-        "description": "Moeda do jogo (ouro, gemas, energia). Define o nome, o símbolo e regras básicas.",
-        "defaultSectionTitle": "Moeda"
-      },
-      "progression": {
-        "label": "Progressão",
-        "description": "Tabela de XP e níveis — quanto XP precisa pra subir de nível e o que cada nível entrega."
-      },
-      "recipe": {
-        "label": "Receita",
-        "description": "Uma receita: ingredientes entram, item sai. Ex.: '2 Madeiras → 1 Tábua'.",
-        "sidebarInputPlaceholder": "Nome do resultado (ex.: Tábua)"
-      },
-      "craftTable": {
-        "label": "Mesa de Craft",
-        "description": "Uma estação que agrupa várias receitas (Serraria, Forja, Bancada). Você escolhe quais receitas ela produz."
-      },
-      "narrative": {
-        "label": "Narrativa",
-        "description": "Texto corrido pra lore, roteiro ou descrição — tipo um documento de texto."
-      }
-    },
-    "addonNames": {
-      "inventory": "Inventário",
-      "economy": "Economia",
-      "attributeDefinitionsBase": "Atributos base",
-      "fieldLibrary": "Biblioteca de Campos",
-      "currency": "Moeda",
-      "currencyExchange": "Casa de Câmbio",
-      "xpCurve": "Curva de XP",
-      "equipmentEffects": "Efeitos",
-      "variantModifiers": "Efeitos por personagem",
-      "production": "Produção",
-      "craftTable": "Mesa de Produção",
-      "skills": "Habilidades",
-      "skillEffects": "Efeitos das Habilidades"
-    },
-    "autoSections": {
-      "buyDiscount": "📉 Desconto de Compra",
-      "sellMarkup": "📈 Bônus de Venda",
-      "newIngredientItem": "Novo Ingrediente",
-      "newOutputItem": "Novo Item de Saída",
-      "recipePrefix": "Receita de"
-    },
-    "craftTablePicker": {
-      "title": "Selecionar receitas para a Mesa de Craft",
-      "intro": "Escolha quais receitas já existentes entram nesta mesa. Você pode ajustar depois.",
-      "selectedCount": "{n} selecionada(s)",
-      "selectAll": "Selecionar todas",
-      "clearAll": "Limpar",
-      "ingredientsOne": "{n} ingrediente",
-      "ingredientsMany": "{n} ingredientes",
-      "outputsOne": "{n} saída",
-      "outputsMany": "{n} saídas",
-      "craftTime": "{s}s",
-      "emptyState": "Nenhuma receita criada ainda. A mesa será criada vazia — você pode adicionar receitas depois."
-    },
-    "globalVariables": {
-      "buyDiscountDisplayName": "Desconto de Compra",
-      "buyDiscountNotes": "Reduz o valor de compra de itens em 10%.",
-      "sellMarkupDisplayName": "Bônus de Venda",
-      "sellMarkupNotes": "Aumenta o valor de venda de itens em 10%."
-    },
-    "requiresDialog": {
-      "titlePrefix": "Vincular",
-      "titleConnector": "a",
-      "introDefault": "Páginas de {page} costumam precisar de {required}. Escolha como ligar abaixo.",
-      "introCurrency": "Toda página de {page} usa uma moeda pra valores de compra e venda. Escolha qual moeda usar — a página já vai entrar com desconto e bônus prontos.",
-      "introItemIngredient": "Qual item entra nessa receita como ingrediente? Você pode usar um que já existe ou criar um novo.",
-      "introItemOutput": "Qual item sai dessa receita? Você pode usar um que já existe ou criar um novo.",
-      "ingredientNameLabel": "Nome do ingrediente",
-      "ingredientNamePlaceholder": "Ex.: Madeira, Tecido, Ferro",
-      "outputNameLabel": "Nome do item de saída",
-      "sectionNameLabel": "Nome da página",
-      "recipeSettings": {
-        "header": "Quantidades e tempo de produção",
-        "description": "Quanto entra, quanto sai e em quanto tempo. Pode mudar depois na página da receita.",
-        "ingredientQtyLabel": "Qtde. de ingrediente",
-        "outputQtyLabel": "Qtde. produzida",
-        "craftTimeLabel": "Tempo (seg.)"
-      },
-      "characterSettings": {
-        "header": "Configurações do personagem",
-        "description": "Quais atributos criar e de qual nível até qual nível o personagem vai. Dá pra mexer em tudo depois.",
-        "attributesLabel": "Atributos a criar",
-        "startLevelLabel": "Nível inicial",
-        "endLevelLabel": "Nível final",
-        "growthRateLabel": "Crescimento por nível"
-      },
-      "economySettings": {
-        "header": "Preço e descontos/bônus",
-        "description": "Preço base de compra e venda deste item. Descontos e bônus são páginas separadas — você escolhe quais aplicar ou cria novos só pra este item.",
-        "buyValueLabel": "Preço de compra",
-        "sellValueLabel": "Preço de venda",
-        "modifiersHeader": "Descontos e bônus",
-        "applyBuyDiscountLabel": "Aplicar desconto de compra",
-        "applySellMarkupLabel": "Aplicar bônus de venda",
-        "useExistingLabel": "Usar descontos/bônus que já existem",
-        "useExistingDescription": "Marque quais descontos e bônus valem pra este item. Se marcar vários, os percentuais se acumulam.",
-        "discountCandidatesLabel": "Descontos disponíveis",
-        "markupCandidatesLabel": "Bônus disponíveis",
-        "createNewLabel": "Criar desconto e bônus novos só pra este item",
-        "createNewDescription": "Cria um desconto e um bônus novos que só afetam este item. Os que já existem continuam iguais.",
-        "buyDiscountPctLabel": "Desconto de compra %",
-        "sellMarkupPctLabel": "Bônus de venda %",
-        "buyDiscountNameLabel": "Nome do desconto",
-        "buyDiscountNamePlaceholder": "Ex.: Desconto Premium",
-        "sellMarkupNameLabel": "Nome do bônus",
-        "sellMarkupNamePlaceholder": "Ex.: Bônus Premium"
-      },
-      "byKind": {
-        "attributeDefinitions": {
-          "title": "Atributos de {name}",
-          "linkExistingHeader": "Usar atributos que já existem",
-          "createNewLabel": "Criar uma página nova de atributos",
-          "createNewDescription": "Cria uma página nova de Atributos com 4 atributos prontos: HP, ATK, DEF e SPD. Você pode renomear, adicionar mais ou remover depois. A mesma página pode ser reaproveitada por outros personagens.",
-          "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria o personagem sem atributos agora. Você pode ligar uma página de atributos depois."
-        },
-        "currency": {
-          "title": "Moeda de {name}",
-          "linkExistingHeader": "Usar uma moeda que já existe",
-          "createNewLabel": "Criar uma moeda nova",
-          "createNewDescription": "Cria uma página de Economia com uma moeda básica (Coins). Dá pra renomear, trocar o símbolo e ajustar depois.",
-          "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a página sem moeda. Os campos de compra e venda ficam vazios até você ligar uma."
-        },
-        "itemIngredient": {
-          "title": "Ingrediente da receita de {name}",
-          "linkExistingHeader": "Usar um item que já existe",
-          "createNewLabel": "Criar um item novo pro ingrediente",
-          "createNewDescription": "Cria uma página de Item nova pra este ingrediente, já com inventário e preço. Dá pra adicionar mais ingredientes depois, na própria receita.",
-          "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a receita sem ingrediente agora. Você pode ligar um item depois na página da receita."
-        },
-        "itemOutput": {
-          "title": "Resultado da receita de {name}",
-          "linkExistingHeader": "Usar um item que já existe",
-          "createNewLabel": "Criar um item novo pro resultado",
-          "createNewDescription": "Cria uma página de Item nova pro resultado desta receita, já com inventário e preço. O nome abaixo vira o título da página.",
-          "skipLabel": "Deixar pra depois",
-          "skipDescription": "Cria a receita sem definir o resultado agora. Você pode ligar um item depois na página da receita."
-        }
-      },
-      "linkExistingHeader": "Ligar a uma página existente",
-      "otherOptionsHeader": "Outras opções",
-      "createNewLabelPrefix": "Criar uma página nova",
-      "createNewDescription": "Cria a página nova e já liga pra você.",
-      "skipLabel": "Continuar sem ligar",
-      "skipDescription": "Cria a página sem ligação. Você pode ligar depois.",
-      "cancel": "Cancelar",
-      "confirm": "Confirmar e criar",
-      "close": "Fechar",
-      "stepOf": "Passo {current} de {total}",
-      "attrCountOne": "{n} atributo",
-      "attrCountMany": "{n} atributos",
-      "noAttrs": "sem atributos",
-      "currencyNoName": "(sem nome)",
-      "currencyCodeLabel": "código",
-      "currencyKindLabel": "tipo"
-    }
-  },
-  "pageCreationReview": {
-    "ariaLabel": "Revisar criação",
-    "title": "Pronto para criar",
-    "description": "Confira o que vai ser criado e vinculado antes de confirmar. Se algo estiver errado, clique em Voltar pra ajustar.",
-    "existingTag": "(existente)",
-    "newTag": "nova página",
-    "skip": "deixar em branco",
-    "currencyLabel": "Moeda",
-    "economyLabel": "Economia",
-    "priceLine": "Compra {buy}, venda {sell}",
-    "discountDefaultName": "Desconto",
-    "markupDefaultName": "Bônus",
-    "newDiscount": "novo desconto {name} ({pct}%)",
-    "newMarkup": "novo bônus {name} (+{pct}%)",
-    "newDiscountLabel": "Nova página de desconto",
-    "newDiscountValue": "\"{name}\" ({pct}%)",
-    "newMarkupLabel": "Nova página de bônus",
-    "newMarkupValue": "\"{name}\" (+{pct}%)",
-    "appliedModifiersLabel": "Modificadores aplicados",
-    "existingModifiers": "{buy} desconto(s) e {sell} bônus existentes",
-    "attributesLabel": "Atributos",
-    "attrCountOne": "{n} atributo",
-    "attrCountMany": "{n} atributos",
-    "effectsLabel": "Efeitos",
-    "progressionLabel": "Progressão",
-    "progressionValue": "níveis {start}–{end}, crescimento {growth}",
-    "ingredientLabel": "Ingrediente",
-    "recipeLabel": "Receita",
-    "recipeValue": "{inQty} ingrediente(s) → {outQty} resultado(s), {time}s",
-    "outputLabel": "Resultado",
-    "addonsLabel": "Addons",
-    "cancel": "Cancelar tudo",
-    "back": "Voltar",
-    "confirm": "Criar tudo"
   },
   "auth": {
     "login": {
@@ -553,9 +200,9 @@
       "authorizeTitle": "Autorizar acesso",
       "signedInAs": "Conectado como",
       "clientWants": "{{client}} quer permissão para:",
-      "permRead": "Ler seus projetos, seções e addons",
+      "permRead": "Ler seus projetos e páginas",
       "permWrite": "Criar e editar conteúdo nos seus GDDs",
-      "permDelete": "Excluir seções e addons quando você pedir",
+      "permDelete": "Excluir páginas quando você pedir",
       "deny": "Recusar",
       "approve": "Autorizar",
       "revokeNote": "Você pode revogar esse acesso quando quiser em Configurações."
@@ -837,10 +484,6 @@
     "tagFilterSelectedCount": "tags selecionadas",
     "tagFilterClear": "Limpar filtro",
     "tagFilterNoTags": "Nenhuma tag disponível.",
-    "addonFilterLabel": "Filtrar por addons",
-    "addonFilterSelectedCount": "addons selecionados",
-    "addonFilterClear": "Limpar filtro",
-    "addonFilterNoAddons": "Nenhum addon disponível.",
     "expandAllSections": "Expandir todas as seções",
     "collapseAllSections": "Colapsar todas as seções",
     "resultsFoundOne": "resultado encontrado",
@@ -879,15 +522,7 @@
     "aiChat": {
       "invalidJsonObject": "JSON inválido: esperado um objeto.",
       "invalidJsonSyntax": "JSON inválido: verifique aspas, vírgulas e chaves.",
-      "commandFormatAddonCreate": "Formato inválido em ADDON_CRIAR. Use: ADDON_CRIAR: sectionId | addonType | jsonData",
-      "commandFormatAddonEdit": "Formato inválido em ADDON_EDITAR. Use: ADDON_EDITAR: sectionId | addonId | jsonPatch",
-      "commandFormatAddonRemove": "Formato inválido em ADDON_REMOVER. Use: ADDON_REMOVER: sectionId | addonId",
       "sectionNotFound": "Seção não encontrada",
-      "addonNotFound": "Addon não encontrado",
-      "addonTypeNotSupported": "Tipo de addon não suportado nesta versão",
-      "addonCreated": "Addon criado",
-      "addonUpdated": "Addon atualizado",
-      "addonRemoved": "Addon removido",
       "actionsExecuted": "de",
       "actionsExecutedSuffix": "ações executadas",
       "actionsReadyPrefix": "Ações prontas para execução",
@@ -902,11 +537,6 @@
       "filterInfo": "Infos",
       "noWarningsForFilter": "Nenhum aviso neste filtro.",
       "criticalAcknowledgeLabel": "Entendi os avisos críticos e quero continuar mesmo assim.",
-      "opportunityInventoryMissing": "ADDON_OPORTUNIDADE: \"{{title}}\" parece item/entidade de inventário, mas não há ADDON_CRIAR inventory no plano.",
-      "opportunityEconomyLinkMissing": "ADDON_OPORTUNIDADE: \"{{title}}\" menciona compra/venda/preço, mas não há ADDON_CRIAR economyLink no plano.",
-      "opportunityProductionMissing": "ADDON_OPORTUNIDADE: \"{{title}}\" sugere produção/receita/passivo, mas não há ADDON_CRIAR production no plano.",
-      "opportunityProgressionMissing": "ADDON_OPORTUNIDADE: \"{{title}}\" sugere progressão por nível/XP, mas não há ADDON_CRIAR xpBalance ou progressionTable no plano.",
-      "opportunityPetAddonMissing": "ADDON_OPORTUNIDADE: \"{{title}}\" parece pet/animal; avalie inventory (armazenamento), economyLink (compra/venda) e production (geração passiva).",
       "confirmButton": "Confirmar",
       "cancelButton": "Cancelar"
     },
@@ -1069,746 +699,6 @@
       "exportFailed": "Erro ao exportar o documento. Tente novamente."
     }
   },
-  "balanceAddon": {
-    "addonTypeLabel": "Balanceamento de XP",
-    "nameLabel": "Nome do bloco",
-    "namePlaceholder": "Ex.: XP por Level",
-    "removeButton": "Remover addon",
-    "removeConfirm": "Tem certeza que deseja remover este addon de balanceamento?",
-    "profile": {
-      "rpg": "RPG",
-      "idle": "Idle",
-      "roguelite": "Roguelite",
-      "casual": "Casual"
-    },
-    "simulation": {
-      "title": "Simulacao de sessao",
-      "xpRateMode": {
-        "fixed": "XP fixo",
-        "byLevelRange": "XP por faixas de level"
-      }
-    },
-    "target": {
-      "title": "Meta de progressao"
-    },
-    "presets": {
-      "linear": {
-        "label": "Linear",
-        "tip": "Linear aumenta sempre no mesmo ritmo (ex.: +50 XP por level). Use quando voce quer uma progressao simples e previsivel. Funciona muito bem em jogos casuais, educativos ou projetos pequenos onde a leitura precisa ser facil."
-      },
-      "exponential": {
-        "label": "Exponencial",
-        "tip": "Exponencial comeca suave e fica mais pesado conforme o level sobe. Use quando voce quer que os primeiros niveis sejam rapidos e o endgame seja desafiador. Comum em RPGs, MMOs e jogos com foco em longo prazo."
-      },
-      "tiered": {
-        "label": "Por tiers",
-        "tip": "Por tiers divide a progressao em faixas (ex.: 1-10, 11-20...) e cada faixa pode subir mais forte. Use quando voce quer marcos claros de dificuldade, como novos mundos/atos/ranks. Muito util em idle games, roguelites e jogos por capitulos."
-      },
-      "softCap": {
-        "label": "Soft cap",
-        "tip": "Soft cap cresce rapido no inicio e desacelera perto de um teto, sem travar de forma brusca. Ideal para jogos com progressao longa e necessidade de controle no endgame."
-      },
-      "hardCap": {
-        "label": "Hard cap",
-        "tip": "Hard cap define um limite maximo absoluto. Quando chega no teto, para de subir. Ideal para evitar inflacao total em jogos competitivos ou economias muito sensiveis."
-      },
-      "diminishingReturns": {
-        "label": "Retorno decrescente",
-        "tip": "Retorno decrescente aumenta cada vez menos a cada level. Bom para sistemas de atributos/passivas onde voce quer evitar que um stat escale demais."
-      },
-      "piecewise": {
-        "label": "Por estagios",
-        "tip": "Por estagios usa um ritmo antes de um marco e outro ritmo depois. Bom para jogos por capitulos, temporadas ou mudancas de meta no mid/endgame."
-      }
-    },
-    "params": {
-      "base": {
-        "label": "base",
-        "tooltip": "Define o ponto de partida. E quanto custa (ou vale) no comeco dos levels.",
-        "expected": "Se aumentar base, os niveis iniciais ficam mais caros/fortes. Se reduzir, o inicio fica mais leve."
-      },
-      "growth": {
-        "label": "growth",
-        "tooltip": "Controla o ritmo de crescimento entre os levels. Pense como o acelerador da curva.",
-        "expected": "Growth maior faz a curva subir mais rapido. Growth menor deixa a progressao mais suave."
-      },
-      "offset": {
-        "label": "offset",
-        "tooltip": "Ajuste fixo somado no final. Serve para corrigir tudo de uma vez sem mexer no formato da curva.",
-        "expected": "Offset positivo sobe todos os valores. Offset negativo desce todos os valores."
-      },
-      "tierStep": {
-        "label": "tierStep",
-        "tooltip": "Define de quantos em quantos levels muda a faixa (tier). Ex.: 10 cria faixas 1-10, 11-20...",
-        "expected": "TierStep menor cria mudancas mais frequentes. TierStep maior deixa as mudancas mais espacadas."
-      },
-      "tierMultiplier": {
-        "label": "tierMultiplier",
-        "tooltip": "Forca de aumento aplicada quando troca de faixa. E o tamanho do degrau entre tiers.",
-        "expected": "Multiplier maior gera saltos mais agressivos. Multiplier menor deixa transicoes mais suaves."
-      },
-      "capValue": {
-        "label": "capValue",
-        "tooltip": "Valor de teto usado por formulas de cap (soft/hard/diminishing).",
-        "expected": "Aumentar capValue permite endgame mais alto antes de estabilizar."
-      },
-      "capStrength": {
-        "label": "capStrength",
-        "tooltip": "Forca da aproximacao ao cap no soft cap.",
-        "expected": "Maior capStrength faz a curva encostar no teto mais cedo."
-      },
-      "plateauStartLevel": {
-        "label": "plateauStartLevel",
-        "tooltip": "Level em que comeca o segundo estagio da curva piecewise.",
-        "expected": "Menor valor antecipa a mudanca de ritmo da progressao."
-      },
-      "plateauFactor": {
-        "label": "plateauFactor",
-        "tooltip": "Redutor de crescimento no segundo estagio da curva piecewise.",
-        "expected": "Menor plateauFactor deixa o trecho final mais suave."
-      }
-    }
-  },
-  "progressionTableAddon": {
-    "addonTypeLabel": "Tabela de balanceamento",
-    "defaultName": "Tabela de balanceamento",
-    "nameLabel": "Nome da tabela",
-    "namePlaceholder": "Ex.: Galinha - Balanceamento geral",
-    "startLevelLabel": "Level inicial",
-    "endLevelLabel": "Level final",
-    "columnsByLevel": "Colunas de atributos por level",
-    "generateAllColumns": "Gerar todas as colunas",
-    "exportButton": "Exportar JSON",
-    "addColumnButton": "+ Coluna",
-    "exportSuccess": "JSON exportado com sucesso.",
-    "exportError": "Nao foi possivel exportar o JSON.",
-    "dragBlockAria": "Arrastar bloco",
-    "columnFallback": "Coluna",
-    "removeColumnButton": "Remover",
-    "duplicateColumnButton": "Duplicar",
-    "modeLabel": "Modo",
-    "mode": {
-      "manual": "Manual",
-      "linear": "Linear",
-      "exponential": "Exponencial",
-      "formula": "Formula"
-    },
-    "decimalsLabel": "Casas decimais",
-    "percentageLabel": "Percentual (%)",
-    "minLabel": "Minimo",
-    "maxLabel": "Maximo",
-    "noLimitPlaceholder": "Sem limite",
-    "baseLabel": "Base",
-    "stepLabel": "Step",
-    "growthLabel": "Growth",
-    "biasLabel": "Curvatura",
-    "growthHintWithBias": "Com curvatura != 1, Growth e a taxa efetiva entre os extremos. A taxa por level varia ao longo da curva.",
-    "biasHelpAria": "Ajuda sobre o parametro de curvatura",
-    "biasHelpTitle": "Forma da curva",
-    "biasHelpBody": "Mantem Base e o valor final fixos, mas muda a forma entre eles. 1.0 = exponencial pura. Maior que 1 = cresce devagar no inicio e rapido no fim (grind tardio). Menor que 1 = cresce rapido no inicio e alisa no fim.",
-    "biasHelpBodyLinear": "Mantem Base e o valor final fixos, mas muda a forma entre eles. 1.0 = linear pura. Maior que 1 = cresce devagar no inicio e rapido no fim. Menor que 1 = cresce rapido no inicio e alisa no fim.",
-    "stepHintWithBias": "Com curvatura != 1, Step e o incremento medio entre os extremos. A diferenca por level varia ao longo da curva.",
-    "baseColumnLabel": "Coluna base",
-    "selectPlaceholder": "Selecione...",
-    "expressionLabel": "Expressao",
-    "formulaHelpAria": "Ajuda sobre variaveis e funcoes da formula",
-    "cheatsheetTitle": "Cheatsheet rapido",
-    "formulaVariables": "Variaveis: base, level, delta",
-    "formulaFunctions": "Funcoes: min, max, round, floor, ceil, abs, pow",
-    "formulaRecipes": "Receitas prontas",
-    "expressionPlaceholder": "base * 1.25 + delta * 2",
-    "generatedNow": "Gerado agora",
-    "overwritesColumn": "Sobrescreve toda a coluna",
-    "generateButton": "Gerar",
-    "clampApplied": "Limite aplicado em {count} valor(es) desta coluna.",
-    "levelHeader": "Level",
-    "levelPrefix": "Lv",
-    "readOnlyShowAll": "Mostrar todos os {count} níveis",
-    "readOnlyShowLess": "Mostrar menos",
-    "removeAddonButton": "Remover addon",
-    "showValuesButton": "Mostrar valores",
-    "hideValuesButton": "Ocultar valores",
-    "showingRows": "Mostrando {shown} de {total} niveis.",
-    "autoIntervalButton": "Auto",
-    "autoIntervalAriaLabel": "Auto-gerar base e step/growth a partir do intervalo",
-    "autoIntervalTitle": "Preencher intervalo",
-    "autoIntervalFromLabel": "Valor no Lv {level}",
-    "autoIntervalToLabel": "Valor no Lv {level}",
-    "autoIntervalApply": "Aplicar",
-    "autoIntervalCancel": "Cancelar",
-    "linkLibraryButton": "Vincular à Biblioteca de Campos",
-    "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
-    "unlinkLibraryAriaLabel": "Desvincular da Biblioteca",
-    "libraryPickerTitle": "Selecionar campo da Biblioteca",
-    "libraryPickerSearchPlaceholder": "Buscar coluna...",
-    "libraryPickerEmpty": "Nenhuma coluna encontrada",
-    "overrideCount": "{count} manual(is)",
-    "resetOverrideAriaLabel": "Resetar ao valor gerado",
-    "resetAllOverridesButton": "↺ Resetar",
-    "resetAllOverridesAriaLabel": "Resetar todos os valores manuais desta coluna",
-    "warnings": {
-      "invalidLinearParams": "Parametros da formula linear invalidos.",
-      "invalidExponentialParams": "Parametros da formula exponencial invalidos.",
-      "growthMustBePositive": "Growth deve ser maior que zero.",
-      "emptyExpression": "A expressao da formula nao pode ficar vazia.",
-      "invalidFormula": "Formula invalida. Use base/level/delta, funcoes min/max/round/floor/ceil/abs/pow e operadores + - * / ( ) ,.",
-      "selectBaseColumn": "Selecione a coluna base para a formula.",
-      "baseCannotBeSelf": "A coluna base nao pode ser a propria coluna.",
-      "baseNoLongerExists": "A coluna base selecionada nao existe mais.",
-      "baseAfterColumn": "A coluna base esta depois desta coluna. Reordene para gerar corretamente.",
-      "minGreaterThanMax": "Minimo maior que maximo. Os limites serao ajustados automaticamente.",
-      "outOfBounds": "{count} valor(es) fora dos limites definidos para esta coluna.",
-      "hasNonNumeric": "Ha valores nao numericos (NaN) nesta coluna.",
-      "hasNegative": "Ha valores negativos nesta coluna.",
-      "invalidBias": "Curvatura deve ser maior que zero. Usando 1.0 como fallback.",
-      "brokenLibraryRef": "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback.",
-      "autoIntervalExpNeedsPositive": "Exponencial requer ambos os valores com o mesmo sinal e diferentes de zero.",
-      "autoIntervalRangeTooSmall": "O level final deve ser maior que o inicial.",
-      "autoIntervalInvalidValues": "Valores invalidos."
-    },
-    "sheets": {
-      "syncAllButton": "⟳ Sincronizar Sheets",
-      "syncingButton": "⟳ Sincronizando...",
-      "chipSynced": "Vinculada ao Google Sheets",
-      "chipNotSynced": "Vinculada ao Sheets — ainda não sincronizada",
-      "boundTitle": "Google Sheets vinculada",
-      "syncButton": "⟳ Sincronizar",
-      "unbindButton": "Desvincular",
-      "lastSyncLabel": "Última sincronização: {date}",
-      "neverSynced": "Nunca sincronizado — clique em Sincronizar",
-      "formTitle": "Vincular ao Google Sheets",
-      "spreadsheetLabel": "Planilha",
-      "customUrlOption": "URL personalizada...",
-      "urlLabel": "URL da Planilha",
-      "sheetLabel": "Aba",
-      "sheetSelectPlaceholder": "Selecione...",
-      "rangeLabel": "Intervalo",
-      "rangePlaceholder": "B2:B51",
-      "bindButton": "Vincular e Sincronizar",
-      "bindingButton": "⟳ Vinculando...",
-      "openFormButton": "Vincular ao Google Sheets",
-      "cancelButton": "Cancelar",
-      "errorNoClientId": "Google Client ID não configurado.",
-      "errorAuthFailed": "Falha na autenticação Google.",
-      "errorFetchFailed": "Erro ao buscar dados da planilha.",
-      "errorSyncGeneric": "Erro inesperado ao sincronizar.",
-      "errorBindGeneric": "Erro inesperado ao vincular.",
-      "errorInvalidUrl": "URL de planilha inválida.",
-      "errorNoSheet": "Informe o nome da aba.",
-      "errorNoRange": "Informe o intervalo (ex: B2:B51)."
-    }
-  },
-  "economyLinkAddon": {
-    "addonTypeLabel": "Economia vinculada",
-    "defaultName": "Economy Link",
-    "nameLabel": "Nome do bloco",
-    "namePlaceholder": "Ex.: Economia da Loja",
-    "buyTitle": "Quanto custa comprar",
-    "buySummaryLabel": "Compra",
-    "buySummaryStart": "Compre por",
-    "buySummaryModifierPrefix": ", com desconto aplicado de ",
-    "buySummaryMinSuffix": " com minimo final de ",
-    "buyShortTitle": "Compra",
-    "hasBuyConfig": "Tem configuracao de compra",
-    "buyCurrency": "Moeda de compra",
-    "buyCurrencyPlaceholder": "Ex.: Coins",
-    "buyValue": "Valor de compra",
-    "minBuyValue": "Minimo de compra",
-    "effectiveValueLabel": "Valor final",
-    "buyModifiers": "Variaveis de compra (refs, separadas por virgula)",
-    "openVariableLinkTitle": "Abrir variavel global",
-    "sellTitle": "Quanto rende vender",
-    "sellSummaryLabel": "Venda",
-    "sellSummaryStart": "Venda por",
-    "sellSummaryModifierPrefix": ", com bonus de ",
-    "sellSummaryMaxSuffix": " com maximo final de ",
-    "sellShortTitle": "Venda",
-    "hasSellConfig": "Tem configuracao de venda",
-    "sellCurrency": "Moeda de venda",
-    "sellCurrencyPlaceholder": "Ex.: Coins",
-    "sellValue": "Valor de venda",
-    "maxSellValue": "Maximo de venda",
-    "sellModifiers": "Variaveis de venda (refs, separadas por virgula)",
-    "modifiersPlaceholder": "Ex.: var-compra-desconto, var-evento-preco",
-    "productionTitle": "Producao",
-    "hasProductionConfig": "Tem configuracao de producao",
-    "producedItem": "Item produzido (ref da pagina)",
-    "producedItemPlaceholder": "Ex.: item-milho",
-    "produceMin": "Qtd minima",
-    "produceMax": "Qtd maxima",
-    "produceRange": "Quantidade produzida",
-    "productionTimeSeconds": "Tempo de producao (segundos)",
-    "productionTimeLabel": "Tempo de producao",
-    "productionSummaryLabel": "Produz",
-    "productionSummaryTo": "a",
-    "productionSummaryIn": "em",
-    "unlockTitle": "Desbloqueio",
-    "unlockSummaryLabel": "Desbloqueio",
-    "unlockSummaryStart": "Libera no LV",
-    "unlockSummaryRefOnly": "Liberado por",
-    "hasUnlockConfig": "Tem configuracao de desbloqueio",
-    "unlockRef": "Pagina de XP",
-    "unlockRangeLabel": "LV permitido",
-    "unlockRefPlaceholder": "Ex.: progressao-fazenda",
-    "unlockValue": "LV de desbloqueio",
-    "priceMultiplierTitle": "Multiplicador de Preço",
-    "priceMultiplierLabel": "Multiplicador",
-    "priceMultiplierDefault": "padrão: ×1",
-    "unlockProgressionHint": "Este nível está sendo usado como índice nas curvas de preço vinculadas. Altere o nível para ver os valores atualizados automaticamente.",
-    "unlockProgressionWarning": "Há curvas de preço vinculadas, mas o Desbloqueio está desativado. Ative-o e defina um nível para que os vínculos possam resolver os valores.",
-    "notes": "Observacoes",
-    "notesPlaceholder": "Resumo rapido para o time",
-    "selectNone": "Sem referencia",
-    "manualRef": "Referencia manual",
-    "noInventoryPages": "Nenhuma pagina com addon de estoque encontrada.",
-    "invalidBuyCurrencyRef": "Referencia invalida (moeda de compra nao encontrada)",
-    "invalidSellCurrencyRef": "Referencia invalida (moeda de venda nao encontrada)",
-    "invalidProducedItemRef": "Referencia invalida (nao encontrada em paginas com estoque)",
-    "invalidProducedItemRefShort": "referencia invalida para estoque",
-    "invalidUnlockRef": "Referencia invalida (nao encontrada em paginas com addon de XP)",
-    "invalidUnlockRefShort": "referencia invalida para XP",
-    "noXpPages": "Nenhuma pagina com addon de XP encontrada.",
-    "notConfigured": "nao configurado",
-    "boolean": {
-      "true": "Sim",
-      "false": "Nao"
-    },
-    "refNotFound": "referencia nao encontrada",
-    "none": "nenhuma",
-    "emptyValue": "nao informado",
-    "removeAddonButton": "Remover addon",
-    "validation": {
-      "buyCurrencyRequired": "Preencha a moeda de compra quando houver valor de compra.",
-      "sellCurrencyRequired": "Preencha a moeda de venda quando houver valor de venda.",
-      "produceRange": "Quantidade minima nao pode ser maior que a maxima."
-    }
-  },
-  "craftTableAddon": {
-    "addonTypeLabel": "Craft Table",
-    "defaultName": "Mesa de Produção",
-    "entriesTitle": "Receitas da mesa",
-    "addEntry": "Adicionar receita",
-    "removeEntry": "Remover",
-    "removeAddon": "Remover addon",
-    "noEntries": "Nenhuma receita ainda. Clique em 'Adicionar receita' para começar.",
-    "noEntriesReadOnly": "Nenhuma receita cadastrada.",
-    "noProductionRef": "— sem receita —",
-    "productionRef": "Receita (Production)",
-    "selectNone": "Sem receita",
-    "invalidProductionRef": "Receita não encontrada",
-    "unknownRecipe": "Receita não encontrada",
-    "newRecipe": "Nova receita",
-    "passiveHint": "passiva",
-    "category": "Categoria",
-    "categoryPlaceholder": "Ex: Armas, Consumíveis",
-    "uncategorized": "Sem categoria",
-    "dragAria": "Arrastar receita",
-    "available": "Disponível no jogo",
-    "availableTitle": "Quando desligado, a receita fica marcada como indisponível no export do jogo.",
-    "unavailable": "Indisponível",
-    "unlockTitle": "Desbloqueio",
-    "unlockLevel": "Nível",
-    "unlockCurrency": "Moeda",
-    "unlockItem": "Item",
-    "selectXp": "Página de XP",
-    "selectCurrency": "Selecione a moeda",
-    "selectItem": "Selecione o item",
-    "invalidXpRef": "XP não encontrado",
-    "invalidCurrencyRef": "Moeda não encontrada",
-    "invalidItemRef": "Item não encontrado",
-    "levelPlaceholder": "LV",
-    "amountPlaceholder": "Valor",
-    "quantityPlaceholder": "Qtd",
-    "alwaysUnlocked": "Sempre desbloqueado",
-    "refNotFound": "referência não encontrada"
-  },
-  "productionAddon": {
-    "addonTypeLabel": "Producao",
-    "defaultName": "Production",
-    "craftTablesBlockLabel": "Mesas de produção associadas",
-    "craftTablesHint": "Marque as mesas onde esta receita deve aparecer. A mesa passa a listar esta receita automaticamente.",
-    "craftTablesEmpty": "Nenhuma Mesa de Produção criada neste projeto ainda. Crie uma para registrar esta receita nela.",
-    "openCraftTable": "Abrir mesa de produção",
-    "createProgressionPageCta": "Criar página com progressão",
-    "inventoryEmptyHint": "Nenhuma página com Inventário neste projeto. Crie uma página de Itens primeiro.",
-    "createItemsPageCta": "Criar página de Itens",
-    "modeLabel": "Modo de producao",
-    "mode": {
-      "passive": "Passiva",
-      "recipe": "Receita"
-    },
-    "outputRefLabel": "Item produzido",
-    "openItemLinkLabel": "Abrir item",
-    "openItemLinkTitle": "Abrir pagina do item",
-    "progressionColumnLinkLabel": "Balanceamento",
-    "noProgressionLinkOption": "Sem vinculo",
-    "invalidProgressionLinkOption": "Vinculo invalido (coluna removida)",
-    "levelMinBadge": "Lv min",
-    "levelMidBadge": "Lv medio",
-    "levelMaxBadge": "Lv max",
-    "minOutputLabel": "Qtd minima",
-    "maxOutputLabel": "Qtd maxima",
-    "intervalSecondsLabel": "Tempo (segundos)",
-    "requiresCollectionLabel": "Requer coleta manual",
-    "capacityLabel": "Capacidade maxima",
-    "ingredientsLabel": "Ingredientes",
-    "addIngredientButton": "+ Ingrediente",
-    "outputsLabel": "Saidas",
-    "addOutputButton": "+ Saida",
-    "craftTimeSecondsLabel": "Tempo de receita (segundos)",
-    "selectNone": "Sem referencia",
-    "removeAddonButton": "Remover addon",
-    "emptyValue": "nao informado",
-    "refNotFound": "referencia nao encontrada",
-    "passiveSummaryStart": "Produz",
-    "passiveSummaryAdverb": "passivamente",
-    "toConnector": "a",
-    "inConnector": "em",
-    "recipeSummaryStart": "Receita",
-    "producedOn": "Produzida na mesa",
-    "recipeToConnector": "->",
-    "none": "nenhum"
-  },
-  "dataSchemaAddon": {
-    "addonTypeLabel": "Schema de Dados",
-    "defaultName": "Schema de Dados",
-    "addStatButton": "+ Campo",
-    "newStatLabel": "Novo campo",
-    "emptyState": "Nenhum campo ainda. Clique em \"+ Campo\" para começar.",
-    "keyLabel": "Chave",
-    "keyPlaceholder": "harvest_xp",
-    "labelLabel": "Nome",
-    "labelPlaceholder": "XP de colheita",
-    "typeLabel": "Tipo",
-    "valueLabel": "Valor",
-    "minLabel": "Mínimo",
-    "maxLabel": "Máximo",
-    "unitLabel": "Unidade (opcional)",
-    "unitXpRefLabel": "Vínculo com página de XP (opcional)",
-    "unitPlaceholder": "s, kg, pts",
-    "selectNone": "Sem vínculo",
-    "invalidUnitXpRef": "Vínculo inválido (página de XP não encontrada)",
-    "removeStatButton": "Remover campo",
-    "removeAddonButton": "Remover addon",
-    "readOnlyEmpty": "Nenhum campo configurado.",
-    "readOnlyLabelKey": "Nome / Chave",
-    "readOnlyValue": "Valor",
-    "readOnlyTypeUnit": "Tipo / Unidade",
-    "linkLibraryButton": "Vincular à Biblioteca de Campos",
-    "linkLibraryAriaLabel": "Vincular a Biblioteca de Campos",
-    "unlinkLibraryAriaLabel": "Desvincular da Biblioteca",
-    "libraryPickerTitle": "Selecionar campo da Biblioteca",
-    "libraryPickerSearchPlaceholder": "Buscar campo...",
-    "libraryPickerEmpty": "Nenhum campo encontrado",
-    "validation": {
-      "keyRequired": "A chave é obrigatória.",
-      "keyUnique": "A chave deve ser única."
-    },
-    "warnings": {
-      "brokenLibraryRef": "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback."
-    }
-  },
-  "richDocAddon": {
-    "addonTypeLabel": "Doc",
-    "defaultName": "Documento",
-    "namePlaceholder": "Nome do documento",
-    "editorPlaceholder": "Editor rico (BlockNote)",
-    "blocksSuffix": "bloco(s)",
-    "blocksLabel": "bloco(s) de conteúdo rico",
-    "emptyState": "Documento vazio",
-    "slashMenu": {
-      "calloutsGroup": "Callouts",
-      "embed": {
-        "title": "Incorporar vídeo",
-        "subtext": "YouTube, Vimeo, Loom, Streamable"
-      },
-      "driveImage": {
-        "title": "Imagem do Drive",
-        "subtext": "Selecionar imagem do Google Drive"
-      },
-      "callout": {
-        "note": {
-          "title": "Nota",
-          "subtext": "Informação geral ou anotação"
-        },
-        "warning": {
-          "title": "Atenção",
-          "subtext": "Cuidado, pegadinha ou risco"
-        },
-        "design-decision": {
-          "title": "Decisão de design",
-          "subtext": "Registro de uma escolha — por que decidimos assim"
-        },
-        "balance-note": {
-          "title": "Nota de balanceamento",
-          "subtext": "Observação de playtest ou preocupação de balanceamento"
-        }
-      }
-    }
-  },
-  "fieldLibraryAddon": {
-    "addonTypeLabel": "Biblioteca de Campos",
-    "defaultName": "Biblioteca de Campos",
-    "addEntryButton": "+ Campo",
-    "newEntryLabel": "Novo campo",
-    "emptyState": "Nenhum campo definido ainda.",
-    "fallbackTitle": "Campo",
-    "dragAria": "Arrastar bloco",
-    "helpText": "Defina aqui campos reutilizáveis. Em uma Tabela de Balanceamento ou Schema de Dados, vincule um campo a uma entrada desta biblioteca para herdar nome e chave.",
-    "labelLabel": "Nome",
-    "labelPlaceholder": "Preço de Venda",
-    "keyLabel": "Chave",
-    "keyPlaceholder": "sell_price",
-    "descriptionLabel": "Descrição (opcional)",
-    "descriptionPlaceholder": "Para que serve este campo no jogo...",
-    "removeEntryButton": "Remover campo",
-    "readOnlyEmpty": "Nenhum campo definido.",
-    "readOnlyColLabel": "Nome",
-    "readOnlyColKey": "Chave",
-    "readOnlyColDescription": "Descrição",
-    "readOnlyColUsage": "Usado em",
-    "summaryCount": "{count} campos definidos",
-    "summaryUsages": "{count} usos no projeto",
-    "usedInBadge": "{count} usos",
-    "notUsedBadge": "Não usado",
-    "validation": {
-      "keyRequired": "A chave é obrigatória.",
-      "keyUnique": "A chave deve ser única."
-    }
-  },
-  "attributeDefinitionsAddon": {
-    "addonTypeLabel": "Definições de Atributos",
-    "defaultName": "Definições de Atributos",
-    "addButton": "+ Atributo",
-    "newAttribute": "Novo atributo",
-    "emptyState": "Nenhum atributo definido ainda.",
-    "fallbackTitle": "Atributo",
-    "dragAria": "Arrastar bloco",
-    "identificationBlockLabel": "Identificação",
-    "valueBlockLabel": "Valor",
-    "boundsBlockLabel": "Limites",
-    "useBoundsLabel": "Usar",
-    "labelLabel": "Nome",
-    "keyLabel": "Chave",
-    "typeLabel": "Tipo",
-    "defaultValueLabel": "Valor padrão",
-    "minLabel": "Mínimo",
-    "maxLabel": "Máximo",
-    "unitLabel": "Unidade (opcional)",
-    "removeAttribute": "Remover atributo",
-    "removeAddonButton": "Remover addon",
-    "readOnlyEmpty": "Nenhum atributo definido."
-  },
-  "attributeProfileAddon": {
-    "addonTypeLabel": "Perfil de Atributos",
-    "defaultName": "Perfil de Atributos",
-    "definitionsRefBlockLabel": "Referência",
-    "definitionsRefLabel": "Referência de definições",
-    "fallbackTitle": "Valor",
-    "dragAria": "Arrastar bloco",
-    "valueBlockLabel": "Valor",
-    "selectNone": "Sem referência",
-    "valuesTitle": "Valores do perfil",
-    "addValueButton": "+ Valor",
-    "emptyState": "Nenhum valor configurado ainda.",
-    "attributeLabel": "Atributo",
-    "selectAttribute": "Selecione um atributo",
-    "valueLabel": "Valor",
-    "removeValueButton": "Remover valor",
-    "removeAddonButton": "Remover addon",
-    "readOnlyEmpty": "Nenhum valor de atributo configurado."
-  },
-  "attributeModifiersAddon": {
-    "addonTypeLabel": "Modificadores de Atributos",
-    "defaultName": "Modificadores de Atributos",
-    "definitionsRefBlockLabel": "Referência",
-    "definitionsRefLabel": "Referência de definições",
-    "fallbackTitle": "Modificador",
-    "dragAria": "Arrastar bloco",
-    "modifierBlockLabel": "Modificador",
-    "nameLabel": "Nome (opcional)",
-    "namePlaceholder": "Ex.: Fireball impact, Burn DoT, Iron Skin...",
-    "selectNone": "Sem referência",
-    "modifiersTitle": "Modificadores",
-    "addModifierButton": "+ Modificador",
-    "emptyState": "Nenhum modificador configurado ainda.",
-    "attributeLabel": "Atributo",
-    "selectAttribute": "Selecione um atributo",
-    "modeLabel": "Modo",
-    "valueLabel": "Valor",
-    "removeModifierButton": "Remover modificador",
-    "removeAddonButton": "Remover addon",
-    "readOnlyEmpty": "Nenhum modificador configurado.",
-    "temporaryLabel": "Temporário",
-    "temporaryOn": "Por tempo limitado",
-    "temporaryOff": "Permanente",
-    "durationLabel": "Duração (segundos)",
-    "durationSuffix": "por {seconds}s",
-    "tickDurationSuffix": "cada {tick}s por {seconds}s",
-    "timingTickDuration": "a cada {tick}s durante {seconds}s (~{count} ticks)",
-    "timingTickOnly": "a cada {tick}s",
-    "timingDurationOnly": "durante {seconds}s",
-    "temporaryTag": "temporário",
-    "behaviorBlockLabel": "Comportamento",
-    "stackingLabel": "Empilhamento",
-    "stackingDefault": "Padrão",
-    "stackingUnique": "Único (ignora se já ativo)",
-    "stackingRefresh": "Renovar (reseta duração)",
-    "stackingStack": "Acumular",
-    "stacking_unique": "único",
-    "stacking_refresh": "renova",
-    "stacking_stack": "acumula",
-    "categoryLabel": "Categoria",
-    "categoryNone": "Não definida",
-    "categoryBuff": "Buff",
-    "categoryDebuff": "Debuff",
-    "categoryNeutral": "Neutro",
-    "category_buff": "Buff",
-    "category_debuff": "Debuff",
-    "category_neutral": "Neutro",
-    "tickIntervalLabel": "Intervalo de tick (s)",
-    "tickIntervalTooltip": "Convenção: trailing tick — o primeiro tick dispara em t=N (não em t=0). Total = floor(duração / intervalo) ticks. Ex.: dur=10, tick=1 → 10 aplicações em t=1..10.",
-    "tagsLabel": "Tags (separadas por vírgula)",
-    "tagsPlaceholder": "ex: poison, magical"
-  },
-  "currencyAddon": {
-    "addonTypeLabel": "Moeda",
-    "defaultName": "Currency",
-    "nameLabel": "Nome do bloco",
-    "namePlaceholder": "Ex.: Coins",
-    "codeLabel": "Codigo",
-    "codePlaceholder": "Ex.: COINS",
-    "codeDuplicate": "Este código já está em uso por outra moeda neste projeto.",
-    "displayNameLabel": "Nome exibido",
-    "displayNamePlaceholder": "Ex.: Moedas",
-    "summaryLabel": "Resumo",
-    "summaryStart": "Moeda",
-    "summaryTypePrefix": "tipo",
-    "summaryDecimalsNone": "sem casas decimais",
-    "summaryDecimalsSomeSuffix": "casas decimais",
-    "exchangesBlockLabel": "Conversões disponíveis",
-    "kindLabel": "Tipo de moeda",
-    "kind": {
-      "soft": "Soft",
-      "premium": "Premium",
-      "event": "Evento",
-      "other": "Outro"
-    },
-    "decimalsLabel": "Casas decimais",
-    "notesLabel": "Observacoes",
-    "notesPlaceholder": "Informacoes complementares desta moeda",
-    "none": "nenhuma",
-    "emptyValue": "nao informado",
-    "removeAddonButton": "Remover addon",
-    "validation": {
-      "codeRequired": "Preencha o codigo da moeda."
-    }
-  },
-  "globalVariableAddon": {
-    "addonTypeLabel": "Variavel global",
-    "defaultName": "Global Variable",
-    "nameLabel": "Nome do bloco",
-    "namePlaceholder": "Ex.: Bonus de venda",
-    "keyLabel": "Chave",
-    "keyPlaceholder": "Ex.: sell_bonus_pct",
-    "displayNameLabel": "Nome exibido",
-    "displayNamePlaceholder": "Ex.: Vende mais caro",
-    "summaryLabel": "Resumo",
-    "summaryStart": "Variavel",
-    "summaryTypePrefix": "tipo",
-    "summaryDefaultPrefix": "valor padrao",
-    "summaryScopePrefix": "escopo",
-    "usedByTitle": "Usado por",
-    "openUsageLinkTitle": "Abrir secao que usa esta variavel",
-    "usedByBuyBadge": "Compra",
-    "usedBySellBadge": "Venda",
-    "valueTypeLabel": "Tipo de valor",
-    "valueType": {
-      "percent": "Percentual",
-      "multiplier": "Multiplicador",
-      "flat": "Valor fixo",
-      "boolean": "Booleano"
-    },
-    "defaultValueLabel": "Valor padrao",
-    "boolean": {
-      "true": "Verdadeiro",
-      "false": "Falso"
-    },
-    "scopeLabel": "Escopo",
-    "scope": {
-      "global": "Global",
-      "mode": "Modo",
-      "event": "Evento",
-      "season": "Temporada"
-    },
-    "notesLabel": "Observacoes",
-    "notesPlaceholder": "Informacoes complementares desta variavel",
-    "none": "nenhuma",
-    "emptyValue": "nao informado",
-    "removeAddonButton": "Remover addon",
-    "validation": {
-      "keyRequired": "Preencha a chave da variavel global."
-    }
-  },
-  "inventoryAddon": {
-    "addonTypeLabel": "Estoque",
-    "defaultName": "Inventory",
-    "nameLabel": "Nome do bloco",
-    "namePlaceholder": "Ex.: Estoque do Item",
-    "categoryLabel": "Categoria de inventario",
-    "linkLibraryButton": "Vincular à Biblioteca de Campos",
-    "linkLibraryAriaLabel": "Vincular à Biblioteca de Campos",
-    "unlinkLibraryAriaLabel": "Desvincular da Biblioteca",
-    "libraryPickerTitle": "Selecionar campo da Biblioteca",
-    "brokenLibraryRef": "O campo vinculado à Biblioteca não foi encontrado. Usando o último nome salvo como fallback.",
-    "categoryPlaceholder": "Ex.: Consumivel",
-    "summaryLabel": "Resumo",
-    "summaryStart": "Item de categoria",
-    "summaryWeightPrefix": "Peso",
-    "summarySlotPrefix": "usa",
-    "summaryStackable": "permite pilha",
-    "summaryNotStackable": "nao permite pilha",
-    "summaryMaxStackPrefix": "max",
-    "summaryDurabilityPrefix": "Durabilidade",
-    "summaryMaxDurabilityPrefix": "durabilidade maxima",
-    "summaryVolumePrefix": "Volume",
-    "summaryBindPrefix": "vinculo",
-    "summaryShopPrefix": "Loja",
-    "summaryConsumablePrefix": "consumivel",
-    "summaryDiscardablePrefix": "descartavel",
-    "productionConnectionsTitle": "Conexoes de producao",
-    "openSectionLinkTitle": "Abrir secao relacionada",
-    "producedByLabel": "Produzido por",
-    "ingredientForLabel": "Ingrediente para",
-    "weightLabel": "Peso",
-    "slotSizeLabel": "Espaco no inventario (slots)",
-    "stackableLabel": "Pilha",
-    "maxStackLabel": "Maximo por pilha",
-    "hasDurabilityConfigLabel": "Usa durabilidade",
-    "durabilityLabel": "Durabilidade inicial",
-    "maxDurabilityLabel": "Durabilidade maxima",
-    "hasVolumeConfigLabel": "Usa volume",
-    "volumeLabel": "Volume ocupado",
-    "bindTypeLabel": "Vinculo do item",
-    "bindType": {
-      "none": "Sem vinculo",
-      "onPickup": "Vincula ao pegar",
-      "onEquip": "Vincula ao equipar"
-    },
-    "showInShopLabel": "Pode aparecer na Loja",
-    "consumableLabel": "Consumivel",
-    "discardableLabel": "Pode descartar",
-    "sheetsBoundTooltip": "Vinculado ao Google Sheets",
-    "boolean": {
-      "true": "Sim",
-      "false": "Nao"
-    },
-    "notesLabel": "Observacoes",
-    "notesPlaceholder": "Informacoes adicionais de inventario",
-    "none": "nenhuma",
-    "emptyValue": "nao informado",
-    "removeAddonButton": "Remover addon"
-  },
   "sectionDetail": {
     "notFound": "Seção não encontrada.",
     "errors": {
@@ -1829,7 +719,6 @@
       "mapColor": "Cor no mapa mental",
       "resetLevelColor": "Resetar para cor padrão do nível",
       "editSectionName": "Editar nome da seção",
-      "addAddon": "Adicionar addon nesta página",
       "moveSection": "Mover seção para outro local",
       "moveChildren": "Mover todos os filhos para...",
       "duplicateSection": "Duplicar página (Ctrl+D)",
@@ -1866,13 +755,6 @@
       "empty": "Thumb",
       "picking": "Abrindo...",
       "alt": "Thumb da página"
-    },
-    "addons": {
-      "reorderAria": "Reordenar addon",
-      "dragToReorder": "Arrastar para reordenar",
-      "nameInputAria": "Nome do addon",
-      "editNameTitle": "Editar nome do addon",
-      "expandCollapseAria": "Expandir/ocultar addon"
     },
     "dataId": {
       "duplicate": "Já existe uma página com este DataID neste projeto."
@@ -1950,43 +832,6 @@
       "title": "Mover filhos para...",
       "confirm": "Mover filhos"
     },
-    "copy": {
-      "title": "Copiar addon para...",
-      "description": "Copiar",
-      "descriptionTo": "para outra página",
-      "confirm": "Copiar",
-      "success": "Copiado para \"{section}\"",
-      "successBatch": "{count} addons copiados para \"{section}\"",
-      "noSections": "Nenhuma página disponível.",
-      "overwriteTitle": "A página \"{section}\" já possui:",
-      "overwriteWarning": "Copiar vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.",
-      "overwriteConfirm": "Sobrescrever",
-      "missingDepsTitle": "O destino não tem alguns addons que este precisa. Copiar junto?",
-      "missingDepsHint": "Marcados são copiados junto para os vínculos funcionarem. Desmarcados ficam sem vínculo no destino.",
-      "withDeps": " (+{n} dependências)"
-    },
-    "bulk": {
-      "selected": "{n} selecionados",
-      "hint": "(Ctrl/Cmd+clique adiciona, Shift+clique range)",
-      "nAddons": "{n} addons",
-      "remove": "Remover",
-      "removeConfirm": "Remover {n} addons?",
-      "removeWarning": "Esta ação não pode ser desfeita.",
-      "clear": "Limpar seleção"
-    },
-    "moveAddon": {
-      "title": "Mover addon para...",
-      "confirm": "Mover",
-      "descriptionTo": "para outra página",
-      "success": "Movido para \"{section}\"",
-      "successBatch": "{count} addons movidos para \"{section}\"",
-      "successWithRefs": "Movido para \"{section}\". {n} referências atualizadas.",
-      "refsSuffix": " {n} referências atualizadas.",
-      "depsTitle": "Este addon depende de addons desta página:",
-      "depsHint": "Marque para mover junto. Desmarcados ficam na página atual (as referências serão limpas).",
-      "overwriteWarning": "Mover vai sobrescrever os valores desse(s) addon(s) no destino. Esta ação não pode ser desfeita.",
-      "overwriteConfirm": "Sobrescrever"
-    },
     "picker": {
       "search": "Buscar página...",
       "noMatch": "Nenhuma página encontrada para \"{term}\"",
@@ -2031,23 +876,7 @@
         "content": "Descrição",
         "order": "Ordem",
         "color": "Cor",
-        "thumbnail": "Thumb",
-        "addonLabel": "Addon {{name}}"
-      },
-      "addonType": {
-        "xpBalance": "Balanceamento",
-        "progressionTable": "Tabela",
-        "economyLink": "Economia",
-        "currency": "Moeda",
-        "globalVariable": "Variável",
-        "inventory": "Inventário",
-        "production": "Produção",
-        "dataSchema": "Schema de Dados",
-        "attributeDefinitions": "Definições de Atributos",
-        "attributeProfile": "Perfil de Atributos",
-        "attributeModifiers": "Modificadores de Atributos",
-        "genericStats": "Schema de Dados",
-        "generic": "Addon"
+        "thumbnail": "Thumb"
       }
     },
     "backlinks": "Referenciado por:"
@@ -2061,10 +890,6 @@
     "language": "Idioma",
     "ai": "Configurações de IA",
     "persistence": "Persistência",
-    "linkedSheets": {
-      "title": "🔗 Planilhas Vinculadas",
-      "description": "Cadastre planilhas do Google Sheets aqui uma vez e reutilize em qualquer vínculo de campo — sem precisar colar a URL toda vez."
-    },
     "actions": {
       "backToProject": "Voltar",
       "save": "Salvar",
@@ -2275,8 +1100,7 @@
           "parent": "Hierarquia",
           "order": "Ordem",
           "color": "Cor",
-          "thumbnail": "Thumb",
-          "addonLabel": "Addon {{name}}"
+          "thumbnail": "Thumb"
         }
       },
       "syncBadge": {
@@ -2426,56 +1250,6 @@
       "zoomOnClick": "Zoom ao Clicar",
       "zoomOnClickHelp": "Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas"
     }
-  },
-  "addonPicker": {
-    "title": "Adicionar addon",
-    "subtitle": "Escolha o que você quer configurar nesta página",
-    "searchPlaceholder": "Buscar addon...",
-    "emptyResults": "Nenhum addon encontrado",
-    "closeAriaLabel": "Fechar",
-    "singletonDisabled": "Esta página já possui um addon deste tipo.",
-    "category": {
-      "content": "Conteúdo",
-      "progression": "Progressão",
-      "economy": "Economia",
-      "items": "Itens & Produção",
-      "attributes": "Atributos (personagem)",
-      "data": "Dados & Reutilização",
-      "export": "Exportação"
-    }
-  },
-  "addonStackedList": {
-    "empty": "Nenhum addon nesta página.",
-    "dragHandleAria": "Arrastar para reordenar",
-    "dragHandleTitle": "Arrastar",
-    "renameTitle": "Duplo clique para renomear",
-    "edit": "Editar",
-    "confirmRemove": {
-      "question": "Remover",
-      "warning": "Esta ação não pode ser desfeita. Todos os dados deste addon serão perdidos."
-    }
-  },
-  "addonEditorDrawer": {
-    "closeAriaLabel": "Fechar editor"
-  },
-  "addonCatalog": {
-    "xpBalance": { "description": "Curva de XP por nível, com presets e fórmulas" },
-    "progressionTable": { "description": "Valores por nível em colunas (preço, dano, etc.)" },
-    "currency": { "description": "Define uma moeda do jogo (ouro, gema, XP)" },
-    "economyLink": { "description": "Preços de compra, venda e desbloqueio de um item" },
-    "inventory": { "description": "Parâmetros de inventário: pilha, peso, categoria" },
-    "production": { "description": "Produção passiva ou receita (ingredientes → saída)" },
-    "globalVariable": { "description": "Modificador global: % de venda, x2 XP em evento" },
-    "dataSchema": { "description": "Campos livres (key-value) ligados à página" },
-    "attributeDefinitions": { "description": "Atributos (Força, Stamina) usados em personagens" },
-    "attributeProfile": { "description": "Valores concretos de atributos para um personagem/item" },
-    "attributeModifiers": { "description": "Buffs/debuffs que alteram atributos (+10 STR, x1.5 DEX)" },
-    "fieldLibrary": { "description": "Nomes/chaves reutilizáveis compartilhados entre páginas" },
-    "exportSchema": { "description": "Exporta o JSON final para consumo pelo jogo" },
-    "richDoc": { "description": "Documento rico estilo Notion com títulos, listas, imagens, embeds e colunas" },
-    "skills": { "description": "Habilidades ativas/passivas com cooldown, custos e efeitos vinculados a Modificadores" },
-    "craftTable": { "description": "Mesa de produção que agrega receitas (forja, bancada, alquimia)" },
-    "currencyExchange": { "description": "Casa de câmbio entre duas moedas com taxa configurável" }
   },
   "agenda": {
     "pageTitle": "Diário",
@@ -2953,11 +1727,31 @@
       "taskCol": "O que fazer",
       "footer": "Esses tempos são estimativas para times pequenos. Com mais dados e automação (dashboards, alertas), o diário pode cair pra 2 minutos.",
       "rows": [
-        { "day": "Diário", "time": "5 min", "task": "Abrir analytics, verificar D1 do dia anterior, sessões/dia e churn por nível. Se algo sair fora do padrão, anota pra investigar." },
-        { "day": "Segunda", "time": "30 min", "task": "Revisão profunda: curva D1/D7/D30 por coorte da semana. Comparar com a semana anterior." },
-        { "day": "Quarta", "time": "20 min", "task": "Checar A/B tests ativos. Há significância estatística? Continua, encerra ou ajusta?" },
-        { "day": "Quinta", "time": "30 min", "task": "Levantar hipóteses pro relatório semanal. Montar a narrativa: o que mudou, por que, o que testar." },
-        { "day": "Sexta", "time": "45 min", "task": "Escrever relatório semanal: números → hipóteses → aprendizados → próximos experimentos." }
+        {
+          "day": "Diário",
+          "time": "5 min",
+          "task": "Abrir analytics, verificar D1 do dia anterior, sessões/dia e churn por nível. Se algo sair fora do padrão, anota pra investigar."
+        },
+        {
+          "day": "Segunda",
+          "time": "30 min",
+          "task": "Revisão profunda: curva D1/D7/D30 por coorte da semana. Comparar com a semana anterior."
+        },
+        {
+          "day": "Quarta",
+          "time": "20 min",
+          "task": "Checar A/B tests ativos. Há significância estatística? Continua, encerra ou ajusta?"
+        },
+        {
+          "day": "Quinta",
+          "time": "30 min",
+          "task": "Levantar hipóteses pro relatório semanal. Montar a narrativa: o que mudou, por que, o que testar."
+        },
+        {
+          "day": "Sexta",
+          "time": "45 min",
+          "task": "Escrever relatório semanal: números → hipóteses → aprendizados → próximos experimentos."
+        }
       ]
     },
     "questions": {
@@ -2967,16 +1761,40 @@
       "experimentsTitle": "Sobre experimentos",
       "footer": "Lembre de registrar o aprendizado de cada semana aqui na aba \"KPIs principais\" — o histórico de decisões é mais valioso que qualquer dashboard.",
       "retention": [
-        { "q": "D1 abaixo do esperado?", "a": "Problema no tutorial ou na primeira sessão. Jogador não sentiu a graça antes de sair." },
-        { "q": "D7 cai muito em relação ao D1?", "a": "Loop de curto prazo não está retendo. Faltam objetivos que levem o jogador de volta no dia 2 e 3." },
-        { "q": "D30 muito baixo?", "a": "Mid-game vazio. Ficou sem o que fazer entre o nível 20 e 50." },
-        { "q": "Qual nível tem mais churn?", "a": "É o seu ponto de intervenção prioritária. Pode ser um spike de dificuldade ou um vazio de conteúdo." }
+        {
+          "q": "D1 abaixo do esperado?",
+          "a": "Problema no tutorial ou na primeira sessão. Jogador não sentiu a graça antes de sair."
+        },
+        {
+          "q": "D7 cai muito em relação ao D1?",
+          "a": "Loop de curto prazo não está retendo. Faltam objetivos que levem o jogador de volta no dia 2 e 3."
+        },
+        {
+          "q": "D30 muito baixo?",
+          "a": "Mid-game vazio. Ficou sem o que fazer entre o nível 20 e 50."
+        },
+        {
+          "q": "Qual nível tem mais churn?",
+          "a": "É o seu ponto de intervenção prioritária. Pode ser um spike de dificuldade ou um vazio de conteúdo."
+        }
       ],
       "experiments": [
-        { "q": "O que testamos esta semana?", "a": "Sempre 1 hipótese ativa. Nunca teste tudo ao mesmo tempo — você não vai saber o que funcionou." },
-        { "q": "O resultado confirmou?", "a": "Sim → implementa. Não → descarta ou reformula. Inconclusivo → mais dados ou hipótese mais clara." },
-        { "q": "O que aprendemos?", "a": "Este é o valor real do relatório semanal. Sem learning registrado, você vai repetir os mesmos erros." },
-        { "q": "Qual é a próxima hipótese?", "a": "Sempre saia com pelo menos 1 experimento definido. Sem hipótese ativa, a semana é perdida." }
+        {
+          "q": "O que testamos esta semana?",
+          "a": "Sempre 1 hipótese ativa. Nunca teste tudo ao mesmo tempo — você não vai saber o que funcionou."
+        },
+        {
+          "q": "O resultado confirmou?",
+          "a": "Sim → implementa. Não → descarta ou reformula. Inconclusivo → mais dados ou hipótese mais clara."
+        },
+        {
+          "q": "O que aprendemos?",
+          "a": "Este é o valor real do relatório semanal. Sem learning registrado, você vai repetir os mesmos erros."
+        },
+        {
+          "q": "Qual é a próxima hipótese?",
+          "a": "Sempre saia com pelo menos 1 experimento definido. Sem hipótese ativa, a semana é perdida."
+        }
       ]
     },
     "widget": {
@@ -3154,31 +1972,35 @@
     "timeMonths": "{n}m atrás",
     "timeYears": "{n}a atrás"
   },
-  "exportSchemaAddon": {
-    "format": {
-      "disabledHint": "O formato só se aplica a arrays de Tabela de Balanceamento. Adicione um array com essa fonte para habilitar (column-major, keyed, matrix)."
-    },
-    "sections": {
-      "progressionGroup": "Tabela de cada página filha",
-      "xpBalanceGroup": "Balanceamento de XP de cada página filha",
-      "craftGroup": "Mesa de produção de cada página filha",
-      "skillsGroup": "Habilidades de cada página filha",
-      "productionGroup": "Produção (receita) de cada página filha",
-      "matchByNameHint": "Casada pelo nome em cada página filha — vale para todos os filhos que tenham uma tabela equivalente, não só a página de amostra."
-    },
-    "production": {
-      "group": "Produção (receita)",
-      "ingredients": "Ingredientes",
-      "outputs": "Saídas",
-      "currentRecipe": "(receita atual)",
-      "addonSelectTitle": "De qual addon de Produção ler o campo",
-      "tagRecipe": "receita",
-      "tagPassive": "passivo"
-    },
-    "coverage": {
-      "title": "⚠ Algumas páginas filhas não têm os dados deste schema",
-      "without": "sem",
-      "footer": "Esses campos sairão vazios/zero no JSON dessas páginas até o addon ser adicionado."
+  "blockEditor": {
+    "slashMenu": {
+      "calloutsGroup": "Callouts",
+      "embed": {
+        "title": "Incorporar vídeo",
+        "subtext": "YouTube, Vimeo, Loom, Streamable"
+      },
+      "driveImage": {
+        "title": "Imagem do Drive",
+        "subtext": "Selecionar imagem do Google Drive"
+      },
+      "callout": {
+        "note": {
+          "title": "Nota",
+          "subtext": "Informação geral ou anotação"
+        },
+        "warning": {
+          "title": "Atenção",
+          "subtext": "Cuidado, pegadinha ou risco"
+        },
+        "design-decision": {
+          "title": "Decisão de design",
+          "subtext": "Registro de uma escolha — por que decidimos assim"
+        },
+        "balance-note": {
+          "title": "Nota de balanceamento",
+          "subtext": "Observação de playtest ou preocupação de balanceamento"
+        }
+      }
     }
   }
 }

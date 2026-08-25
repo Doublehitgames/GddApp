@@ -6,7 +6,7 @@
  */
 import { z } from "zod/v3";
 import { GddApiError } from "./client.js";
-import { addonCreated, addonMoved, addonReceipt, addonRow, batchReceipt, deleted, filterSections, json, projectCreated, projectFull, projectIndex, projectReceipt, projectRow, searchProjection, sectionCreated, sectionFull, sectionReceipt, sectionRow, text, touched, } from "./project.js";
+import { batchReceipt, deleted, filterSections, json, projectCreated, projectIndex, projectReceipt, projectRow, sectionFull, searchProjection, sectionCreated, sectionReceipt, sectionRow, text, touched, } from "./project.js";
 function err(e) {
     if (e instanceof GddApiError) {
         return { content: [{ type: "text", text: `Error (${e.code}): ${e.message}` }], isError: true };
@@ -28,14 +28,11 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, whether it has a description, and which addon types it carries). This is the map of the document — use it to find the section you need, then get_section for its contents. Pass includeAddons=true only when you genuinely need every addon's data at once; on a large project that response can exceed a megabyte.", {
+    server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description). This is the map of the document — use it to find the section you need, then get_section for its contents.", {
         projectId: z.string(),
-        includeAddons: z.boolean().optional().describe("Return every section's full addon data instead of the index (very large)"),
-    }, async ({ projectId, includeAddons }) => {
+    }, async ({ projectId }) => {
         try {
-            // Ask the API to leave the addon payload behind unless it is wanted.
-            const project = await client.getProject(projectId, includeAddons ? undefined : "types");
-            return json(includeAddons ? projectFull(project) : projectIndex(project));
+            return json(projectIndex(await client.getProject(projectId)));
         }
         catch (e) {
             return err(e);
@@ -79,15 +76,6 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    server.tool("list_linked_spreadsheets", "List the Google Spreadsheets registered in a project's settings (Linked Spreadsheets). Returns each spreadsheet's id (the UUID to set as a section's linkedSpreadsheetId), name, url, spreadsheetId, sheets (tab names), and columnsBySheet (header row per tab). Use this to discover the UUID and the exact sheet/column names needed to build field bindings. Leaner than get_project when you only need spreadsheet metadata. " +
-        "NOTES on columnsBySheet: (1) It is keyed by tab name and each value is the tab's row-1 headers as an array that is POSITION-ALIGNED to the column index — array index 0 = column A, 1 = B, 2 = C, etc. Leading empty columns appear as empty strings (e.g. ['','','Name'] means the 'Name' header is in column C). (2) A tab is OMITTED from columnsBySheet when its row 1 is entirely empty, so columnsBySheet may have FEWER keys than `sheets` — never assume every tab in `sheets` has a columnsBySheet entry. (3) columnsBySheet is a SNAPSHOT captured when the spreadsheet was registered/refreshed, not live — added columns won't appear until refreshed. (4) The field is optional: spreadsheets registered before this feature (or never refreshed) may lack columnsBySheet entirely. When columns are missing or stale, ask the user to open Project Settings → Linked Spreadsheets and click 'Atualizar abas' (refresh) on that spreadsheet.", { projectId: z.string() }, async ({ projectId }) => {
-        try {
-            return json(await client.listLinkedSpreadsheets(projectId));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
     server.tool("list_project_images", "The project's Google Drive image library: each file's name plus the ready-to-write URL for a page icon (thumbImageUrl on create_section / update_section / batch_update_sections). File names are the handle — match them against a page's dataId or title. Files inside subfolders also carry `path`. Pass `match` to filter by name or subfolder instead of pulling the whole library; responses cap at 200 files and say `truncated` when they do.", {
         projectId: z.string(),
         match: z.string().optional().describe("Only files whose name contains this (case-insensitive)"),
@@ -100,22 +88,20 @@ export function registerTools(server, client) {
         }
     });
     // ── Sections ────────────────────────────────────────────────────
-    server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription / hasAddonType instead of listing everything and filtering yourself. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).", {
+    server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId and hasDescription. The descriptions themselves are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription instead of listing everything and filtering yourself.", {
         projectId: z.string(),
         subtreeOf: z.string().optional().describe("Only this section and its descendants"),
         withoutDescription: z.boolean().optional().describe("Only sections with no description yet — useful for finding what still needs writing"),
-        hasAddonType: z.string().optional().describe("Only sections carrying this addon type (e.g. progressionTable)"),
-        includeAddons: z.boolean().optional().describe("Return each section's full fields and addon data instead of the index (very large)"),
-    }, async ({ projectId, includeAddons, ...filters }) => {
+    }, async ({ projectId, ...filters }) => {
         try {
-            const sections = (await client.listSections(projectId, includeAddons ? undefined : "types"));
-            return json(filterSections(sections, filters).map(includeAddons ? sectionFull : sectionRow));
+            const sections = (await client.listSections(projectId));
+            return json(filterSections(sections, filters).map(sectionRow));
         }
         catch (e) {
             return err(e);
         }
     });
-    server.tool("get_section", "Get a single section in full — description, contentBlocks, and every addon's data. This is the right place to read a page's contents; the write tools deliberately do not echo it back.", {
+    server.tool("get_section", "Get a single section in full — description and contentBlocks. This is the right place to read a page's contents; the write tools deliberately do not echo it back.", {
         projectId: z.string(),
         sectionId: z.string(),
     }, async ({ projectId, sectionId }) => {
@@ -181,7 +167,7 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    server.tool("update_section", "Update a section's fields (title, content, color, tags, etc.). Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section: echoing a page that carries a 100-level progression table costs ~78 KB. Call get_section when you actually need to read the result back.", {
+    server.tool("update_section", "Update a section's fields (title, content, color, tags, etc.). Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.", {
         projectId: z.string(),
         sectionId: z.string(),
         title: z.string().optional().describe("New title"),
@@ -197,9 +183,8 @@ export function registerTools(server, client) {
         returning,
     }, async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
         try {
-            const full = returnMode === "full";
-            const saved = await client.updateSection(projectId, sectionId, fields, full ? undefined : "none");
-            return json(full ? sectionFull(saved) : sectionReceipt(saved, touched(fields)));
+            const saved = await client.updateSection(projectId, sectionId, fields);
+            return json(returnMode === "full" ? sectionFull(saved) : sectionReceipt(saved, touched(fields)));
         }
         catch (e) {
             return err(e);
@@ -241,100 +226,6 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    // ── Addons ──────────────────────────────────────────────────────
-    server.tool("list_addons", "List a section's addons by identity only — id, type, name, group. Their data is omitted; get_section returns the whole page including every addon's values. Pass includeData=true to inline the data anyway (a progression table alone is ~54 KB).", {
-        projectId: z.string(),
-        sectionId: z.string(),
-        includeData: z.boolean().optional().describe("Inline each addon's full data instead of just its identity"),
-    }, async ({ projectId, sectionId, includeData }) => {
-        try {
-            const addons = (await client.listAddons(projectId, sectionId));
-            return json(includeData ? addons : addons.map(addonRow));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    server.tool("create_addon", "Add an addon to a section. Types: xpBalance, progressionTable, economyLink, currency, globalVariable, inventory, production, craftTable, crop, dataSchema, attributeDefinitions, attributeProfile, attributeModifiers, fieldLibrary, exportSchema, richDoc", {
-        projectId: z.string(),
-        sectionId: z.string(),
-        type: z.string().describe("Addon type (e.g. currency, inventory, progressionTable)"),
-        name: z.string().describe("Display name for the addon"),
-        group: z.string().optional().describe("Optional group name"),
-        data: z.record(z.unknown()).optional().describe("Type-specific addon data"),
-        returning,
-    }, async ({ projectId, sectionId, returning: returnMode, ...params }) => {
-        try {
-            const created = await client.createAddon(projectId, sectionId, params);
-            return json(returnMode === "full" ? created : addonCreated(created, sectionId));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    server.tool("update_addon", "Update an addon's name, group, or data. Returns a receipt — {ok, id, type, name, sectionId, updated} — not the addon: a progression table would echo back ~54 KB. Read it back with get_section when you need the saved values.", {
-        projectId: z.string(),
-        sectionId: z.string(),
-        addonId: z.string(),
-        name: z.string().optional().describe("New display name"),
-        group: z.string().optional().describe("New group name"),
-        data: z.record(z.unknown()).optional().describe("Updated addon data (merged with existing)"),
-        returning,
-    }, async ({ projectId, sectionId, addonId, returning: returnMode, ...fields }) => {
-        try {
-            const saved = await client.updateAddon(projectId, sectionId, addonId, fields);
-            const changed = Object.keys((fields.data ?? {}));
-            return json(returnMode === "full" ? saved : addonReceipt(saved, sectionId, [...touched({ name: fields.name, group: fields.group }), ...changed]));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    server.tool("delete_addon", "Remove an addon from a section", {
-        projectId: z.string(),
-        sectionId: z.string(),
-        addonId: z.string(),
-    }, async ({ projectId, sectionId, addonId }) => {
-        try {
-            await client.deleteAddon(projectId, sectionId, addonId);
-            return json(deleted("addon", addonId));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    server.tool("copy_addon", "Copy an addon from one section to another. Generates a new addon ID, deep-clones the data, and re-links intra-section refs (production/progression/economyLink bindings, exportSchema addonIds) to the destination's equivalent addons so value bindings keep working when the target page already has the needed addons (cross-section refs are preserved). Singleton addon types (one-per-page: dataSchema, production, economyLink, currency, progressionTable, etc.) already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). TIP: to copy a RemoteConfig (exportSchema) into a page that lacks the addons it references (e.g. its DataSchema or ProgressionTable), copy those dependency addons FIRST, then copy the RemoteConfig — its bindings will re-link to them in the destination. Returns a receipt identifying the inserted (or overwritten) addon; read the destination page with get_section to inspect it.", {
-        projectId: z.string(),
-        sectionId: z.string().describe("Section UUID where the source addon lives"),
-        addonId: z.string().describe("Addon UUID to copy"),
-        toSectionId: z.string().describe("Destination section UUID"),
-        overwrite: z.boolean().optional().describe("If the destination already has a singleton addon of the same type, replace its values in place instead of failing with 409."),
-        returning,
-    }, async ({ projectId, sectionId, addonId, toSectionId, overwrite, returning: returnMode }) => {
-        try {
-            const result = await client.copyAddon(projectId, sectionId, addonId, toSectionId, overwrite);
-            return json(returnMode === "full" ? result : addonMoved(result, toSectionId));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    server.tool("move_addon", "Move an addon from one section to another, keeping its ID. Re-links intra-section refs in the moved addon to the destination's equivalent addons, and when the source section is left without another addon of the same type, rewrites reverse-refs across the project to point at the destination. Singleton addon types already present in the destination cause a 409 unless overwrite=true, which replaces the existing addon in place (keeping its id/group/name). Returns a receipt: { ok, id, type, name, toSectionId, reverseRefsUpdated }.", {
-        projectId: z.string(),
-        sectionId: z.string().describe("Section UUID where the source addon lives"),
-        addonId: z.string().describe("Addon UUID to move"),
-        toSectionId: z.string().describe("Destination section UUID (must differ from origin)"),
-        overwrite: z.boolean().optional().describe("If the destination already has a singleton addon of the same type, replace it in place instead of failing with 409."),
-        returning,
-    }, async ({ projectId, sectionId, addonId, toSectionId, overwrite, returning: returnMode }) => {
-        try {
-            const result = await client.moveAddon(projectId, sectionId, addonId, toSectionId, overwrite);
-            return json(returnMode === "full" ? result : addonMoved(result, toSectionId));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
     // ── Search ──────────────────────────────────────────────────────
     server.tool("search", "Search across all accessible projects and sections by keyword. Each section hit comes back as a pointer — id, projectId, title, dataId, and a 200-character excerpt — because the match itself is what you asked for, not the page. Follow up with get_section on the hits that matter.", {
         query: z.string().describe("Search term"),
@@ -343,19 +234,6 @@ export function registerTools(server, client) {
     }, async ({ query, type, limit }) => {
         try {
             return json(searchProjection(await client.search(query, type, limit)));
-        }
-        catch (e) {
-            return err(e);
-        }
-    });
-    // ── Remote Config ───────────────────────────────────────────────
-    server.tool("get_remote_config", "Resolve Remote Config (exportSchema) addons and return the RESOLVED economy JSON (actual values, not the blueprint). Scope: no sectionId/addonId → every config in the project; sectionId → every config in that section's subtree; addonId → a single config. Use this to get all balancing data in one call.", {
-        projectId: z.string(),
-        sectionId: z.string().optional().describe("Limit to this section's subtree"),
-        addonId: z.string().optional().describe("Resolve a single exportSchema addon by its id"),
-    }, async ({ projectId, sectionId, addonId }) => {
-        try {
-            return json(await client.getRemoteConfig(projectId, { sectionId, addonId }));
         }
         catch (e) {
             return err(e);

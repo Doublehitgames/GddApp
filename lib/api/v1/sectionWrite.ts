@@ -63,8 +63,6 @@ export function buildSectionUpdates(
   if (fields.domainTags !== undefined) updates.domain_tags = fields.domainTags;
   if (fields.dataId !== undefined) updates.data_id = fields.dataId;
   if (fields.thumbImageUrl !== undefined) updates.thumb_image_url = fields.thumbImageUrl;
-  if (fields.addonGroupNotes !== undefined) updates.addon_group_notes = fields.addonGroupNotes;
-  if (fields.linkedSpreadsheetId !== undefined) updates.linked_spreadsheet_id = fields.linkedSpreadsheetId;
 
   const touched = Object.keys(fields).filter((k) => k !== "sectionId" && fields[k as keyof SectionUpdate] !== undefined);
 

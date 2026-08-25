@@ -2,7 +2,7 @@
 /**
  * GDD Manager MCP Server
  *
- * Exposes GDD Manager projects, sections, and addons as MCP tools.
+ * Exposes GDD Manager projects and sections as MCP tools.
  * Communicates via stdio transport.
  *
  * Required env:

@@ -7,8 +7,6 @@ import {
   apiJson,
   apiError,
   sectionToApi,
-  addonDetailParam,
-  sectionMapper,
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
@@ -95,14 +93,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 
   if (error) return apiError("Failed to update section", 500, "db_error");
 
-  // Re-read for the response. When the caller asked for addons=none the heavy
-  // jsonb stays out of the read entirely — a receipt does not need it.
-  const detail = addonDetailParam(request);
-  const { data: rows } = await selectSections(
-    auth.supabase,
-    { projectId: id, sectionId },
-    { addons: detail },
-  );
+  // Re-read for the response.
+  const { data: rows } = await selectSections(auth.supabase, { projectId: id, sectionId });
   if (!rows || rows.length === 0) {
     return apiError("Section not found after update", 500, "db_error");
   }
@@ -113,7 +105,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     .update({ updated_at: now })
     .eq("id", id);
 
-  return apiJson(sectionMapper(detail)(rows[0]));
+  return apiJson(sectionToApi(rows[0]));
 }
 
 /**

@@ -47,9 +47,9 @@ Every AI generation appears in **preview mode**. You read it, edit if you want, 
 
 The prompts were tuned so it understands:
 
-- That there are specific **page types** (no inventing new ones)
-- That page types come with **the right addons** (e.g., `attributeDefinitions` is seeded with 4 typical pre-populated stats)
-- That callouts have **4 intentional variants** (note/warning/design-decision/balance-note) — to be used deliberately
+- That a GDD is organized into the **five canonical groups** (Overview, Design, Content, Presentation, Production)
+- That important concepts get **their own page**, referenced with `$[...]` instead of repeated in the text
+- That callouts have **4 intentional variants** (note / warning / design decision / balance note) — used with judgment
 - That the doc is **fictional but concrete** — it invents names, numbers, and scenarios (no generic placeholders like "Character 1")
 
 ### 3. It doesn't invent systems outside the theme
@@ -89,21 +89,20 @@ Additional info: Pixel art, single player, build-crafting focus.
   ├── Core Mechanics
   └── Progression
 📦 Game Content
-  ├── 🎯 Base Attributes (HP, MP, Mana Regen, Speed, Crit%)
-  ├── 👤 Explorer Wizard (profile + xp curve + progression)
-  ├── 👤 Enemy: Floor Goblin (profile)
-  ├── ⚔️ Fire Rune (item with effect)
-  ├── ⚔️ Ice Rune
-  ├── ⚡ Spell: Fireball (skill)
-  ├── 🪙 Essence (permanent currency)
-  └── 🛠️ Rune Table (craft table)
+  ├── Base Attributes
+  ├── Explorer Wizard
+  ├── Enemy: Floor Goblin
+  ├── Runes (Fire, Ice)
+  ├── Spell: Fireball
+  ├── Essence (permanent currency)
+  └── Rune Table
 🎨 Presentation
   └── Visual Style / UX / Audio
 🏭 Production
   └── Technology / Roadmap / Risks / KPIs
 ```
 
-Each page comes with rich prose, callouts explaining jargon, and a configured addon structure.
+Each page comes with rich prose, callouts explaining jargon, and cross-references between subjects.
 
 ## Context-aware chat
 
@@ -154,7 +153,7 @@ In any richDoc, the **"Improve with AI"** button sends the current content plus 
 GDD Manager can be **connected to other AI assistants** that you (or your programming team) already use — Claude Code, Cursor, and similar tools. When connected, those assistants can:
 
 - List and read the content of your pages
-- Create new pages and add addons
+- Create new pages and reorganize the tree
 - Update specific values
 - Generate the export JSON on demand
 
@@ -175,8 +174,8 @@ A common scenario: your game's programmer opens their assistant, asks it to read
 ## See also
 
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
-  <FeatureCard emoji="📤" title="Remote Config" href="/docs/referencia/addons/remote-config">
-    Use AI to generate pages, then export everything to the engine.
+  <FeatureCard emoji="⌨️" title="Keyboard Shortcuts" href="/docs/referencia/atalhos">
+    Reach the AI without leaving the keyboard.
   </FeatureCard>
   <FeatureCard emoji="🌱" title="Your first project" href="/docs/comecar/primeiro-projeto">
     Manual walkthrough — useful to understand what the AI does under the hood.
