@@ -92,6 +92,24 @@ export function driveFileIdToImageCandidates(fileId: string): string[] {
   ];
 }
 
+/**
+ * Candidatas para um thumbnail de tamanho conhecido (grade, preview).
+ *
+ * Diferenças em relação a driveFileIdToImageCandidates: pede a largura real que
+ * vai ser exibida em vez de w1000 (uma dúzia de w1000 lado a lado faz o Drive
+ * estrangular e devolver imagem quebrada) e tenta o CDN lh3 primeiro, que aguenta
+ * muito melhor várias imagens ao mesmo tempo.
+ */
+export function driveThumbCandidates(fileId: string, size = 200): string[] {
+  const id = String(fileId || "").trim();
+  if (!id) return [];
+  return [
+    `https://lh3.googleusercontent.com/d/${id}=w${size}`,
+    `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`,
+    `https://drive.google.com/uc?export=view&id=${id}`,
+  ];
+}
+
 const DRIVE_UC_REGEX = /https:\/\/drive\.google\.com\/uc\?export=view&id=([a-zA-Z0-9_-]+)/g;
 const DRIVE_FILE_REGEX = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)(?:\/view)?/g;
 

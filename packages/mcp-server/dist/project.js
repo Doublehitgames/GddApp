@@ -174,6 +174,8 @@ export function projectIndex(project) {
         ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
         ...(p.mindmapSettings ? { mindmapSettings: p.mindmapSettings } : {}),
         ...(p.linkedSpreadsheets ? { linkedSpreadsheets: p.linkedSpreadsheets } : {}),
+        // Just the count — the library itself lives in list_project_images.
+        ...(p.imageCount ? { imageCount: p.imageCount } : {}),
         updatedAt: p.updatedAt,
         sectionCount: sections.length,
         sections: sections.map(sectionRow),

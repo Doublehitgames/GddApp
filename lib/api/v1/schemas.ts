@@ -35,6 +35,7 @@ export const createSectionSchema = z.object({
     .default(null),
   domainTags: z.array(z.string().max(50)).max(20).optional().default([]),
   dataId: z.string().max(200).nullable().optional().default(null),
+  thumbImageUrl: z.string().url().nullable().optional().default(null),
 });
 
 export const updateSectionSchema = z.object({

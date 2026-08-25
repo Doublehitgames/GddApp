@@ -278,6 +278,18 @@ describe("project projections", () => {
     expect(JSON.stringify(out)).not.toContain("flowchartState");
   });
 
+  it("announces the image library by count, never by listing it", () => {
+    const withImages = { ...project, imageCount: 42 };
+    const out = projectIndex(withImages);
+    expect(out.imageCount).toBe(42);
+    // The files themselves belong to list_project_images.
+    expect(JSON.stringify(out)).not.toContain("SEED_");
+  });
+
+  it("says nothing about images when the project has no library", () => {
+    expect(projectIndex(project)).not.toHaveProperty("imageCount");
+  });
+
   it("keeps every addon under includeAddons, minus the per-section noise", () => {
     const out = projectFull(project);
     const sections = out.sections as Record<string, unknown>[];

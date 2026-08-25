@@ -1,4 +1,4 @@
-import type { ProjectStore, UUID, LinkedSpreadsheet } from "./types";
+import type { ProjectStore, UUID, LinkedSpreadsheet, ProjectImageLibrary } from "./types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
 import { toSlug } from "@/lib/utils/slug";
 import { buildSectionDiagramKey, persistDiagrams, persist, logInfo } from "./storageHelpers";
@@ -105,6 +105,21 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         prev.map((p) =>
           p.id === id
             ? { ...p, linkedSpreadsheets, updatedAt: new Date().toISOString() }
+            : p
+        )
+      );
+      try { persist(get().projects); } catch {}
+    },
+
+    /**
+     * Índice de imagens do Drive. Como linkedSpreadsheets: grava local e deixa a
+     * nuvem pra quem chamou (pushProjectImageLibrary), sem consumir crédito de sync.
+     */
+    setProjectImageLibrary: (id: UUID, imageLibrary?: ProjectImageLibrary) => {
+      engine.wrappedSet((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, imageLibrary, updatedAt: new Date().toISOString() }
             : p
         )
       );

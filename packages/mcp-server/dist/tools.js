@@ -88,6 +88,17 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
+    server.tool("list_project_images", "The project's Google Drive image library: each file's name plus the ready-to-write URL for a page icon (thumbImageUrl on create_section / update_section / batch_update_sections). File names are the handle — match them against a page's dataId or title. Files inside subfolders also carry `path`. Pass `match` to filter by name or subfolder instead of pulling the whole library; responses cap at 200 files and say `truncated` when they do.", {
+        projectId: z.string(),
+        match: z.string().optional().describe("Only files whose name contains this (case-insensitive)"),
+    }, async ({ projectId, match }) => {
+        try {
+            return json(await client.listProjectImages(projectId, match));
+        }
+        catch (e) {
+            return err(e);
+        }
+    });
     // ── Sections ────────────────────────────────────────────────────
     server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription, and the addon TYPES each one carries. Descriptions and addon data are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription / hasAddonType instead of listing everything and filtering yourself. Pass includeAddons=true for the full dump only when you really need it (on a 185-page project that is over 2 MB).", {
         projectId: z.string(),
@@ -143,6 +154,11 @@ export function registerTools(server, client) {
         .array(z.record(z.unknown()))
         .optional()
         .describe("Rich BlockNote JSON blocks for the description. Call get_content_blocks_guide once for the block types, inline styles and a worked example. Always pair it with a plain-text `content` for search.");
+    const THUMB_FIELD = z
+        .string()
+        .nullable()
+        .optional()
+        .describe("Page icon URL — get one from list_project_images. null clears it.");
     server.tool("get_content_blocks_guide", "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before writing rich descriptions with create_section or update_section.", {}, async () => text(CONTENT_BLOCKS_GUIDE));
     server.tool("create_section", "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, lists, etc.). Always pair it with a plain-text `content` for search. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.", {
         projectId: z.string(),
@@ -154,6 +170,7 @@ export function registerTools(server, client) {
         color: z.string().optional().describe("Hex color (#rrggbb)"),
         domainTags: z.array(z.string()).optional().describe("Game design domain tags (e.g. combat, economy)"),
         dataId: z.string().optional().describe("User-defined data identifier (e.g. FARM_ANIMAL_CHICKEN)"),
+        thumbImageUrl: THUMB_FIELD,
         returning,
     }, async ({ projectId, returning: returnMode, ...params }) => {
         try {
@@ -175,6 +192,7 @@ export function registerTools(server, client) {
         color: z.string().optional().describe("New hex color"),
         domainTags: z.array(z.string()).optional().describe("New domain tags"),
         dataId: z.string().optional().describe("New data identifier"),
+        thumbImageUrl: THUMB_FIELD,
         linkedSpreadsheetId: z.string().nullable().optional().describe("UUID of the linked Google Spreadsheet (from project.linkedSpreadsheets)"),
         returning,
     }, async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
@@ -200,6 +218,7 @@ export function registerTools(server, client) {
             color: z.string().optional(),
             domainTags: z.array(z.string()).optional(),
             dataId: z.string().optional(),
+            thumbImageUrl: THUMB_FIELD,
         }))
             .describe("One entry per section to update (max 50)"),
     }, async ({ projectId, sections }) => {

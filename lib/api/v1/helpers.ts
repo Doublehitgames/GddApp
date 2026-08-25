@@ -58,11 +58,12 @@ export type ProjectRow = {
   mindmap_settings: Record<string, unknown> | null;
   ai_instructions: string | null;
   linked_spreadsheets: unknown[] | null;
+  image_library: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
 
-export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, linked_spreadsheets, created_at, updated_at";
+export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, linked_spreadsheets, image_library, created_at, updated_at";
 export const PROJECT_COLUMNS_SAFE = "id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at";
 
 /** Select projects with fallback if ai_instructions column doesn't exist. */
@@ -88,7 +89,7 @@ export async function selectProjects(
     const fbResult = await fb;
     if (fbResult.error) return { data: null, error: fbResult.error };
     const rows = (fbResult.data ?? []).map((r: Record<string, unknown>) => ({
-      ...r, ai_instructions: null, linked_spreadsheets: null,
+      ...r, ai_instructions: null, linked_spreadsheets: null, image_library: null,
     })) as unknown as ProjectRow[];
     return { data: rows, error: null };
   }
@@ -123,7 +124,7 @@ export async function requireProject(
       .eq("id", projectId)
       .maybeSingle();
     if (fb.data) {
-      project = { ...fb.data, ai_instructions: null, linked_spreadsheets: null } as unknown as typeof project;
+      project = { ...fb.data, ai_instructions: null, linked_spreadsheets: null, image_library: null } as unknown as typeof project;
       error = null;
     }
   }
@@ -351,6 +352,12 @@ export async function requireSection(
 
 // ── DB ↔ API field mapping ────────────────────────────────────────────
 
+/** Quantas imagens a biblioteca do Drive indexou, ou null se não há biblioteca. */
+export function imageLibraryCount(p: { image_library?: Record<string, unknown> | null }): number | null {
+  const files = p.image_library?.files;
+  return Array.isArray(files) ? files.length : null;
+}
+
 export function projectToApi(
   p: ProjectRow,
   opts: { includeLinkedSpreadsheets?: boolean } = {}
@@ -368,6 +375,9 @@ export function projectToApi(
     ...(opts.includeLinkedSpreadsheets
       ? { linkedSpreadsheets: Array.isArray(p.linked_spreadsheets) ? p.linked_spreadsheets : [] }
       : {}),
+    // Only the count: the index itself can be hundreds of files, and it has its
+    // own endpoint (/images). The count is what tells a caller it exists at all.
+    ...(imageLibraryCount(p) !== null ? { imageCount: imageLibraryCount(p) } : {}),
     createdAt: p.created_at,
     updatedAt: p.updated_at,
   };

@@ -82,6 +82,11 @@ export class GddApiClient {
     return this.request("GET", `/projects/${id}/spreadsheets`);
   }
 
+  async listProjectImages(id: string, match?: string) {
+    const qs = match ? `?match=${encodeURIComponent(match)}` : "";
+    return this.request("GET", `/projects/${id}/images${qs}`);
+  }
+
   // ── Sections ──────────────────────────────────────────────────────
 
   /** `addons: "types"` keeps the heavy balance_addons payload off the wire. */

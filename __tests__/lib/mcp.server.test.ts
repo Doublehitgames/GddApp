@@ -488,3 +488,89 @@ describe("tool descriptions teach the new defaults", () => {
     }
   });
 });
+
+describe("page icons from the project's Drive library", () => {
+  const LIBRARY = {
+    folderId: "folder-1",
+    syncedAt: "2026-08-25T10:00:00Z",
+    count: 2,
+    images: [
+      { name: "SEED_TURNIP.png", url: "https://drive.google.com/thumbnail?id=f1&sz=w1000" },
+      { name: "SEED_CARROT.png", url: "https://drive.google.com/thumbnail?id=f2&sz=w1000" },
+    ],
+  };
+
+  it("list_project_images hands back names paired with ready-to-write URLs", async () => {
+    const h = harness({ listProjectImages: LIBRARY });
+    const out = await h.call("list_project_images", { projectId: "p1" });
+    expect(out.images).toHaveLength(2);
+    expect(h.sent[0]).toEqual({ method: "listProjectImages", args: ["p1", undefined] });
+  });
+
+  it("match is forwarded so a sweep does not pull the whole folder", async () => {
+    const h = harness({ listProjectImages: LIBRARY });
+    await h.call("list_project_images", { projectId: "p1", match: "seed" });
+    expect(h.sent[0].args).toEqual(["p1", "seed"]);
+  });
+
+  it("the description points at the field the URL is written to", () => {
+    const h = harness();
+    expect(h.descriptionOf("list_project_images")).toContain("thumbImageUrl");
+  });
+
+  it("update_section writes the icon and receipts it", async () => {
+    const h = harness({ updateSection: SECTION });
+    const url = "https://drive.google.com/thumbnail?id=f1&sz=w1000";
+    const out = await h.call("update_section", { projectId: "p1", sectionId: "sec-1", thumbImageUrl: url });
+    const [, , fields] = h.sent[0].args as [string, string, Record<string, unknown>];
+    expect(fields).toEqual({ thumbImageUrl: url });
+    expect(out.updated).toEqual(["thumbImageUrl"]);
+  });
+
+  it("null clears the icon rather than being dropped as absent", async () => {
+    const h = harness({ updateSection: SECTION });
+    await h.call("update_section", { projectId: "p1", sectionId: "sec-1", thumbImageUrl: null });
+    const [, , fields] = h.sent[0].args as [string, string, Record<string, unknown>];
+    expect(fields).toEqual({ thumbImageUrl: null });
+  });
+
+  it("create_section and a batch sweep can set icons too", async () => {
+    const h = harness({ createSection: { ...SECTION, id: "sec-new" }, batchUpdateSections: { updated: 2, failed: 0 } });
+    expect(Object.keys(h.schemaOf("create_section"))).toContain("thumbImageUrl");
+    await h.call("batch_update_sections", {
+      projectId: "p1",
+      sections: [
+        { sectionId: "s1", thumbImageUrl: "https://drive.google.com/thumbnail?id=f1&sz=w1000" },
+        { sectionId: "s2", thumbImageUrl: "https://drive.google.com/thumbnail?id=f2&sz=w1000" },
+      ],
+    });
+    const [, rows] = h.sent[0].args as [string, Record<string, unknown>[]];
+    expect(rows.map((r) => r.thumbImageUrl)).toHaveLength(2);
+  });
+});
+
+describe("rich descriptions reach the remote server too", () => {
+  it("the three write paths accept contentBlocks", () => {
+    const h = harness();
+    expect(Object.keys(h.schemaOf("create_section"))).toContain("contentBlocks");
+    expect(Object.keys(h.schemaOf("update_section"))).toContain("contentBlocks");
+    expect(h.names).toContain("get_content_blocks_guide");
+  });
+
+  it("blocks are forwarded verbatim, not flattened into markdown", async () => {
+    const h = harness({ updateSection: SECTION });
+    const blocks = [
+      { type: "image", props: { url: "https://drive.google.com/thumbnail?id=f1&sz=w1000" }, content: [], children: [] },
+    ];
+    await h.call("update_section", { projectId: "p1", sectionId: "sec-1", contentBlocks: blocks });
+    const [, , fields] = h.sent[0].args as [string, string, Record<string, unknown>];
+    expect(fields.contentBlocks).toEqual(blocks);
+  });
+
+  it("the guide is served on request, not shipped in every tool definition", async () => {
+    const h = harness();
+    const guide = await h.callRaw("get_content_blocks_guide", {});
+    expect(guide.text).toContain("image");
+    expect(h.descriptionOf("update_section").length).toBeLessThan(600);
+  });
+});

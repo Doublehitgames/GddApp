@@ -193,6 +193,32 @@ export async function pushProjectLinkedSpreadsheets(
   }
 }
 
+/**
+ * Envia apenas image_library. Fora do sync completo de propósito: o índice de
+ * imagens é escrito só por aqui, então um sync de outro dispositivo (que pode ter
+ * um cache velho ou nenhum) nunca apaga o do projeto.
+ */
+export async function pushProjectImageLibrary(
+  projectId: string,
+  imageLibrary: unknown
+): Promise<{ error: string | null }> {
+  try {
+    const base = getSyncRouteBase();
+    const response = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_library: imageLibrary ?? null }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      return { error: (body?.error as string) || `settings_push_failed_${response.status}` };
+    }
+    return { error: null };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "settings_push_exception" };
+  }
+}
+
 /** Envia apenas mindmap_settings para o Supabase (sem seções, sem consumir créditos). Usado ao salvar Configurações do Mapa Mental. */
 export async function pushProjectMindMapSettings(
   projectId: string,
@@ -343,6 +369,12 @@ function dbProjectToStore(
     linkedSpreadsheets: Array.isArray(row.linked_spreadsheets)
       ? (row.linked_spreadsheets as Project["linkedSpreadsheets"])
       : undefined,
+    // Coluna nova: ausente até rodar add_project_image_library.sql, e o select é
+    // "*", então isso simplesmente vira undefined em vez de quebrar.
+    imageLibrary:
+      row.image_library && typeof row.image_library === "object"
+        ? (row.image_library as Project["imageLibrary"])
+        : undefined,
     sections: sections
       .filter((s) => s.project_id === row.id)
       .map(dbSectionToStore),

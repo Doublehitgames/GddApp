@@ -39,6 +39,28 @@ Mesmo com fallback, o arquivo precisa estar compartilhado como **"Qualquer pesso
 
 ---
 
+## Biblioteca de Imagens (pasta indexada)
+
+Além de escolher imagem por imagem no picker, você pode **indexar uma pasta inteira** do Drive:
+
+1. Vá em **Configurações do projeto → Biblioteca de Imagens**.
+2. Cole o link da pasta (ex.: `https://drive.google.com/drive/folders/1AbC...`) e clique em **Conectar pasta**.
+3. O app lista as imagens da pasta e guarda um índice (nome do arquivo + id) no projeto.
+
+O que isso muda:
+
+- **Escolher ícone fica mais rápido:** clicar no ícone de uma página abre a grade das suas imagens, com filtro por nome, em vez do picker do Google.
+- **O agente de IA consegue setar imagens:** via MCP, `list_project_images` devolve nome + URL pronta, e `thumbImageUrl` grava o ícone da página. Se os arquivos tiverem o nome do ID do dado (ex.: `SEED_TURNIP.png`), dá para pedir "coloque os ícones em todas as páginas de sementes" e ele acerta sozinho.
+
+Detalhes:
+
+- O índice é um **retrato**, igual às colunas das planilhas vinculadas: imagem nova na pasta só aparece depois de clicar **Atualizar índice**.
+- A leitura da pasta acontece **no navegador**, com a mesma autorização do picker. O servidor nunca recebe credencial do seu Drive — só nomes e ids.
+- A pasta continua precisando estar compartilhada como **"qualquer pessoa com o link"** para as imagens renderizarem (inclusive no modo leitura pública).
+- **Subpastas entram também**: a varredura desce a árvore inteira e guarda o caminho relativo, então dois arquivos de mesmo nome em pastas diferentes continuam distinguíveis (a grade mostra a subpasta embaixo do nome, e o filtro busca por pasta também). Limites: 2000 imagens e 300 pastas por biblioteca — se estourar, o app avisa que truncou.
+
+---
+
 ## Configuração passo a passo (quem instala o app)
 
 Siga na ordem. Pode usar o **mesmo** cliente OAuth do "Login com Google" (Supabase) ou criar um novo.
@@ -50,6 +72,12 @@ Siga na ordem. Pode usar o **mesmo** cliente OAuth do "Login com Google" (Supaba
 3. No menu lateral: **APIs e serviços** → **Biblioteca**.
 4. Pesquise por **"Google Picker API"**.
 5. Clique na API → **Ativar**.
+6. Volte à **Biblioteca** e pesquise por **"Google Drive API"** → **Ativar** também.
+
+> As duas são necessárias e fazem coisas diferentes: a **Picker API** abre a janela de
+> escolher arquivo, e a **Drive API** é quem lista o conteúdo de uma pasta (usada pela
+> Biblioteca de Imagens). Com só a Picker ligada, escolher imagem funciona e conectar
+> pasta falha com "Google Drive API has not been used in project …".
 
 ### Passo 2: Google Cloud – Origens JavaScript autorizadas
 

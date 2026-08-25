@@ -47,6 +47,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
+import { ImageLibraryPicker } from "@/components/common/ImageLibraryPicker";
+import type { ProjectImage } from "@/store/slices/types";
 import { GAME_DESIGN_DOMAIN_IDS, normalizeDomainTags } from "@/lib/gameDesignDomains";
 import { ADDON_REGISTRY } from "@/lib/addons/registry";
 import { SINGLETON_ADDON_TYPES } from "@/lib/addons/singletons";
@@ -187,6 +189,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     return () => window.removeEventListener("keydown", handler);
   }, []);
   const [isPickingSectionThumb, setIsPickingSectionThumb] = useState(false);
+  const [showThumbLibrary, setShowThumbLibrary] = useState(false);
   const [sectionThumbError, setSectionThumbError] = useState("");
   const [sectionThumbCandidateIndex, setSectionThumbCandidateIndex] = useState(0);
   const router = useRouter();
@@ -432,7 +435,27 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setShowMoveChildrenModal(false);
   }
 
-  async function handlePickSectionThumb() {
+  /** Grava o ícone da página a partir de um arquivo do Drive. */
+  function applySectionThumb(fileId: string) {
+    const nextThumb = driveFileIdToImageUrl(fileId);
+    setSectionThumbImage(realProjectId, realSectionId, nextThumb);
+    setSectionThumbCandidateIndex(0);
+    setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: nextThumb } : prev));
+  }
+
+  /**
+   * Se o projeto tem biblioteca indexada, abre a grade interna — bem mais rápido
+   * que o picker do Google. Sem biblioteca, cai no picker como antes.
+   */
+  function handlePickSectionThumb() {
+    if (project?.imageLibrary?.files?.length) {
+      setShowThumbLibrary(true);
+      return;
+    }
+    return pickSectionThumbFromDrive();
+  }
+
+  async function pickSectionThumbFromDrive() {
     if (!section || isPickingSectionThumb) return;
     setSectionThumbError("");
     setIsPickingSectionThumb(true);
@@ -444,10 +467,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       }
       const picked = await openGoogleDriveImagePicker(googleClientId);
       if (!picked?.id) return;
-      const nextThumb = driveFileIdToImageUrl(picked.id);
-      setSectionThumbImage(realProjectId, realSectionId,nextThumb);
-      setSectionThumbCandidateIndex(0);
-      setSection((prev: any) => (prev ? { ...prev, thumbImageUrl: nextThumb } : prev));
+      applySectionThumb(picked.id);
     } catch {
       setSectionThumbError(t("sectionDetail.thumbnail.pickFailed"));
     } finally {
@@ -827,6 +847,24 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     onMoveAddonToSection={moveAddonToSectionHandler}
     onMoveAddonsToSection={moveAddonsToSectionHandler}
       />
+      {showThumbLibrary && project?.imageLibrary && (
+        <ImageLibraryPicker
+          files={project.imageLibrary.files}
+          selectedName={
+            project.imageLibrary.files.find((f: ProjectImage) =>
+              section?.thumbImageUrl?.includes(f.fileId))?.name
+          }
+          onPick={(file: ProjectImage) => {
+            applySectionThumb(file.fileId);
+            setShowThumbLibrary(false);
+          }}
+          onClose={() => setShowThumbLibrary(false)}
+          onUseDrivePicker={() => {
+            setShowThumbLibrary(false);
+            void pickSectionThumbFromDrive();
+          }}
+        />
+      )}
     </>
   );
 }

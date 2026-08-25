@@ -51,6 +51,7 @@ claude mcp add gdd-manager -e GDD_API_KEY=gdd_sk_your_key_here -- npx -y @double
 
 - **Projects, sections, and addons** — full CRUD (list, read, create, update, delete).
 - **Typed addon tools** for each addon type (currency, inventory, economy link, progression table, production, data schema, attributes, and more), so the assistant fills the right fields.
+- **Page icons** — the project's Google Drive image library (`list_project_images`) plus `thumbImageUrl` on the section write tools, so the assistant can set a page's icon by itself.
 - **Search** across your projects and sections.
 - **Prompts** — ready-made flows like listing projects, viewing a project, and analyzing a GDD.
 

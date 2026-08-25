@@ -318,6 +318,31 @@ export type LinkedSpreadsheet = {
   columnsBySheet?: Record<string, string[]>;
 };
 
+/** Uma imagem indexada da pasta do Drive. */
+export type ProjectImage = {
+  /** ID do arquivo no Drive — a URL de exibição é derivada dele. */
+  fileId: string;
+  /** Nome do arquivo, com extensão (ex.: "SEED_TURNIP.png"). É por ele que o agente casa imagem com página. */
+  name: string;
+  /** Subpasta relativa à raiz indexada (ex.: "icones/sementes"). Ausente para arquivos na raiz. */
+  path?: string;
+};
+
+/**
+ * Índice cacheado de uma pasta pública do Drive. Mesmo princípio do
+ * columnsBySheet de LinkedSpreadsheet: metadata do Google buscada no browser
+ * (o picker já concede drive.readonly) e guardada aqui, para que servidor e
+ * agente MCP leiam sem precisar de credencial Google.
+ */
+export type ProjectImageLibrary = {
+  folderId: string;
+  /** URL original da pasta, para exibir e reeditar. */
+  folderUrl: string;
+  /** Quando o índice foi atualizado pela última vez (ISO). */
+  syncedAt: string;
+  files: ProjectImage[];
+};
+
 //Definição do Projeto. Um projeto pode ter várias seções.
 export type Project = {
   id: UUID;
@@ -334,6 +359,8 @@ export type Project = {
   aiInstructions?: string;
   /** Planilhas do Google Sheets cadastradas para reutilização em vínculos de campos. */
   linkedSpreadsheets?: LinkedSpreadsheet[];
+  /** Índice de imagens da pasta do Drive, para escolher ícone sem abrir o picker. */
+  imageLibrary?: ProjectImageLibrary;
 };
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -410,6 +437,7 @@ export interface ProjectStore {
   editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
   updateProjectLinkedSpreadsheets: (id: UUID, linkedSpreadsheets: LinkedSpreadsheet[]) => void;
+  setProjectImageLibrary: (id: UUID, imageLibrary?: ProjectImageLibrary) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;
   editSection: (
     projectId: UUID,

@@ -6,9 +6,10 @@ import { useProjectStore, LevelConfig, type Project } from "@/store/projectStore
 import { useAuthStore } from "@/store/authStore";
 import { MINDMAP_CONFIG } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
-import { pushProjectMindMapSettings, pushProjectLinkedSpreadsheets } from "@/lib/supabase/projectSync";
+import { pushProjectMindMapSettings, pushProjectLinkedSpreadsheets, pushProjectImageLibrary } from "@/lib/supabase/projectSync";
 import { LinkedSpreadsheetsSettings } from "@/components/common/LinkedSpreadsheetsSettings";
-import type { LinkedSpreadsheet } from "@/store/slices/types";
+import { ImageLibrarySettings } from "@/components/common/ImageLibrarySettings";
+import type { LinkedSpreadsheet, ProjectImageLibrary } from "@/store/slices/types";
 import {
   DOCUMENT_THEME_OPTIONS,
   normalizeDocumentTheme,
@@ -43,6 +44,7 @@ export default function SettingsClient({ projectId }: Props) {
     updateProjectSettings,
     updateProjectMindMapSettingsOnly,
     updateProjectLinkedSpreadsheets,
+    setProjectImageLibrary,
     removeProject,
     loadFromSupabase,
     refreshQuotaStatus,
@@ -596,6 +598,30 @@ export default function SettingsClient({ projectId }: Props) {
               onChange={async (next: LinkedSpreadsheet[]) => {
                 updateProjectLinkedSpreadsheets(realProjectId, next);
                 await pushProjectLinkedSpreadsheets(realProjectId, next);
+              }}
+            />
+          </div>
+
+          {/* Biblioteca de Imagens (pasta do Drive) */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-1">Biblioteca de Imagens</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Indexe uma pasta do Google Drive para escolher ícones de página sem abrir o picker — e
+              para o agente MCP conseguir setar as imagens sozinho.
+            </p>
+            <ImageLibrarySettings
+              library={project.imageLibrary}
+              onChange={async (next?: ProjectImageLibrary) => {
+                setProjectImageLibrary(realProjectId, next);
+                const { error } = await pushProjectImageLibrary(realProjectId, next ?? null);
+                // Estourar aqui é de propósito: o componente mostra o erro. Engolir
+                // fazia o índice viver só no localStorage e desaparecer no reload,
+                // quando a nuvem recarregava a coluna vazia por cima.
+                if (error) {
+                  throw new Error(
+                    `Indexou local, mas não salvou na nuvem (${error}). Outro dispositivo não vai ver a biblioteca, e um reload pode perdê-la.`,
+                  );
+                }
               }}
             />
           </div>

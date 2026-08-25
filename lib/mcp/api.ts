@@ -77,6 +77,9 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
     // Linked spreadsheets
     listLinkedSpreadsheets: (projectId: string) => api("GET", `/projects/${projectId}/spreadsheets`),
 
+    listProjectImages: (projectId: string, match?: string) =>
+      api("GET", `/projects/${projectId}/images${match ? `?match=${encodeURIComponent(match)}` : ""}`),
+
     // Remote Config (resolved economy)
     getRemoteConfig: (projectId: string, opts: { sectionId?: string; addonId?: string } = {}) => {
       const params = new URLSearchParams();
