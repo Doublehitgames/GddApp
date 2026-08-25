@@ -1,4 +1,46 @@
 {
+  "imageLibrary": {
+    "urlPlaceholder": "https://drive.google.com/drive/folders/…",
+    "connectButton": "Connect folder",
+    "refreshButton": "Refresh index",
+    "disconnectButton": "Disconnect",
+    "scanningButton": "Scanning…",
+    "openInDrive": "open folder in Drive",
+    "updatedAt": "Updated {date}",
+    "indexedOne": "1 image indexed",
+    "indexedMany": "{count} images indexed",
+    "rootFolder": "root",
+    "cancelButton": "Cancel",
+    "scanning": "Scanning…",
+    "scanFolders": "{count} folders",
+    "scanFoldersOne": "1 folder",
+    "scanImages": "{count} images",
+    "scanImagesOne": "1 image",
+    "scanQueued": "{count} queued",
+    "noticeIndexed": "{images} images indexed across {folders} folders.",
+    "noticeTruncated": "{images} images indexed across {folders} folders (hit the {limit} limit — the rest was left out).",
+    "noticeCanceled": "Scan canceled — nothing was saved ({images} images found so far).",
+    "hint": "The folder must be shared as \"anyone with the link\" for the images to show up in the GDD and in read-only mode. Name the files after the page data ID (e.g. SEED_TURNIP.png) so the agent can match image to page automatically.",
+    "errorInvalidUrl": "I could not read that URL. Paste the Drive folder link (…/drive/folders/ID).",
+    "errorNoClientId": "Google Client ID is not configured (NEXT_PUBLIC_GOOGLE_CLIENT_ID).",
+    "errorNoAuth": "Could not authorize access to Drive.",
+    "errorEmptyFolder": "The folder has no images (or is not shared with you).",
+    "errorGeneric": "Failed to sync the folder.",
+    "errorCloudSave": "Indexed locally, but not saved to the cloud ({error}). Other devices will not see the library, and a reload may lose it.",
+    "driveApiDisabled": "The Google Drive API is disabled in your Google Cloud project. Enable it at {link} and try again in 1-2 minutes. (The image picker uses a different API, the Picker API — that is why picking works and listing does not.)",
+    "driveNotFound": "Folder not found. Check the link, and whether the folder is shared with your account (or as \"anyone with the link\").",
+    "driveRateLimit": "Google rate-limited the requests (folder too large). Wait a minute and try again.",
+    "driveForbidden": "The authorized account is not allowed to read that folder.",
+    "driveUnknown": "Error listing the folder: {message}",
+    "pickerTitle": "Image library",
+    "pickerClose": "Close",
+    "pickerFilterPlaceholder": "Filter by file name or subfolder…",
+    "pickerEmptyFilter": "No image with that name.",
+    "pickerCount": "{shown} of {total} images",
+    "pickerUseDrive": "Pick another one from Drive…",
+    "thumbNoAccess": "no access",
+    "thumbNoAccessTooltip": "Could not load {name}. Check whether the file is shared as \"anyone with the link\"."
+  },
   "meta": {
     "languageName": "English",
     "locale": "en"
@@ -2011,6 +2053,10 @@
     "backlinks": "Referenced by:"
   },
   "settings": {
+    "imageLibrary": {
+      "title": "🖼️ Image Library",
+      "description": "Index a Google Drive folder to pick page icons without opening the picker — and to let the AI agent set the images on its own."
+    },
     "pageTitle": "Project Settings",
     "language": "Language",
     "ai": "AI settings",

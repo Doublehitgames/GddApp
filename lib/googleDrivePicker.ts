@@ -79,28 +79,19 @@ export function driveFileIdToImageUrl(fileId: string): string {
 }
 
 /**
- * Retorna URLs candidatas para renderizar imagem do Drive.
- * Alguns arquivos falham em um endpoint e funcionam em outro.
- */
-export function driveFileIdToImageCandidates(fileId: string): string[] {
-  const id = String(fileId || "").trim();
-  if (!id) return [];
-  return [
-    `https://drive.google.com/thumbnail?id=${id}&sz=w1000`,
-    `https://drive.google.com/uc?export=view&id=${id}`,
-    `https://lh3.googleusercontent.com/d/${id}=w1600`,
-  ];
-}
-
-/**
- * Candidatas para um thumbnail de tamanho conhecido (grade, preview).
+ * URLs candidatas para renderizar uma imagem do Drive, em ordem de preferência.
+ * Alguns arquivos falham em um endpoint e funcionam em outro, então quem exibe
+ * desce a lista no onError.
  *
- * Diferenças em relação a driveFileIdToImageCandidates: pede a largura real que
- * vai ser exibida em vez de w1000 (uma dúzia de w1000 lado a lado faz o Drive
- * estrangular e devolver imagem quebrada) e tenta o CDN lh3 primeiro, que aguenta
- * muito melhor várias imagens ao mesmo tempo.
+ * A ordem é medida, não chutada. No mesmo arquivo real:
+ *   lh3 12ms · thumbnail 786ms · uc?export=view 403
+ * O lh3 é CDN e aguenta bem uma grade inteira carregando junto; o uc?export=view
+ * quase sempre nega e por isso foi pro fim da fila.
+ *
+ * `size` é a largura pedida em px: peça a largura real de exibição, porque uma
+ * dúzia de w1600 lado a lado faz o Drive estrangular e devolver imagem quebrada.
  */
-export function driveThumbCandidates(fileId: string, size = 200): string[] {
+export function driveFileIdToImageCandidates(fileId: string, size = 1600): string[] {
   const id = String(fileId || "").trim();
   if (!id) return [];
   return [
@@ -116,22 +107,23 @@ const DRIVE_FILE_REGEX = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+
 /**
  * Para uso em <img src>: retorna a URL de thumbnail do Drive se for link do Drive, senão a própria URL.
  */
-export function getDriveImageDisplayUrl(src: string): string {
+export function getDriveImageDisplayUrl(src: string, size = 1600): string {
   if (!src || !src.includes("drive.google.com")) return src;
   const idMatch = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   const id = idMatch?.[1] ?? src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-  return id ? driveFileIdToImageUrl(id) : src;
+  // Sem fallback aqui (vira src direto), então usa a candidata mais confiável.
+  return id ? driveFileIdToImageCandidates(id, size)[0] : src;
 }
 
 /**
  * Similar ao getDriveImageDisplayUrl, mas retorna múltiplas URLs fallback.
  */
-export function getDriveImageDisplayCandidates(src: string): string[] {
+export function getDriveImageDisplayCandidates(src: string, size = 1600): string[] {
   if (!src) return [];
   if (!src.includes("drive.google.com")) return [src];
   const idMatch = src.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   const id = idMatch?.[1] ?? src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)?.[1];
-  return id ? driveFileIdToImageCandidates(id) : [src];
+  return id ? driveFileIdToImageCandidates(id, size) : [src];
 }
 
 /**

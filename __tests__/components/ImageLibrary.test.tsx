@@ -1,9 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { I18nProvider } from "@/lib/i18n/provider";
 import { ImageLibraryPicker } from "@/components/common/ImageLibraryPicker";
 import { ImageLibrarySettings } from "@/components/common/ImageLibrarySettings";
 import { DriveThumb } from "@/components/common/DriveThumb";
 import type { ProjectImage } from "@/store/slices/types";
+
+/** Os componentes leem as strings do locale, então precisam do provider. */
+const render = (ui: React.ReactElement) =>
+  rtlRender(<I18nProvider initialLocale="pt-BR">{ui}</I18nProvider>);
 
 const FILES: ProjectImage[] = [
   { fileId: "f1", name: "SEED_TURNIP.png" },

@@ -197,7 +197,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const sections = project?.sections || [];
   const addons = section?.addons || [];
   const sectionThumbCandidates = useMemo(
-    () => getDriveImageDisplayCandidates(section?.thumbImageUrl || ""),
+    () => getDriveImageDisplayCandidates(section?.thumbImageUrl || "", 240),
     [section?.thumbImageUrl]
   );
 

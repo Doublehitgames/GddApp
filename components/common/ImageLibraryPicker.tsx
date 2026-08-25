@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ProjectImage } from "@/store/slices/types";
 import { imageLabel } from "@/lib/googleDriveFolder";
+import { useI18n } from "@/lib/i18n/provider";
 import { DriveThumb } from "@/components/common/DriveThumb";
 
 interface ImageLibraryPickerProps {
@@ -23,6 +24,7 @@ export function ImageLibraryPicker({
   onClose,
   onUseDrivePicker,
 }: ImageLibraryPickerProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -42,12 +44,12 @@ export function ImageLibraryPicker({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between gap-4">
-          <h3 className="text-lg font-bold text-white">Biblioteca de imagens</h3>
+          <h3 className="text-lg font-bold text-white">{t("imageLibrary.pickerTitle")}</h3>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg px-2 text-xl text-gray-400 hover:text-white"
-            aria-label="Fechar"
+            aria-label={t("imageLibrary.pickerClose")}
           >
             ×
           </button>
@@ -57,7 +59,7 @@ export function ImageLibraryPicker({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filtrar por nome do arquivo ou subpasta…"
+          placeholder={t("imageLibrary.pickerFilterPlaceholder")}
           className="mb-4 w-full rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white outline-none placeholder-gray-500 focus:border-gray-500"
         />
 
@@ -91,14 +93,16 @@ export function ImageLibraryPicker({
           })}
           {filtered.length === 0 && (
             <p className="col-span-full py-8 text-center text-sm text-gray-500">
-              Nenhuma imagem com esse nome.
+              {t("imageLibrary.pickerEmptyFilter")}
             </p>
           )}
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-800 pt-3">
           <span className="text-xs text-gray-500">
-            {filtered.length} de {files.length} imagens
+            {t("imageLibrary.pickerCount")
+              .replace("{shown}", String(filtered.length))
+              .replace("{total}", String(files.length))}
           </span>
           {onUseDrivePicker && (
             <button
@@ -106,7 +110,7 @@ export function ImageLibraryPicker({
               onClick={onUseDrivePicker}
               className="rounded-lg border border-gray-600 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/40"
             >
-              Escolher outra do Drive…
+              {t("imageLibrary.pickerUseDrive")}
             </button>
           )}
         </div>

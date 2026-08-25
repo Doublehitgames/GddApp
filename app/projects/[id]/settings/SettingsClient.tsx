@@ -604,11 +604,8 @@ export default function SettingsClient({ projectId }: Props) {
 
           {/* Biblioteca de Imagens (pasta do Drive) */}
           <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-1">Biblioteca de Imagens</h2>
-            <p className="text-sm text-gray-400 mb-4">
-              Indexe uma pasta do Google Drive para escolher ícones de página sem abrir o picker — e
-              para o agente MCP conseguir setar as imagens sozinho.
-            </p>
+            <h2 className="text-xl font-bold mb-1">{t("settings.imageLibrary.title")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.imageLibrary.description")}</p>
             <ImageLibrarySettings
               library={project.imageLibrary}
               onChange={async (next?: ProjectImageLibrary) => {
@@ -618,9 +615,7 @@ export default function SettingsClient({ projectId }: Props) {
                 // fazia o índice viver só no localStorage e desaparecer no reload,
                 // quando a nuvem recarregava a coluna vazia por cima.
                 if (error) {
-                  throw new Error(
-                    `Indexou local, mas não salvou na nuvem (${error}). Outro dispositivo não vai ver a biblioteca, e um reload pode perdê-la.`,
-                  );
+                  throw new Error(t("imageLibrary.errorCloudSave").replace("{error}", error));
                 }
               }}
             />

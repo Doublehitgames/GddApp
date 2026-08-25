@@ -167,7 +167,8 @@ describe("varredura paralela, progresso e cancelamento", () => {
     mockDrive({ root: [dir("d1", "sementes")], d1: [img("i1", "SEED.png")] });
     const names: string[] = [];
     await listDriveFolderImages("tok", "root", { onProgress: (p) => names.push(p.current) });
-    expect(names[0]).toBe("raiz");
+    // Raiz vem como caminho vazio: quem renderiza dá o nome traduzido.
+    expect(names[0]).toBe("");
     expect(names).toContain("sementes");
   });
 

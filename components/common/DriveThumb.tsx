@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { driveThumbCandidates } from "@/lib/googleDrivePicker";
+import { driveFileIdToImageCandidates } from "@/lib/googleDrivePicker";
+import { useI18n } from "@/lib/i18n/provider";
 
 interface DriveThumbProps {
   fileId: string;
@@ -22,7 +23,8 @@ interface DriveThumbProps {
  * e ver qual é vale mais do que um ícone de imagem quebrada.
  */
 export function DriveThumb({ fileId, alt, size = 200, className }: DriveThumbProps) {
-  const candidates = driveThumbCandidates(fileId, size);
+  const { t } = useI18n();
+  const candidates = driveFileIdToImageCandidates(fileId, size);
   // O arquivo entra no estado junto com a tentativa: trocar de arquivo (grade
   // filtrada, índice atualizado) recomeça a cadeia sem precisar de efeito.
   const [tried, setTried] = useState({ fileId, attempt: 0 });
@@ -32,9 +34,9 @@ export function DriveThumb({ fileId, alt, size = 200, className }: DriveThumbPro
     return (
       <div
         className={`flex items-center justify-center bg-gray-950 p-1 text-center text-[8px] leading-tight text-gray-500 ${className ?? ""}`}
-        title={`Não consegui carregar ${alt}. Confirme se o arquivo está compartilhado como "qualquer pessoa com o link".`}
+        title={t("imageLibrary.thumbNoAccessTooltip").replace("{name}", alt)}
       >
-        sem acesso
+        {t("imageLibrary.thumbNoAccess")}
       </div>
     );
   }

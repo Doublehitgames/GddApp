@@ -19,7 +19,12 @@ type Props = {
  */
 export function SectionHeroThumb({ src, alt, width }: Props) {
   const [candidateIndex, setCandidateIndex] = useState(0);
-  const candidates = useMemo(() => getDriveImageDisplayCandidates(src || ""), [src]);
+  // Pede o dobro da largura de exibição (telas 2x) em vez do w1600 padrão: é o
+  // que evita o Drive estrangular quando várias seções carregam a miniatura.
+  const candidates = useMemo(
+    () => getDriveImageDisplayCandidates(src || "", Math.min(1600, Math.max(120, width * 2))),
+    [src, width],
+  );
 
   useEffect(() => {
     setCandidateIndex(0);

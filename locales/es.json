@@ -1,4 +1,46 @@
 {
+  "imageLibrary": {
+    "urlPlaceholder": "https://drive.google.com/drive/folders/…",
+    "connectButton": "Conectar carpeta",
+    "refreshButton": "Actualizar índice",
+    "disconnectButton": "Desconectar",
+    "scanningButton": "Recorriendo…",
+    "openInDrive": "abrir carpeta en Drive",
+    "updatedAt": "Actualizado el {date}",
+    "indexedOne": "1 imagen indexada",
+    "indexedMany": "{count} imágenes indexadas",
+    "rootFolder": "raíz",
+    "cancelButton": "Cancelar",
+    "scanning": "Recorriendo…",
+    "scanFolders": "{count} carpetas",
+    "scanFoldersOne": "1 carpeta",
+    "scanImages": "{count} imágenes",
+    "scanImagesOne": "1 imagen",
+    "scanQueued": "{count} en la cola",
+    "noticeIndexed": "{images} imágenes indexadas en {folders} carpetas.",
+    "noticeTruncated": "{images} imágenes indexadas en {folders} carpetas (se alcanzó el límite de {limit} — el resto quedó fuera).",
+    "noticeCanceled": "Recorrido cancelado — no se guardó nada ({images} imágenes hasta ahí).",
+    "hint": "La carpeta debe estar compartida como \"cualquier persona con el enlace\" para que las imágenes aparezcan en el GDD y en modo lectura. Nombra los archivos con el ID del dato de la página (ej.: SEED_TURNIP.png) para que el agente empareje imagen y página automáticamente.",
+    "errorInvalidUrl": "No reconocí esa URL. Pega el enlace de la carpeta de Drive (…/drive/folders/ID).",
+    "errorNoClientId": "Google Client ID no configurado (NEXT_PUBLIC_GOOGLE_CLIENT_ID).",
+    "errorNoAuth": "No pude autorizar el acceso a Drive.",
+    "errorEmptyFolder": "La carpeta no tiene imágenes (o no está compartida contigo).",
+    "errorGeneric": "Error al sincronizar la carpeta.",
+    "errorCloudSave": "Indexó local, pero no guardó en la nube ({error}). Otro dispositivo no verá la biblioteca, y una recarga puede perderla.",
+    "driveApiDisabled": "La Google Drive API está desactivada en tu proyecto de Google Cloud. Actívala en {link} e inténtalo de nuevo en 1-2 minutos. (El selector de imagen usa otra API, la Picker API — por eso él funciona y el listado no.)",
+    "driveNotFound": "Carpeta no encontrada. Verifica el enlace y si la carpeta está compartida con tu cuenta (o como \"cualquier persona con el enlace\").",
+    "driveRateLimit": "Google limitó las solicitudes (carpeta muy grande). Espera un minuto e inténtalo de nuevo.",
+    "driveForbidden": "Sin permiso para leer esa carpeta con la cuenta autorizada.",
+    "driveUnknown": "Error al listar la carpeta: {message}",
+    "pickerTitle": "Biblioteca de imágenes",
+    "pickerClose": "Cerrar",
+    "pickerFilterPlaceholder": "Filtrar por nombre de archivo o subcarpeta…",
+    "pickerEmptyFilter": "Ninguna imagen con ese nombre.",
+    "pickerCount": "{shown} de {total} imágenes",
+    "pickerUseDrive": "Elegir otra de Drive…",
+    "thumbNoAccess": "sin acceso",
+    "thumbNoAccessTooltip": "No pude cargar {name}. Verifica si el archivo está compartido como \"cualquier persona con el enlace\"."
+  },
   "meta": {
     "languageName": "Español",
     "locale": "es"
@@ -2011,6 +2053,10 @@
     "backlinks": "Referenciado por:"
   },
   "settings": {
+    "imageLibrary": {
+      "title": "🖼️ Biblioteca de Imágenes",
+      "description": "Indexa una carpeta de Google Drive para elegir iconos de página sin abrir el selector — y para que el agente de IA pueda poner las imágenes solo."
+    },
     "pageTitle": "Configuración del proyecto",
     "language": "Idioma",
     "ai": "Configuración de IA",

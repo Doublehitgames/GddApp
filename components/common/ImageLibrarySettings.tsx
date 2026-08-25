@@ -4,14 +4,16 @@ import { useRef, useState } from "react";
 import type { ProjectImageLibrary } from "@/store/slices/types";
 import { getGoogleClientId } from "@/lib/googleDrivePicker";
 import { DriveThumb } from "@/components/common/DriveThumb";
+import { useI18n } from "@/lib/i18n/provider";
 import {
+  classifyDriveError,
   driveFolderUrl,
-  explainDriveError,
   imageLabel,
   getGoogleDriveToken,
   listDriveFolderImages,
   parseDriveFolderId,
   IMAGE_LIBRARY_LIMIT,
+  type DriveErrorKind,
   type ScanProgress,
 } from "@/lib/googleDriveFolder";
 
@@ -25,6 +27,15 @@ const INPUT_CLASS =
 
 const PREVIEW_COUNT = 12;
 
+/** Cada categoria de falha do Drive tem sua própria instrução no locale. */
+const DRIVE_ERROR_KEYS: Record<DriveErrorKind, string> = {
+  apiDisabled: "imageLibrary.driveApiDisabled",
+  notFound: "imageLibrary.driveNotFound",
+  rateLimit: "imageLibrary.driveRateLimit",
+  forbidden: "imageLibrary.driveForbidden",
+  unknown: "imageLibrary.driveUnknown",
+};
+
 /**
  * Cadastro da pasta de imagens do Drive e sincronização do índice.
  *
@@ -33,6 +44,7 @@ const PREVIEW_COUNT = 12;
  * leem o cache sem precisar de credencial.
  */
 export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettingsProps) {
+  const { t, locale } = useI18n();
   const [url, setUrl] = useState(library?.folderUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -40,30 +52,38 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
   const [notice, setNotice] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  /** Erro cru do Drive → instrução traduzida da categoria correspondente. */
+  function driveErrorMessage(raw: string): string {
+    const info = classifyDriveError(raw);
+    return t(DRIVE_ERROR_KEYS[info.kind])
+      .replace("{link}", info.enableLink ?? "")
+      .replace("{message}", info.raw);
+  }
+
   async function syncFolder(rawUrl: string) {
     setError(null);
     setNotice(null);
 
     const folderId = parseDriveFolderId(rawUrl);
     if (!folderId) {
-      setError("Não reconheci essa URL. Cole o link da pasta do Drive (…/drive/folders/ID).");
+      setError(t("imageLibrary.errorInvalidUrl"));
       return;
     }
 
     setBusy(true);
-    setProgress({ scanned: 0, pending: 1, images: 0, current: "raiz" });
+    setProgress({ scanned: 0, pending: 1, images: 0, current: "" });
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
       const clientId = await getGoogleClientId();
       if (!clientId) {
-        setError("Google Client ID não configurado (NEXT_PUBLIC_GOOGLE_CLIENT_ID).");
+        setError(t("imageLibrary.errorNoClientId"));
         return;
       }
       const token = await getGoogleDriveToken(clientId);
       if (!token) {
-        setError("Não consegui autorizar o acesso ao Drive.");
+        setError(t("imageLibrary.errorNoAuth"));
         return;
       }
 
@@ -74,15 +94,15 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
       );
 
       if (canceled) {
-        setNotice(`Varredura cancelada — nada foi salvo (${files.length} imagens até ali).`);
+        setNotice(t("imageLibrary.noticeCanceled").replace("{images}", String(files.length)));
         return;
       }
       if (listError) {
-        setError(explainDriveError(listError));
+        setError(driveErrorMessage(listError));
         return;
       }
       if (files.length === 0) {
-        setError("A pasta não tem imagens (ou não está compartilhada com você).");
+        setError(t("imageLibrary.errorEmptyFolder"));
         return;
       }
 
@@ -95,12 +115,13 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
       setUrl(driveFolderUrl(folderId));
       const folders = new Set(files.map((f) => f.path ?? "")).size;
       setNotice(
-        truncated
-          ? `${files.length} imagens indexadas em ${folders} pastas (limite de ${IMAGE_LIBRARY_LIMIT} atingido — o resto ficou de fora).`
-          : `${files.length} imagens indexadas em ${folders} pastas.`,
+        t(truncated ? "imageLibrary.noticeTruncated" : "imageLibrary.noticeIndexed")
+          .replace("{images}", String(files.length))
+          .replace("{folders}", String(folders))
+          .replace("{limit}", String(IMAGE_LIBRARY_LIMIT)),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha ao sincronizar a pasta.");
+      setError(e instanceof Error ? e.message : t("imageLibrary.errorGeneric"));
     } finally {
       abortRef.current = null;
       setProgress(null);
@@ -121,6 +142,9 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
 
   const preview = (library?.files ?? []).slice(0, PREVIEW_COUNT);
 
+  const countLabel = (one: string, many: string, count: number) =>
+    count === 1 ? t(one) : t(many).replace("{count}", String(count));
+
   /**
    * Barra de progresso da varredura. Não existe total conhecido — a árvore é
    * descoberta enquanto anda — então mostra os números reais (pastas prontas,
@@ -135,10 +159,13 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
             aria-hidden
           />
           <span>
-            Varrendo… <strong>{progress.scanned}</strong> pasta
-            {progress.scanned === 1 ? "" : "s"} · <strong>{progress.images}</strong> imagem
-            {progress.images === 1 ? "" : "s"}
-            {progress.pending > 0 ? ` · ${progress.pending} na fila` : ""}
+            {t("imageLibrary.scanning")}{" "}
+            {countLabel("imageLibrary.scanFoldersOne", "imageLibrary.scanFolders", progress.scanned)}
+            {" · "}
+            {countLabel("imageLibrary.scanImagesOne", "imageLibrary.scanImages", progress.images)}
+            {progress.pending > 0
+              ? ` · ${t("imageLibrary.scanQueued").replace("{count}", String(progress.pending))}`
+              : ""}
           </span>
         </div>
         <button
@@ -146,10 +173,12 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
           onClick={cancelSync}
           className="rounded-lg border border-gray-600 px-3 py-1 text-xs text-gray-300 hover:bg-gray-700/40"
         >
-          Cancelar
+          {t("imageLibrary.cancelButton")}
         </button>
       </div>
-      <div className="mt-2 truncate text-xs text-gray-500">📁 {progress.current}</div>
+      <div className="mt-2 truncate text-xs text-gray-500">
+        📁 {progress.current || t("imageLibrary.rootFolder")}
+      </div>
       {/* Barra indeterminada: a fila encolhe e cresce, então isso é sinal de vida, não medida. */}
       <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-800">
         <div
@@ -169,19 +198,21 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm">
               <div className="font-semibold text-white">
-                {library.files.length === 1
-                  ? "1 imagem indexada"
-                  : `${library.files.length} imagens indexadas`}
+                {countLabel("imageLibrary.indexedOne", "imageLibrary.indexedMany", library.files.length)}
               </div>
               <div className="text-xs text-gray-400">
-                Atualizado em {new Date(library.syncedAt).toLocaleString("pt-BR")} ·{" "}
+                {t("imageLibrary.updatedAt").replace(
+                  "{date}",
+                  new Date(library.syncedAt).toLocaleString(locale),
+                )}
+                {" · "}
                 <a
                   href={library.folderUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-sky-400 hover:underline"
                 >
-                  abrir pasta no Drive
+                  {t("imageLibrary.openInDrive")}
                 </a>
               </div>
             </div>
@@ -192,7 +223,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
                 onClick={() => syncFolder(library.folderUrl)}
                 className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                {busy ? "Varrendo…" : "Atualizar índice"}
+                {busy ? t("imageLibrary.scanningButton") : t("imageLibrary.refreshButton")}
               </button>
               <button
                 type="button"
@@ -200,7 +231,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
                 onClick={disconnect}
                 className="rounded-lg border border-gray-600 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/40 disabled:opacity-50"
               >
-                Desconectar
+                {t("imageLibrary.disconnectButton")}
               </button>
             </div>
           </div>
@@ -235,7 +266,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://drive.google.com/drive/folders/…"
+            placeholder={t("imageLibrary.urlPlaceholder")}
             className={INPUT_CLASS}
           />
           <button
@@ -244,7 +275,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
             onClick={() => syncFolder(url)}
             className="whitespace-nowrap rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {busy ? "Varrendo…" : "Conectar pasta"}
+            {busy ? t("imageLibrary.scanningButton") : t("imageLibrary.connectButton")}
           </button>
         </div>
       )}
@@ -252,11 +283,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
       {error && <div className="text-sm text-rose-400">{error}</div>}
       {notice && <div className="text-sm text-emerald-400">{notice}</div>}
 
-      <p className="text-xs text-gray-500">
-        A pasta precisa estar compartilhada como &quot;qualquer pessoa com o link&quot; para as imagens
-        aparecerem no GDD e no modo leitura. Nomeie os arquivos com o ID do dado da página (ex.:
-        SEED_TURNIP.png) para o agente casar imagem e página automaticamente.
-      </p>
+      <p className="text-xs text-gray-500">{t("imageLibrary.hint")}</p>
     </div>
   );
 }

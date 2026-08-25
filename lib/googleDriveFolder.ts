@@ -116,30 +116,43 @@ export function driveFolderUrl(folderId: string): string {
   return `https://drive.google.com/drive/folders/${folderId}`;
 }
 
+/** Categorias de falha do Drive que merecem instrução própria na UI. */
+export type DriveErrorKind = "apiDisabled" | "notFound" | "rateLimit" | "forbidden" | "unknown";
+
+export type DriveErrorInfo = {
+  kind: DriveErrorKind;
+  /** Mensagem crua do Google, para o caso `unknown` e para depuração. */
+  raw: string;
+  /** Link do Google Cloud para ativar a Drive API, quando dá para descobrir o projeto. */
+  enableLink?: string;
+};
+
 /**
- * O picker usa a Picker API; `files.list` usa a Drive API. São duas APIs
- * diferentes no Google Cloud, e é comum ter só a primeira ligada — o erro cru
- * do Google explica isso em três linhas de texto, então aqui ele vira instrução.
+ * Classifica o erro cru do Google. Fica aqui, mas sem texto de usuário: o texto
+ * é responsabilidade de quem renderiza (locales), esta função só diz o que houve.
+ *
+ * O caso mais comum e mais confuso é `apiDisabled`: o picker usa a Picker API e
+ * `files.list` usa a Drive API — são duas APIs diferentes no Google Cloud, então
+ * escolher imagem funciona enquanto listar pasta falha.
  */
-export function explainDriveError(message: string): string {
+export function classifyDriveError(message: string): DriveErrorInfo {
   const raw = message || "";
+
   if (/has not been used in project|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(raw)) {
     const project = raw.match(/project (\d{6,})/)?.[1];
-    const link = project
-      ? `https://console.cloud.google.com/apis/library/drive.googleapis.com?project=${project}`
-      : "https://console.cloud.google.com/apis/library/drive.googleapis.com";
-    return `A Google Drive API está desativada no seu projeto do Google Cloud. Ative em ${link} e tente de novo em 1-2 minutos. (O picker de imagem usa outra API, a Picker API — por isso ele funciona e a listagem não.)`;
+    return {
+      kind: "apiDisabled",
+      raw,
+      enableLink: project
+        ? `https://console.cloud.google.com/apis/library/drive.googleapis.com?project=${project}`
+        : "https://console.cloud.google.com/apis/library/drive.googleapis.com",
+    };
   }
-  if (/File not found|notFound/i.test(raw)) {
-    return "Pasta não encontrada. Confirme o link e se a pasta está compartilhada com a sua conta (ou como \"qualquer pessoa com o link\").";
-  }
-  if (/rateLimit|userRateLimitExceeded|Rate Limit|quota/i.test(raw)) {
-    return "O Google limitou as requisições (pasta muito grande). Espere um minuto e tente de novo.";
-  }
-  if (/insufficient|forbidden|403/i.test(raw)) {
-    return "Sem permissão para ler essa pasta com a conta autorizada.";
-  }
-  return `Erro ao listar a pasta: ${raw}`;
+  if (/File not found|notFound/i.test(raw)) return { kind: "notFound", raw };
+  if (/rateLimit|userRateLimitExceeded|Rate Limit|quota/i.test(raw)) return { kind: "rateLimit", raw };
+  if (/insufficient|forbidden|403/i.test(raw)) return { kind: "forbidden", raw };
+
+  return { kind: "unknown", raw };
 }
 
 type DriveEntry = { id?: unknown; name?: unknown; mimeType?: unknown };
@@ -300,7 +313,8 @@ export async function listDriveFolderImages(
         active--;
         scanned++;
       }
-      report(folder.path || "raiz");
+      // Caminho vazio = raiz. Quem renderiza dá o nome, aqui não tem texto de UI.
+      report(folder.path);
     }
   }
 

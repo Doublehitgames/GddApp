@@ -1,4 +1,46 @@
 {
+  "imageLibrary": {
+    "urlPlaceholder": "https://drive.google.com/drive/folders/…",
+    "connectButton": "Conectar pasta",
+    "refreshButton": "Atualizar índice",
+    "disconnectButton": "Desconectar",
+    "scanningButton": "Varrendo…",
+    "openInDrive": "abrir pasta no Drive",
+    "updatedAt": "Atualizado em {date}",
+    "indexedOne": "1 imagem indexada",
+    "indexedMany": "{count} imagens indexadas",
+    "rootFolder": "raiz",
+    "cancelButton": "Cancelar",
+    "scanning": "Varrendo…",
+    "scanFolders": "{count} pastas",
+    "scanFoldersOne": "1 pasta",
+    "scanImages": "{count} imagens",
+    "scanImagesOne": "1 imagem",
+    "scanQueued": "{count} na fila",
+    "noticeIndexed": "{images} imagens indexadas em {folders} pastas.",
+    "noticeTruncated": "{images} imagens indexadas em {folders} pastas (limite de {limit} atingido — o resto ficou de fora).",
+    "noticeCanceled": "Varredura cancelada — nada foi salvo ({images} imagens até ali).",
+    "hint": "A pasta precisa estar compartilhada como \"qualquer pessoa com o link\" para as imagens aparecerem no GDD e no modo leitura. Nomeie os arquivos com o ID do dado da página (ex.: SEED_TURNIP.png) para o agente casar imagem e página automaticamente.",
+    "errorInvalidUrl": "Não reconheci essa URL. Cole o link da pasta do Drive (…/drive/folders/ID).",
+    "errorNoClientId": "Google Client ID não configurado (NEXT_PUBLIC_GOOGLE_CLIENT_ID).",
+    "errorNoAuth": "Não consegui autorizar o acesso ao Drive.",
+    "errorEmptyFolder": "A pasta não tem imagens (ou não está compartilhada com você).",
+    "errorGeneric": "Falha ao sincronizar a pasta.",
+    "errorCloudSave": "Indexou local, mas não salvou na nuvem ({error}). Outro dispositivo não vai ver a biblioteca, e um reload pode perdê-la.",
+    "driveApiDisabled": "A Google Drive API está desativada no seu projeto do Google Cloud. Ative em {link} e tente de novo em 1-2 minutos. (O picker de imagem usa outra API, a Picker API — por isso ele funciona e a listagem não.)",
+    "driveNotFound": "Pasta não encontrada. Confirme o link e se a pasta está compartilhada com a sua conta (ou como \"qualquer pessoa com o link\").",
+    "driveRateLimit": "O Google limitou as requisições (pasta muito grande). Espere um minuto e tente de novo.",
+    "driveForbidden": "Sem permissão para ler essa pasta com a conta autorizada.",
+    "driveUnknown": "Erro ao listar a pasta: {message}",
+    "pickerTitle": "Biblioteca de imagens",
+    "pickerClose": "Fechar",
+    "pickerFilterPlaceholder": "Filtrar por nome do arquivo ou subpasta…",
+    "pickerEmptyFilter": "Nenhuma imagem com esse nome.",
+    "pickerCount": "{shown} de {total} imagens",
+    "pickerUseDrive": "Escolher outra do Drive…",
+    "thumbNoAccess": "sem acesso",
+    "thumbNoAccessTooltip": "Não consegui carregar {name}. Confirme se o arquivo está compartilhado como \"qualquer pessoa com o link\"."
+  },
   "meta": {
     "languageName": "Português (Brasil)",
     "locale": "pt-BR"
@@ -2011,6 +2053,10 @@
     "backlinks": "Referenciado por:"
   },
   "settings": {
+    "imageLibrary": {
+      "title": "🖼️ Biblioteca de Imagens",
+      "description": "Indexe uma pasta do Google Drive para escolher ícones de página sem abrir o picker — e para o agente de IA conseguir colocar as imagens sozinho."
+    },
     "pageTitle": "Configurações do Projeto",
     "language": "Idioma",
     "ai": "Configurações de IA",

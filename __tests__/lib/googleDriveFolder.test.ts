@@ -1,4 +1,4 @@
-import { explainDriveError, parseDriveFolderId, driveFolderUrl } from "@/lib/googleDriveFolder";
+import { classifyDriveError, parseDriveFolderId, driveFolderUrl } from "@/lib/googleDriveFolder";
 
 describe("parseDriveFolderId", () => {
   it("aceita o link normal de pasta compartilhada", () => {
@@ -25,29 +25,35 @@ describe("parseDriveFolderId", () => {
   });
 });
 
-describe("explainDriveError", () => {
-  it("transforma o erro de API desativada em instrução com o link do projeto certo", () => {
-    const out = explainDriveError(
+describe("classifyDriveError", () => {
+  it("reconhece a API desativada e monta o link do projeto certo", () => {
+    const out = classifyDriveError(
       "Google Drive API has not been used in project 789615777145 before or it is disabled.",
     );
-    expect(out).toContain("Drive API está desativada");
-    expect(out).toContain("project=789615777145");
-    // A distinção que causa a confusão precisa aparecer.
-    expect(out).toContain("Picker API");
+    expect(out.kind).toBe("apiDisabled");
+    expect(out.enableLink).toContain("project=789615777145");
   });
 
   it("cai no link genérico quando a mensagem não traz o número do projeto", () => {
-    const out = explainDriveError("accessNotConfigured");
-    expect(out).toContain("apis/library/drive.googleapis.com");
-    expect(out).not.toContain("project=");
+    const out = classifyDriveError("accessNotConfigured");
+    expect(out.kind).toBe("apiDisabled");
+    expect(out.enableLink).toBe("https://console.cloud.google.com/apis/library/drive.googleapis.com");
   });
 
-  it("explica pasta inexistente e falta de permissão", () => {
-    expect(explainDriveError("File not found: abc")).toContain("Pasta não encontrada");
-    expect(explainDriveError("Insufficient permissions")).toContain("Sem permissão");
+  it("separa pasta inexistente, limite de requisições e falta de permissão", () => {
+    expect(classifyDriveError("File not found: abc").kind).toBe("notFound");
+    expect(classifyDriveError("Rate Limit Exceeded").kind).toBe("rateLimit");
+    expect(classifyDriveError("Insufficient permissions").kind).toBe("forbidden");
   });
 
-  it("repassa o que não sabe traduzir", () => {
-    expect(explainDriveError("boom")).toBe("Erro ao listar a pasta: boom");
+  it("o que não conhece vira unknown com a mensagem crua preservada", () => {
+    const out = classifyDriveError("boom");
+    expect(out.kind).toBe("unknown");
+    expect(out.raw).toBe("boom");
+  });
+
+  it("não devolve texto de usuário — isso é responsabilidade do locale", () => {
+    const out = classifyDriveError("File not found");
+    expect(Object.keys(out).sort()).toEqual(["kind", "raw"]);
   });
 });
