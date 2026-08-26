@@ -18,6 +18,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { GddApiClient } from "./client.js";
 import { registerTools } from "./tools.js";
 import { registerPrompts } from "./prompts.js";
+import { SERVER_INSTRUCTIONS } from "./instructions.js";
 
 async function main() {
   if (!process.env.GDD_API_KEY) {
@@ -28,10 +29,12 @@ async function main() {
 
   const client = new GddApiClient();
 
-  const server = new McpServer({
-    name: "gdd-manager",
-    version: "0.6.0",
-  });
+  const server = new McpServer(
+    { name: "gdd-manager", version: "0.6.0" },
+    // Sent once in the initialize response: conventions that apply to every
+    // write but belong in no single tool's schema.
+    { instructions: SERVER_INSTRUCTIONS },
+  );
 
   registerTools(server, client);
   registerPrompts(server);

@@ -8,8 +8,8 @@
  *
  * The rule: a write returns a receipt (proof it saved, plus the ids the agent
  * could not know), a listing returns index rows, a read returns everything.
- * Fat payloads belong a get_section /
- * get_remote_config, which is where an agent asks for them on purpose.
+ * Fat payloads belong to get_section, which is where an agent asks for them
+ * on purpose.
  *
  * NOTE: twin of lib/mcp/project.ts (the remote /api/mcp server). The two MCP
  * servers are independent copies — keep both in sync.
@@ -46,7 +46,7 @@ export declare function filterSections(sections: unknown[], opts?: {
 export declare function sectionFull(section: unknown): Rec;
 export declare function sectionReceipt(section: unknown, updated: string[]): Rec;
 export declare function sectionCreated(section: unknown): Rec;
-/** One index row. Settings (aiInstructions, mindmap) live in get_project. */
+/** One index row. The project settings live in get_project. */
 export declare function projectRow(project: unknown): Rec;
 /** Project settings plus a section index — the map, not the territory. */
 export declare function projectIndex(project: unknown): Rec;

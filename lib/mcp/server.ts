@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type ApiFetcher, McpApiError } from "./api";
+import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   batchReceipt,
   deleted,
@@ -58,6 +59,14 @@ const CONTENT_BLOCKS_GUIDE =
   "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
   '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"emoji":"⚠️","variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
 
+const CONTENT_FIELD = z
+  .string()
+  .optional()
+  .describe(
+    "Markdown. Mention another page as $[Exact Page Title] — plain text here, rendered as a link. " +
+      "Used for search, and the server derives contentBlocks from it, so the two cannot disagree.",
+  );
+
 const CONTENT_BLOCKS_FIELD = z
   .array(z.record(z.string(), z.unknown()))
   .optional()
@@ -75,11 +84,6 @@ function err(e: unknown) {
     return { content: [{ type: "text" as const, text: `Error (${e.code}): ${e.message}` }], isError: true };
   }
   return { content: [{ type: "text" as const, text: String(e) }], isError: true };
-}
-
-/** A caller mistake, not a transport failure — say what is missing and stop. */
-function fail(message: string) {
-  return { content: [{ type: "text" as const, text: message }], isError: true };
 }
 
 // ── Generic tools ─────────────────────────────────────────────────
@@ -141,7 +145,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, images). Always pair it with a plain-text `content` for search. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: z.string().optional(), contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -150,7 +154,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: z.string().optional(), contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -165,7 +169,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       sections: z.array(z.object({
         sectionId: z.string(),
         title: z.string().optional(),
-        content: z.string().optional(),
+        content: CONTENT_FIELD,
         contentBlocks: CONTENT_BLOCKS_FIELD,
         parentId: z.string().nullable().optional(),
         order: z.number().optional(),
@@ -272,10 +276,12 @@ Mostre os resultados organizados por projeto, com o nome da seção e um trecho 
 // ── Factory ───────────────────────────────────────────────────────
 
 export function createMcpServer(api: ApiFetcher): McpServer {
-  const server = new McpServer({
-    name: "gdd-manager",
-    version: "0.1.0",
-  });
+  const server = new McpServer(
+    { name: "gdd-manager", version: "0.1.0" },
+    // Sent once in the initialize response: conventions that apply to every
+    // write but belong in no single tool's schema.
+    { instructions: SERVER_INSTRUCTIONS },
+  );
 
   registerGenericTools(server, api);
   registerPrompts(server);

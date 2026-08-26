@@ -8,8 +8,8 @@
  *
  * The rule: a write returns a receipt (proof it saved, plus the ids the agent
  * could not know), a listing returns index rows, a read returns everything.
- * Fat payloads belong a get_section /
- * get_remote_config, which is where an agent asks for them on purpose.
+ * Fat payloads belong to get_section, which is where an agent asks for them
+ * on purpose.
  *
  * NOTE: twin of packages/mcp-server/src/project.ts (the stdio server). The two
  * MCP servers are independent copies — keep both in sync.
@@ -127,7 +127,7 @@ export function sectionCreated(section: unknown): Rec {
 
 // ── Projects ──────────────────────────────────────────────────────
 
-/** One index row. Settings (aiInstructions, mindmap) live in get_project. */
+/** One index row. The project settings live in get_project. */
 export function projectRow(project: unknown): Rec {
   const p = asRec(project);
   return {
@@ -147,7 +147,6 @@ export function projectIndex(project: unknown): Rec {
     title: p.title,
     ...(p.description ? { description: p.description } : {}),
     ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
-    ...(p.mindmapSettings ? { mindmapSettings: p.mindmapSettings } : {}),
     // Just the count — the library itself lives in list_project_images.
     ...(p.imageCount ? { imageCount: p.imageCount } : {}),
     updatedAt: p.updatedAt,

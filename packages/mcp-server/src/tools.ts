@@ -185,6 +185,14 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
     '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"emoji":"⚠️","variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
 
+  const CONTENT_FIELD = z
+    .string()
+    .optional()
+    .describe(
+      "Markdown. Mention another page as $[Exact Page Title] — plain text here, rendered as a link. " +
+        "Used for search, and the server derives contentBlocks from it, so the two cannot disagree.",
+    );
+
   const CONTENT_BLOCKS_FIELD = z
     .array(z.record(z.unknown()))
     .optional()
@@ -209,7 +217,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     {
       projectId: z.string(),
       title: z.string().describe("Section title"),
-      content: z.string().optional().describe("Plain-text / markdown version of the description — used for search and as fallback when blocks are unavailable. If omitted and contentBlocks is provided, leave empty."),
+      content: CONTENT_FIELD,
       contentBlocks: CONTENT_BLOCKS_FIELD,
       parentId: z.string().optional().describe("Parent section for sub-sections"),
       order: z.number().optional().describe("Sort order (0-based)"),
@@ -235,7 +243,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       projectId: z.string(),
       sectionId: z.string(),
       title: z.string().optional().describe("New title"),
-      content: z.string().optional().describe("Plain-text / markdown version of the description"),
+      content: CONTENT_FIELD,
       contentBlocks: CONTENT_BLOCKS_FIELD,
       parentId: z.string().optional().describe("New parent section"),
       order: z.number().optional().describe("New sort order"),
@@ -264,7 +272,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
           z.object({
             sectionId: z.string(),
             title: z.string().optional(),
-            content: z.string().optional().describe("Plain-text / markdown description"),
+            content: CONTENT_FIELD,
             contentBlocks: CONTENT_BLOCKS_FIELD,
             parentId: z.string().nullable().optional(),
             order: z.number().optional(),
