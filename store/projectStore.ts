@@ -30,6 +30,8 @@ export type {
   SectionAuditBy,
   Section,
   Project,
+  ProjectOwner,
+  OwnersById,
   SyncStatus,
   PersistenceConfig,
   LastSyncStats,
@@ -56,6 +58,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     userId: null,
     appLimits: DEFAULT_APP_LIMITS,
     limitsByOwner: {},
+    ownersById: {},
 
     fetchAppLimits: async () => {
       try {
@@ -63,6 +66,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
         if (!res.ok) return;
         const { byOwner, ...limits } = await res.json();
         set({ appLimits: limits, limitsByOwner: byOwner ?? {} });
+      } catch {}
+    },
+
+    fetchProjectOwners: async () => {
+      try {
+        const res = await fetch("/api/projects/owners");
+        if (!res.ok) return;
+        const { owners } = await res.json();
+        if (owners && typeof owners === "object") set({ ownersById: owners });
       } catch {}
     },
 

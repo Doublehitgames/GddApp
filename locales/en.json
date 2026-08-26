@@ -294,6 +294,7 @@
       "confirmBackup": "Do you want to create a local backup of \"{title}\" before deleting?",
       "confirmDeleteWithoutBackup": "Backup could not be generated. Do you want to delete anyway?",
       "pagesUsage": "{used}/{max} pages",
+      "ownerPrefix": "by",
       "pagesLeft": "{count} pages available in this project"
     },
     "quickActions": {

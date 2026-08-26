@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import UserMenu from "@/components/UserMenu";
 import HomeSyncBar from "@/components/HomeSyncBar";
 import { useI18n } from "@/lib/i18n/provider";
-import type { Project } from "@/store/projectStore";
+import type { Project, ProjectOwner } from "@/store/projectStore";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { projectPath } from "@/lib/utils/slug";
@@ -35,12 +35,27 @@ function getProjectIcon(project: Project): string | null {
   return null;
 }
 
+/** Nome curto do dono para o card: prefere o nome de exibição e, na falta dele,
+ *  usa o e-mail cortado no "@" — o domínio não ajuda a identificar ninguém e
+ *  ainda estoura a largura do card. O e-mail inteiro fica no title. */
+function ownerLabel(owner: ProjectOwner | null | undefined): string | null {
+  if (!owner) return null;
+  const name = owner.displayName?.trim();
+  if (name) return name;
+  const email = owner.email?.trim();
+  if (!email) return null;
+  return email.split("@")[0] || email;
+}
+
 function ProjectCard({
   project,
   showSettings = true,
+  owner = null,
 }: {
   project: Project;
   showSettings?: boolean;
+  /** Dono do projeto — só é passado quando não é o próprio usuário. */
+  owner?: ProjectOwner | null;
 }) {
   const { t } = useI18n();
   const sections = project.sections || [];
@@ -58,6 +73,7 @@ function ProjectCard({
   const coverUrl =
     getDriveImageDisplayCandidates(project.coverImageUrl || "")[0] ?? null;
   const iconUrl = getProjectIcon(project);
+  const ownerName = ownerLabel(owner);
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-gray-700/80 bg-gray-800/70 hover:border-indigo-500/50 hover:bg-gray-800 transition-all group min-h-[90px] flex flex-col">
@@ -94,6 +110,25 @@ function ProjectCard({
           <h3 className="text-base font-semibold leading-tight truncate pr-14">
             {project.title}
           </h3>
+          {ownerName && (
+            <p
+              className="mt-1 flex items-center gap-1.5 text-xs text-gray-300 min-w-0 pr-14"
+              title={owner?.email || ownerName}
+            >
+              <span
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-500/25 text-[9px] font-semibold uppercase text-indigo-200"
+                aria-hidden="true"
+              >
+                {ownerName.charAt(0)}
+              </span>
+              <span className="truncate">
+                <span className="text-gray-500">
+                  {t("home.projects.ownerPrefix", "de")}{" "}
+                </span>
+                {ownerName}
+              </span>
+            </p>
+          )}
           <p className="mt-1.5 text-xs text-gray-400">
             <span
               className={
@@ -165,6 +200,8 @@ export default function Home() {
   const projects = useProjectStore((s) => s.projects);
   // Limites efetivos do usuário logado (já com overrides individuais).
   const { FREE_MAX_PROJECTS } = useProjectStore((s) => s.appLimits);
+  // Dono de cada projeto compartilhado: sem isso o card não diz de quem é.
+  const ownersById = useProjectStore((s) => s.ownersById);
   const { user } = useAuthStore();
   const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -183,6 +220,16 @@ export default function Home() {
     }
     return { myProjects: mine, sharedProjects: shared };
   }, [projects, userId]);
+
+  // Os donos são buscados no login, mas os projetos podem chegar depois (sync).
+  // Uma tentativa por montagem: se o servidor não souber o dono, não insiste.
+  const fetchProjectOwners = useProjectStore((s) => s.fetchProjectOwners);
+  const ownersFetched = useRef(false);
+  useEffect(() => {
+    if (!userId || ownersFetched.current || sharedProjects.length === 0) return;
+    ownersFetched.current = true;
+    void fetchProjectOwners();
+  }, [userId, sharedProjects.length, fetchProjectOwners]);
 
   const projectsLeft = FREE_MAX_PROJECTS - myProjects.length;
   // Páginas não têm cota de conta: cada projeto tem seu próprio teto, e o card
@@ -352,7 +399,12 @@ export default function Home() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {sharedProjects.map((p) => (
-                <ProjectCard key={p.id} project={p} showSettings={false} />
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  showSettings={false}
+                  owner={(p.ownerId && ownersById[p.ownerId]) || null}
+                />
               ))}
             </div>
           </section>

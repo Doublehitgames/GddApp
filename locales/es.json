@@ -294,6 +294,7 @@
       "confirmBackup": "¿Quieres crear un backup local de \"{title}\" antes de eliminarlo?",
       "confirmDeleteWithoutBackup": "No se pudo generar el backup. ¿Quieres eliminar de todos modos?",
       "pagesUsage": "{used}/{max} páginas",
+      "ownerPrefix": "de",
       "pagesLeft": "{count} páginas disponibles en este proyecto"
     },
     "quickActions": {

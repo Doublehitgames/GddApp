@@ -294,6 +294,7 @@
       "confirmBackup": "Deseja fazer um backup local de \"{title}\" antes de excluir?",
       "confirmDeleteWithoutBackup": "Não foi possível gerar o backup. Deseja excluir mesmo assim?",
       "pagesUsage": "{used}/{max} páginas",
+      "ownerPrefix": "de",
       "pagesLeft": "{count} páginas disponíveis neste projeto"
     },
     "quickActions": {

@@ -371,6 +371,16 @@ export type AppLimits = {
 /** Limites por dono de projeto (inclui o próprio usuário). Ver store/slices/limits.ts. */
 export type LimitsByOwner = Record<string, AppLimits>;
 
+/** Quem é o dono de um projeto compartilhado. Resolvido pelo servidor: o
+ *  perfil de outra pessoa não é legível pelo cliente. */
+export type ProjectOwner = {
+  displayName: string | null;
+  email: string | null;
+};
+
+/** Donos, por userId, dos projetos que o usuário participa mas não possui. */
+export type OwnersById = Record<string, ProjectOwner>;
+
 export const DEFAULT_APP_LIMITS: AppLimits = {
   FREE_MAX_PROJECTS: 2,
   FREE_MAX_SECTIONS_PER_PROJECT: 300,
@@ -399,7 +409,10 @@ export interface ProjectStore {
   appLimits: AppLimits;
   /** Limites de cada dono de projeto visível ao usuário (inclui ele mesmo). */
   limitsByOwner: LimitsByOwner;
+  /** Nome/e-mail dos donos dos projetos compartilhados com o usuário. */
+  ownersById: OwnersById;
   fetchAppLimits: () => Promise<void>;
+  fetchProjectOwners: () => Promise<void>;
   updatePersistenceConfig: (config: Partial<PersistenceConfig>) => void;
   // Mutations
   addProject: (name: string, description: string) => string;
