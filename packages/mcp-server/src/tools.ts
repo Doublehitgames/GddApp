@@ -44,7 +44,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "list_projects",
-    "List all GDD projects you have access to (owned and shared). Returns one index row per project (id, title, description, updatedAt); settings like aiInstructions and mindmap live in get_project.",
+    "List all GDD projects you have access to (owned and shared). Returns one index row per project (id, title, description, updatedAt); the project's aiInstructions live in get_project.",
     {},
     async () => {
       try { return json(((await client.listProjects()) as unknown[]).map(projectRow)); }
@@ -85,7 +85,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "update_project",
-    "Update project metadata (title, description, cover image, or mindmap settings)",
+    "Update project metadata: title, description, cover image or aiInstructions.",
     {
       projectId: z.string(),
       title: z.string().optional().describe("New title"),
@@ -196,7 +196,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
   const CONTENT_BLOCKS_FIELD = z
     .array(z.record(z.unknown()))
     .optional()
-    .describe("Rich BlockNote JSON blocks for the description. Call get_content_blocks_guide once for the block types, inline styles and a worked example. Always pair it with a plain-text `content` for search.");
+    .describe("Rich BlockNote JSON blocks — only needed for headings, tables, callouts or images; plain markdown in `content` is derived into blocks for you. Call get_content_blocks_guide once for the block types and a worked example, and always pair blocks with a plain-text `content` for search.");
 
   const THUMB_FIELD = z
     .string()
@@ -206,14 +206,14 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "get_content_blocks_guide",
-    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before writing rich descriptions with create_section or update_section.",
+    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
     {},
     async () => text(CONTENT_BLOCKS_GUIDE),
   );
 
   server.tool(
     "create_section",
-    "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, lists, etc.). Always pair it with a plain-text `content` for search. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
+    "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
     {
       projectId: z.string(),
       title: z.string().describe("Section title"),
@@ -238,7 +238,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "update_section",
-    "Update a section's fields (title, content, color, tags, etc.). Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
+    "Update a section's fields (title, content, color, tags, etc.). Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
     {
       projectId: z.string(),
       sectionId: z.string(),

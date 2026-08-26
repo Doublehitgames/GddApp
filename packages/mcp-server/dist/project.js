@@ -125,6 +125,8 @@ export function projectIndex(project) {
         id: p.id,
         title: p.title,
         ...(p.description ? { description: p.description } : {}),
+        // Settable through update_project, so it should be readable here too.
+        ...(p.coverImageUrl ? { coverImageUrl: p.coverImageUrl } : {}),
         ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
         // Just the count — the library itself lives in list_project_images.
         ...(p.imageCount ? { imageCount: p.imageCount } : {}),

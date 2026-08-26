@@ -27,6 +27,20 @@ function registered() {
   return schemas;
 }
 
+function descriptionsByName() {
+  const out = new Map<string, string>();
+  const server = {
+    tool(name: string, description: string) { out.set(name, description); },
+  } as unknown as McpServer;
+  registerGenericTools(server, new Proxy({} as ApiFetcher, { get: () => () => Promise.resolve({}) }));
+  return out;
+}
+
+/** [name, description] for every registered tool. */
+function registeredDescriptions(): [string, string][] {
+  return [...descriptionsByName()];
+}
+
 /** The describe() text of a field, wherever it sits in the schema. */
 function describeOf(schema: Record<string, unknown>, field: string): string {
   const direct = schema[field] as { description?: string } | undefined;
@@ -94,5 +108,67 @@ describe("get_project no longer ships UI state", () => {
     expect(out).not.toHaveProperty("mindmapSettings");
     expect(out.aiInstructions).toBe("convenções");
     expect(out.imageCount).toBe(117);
+  });
+});
+
+describe("descriptions do not promise what the schema cannot do", () => {
+  // A description that names a field the tool does not accept is worse than no
+  // description: the agent plans around it and the call quietly does nothing.
+  // This is how "update project mindmap settings" survived for months.
+  const FIELD_WORDS: [RegExp, string][] = [
+    [/\bmindmap\b/i, "mindmapSettings"],
+    [/\bcover image\b/i, "coverImageUrl"],
+    [/\baiInstructions\b/, "aiInstructions"],
+    [/\bthumb(nail)? image\b|\bpage icon\b/i, "thumbImageUrl"],
+    [/\bdomain tags\b/i, "domainTags"],
+  ];
+
+  // Only the write tools. A listing may legitimately name a field belonging to
+  // another tool, the way list_project_images points at thumbImageUrl.
+  const writeTools = registeredDescriptions().filter(([n]) => /^(create|update|batch_update)_/.test(n));
+
+  it.each(writeTools)("%s only names fields it accepts", (name, description) => {
+    const schema = registered().get(name) ?? {};
+    const fields = new Set(Object.keys(schema));
+    // batch_update_sections nests its writable fields one level down.
+    for (const value of Object.values(schema)) {
+      const inner = (value as { element?: { shape?: Record<string, unknown> } })?.element?.shape;
+      if (inner) for (const k of Object.keys(inner)) fields.add(k);
+    }
+    for (const [word, field] of FIELD_WORDS) {
+      if (word.test(description) && !fields.has(field)) {
+        throw new Error(
+          `${name} mentions ${word.source} but accepts no ${field} — fields: ${[...fields].join(", ")}`,
+        );
+      }
+    }
+  });
+
+  it("every tool that takes contentBlocks points at the guide", () => {
+    for (const [, schema] of registered()) {
+      if (!("contentBlocks" in schema)) continue;
+      const desc = (schema.contentBlocks as { description?: string }).description ?? "";
+      expect(desc).toContain("get_content_blocks_guide");
+    }
+  });
+
+  it("the guide names every tool that can use it", () => {
+    const takesBlocks = [...registered()].filter(([, s]) => "contentBlocks" in s).map(([n]) => n);
+    const guide = descriptionsByName().get("get_content_blocks_guide") ?? "";
+    for (const tool of takesBlocks) expect(guide).toContain(tool);
+  });
+});
+
+describe("what update_project can set, get_project can read", () => {
+  it("no write-only fields", async () => {
+    const { projectIndex } = await import("@/lib/mcp/project");
+    const out = projectIndex({
+      id: "p1", title: "T", description: "d", coverImageUrl: "https://x.test/c.png",
+      aiInstructions: "conv", sections: [],
+    });
+    // update_project accepts title, description, coverImageUrl, aiInstructions
+    for (const field of ["title", "description", "coverImageUrl", "aiInstructions"]) {
+      expect(out).toHaveProperty(field);
+    }
   });
 });

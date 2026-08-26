@@ -70,7 +70,7 @@ const CONTENT_FIELD = z
 const CONTENT_BLOCKS_FIELD = z
   .array(z.record(z.string(), z.unknown()))
   .optional()
-  .describe("Rich BlockNote JSON blocks for the description. Call get_content_blocks_guide once for the block types, inline styles and a worked example. Always pair it with a plain-text `content` for search.");
+  .describe("Rich BlockNote JSON blocks — only needed for headings, tables, callouts or images; plain markdown in `content` is derived into blocks for you. Call get_content_blocks_guide once for the block types and a worked example, and always pair blocks with a plain-text `content` for search.");
 
 /** Section icon. Same field the web app sets from the Drive picker. */
 const THUMB_FIELD = z
@@ -89,7 +89,7 @@ function err(e: unknown) {
 // ── Generic tools ─────────────────────────────────────────────────
 
 export function registerGenericTools(server: McpServer, api: ApiFetcher) {
-  server.tool("list_projects", "List all GDD projects you have access to. Returns one index row per project (id, title, description, updatedAt); settings like aiInstructions live in get_project.", {},
+  server.tool("list_projects", "List all GDD projects you have access to. Returns one index row per project (id, title, description, updatedAt); the project's aiInstructions live in get_project.", {},
     async () => { try { return json(((await api.listProjects()) as unknown[]).map(projectRow)); } catch (e) { return err(e); } });
 
   server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description). This is the map of the document — use it to find the section you need, then get_section for its contents.",
@@ -109,7 +109,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("update_project", "Update project metadata. Returns a receipt naming the fields that were written.",
+  server.tool("update_project", "Update project metadata: title, description, cover image or aiInstructions. Returns a receipt naming the fields that were written.",
     { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional(), aiInstructions: z.string().optional().describe("AI instructions for this project"), returning },
     async ({ projectId, returning: returnMode, ...f }) => {
       try {
@@ -140,11 +140,11 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async ({ projectId, sectionId }) => { try { return json(sectionFull(await api.getSection(projectId, sectionId))); } catch (e) { return err(e); } });
 
   server.tool("get_content_blocks_guide",
-    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before writing rich descriptions with create_section or update_section.",
+    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
     {},
     async () => text(CONTENT_BLOCKS_GUIDE));
 
-  server.tool("create_section", "Create a new section in a project. Use `contentBlocks` for rich formatted descriptions (headings, callouts, tables, images). Always pair it with a plain-text `content` for search. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
+  server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
     { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
@@ -153,7 +153,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("update_section", "Update a section's fields. Use `contentBlocks` to replace the description with rich formatted content. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
+  server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
     { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
