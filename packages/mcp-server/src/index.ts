@@ -30,7 +30,7 @@ async function main() {
 
   const server = new McpServer({
     name: "gdd-manager",
-    version: "0.5.0",
+    version: "0.6.0",
   });
 
   registerTools(server, client);

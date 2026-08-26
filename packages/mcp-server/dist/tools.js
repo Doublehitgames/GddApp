@@ -179,7 +179,6 @@ export function registerTools(server, client) {
         domainTags: z.array(z.string()).optional().describe("New domain tags"),
         dataId: z.string().optional().describe("New data identifier"),
         thumbImageUrl: THUMB_FIELD,
-        linkedSpreadsheetId: z.string().nullable().optional().describe("UUID of the linked Google Spreadsheet (from project.linkedSpreadsheets)"),
         returning,
     }, async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
         try {
