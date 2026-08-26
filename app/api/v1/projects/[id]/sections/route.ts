@@ -67,8 +67,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   // Structural limits (applied to project owner, including their per-user overrides)
   const projectOwnerId = pResult.project.owner_id;
-  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
-    await getRemoteConfig(projectOwnerId);
+  const { FREE_MAX_SECTIONS_PER_PROJECT } = await getRemoteConfig(projectOwnerId);
 
   // Sections in this project
   const { count: projectSectionCount } = await auth.supabase
@@ -83,28 +82,6 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       "structural_limit_exceeded",
       { reason: "sections_per_project_limit", limit: FREE_MAX_SECTIONS_PER_PROJECT }
     );
-  }
-
-  // Total sections across all owner's projects
-  const { data: ownerProjects } = await auth.supabase
-    .from("projects")
-    .select("id")
-    .eq("owner_id", projectOwnerId);
-
-  if (ownerProjects && ownerProjects.length > 0) {
-    const { count: totalCount } = await auth.supabase
-      .from("sections")
-      .select("id", { count: "exact", head: true })
-      .in("project_id", ownerProjects.map((p) => p.id));
-
-    if ((totalCount ?? 0) >= FREE_MAX_SECTIONS_TOTAL) {
-      return apiError(
-        `Total sections limit reached (${FREE_MAX_SECTIONS_TOTAL})`,
-        403,
-        "structural_limit_exceeded",
-        { reason: "sections_total_limit", limit: FREE_MAX_SECTIONS_TOTAL }
-      );
-    }
   }
 
   // Validate parentId belongs to same project (if provided)

@@ -1,7 +1,8 @@
 /**
- * Limites estruturais são avaliados no DONO do projeto, não em quem está
- * editando. Um membro convidado num projeto compartilhado usa a cota do dono,
- * e o projeto compartilhado não pode consumir a cota do próprio membro.
+ * O plano dá N projetos e M páginas POR PROJETO. O teto de páginas é avaliado
+ * no DONO do projeto, não em quem está editando — então um membro convidado
+ * trabalha sob o limite de quem o convidou, e nada do que ele cria consome o
+ * espaço dos outros projetos daquele dono.
  */
 
 import { useProjectStore } from "@/store/projectStore";
@@ -23,16 +24,16 @@ const MEMBER = "member-user-id";
 const OWNER = "owner-user-id";
 
 /** Projeto do OWNER, com `count` páginas, compartilhado com MEMBER. */
-function sharedProject(count: number) {
+function sharedProject(count: number, id = "shared-project") {
   return {
-    id: "shared-project",
+    id,
     title: "Granjita",
     description: "",
     ownerId: OWNER,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     sections: Array.from({ length: count }, (_, i) => ({
-      id: `sec-${i}`,
+      id: `${id}-sec-${i}`,
       title: `P${i}`,
       content: "",
       created_at: "2026-01-01T00:00:00.000Z",
@@ -41,7 +42,12 @@ function sharedProject(count: number) {
   } as any;
 }
 
-describe("limites por dono do projeto", () => {
+const withPageLimit = (max: number) => ({
+  ...DEFAULT_APP_LIMITS,
+  FREE_MAX_SECTIONS_PER_PROJECT: max,
+});
+
+describe("limites de página por projeto, medidos no dono", () => {
   beforeEach(() => {
     localStorage.clear();
     uuidCounter = 0;
@@ -50,35 +56,28 @@ describe("limites por dono do projeto", () => {
 
   it("aplica o limite estendido do dono, não o do membro que edita", () => {
     useProjectStore.setState({
-      projects: [sharedProject(200)],
+      projects: [sharedProject(300)],
       diagramsBySection: {},
       userId: MEMBER,
-      appLimits: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 200 },
+      appLimits: withPageLimit(300),
       limitsByOwner: {
-        [MEMBER]: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 200 },
-        [OWNER]: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 500 },
+        [MEMBER]: withPageLimit(300),
+        [OWNER]: withPageLimit(500),
       },
     });
 
-    // O membro está em 200/200 na própria cota, mas o dono tem 500.
     expect(() =>
       useProjectStore.getState().addSection("shared-project", "Nova página")
     ).not.toThrow();
   });
 
-  it("bloqueia quando o próprio limite do dono é atingido", () => {
+  it("bloqueia quando o teto do próprio dono é atingido", () => {
     useProjectStore.setState({
       projects: [sharedProject(500)],
       diagramsBySection: {},
       userId: MEMBER,
-      appLimits: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 200 },
-      limitsByOwner: {
-        [OWNER]: {
-          ...DEFAULT_APP_LIMITS,
-          FREE_MAX_SECTIONS_PER_PROJECT: 500,
-          FREE_MAX_SECTIONS_TOTAL: 500,
-        },
-      },
+      appLimits: withPageLimit(300),
+      limitsByOwner: { [OWNER]: withPageLimit(500) },
     });
 
     expect(() =>
@@ -86,20 +85,33 @@ describe("limites por dono do projeto", () => {
     ).toThrow("structural_limit_sections_per_project");
   });
 
-  it("projeto compartilhado não consome a cota do membro", () => {
+  it("páginas de um projeto não consomem o teto de outro projeto do mesmo dono", () => {
     useProjectStore.setState({
-      projects: [sharedProject(200)],
+      projects: [sharedProject(500), sharedProject(0, "outro-projeto")],
       diagramsBySection: {},
       userId: MEMBER,
-      appLimits: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 200 },
+      appLimits: withPageLimit(300),
+      limitsByOwner: { [OWNER]: withPageLimit(500) },
+    });
+
+    // O primeiro projeto está lotado; o segundo continua com 500 livres.
+    expect(() =>
+      useProjectStore.getState().addSection("outro-projeto", "Primeira página")
+    ).not.toThrow();
+  });
+
+  it("projeto compartilhado não consome o plano do membro", () => {
+    useProjectStore.setState({
+      projects: [sharedProject(300)],
+      diagramsBySection: {},
+      userId: MEMBER,
+      appLimits: withPageLimit(300),
       limitsByOwner: {
-        [MEMBER]: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 200 },
-        [OWNER]: { ...DEFAULT_APP_LIMITS, FREE_MAX_SECTIONS_TOTAL: 500 },
+        [MEMBER]: withPageLimit(300),
+        [OWNER]: withPageLimit(500),
       },
     });
 
-    // O membro cria um projeto próprio: as 200 páginas do projeto alheio
-    // não podem contar contra ele.
     const ownId = useProjectStore.getState().addProject("Meu", "");
     expect(() =>
       useProjectStore.getState().addSection(ownId, "Primeira página")

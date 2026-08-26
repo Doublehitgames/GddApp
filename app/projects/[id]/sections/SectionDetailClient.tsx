@@ -85,8 +85,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const disableSectionFlowchartAndClearDiagram = useProjectStore((s) => s.disableSectionFlowchartAndClearDiagram);
   const projects = useProjectStore((s) => s.projects);
   // Limites efetivos do usuário logado (já com overrides individuais).
-  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
-    useProjectStore((s) => s.appLimits);
+  const { FREE_MAX_SECTIONS_PER_PROJECT } = useProjectStore((s) => s.appLimits);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
 
@@ -320,27 +319,18 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     const outcome = duplicateSection(realProjectId, realSectionId,suffix, sectionAuditBy);
 
     if (!outcome.newRootId) {
-      const max =
-        outcome.limitReason === "structural_limit_sections_total"
-          ? FREE_MAX_SECTIONS_TOTAL
-          : FREE_MAX_SECTIONS_PER_PROJECT;
-      const key =
-        outcome.limitReason === "structural_limit_sections_total"
-          ? "sectionDetail.duplicate.blockedTotal"
-          : "sectionDetail.duplicate.blockedPerProject";
-      alert(t(key, "").replace("{max}", String(max)));
+      alert(
+        t("sectionDetail.duplicate.blockedPerProject", "").replace(
+          "{max}",
+          String(FREE_MAX_SECTIONS_PER_PROJECT)
+        )
+      );
       return;
     }
 
     if (outcome.skipped.length > 0) {
-      const max =
-        outcome.limitReason === "structural_limit_sections_total"
-          ? FREE_MAX_SECTIONS_TOTAL
-          : FREE_MAX_SECTIONS_PER_PROJECT;
-      const key =
-        outcome.limitReason === "structural_limit_sections_total"
-          ? "sectionDetail.duplicate.partialTotal"
-          : "sectionDetail.duplicate.partialPerProject";
+      const max = FREE_MAX_SECTIONS_PER_PROJECT;
+      const key = "sectionDetail.duplicate.partialPerProject";
       const total = outcome.duplicated.length + outcome.skipped.length;
       const titles = outcome.duplicated.map((d) => `"${d.title}"`).join(", ");
       const skippedTitles = outcome.skipped.map((d) => `"${d.title}"`).join(", ");
@@ -889,7 +879,7 @@ function UnresolvedRefsPanel({
       setChooseParentFor(null);
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
-        onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+        onLimitError(t("limits.sectionsPerProject"));
       } else {
         throw e;
       }
@@ -959,7 +949,7 @@ function UnresolvedRefsPanel({
               : addSubsection(projectId, parentId, segment, "");
           } catch (e) {
             if (e instanceof Error && e.message.startsWith("structural_limit") && onLimitError) {
-              onLimitError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+              onLimitError(t("limits.sectionsPerProject"));
             } else {
               throw e;
             }
@@ -1351,7 +1341,7 @@ function SectionDetailContent({
                 setNameError("");
               } catch (e) {
                 if (e instanceof Error && e.message.startsWith("structural_limit")) {
-                  setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+                  setNameError(t("limits.sectionsPerProject"));
                 } else {
                   throw e;
                 }

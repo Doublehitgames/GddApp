@@ -1,9 +1,11 @@
 import type { AppLimits, Project, ProjectStore } from "./types";
 
 /**
- * Limites estruturais são avaliados no DONO do projeto — tanto no servidor
- * (getRemoteConfig(ownerId)) quanto aqui. Um membro editando o projeto de
- * outra pessoa fica sujeito aos limites de quem o convidou, não aos seus.
+ * O plano dá N projetos e M páginas POR PROJETO — não há cota somada entre
+ * projetos. Cada projeto é medido contra o limite do seu DONO, igual ao
+ * servidor (getRemoteConfig(ownerId)), então um membro convidado trabalha sob
+ * o limite de quem o convidou e nada do que ele cria afeta os outros projetos
+ * daquele dono.
  *
  * Projeto sem ownerId é local-only: conta como do próprio usuário.
  */
@@ -24,21 +26,6 @@ export function limitsForProject(
   project: Project
 ): AppLimits {
   return limitsForOwner(state, ownerKeyOf(project, state.userId));
-}
-
-/**
- * Páginas que contam contra a cota de um dono: só os projetos dele.
- * Projetos compartilhados com o usuário consomem a cota de quem os possui.
- */
-export function sectionsUsedByOwner(
-  projects: Project[],
-  ownerId: string,
-  userId: string | null
-): number {
-  return projects.reduce(
-    (sum, p) => (ownerKeyOf(p, userId) === ownerId ? sum + (p.sections || []).length : sum),
-    0
-  );
 }
 
 /** Projetos que contam contra a cota de projetos de um dono. */

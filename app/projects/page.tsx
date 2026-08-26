@@ -70,9 +70,6 @@ function getStructuralLimitMessage(errorCode: string, t: (key: string) => string
   if (errorCode === "structural_limit_sections_per_project") {
     return t("limits.sectionsPerProject");
   }
-  if (errorCode === "structural_limit_sections_total") {
-    return t("limits.sectionsTotal");
-  }
   return t("projectsPage.wizard.errors.createFailed");
 }
 

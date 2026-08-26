@@ -5,7 +5,6 @@ import { getRemoteConfig } from "@/lib/remoteConfig";
 const FALLBACK = {
   FREE_MAX_PROJECTS: 2,
   FREE_MAX_SECTIONS_PER_PROJECT: 300,
-  FREE_MAX_SECTIONS_TOTAL: 400,
   SYNC_REQUESTS_PER_MINUTE: 30,
 };
 

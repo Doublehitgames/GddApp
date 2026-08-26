@@ -220,8 +220,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
     } catch (e) {
       if (
         e instanceof Error &&
-        (e.message === "structural_limit_sections_per_project" ||
-          e.message === "structural_limit_sections_total")
+        e.message === "structural_limit_sections_per_project"
       ) {
         setNameError(t("sidebar.limitReached", "Limite de páginas atingido."));
         return undefined;

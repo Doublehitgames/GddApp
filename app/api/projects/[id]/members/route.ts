@@ -153,7 +153,7 @@ async function validateTransferStructuralLimits(
     throw new Error("projects_query_failed");
   }
 
-  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
+  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT } =
     await getRemoteConfig(targetOwnerId);
 
   const ownedProjectIds = new Set((targetOwnerProjects || []).map((row: { id: string }) => row.id));
@@ -172,20 +172,6 @@ async function validateTransferStructuralLimits(
 
   if ((projectSectionsCount ?? 0) > FREE_MAX_SECTIONS_PER_PROJECT) {
     return { ok: false, reason: "sections_per_project_limit", limit: FREE_MAX_SECTIONS_PER_PROJECT };
-  }
-
-  const allTargetOwnerProjectIds = Array.from(new Set([...ownedProjectIds, projectId]));
-  const { count: totalSectionsCount, error: totalSectionsErr } = await admin
-    .from("sections")
-    .select("id", { count: "exact", head: true })
-    .in("project_id", allTargetOwnerProjectIds);
-
-  if (totalSectionsErr) {
-    throw new Error("total_sections_count_failed");
-  }
-
-  if ((totalSectionsCount ?? 0) > FREE_MAX_SECTIONS_TOTAL) {
-    return { ok: false, reason: "sections_total_limit", limit: FREE_MAX_SECTIONS_TOTAL };
   }
 
   return { ok: true };

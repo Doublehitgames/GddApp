@@ -49,7 +49,7 @@ Deixar a tabela antiga `cloud_sync_usage_hourly` intacta por enquanto (sem uso n
 
 - **2.1** Na **POST /api/projects/sync**:
   - **Acesso:** usuário precisa ser **dono ou editor** do projeto (owner_id = user.id OU existe em project_members com role = 'editor'). Caso contrário, 403.
-  - **Limites estruturais:** sempre validar em nome do **dono do projeto** (owner_id do projeto sendo sincronizado). Buscar projetos e seções onde `owner_id = project.owner_id` e aplicar FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL. Assim, membros ficam sujeitos aos limites do dono.
+  - **Limites estruturais:** sempre validar em nome do **dono do projeto** (owner_id do projeto sendo sincronizado). Buscar projetos e seções onde `owner_id = project.owner_id` e aplicar FREE_MAX_PROJECTS e FREE_MAX_SECTIONS_PER_PROJECT. Assim, membros ficam sujeitos aos limites do dono. Nao existe cota de paginas somada entre projetos: cada projeto tem seu proprio teto, entao o que um membro cria num projeto nunca consome o espaco dos outros projetos do dono.
   - **Criar projeto novo:** só se o usuário for o dono (payload com project_id novo ou inexistente → só owner pode “criar”; membro só sincroniza projetos já existentes em que foi adicionado).
 - **2.2** No upsert do projeto: se o usuário for **membro** (não dono), fazer **update** apenas de title, description, mindmap_settings, updated_at; **não** atualizar owner_id. Se for dono, manter comportamento atual (upsert completo incluindo owner_id).
 

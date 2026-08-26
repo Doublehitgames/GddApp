@@ -9,7 +9,6 @@ let _cache: ConfigCache | null = null;
 const DEFAULTS = {
   FREE_MAX_PROJECTS: 2,
   FREE_MAX_SECTIONS_PER_PROJECT: 300,
-  FREE_MAX_SECTIONS_TOTAL: 400,
   SYNC_REQUESTS_PER_MINUTE: 30,
 } as const;
 
@@ -17,8 +16,8 @@ type ConfigKey = keyof typeof DEFAULTS;
 
 /**
  * Chave de override por usuário: `<CHAVE>:<user_id>`.
- * Ex.: ('FREE_MAX_SECTIONS_TOTAL:8f3c…', '500') levanta o limite só daquele usuário,
- * sem mexer no valor global. Sem linha de override, vale o global.
+ * Ex.: ('FREE_MAX_SECTIONS_PER_PROJECT:8f3c…', '500') levanta o limite só daquele
+ * usuário, sem mexer no valor global. Sem linha de override, vale o global.
  */
 export function userConfigKey(key: ConfigKey, userId: string): string {
   return `${key}:${userId}`;
@@ -62,7 +61,6 @@ export async function getRemoteConfig(userId?: string | null) {
   return {
     FREE_MAX_PROJECTS: resolve("FREE_MAX_PROJECTS"),
     FREE_MAX_SECTIONS_PER_PROJECT: resolve("FREE_MAX_SECTIONS_PER_PROJECT"),
-    FREE_MAX_SECTIONS_TOTAL: resolve("FREE_MAX_SECTIONS_TOTAL"),
     SYNC_REQUESTS_PER_MINUTE: resolve("SYNC_REQUESTS_PER_MINUTE"),
   };
 }

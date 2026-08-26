@@ -285,14 +285,16 @@
       "count": "projeto(s)",
       "usageProjects": "projetos",
       "usageSections": "seções",
-      "limitWarning": "Limite próximo: restam {{projectsLeft}} projeto(s) e {{sectionsLeft}} seção(ões) no plano Free.",
+      "limitWarning": "Limite próximo: resta(m) {{projectsLeft}} projeto(s) no seu plano.",
       "remove": "Remover",
       "settings": "Configurações",
       "empty": "Nenhum projeto criado ainda.",
       "emptyShared": "Nenhum projeto compartilhado com você.",
       "confirmRemove": "Tem certeza que deseja remover o projeto \"{title}\"?",
       "confirmBackup": "Deseja fazer um backup local de \"{title}\" antes de excluir?",
-      "confirmDeleteWithoutBackup": "Não foi possível gerar o backup. Deseja excluir mesmo assim?"
+      "confirmDeleteWithoutBackup": "Não foi possível gerar o backup. Deseja excluir mesmo assim?",
+      "pagesUsage": "{used}/{max} páginas",
+      "pagesLeft": "{count} páginas disponíveis neste projeto"
     },
     "quickActions": {
       "title": "Ações Rápidas",
@@ -314,17 +316,14 @@
     "limitsTitle": "Limites do plano Free",
     "projectsLimit": "Projetos",
     "sectionsPerProjectLimit": "Seções por projeto",
-    "sectionsTotalLimit": "Seções na conta",
     "usageTitle": "Seu uso atual",
     "projectsUsage": "Projetos",
-    "sectionsUsage": "Seções na conta",
-    "creditsPerHour": "Créditos de sync por hora",
-    "maxInOneProject": "Máx. em um projeto"
+    "sectionsUsage": "Páginas por projeto",
+    "creditsPerHour": "Créditos de sync por hora"
   },
   "limits": {
     "projects": "Limite do plano Free: você pode ter no máximo 2 projetos.",
-    "sectionsPerProject": "Limite do plano Free: máximo de 120 seções por projeto.",
-    "sectionsTotal": "Limite do plano Free: máximo de 200 seções na sua conta."
+    "sectionsPerProject": "Limite do plano: este projeto atingiu o máximo de páginas."
   },
   "projectsPage": {
     "title": "Criar Projeto",

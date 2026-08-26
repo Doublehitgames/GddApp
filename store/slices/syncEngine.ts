@@ -361,9 +361,7 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
               ? `Limite atingido: máximo de ${max(limits.FREE_MAX_PROJECTS)} projetos.`
               : structuralLimitReason === "sections_per_project_limit"
                 ? `Limite atingido: máximo de ${max(limits.FREE_MAX_SECTIONS_PER_PROJECT)} páginas por projeto.`
-                : structuralLimitReason === "sections_total_limit"
-                  ? `Limite atingido: máximo de ${max(limits.FREE_MAX_SECTIONS_TOTAL)} páginas na conta do dono do projeto.`
-                  : "Limite estrutural atingido.";
+                : "Limite estrutural atingido.";
           set({ syncStatus: "error", lastSyncError: msg });
           return;
         }

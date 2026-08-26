@@ -310,29 +310,31 @@ export async function POST(request: NextRequest) {
 
     const incomingSections = project.sections || [];
 
-    // Limites estruturais: aplicados ao DONO do projeto (membros sujeitos aos limites do dono)
-    const { data: ownerProjects, error: ownerProjectsErr } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("owner_id", projectOwnerId);
+    // Limites estruturais: aplicados ao DONO do projeto (membros sujeitos aos limites do dono).
+    // Contar projetos só interessa ao criar um projeto novo — e nesse caso quem
+    // sincroniza é sempre o próprio dono, então a consulta sob RLS enxerga tudo.
+    if (isNewProject) {
+      const { data: ownerProjects, error: ownerProjectsErr } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("owner_id", projectOwnerId);
 
-    if (ownerProjectsErr) {
-      const msg = getSupabaseErrorMessage(ownerProjectsErr, "projects_query_failed");
-      return NextResponse.json({ error: msg, code: "projects_query" }, { status: 500 });
-    }
+      if (ownerProjectsErr) {
+        const msg = getSupabaseErrorMessage(ownerProjectsErr, "projects_query_failed");
+        return NextResponse.json({ error: msg, code: "projects_query" }, { status: 500 });
+      }
 
-    const ownerProjectIds = new Set((ownerProjects || []).map((r: { id: string }) => r.id));
-
-    if (isNewProject && ownerProjectIds.size >= ownerConfig.FREE_MAX_PROJECTS) {
-      return NextResponse.json(
-        {
-          error: "structural_limit_exceeded",
-          code: "structural_limit_exceeded",
-          reason: "projects_limit",
-          limit: ownerConfig.FREE_MAX_PROJECTS,
-        },
-        { status: 403 }
-      );
+      if ((ownerProjects || []).length >= ownerConfig.FREE_MAX_PROJECTS) {
+        return NextResponse.json(
+          {
+            error: "structural_limit_exceeded",
+            code: "structural_limit_exceeded",
+            reason: "projects_limit",
+            limit: ownerConfig.FREE_MAX_PROJECTS,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     if (incomingSections.length > ownerConfig.FREE_MAX_SECTIONS_PER_PROJECT) {
@@ -405,31 +407,6 @@ export async function POST(request: NextRequest) {
     if (existingErr) {
       const msg = getSupabaseErrorMessage(existingErr, "sections_select_failed");
       return NextResponse.json({ error: msg, code: "sections_select" }, { status: 500 });
-    }
-
-    const existingSectionCount = (existingSections || []).length;
-    const { count: totalSectionsCount, error: totalSectionsErr } = await supabase
-      .from("sections")
-      .select("id", { count: "exact", head: true })
-      .in("project_id", Array.from(ownerProjectIds));
-
-    if (totalSectionsErr) {
-      const msg = getSupabaseErrorMessage(totalSectionsErr, "total_sections_count_failed");
-      return NextResponse.json({ error: msg, code: "total_sections_count" }, { status: 500 });
-    }
-
-    const totalSectionsAfter =
-      (totalSectionsCount ?? 0) - existingSectionCount + incomingSections.length;
-    if (totalSectionsAfter > ownerConfig.FREE_MAX_SECTIONS_TOTAL) {
-      return NextResponse.json(
-        {
-          error: "structural_limit_exceeded",
-          code: "structural_limit_exceeded",
-          reason: "sections_total_limit",
-          limit: ownerConfig.FREE_MAX_SECTIONS_TOTAL,
-        },
-        { status: 403 }
-      );
     }
 
     const existingById = new Map((existingSections || []).map((section: any) => [section.id, section]));

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
-import { projectsOwnedBy, sectionsUsedByOwner } from "@/store/slices/limits";
+import { projectsOwnedBy } from "@/store/slices/limits";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -12,23 +12,16 @@ export default function ProfilePage() {
   const projects = useProjectStore((s) => s.projects);
   const lastQuotaStatus = useProjectStore((s) => s.lastQuotaStatus);
   // Limites efetivos do usuário logado (já com overrides individuais), não as constantes do plano.
-  const {
-    FREE_MAX_PROJECTS,
-    FREE_MAX_SECTIONS_PER_PROJECT,
-    FREE_MAX_SECTIONS_TOTAL,
-  } = useProjectStore((s) => s.appLimits);
+  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT } = useProjectStore(
+    (s) => s.appLimits
+  );
   const { t } = useI18n();
 
-  // Só os projetos do próprio usuário consomem a cota dele — projetos
-  // compartilhados consomem a de quem os possui, como no servidor.
+  // Só os projetos do próprio usuário usam o plano dele — projetos
+  // compartilhados são medidos no plano de quem os possui, como no servidor.
   const userId = user?.id ?? null;
   const myProjects = projectsOwnedBy(projects, userId ?? "local", userId);
-  const totalSections = sectionsUsedByOwner(projects, userId ?? "local", userId);
   const projectsCount = myProjects.length;
-  const maxSectionsInAProject = Math.max(
-    0,
-    ...myProjects.map((p) => (p.sections || []).length)
-  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -75,10 +68,6 @@ export default function ProfilePage() {
               <span className="font-mono text-white">{FREE_MAX_SECTIONS_PER_PROJECT}</span>
             </li>
             <li className="flex justify-between items-center">
-              <span className="text-gray-400">{t("profile.sectionsTotalLimit")}</span>
-              <span className="font-mono text-white">{FREE_MAX_SECTIONS_TOTAL}</span>
-            </li>
-            <li className="flex justify-between items-center">
               <span className="text-gray-400">{t("profile.creditsPerHour")}</span>
               <span className="font-mono text-white">30</span>
             </li>
@@ -106,25 +95,47 @@ export default function ProfilePage() {
               />
             </div>
 
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-gray-400">{t("profile.sectionsUsage")}</span>
-              <span className="font-mono font-semibold text-white">
-                {totalSections}/{FREE_MAX_SECTIONS_TOTAL}
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-gray-700 overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 transition-all"
-                style={{
-                  width: `${Math.min(100, (totalSections / FREE_MAX_SECTIONS_TOTAL) * 100)}%`,
-                }}
-              />
-            </div>
-
-            {maxSectionsInAProject > 0 && (
-              <p className="text-xs text-gray-500 pt-1">
-                {t("profile.maxInOneProject")}: {maxSectionsInAProject}/{FREE_MAX_SECTIONS_PER_PROJECT}
-              </p>
+            {/* Cada projeto tem o próprio teto de páginas — não há cota somada. */}
+            {myProjects.length > 0 && (
+              <div className="pt-3 space-y-3">
+                <p className="text-gray-400">{t("profile.sectionsUsage")}</p>
+                {myProjects.map((p) => {
+                  const used = (p.sections || []).length;
+                  const left = FREE_MAX_SECTIONS_PER_PROJECT - used;
+                  return (
+                    <div key={p.id}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400 truncate pr-3">{p.title}</span>
+                        <span
+                          className={`font-mono font-semibold shrink-0 ${
+                            left <= 0
+                              ? "text-red-400"
+                              : left <= 10
+                                ? "text-amber-400"
+                                : "text-white"
+                          }`}
+                        >
+                          {used}/{FREE_MAX_SECTIONS_PER_PROJECT}
+                        </span>
+                      </div>
+                      <div className="h-2 mt-1 rounded-full bg-gray-700 overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            left <= 0
+                              ? "bg-red-500"
+                              : left <= 10
+                                ? "bg-amber-500"
+                                : "bg-indigo-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(100, (used / FREE_MAX_SECTIONS_PER_PROJECT) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>

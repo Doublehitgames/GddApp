@@ -97,9 +97,7 @@ export default function AICreateProject() {
         const msg =
           e.message === "structural_limit_projects"
             ? t("limits.projects")
-            : e.message === "structural_limit_sections_per_project"
-              ? t("limits.sectionsPerProject")
-              : t("limits.sectionsTotal");
+            : t("limits.sectionsPerProject");
         setError(msg);
       } else {
         throw e;

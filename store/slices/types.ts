@@ -358,10 +358,13 @@ export type LastSyncStats = SyncStats & {
   syncedByDisplayName?: string | null;
 };
 
+/**
+ * O plano dá N projetos e M páginas POR PROJETO. Não existe cota de páginas
+ * somada entre projetos — cada projeto tem seu próprio teto.
+ */
 export type AppLimits = {
   FREE_MAX_PROJECTS: number;
   FREE_MAX_SECTIONS_PER_PROJECT: number;
-  FREE_MAX_SECTIONS_TOTAL: number;
   SYNC_REQUESTS_PER_MINUTE: number;
 };
 
@@ -371,7 +374,6 @@ export type LimitsByOwner = Record<string, AppLimits>;
 export const DEFAULT_APP_LIMITS: AppLimits = {
   FREE_MAX_PROJECTS: 2,
   FREE_MAX_SECTIONS_PER_PROJECT: 300,
-  FREE_MAX_SECTIONS_TOTAL: 400,
   SYNC_REQUESTS_PER_MINUTE: 30,
 };
 

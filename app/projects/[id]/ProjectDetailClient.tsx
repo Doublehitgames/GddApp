@@ -418,8 +418,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
             setSectionTitle("");
             setNameError("");
         } catch (e) {
-            if (e instanceof Error && (e.message === "structural_limit_sections_per_project" || e.message === "structural_limit_sections_total")) {
-                setNameError(e.message === "structural_limit_sections_total" ? t("limits.sectionsTotal") : t("limits.sectionsPerProject"));
+            if (e instanceof Error && e.message === "structural_limit_sections_per_project") {
+                setNameError(t("limits.sectionsPerProject"));
             } else {
                 throw e;
             }

@@ -103,9 +103,14 @@ function ProjectCard({
                     ? "text-amber-400"
                     : undefined
               }
-              title={`${Math.max(0, pagesLeft)} páginas disponíveis neste projeto`}
+              title={t("home.projects.pagesLeft").replace(
+                "{count}",
+                String(Math.max(0, pagesLeft))
+              )}
             >
-              {totalSec}/{maxPages} {maxPages === 1 ? "página" : "páginas"}
+              {t("home.projects.pagesUsage")
+                .replace("{used}", String(totalSec))
+                .replace("{max}", String(maxPages))}
             </span>
             {project.updatedAt && (
               <> · editado {timeAgo(project.updatedAt)}</>
@@ -159,9 +164,7 @@ function ProjectCard({
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
   // Limites efetivos do usuário logado (já com overrides individuais).
-  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } = useProjectStore(
-    (s) => s.appLimits
-  );
+  const { FREE_MAX_PROJECTS } = useProjectStore((s) => s.appLimits);
   const { user } = useAuthStore();
   const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -181,13 +184,10 @@ export default function Home() {
     return { myProjects: mine, sharedProjects: shared };
   }, [projects, userId]);
 
-  const mySections = myProjects.reduce(
-    (sum, p) => sum + (p.sections || []).length,
-    0
-  );
   const projectsLeft = FREE_MAX_PROJECTS - myProjects.length;
-  const sectionsLeft = FREE_MAX_SECTIONS_TOTAL - mySections;
-  const showLimitWarning = projectsLeft <= 1 || sectionsLeft <= 10;
+  // Páginas não têm cota de conta: cada projeto tem seu próprio teto, e o card
+  // de cada um mostra quanto falta. Aqui só avisamos sobre projetos.
+  const showLimitWarning = projectsLeft <= 1;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -253,8 +253,7 @@ export default function Home() {
         {showLimitWarning && (
           <div className="p-3 rounded-lg bg-amber-900/30 border border-amber-600/60 text-amber-200 text-sm">
             {t("home.projects.limitWarning")
-              .replace("{{projectsLeft}}", String(Math.max(0, projectsLeft)))
-              .replace("{{sectionsLeft}}", String(Math.max(0, sectionsLeft)))}
+              .replace("{{projectsLeft}}", String(Math.max(0, projectsLeft)))}
           </div>
         )}
 
@@ -267,18 +266,6 @@ export default function Home() {
               </h2>
               <span className="text-sm text-gray-500 tabular-nums">
                 {myProjects.length}/{FREE_MAX_PROJECTS}
-              </span>
-              <span
-                className={`text-sm tabular-nums ${
-                  sectionsLeft <= 0
-                    ? "text-red-400"
-                    : sectionsLeft <= 10
-                      ? "text-amber-400"
-                      : "text-gray-500"
-                }`}
-                title={`${Math.max(0, sectionsLeft)} páginas disponíveis na sua conta`}
-              >
-                · {mySections}/{FREE_MAX_SECTIONS_TOTAL} páginas
               </span>
             </div>
 
