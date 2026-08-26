@@ -2,6 +2,7 @@ import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
+import { limitsForProject, ownerKeyOf, sectionsUsedByOwner } from "./limits";
 
 export type DuplicateSectionOutcome = {
   /** ID of the duplicated root section, or null when the limit blocked everything. */
@@ -26,12 +27,17 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
+      const limits = limitsForProject(get(), project);
       const sectionsInProject = (project.sections || []).length;
-      if (sectionsInProject >= get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT) {
+      if (sectionsInProject >= limits.FREE_MAX_SECTIONS_PER_PROJECT) {
         throw new Error("structural_limit_sections_per_project");
       }
-      const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-      if (totalSections >= get().appLimits.FREE_MAX_SECTIONS_TOTAL) {
+      const totalSections = sectionsUsedByOwner(
+        projects,
+        ownerKeyOf(project, get().userId),
+        get().userId
+      );
+      if (totalSections >= limits.FREE_MAX_SECTIONS_TOTAL) {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
@@ -82,12 +88,17 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const projects = get().projects;
       const project = projects.find((p) => p.id === projectId);
       if (!project) return "" as UUID;
+      const limits = limitsForProject(get(), project);
       const sectionsInProject = (project.sections || []).length;
-      if (sectionsInProject >= get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT) {
+      if (sectionsInProject >= limits.FREE_MAX_SECTIONS_PER_PROJECT) {
         throw new Error("structural_limit_sections_per_project");
       }
-      const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-      if (totalSections >= get().appLimits.FREE_MAX_SECTIONS_TOTAL) {
+      const totalSections = sectionsUsedByOwner(
+        projects,
+        ownerKeyOf(project, get().userId),
+        get().userId
+      );
+      if (totalSections >= limits.FREE_MAX_SECTIONS_TOTAL) {
         throw new Error("structural_limit_sections_total");
       }
       const newId = crypto.randomUUID();
@@ -165,15 +176,16 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         queue.push(...children);
       }
 
-      // Compute how many we can create under both limits.
+      // Compute how many we can create under both limits (os do DONO do projeto).
+      const limits = limitsForProject(get(), project);
       const sectionsInProject = allSections.length;
-      const totalSections = projects.reduce(
-        (sum, p) => sum + (p.sections || []).length,
-        0
+      const totalSections = sectionsUsedByOwner(
+        projects,
+        ownerKeyOf(project, get().userId),
+        get().userId
       );
-      const allowedByProject =
-        get().appLimits.FREE_MAX_SECTIONS_PER_PROJECT - sectionsInProject;
-      const allowedByTotal = get().appLimits.FREE_MAX_SECTIONS_TOTAL - totalSections;
+      const allowedByProject = limits.FREE_MAX_SECTIONS_PER_PROJECT - sectionsInProject;
+      const allowedByTotal = limits.FREE_MAX_SECTIONS_TOTAL - totalSections;
       const allowed = Math.max(0, Math.min(allowedByProject, allowedByTotal));
 
       let limitReason: DuplicateSectionOutcome["limitReason"] = null;

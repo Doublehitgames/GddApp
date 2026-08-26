@@ -312,7 +312,7 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
     try {
       set({ syncStatus: "syncing", lastSyncError: null });
 
-      const { error, errorCode, structuralLimitReason, skippedReason, stats, quota, partial, remainingCreditsNeeded, syncedBy } =
+      const { error, errorCode, structuralLimitReason, structuralLimit, skippedReason, stats, quota, partial, remainingCreditsNeeded, syncedBy } =
         await upsertProjectToSupabase(sanitizeProjectForSync(project));
       if (quota) {
         set({ lastQuotaStatus: quota });
@@ -352,15 +352,18 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
           return;
         }
         if (errorCode === "structural_limit_exceeded") {
+          // O limite vem do servidor: num projeto compartilhado quem manda é o
+          // limite do DONO, que pode não ser o mesmo deste usuário.
           const limits = get().appLimits;
+          const max = (fallback: number) => structuralLimit ?? fallback;
           const msg =
             structuralLimitReason === "projects_limit"
-              ? `Limite do plano Free: máximo de ${limits.FREE_MAX_PROJECTS} projetos.`
+              ? `Limite atingido: máximo de ${max(limits.FREE_MAX_PROJECTS)} projetos.`
               : structuralLimitReason === "sections_per_project_limit"
-                ? `Limite do plano Free: máximo de ${limits.FREE_MAX_SECTIONS_PER_PROJECT} seções por projeto.`
+                ? `Limite atingido: máximo de ${max(limits.FREE_MAX_SECTIONS_PER_PROJECT)} páginas por projeto.`
                 : structuralLimitReason === "sections_total_limit"
-                  ? `Limite do plano Free: máximo de ${limits.FREE_MAX_SECTIONS_TOTAL} seções na conta.`
-                  : "Limite estrutural do plano Free atingido.";
+                  ? `Limite atingido: máximo de ${max(limits.FREE_MAX_SECTIONS_TOTAL)} páginas na conta do dono do projeto.`
+                  : "Limite estrutural atingido.";
           set({ syncStatus: "error", lastSyncError: msg });
           return;
         }

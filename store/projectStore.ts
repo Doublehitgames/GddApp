@@ -55,13 +55,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     persistenceConfig: loadPersistenceConfig(),
     userId: null,
     appLimits: DEFAULT_APP_LIMITS,
+    limitsByOwner: {},
 
     fetchAppLimits: async () => {
       try {
         const res = await fetch("/api/config/limits");
         if (!res.ok) return;
-        const limits = await res.json();
-        set({ appLimits: limits });
+        const { byOwner, ...limits } = await res.json();
+        set({ appLimits: limits, limitsByOwner: byOwner ?? {} });
       } catch {}
     },
 

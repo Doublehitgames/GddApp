@@ -218,6 +218,8 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
   error: string | null;
   errorCode?: string;
   structuralLimitReason?: string;
+  /** Valor do limite atingido, conforme o servidor (pode ser o do dono, nao o do usuario). */
+  structuralLimit?: number;
   stats?: SyncStats;
   quota?: CloudSyncQuotaStatus | null;
   partial?: boolean;
@@ -249,6 +251,7 @@ async function upsertProjectViaServerRoute(project: Project): Promise<{
         error: errorMessage,
         errorCode: typeof body?.code === "string" ? body.code : undefined,
         structuralLimitReason: typeof body?.reason === "string" ? body.reason : undefined,
+        structuralLimit: typeof body?.limit === "number" ? body.limit : undefined,
         quota: body?.quota,
       };
     }
@@ -502,6 +505,8 @@ export async function upsertProjectToSupabase(
   error: string | null;
   errorCode?: string;
   structuralLimitReason?: string;
+  /** Valor do limite atingido, conforme o servidor (pode ser o do dono, nao o do usuario). */
+  structuralLimit?: number;
   skippedReason?: "unauthenticated";
   stats?: SyncStats;
   quota?: CloudSyncQuotaStatus | null;
@@ -530,6 +535,7 @@ export async function upsertProjectToSupabase(
     error: routeResult.error,
     errorCode: routeResult.errorCode,
     structuralLimitReason: routeResult.structuralLimitReason,
+    structuralLimit: routeResult.structuralLimit,
     quota: routeResult.quota,
   };
 }

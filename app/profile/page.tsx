@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
+import { projectsOwnedBy, sectionsUsedByOwner } from "@/store/slices/limits";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -18,11 +19,15 @@ export default function ProfilePage() {
   } = useProjectStore((s) => s.appLimits);
   const { t } = useI18n();
 
-  const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);
-  const projectsCount = projects.length;
+  // Só os projetos do próprio usuário consomem a cota dele — projetos
+  // compartilhados consomem a de quem os possui, como no servidor.
+  const userId = user?.id ?? null;
+  const myProjects = projectsOwnedBy(projects, userId ?? "local", userId);
+  const totalSections = sectionsUsedByOwner(projects, userId ?? "local", userId);
+  const projectsCount = myProjects.length;
   const maxSectionsInAProject = Math.max(
     0,
-    ...projects.map((p) => (p.sections || []).length)
+    ...myProjects.map((p) => (p.sections || []).length)
   );
 
   return (

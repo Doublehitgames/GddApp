@@ -12,6 +12,7 @@ import type { Project } from "@/store/projectStore";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { projectPath } from "@/lib/utils/slug";
+import { limitsForProject } from "@/store/slices/limits";
 
 function timeAgo(dateStr: string): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -44,6 +45,16 @@ function ProjectCard({
   const { t } = useI18n();
   const sections = project.sections || [];
   const totalSec = sections.length;
+  // Teto deste projeto: vale o limite do DONO, que num projeto compartilhado
+  // não é necessariamente o de quem está olhando.
+  const appLimits = useProjectStore((s) => s.appLimits);
+  const limitsByOwner = useProjectStore((s) => s.limitsByOwner);
+  const storeUserId = useProjectStore((s) => s.userId);
+  const maxPages = limitsForProject(
+    { appLimits, limitsByOwner, userId: storeUserId },
+    project
+  ).FREE_MAX_SECTIONS_PER_PROJECT;
+  const pagesLeft = maxPages - totalSec;
   const coverUrl =
     getDriveImageDisplayCandidates(project.coverImageUrl || "")[0] ?? null;
   const iconUrl = getProjectIcon(project);
@@ -84,7 +95,18 @@ function ProjectCard({
             {project.title}
           </h3>
           <p className="mt-1.5 text-xs text-gray-400">
-            {totalSec} {totalSec === 1 ? "página" : "páginas"}
+            <span
+              className={
+                pagesLeft <= 0
+                  ? "text-red-400"
+                  : pagesLeft <= 10
+                    ? "text-amber-400"
+                    : undefined
+              }
+              title={`${Math.max(0, pagesLeft)} páginas disponíveis neste projeto`}
+            >
+              {totalSec}/{maxPages} {maxPages === 1 ? "página" : "páginas"}
+            </span>
             {project.updatedAt && (
               <> · editado {timeAgo(project.updatedAt)}</>
             )}
@@ -245,6 +267,18 @@ export default function Home() {
               </h2>
               <span className="text-sm text-gray-500 tabular-nums">
                 {myProjects.length}/{FREE_MAX_PROJECTS}
+              </span>
+              <span
+                className={`text-sm tabular-nums ${
+                  sectionsLeft <= 0
+                    ? "text-red-400"
+                    : sectionsLeft <= 10
+                      ? "text-amber-400"
+                      : "text-gray-500"
+                }`}
+                title={`${Math.max(0, sectionsLeft)} páginas disponíveis na sua conta`}
+              >
+                · {mySections}/{FREE_MAX_SECTIONS_TOTAL} páginas
               </span>
             </div>
 

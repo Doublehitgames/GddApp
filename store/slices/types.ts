@@ -365,6 +365,9 @@ export type AppLimits = {
   SYNC_REQUESTS_PER_MINUTE: number;
 };
 
+/** Limites por dono de projeto (inclui o próprio usuário). Ver store/slices/limits.ts. */
+export type LimitsByOwner = Record<string, AppLimits>;
+
 export const DEFAULT_APP_LIMITS: AppLimits = {
   FREE_MAX_PROJECTS: 2,
   FREE_MAX_SECTIONS_PER_PROJECT: 300,
@@ -392,6 +395,8 @@ export interface ProjectStore {
   setUserId: (id: string | null) => void;
   // Remote config
   appLimits: AppLimits;
+  /** Limites de cada dono de projeto visível ao usuário (inclui ele mesmo). */
+  limitsByOwner: LimitsByOwner;
   fetchAppLimits: () => Promise<void>;
   updatePersistenceConfig: (config: Partial<PersistenceConfig>) => void;
   // Mutations
