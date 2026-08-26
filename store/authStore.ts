@@ -98,9 +98,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             AUTH_INIT_TIMEOUT_MS
           );
           const profile = !profileResult.timedOut ? profileResult.value.data : null;
-          set({ user, session, profile });
+          // Este listener dispara em cada refresh de token. Se a busca falhar ou
+          // estourar o timeout, manter o profile que já temos: zerá-lo fazia a
+          // UI cair no prefixo do e-mail como se a pessoa não tivesse nome.
+          set((state) => ({
+            user,
+            session,
+            profile: profile ?? (state.profile?.id === user.id ? state.profile : null),
+          }));
         } catch {
-          set({ user, session, profile: null });
+          set((state) => ({
+            user,
+            session,
+            profile: state.profile?.id === user.id ? state.profile : null,
+          }));
         }
       } else {
         set({ user: null, session: null, profile: null });
@@ -163,8 +174,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     if (error) return { error: error.message };
 
+    // O profile pode não ter carregado (o fetch tem timeout). Mesmo assim a
+    // escrita foi feita, então monta a linha a partir do usuário em vez de
+    // deixar a tela mostrando o valor antigo.
     set((state) => ({
-      profile: state.profile ? { ...state.profile, ...data } : null,
+      profile: state.profile
+        ? { ...state.profile, ...data }
+        : { id: user.id, email: user.email ?? null, display_name: null, avatar_url: null, ...data },
     }));
     return { error: null };
   },

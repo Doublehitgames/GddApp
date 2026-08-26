@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
@@ -8,7 +9,7 @@ import { projectsOwnedBy } from "@/store/slices/limits";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, profile } = useAuthStore();
+  const { user, profile, updateProfile } = useAuthStore();
   const projects = useProjectStore((s) => s.projects);
   const lastQuotaStatus = useProjectStore((s) => s.lastQuotaStatus);
   // Limites efetivos do usuário logado (já com overrides individuais), não as constantes do plano.
@@ -22,6 +23,43 @@ export default function ProfilePage() {
   const userId = user?.id ?? null;
   const myProjects = projectsOwnedBy(projects, userId ?? "local", userId);
   const projectsCount = myProjects.length;
+
+  // Nome de exibição: é o que os outros veem nos projetos compartilhados, então
+  // precisa ser editável aqui — ninguém mais consegue arrumar por eles.
+  const savedName = profile?.display_name ?? "";
+  const [nameDraft, setNameDraft] = useState(savedName);
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+
+  // O profile chega assíncrono; alinha o rascunho quando ele carrega. Depois que
+  // a pessoa começa a digitar, o campo é dela: um refetch em segundo plano não
+  // pode apagar o que ela escreveu.
+  const nameTouched = useRef(false);
+  useEffect(() => {
+    if (nameTouched.current) return;
+    setNameDraft(profile?.display_name ?? "");
+  }, [profile?.display_name]);
+
+  const trimmedName = nameDraft.trim();
+  const nameDirty = trimmedName !== savedName.trim();
+  const canSaveName = Boolean(trimmedName) && nameDirty && !nameSaving;
+
+  const handleSaveName = async () => {
+    if (!canSaveName) return;
+    setNameSaving(true);
+    setNameError(null);
+    setNameSaved(false);
+    const { error } = await updateProfile({ display_name: trimmedName });
+    setNameSaving(false);
+    if (error) {
+      setNameError(error);
+      return;
+    }
+    // Salvou: o campo volta a acompanhar o profile.
+    nameTouched.current = false;
+    setNameSaved(true);
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -44,6 +82,56 @@ export default function ProfilePage() {
           </p>
           {user?.email && (
             <p className="text-sm text-gray-500 mt-1">{user.email}</p>
+          )}
+
+          {user && (
+            <div className="mt-4 pt-4 border-t border-gray-700/80">
+              <label
+                htmlFor="display-name"
+                className="block text-sm text-gray-400 mb-1.5"
+              >
+                {t("profile.nameLabel")}
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  id="display-name"
+                  type="text"
+                  value={nameDraft}
+                  maxLength={60}
+                  onChange={(e) => {
+                    nameTouched.current = true;
+                    setNameDraft(e.target.value);
+                    setNameSaved(false);
+                    setNameError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSaveName();
+                  }}
+                  placeholder={user.email?.split("@")[0] || ""}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-600 focus:border-indigo-500 focus:outline-none"
+                />
+                <button
+                  onClick={() => void handleSaveName()}
+                  disabled={!canSaveName}
+                  className="shrink-0 px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {nameSaving ? t("profile.nameSaving") : t("profile.nameSave")}
+                </button>
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">
+                {t("profile.nameHint")}
+              </p>
+              {nameSaved && (
+                <p className="mt-1.5 text-xs text-emerald-400">
+                  {t("profile.nameSaved")}
+                </p>
+              )}
+              {nameError && (
+                <p className="mt-1.5 text-xs text-red-400">
+                  {t("profile.nameError")}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
