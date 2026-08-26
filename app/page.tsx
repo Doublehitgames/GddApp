@@ -8,7 +8,6 @@ import { useAuthStore } from "@/store/authStore";
 import UserMenu from "@/components/UserMenu";
 import HomeSyncBar from "@/components/HomeSyncBar";
 import { useI18n } from "@/lib/i18n/provider";
-import { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } from "@/lib/structuralLimits";
 import type { Project } from "@/store/projectStore";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { PublicShareButton } from "@/components/PublicShareButton";
@@ -137,6 +136,10 @@ function ProjectCard({
 
 export default function Home() {
   const projects = useProjectStore((s) => s.projects);
+  // Limites efetivos do usuário logado (já com overrides individuais).
+  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_TOTAL } = useProjectStore(
+    (s) => s.appLimits
+  );
   const { user } = useAuthStore();
   const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);

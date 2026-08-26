@@ -153,7 +153,8 @@ async function validateTransferStructuralLimits(
     throw new Error("projects_query_failed");
   }
 
-  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } = await getRemoteConfig();
+  const { FREE_MAX_PROJECTS, FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
+    await getRemoteConfig(targetOwnerId);
 
   const ownedProjectIds = new Set((targetOwnerProjects || []).map((row: { id: string }) => row.id));
   if (!ownedProjectIds.has(projectId) && ownedProjectIds.size >= FREE_MAX_PROJECTS) {

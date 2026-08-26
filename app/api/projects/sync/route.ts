@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
     }
     if (syncedByDisplayName === null && user.email) syncedByDisplayName = user.email;
 
-    const remoteConfig = await getRemoteConfig();
+    const remoteConfig = await getRemoteConfig(user.id);
 
     if (!dryRun) {
       const { allowed } = checkSyncRateLimit(user.id, remoteConfig.SYNC_REQUESTS_PER_MINUTE);
@@ -275,6 +275,9 @@ export async function POST(request: NextRequest) {
 
     const isNewProject = !existingProject;
     const projectOwnerId = existingProject?.owner_id ?? user.id;
+    // Limites estruturais valem os do DONO — inclusive os overrides individuais dele.
+    const ownerConfig =
+      projectOwnerId === user.id ? remoteConfig : await getRemoteConfig(projectOwnerId);
 
     // Acesso: dono ou membro editor. Projeto novo só pode ser criado pelo dono (owner_id = user.id).
     if (existingProject) {
@@ -320,25 +323,25 @@ export async function POST(request: NextRequest) {
 
     const ownerProjectIds = new Set((ownerProjects || []).map((r: { id: string }) => r.id));
 
-    if (isNewProject && ownerProjectIds.size >= remoteConfig.FREE_MAX_PROJECTS) {
+    if (isNewProject && ownerProjectIds.size >= ownerConfig.FREE_MAX_PROJECTS) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "projects_limit",
-          limit: remoteConfig.FREE_MAX_PROJECTS,
+          limit: ownerConfig.FREE_MAX_PROJECTS,
         },
         { status: 403 }
       );
     }
 
-    if (incomingSections.length > remoteConfig.FREE_MAX_SECTIONS_PER_PROJECT) {
+    if (incomingSections.length > ownerConfig.FREE_MAX_SECTIONS_PER_PROJECT) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "sections_per_project_limit",
-          limit: remoteConfig.FREE_MAX_SECTIONS_PER_PROJECT,
+          limit: ownerConfig.FREE_MAX_SECTIONS_PER_PROJECT,
         },
         { status: 403 }
       );
@@ -417,13 +420,13 @@ export async function POST(request: NextRequest) {
 
     const totalSectionsAfter =
       (totalSectionsCount ?? 0) - existingSectionCount + incomingSections.length;
-    if (totalSectionsAfter > remoteConfig.FREE_MAX_SECTIONS_TOTAL) {
+    if (totalSectionsAfter > ownerConfig.FREE_MAX_SECTIONS_TOTAL) {
       return NextResponse.json(
         {
           error: "structural_limit_exceeded",
           code: "structural_limit_exceeded",
           reason: "sections_total_limit",
-          limit: remoteConfig.FREE_MAX_SECTIONS_TOTAL,
+          limit: ownerConfig.FREE_MAX_SECTIONS_TOTAL,
         },
         { status: 403 }
       );

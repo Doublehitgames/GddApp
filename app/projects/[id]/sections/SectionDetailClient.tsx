@@ -23,10 +23,6 @@ import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import {
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
-import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -88,6 +84,9 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const setSectionFlowchartEnabled = useProjectStore((s) => s.setSectionFlowchartEnabled);
   const disableSectionFlowchartAndClearDiagram = useProjectStore((s) => s.disableSectionFlowchartAndClearDiagram);
   const projects = useProjectStore((s) => s.projects);
+  // Limites efetivos do usuário logado (já com overrides individuais).
+  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
+    useProjectStore((s) => s.appLimits);
   const lastSyncedAt = useProjectStore((s) => s.lastSyncedAt);
   const lastSyncStats = useProjectStore((s) => s.lastSyncStats);
 

@@ -1,6 +1,10 @@
 /**
  * Limites estruturais do plano Free (cloud sync).
- * Usado na API de sync e no store para bloquear criação quando no limite.
+ *
+ * ATENÇÃO: estes números são só referência histórica. O valor que vale em runtime
+ * vem de app_config (ver lib/remoteConfig.ts), que ainda aceita override por
+ * usuário na chave `<CHAVE>:<user_id>`. Servidor usa getRemoteConfig(ownerId);
+ * cliente usa store.appLimits, alimentado por /api/config/limits.
  */
 
 export const FREE_MAX_PROJECTS = 2;

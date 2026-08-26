@@ -4,17 +4,18 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
-import {
-  FREE_MAX_PROJECTS,
-  FREE_MAX_SECTIONS_PER_PROJECT,
-  FREE_MAX_SECTIONS_TOTAL,
-} from "@/lib/structuralLimits";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, profile } = useAuthStore();
   const projects = useProjectStore((s) => s.projects);
   const lastQuotaStatus = useProjectStore((s) => s.lastQuotaStatus);
+  // Limites efetivos do usuário logado (já com overrides individuais), não as constantes do plano.
+  const {
+    FREE_MAX_PROJECTS,
+    FREE_MAX_SECTIONS_PER_PROJECT,
+    FREE_MAX_SECTIONS_TOTAL,
+  } = useProjectStore((s) => s.appLimits);
   const { t } = useI18n();
 
   const totalSections = projects.reduce((sum, p) => sum + (p.sections || []).length, 0);

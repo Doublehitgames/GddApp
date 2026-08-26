@@ -65,9 +65,10 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     });
   }
 
-  // Structural limits (applied to project owner)
-  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } = await getRemoteConfig();
+  // Structural limits (applied to project owner, including their per-user overrides)
   const projectOwnerId = pResult.project.owner_id;
+  const { FREE_MAX_SECTIONS_PER_PROJECT, FREE_MAX_SECTIONS_TOTAL } =
+    await getRemoteConfig(projectOwnerId);
 
   // Sections in this project
   const { count: projectSectionCount } = await auth.supabase
