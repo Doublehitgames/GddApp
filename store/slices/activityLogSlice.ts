@@ -15,6 +15,16 @@ export type { ActivityLogEvent };
 
 const PENDING_KEY = "gdd_pending_activity_log_v1";
 
+/**
+ * Por quanto tempo edições repetidas na mesma página continuam sendo o mesmo
+ * evento.
+ *
+ * A descrição salva sozinha a cada pausa na digitação, então um evento por
+ * chamada transformaria dez minutos de escrita em dezenas de linhas — e a
+ * tabela só guarda 200 eventos por projeto. Uma sessão de escrita é um evento.
+ */
+const EDIT_WINDOW_MS = 30 * 60_000;
+
 function loadPending(): Record<string, ActivityLogEvent[]> {
   if (typeof window === "undefined") return {};
   try {
@@ -88,7 +98,59 @@ export function createActivityLogSlice(set: StoreSet, get: StoreGet) {
 
     logSectionActivity: (event: Omit<ActivityLogEvent, "id" | "created_at">) => {
       const now = new Date().toISOString();
-      const newEvent: ActivityLogEvent = { ...event, id: crypto.randomUUID(), created_at: now };
+
+      // Edições repetidas na mesma página, dentro da janela, são a mesma sessão
+      // de escrita: em vez de um evento novo, o evento existente sobe de hora.
+      // Se ele já foi para o banco, não há o que subir — fica como está, e um
+      // "modificada há 20min" desatualizado é infinitamente melhor que 40 linhas.
+      //
+      // Uma página recém-criada absorve a primeira descrição: "criada" já conta
+      // a história, e escrever o texto é parte de criar. Sem isso, montar um
+      // projeto por template daria duas linhas por página.
+      if (event.action === "modified") {
+        const existing = get().activityLogByProject[event.project_id] ?? [];
+        const recent = existing.find(
+          (e) =>
+            e.section_id === event.section_id &&
+            (e.action === "modified" || e.action === "created")
+        );
+
+        if (recent && Date.now() - new Date(recent.created_at).getTime() < EDIT_WINDOW_MS) {
+          if (recent.action === "created") return;
+
+          const pendingForProject = get().pendingActivityLog[event.project_id] ?? [];
+          const isStillPending = pendingForProject.some((p) => p.id === recent.id);
+          if (!isStillPending) return;
+
+          set((s) => {
+            const bump = (list: ActivityLogEvent[]) =>
+              list.map((e) => (e.id === recent.id ? { ...e, created_at: now } : e));
+            const updatedPending = {
+              ...s.pendingActivityLog,
+              [event.project_id]: bump(s.pendingActivityLog[event.project_id] ?? []),
+            };
+            persistPending(updatedPending);
+            return {
+              pendingActivityLog: updatedPending,
+              activityLogByProject: {
+                ...s.activityLogByProject,
+                // Reordena: o evento acabou de virar o mais recente da lista.
+                [event.project_id]: bump(s.activityLogByProject[event.project_id] ?? []).sort(
+                  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                ),
+              },
+            };
+          });
+          return;
+        }
+      }
+
+      const newEvent: ActivityLogEvent = {
+        origin: "app",
+        ...event,
+        id: crypto.randomUUID(),
+        created_at: now,
+      };
 
       set((s) => {
         // Adiciona à fila pendente

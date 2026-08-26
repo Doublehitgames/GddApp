@@ -24,6 +24,35 @@ const ACTION_STYLES: Record<
   modified: { badge: "border-blue-500/30   bg-blue-500/10   text-blue-400",      dot: "bg-blue-500/60"   },
 };
 
+/**
+ * `detail` guarda um token, não uma frase — o app é traduzido e o banco não
+ * pode ficar com português cravado dentro. A frase nasce aqui.
+ *
+ * Tokens vivos: 'description' e 'batch:<n>'. Linhas antigas guardam a faceta do
+ * addon que mudou ('dataSchema', 'fieldLibrary'), e essas aparecem como estão.
+ */
+function useDetailLabel() {
+  const { t } = useI18n();
+  return (detail: string): string => {
+    if (detail === "description") {
+      return t("activityLog.detailDescription", "descrição");
+    }
+    const batch = /^batch:(\d+)$/.exec(detail);
+    if (batch) {
+      // O card já nomeia uma das páginas; o rótulo conta as outras.
+      const others = Number(batch[1]) - 1;
+      if (others < 1) return "";
+      return others === 1
+        ? t("activityLog.detailBatchOne", "e 1 outra página nesta ação")
+        : t("activityLog.detailBatch", "e {n} outras páginas nesta ação").replace(
+            "{n}",
+            String(others)
+          );
+    }
+    return detail;
+  };
+}
+
 function useTimeAgo() {
   const { t } = useI18n();
   return (dateStr: string): string => {
@@ -53,8 +82,11 @@ function ActivityCard({
 }) {
   const { t } = useI18n();
   const timeAgo = useTimeAgo();
+  const detailLabel = useDetailLabel();
   const style     = ACTION_STYLES[event.action];
   const isDeleted = event.action === "deleted";
+  const isAgent   = event.origin === "mcp";
+  const detailText = event.detail ? detailLabel(event.detail) : "";
 
   const actionLabels: Record<ActivityLogEvent["action"], string> = {
     created:  t("activityLog.actionCreated"),
@@ -65,9 +97,16 @@ function ActivityCard({
 
   const inner = (
     <>
-      <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none border ${style.badge}`}>
-        {actionLabels[event.action]}
-      </span>
+      <div className="flex w-full items-center gap-1.5">
+        <span className={`w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none border ${style.badge}`}>
+          {actionLabels[event.action]}
+        </span>
+        {isAgent && (
+          <span className="w-fit rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold leading-none text-violet-300">
+            {t("activityLog.originMcp", "via MCP")}
+          </span>
+        )}
+      </div>
 
       <p className={`line-clamp-2 text-sm font-medium leading-snug transition-colors ${
         isDeleted ? "text-gray-500 line-through" : "text-gray-100 group-hover:text-white"
@@ -80,8 +119,8 @@ function ActivityCard({
           {t("activityLog.renamedFrom").replace("{title}", event.old_title)}
         </p>
       )}
-      {event.action === "modified" && event.detail && (
-        <p className="text-[11px] text-blue-500/70 truncate -mt-1">{event.detail}</p>
+      {detailText && (
+        <p className="text-[11px] text-blue-500/70 truncate -mt-1">{detailText}</p>
       )}
 
       <div className="mt-auto flex flex-col gap-0.5 pt-0.5">
@@ -180,6 +219,7 @@ function HistoryModal({
 export default function RecentActivityWidget({ projectId, realProjectId }: Props) {
   const { t } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
+  const [originFilter, setOriginFilter] = useState<"all" | "app" | "mcp">("all");
 
   const fetchActivityLog     = useProjectStore((s) => s.fetchActivityLog);
   const activityLogByProject = useProjectStore((s) => s.activityLogByProject);
@@ -188,9 +228,22 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
     if (realProjectId) fetchActivityLog(realProjectId);
   }, [realProjectId, fetchActivityLog]);
 
-  const events  = useMemo(() => activityLogByProject[realProjectId] ?? [], [activityLogByProject, realProjectId]);
-  const visible = events.slice(0, INITIAL_LIMIT);
-  const extra   = events.length - INITIAL_LIMIT;
+  const events = useMemo(() => activityLogByProject[realProjectId] ?? [], [activityLogByProject, realProjectId]);
+
+  // O filtro de origem só aparece quando há as duas origens no log — num projeto
+  // que ninguém automatizou ele seria um controle sem nada para controlar.
+  const hasAgentEvents = events.some((e) => e.origin === "mcp");
+  const hasAppEvents   = events.some((e) => e.origin !== "mcp");
+  const showOriginFilter = hasAgentEvents && hasAppEvents;
+
+  const filtered = useMemo(() => {
+    if (originFilter === "mcp") return events.filter((e) => e.origin === "mcp");
+    if (originFilter === "app") return events.filter((e) => e.origin !== "mcp");
+    return events;
+  }, [events, originFilter]);
+
+  const visible = filtered.slice(0, INITIAL_LIMIT);
+  const extra   = filtered.length - INITIAL_LIMIT;
 
   if (events.length === 0) return null;
 
@@ -215,13 +268,43 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
           </div>
           <span className="text-sm font-semibold text-white">{t("activityLog.widgetTitle")}</span>
 
-          <div className="ml-auto flex items-center gap-2.5">
-            {(["created", "modified", "renamed", "deleted"] as const).map((action) => (
-              <span key={action} className="flex items-center gap-1 text-[11px] text-gray-500">
-                <span className={`inline-block h-2 w-2 rounded-full ${ACTION_STYLES[action].dot}`} />
-                {actionLabels[action]}
-              </span>
-            ))}
+          <div className="ml-auto flex items-center gap-3">
+            {showOriginFilter && (
+              <div className="flex items-center gap-0.5 rounded-lg bg-gray-800/60 p-0.5">
+                {([
+                  ["all", t("activityLog.originAll",   "Tudo")],
+                  ["app", t("activityLog.originApp",   "Você")],
+                  ["mcp", t("activityLog.originAgent", "Agente")],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setOriginFilter(value)}
+                    className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
+                      originFilter === value
+                        ? "bg-gray-700 text-white"
+                        : "text-gray-400 hover:text-gray-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Legenda só das ações que o log realmente tem. 'modified' ficou
+                órfã por um tempo (era dos addons) e aparecia num projeto que
+                nunca teve um evento desses. */}
+            <div className="flex items-center gap-2.5">
+              {(["created", "modified", "renamed", "deleted"] as const)
+                .filter((action) => filtered.some((e) => e.action === action))
+                .map((action) => (
+                  <span key={action} className="flex items-center gap-1 text-[11px] text-gray-500">
+                    <span className={`inline-block h-2 w-2 rounded-full ${ACTION_STYLES[action].dot}`} />
+                    {actionLabels[action]}
+                  </span>
+                ))}
+            </div>
           </div>
         </div>
 
@@ -247,7 +330,7 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
       </section>
 
       {modalOpen && (
-        <HistoryModal events={events} projectId={projectId} onClose={() => setModalOpen(false)} />
+        <HistoryModal events={filtered} projectId={projectId} onClose={() => setModalOpen(false)} />
       )}
     </>
   );

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
+import { DETAIL_DESCRIPTION, logApiSectionActivity } from "@/lib/api/v1/activityLog";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
 
@@ -105,6 +106,31 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     .update({ updated_at: now })
     .eq("id", id);
 
+  // One event per request. A rename outranks a rewrite: if this call did both,
+  // the rename is the more useful thing for a reader to find in the history.
+  const before = sResult.section;
+  const titleChanged = parsed.data.title !== undefined && parsed.data.title !== before.title;
+  const contentChanged =
+    parsed.data.content !== undefined || parsed.data.contentBlocks !== undefined;
+
+  if (titleChanged) {
+    await logApiSectionActivity(auth, {
+      projectId: id,
+      sectionId,
+      sectionTitle: parsed.data.title as string,
+      action: "renamed",
+      oldTitle: before.title,
+    });
+  } else if (contentChanged) {
+    await logApiSectionActivity(auth, {
+      projectId: id,
+      sectionId,
+      sectionTitle: before.title,
+      action: "modified",
+      detail: DETAIL_DESCRIPTION,
+    });
+  }
+
   return apiJson(sectionToApi(rows[0]));
 }
 
@@ -139,6 +165,15 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
     .from("projects")
     .update({ updated_at: new Date().toISOString() })
     .eq("id", id);
+
+  // Only the page the caller named is logged, not the cascade-deleted children —
+  // the app behaves the same way, and one line reads better than a subtree.
+  await logApiSectionActivity(auth, {
+    projectId: id,
+    sectionId,
+    sectionTitle: sResult.section.title,
+    action: "deleted",
+  });
 
   return apiJson({ deleted: true });
 }

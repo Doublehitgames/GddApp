@@ -340,6 +340,9 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       updatedBy?: SectionAuditBy
     ) => {
       const now = new Date().toISOString();
+      const editedTitle = get()
+        .projects.find((p) => p.id === projectId)
+        ?.sections?.find((s) => s.id === sectionId)?.title;
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
@@ -366,6 +369,20 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
           ),
         projectId
       );
+
+      // O autosave chama isto a cada pausa na digitação; logSectionActivity
+      // dobra tudo isso em um evento por página por janela de edição.
+      if (editedTitle) {
+        get().logSectionActivity({
+          project_id: projectId,
+          section_id: sectionId,
+          section_title: editedTitle,
+          action: "modified",
+          detail: "description",
+          user_id: updatedBy?.userId ?? null,
+          user_name: updatedBy?.displayName ?? null,
+        });
+      }
     },
 
     setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => {

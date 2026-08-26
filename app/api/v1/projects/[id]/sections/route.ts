@@ -8,6 +8,7 @@ import {
   sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
+import { logApiSectionActivity, logBatchActivity } from "@/lib/api/v1/activityLog";
 import {
   BATCH_CONCURRENCY,
   BATCH_SECTION_LIMIT,
@@ -139,6 +140,14 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     .eq("id", id);
 
   if (!created) return apiError("Failed to read created section", 500, "db_error");
+
+  await logApiSectionActivity(auth, {
+    projectId: id,
+    sectionId: section.id,
+    sectionTitle: parsed.data.title,
+    action: "created",
+  });
+
   return apiJson(sectionToApi(created), 201);
 }
 
@@ -253,6 +262,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (updated > 0) {
     await auth.supabase.from("projects").update({ updated_at: now }).eq("id", id);
   }
+
+  await logBatchActivity(auth, id, items, titles, results);
 
   return apiJson({ updated, failed: results.length - updated, results });
 }

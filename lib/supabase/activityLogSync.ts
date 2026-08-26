@@ -16,8 +16,17 @@ export type ActivityLogEvent = {
   section_title: string;
   action: ActivityLogAction;
   old_title?: string | null;
-  /** Contexto adicional do evento 'modified' (ex.: qual faceta da página mudou). */
+  /**
+   * Token de contexto do evento, renderizado pelo widget (nunca texto pronto —
+   * o app é traduzido). Hoje: 'description' e 'batch:<n>'. Linhas antigas
+   * guardam a faceta do addon que mudou ('dataSchema', 'fieldLibrary', ...).
+   */
   detail?: string | null;
+  /**
+   * De onde veio a escrita: 'app' (navegador) ou 'mcp' (agente via API).
+   * NULL nas linhas gravadas antes da coluna existir — todas do app.
+   */
+  origin?: "app" | "mcp" | null;
   user_id?: string | null;
   user_name?: string | null;
   created_at: string;
@@ -80,6 +89,16 @@ export async function insertActivityEvent(
   }
 
   if (result.error) {
-    console.warn("[activityLogSync] insertActivityEvent error", result.error);
+    // `origin` chega junto com uma migração que o banco pode ainda não ter
+    // rodado. Perder a marcação de origem é melhor que perder o evento.
+    const withoutOrigin: Record<string, unknown> = { ...event };
+    delete withoutOrigin.origin;
+    const retry = await withTimeout(
+      Promise.resolve(supabase.from("section_activity_log").insert(withoutOrigin)),
+      TIMEOUT_MS
+    );
+    if (retry?.error) {
+      console.warn("[activityLogSync] insertActivityEvent error", retry.error);
+    }
   }
 }
