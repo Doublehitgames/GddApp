@@ -629,7 +629,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
         : 'none';
 
   return (
-    <div style={{ width: size, height: size, position: 'relative' }}>
+    // A caixa vive em coordenadas do mundo e portanto CRESCE com o zoom, enquanto
+    // o ponto tem tamanho fixo. Se ela capturasse o clique, aproximar criaria uma
+    // area invisivel de centenas de pixels em volta de cada ponto (medido: 2.5x o
+    // ponto no zoom de abertura, ~30x no maximo). O alvo e o ponto, nao a caixa.
+    <div style={{ width: size, height: size, position: 'relative', pointerEvents: 'none' }}>
       <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
@@ -641,8 +645,13 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
           opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          pointerEvents: 'auto',
         }}
       >
+        {/* Alvo de clique um pouco maior que o ponto, e constante em px de tela
+            porque mora dentro do wrapper contra-escalado. Sem isso, um ponto de
+            6px seria dificil de acertar. */}
+        <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', cursor: 'pointer' }} />
         <div
           style={{
             width: '100%',
@@ -732,7 +741,7 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
     : (CONFIG as any).clean.projectDot;
 
   return (
-    <div style={{ width: baseSize, height: baseSize, position: 'relative' }}>
+    <div style={{ width: baseSize, height: baseSize, position: 'relative', pointerEvents: 'none' }}>
       <Handle type="source" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
@@ -745,6 +754,7 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
+          pointerEvents: 'auto',
         }}
       >
         <div
