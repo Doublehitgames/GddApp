@@ -1277,7 +1277,9 @@
       "usedForDashAndAnimation": "Se usa para trazo y animación",
       "zoom": "Zoom",
       "zoomOnClick": "Zoom al hacer clic",
-      "zoomOnClickHelp": "Al hacer clic en cualquier nodo, se ampliará a este tamaño en pantalla. Ej.: 200px = todos los nodos aparecen con 200px al hacer clic."
+      "zoomOnClickHelp": "Al hacer clic en cualquier nodo, se ampliará a este tamaño en pantalla. Ej.: 200px = todos los nodos aparecen con 200px al hacer clic.",
+      "showLine": "¿Mostrar línea?",
+      "showLine2": "Visible"
     }
   },
   "agenda": {

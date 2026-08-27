@@ -1277,7 +1277,9 @@
       "usedForDashAndAnimation": "Usado para traço e animação",
       "zoom": "Zoom",
       "zoomOnClick": "Zoom ao Clicar",
-      "zoomOnClickHelp": "Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas"
+      "zoomOnClickHelp": "Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas",
+      "showLine": "Mostrar linha?",
+      "showLine2": "Visível"
     }
   },
   "agenda": {

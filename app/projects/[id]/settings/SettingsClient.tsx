@@ -301,6 +301,7 @@ export default function SettingsClient({ projectId }: Props) {
             hasChildrenBorder: MINDMAP_CONFIG.sections.node.hasChildrenBorder
           }, 
           edge: { 
+            visible: MINDMAP_CONFIG.sections.edge.visible,
             strokeWidth: MINDMAP_CONFIG.sections.edge.strokeWidth, 
             color: MINDMAP_CONFIG.sections.edge.color, 
             animated: MINDMAP_CONFIG.sections.edge.animated, 
@@ -317,6 +318,7 @@ export default function SettingsClient({ projectId }: Props) {
             hasChildrenBorder: MINDMAP_CONFIG.subsections.node.hasChildrenBorder
           }, 
           edge: { 
+            visible: MINDMAP_CONFIG.subsections.edge.visible,
             strokeWidth: MINDMAP_CONFIG.subsections.edge.strokeWidth, 
             color: MINDMAP_CONFIG.subsections.edge.color, 
             animated: MINDMAP_CONFIG.subsections.edge.animated, 
@@ -333,6 +335,7 @@ export default function SettingsClient({ projectId }: Props) {
             hasChildrenBorder: MINDMAP_CONFIG.deepSubsections.node.hasChildrenBorder
           }, 
           edge: { 
+            visible: MINDMAP_CONFIG.deepSubsections.edge.visible,
             strokeWidth: MINDMAP_CONFIG.deepSubsections.edge.strokeWidth, 
             color: MINDMAP_CONFIG.deepSubsections.edge.color, 
             animated: MINDMAP_CONFIG.deepSubsections.edge.animated, 
@@ -920,6 +923,16 @@ export default function SettingsClient({ projectId }: Props) {
             </div>
             
             <h3 className="text-lg font-semibold mb-3 text-gray-300">{t("settings.settingsClient.connectionsLines")}</h3>
+            {/* Desliga a linha no estado de repouso do mapa. Fica antes dos
+                controles de estilo porque, desligada, os outros nao importam. */}
+            <label className="flex items-center gap-3 mb-4 w-fit cursor-pointer">
+              <ToggleSwitch
+                checked={getValue("project.edge.visible") !== false}
+                onChange={(next) => setValue("project.edge.visible", next)}
+                ariaLabel={t("settings.settingsClient.showLine")}
+              />
+              <span className="text-sm text-gray-300">{t("settings.settingsClient.showLine")}</span>
+            </label>
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.lineColor")}</label>
@@ -998,7 +1011,8 @@ export default function SettingsClient({ projectId }: Props) {
                       <h3 className="font-semibold text-gray-300">{t("settings.settingsClient.connection")}</h3>
                       <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
                       <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
-                      <div className="flex gap-4">
+                      <div className="flex flex-wrap gap-4">
+                        <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.visible !== false} onChange={(next) => handleLevelChange(lvl.level, "edge.visible", next)} ariaLabel={t("settings.settingsClient.showLine2")} /><span className="text-sm">{t("settings.settingsClient.showLine2")}</span></label>
                         <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.animated || false} onChange={(next) => handleLevelChange(lvl.level, "edge.animated", next)} ariaLabel={t("settings.settingsClient.animated2")} /><span className="text-sm">{t("settings.settingsClient.animated2")}</span></label>
                         <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.dashed || false} onChange={(next) => handleLevelChange(lvl.level, "edge.dashed", next)} ariaLabel={t("settings.settingsClient.dashed2")} /><span className="text-sm">{t("settings.settingsClient.dashed2")}</span></label>
                       </div>

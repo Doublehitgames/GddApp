@@ -108,6 +108,8 @@ export type LevelConfig = {
     zoomOnClick?: number;
   };
   edge: {
+    /** Linha visivel no estado de repouso do mapa (nenhum no selecionado). */
+    visible?: boolean;
     strokeWidth?: number;
     color?: string;
     dashed?: boolean;
@@ -208,6 +210,8 @@ export type MindMapSettings = {
       zoomOnClick?: number;
     };
     edge?: {
+      /** Linha visivel no estado de repouso do mapa (nenhum no selecionado). */
+      visible?: boolean;
       strokeWidth?: number;
       color?: string;
       dashed?: boolean;

@@ -1192,6 +1192,29 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     setEdges([...projectEdges, ...flowEdges]);
   }, [project, config, setNodes, setEdges]);
 
+  // A linha de parentesco pode ser desligada nas configuracoes do projeto, por
+  // nivel e para o no central. Vale SO no estado de repouso: assim que o usuario
+  // seleciona uma bolinha, o destaque e o fade voltam a mandar e as linhas
+  // reaparecem. Ausente ou true = visivel, pra nao mexer em projeto ja existente.
+  const linhaVisivelEmRepouso = useCallback((edge: Edge) => {
+    if (edge.source === 'project-center') {
+      return (config.project?.edge as any)?.visible !== false;
+    }
+    const sourceNode = nodes.find((n) => n.id === edge.source);
+    const nivel = sourceNode?.data?.level ?? 0;
+    const niveis = (config as any).levels;
+    if (niveis && niveis.length > 0) {
+      const doNivel = niveis[nivel] || niveis[niveis.length - 1];
+      return doNivel?.edge?.visible !== false;
+    }
+    const legado = nivel === 0
+      ? config.sections.edge
+      : nivel === 1
+        ? config.subsections.edge
+        : config.deepSubsections.edge;
+    return (legado as any)?.visible !== false;
+  }, [config, nodes]);
+
   // Efeito para atualizar destaque das edges quando houver seleção
   useEffect(() => {
     const fadeConfig = config.fadeEffect || { enabled: false, opacity: 0.3, grayscale: 50, blur: 1 };
@@ -1234,7 +1257,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           
           return {
             ...edge,
-            hidden: false, // sem selecao nenhuma edge fica escondida
+            hidden: !linhaVisivelEmRepouso(edge),
             className: undefined,
             animated: edgeConfig.animated || false,
             style: {
@@ -1395,7 +1418,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         };
       });
     });
-  }, [selectedNodeId, setEdges, config, nodes, showReferences]);
+  }, [selectedNodeId, setEdges, config, nodes, showReferences, linhaVisivelEmRepouso]);
 
   // Efeito para marcar node selecionado visualmente (glow)
   useEffect(() => {

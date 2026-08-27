@@ -1277,7 +1277,9 @@
       "usedForDashAndAnimation": "Used for dash and animation",
       "zoom": "Zoom",
       "zoomOnClick": "Zoom on Click",
-      "zoomOnClickHelp": "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked"
+      "zoomOnClickHelp": "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked",
+      "showLine": "Show line?",
+      "showLine2": "Visible"
     }
   },
   "agenda": {

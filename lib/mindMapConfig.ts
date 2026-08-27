@@ -166,6 +166,9 @@ export const MINDMAP_CONFIG = {
       zoomOnClick: 0.8,
     },
     edge: {
+      // Linha visivel no estado padrao (nenhum no selecionado). Desligar aqui
+      // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
+      visible: true,
       strokeWidth: 2,
       color: '#94a3b8',      // Cinza claro
       dashed: false,
@@ -212,6 +215,9 @@ export const MINDMAP_CONFIG = {
       zoomOnClick: 1.2,
     },
     edge: {
+      // Linha visivel no estado padrao (nenhum no selecionado). Desligar aqui
+      // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
+      visible: true,
       strokeWidth: 2,
       color: '#94a3b8',      // Cinza claro
       dashed: false,
@@ -252,6 +258,9 @@ export const MINDMAP_CONFIG = {
       zoomOnClick: 2,
     },
     edge: {
+      // Linha visivel no estado padrao (nenhum no selecionado). Desligar aqui
+      // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
+      visible: true,
       strokeWidth: 2,
       color: '#94a3b8',
       dashed: false,
@@ -292,6 +301,9 @@ export const MINDMAP_CONFIG = {
       zoomOnClick: 1.8,
     },
     edge: {
+      // Linha visivel no estado padrao (nenhum no selecionado). Desligar aqui
+      // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
+      visible: true,
       strokeWidth: 2.2,
       color: '#94a3b8',
       dashed: false,
