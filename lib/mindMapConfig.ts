@@ -88,7 +88,12 @@ export const MINDMAP_CONFIG = {
       project: 0.02,
     },
     // Cálculo de maxZoom dinâmico
-    targetApparentSize: 10000, // Tamanho alvo da menor bolinha na tela (px)
+    // No estilo limpo o ponto tem tamanho FIXO na tela, entao "aproximar ate a
+    // bolinha ter X px" perdeu o sentido. O que este numero governa hoje e ate
+    // onde o mapa se espalha: com 70 o zoom maximo fica perto de 5x. Ele estava
+    // em 10000, herdado das bolinhas de 1000px, e produzia zoom maximo de 20 —
+    // onde o desvio de meia unidade do handle do React Flow vira 10px visiveis.
+    targetApparentSize: 70,
     zoomMargin: 1.5,         // Margem de segurança (50% extra)
     // Zoom ao clicar
     onClickTargetSize: 80,   // Tamanho que a bolinha terá na tela ao clicar (px)

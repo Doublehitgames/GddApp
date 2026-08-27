@@ -629,8 +629,8 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
-      <Handle type="target" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
         style={{
           position: 'absolute',
@@ -732,10 +732,10 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
 
   return (
     <div style={{ width: baseSize, height: baseSize, position: 'relative' }}>
-      <Handle type="source" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Left} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+      <Handle type="source" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Left} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
         style={{
           position: 'absolute',
@@ -929,27 +929,27 @@ function MarkdownWithMapReferences({
 // A assinatura e IMPERATIVA de proposito: `useStore` faria este componente
 // re-renderizar a cada frame de camera, que e exatamente o custo que a gente
 // acabou de remover. Aqui nao ha render nenhum — so uma escrita de propriedade,
-// coalescida por rAF.
+// escrita sincrona (ver o corpo).
 function ZoomCssVar() {
   const store = useStoreApi();
   useEffect(() => {
     const alvo = document.documentElement;
-    let pedido = 0;
     let ultimo = -1;
+    // Escrita SINCRONA. A versao anterior agrupava por requestAnimationFrame, e
+    // quando o rAF nao roda (aba em segundo plano, compositor parado) a variavel
+    // congelava — e com ela congelada a contra-escala para de acompanhar, entao
+    // pontos, labels e linhas voltam a crescer junto com o zoom. Escrever uma
+    // custom property e barato; o recalculo de estilo o navegador ja agrupa
+    // sozinho ate o proximo paint.
     const publicar = (z: number) => {
       if (z === ultimo) return;
       ultimo = z;
-      if (pedido) return;
-      pedido = requestAnimationFrame(() => {
-        pedido = 0;
-        alvo.style.setProperty('--gdd-zoom', String(ultimo));
-      });
+      alvo.style.setProperty('--gdd-zoom', String(z));
     };
     publicar(store.getState().transform[2]);
     const cancelar = store.subscribe((estado: any) => publicar(estado.transform[2]));
     return () => {
       cancelar();
-      if (pedido) cancelAnimationFrame(pedido);
       alvo.style.removeProperty('--gdd-zoom');
     };
   }, [store]);
