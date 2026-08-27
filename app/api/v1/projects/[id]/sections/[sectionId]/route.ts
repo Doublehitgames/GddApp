@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
+import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
 import { DETAIL_DESCRIPTION, logApiSectionActivity } from "@/lib/api/v1/activityLog";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
@@ -93,6 +94,24 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     .eq("project_id", id);
 
   if (error) return apiError("Failed to update section", 500, "db_error");
+
+  // A rename orphans every `$[Old Title]` ref in the project unless they are
+  // rewritten. Sweeping before the re-read means the response already shows the
+  // rewritten text when the renamed page referred to itself.
+  const renamedFrom =
+    parsed.data.title !== undefined && parsed.data.title !== sResult.section.title
+      ? sResult.section.title
+      : null;
+  if (renamedFrom) {
+    await sweepRenamedRefs(auth.supabase, {
+      projectId: id,
+      sectionId,
+      oldTitle: renamedFrom,
+      newTitle: parsed.data.title as string,
+      userId: auth.userId,
+      now,
+    });
+  }
 
   // Re-read for the response.
   const { data: rows } = await selectSections(auth.supabase, { projectId: id, sectionId });

@@ -122,37 +122,170 @@ export function convertReferencesToNames(content: string, sections: any[]): stri
 }
 
 /**
- * Walk a BlockNote block tree and convert `$[#uuid]` refs to `$[Section Title]`
- * in every text node. Used when seeding the editor so the user sees readable
- * names instead of raw IDs.
+ * Walk a richDoc/BlockNote block tree and run `mapText` over every text node —
+ * including the ones nested in links and inside table cells. Structure is
+ * preserved; only text changes.
  */
-export function convertBlockRefsToNames(blocks: unknown, sections: any[]): any {
+export function mapBlockTexts(blocks: unknown, mapText: (text: string) => string): any {
   if (!Array.isArray(blocks)) return blocks;
-  return blocks.map((b) => _convertBlockNode(b, sections));
+  return blocks.map((b) => _mapBlockNode(b, mapText));
 }
 
-function _convertBlockNode(block: unknown, sections: any[]): unknown {
+function _mapBlockNode(block: unknown, mapText: (text: string) => string): unknown {
   if (!block || typeof block !== "object") return block;
   const b = block as any;
   const next: any = { ...b };
-  if (b.content !== undefined) next.content = _convertContent(b.content, sections);
-  if (Array.isArray(b.children)) next.children = b.children.map((c: unknown) => _convertBlockNode(c, sections));
+  if (b.content !== undefined) next.content = _mapContent(b.content, mapText);
+  if (Array.isArray(b.children)) next.children = b.children.map((c: unknown) => _mapBlockNode(c, mapText));
   return next;
 }
 
-function _convertContent(content: unknown, sections: any[]): unknown {
+function _mapContent(content: unknown, mapText: (text: string) => string): unknown {
+  // A table keeps its text in { type: "tableContent", rows: [{ cells: [...] }] },
+  // not in a flat inline array — miss this branch and refs inside tables are
+  // left behind.
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    const obj = content as { rows?: unknown[] };
+    if (Array.isArray(obj.rows)) {
+      return { ...obj, rows: obj.rows.map((row) => _mapTableRow(row, mapText)) };
+    }
+    return content;
+  }
   if (!Array.isArray(content)) return content;
   return content.map((node) => {
     if (!node || typeof node !== "object") return node;
     const n = node as any;
-    if (typeof n.text === "string" && n.text.includes("$[#")) {
-      return { ...n, text: convertReferencesToNames(n.text, sections) };
+    if (typeof n.text === "string") {
+      const text = mapText(n.text);
+      return text === n.text ? node : { ...n, text };
     }
-    if (n.type === "link" && Array.isArray(n.content)) {
-      return { ...n, content: _convertContent(n.content, sections) };
-    }
+    if (n.content !== undefined) return { ...n, content: _mapContent(n.content, mapText) };
     return node;
   });
+}
+
+function _mapTableRow(row: unknown, mapText: (text: string) => string): unknown {
+  if (!row || typeof row !== "object") return row;
+  const r = row as { cells?: unknown[] };
+  if (!Array.isArray(r.cells)) return row;
+  return {
+    ...r,
+    cells: r.cells.map((cell) => {
+      if (Array.isArray(cell)) return _mapContent(cell, mapText);
+      if (cell && typeof cell === "object") {
+        const c = cell as { content?: unknown };
+        if (c.content === undefined) return cell;
+        return { ...c, content: _mapContent(c.content, mapText) };
+      }
+      return cell;
+    }),
+  };
+}
+
+/**
+ * Walk a block tree and convert `$[#uuid]` refs to `$[Section Title]` in every
+ * text node. Used when seeding the editor so the user sees readable names
+ * instead of raw IDs.
+ */
+export function convertBlockRefsToNames(blocks: unknown, sections: any[]): any {
+  return mapBlockTexts(blocks, (text) =>
+    text.includes("$[#") ? convertReferencesToNames(text, sections) : text
+  );
+}
+
+/** Title matching for name-based refs: trimmed and case-insensitive. */
+function normalizeTitle(title: string): string {
+  return (title || "").trim().toLowerCase();
+}
+
+/**
+ * Rewrite every `$[Old Title]` ref in `text` to `$[New Title]`.
+ *
+ * Matching is by exact title, case-insensitive — the same rule the renderer
+ * uses to resolve a ref. `$[#id]` refs are left alone: those already follow a
+ * rename on their own.
+ */
+export function renameReferencesInText(text: string, oldTitle: string, newTitle: string): string {
+  if (!text || !text.includes("$[")) return text;
+  const target = normalizeTitle(oldTitle);
+  if (!target || target === normalizeTitle(newTitle)) return text;
+
+  const hits = extractSectionReferences(text)
+    .filter((ref) => ref.refType === "name" && normalizeTitle(ref.refValue) === target)
+    .reverse(); // right to left, so the earlier indices stay valid
+
+  let out = text;
+  hits.forEach((ref) => {
+    out = out.substring(0, ref.startIndex) + `$[${newTitle}]` + out.substring(ref.endIndex);
+  });
+  return out;
+}
+
+/** `renameReferencesInText` over a whole block tree. */
+export function renameReferencesInBlocks(blocks: unknown, oldTitle: string, newTitle: string): any {
+  return mapBlockTexts(blocks, (text) => renameReferencesInText(text, oldTitle, newTitle));
+}
+
+export type RenameRefSection = {
+  id: string;
+  title: string;
+  content?: string | null;
+  contentBlocks?: unknown;
+};
+
+/** What changed in one page's description because of a rename. */
+export type RenameRefPatch = {
+  id: string;
+  content?: string;
+  contentBlocks?: unknown;
+};
+
+/**
+ * Every page whose description still points at `oldTitle` by name, patched to
+ * point at `newTitle` instead. Run this on rename and a name-based ref survives
+ * it.
+ *
+ * Refs resolve by title, so a title shared by two pages is ambiguous: the
+ * renamed page's refs cannot be told apart from its twin's. In that case
+ * nothing is rewritten — leaving every ref on the page that kept the name beats
+ * silently repointing half of them at the renamed one.
+ */
+export function buildRenameRefPatches(
+  sections: RenameRefSection[],
+  renamedSectionId: string,
+  oldTitle: string,
+  newTitle: string,
+): RenameRefPatch[] {
+  const target = normalizeTitle(oldTitle);
+  if (!target || target === normalizeTitle(newTitle)) return [];
+  const hasTwin = sections.some(
+    (s) => s.id !== renamedSectionId && normalizeTitle(s.title) === target
+  );
+  if (hasTwin) return [];
+
+  const patches: RenameRefPatch[] = [];
+  for (const section of sections) {
+    const patch: RenameRefPatch = { id: section.id };
+    let changed = false;
+
+    const content = section.content ?? "";
+    const nextContent = renameReferencesInText(content, oldTitle, newTitle);
+    if (nextContent !== content) {
+      patch.content = nextContent;
+      changed = true;
+    }
+
+    if (section.contentBlocks) {
+      const nextBlocks = renameReferencesInBlocks(section.contentBlocks, oldTitle, newTitle);
+      if (JSON.stringify(nextBlocks) !== JSON.stringify(section.contentBlocks)) {
+        patch.contentBlocks = nextBlocks;
+        changed = true;
+      }
+    }
+
+    if (changed) patches.push(patch);
+  }
+  return patches;
 }
 
 /**

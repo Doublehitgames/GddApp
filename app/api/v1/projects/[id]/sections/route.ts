@@ -16,6 +16,7 @@ import {
   buildSectionUpdates,
   mapWithConcurrency,
 } from "@/lib/api/v1/sectionWrite";
+import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 import { getRemoteConfig } from "@/lib/remoteConfig";
 
@@ -255,6 +256,23 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       updatedAt: now,
     };
   });
+
+  // Renames are swept one after another, not in parallel: each sweep rewrites
+  // descriptions the next one has to read, and the last writer would otherwise
+  // win with stale text.
+  for (const item of items) {
+    const oldTitle = titles.get(item.sectionId);
+    const outcome = results.find((r) => r.sectionId === item.sectionId);
+    if (!outcome?.ok || item.title === undefined || !oldTitle || item.title === oldTitle) continue;
+    await sweepRenamedRefs(auth.supabase, {
+      projectId: id,
+      sectionId: item.sectionId,
+      oldTitle,
+      newTitle: item.title,
+      userId: auth.userId,
+      now,
+    });
+  }
 
   const updated = results.filter((r) => r.ok).length;
 

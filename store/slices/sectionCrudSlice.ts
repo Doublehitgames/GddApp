@@ -3,6 +3,14 @@ import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
 import { limitsForProject } from "./limits";
+import { buildRenameRefPatches } from "@/utils/sectionReferences";
+
+/**
+ * Pseudo-section id used to run the project's own description through the
+ * rename sweep alongside the pages. It holds refs like any description does,
+ * and reusing the sweep keeps one rule instead of two.
+ */
+const PROJECT_DESCRIPTION_KEY = "__project_description__";
 
 export type DuplicateSectionOutcome = {
   /** ID of the duplicated root section, or null when the limit blocked everything. */
@@ -281,6 +289,38 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       // blocks. Inline description edits go through updateSectionDescription
       // (which sets blocks), so they're unaffected.
       const contentChanged = !oldSection || (oldSection.content || "") !== (content || "");
+
+      // A `$[Título]` ref points at whatever page currently carries that title,
+      // so renaming the page would orphan every ref written with the old name.
+      // Rewriting them here is what keeps the link alive. Refs already stored as
+      // `$[#id]` need nothing — they follow the rename on their own.
+      const project = get().projects.find((p) => p.id === projectId);
+      const refPatches = titleChanged && oldSection
+        ? buildRenameRefPatches(
+            [
+              { id: PROJECT_DESCRIPTION_KEY, title: "", content: project?.description },
+              ...(project?.sections || []).map((s) =>
+                s.id === sectionId
+                  ? {
+                      // The renamed page is swept using the content this very
+                      // call is writing, not the stale row, so a rename that
+                      // also rewrites the description keeps both changes.
+                      id: s.id,
+                      title: oldSection.title,
+                      content,
+                      contentBlocks: contentChanged ? undefined : s.contentBlocks,
+                    }
+                  : { id: s.id, title: s.title, content: s.content, contentBlocks: s.contentBlocks }
+              ),
+            ],
+            sectionId,
+            oldSection.title,
+            title
+          )
+        : [];
+      const refPatchById = new Map(refPatches.map((patch) => [patch.id, patch]));
+      const descriptionPatch = refPatchById.get(PROJECT_DESCRIPTION_KEY);
+
       if (updatedBy) {
         audit.updated_by = updatedBy.userId;
         audit.updated_by_name = updatedBy.displayName ?? null;
@@ -292,10 +332,22 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
               ? {
                   ...p,
                   updatedAt: now,
+                  ...(descriptionPatch?.content !== undefined
+                    ? { description: descriptionPatch.content }
+                    : {}),
                   sections: (p.sections || []).map((s) => {
+                    const refPatch = refPatchById.get(s.id);
                     if (s.id === sectionId) {
-                      const updated: Section = { ...s, title, content, ...audit };
+                      const updated: Section = {
+                        ...s,
+                        title,
+                        content: refPatch?.content ?? content,
+                        ...audit,
+                      };
                       if (contentChanged) delete updated.contentBlocks;
+                      else if (refPatch?.contentBlocks !== undefined) {
+                        updated.contentBlocks = refPatch.contentBlocks as RichDocBlock[];
+                      }
                       const isColorPassedAsParentId =
                         typeof parentId === "string" && parentId.startsWith("#") && color === undefined;
 
@@ -311,6 +363,14 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                       if (domainTags !== undefined) updated.domainTags = domainTags.length ? domainTags : undefined;
                       if (dataId !== undefined) updated.dataId = dataId || undefined;
                       return updated;
+                    }
+                    if (refPatch) {
+                      const swept: Section = { ...s, updated_at: now };
+                      if (refPatch.content !== undefined) swept.content = refPatch.content;
+                      if (refPatch.contentBlocks !== undefined) {
+                        swept.contentBlocks = refPatch.contentBlocks as RichDocBlock[];
+                      }
+                      return swept;
                     }
                     return s;
                   }),
