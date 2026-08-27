@@ -17,6 +17,7 @@ import ReactFlow, {
   useReactFlow,
   ReactFlowProvider,
   useStore,
+  useStoreApi,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
@@ -441,14 +442,14 @@ function processSections(
         type: 'straight',
         animated: edgeConfig.animated,
         style: { 
-          stroke: edgeConfig.color, 
-          strokeWidth: edgeConfig.strokeWidth,
+          stroke: (config as any).clean.line,
+          strokeWidth: (config as any).clean.lineWidth,
           ...(needsDashPattern && { strokeDasharray: dashValue }),
         },
         data: {
           originalStyle: {
-            stroke: edgeConfig.color,
-            strokeWidth: edgeConfig.strokeWidth,
+            stroke: (config as any).clean.line,
+            strokeWidth: (config as any).clean.lineWidth,
             strokeDasharray: needsDashPattern ? dashValue : undefined,
             animated: edgeConfig.animated,
           },
@@ -537,8 +538,9 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   
   const fontSize = `${calculatedFontSize}px`;
   
-  // Usar cor customizada se disponível, senão usar cor padrão do nível
-  const bgColor = data.customColor || nodeConfig.color;
+  // Estilo limpo: uma cor so para todos os niveis. A cor customizada por pagina
+  // continua valendo, porque e escolha do usuario naquela pagina especifica.
+  const bgColor = data.customColor || (CONFIG as any).clean.accent;
   const isSelected = data.isSelected;
   const isInPath = data.isInPath; // Nó está no caminho mas não é o selecionado
   const isFaded = data.isFaded; // Nó não está no caminho e deve ser esmaecido
@@ -590,7 +592,28 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // Assina o BOOLEANO, nao o numero do zoom: assim a bolinha so re-renderiza
   // quando a label de fato aparece ou some, em vez de a cada frame de camera.
   // Sao 245 bolinhas — assinar o numero custava 245 re-renders por frame.
-  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.section);
+  // Limiar de zoom da profundidade deste no. O array cobre os niveis; alem do
+  // ultimo, repete o ultimo valor.
+  const limiares = (CONFIG.zoom.labelVisibility as any).byLevel as number[];
+  const limiar = limiares[Math.min(data.level ?? 0, limiares.length - 1)];
+  const showLabel = useStore((state) => state.transform[2] > limiar);
+
+  // Tamanho do ponto em px de TELA. O contra-scale pela --gdd-zoom faz o ponto
+  // (e a label junto) manter o mesmo tamanho em qualquer zoom — e isso que da o
+  // carater de "pontinho" do Nuclino. Aproximar espalha o mapa sem inchar os
+  // glifos. O tamanho em COORDENADAS (`size`) continua existindo pro layout e
+  // pra colisao do d3-force; sao coisas diferentes de proposito.
+  const pontos = (CONFIG as any).clean.dotSize as number[];
+  const pontoBase = pontos[Math.min(data.level ?? 0, pontos.length - 1)];
+  const ponto = isSelected ? pontoBase * 1.6 : pontoBase;
+
+  const anel = isSelected
+    ? `0 0 0 3px ${(CONFIG as any).clean.accent}55`
+    : isInPath
+      ? `0 0 0 2px ${(CONFIG as any).clean.accent}44`
+      : isReference && (refConfig as any).nodeHighlight?.enabled
+        ? `0 0 0 2px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}`
+        : 'none';
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
@@ -601,45 +624,42 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: finalSize,
-          height: finalSize,
-          borderRadius: '50%',
-          backgroundColor: bgColor,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: nodeConfig.textColor,
-          fontWeight: (CONFIG as any).nodeSize?.fontWeight || 'bold',
-          fontSize,
-          fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
-          textAlign: 'center',
-          padding: `${nodeConfig.padding * 100}%`,
-          cursor: 'pointer',
-          // Usar box-shadow para borda (fica por fora e não afeta layout)
-          boxShadow: glowColor 
-            ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 ${glowSize1}px ${glowColor}, 0 0 ${glowSize2}px ${glowColor}, 0 0 ${glowSize3}px ${glowColor}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}`
-            : isReference && (refConfig as any).nodeHighlight?.enabled
-              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque azul para referências
-              : isInPath
-                ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque sutil: borda amarela semi-transparente
-                : finalBorderWidth > 0
-                  ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-                  : `0 4px 6px ${nodeConfig.shadowColor}`,
-          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
-          wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
-          overflowWrap: 'break-word',
-          hyphens: 'auto',
-          lineHeight: CONFIG.fonts.lineHeight,
-          // Aplicar fade effect se o nó não está no caminho
+          width: ponto,
+          height: ponto,
+          transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
           opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
-          filter: (isFaded && fadeConfig.enabled) 
-            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
-            : 'none',
         }}
-        className={data.isDragging ? '' : 'hover:scale-110'}
       >
-        {showLabel && data.label}
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            backgroundColor: bgColor,
+            boxShadow: anel,
+            cursor: 'pointer',
+            transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease',
+          }}
+        />
+        {showLabel && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: 4,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              color: (CONFIG as any).clean.label,
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+            }}
+          >
+            {data.label}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -689,7 +709,7 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   const fontSize = `${calculatedFontSize}px`;
   
   // Calcular se deve mostrar label
-  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.project);
+  const showLabel = useStore((state) => state.transform[2] > (CONFIG.zoom.labelVisibility as any).project);
   
   const baseSize = config.size;
   
@@ -741,14 +761,30 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
         }}
         className={data.isDragging ? '' : 'hover:scale-110'}
       >
-        {showLabel && (
-          <div>
-            <div>{config.icon}</div>
-            <div style={{ marginTop: '8px' }}>{data.label}</div>
-          </div>
-        )}
-        {!showLabel && <div>{config.icon}</div>}
+        {config.icon}
       </div>
+      {/* Mesma regra das secoes: o nome fica fora do circulo. */}
+      {showLabel && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginTop: finalSize / 2,
+            transform: 'translate(-50%, 0) scale(calc(1 / var(--gdd-zoom, 1)))',
+            transformOrigin: 'top center',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            color: (CONFIG as any).clean.label,
+            fontSize: 15,
+            fontWeight: 700,
+            fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+            paddingTop: 6,
+          }}
+        >
+          {data.label}
+        </div>
+      )}
     </div>
   );
 });
@@ -893,6 +929,39 @@ function MarkdownWithMapReferences({
       {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}
     </div>
   );
+}
+
+// Publica o zoom atual numa CSS var, pra as labels se contra-escalarem e ficarem
+// do mesmo tamanho na tela em qualquer zoom.
+//
+// A assinatura e IMPERATIVA de proposito: `useStore` faria este componente
+// re-renderizar a cada frame de camera, que e exatamente o custo que a gente
+// acabou de remover. Aqui nao ha render nenhum — so uma escrita de propriedade,
+// coalescida por rAF.
+function ZoomCssVar() {
+  const store = useStoreApi();
+  useEffect(() => {
+    const alvo = document.documentElement;
+    let pedido = 0;
+    let ultimo = -1;
+    const publicar = (z: number) => {
+      if (z === ultimo) return;
+      ultimo = z;
+      if (pedido) return;
+      pedido = requestAnimationFrame(() => {
+        pedido = 0;
+        alvo.style.setProperty('--gdd-zoom', String(ultimo));
+      });
+    };
+    publicar(store.getState().transform[2]);
+    const cancelar = store.subscribe((estado: any) => publicar(estado.transform[2]));
+    return () => {
+      cancelar();
+      if (pedido) cancelAnimationFrame(pedido);
+      alvo.style.removeProperty('--gdd-zoom');
+    };
+  }, [store]);
+  return null;
 }
 
 // Componente interno que tem acesso ao contexto do ReactFlow
@@ -1261,8 +1330,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             className: undefined,
             animated: edgeConfig.animated || false,
             style: {
-              stroke: edgeConfig.color || '#94a3b8',
-              strokeWidth: edgeConfig.strokeWidth || 0.5,
+              stroke: (config as any).clean.line,
+              strokeWidth: (config as any).clean.lineWidth,
               strokeDasharray: needsDashPattern ? dashValue : undefined,
               opacity: 1, // Resetar opacity quando não há seleção
             },
@@ -1366,9 +1435,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             className: "gdd-edge-fixa",
             animated: highlightConfig.animated,
             style: {
-              strokeWidth: baseStrokeWidth,
-              stroke: highlightConfig.color,
-              strokeDasharray: `${dashValue},${dashValue}`,
+              strokeWidth: (config as any).clean.highlightWidth,
+              stroke: (config as any).clean.highlight,
+              strokeDasharray: `${(config as any).clean.highlightDash},${(config as any).clean.highlightDash}`,
               opacity: 1, // Edges destacadas ficam sempre visíveis
             },
           };
@@ -1410,8 +1479,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           className: undefined, // idem para a classe de espessura fixa
           animated: edgeConfig.animated || false,
           style: {
-            stroke: edgeConfig.color || '#94a3b8',
-            strokeWidth: edgeConfig.strokeWidth || 0.5,
+            stroke: (config as any).clean.line,
+            strokeWidth: (config as any).clean.lineWidth,
             strokeDasharray: needsDashPattern ? dashValue : undefined,
             opacity: edgeOpacity, // Aplicar opacity reduzida nas edges não destacadas
           },
@@ -1968,7 +2037,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           /* Espessura e traco em unidades de tela, sem depender do zoom.
              Substitui a divisao por currentZoom, que obrigava o componente
              inteiro a re-renderizar a cada frame de camera. */
-          .react-flow__edge.gdd-edge-fixa path {
+          .react-flow__edge path {
             vector-effect: non-scaling-stroke;
           }
           /* Aplicar animação para TODAS as edges animadas (não só highlight) */
@@ -1977,7 +2046,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
         `}
       </style>
-      <div className="fixed inset-0 overflow-hidden bg-gray-900">
+      <div className="fixed inset-0 overflow-hidden bg-white">
         {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
         {isPublicMode && (
           <div className="absolute top-0 left-0 right-0 z-30 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between gap-4">
@@ -2086,10 +2155,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             minZoom={config.zoom.minZoom}
             proOptions={{ hideAttribution: true }}
             onlyRenderVisibleElements
-            className="bg-gray-900"
+            className="bg-white"
           >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
-          <Controls className="bg-gray-800 border-gray-700" />
+          <ZoomCssVar />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
+          <Controls className="bg-white border-gray-300" />
         </ReactFlow>
       </div>
 
