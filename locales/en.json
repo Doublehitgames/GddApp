@@ -674,7 +674,7 @@
       "viewDetails": "View Details",
       "editProject": "Edit Project",
       "backTo": "Back to {{title}}",
-      "goToBubble": "Go to bubble"
+      "goToTarget": "Go to {{title}}"
     },
     "references": {
       "show": "Show references",

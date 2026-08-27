@@ -2275,7 +2275,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           theme="dark"
           title={pendingReference.title}
           description={pendingReference.description}
-          confirmLabel={t("mindMap.panel.goToBubble")}
+          confirmLabel={t("mindMap.panel.goToTarget").replace("{{title}}", pendingReference.title)}
           onCancel={() => setPendingReference(null)}
           onConfirm={() => {
             // A origem do salto e a bolinha aberta agora — e ela que a trilha guarda.

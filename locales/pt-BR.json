@@ -674,7 +674,7 @@
       "viewDetails": "Ver Detalhes",
       "editProject": "Editar Projeto",
       "backTo": "Voltar para {{title}}",
-      "goToBubble": "Ir para a bolinha"
+      "goToTarget": "Ir para {{title}}"
     },
     "references": {
       "show": "Mostrar referências",
