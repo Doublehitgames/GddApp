@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
+/* Base fixa no escuro. O chrome do app e escuro, e as telas claras (view,
+   export, import, roadmap/print) ja definem a propria cor de texto. Antes
+   disso o body herdava preto em quem usa o sistema em tema claro. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -10,13 +13,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
