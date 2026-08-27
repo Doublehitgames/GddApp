@@ -28,6 +28,12 @@ export const MINDMAP_CONFIG = {
     highlight: '#ef5f56',
     highlightWidth: 1.6,
     highlightDash: 4,
+    // Refs cruzadas: mesma logica, px de tela. O config antigo usava 10px de
+    // espessura e icone de 160px, dimensionados para bolinhas de 1000px.
+    reference: '#6b8afd',
+    referenceWidth: 1.4,
+    referenceDash: 5,
+    referenceIcon: 13,
     background: '#ffffff',
   },
 

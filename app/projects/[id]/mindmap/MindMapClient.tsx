@@ -1629,9 +1629,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         const forwardReferenceEdges: Edge[] = Array.from(referencedNodeIds).map(targetId => {
           // Calcular dashPattern consistente com outras edges
           const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
-          const dashValue = refConfig.edgeAnimated 
-            ? (refConfig.edgeDashPattern || 5) * 15  // Animado: valor fixo maior para visibilidade
-            : refConfig.edgeDashPattern || 5;         // Estático: valor configurado
+          // Traco em px de tela, como o resto do estilo limpo.
+          const dashValue = (config as any).clean.referenceDash;
           
           const showIcon = refConfig.showIcon ?? true;
           const icon = refConfig.icon || '🔗';
@@ -1644,8 +1643,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: refConfig.iconSize || 32,
-              fill: refConfig.edgeColor || '#3b82f6',
+              fontSize: (config as any).clean.referenceIcon,
+              fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
             labelBgStyle: {
@@ -1653,15 +1652,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             },
             labelShowBg: false,
             style: {
-              stroke: refConfig.edgeColor || '#3b82f6',
-              strokeWidth: refConfig.edgeWidth || 2,
+              stroke: (config as any).clean.reference,
+              strokeWidth: (config as any).clean.referenceWidth,
               strokeDasharray: needsDashPattern ? dashValue : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: refConfig.edgeColor || '#3b82f6',
-              width: 20,
-              height: 20,
+              color: (config as any).clean.reference,
+              width: 9,
+              height: 9,
             },
           };
         });
@@ -1669,9 +1668,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         // Criar edges de referência (chegando ao nó selecionado - backlinks)
         const backwardReferenceEdges: Edge[] = Array.from(backlinksNodeIds).map(sourceId => {
           const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
-          const dashValue = refConfig.edgeAnimated 
-            ? (refConfig.edgeDashPattern || 5) * 15
-            : refConfig.edgeDashPattern || 5;
+          // Traco em px de tela, como o resto do estilo limpo.
+          const dashValue = (config as any).clean.referenceDash;
           
           const showIcon = refConfig.showIcon ?? true;
           const icon = refConfig.icon || '🔗';
@@ -1684,8 +1682,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: refConfig.iconSize || 32,
-              fill: refConfig.edgeColor || '#3b82f6',
+              fontSize: (config as any).clean.referenceIcon,
+              fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
             labelBgStyle: {
@@ -1693,15 +1691,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             },
             labelShowBg: false,
             style: {
-              stroke: refConfig.edgeColor || '#3b82f6',
-              strokeWidth: refConfig.edgeWidth || 2,
+              stroke: (config as any).clean.reference,
+              strokeWidth: (config as any).clean.referenceWidth,
               strokeDasharray: needsDashPattern ? dashValue : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: refConfig.edgeColor || '#3b82f6',
-              width: 20,
-              height: 20,
+              color: (config as any).clean.reference,
+              width: 9,
+              height: 9,
             },
           };
         });
