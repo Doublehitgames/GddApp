@@ -890,6 +890,7 @@ function MarkdownWithMapReferences({
       >
         {processedContent}
       </ReactMarkdown>
+      {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}
     </div>
   );
 }

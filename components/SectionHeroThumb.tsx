@@ -42,6 +42,9 @@ export function SectionHeroThumb({ src, alt, width }: Props) {
       className="gdd-section-hero-thumb rounded-lg border border-gray-200 bg-gray-100 object-cover shadow-sm"
       style={{
         float: "left",
+        // Sem isto, quando o float de uma seção vaza, a thumb da seção seguinte
+        // não cabe na esquerda e vai em escadinha para a direita.
+        clear: "left",
         width: `${width}px`,
         maxWidth: "100%",
         marginTop: 0,

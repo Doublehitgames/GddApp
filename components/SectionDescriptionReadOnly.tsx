@@ -239,6 +239,9 @@ export default function SectionDescriptionReadOnly({
       ) : (
         <RichDocEditor blocks={[]} editable={false} theme={theme} onReady={handleReady} />
       )}
+      {/* Fecha o float da hero thumb: sem isto, uma descrição mais curta que a
+          imagem deixa o float vazar e o próximo título/thumb sai indentado. */}
+      {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}
       {pendingAnchor && (
         <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
           <div
