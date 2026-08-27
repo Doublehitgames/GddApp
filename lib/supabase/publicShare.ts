@@ -1,10 +1,50 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Project } from "@/store/projectStore";
 
-function isMissingCoverImageColumn(error: unknown): boolean {
+function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== "object") return false;
   const message = String((error as { message?: unknown }).message || "").toLowerCase();
-  return message.includes("cover_image_url") && (message.includes("column") || message.includes("does not exist"));
+  if (!message.includes(column)) return false;
+  return message.includes("column") || message.includes("does not exist");
+}
+
+function isMissingCoverImageColumn(error: unknown): boolean {
+  return isMissingColumnError(error, "cover_image_url");
+}
+
+// `content_blocks` e `thumb_image_url` vieram de migração (add_sections_thumb_image.sql).
+// Numa instalação que ainda não rodou o SQL, pedir a coluna derruba a query inteira —
+// então caímos no select antigo em vez de perder o share público por completo.
+const SECTION_COLUMNS =
+  "id,title,content,content_blocks,thumb_image_url,created_at,parent_id,sort_order,color,domain_tags,flowchart_state";
+const SECTION_COLUMNS_LEGACY =
+  "id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state";
+
+async function fetchPublicSections(
+  supabase: ReturnType<typeof createAdminClient>,
+  projectId: string
+): Promise<any[] | null> {
+  const primary = await supabase
+    .from("sections")
+    .select(SECTION_COLUMNS)
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: true });
+
+  if (!primary.error) return primary.data || [];
+
+  const missingNewColumn =
+    isMissingColumnError(primary.error, "content_blocks") ||
+    isMissingColumnError(primary.error, "thumb_image_url");
+  if (!missingNewColumn) return null;
+
+  const fallback = await supabase
+    .from("sections")
+    .select(SECTION_COLUMNS_LEGACY)
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: true });
+
+  if (fallback.error) return null;
+  return fallback.data || [];
 }
 
 function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
@@ -20,6 +60,8 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       id: row.id,
       title: row.title,
       content: row.content || "",
+      contentBlocks: Array.isArray(row.content_blocks) ? row.content_blocks : undefined,
+      thumbImageUrl: row.thumb_image_url || undefined,
       flowchartEnabled: row.flowchart_state != null,
       flowchartState: row.flowchart_state || undefined,
       created_at: row.created_at,
@@ -63,15 +105,10 @@ export async function getPublicProjectByIdAndToken(id: string, token: string): P
 
   if (!isPublic || !shareToken || shareToken !== token) return null;
 
-  const { data: sectionRows, error: sectionErr } = await supabase
-    .from("sections")
-    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state")
-    .eq("project_id", id)
-    .order("sort_order", { ascending: true });
+  const sectionRows = await fetchPublicSections(supabase, id);
+  if (!sectionRows) return null;
 
-  if (sectionErr) return null;
-
-  return mapRowToProject(projectRow, sectionRows || []);
+  return mapRowToProject(projectRow, sectionRows);
 }
 
 export async function getPublicProjectByToken(token: string): Promise<Project | null> {
@@ -101,13 +138,8 @@ export async function getPublicProjectByToken(token: string): Promise<Project | 
 
   if (!projectRow) return null;
 
-  const { data: sectionRows, error: sectionErr } = await supabase
-    .from("sections")
-    .select("id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state")
-    .eq("project_id", projectRow.id)
-    .order("sort_order", { ascending: true });
+  const sectionRows = await fetchPublicSections(supabase, projectRow.id);
+  if (!sectionRows) return null;
 
-  if (sectionErr) return null;
-
-  return mapRowToProject(projectRow, sectionRows || []);
+  return mapRowToProject(projectRow, sectionRows);
 }
