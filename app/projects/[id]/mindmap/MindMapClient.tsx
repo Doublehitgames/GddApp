@@ -1231,6 +1231,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           
           return {
             ...edge,
+            hidden: false, // sem selecao nenhuma edge fica escondida
             animated: edgeConfig.animated || false,
             style: {
               stroke: edgeConfig.color || '#94a3b8',
@@ -1335,6 +1336,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           
           return {
             ...edge,
+            // Com o toggle de refs ligado, some com as linhas de parentesco do no
+            // selecionado: sao elas que dominam a tela (uma pagina com 20 filhos
+            // gera 20 linhas amarelas) e abafam justamente o que o toggle quer
+            // mostrar. As linhas do resto do mapa continuam, ja esmaecidas.
+            hidden: showReferences,
             animated: highlightConfig.animated,
             style: {
               strokeWidth: proportionalStrokeWidth,
@@ -1377,6 +1383,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         
         return {
           ...edge,
+          hidden: false, // limpa o hidden herdado pelo spread quando a edge sai do destaque
           animated: edgeConfig.animated || false,
           style: {
             stroke: edgeConfig.color || '#94a3b8',
@@ -1387,7 +1394,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         };
       });
     });
-  }, [selectedNodeId, setEdges, config, currentZoom, nodes]);
+  }, [selectedNodeId, setEdges, config, currentZoom, nodes, showReferences]);
 
   // Efeito para marcar node selecionado visualmente (glow)
   useEffect(() => {
