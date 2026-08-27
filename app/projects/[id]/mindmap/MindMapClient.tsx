@@ -18,6 +18,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useStore,
   useStoreApi,
+  type EdgeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
@@ -454,7 +455,7 @@ function processSections(
         id: `${parentId}-${section.id}`,
         source: parentId,
         target: section.id,
-        type: 'straight',
+        type: 'centro',
         animated: edgeConfig.animated,
         style: { 
           stroke: (config as any).clean.line,
@@ -956,6 +957,61 @@ function ZoomCssVar() {
   return null;
 }
 
+// Edge de centro a centro.
+//
+// O React Flow e um editor de NOS: a linha dele liga *handles* — portas na borda
+// da caixa — e a posicao do handle sai do DOM. Isso e certo para fluxograma e
+// errado para mapa mental, onde a linha vai do centro de uma bolinha ao centro
+// da outra. Foi de la que vinha o desvio: o calculo do handle soma metade do
+// tamanho dele, e `transform: translate(-50%,-50%)` nao entra nessa conta.
+//
+// Aqui a origem e o destino saem direto da posicao do no mais metade do tamanho.
+// Nao ha handle no meio do caminho, entao nao ha desvio a corrigir.
+const EdgeCentroACentro = memo(function EdgeCentroACentro({
+  id, source, target, style, markerEnd, label, labelStyle,
+}: EdgeProps) {
+  // Selector devolve string para a comparacao do zustand ser por valor: assim a
+  // edge so re-renderiza quando as pontas realmente se movem (arrasto), e nao a
+  // cada mudanca qualquer do store.
+  const coords = useStore((s: any) => {
+    const a = s.nodeInternals.get(source);
+    const b = s.nodeInternals.get(target);
+    if (!a || !b) return '';
+    const ax = a.position.x + (a.width ?? 0) / 2;
+    const ay = a.position.y + (a.height ?? 0) / 2;
+    const bx = b.position.x + (b.width ?? 0) / 2;
+    const by = b.position.y + (b.height ?? 0) / 2;
+    return `${ax},${ay},${bx},${by}`;
+  });
+
+  if (!coords) return null;
+  const [ax, ay, bx, by] = coords.split(',').map(Number);
+
+  return (
+    <>
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={`M ${ax},${ay} L ${bx},${by}`}
+        style={style}
+        markerEnd={markerEnd}
+        fill="none"
+      />
+      {label ? (
+        <text
+          x={(ax + bx) / 2}
+          y={(ay + by) / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={labelStyle}
+        >
+          {label}
+        </text>
+      ) : null}
+    </>
+  );
+});
+
 // Componente interno que tem acesso ao contexto do ReactFlow
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
@@ -965,7 +1021,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     () => ({ sectionNode: SectionNode, projectNode: ProjectNode }),
     []
   );
-  const edgeTypesStable = useMemo(() => ({}), []);
+  const edgeTypesStable = useMemo(() => ({ centro: EdgeCentroACentro }), []);
   const { getProjectBySlug } = useProjectStore();
   const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
@@ -1228,7 +1284,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         id: `project-${section.id}`,
         source: 'project-center',
         target: section.id,
-        type: 'straight',
+        type: 'centro',
         animated: projectEdgeConfig.animated,
         style: { 
           stroke: projectEdgeConfig.color, 
@@ -1654,7 +1710,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             id: `ref-${selectedNodeId}-${targetId}`,
             source: selectedNodeId,
             target: targetId,
-            type: 'default',
+            type: 'centro',
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
@@ -1693,7 +1749,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             id: `ref-${sourceId}-${selectedNodeId}`,
             source: sourceId,
             target: selectedNodeId,
-            type: 'default',
+            type: 'centro',
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
