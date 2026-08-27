@@ -672,7 +672,9 @@
       "backlinks": "Referenced by:",
       "goToDocument": "Go to Document",
       "viewDetails": "View Details",
-      "editProject": "Edit Project"
+      "editProject": "Edit Project",
+      "backTo": "Back to {{title}}",
+      "goToBubble": "Go to bubble"
     },
     "references": {
       "show": "Show references",

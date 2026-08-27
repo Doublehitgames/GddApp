@@ -1,22 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { sectionPathById } from "@/lib/utils/slug";
+import { SectionPreviewDialog, toShortDescription } from "./SectionPreviewDialog";
 
 type Pending = { sectionId: string; title: string; shortDescription: string };
-
-function toShortDescription(raw: string): string {
-  const plain = (raw || "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[#>*`~_-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!plain) return "";
-  return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
-}
 
 interface SectionAnchorLinkProps {
   sectionId: string;
@@ -47,7 +37,6 @@ export function SectionAnchorLink({
   const { t } = useI18n();
   const projects = useProjectStore((state) => state.projects);
   const [pending, setPending] = useState<Pending | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   const { meta, ownerProject } = (() => {
     for (const project of projects) {
@@ -66,23 +55,6 @@ export function SectionAnchorLink({
     }
     return { meta: null, ownerProject: null };
   })();
-
-  useEffect(() => {
-    if (!pending) return;
-    const onPointer = (event: PointerEvent) => {
-      if (cardRef.current?.contains(event.target as Node)) return;
-      setPending(null);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPending(null);
-    };
-    window.addEventListener("pointerdown", onPointer);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onPointer);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [pending]);
 
   const navigate = () => {
     if (!meta) return;
@@ -133,47 +105,17 @@ export function SectionAnchorLink({
         {label}
       </a>
       {pending && (
-        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
-          <div
-            ref={cardRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("view.anchorPreview.title", "Pré-visualização")}
-            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
-          >
-            <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t("view.anchorPreview.title", "Pré-visualização")}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-gray-900">{pending.title}</h3>
-            </div>
-            <div className="px-5 py-4">
-              <p className="text-sm leading-6 text-gray-700">
-                {pending.shortDescription || t("view.anchorPreview.noDescription", "Sem descrição.")}
-              </p>
-            </div>
-            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPending(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                {t("common.cancel", "Cancelar")}
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => {
-                  navigate();
-                  setPending(null);
-                }}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                {t("view.anchorPreview.goButton", "Ir para a seção")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SectionPreviewDialog
+          title={pending.title}
+          description={pending.shortDescription}
+          confirmLabel={t("view.anchorPreview.goButton", "Ir para a seção")}
+          theme={theme}
+          onCancel={() => setPending(null)}
+          onConfirm={() => {
+            navigate();
+            setPending(null);
+          }}
+        />
       )}
     </>
   );

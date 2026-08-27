@@ -24,6 +24,7 @@ import { sectionPathById, projectPath } from "@/lib/utils/slug";
 import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
+import { SectionPreviewDialog, toShortDescription } from "@/components/common/SectionPreviewDialog";
 import {
   DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
   normalizeDocumentHeroThumbWidth,
@@ -966,6 +967,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // liga no toggle do painel, e trocar de bolinha volta pro default.
   const [showReferences, setShowReferences] = useState(false);
   const [referenceCount, setReferenceCount] = useState(0);
+  // Previa pendente: clicar numa referencia abre o modal em vez de saltar.
+  const [pendingReference, setPendingReference] = useState<{ sectionId: string; title: string; description: string } | null>(null);
+  // Trilha de saltos por referencia, pra oferecer a volta. Zera quando o usuario
+  // clica direto numa bolinha do mapa — ali ele escolheu o lugar, nao foi levado.
+  const [navigationStack, setNavigationStack] = useState<string[]>([]);
   const [maxZoom, setMaxZoom] = useState<number>(8);
   
   // Obter zoom atual para cálculos proporcionais
@@ -1805,6 +1811,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     const nodePosition = node.position;
     setCenter(nodePosition.x, nodePosition.y, { zoom: zoomLevel, duration: 800 });
 
+    // Clique direto numa bolinha e escolha do usuario, nao um salto: zera a trilha.
+    setNavigationStack([]);
     // Definir nó selecionado para destacar edges
     setSelectedNodeId(node.id);
 
@@ -1832,40 +1840,65 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     setSelectedNode(section);
   }, [project, setCenter, config]);
 
-  // Handler para quando clicar em referências no painel lateral
-  const handleReferenceClick = useCallback((sectionId: string) => {
-    // Encontrar o nó correspondente
+  // Salto propriamente dito: centraliza a camera e seleciona a bolinha.
+  // `cameDeId` empilha a origem, pra o painel poder oferecer a volta.
+  const goToSection = useCallback((sectionId: string, cameDeId?: string | null) => {
     const node = nodes.find(n => n.id === sectionId);
     if (!node) return;
 
     // Calcular zoom
     const targetSize = config.zoom?.onClickTargetSize || 200;
     let nodeSize = 100;
-    
+
     if (node.data.calculatedSize) {
       nodeSize = node.data.calculatedSize;
     } else if (node.data.level !== undefined) {
       nodeSize = getNodeSize(node.data.level, config);
     }
-    
+
     const zoomLevel = targetSize / nodeSize;
-    
+
     // Calcular posição central do node
     const centerX = node.position.x + (nodeSize / 2);
     const centerY = node.position.y + (nodeSize / 2);
-    
+
     // Centralizar câmera
     setCenter(centerX, centerY, { zoom: zoomLevel, duration: 800 });
-    
+
     // Selecionar o nó
     setSelectedNodeId(sectionId);
-    
+
     // Encontrar seção
     const section = project?.sections?.find((s: Section) => s.id === sectionId);
     if (section) {
       setSelectedNode(section);
     }
+
+    if (cameDeId) {
+      setNavigationStack((stack) => [...stack, cameDeId]);
+    }
   }, [nodes, config, setCenter, project]);
+
+  // Clicar numa referencia NAO salta direto: abre a previa e espera confirmacao.
+  // Saltar na hora fazia o usuario perder de vista onde estava — o mapa some
+  // debaixo dele e nao ha titulo de pagina pra ancorar, so bolinhas.
+  const handleReferenceClick = useCallback((sectionId: string) => {
+    const section = project?.sections?.find((s: Section) => s.id === sectionId);
+    if (!section) return;
+    setPendingReference({
+      sectionId,
+      title: section.title || sectionId,
+      description: toShortDescription(section.content || ""),
+    });
+  }, [project]);
+
+  // Volta um salto: desempilha a origem e vai pra ela sem empilhar de novo.
+  const handleGoBack = useCallback(() => {
+    const previousId = navigationStack[navigationStack.length - 1];
+    if (!previousId) return;
+    setNavigationStack((stack) => stack.slice(0, -1));
+    goToSection(previousId);
+  }, [navigationStack, goToSection]);
 
   const getDocumentTargetUrl = (sectionId?: string) => {
     if (isPublicMode) {
@@ -2038,6 +2071,28 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       {selectedNode && (
         <div className="absolute top-16 right-0 w-96 h-[calc(100vh-4rem)] bg-gray-800 border-l border-gray-700 shadow-2xl overflow-y-auto z-20">
           <div className="p-6">
+            {/* Volta de um salto por referencia. So aparece quando o usuario foi
+                TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
+                ali ele escolheu o lugar e nao precisa de migalha. */}
+            {navigationStack.length > 0 && (() => {
+              const previousId = navigationStack[navigationStack.length - 1];
+              const previous = previousId === "project"
+                ? { title: project?.title || "" }
+                : (project?.sections || []).find((s: Section) => s.id === previousId);
+              if (!previous) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={handleGoBack}
+                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-600/80 bg-gray-700/40 px-3 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+                >
+                  <span aria-hidden="true">←</span>
+                  <span className="min-w-0 truncate">
+                    {t("mindMap.panel.backTo").replace("{{title}}", previous.title)}
+                  </span>
+                </button>
+              );
+            })()}
             {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/45 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
                 <span className="relative flex h-2 w-2">
@@ -2052,6 +2107,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               <button
                 onClick={() => {
                   setSelectedNode(null);
+                  setNavigationStack([]);
                   setSelectedNodeId(null);
                   // Limpar parâmetro focus da URL
                   if (typeof window !== 'undefined') {
@@ -2213,6 +2269,21 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         </div>
       )}
       </div>
+
+      {pendingReference && (
+        <SectionPreviewDialog
+          theme="dark"
+          title={pendingReference.title}
+          description={pendingReference.description}
+          confirmLabel={t("mindMap.panel.goToBubble")}
+          onCancel={() => setPendingReference(null)}
+          onConfirm={() => {
+            // A origem do salto e a bolinha aberta agora — e ela que a trilha guarda.
+            goToSection(pendingReference.sectionId, selectedNodeId);
+            setPendingReference(null);
+          }}
+        />
+      )}
     </ConfigContext.Provider>
   );
 }
