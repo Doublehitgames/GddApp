@@ -834,7 +834,7 @@ function MarkdownWithMapReferences({
   });
 
   return (
-    <div className="prose prose-invert prose-sm max-w-none markdown-with-refs overflow-x-auto text-gray-100">
+    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-100">
       {heroThumbUrl && heroThumbWidth ? (
         <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
       ) : null}
@@ -2063,7 +2063,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </div>
             )}
 
-            <div className="prose prose-invert max-w-none text-gray-100" style={{ fontSize: `${panelContentScale}em` }}>
+            <div className="prose max-w-none text-gray-100" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
                 <MarkdownWithMapReferences
                   content={selectedNode.content}

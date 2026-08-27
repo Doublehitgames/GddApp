@@ -893,7 +893,7 @@ export default function AIChat({ projectContext, onClose, isOpen = true }: AICha
               }`}
             >
               {message.role === "assistant" && !message.isLoading ? (
-                <div className="prose prose-sm max-w-none">
+                <div className="prose max-w-none">
                   {message.content.split("\n").map((line, i) => {
                     // Simple markdown parsing
                     const boldRegex = /\*\*(.*?)\*\*/g;

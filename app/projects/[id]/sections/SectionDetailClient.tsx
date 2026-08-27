@@ -2205,7 +2205,7 @@ function SectionDetailContent({
                 </div>
               )}
 
-              <div className="prose prose-sm prose-invert max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
+              <div className="prose max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewContent}</ReactMarkdown>
               </div>
 

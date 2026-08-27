@@ -1046,7 +1046,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             </HeadingTag>
 
             {(!isRichDocEmpty((node as any).contentBlocks) || (node.content && node.content.trim())) ? (
-              <div className={depth === 0 ? "gdd-reading-prose prose prose-sm sm:prose-base md:prose-lg max-w-none mb-6 md:mb-8" : depth === 1 ? "gdd-reading-prose prose prose-sm sm:prose-base max-w-none mb-5 md:mb-6" : "gdd-reading-prose prose prose-sm max-w-none mb-4"}>
+              <div className={depth === 0 ? "gdd-reading-prose prose max-w-none mb-6 md:mb-8" : depth === 1 ? "gdd-reading-prose prose max-w-none mb-5 md:mb-6" : "gdd-reading-prose prose max-w-none mb-4"}>
                 <SectionDescriptionReadOnly
                   blocks={(node as any).contentBlocks}
                   markdown={node.content}
@@ -1427,7 +1427,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 {t("view.documentTitle")}
               </p>
               {project.description && (
-                <div className="gdd-reading-prose max-w-2xl mx-auto prose prose-sm sm:prose-base md:prose-lg">
+                <div className="gdd-reading-prose max-w-2xl mx-auto prose">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.description}</ReactMarkdown>
                 </div>
               )}

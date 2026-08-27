@@ -62,7 +62,7 @@ export default async function DocPage({
   const crumbs = buildBreadcrumbs(doc.slugSegments, locale);
 
   return (
-    <article data-docs-content className="prose prose-invert max-w-none">
+    <article data-docs-content className="prose max-w-none">
       <DocsBreadcrumbs crumbs={crumbs} />
       {fm.emoji || fm.description ? (
         <header className="mb-6">

@@ -21,6 +21,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* `.prose` aqui e classe do PROJETO, nao do @tailwindcss/typography — esse
+   plugin nao esta instalado. Ela existe so como gancho para as regras escritas
+   a mao neste arquivo e no CSS inline do GDDViewClient. Modificadores tipo
+   `prose-invert`, `prose-sm` ou `md:prose-lg` nao fazem nada: quem precisa de
+   cor ou tamanho usa utilitario normal (`text-gray-100`, `text-sm`). */
 .prose blockquote:has(strong:first-child) strong:first-child {
   color: #7c3aed !important;
   font-size: 1.1em;
