@@ -1105,9 +1105,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [originalPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   
   // Estado para threshold de drag (evitar ativar drag em clicks)
-  const [dragStartMouse] = useState<Map<string, { x: number; y: number }>>(new Map());
-  const [dragActivated] = useState<Map<string, boolean>>(new Map());
-  const DRAG_THRESHOLD = 5; // pixels mínimos de movimento para considerar drag
   
   // Busca — termo vem do contexto compartilhado (input renderizado no breadcrumbs pelo layout
   // no modo privado, ou no header interno no modo público).
@@ -1840,55 +1837,24 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   }, [selectedNodeId, config, project, searchResults, searchTerm, showReferences]);
 
 
-  // Handler para salvar posição original ao iniciar drag
-  const onNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
+  // Guarda a posicao para devolver o no ao soltar. O `nodeDragThreshold` do
+  // React Flow so dispara o arrasto depois de 5px de movimento, entao quando
+  // este handler roda o arrasto ja e real — nao ha clique disfarcado de arrasto
+  // para filtrar. Antes isso era feito a mao com dois Maps, um contador de
+  // distancia dentro do onNodeDrag e uma flag de "ativado".
+  const onNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
     if (node.position) {
       originalPositions.set(node.id, { ...node.position });
     }
-    // Salvar posição inicial do mouse
-    dragStartMouse.set(node.id, { x: event.clientX, y: event.clientY });
-    dragActivated.set(node.id, false);
-    // NÃO marcar isDragging ainda - só quando passar do threshold
-  }, [originalPositions, dragStartMouse, dragActivated]);
-
-  // Handler para verificar threshold durante o drag
-  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
-    const startMouse = dragStartMouse.get(node.id);
-    if (!startMouse) return;
-    
-    // Calcular distância do mouse desde o início
-    const distance = Math.sqrt(
-      Math.pow(event.clientX - startMouse.x, 2) + 
-      Math.pow(event.clientY - startMouse.y, 2)
+    setNodes((nds) =>
+      nds.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, isDragging: true } } : n))
     );
-    
-    // Se passou do threshold e ainda não ativou o drag, ativar agora
-    if (distance > DRAG_THRESHOLD && !dragActivated.get(node.id)) {
-      dragActivated.set(node.id, true);
-      setNodes((nds) =>
-        nds.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              data: {
-                ...n.data,
-                isDragging: true,
-              },
-            };
-          }
-          return n;
-        })
-      );
-    }
-  }, [dragStartMouse, dragActivated, setNodes, DRAG_THRESHOLD]);
+  }, [originalPositions, setNodes]);
 
   // Handler para resetar posição ao soltar o nó
   const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
-    const wasActivated = dragActivated.get(node.id);
     const originalPos = originalPositions.get(node.id);
-    
-    // Só resetar posição se o drag foi realmente ativado (passou do threshold)
-    if (wasActivated && originalPos) {
+    if (originalPos) {
       // Resetar para posição original com transição suave
       setNodes((nds) =>
         nds.map((n) => {
@@ -1928,9 +1894,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     
     // Limpar estados
     originalPositions.delete(node.id);
-    dragStartMouse.delete(node.id);
-    dragActivated.delete(node.id);
-  }, [originalPositions, dragStartMouse, dragActivated, setNodes]);
+  }, [originalPositions, setNodes]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     // Calcular zoom para que o nó apareça com o tamanho alvo na tela
@@ -2195,11 +2159,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
             onNodeDragStart={onNodeDragStart}
-            onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypesStable}
             edgeTypes={edgeTypesStable}
             nodesDraggable={true}
+            nodeDragThreshold={5}
             nodesConnectable={false}
             elementsSelectable={true}
             fitView
