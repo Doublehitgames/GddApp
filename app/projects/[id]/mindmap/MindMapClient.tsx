@@ -463,6 +463,10 @@ function processSections(
           ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
+          // O nivel do no de ORIGEM vai junto com a edge. Antes o efeito de estilo
+          // fazia nodes.find() para descobrir isso — uma varredura por edge, ~60 mil
+          // iteracoes por execucao, e o efeito reroda a cada frame de arrasto.
+          sourceLevel: level - 1,
           originalStyle: {
             stroke: (config as any).clean.line,
             strokeWidth: pxTela((config as any).clean.lineWidth),
@@ -634,6 +638,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
     // area invisivel de centenas de pixels em volta de cada ponto (medido: 2.5x o
     // ponto no zoom de abertura, ~30x no maximo). O alvo e o ponto, nao a caixa.
     <div style={{ width: size, height: size, position: 'relative', pointerEvents: 'none' }}>
+      {/* Os handles nao participam mais do desenho — a edge calcula os centros
+          sozinha (ver EdgeCentroACentro). Mas nao da para remover: sem eles o
+          React Flow simplesmente nao renderiza edge nenhuma (testado: 0 de 244).
+          Ficam invisiveis e sem tamanho. */}
       <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
@@ -1299,6 +1307,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
+          sourceLevel: -1,
           originalStyle: {
             stroke: projectEdgeConfig.color,
             strokeWidth: pxTela((config as any).clean.lineWidth),
@@ -1324,8 +1333,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     if (edge.source === 'project-center') {
       return (config.project?.edge as any)?.visible !== false;
     }
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const nivel = sourceNode?.data?.level ?? 0;
+    const nivel = (edge.data as any)?.sourceLevel ?? 0;
     const niveis = (config as any).levels;
     if (niveis && niveis.length > 0) {
       const doNivel = niveis[nivel] || niveis[niveis.length - 1];
@@ -1337,7 +1345,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         ? config.subsections.edge
         : config.deepSubsections.edge;
     return (legado as any)?.visible !== false;
-  }, [config, nodes]);
+  }, [config]);
 
   // Efeito para atualizar destaque das edges quando houver seleção
   useEffect(() => {
@@ -1360,8 +1368,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             edgeConfig = config.project.edge;
           } else {
             // Descobrir nível do nó source para usar a config correta
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const sourceLevel = sourceNode?.data?.level ?? 0;
+            const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
             
             // Usar config do nível apropriado
             if (sourceLevel === 0) {
@@ -1454,8 +1461,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             highlightConfig = config.project.edge.highlighted;
           } else {
             // Descobrir nível do nó source para usar a config correta
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const sourceLevel = sourceNode?.data?.level ?? 0;
+            const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
             
             // Usar config do nível apropriado
             if (sourceLevel === 0) {
@@ -1506,8 +1512,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           edgeConfig = config.project.edge;
         } else {
           // Descobrir nível do nó source para usar a config correta
-          const sourceNode = nodes.find(n => n.id === edge.source);
-          const sourceLevel = sourceNode?.data?.level ?? 0;
+          const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
           
           // Usar config do nível apropriado
           if (sourceLevel === 0) {
@@ -1542,7 +1547,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         };
       });
     });
-  }, [selectedNodeId, setEdges, config, nodes, showReferences, linhaVisivelEmRepouso]);
+  }, [selectedNodeId, setEdges, config, showReferences, linhaVisivelEmRepouso]);
 
   // Efeito para marcar node selecionado visualmente (glow)
   useEffect(() => {
