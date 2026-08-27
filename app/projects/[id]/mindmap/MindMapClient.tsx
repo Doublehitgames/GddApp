@@ -971,6 +971,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Section | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Refs cruzadas ficam escondidas por padrao: numa bolinha muito referenciada
+  // elas viram dezenas de linhas de uma vez e o mapa fica ilegivel. O usuario
+  // liga no toggle do painel, e trocar de bolinha volta pro default.
+  const [showReferences, setShowReferences] = useState(false);
+  const [referenceCount, setReferenceCount] = useState(0);
   const [maxZoom, setMaxZoom] = useState<number>(8);
   
   // Obter zoom atual para cálculos proporcionais
@@ -1404,6 +1409,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     );
   }, [selectedNodeId, setNodes]);
 
+  // Trocar de bolinha (ou fechar o painel) sempre volta ao estado escondido.
+  useEffect(() => {
+    setShowReferences(false);
+  }, [selectedNodeId]);
+
   // Efeito para destacar nós no caminho (sem glow - destaque sutil) e referências
   useEffect(() => {
     const hasActiveSearch = searchTerm.trim().length > 0;
@@ -1443,6 +1453,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         if (!hasRefs) return eds; // Evitar update desnecessário
         return eds.filter(e => !e.id.startsWith('ref-'));
       });
+      setReferenceCount(0);
       return;
     }
 
@@ -1515,6 +1526,18 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       referencedNodeIds.delete(id);
       backlinksNodeIds.delete(id);
     });
+
+    // A contagem sai das refs REAIS, antes de qualquer filtro do toggle: o
+    // painel precisa dizer quantas linhas apareceriam mesmo estando escondidas.
+    setReferenceCount(referencedNodeIds.size + backlinksNodeIds.size);
+
+    // Toggle desligado (default): zera os dois conjuntos. Isso mata as edges e
+    // tambem tira os nos referenciados da isencao de fade la embaixo — senao o
+    // mapa fica cheio de bolinha acesa sem linha nenhuma explicando o porque.
+    if (!showReferences) {
+      referencedNodeIds.clear();
+      backlinksNodeIds.clear();
+    }
 
     // Atualizar edges de referência (só se necessário)
     const totalRefsCount = referencedNodeIds.size + backlinksNodeIds.size;
@@ -1668,7 +1691,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         };
       });
     });
-  }, [selectedNodeId, config, project, searchResults, searchTerm]);
+  }, [selectedNodeId, config, project, searchResults, searchTerm, showReferences]);
 
 
   // Handler para salvar posição original ao iniciar drag
@@ -2061,6 +2084,37 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   );
                 })}
               </div>
+            )}
+
+            {/* Toggle das refs cruzadas. Fica aqui, entre as tags e a descricao,
+                porque a descricao costuma ser longa: no fim do painel o botao
+                exigiria rolar ate embaixo pra mexer no mapa que esta a esquerda.
+                Some quando o no nao referencia nem e referenciado por ninguem. */}
+            {referenceCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowReferences((v) => !v)}
+                aria-pressed={showReferences}
+                className={`mb-4 inline-flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  showReferences
+                    ? "border-blue-500/50 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30"
+                    : "border-gray-600 bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span aria-hidden="true">{config.references?.icon || "🔗"}</span>
+                  {showReferences
+                    ? t("mindMap.references.hide")
+                    : t("mindMap.references.show")}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
+                    showReferences ? "bg-blue-500/30 text-blue-100" : "bg-gray-600/70 text-gray-200"
+                  }`}
+                >
+                  {referenceCount}
+                </span>
+              </button>
             )}
 
             <div className="prose max-w-none text-gray-100" style={{ fontSize: `${panelContentScale}em` }}>

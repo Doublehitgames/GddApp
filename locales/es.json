@@ -658,6 +658,12 @@
       "noDescription": "No hay descripción disponible para esta sección."
     }
   },
+  "mindMap": {
+    "references": {
+      "show": "Mostrar referencias",
+      "hide": "Ocultar referencias"
+    }
+  },
   "projectExport": {
     "economy": {
       "scopeLabel": "Qué exportar",
