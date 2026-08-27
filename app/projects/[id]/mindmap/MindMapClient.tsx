@@ -585,9 +585,6 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   const glowColor = isSelected ? bgColor : null;
   
   // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 20px, 40px, 60px de glow)
-  const glowSize1 = (finalSize / 100) * 20;
-  const glowSize2 = (finalSize / 100) * 40;
-  const glowSize3 = (finalSize / 100) * 60;
   
   // Assina o BOOLEANO, nao o numero do zoom: assim a bolinha so re-renderiza
   // quando a label de fato aparece ou some, em vez de a cada frame de camera.
@@ -691,7 +688,6 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   const finalBorderWidth = (finalSize / 100) * finalBorderWidthConfig;
   
   // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 60px de glow)
-  const glowSize = (finalSize / 100) * 60;
   
   // Calcular font-size automaticamente usando configurações customizadas ou padrões
   const hasCustomFontSize = typeof (CONFIG as any).nodeSize?.baseFontSize === 'number';
@@ -713,6 +709,12 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   
   const baseSize = config.size;
   
+  // Mesmo tratamento das secoes: ponto em px de tela, contra-escalado. Sem isso
+  // o sol cresceria com o zoom enquanto todo o resto fica parado.
+  const ponto = isSelected
+    ? (CONFIG as any).clean.projectDot * 1.4
+    : (CONFIG as any).clean.projectDot;
+
   return (
     <div style={{ width: baseSize, height: baseSize, position: 'relative' }}>
       <Handle type="source" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
@@ -724,67 +726,42 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: finalSize,
-          height: finalSize,
-          borderRadius: '50%',
-          background: `linear-gradient(135deg, ${config.colors.gradient.from} 0%, ${config.colors.gradient.to} 100%)`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: config.colors.text,
-          fontWeight: (CONFIG as any).nodeSize?.fontWeight || 'bold',
-          fontSize,
-          fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
-          textAlign: 'center',
-          padding: `${config.padding * 100}%`,
-          cursor: 'pointer',
-          boxShadow: isSelected
-            ? finalBorderWidth > 0
-              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-              : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`
-            : isReference && (refConfig as any).nodeHighlight?.enabled
-              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}` // Destaque azul para referências
-              : isInPath
-                ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)` // Destaque sutil para nós no caminho
-                : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`,
-          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
-          wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
-          overflowWrap: 'break-word',
-          hyphens: 'auto',
-          lineHeight: CONFIG.fonts.lineHeight,
-          // Aplicar fade effect se o nó não está no caminho
-          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
-          filter: (isFaded && fadeConfig.enabled) 
-            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
-            : 'none',
+          width: ponto,
+          height: ponto,
+          transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
         }}
-        className={data.isDragging ? '' : 'hover:scale-110'}
       >
-        {config.icon}
-      </div>
-      {/* Mesma regra das secoes: o nome fica fora do circulo. */}
-      {showLabel && (
         <div
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            marginTop: finalSize / 2,
-            transform: 'translate(-50%, 0) scale(calc(1 / var(--gdd-zoom, 1)))',
-            transformOrigin: 'top center',
-            whiteSpace: 'nowrap',
-            pointerEvents: 'none',
-            color: (CONFIG as any).clean.label,
-            fontSize: 15,
-            fontWeight: 700,
-            fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
-            paddingTop: 6,
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            backgroundColor: (CONFIG as any).clean.accent,
+            boxShadow: isSelected ? `0 0 0 4px ${(CONFIG as any).clean.accent}44` : 'none',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.2s ease',
           }}
-        >
-          {data.label}
-        </div>
-      )}
+        />
+        {showLabel && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: 5,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              color: (CONFIG as any).clean.label,
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+            }}
+          >
+            {data.label}
+          </div>
+        )}
+      </div>
     </div>
   );
 });

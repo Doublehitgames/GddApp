@@ -23,6 +23,7 @@ export const MINDMAP_CONFIG = {
     // Diametro do ponto em px de TELA, por profundidade. O ultimo vale para os
     // niveis alem dele.
     dotSize: [16, 11, 7, 6],
+    projectDot: 22,          // Diametro do ponto do projeto (px de tela)
     // Linha do caminho destacado ao selecionar. Tambem em px de tela.
     highlight: '#ef5f56',
     highlightWidth: 1.6,

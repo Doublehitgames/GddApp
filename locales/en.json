@@ -1280,6 +1280,21 @@
       "zoomOnClickHelp": "When clicking any node, it will be enlarged to this size on screen. Ex: 200px = all nodes appear at 200px when clicked",
       "showLine": "Show line?",
       "showLine2": "Visible"
+    },
+    "clean": {
+      "title": "Map Style",
+      "subtitle": "The map uses a single accent colour. Per-level colours are gone.",
+      "accent": "Node colour",
+      "line": "Line colour",
+      "labelColor": "Name colour",
+      "dotsTitle": "Dot size",
+      "dotsHelp": "In screen pixels — dots do not grow as you zoom in.",
+      "projectDot": "Project",
+      "levelDot": "Level {{n}}",
+      "labelsTitle": "When names appear",
+      "labelsHelp": "Minimum zoom for each depth to show its name. Far out you see only the root; closer in, deeper levels appear.",
+      "projectLabel": "Project",
+      "levelLabel": "Level {{n}}"
     }
   },
   "agenda": {
