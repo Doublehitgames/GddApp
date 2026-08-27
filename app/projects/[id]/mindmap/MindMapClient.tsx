@@ -146,6 +146,21 @@ function calculateMaxZoom(maxDepth: number, config: typeof MINDMAP_CONFIG = MIND
   return Math.max(2, Math.min(configMaxZoom, maxZoom));
 }
 
+// Espessura e traco em px de TELA.
+//
+// Tentei antes com `vector-effect: non-scaling-stroke` e nao funciona aqui: o
+// React Flow aplica o zoom como transform CSS num DIV ancestral, nao como
+// transform dentro do SVG (conferido: .react-flow__viewport tem
+// matrix(z,0,0,z,...) e o <svg> das edges nao tem transform proprio). O
+// vector-effect so protege contra transform do proprio SVG, entao a linha
+// continuava escalando no compositor.
+//
+// Pior: `getComputedStyle` devolve o valor ESPECIFICADO, que nao muda com o
+// transform do ancestral — foi assim que eu medi "1.6px constante" enquanto na
+// tela a linha engrossava. Dividir pela --gdd-zoom no proprio valor resolve, e
+// e verificavel pela bbox real do path.
+const pxTela = (valor: number) => `calc(${valor}px / var(--gdd-zoom, 1))`;
+
 // Função para calcular tamanho de nó baseado no nível
 function getNodeSize(level: number, config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): number {
   const { baseSize, reductionFactor, minSize } = config.nodeSize;
@@ -443,14 +458,14 @@ function processSections(
         animated: edgeConfig.animated,
         style: { 
           stroke: (config as any).clean.line,
-          strokeWidth: (config as any).clean.lineWidth,
-          ...(needsDashPattern && { strokeDasharray: dashValue }),
+          strokeWidth: pxTela((config as any).clean.lineWidth),
+          ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
           originalStyle: {
             stroke: (config as any).clean.line,
-            strokeWidth: (config as any).clean.lineWidth,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             animated: edgeConfig.animated,
           },
         },
@@ -1217,14 +1232,14 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         animated: projectEdgeConfig.animated,
         style: { 
           stroke: projectEdgeConfig.color, 
-          strokeWidth: projectEdgeConfig.strokeWidth,
-          ...(needsDashPattern && { strokeDasharray: dashValue }),
+          strokeWidth: pxTela((config as any).clean.lineWidth),
+          ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
           originalStyle: {
             stroke: projectEdgeConfig.color,
-            strokeWidth: projectEdgeConfig.strokeWidth,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             animated: projectEdgeConfig.animated,
           },
         },
@@ -1308,8 +1323,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             animated: edgeConfig.animated || false,
             style: {
               stroke: (config as any).clean.line,
-              strokeWidth: (config as any).clean.lineWidth,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              strokeWidth: pxTela((config as any).clean.lineWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
               opacity: 1, // Resetar opacity quando não há seleção
             },
           };
@@ -1389,7 +1404,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             }
           }
           
-          // Espessura e tracejado em unidades de TELA, via vector-effect (ver o
+          // Espessura e tracejado em unidades de TELA, via pxTela (ver o helper).
           // <style> abaixo, classe gdd-edge-fixa). Antes isso era feito
           // dividindo pelo zoom, o que exigia assinar `transform` do store e
           // re-renderizar o componente inteiro a cada frame de camera — 828
@@ -1412,9 +1427,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             className: "gdd-edge-fixa",
             animated: highlightConfig.animated,
             style: {
-              strokeWidth: (config as any).clean.highlightWidth,
+              strokeWidth: pxTela((config as any).clean.highlightWidth),
               stroke: (config as any).clean.highlight,
-              strokeDasharray: `${(config as any).clean.highlightDash},${(config as any).clean.highlightDash}`,
+              strokeDasharray: `${pxTela((config as any).clean.highlightDash)} ${pxTela((config as any).clean.highlightDash)}`,
               opacity: 1, // Edges destacadas ficam sempre visíveis
             },
           };
@@ -1457,8 +1472,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           animated: edgeConfig.animated || false,
           style: {
             stroke: (config as any).clean.line,
-            strokeWidth: (config as any).clean.lineWidth,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             opacity: edgeOpacity, // Aplicar opacity reduzida nas edges não destacadas
           },
         };
@@ -1643,7 +1658,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: (config as any).clean.referenceIcon,
+              fontSize: pxTela((config as any).clean.referenceIcon),
               fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
@@ -1653,8 +1668,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             labelShowBg: false,
             style: {
               stroke: (config as any).clean.reference,
-              strokeWidth: (config as any).clean.referenceWidth,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              strokeWidth: pxTela((config as any).clean.referenceWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
@@ -1682,7 +1697,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: (config as any).clean.referenceIcon,
+              fontSize: pxTela((config as any).clean.referenceIcon),
               fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
@@ -1692,8 +1707,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             labelShowBg: false,
             style: {
               stroke: (config as any).clean.reference,
-              strokeWidth: (config as any).clean.referenceWidth,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              strokeWidth: pxTela((config as any).clean.referenceWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
@@ -2009,12 +2024,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
           
 
-          /* Espessura e traco em unidades de tela, sem depender do zoom.
-             Substitui a divisao por currentZoom, que obrigava o componente
-             inteiro a re-renderizar a cada frame de camera. */
-          .react-flow__edge path {
-            vector-effect: non-scaling-stroke;
-          }
+          /* A espessura das linhas NAO e resolvida aqui — ver o helper pxTela.
+             O zoom do React Flow vem de um transform CSS em div ancestral, e
+             contra isso o vector-effect nao faz efeito. */
           /* Aplicar animação para TODAS as edges animadas (não só highlight) */
           .react-flow__edge.animated path {
             animation: dashdraw ${config.animation?.speed || 2}s linear infinite !important;
