@@ -659,6 +659,21 @@
     }
   },
   "mindMap": {
+    "title": "Mapa mental",
+    "publicBadge": "Público",
+    "backToDocument": "Documento",
+    "searchPlaceholder": "Buscar secciones...",
+    "searchPrevious": "Anterior",
+    "searchNext": "Siguiente",
+    "projectNotFound": "Proyecto no encontrado",
+    "publicProjectNotFound": "Proyecto público no encontrado",
+    "panel": {
+      "noContent": "Sin contenido",
+      "backlinks": "Referenciado por:",
+      "goToDocument": "Ir al documento",
+      "viewDetails": "Ver detalles",
+      "editProject": "Editar proyecto"
+    },
     "references": {
       "show": "Mostrar referencias",
       "hide": "Ocultar referencias"

@@ -659,6 +659,21 @@
     }
   },
   "mindMap": {
+    "title": "Mind Map",
+    "publicBadge": "Public",
+    "backToDocument": "Document",
+    "searchPlaceholder": "Search sections...",
+    "searchPrevious": "Previous",
+    "searchNext": "Next",
+    "projectNotFound": "Project not found",
+    "publicProjectNotFound": "Public project not found",
+    "panel": {
+      "noContent": "No content",
+      "backlinks": "Referenced by:",
+      "goToDocument": "Go to Document",
+      "viewDetails": "View Details",
+      "editProject": "Edit Project"
+    },
     "references": {
       "show": "Show references",
       "hide": "Hide references"

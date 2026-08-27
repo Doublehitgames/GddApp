@@ -898,23 +898,13 @@ function MarkdownWithMapReferences({
 // Componente interno que tem acesso ao contexto do ReactFlow
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   // Tipos estáveis por instância (evita warning React Flow #002: "new nodeTypes/edgeTypes object")
   const nodeTypesStable = useMemo(
     () => ({ sectionNode: SectionNode, projectNode: ProjectNode }),
     []
   );
   const edgeTypesStable = useMemo(() => ({}), []);
-  const tr = (pt: string, en: string, es: string) => {
-    switch (locale) {
-      case "es":
-        return es;
-      case "en":
-        return en;
-      default:
-        return pt;
-    }
-  };
   const { getProjectBySlug } = useProjectStore();
   const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
@@ -1891,14 +1881,14 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     if (isPublicMode && isPublicLoading) {
       return (
         <div className="flex items-center justify-center h-screen bg-gray-900">
-          <p className="text-gray-400">{tr("Carregando...", "Loading...", "Cargando...")}</p>
+          <p className="text-gray-400">{t("common.loading")}</p>
         </div>
       );
     }
 
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900">
-        <p className="text-gray-400">{isPublicMode ? tr("Projeto público não encontrado", "Public project not found", "Proyecto público no encontrado") : tr("Projeto não encontrado", "Project not found", "Proyecto no encontrado")}</p>
+        <p className="text-gray-400">{isPublicMode ? t("mindMap.publicProjectNotFound") : t("mindMap.projectNotFound")}</p>
       </div>
     );
   }
@@ -1931,12 +1921,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 onClick={() => router.push(`/s/${encodeURIComponent(publicToken || "")}?mode=view`)}
                 className="text-gray-400 hover:text-white transition-colors shrink-0"
               >
-                ← {tr("Documento", "Document", "Documento")}
+                ← {t("mindMap.backToDocument")}
               </button>
-              <h1 className="text-xl font-bold text-white shrink-0 hidden sm:block">🧠 {tr("Mapa Mental", "Mind Map", "Mapa mental")}</h1>
+              <h1 className="text-xl font-bold text-white shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
               <span className="text-gray-400 shrink-0 hidden md:inline">|</span>
               <span className="text-gray-300 truncate hidden md:inline min-w-0">{project.title}</span>
-              <span className="text-green-300 text-sm shrink-0 hidden lg:inline">🔓 {tr("Público", "Public", "Público")}</span>
+              <span className="text-green-300 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
             </div>
 
             {/* Busca inline (apenas em modo público, onde o breadcrumbs não renderiza o input) */}
@@ -1961,7 +1951,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                       setSearchTerm("");
                     }
                   }}
-                  placeholder={tr("Buscar seções...", "Search sections...", "Buscar secciones...")}
+                  placeholder={t("mindMap.searchPlaceholder")}
                   className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -1987,7 +1977,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 onClick={() => navigateSearchResult(-1)}
                 disabled={resultCount === 0}
                 className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                title={tr("Anterior", "Previous", "Anterior")}
+                title={t("mindMap.searchPrevious")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -1998,7 +1988,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 onClick={() => navigateSearchResult(1)}
                 disabled={resultCount === 0}
                 className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                title={tr("Próximo", "Next", "Siguiente")}
+                title={t("mindMap.searchNext")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -2137,7 +2127,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                       width={heroThumbWidth}
                     />
                   )}
-                  <p className="text-gray-500 italic">{tr("Sem conteúdo", "No content", "Sin contenido")}</p>
+                  <p className="text-gray-500 italic">{t("mindMap.panel.noContent")}</p>
                   <div style={{ clear: "both" }} />
                 </>
               )}
@@ -2149,7 +2139,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               if (backlinks.length > 0) {
                 return (
                   <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{tr("Referenciado por:", "Referenced by:", "Referenciado por:")}</h3>
+                    <h3 className="text-sm font-semibold text-gray-300 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
                     <div className="flex flex-wrap gap-2">
                       {backlinks.map((backlink) => {
                         return (
@@ -2174,7 +2164,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
-                {tr("Ir para Documento", "Go to Document", "Ir al documento")}
+                {t("mindMap.panel.goToDocument")}
               </button>
             </div>
 
@@ -2199,7 +2189,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
-                    {tr("Ver Detalhes", "View Details", "Ver detalles")}
+                    {t("mindMap.panel.viewDetails")}
                   </button>
                 )}
                 {selectedNode.id === 'project' && (
@@ -2207,7 +2197,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     onClick={() => router.push(project ? `${projectPath(project)}/edit` : "/")}
                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
-                    {tr("Editar Projeto", "Edit Project", "Editar proyecto")}
+                    {t("mindMap.panel.editProject")}
                   </button>
                 )}
               </div>
