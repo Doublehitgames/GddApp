@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo, createContext, useContext } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo, memo, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import ReactFlow, {
   Node,
@@ -472,11 +472,13 @@ function processSections(
 }
 
 // Custom Node Component - Seção/Subseção
-function SectionNode({ data }: { data: any }) {
+// memo: o React Flow recria o array de nodes a cada setNodes (selecao, fade,
+// busca, drag). Sem memo, as 245 bolinhas re-renderizam juntas mesmo quando so
+// uma mudou de estado. `data` e recriado por node, entao a comparacao rasa do
+// memo ja corta a maioria.
+const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   const CONFIG = useContext(ConfigContext);
   
-  // Obter zoom atual para controlar visibilidade da label
-  const zoom = useStore((state) => state.transform[2]);
   
   // Helper: Obter config do nível (usa array dinâmico se disponível)
   const getLevelConfig = (level: number) => {
@@ -585,10 +587,10 @@ function SectionNode({ data }: { data: any }) {
   const glowSize2 = (finalSize / 100) * 40;
   const glowSize3 = (finalSize / 100) * 60;
   
-  // Calcular tamanho aparente na tela (size * zoom)
-  const apparentSize = finalSize * zoom;
-  // Só mostrar label se tamanho aparente for maior que threshold
-  const showLabel = apparentSize > CONFIG.zoom.labelVisibility.section;
+  // Assina o BOOLEANO, nao o numero do zoom: assim a bolinha so re-renderiza
+  // quando a label de fato aparece ou some, em vez de a cada frame de camera.
+  // Sao 245 bolinhas — assinar o numero custava 245 re-renders por frame.
+  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.section);
 
   return (
     <div style={{ width: size, height: size, position: 'relative' }}>
@@ -641,14 +643,12 @@ function SectionNode({ data }: { data: any }) {
       </div>
     </div>
   );
-}
+});
 
 // Custom Node Component - Projeto Central
-function ProjectNode({ data }: { data: any }) {
+const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   const CONFIG = useContext(ConfigContext);
   
-  // Obter zoom atual
-  const zoom = useStore((state) => state.transform[2]);
   
   const config = CONFIG.project.node;
   const isSelected = data.isSelected;
@@ -689,8 +689,7 @@ function ProjectNode({ data }: { data: any }) {
   const fontSize = `${calculatedFontSize}px`;
   
   // Calcular se deve mostrar label
-  const apparentSize = finalSize * zoom;
-  const showLabel = apparentSize > CONFIG.zoom.labelVisibility.project;
+  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.project);
   
   const baseSize = config.size;
   
@@ -752,7 +751,7 @@ function ProjectNode({ data }: { data: any }) {
       </div>
     </div>
   );
-}
+});
 
 // Componente para renderizar markdown com referências clicáveis no mapa mental
 function MarkdownWithMapReferences({
@@ -974,8 +973,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
   const [maxZoom, setMaxZoom] = useState<number>(8);
   
-  // Obter zoom atual para cálculos proporcionais
-  const currentZoom = useStore((state) => state.transform[2]);
   
   // Estado para guardar posições originais durante o drag
   const [originalPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -1238,6 +1235,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           return {
             ...edge,
             hidden: false, // sem selecao nenhuma edge fica escondida
+            className: undefined,
             animated: edgeConfig.animated || false,
             style: {
               stroke: edgeConfig.color || '#94a3b8',
@@ -1322,24 +1320,19 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             }
           }
           
-          // Calcular strokeWidth proporcional ao zoom (mantém espessura visual constante)
+          // Espessura e tracejado em unidades de TELA, via vector-effect (ver o
+          // <style> abaixo, classe gdd-edge-fixa). Antes isso era feito
+          // dividindo pelo zoom, o que exigia assinar `transform` do store e
+          // re-renderizar o componente inteiro a cada frame de camera — 828
+          // mutacoes de DOM no painel lateral por gesto de zoom, medido.
+          // O resultado na tela e o mesmo: 1.5px de linha, 5.5px de traco.
           const baseStrokeWidth = highlightConfig.strokeWidth || 1;
-          const proportionalStrokeWidth = baseStrokeWidth / Math.max(currentZoom, 0.1);
-          
-          // Para animação: usar valor fixo maior para que a animação seja visível
-          // Para estático: usar valor proporcional ao zoom
           const baseDashSize = highlightConfig.dashPattern || 5;
-          let dashValue;
-          if (highlightConfig.animated) {
-            // Animado: valor fixo MUITO grande para animação ser visível em qualquer zoom
-            // Com bolinhas de 1000px e zoom baixo, precisa ser bem grande
-            dashValue = baseDashSize * 15; // Ex: 5 * 15 = 75px
-          } else {
-            // Estático: proporcional ao zoom com limites
-            const rawDash = baseDashSize / Math.max(currentZoom, 0.01);
-            dashValue = Math.min(Math.max(rawDash, 5), 50);
-          }
-          
+          // No modo animado o traco precisa ser maior pra leitura do movimento.
+          // Valor escolhido, nao medido: este projeto usa highlighted.animated
+          // = false, entao a variante animada nao foi exercitada.
+          const dashValue = highlightConfig.animated ? baseDashSize * 3 : baseDashSize;
+
           return {
             ...edge,
             // Com o toggle de refs ligado, some com as linhas de parentesco do no
@@ -1347,9 +1340,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             // gera 20 linhas amarelas) e abafam justamente o que o toggle quer
             // mostrar. As linhas do resto do mapa continuam, ja esmaecidas.
             hidden: showReferences,
+            className: "gdd-edge-fixa",
             animated: highlightConfig.animated,
             style: {
-              strokeWidth: proportionalStrokeWidth,
+              strokeWidth: baseStrokeWidth,
               stroke: highlightConfig.color,
               strokeDasharray: `${dashValue},${dashValue}`,
               opacity: 1, // Edges destacadas ficam sempre visíveis
@@ -1390,6 +1384,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         return {
           ...edge,
           hidden: false, // limpa o hidden herdado pelo spread quando a edge sai do destaque
+          className: undefined, // idem para a classe de espessura fixa
           animated: edgeConfig.animated || false,
           style: {
             stroke: edgeConfig.color || '#94a3b8',
@@ -1400,7 +1395,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         };
       });
     });
-  }, [selectedNodeId, setEdges, config, currentZoom, nodes, showReferences]);
+  }, [selectedNodeId, setEdges, config, nodes, showReferences]);
 
   // Efeito para marcar node selecionado visualmente (glow)
   useEffect(() => {
@@ -1946,6 +1941,13 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             }
           }
           
+
+          /* Espessura e traco em unidades de tela, sem depender do zoom.
+             Substitui a divisao por currentZoom, que obrigava o componente
+             inteiro a re-renderizar a cada frame de camera. */
+          .react-flow__edge.gdd-edge-fixa path {
+            vector-effect: non-scaling-stroke;
+          }
           /* Aplicar animação para TODAS as edges animadas (não só highlight) */
           .react-flow__edge.animated path {
             animation: dashdraw ${config.animation?.speed || 2}s linear infinite !important;
@@ -2060,6 +2062,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             maxZoom={maxZoom}
             minZoom={config.zoom.minZoom}
             proOptions={{ hideAttribution: true }}
+            onlyRenderVisibleElements
             className="bg-gray-900"
           >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
