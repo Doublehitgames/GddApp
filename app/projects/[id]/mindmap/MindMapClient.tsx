@@ -624,6 +624,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   const pontoBase = pontos[Math.min(data.level ?? 0, pontos.length - 1)];
   const ponto = isSelected ? pontoBase * 1.6 : pontoBase;
 
+  // Durante o hover manda o hover: quem nao e o no sob o cursor nem vizinho
+  // dele apaga, independente do fade da selecao.
+  const apagadoPeloHover = Boolean(data.hoverAtivo && !data.isHovered && !data.hoverVizinho);
+
   const anel = isSelected
     ? `0 0 0 3px ${(CONFIG as any).clean.accent}55`
     : isInPath
@@ -652,7 +656,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
-          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          opacity: apagadoPeloHover ? 0.12 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
           pointerEvents: 'auto',
         }}
       >
@@ -671,7 +675,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
             transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease',
           }}
         />
-        {showLabel && (
+        {(showLabel || data.isHovered) && (
           <div
             style={{
               position: 'absolute',
@@ -688,7 +692,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // Gradacao continua: a label entra lavada no limiar e vai ganhando
               // corpo conforme a camera se aproxima. Resolvido em CSS pela
               // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
-              opacity: opacidadeLabel,
+              opacity: data.isHovered ? 1 : opacidadeLabel,
             }}
           >
             {data.label}
@@ -1100,6 +1104,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Section | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Bolinha sob o cursor. E um estado separado da selecao de proposito: o hover
+  // e leitura passageira (some quando o mouse sai), a selecao e escolha do
+  // usuario (abre o painel e persiste).
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   // Refs cruzadas ficam escondidas por padrao: numa bolinha muito referenciada
   // elas viram dezenas de linhas de uma vez e o mapa fica ilegivel. O usuario
   // liga no toggle do painel, e trocar de bolinha volta pro default.
@@ -1562,6 +1570,36 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       }))
     );
   }, [selectedNodeId, setNodes]);
+
+  // Marca quem esta sob o cursor e quem e vizinho dele (pai e filhos diretos).
+  // Roda por ENTRADA no no, nao por frame, entao reconstruir o array de nos aqui
+  // custa pouco — diferente do efeito de camera, que rodava a 60fps.
+  useEffect(() => {
+    setNodes((nds) => {
+      if (!hoveredId) {
+        if (!nds.some((n) => n.data.hoverAtivo)) return nds;
+        return nds.map((n) => ({
+          ...n,
+          data: { ...n.data, hoverAtivo: false, isHovered: false, hoverVizinho: false },
+        }));
+      }
+      const vizinhos = new Set<string>();
+      for (const e of edges) {
+        if (e.id.startsWith("ref-")) continue;
+        if (e.source === hoveredId) vizinhos.add(e.target);
+        if (e.target === hoveredId) vizinhos.add(e.source);
+      }
+      return nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          hoverAtivo: true,
+          isHovered: n.id === hoveredId,
+          hoverVizinho: vizinhos.has(n.id),
+        },
+      }));
+    });
+  }, [hoveredId, edges, setNodes]);
 
   // Trocar de bolinha (ou fechar o painel) sempre volta ao estado escondido.
   useEffect(() => {
@@ -2167,6 +2205,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
+            onNodeMouseEnter={(_e, node) => setHoveredId(node.id)}
+            onNodeMouseLeave={() => setHoveredId(null)}
             onNodeDragStart={onNodeDragStart}
             onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypesStable}
