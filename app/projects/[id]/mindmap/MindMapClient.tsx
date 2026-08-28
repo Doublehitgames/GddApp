@@ -2687,20 +2687,24 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               const backlinks = getBacklinks(selectedNode.id, project.sections || []);
               if (backlinks.length > 0) {
                 return (
-                  <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-600 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {backlinks.map((backlink) => {
-                        return (
-                          <button
-                            key={backlink.id}
-                            onClick={() => handleReferenceClick(backlink.id)}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 rounded-full text-sm font-medium transition-all duration-200 border border-blue-200 hover:border-blue-300 hover:scale-105"
-                          >
-                            {backlink.title}
-                          </button>
-                        );
-                      })}
+                  // Sem caixa e sem contorno: eram doze pilulas azuis dentro de um
+                  // card, e o bloco pesava mais que a descricao da pagina. Agora e
+                  // uma lista discreta separada por um fio, no registro do resto
+                  // do painel.
+                  <div className="mt-8 border-t border-gray-200 pt-5">
+                    <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      {t("mindMap.panel.backlinks")}
+                    </h3>
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+                      {backlinks.map((backlink) => (
+                        <button
+                          key={backlink.id}
+                          onClick={() => handleReferenceClick(backlink.id)}
+                          className="max-w-full truncate rounded px-1.5 py-0.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          {backlink.title}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 );
