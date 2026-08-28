@@ -709,6 +709,19 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
             porque mora dentro do wrapper contra-escalado. Sem isso, um ponto de
             6px seria dificil de acertar. */}
         <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', cursor: 'pointer' }} />
+        {isSelected && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: `2px solid ${(CONFIG as any).clean.accent}`,
+              animation: 'gddPulso 1.9s cubic-bezier(0.2, 0.6, 0.3, 1) infinite',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         <div
           style={{
             width: '100%',
@@ -727,7 +740,9 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               top: '100%',
               left: '50%',
               transform: 'translateX(-50%)',
-              marginTop: 4,
+              // Sob o cursor a label desce: no lugar normal ela ficaria embaixo
+              // do ponteiro, que fica exatamente sobre a bolinha.
+              marginTop: data.isHovered ? 14 : 4,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
               color: apagadoPeloHover ? (CONFIG as any).clean.mutedLabel : (CONFIG as any).clean.label,
@@ -745,9 +760,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // Sempre montada: montagem/desmontagem nao transiciona, e era isso
               // que fazia a label pipocar ao entrar e sumir de golpe ao sair.
               opacity: data.isHovered ? 1 : opacidadeLabel,
-              transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
-              // Montagem nao transiciona: quando a label aparece so por causa do
-              // hover, ela entra por animacao em vez de surgir pronta.
+              transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              // Montagem nao transiciona: quando a label so existe por causa do
+              // hover, ela nasce ja pronta e a transicao acima nao alcanca. Uma
+              // animacao de entrada cobre justamente esse caso.
+              animation: (data.isHovered && !showLabel) ? 'gddLabelEntra 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : undefined,
             }}
           >
             {data.label}
@@ -2199,6 +2216,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     <ConfigContext.Provider value={config}>
       <style>
         {`
+          /* Aura do no selecionado: um anel que nasce no tamanho do ponto e
+             se abre desaparecendo. Fica dentro do wrapper contra-escalado,
+             entao pulsa do mesmo tamanho em qualquer zoom. */
+          @keyframes gddPulso {
+            0%   { transform: scale(1);   opacity: 0.55; }
+            70%  { opacity: 0; }
+            100% { transform: scale(3.2); opacity: 0; }
+          }
+
           @keyframes gddLabelEntra {
             from { opacity: 0; }
             to { opacity: 1; }
