@@ -6,11 +6,9 @@ import ReactFlow, {
   Node,
   Edge,
   Controls,
-  Background,
   useNodesState,
   useEdgesState,
   Panel,
-  BackgroundVariant,
   MarkerType,
   Handle,
   Position,
@@ -1302,14 +1300,14 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         type: 'centro',
         animated: projectEdgeConfig.animated,
         style: { 
-          stroke: projectEdgeConfig.color, 
+          stroke: (config as any).clean.line, 
           strokeWidth: pxTela((config as any).clean.lineWidth),
           ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
           sourceLevel: -1,
           originalStyle: {
-            stroke: projectEdgeConfig.color,
+            stroke: (config as any).clean.line,
             strokeWidth: pxTela((config as any).clean.lineWidth),
             strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             animated: projectEdgeConfig.animated,
@@ -2068,7 +2066,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
         `}
       </style>
-      <div className="fixed inset-0 overflow-hidden bg-white">
+      <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: (config as any).clean.background }}>
         {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
         {isPublicMode && (
           <div className="absolute top-0 left-0 right-0 z-30 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between gap-4">
@@ -2177,11 +2175,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             minZoom={config.zoom.minZoom}
             proOptions={{ hideAttribution: true }}
             onlyRenderVisibleElements
-            className="bg-white"
+            style={{ backgroundColor: (config as any).clean.background }}
           >
           <ZoomCssVar />
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
-          <Controls className="bg-white border-gray-300" />
+          <Controls className="border-gray-300" />
         </ReactFlow>
       </div>
 

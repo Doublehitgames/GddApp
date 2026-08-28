@@ -17,7 +17,7 @@ export const MINDMAP_CONFIG = {
   // personalizado continuaria preto e grosso. Aqui nao ha o que sobrescrever.
   clean: {
     accent: '#ef5f56',       // Cor unica dos nos
-    line: '#dcdfe4',         // Fio das conexoes
+    line: '#e7eaef',         // Fio das conexoes
     lineWidth: 1,            // Espessura em px de TELA (nao escala com o zoom)
     label: '#e05a51',        // Texto das labels
     // Diametro do ponto em px de TELA, por profundidade. O ultimo vale para os
@@ -34,7 +34,8 @@ export const MINDMAP_CONFIG = {
     referenceWidth: 1.4,
     referenceDash: 5,
     referenceIcon: 13,
-    background: '#ffffff',
+    // Branco puro deixa o mapa duro; um azulado minimo assenta o conjunto.
+    background: '#f8f9fb',
   },
 
   nodeSize: {
