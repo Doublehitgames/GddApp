@@ -8,11 +8,49 @@ export const MINDMAP_CONFIG = {
   // CONFIGURAÇÕES GLOBAIS
   // ========================================
   
-  // Tamanhos dinâmicos dos nós (baseado no nível de profundidade)
+  // ========================================
+  // ESTILO LIMPO
+  // ========================================
+  // Paleta unica do mapa. Fica FORA de project/sections/subsections de
+  // proposito: aqueles caminhos existem nas configuracoes salvas de cada
+  // projeto, e o salvo vence o default no deepMerge — um projeto ja
+  // personalizado continuaria preto e grosso. Aqui nao ha o que sobrescrever.
+  clean: {
+    accent: '#ef5f56',       // Cor unica dos nos
+    line: '#e7eaef',         // Fio das conexoes
+    // Cor de quem esta fora do foco. O efeito de hover NAO e so transparencia:
+    // quem nao interessa vira CINZA, e so o foco mantem o acento. Foi assim que
+    // a referencia resolveu — o mapa vira fundo, nao um mapa apagado.
+    muted: '#c9ccd2',
+    mutedLabel: '#b6bac2',
+    lineWidth: 1,            // Espessura em px de TELA (nao escala com o zoom)
+    label: '#e05a51',        // Texto das labels
+    // Diametro do ponto em px de TELA, por profundidade. O ultimo vale para os
+    // niveis alem dele.
+    dotSize: [16, 11, 7, 6],
+    projectDot: 22,          // Diametro do ponto do projeto (px de tela)
+    // Linha do caminho destacado ao selecionar. Tambem em px de tela.
+    highlight: '#ef5f56',
+    highlightWidth: 1.6,
+    // 0 = linha lisa. O tracejado competia com as refs cruzadas, que ja sao
+    // tracejadas, e as duas juntas viravam ruido.
+    highlightDash: 0,
+    // Refs cruzadas: mesma logica, px de tela. O config antigo usava 10px de
+    // espessura e icone de 160px, dimensionados para bolinhas de 1000px.
+    reference: '#6b8afd',
+    referenceWidth: 1.4,
+    referenceDash: 5,
+    referenceIcon: 13,
+    // O mapa e levemente cinza e o painel e branco — a diferenca de tom e o que
+    // separa a tela de trabalho da tela de leitura.
+    background: '#f4f5f7',
+    backgroundPainel: '#ffffff',
+  },
+
   nodeSize: {
-    baseSize: 1000,          // Tamanho inicial do nível 0 (px)
-    reductionFactor: 0.8,    // Reduz 20% a cada nível (0.8 = 80% do anterior)
-    minSize: 25,             // Tamanho mínimo permitido (px)
+    baseSize: 100,           // Tamanho inicial do nível 0 (px)
+    reductionFactor: 0.6,    // Reduz 40% a cada nível (0.6 = 60% do anterior)
+    minSize: 18,             // Tamanho mínimo permitido (px)
     baseFontSize: 14,        // Tamanho base da fonte (px)
     minFontSize: 1,          // Tamanho mínimo da fonte (px)
     fontFamily: 'system-ui', // Família da fonte padrão
@@ -21,8 +59,8 @@ export const MINDMAP_CONFIG = {
 
   // Espaçamento entre nós
   spacing: {
-    projectMargin: 2000,     // Margem entre o sol e as seções de nível 0 (px)
-    levelMargin: 2000,       // Margem entre nós pai e filho (px)
+    projectMargin: 700,      // Margem entre o sol e as seções de nível 0 (px)
+    levelMargin: 340,        // Margem entre nós pai e filho (px)
   },
 
   // Fontes - Sistema automático de ajuste
@@ -48,15 +86,30 @@ export const MINDMAP_CONFIG = {
   zoom: {
     minZoom: 0.01,           // Zoom mínimo (1% - permite ver mapas muito grandes)
     maxZoom: 20,             // Zoom máximo padrão (será calculado dinamicamente)
-    fitViewMaxZoom: 0.1,     // Zoom máximo ao carregar (fitView)
+    fitViewMaxZoom: 2.0,     // Zoom máximo ao carregar (fitView)
     fitViewPadding: 0.2,     // Margem ao redor (20%)
     // Thresholds para mostrar labels (tamanho aparente mínimo em px)
+    // Revelacao progressiva: cada profundidade so mostra sua label a partir de
+    // um zoom. Longe ve-se so a raiz; aproximando, aparecem os hubs; mais perto,
+    // as folhas. Sem isso, 245 labels de uma vez viram sopa de letrinha.
+    // O ultimo valor do array vale para todos os niveis alem dele.
     labelVisibility: {
-      section: 40,           // Mostrar label de seções se > 40px na tela
-      project: 60,           // Mostrar label do projeto se > 60px na tela
+      byLevel: [0.09, 0.45, 1.2, 2.2],
+      project: 0.02,
+      // A label nao acende de uma vez: a partir do limiar ela ganha corpo
+      // conforme a camera se aproxima. Este numero e quantas vezes o limiar o
+      // zoom precisa passar para ela chegar a opacidade cheia. Maior = mais
+      // suave, e mais labels fracas convivendo com poucas fortes — que e a
+      // leitura da referencia: o hub forte, os filhos lavados.
+      suavidade: 2.5,
     },
     // Cálculo de maxZoom dinâmico
-    targetApparentSize: 10000, // Tamanho alvo da menor bolinha na tela (px)
+    // No estilo limpo o ponto tem tamanho FIXO na tela, entao "aproximar ate a
+    // bolinha ter X px" perdeu o sentido. O que este numero governa hoje e ate
+    // onde o mapa se espalha: com 70 o zoom maximo fica perto de 5x. Ele estava
+    // em 10000, herdado das bolinhas de 1000px, e produzia zoom maximo de 20 —
+    // onde o desvio de meia unidade do handle do React Flow vira 10px visiveis.
+    targetApparentSize: 70,
     zoomMargin: 1.5,         // Margem de segurança (50% extra)
     // Zoom ao clicar
     onClickTargetSize: 80,   // Tamanho que a bolinha terá na tela ao clicar (px)
@@ -114,17 +167,17 @@ export const MINDMAP_CONFIG = {
     link: {
       strength: 0.1,         // Força muito fraca - só sugere proximidade
       distance: {
-        level0: 2800,        // Distância do projeto ao nível 0
-        base: 1000,          // Distância base entre pai-filho
-        multiplier: 1.1,     // Divisor por nível (1000 / 1.1^level)
+        level0: 620,         // Distância do projeto ao nível 0
+        base: 260,           // Distância base entre pai-filho
+        multiplier: 1.35,    // Divisor por nível (base / mult^level)
       },
     },
     // Colisão (evita sobreposição de nós)
     collision: {
       enabled: true,
       radiusMargin: {
-        project: 500,        // Margem extra ao redor do projeto (px)
-        section: 200,        // Margem extra ao redor de seções (px)
+        project: 90,        // Margem extra ao redor do projeto (px)
+        section: 30,         // Margem extra ao redor de seções (px)
       },
       strength: 1.0,         // Força da colisão (1.0 = máxima)
       iterations: 10,        // Iterações por tick
@@ -143,11 +196,11 @@ export const MINDMAP_CONFIG = {
   
   project: {
     node: {
-      size: 2000,            // Tamanho fixo do projeto (px)
+      size: 170,            // Tamanho fixo do projeto (px)
       colors: {
         gradient: {
-          from: '#ff7300',   // Laranja
-          to: '#ff7300',     // Laranja
+          from: '#ef5f56',   // Acento unico
+          to: '#ef5f56',     // Acento unico
         },
         text: '#ffffff',     // Cor do texto
         shadow: 'rgba(251, 191, 36, 0.5)', // Sombra
@@ -170,7 +223,7 @@ export const MINDMAP_CONFIG = {
       // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
       visible: true,
       strokeWidth: 2,
-      color: '#94a3b8',      // Cinza claro
+      color: '#d8dbe0',      // Fio cinza claro
       dashed: false,
       dashPattern: '',
       animated: false,
@@ -191,8 +244,8 @@ export const MINDMAP_CONFIG = {
   // Seções principais (nível 0)
   sections: {
     node: {
-      color: '#3884ff',      // Azul
-      textColor: '#ffffff',
+      color: '#ef5f56',      // Acento unico
+      textColor: '#e05a51',
       padding: 0.10,         // Padding interno (10% do tamanho)
       borderColor: '#fbbf24', // Borda dourada quando tem subsecções
       borderWidth: 2,
@@ -219,7 +272,7 @@ export const MINDMAP_CONFIG = {
       // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
       visible: true,
       strokeWidth: 2,
-      color: '#94a3b8',      // Cinza claro
+      color: '#d8dbe0',      // Fio cinza claro
       dashed: false,
       dashPattern: '',
       animated: false,
@@ -235,8 +288,8 @@ export const MINDMAP_CONFIG = {
   // Subseções (nível 1)
   subsections: {
     node: {
-      color: '#bc58fe',      // Roxo
-      textColor: '#ffffff',
+      color: '#ef5f56',      // Acento unico
+      textColor: '#e05a51',
       padding: 0.10,
       borderColor: '#fbbf24',
       borderWidth: 2,
@@ -262,7 +315,7 @@ export const MINDMAP_CONFIG = {
       // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
       visible: true,
       strokeWidth: 2,
-      color: '#94a3b8',
+      color: '#d8dbe0',
       dashed: false,
       dashPattern: '',
       animated: false,
@@ -278,8 +331,8 @@ export const MINDMAP_CONFIG = {
   // Sub-subseções (nível 2+)
   deepSubsections: {
     node: {
-      color: '#9c93a5',      // Roxo acinzentado
-      textColor: '#ffffff',
+      color: '#ef5f56',      // Acento unico
+      textColor: '#e05a51',
       padding: 0.10,
       borderColor: '#fbbf24',
       borderWidth: 2,
@@ -305,7 +358,7 @@ export const MINDMAP_CONFIG = {
       // NAO afeta o destaque ao clicar numa bolinha — so o mapa em repouso.
       visible: true,
       strokeWidth: 2.2,
-      color: '#94a3b8',
+      color: '#d8dbe0',
       dashed: false,
       dashPattern: '',
       animated: false,

@@ -913,13 +913,85 @@ export default function SettingsClient({ projectId }: Props) {
               )}
             </div>
           </div>
+          {/* Estilo limpo: os controles que sobraram sao os que realmente pintam
+              o mapa. Cor por nivel saiu porque o estilo usa um acento so. */}
+          <div className="bg-gray-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-1">🎨 {t("settings.clean.title")}</h2>
+            <p className="text-sm text-gray-400 mb-4">{t("settings.clean.subtitle")}</p>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {([
+                ["clean.accent", "accent"],
+                ["clean.line", "line"],
+                ["clean.label", "labelColor"],
+              ] as const).map(([caminho, chave]) => (
+                <div key={caminho}>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.clean." + chave)}</label>
+                  <div className="flex gap-2">
+                    <input type="color" value={getValue(caminho)} onChange={(e) => setValue(caminho, e.target.value)} className="w-16 h-10 rounded" />
+                    <input type="text" value={getValue(caminho)} onChange={(e) => setValue(caminho, e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-lg font-semibold mb-1 text-gray-300">{t("settings.clean.dotsTitle")}</h3>
+            <p className="text-sm text-gray-400 mb-3">{t("settings.clean.dotsHelp")}</p>
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.clean.projectDot")}</label>
+                <input type="number" min="4" max="60" value={getValue("clean.projectDot")} onChange={(e) => setValue("clean.projectDot", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+              </div>
+              {((getValue("clean.dotSize") as number[]) || []).map((valor, i) => (
+                <div key={i}>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.clean.levelDot").replace("{{n}}", String(i))}</label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="40"
+                    value={valor}
+                    onChange={(e) => {
+                      const proximo = [...((getValue("clean.dotSize") as number[]) || [])];
+                      proximo[i] = Number(e.target.value);
+                      setValue("clean.dotSize", proximo);
+                    }}
+                    className="w-full bg-gray-700 rounded px-3 py-2"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <h3 className="text-lg font-semibold mb-1 text-gray-300">{t("settings.clean.labelsTitle")}</h3>
+            <p className="text-sm text-gray-400 mb-3">{t("settings.clean.labelsHelp")}</p>
+            <div className="grid grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">{t("settings.clean.projectLabel")}</label>
+                <input type="number" step="0.01" min="0" value={getValue("zoom.labelVisibility.project")} onChange={(e) => setValue("zoom.labelVisibility.project", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
+              </div>
+              {((getValue("zoom.labelVisibility.byLevel") as number[]) || []).map((valor, i) => (
+                <div key={i}>
+                  <label className="block text-sm text-gray-400 mb-2">{t("settings.clean.levelLabel").replace("{{n}}", String(i))}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={valor}
+                    onChange={(e) => {
+                      const proximo = [...((getValue("zoom.labelVisibility.byLevel") as number[]) || [])];
+                      proximo[i] = Number(e.target.value);
+                      setValue("zoom.labelVisibility.byLevel", proximo);
+                    }}
+                    className="w-full bg-gray-700 rounded px-3 py-2"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">🎯 {t("settings.settingsClient.centralProject")}</h2>
             <h3 className="text-lg font-semibold mb-3 text-gray-300">{t("settings.settingsClient.nodeCircle")}</h3>
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.sizePx")}</label><input type="number" value={getValue("project.node.size")} onChange={(e) => setValue("project.node.size", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" /></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.gradientStart")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.from")} onChange={(e) => setValue("project.node.colors.gradient.from", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
-              <div><label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.gradientEnd")}</label><div className="flex gap-2"><input type="color" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="w-16 h-10 rounded" /><input type="text" value={getValue("project.node.colors.gradient.to")} onChange={(e) => setValue("project.node.colors.gradient.to", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" /></div></div>
             </div>
             
             <h3 className="text-lg font-semibold mb-3 text-gray-300">{t("settings.settingsClient.connectionsLines")}</h3>
@@ -933,18 +1005,7 @@ export default function SettingsClient({ projectId }: Props) {
               />
               <span className="text-sm text-gray-300">{t("settings.settingsClient.showLine")}</span>
             </label>
-            <div className="grid grid-cols-4 gap-4 mb-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.lineColor")}</label>
-                <div className="flex gap-2">
-                  <input type="color" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="w-16 h-10 rounded" />
-                  <input type="text" value={getValue("project.edge.color")} onChange={(e) => setValue("project.edge.color", e.target.value)} className="flex-1 bg-gray-700 rounded px-3 py-2 font-mono text-sm" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.thicknessPx")}</label>
-                <input type="number" step="0.5" min="0.5" max="10" value={getValue("project.edge.strokeWidth")} onChange={(e) => setValue("project.edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-700 rounded px-3 py-2" />
-              </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">{t("settings.settingsClient.dashed")}</label>
                 <ToggleSwitch
@@ -1001,16 +1062,9 @@ export default function SettingsClient({ projectId }: Props) {
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-gray-300">{t("settings.settingsClient.node")}</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.color || "#a855f7"} onChange={(e) => handleLevelChange(lvl.level, "node.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.text")}</label><div className="flex gap-2"><input type="color" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.node.textColor || "#ffffff"} onChange={(e) => handleLevelChange(lvl.level, "node.textColor", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                    </div>
+                        <div>
                     <div className="space-y-3">
                       <h3 className="font-semibold text-gray-300">{t("settings.settingsClient.connection")}</h3>
-                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label><div className="flex gap-2"><input type="color" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="w-12 h-10 rounded" /><input type="text" value={lvl.edge.color || "#94a3b8"} onChange={(e) => handleLevelChange(lvl.level, "edge.color", e.target.value)} className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" /></div></div>
-                      <div><label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.thickness")}</label><input type="number" step="0.1" value={lvl.edge.strokeWidth || 0.5} onChange={(e) => handleLevelChange(lvl.level, "edge.strokeWidth", Number(e.target.value))} className="w-full bg-gray-600 rounded px-2 py-1" /></div>
                       <div className="flex flex-wrap gap-4">
                         <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.visible !== false} onChange={(next) => handleLevelChange(lvl.level, "edge.visible", next)} ariaLabel={t("settings.settingsClient.showLine2")} /><span className="text-sm">{t("settings.settingsClient.showLine2")}</span></label>
                         <label className="flex items-center gap-2"><ToggleSwitch checked={lvl.edge.animated || false} onChange={(next) => handleLevelChange(lvl.level, "edge.animated", next)} ariaLabel={t("settings.settingsClient.animated2")} /><span className="text-sm">{t("settings.settingsClient.animated2")}</span></label>
@@ -1019,63 +1073,6 @@ export default function SettingsClient({ projectId }: Props) {
                     </div>
                   </div>
                   
-                  {/* Borda para Nós com Filhos */}
-                  <div className="mt-4 pt-4 border-t border-gray-600">
-                    <div className="flex items-center gap-2 mb-3">
-                      <h3 className="font-semibold text-gray-300">🔲 {t("settings.settingsClient.childNodesBorder")}</h3>
-                      <label className="flex items-center gap-2">
-                        <ToggleSwitch
-                          checked={lvl.node.hasChildrenBorder?.enabled || false}
-                          onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.enabled", next)}
-                          ariaLabel={t("settings.settingsClient.enable")}
-                        />
-                        <span className="text-sm text-gray-400">{t("settings.settingsClient.enable")}</span>
-                      </label>
-                    </div>
-                    
-                    {(lvl.node.hasChildrenBorder?.enabled) && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.color")}</label>
-                          <div className="flex gap-2">
-                            <input 
-                              type="color" 
-                              value={lvl.node.hasChildrenBorder?.color || "#fbbf24"} 
-                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.color", e.target.value)} 
-                              className="w-12 h-10 rounded" 
-                            />
-                            <input 
-                              type="text" 
-                              value={lvl.node.hasChildrenBorder?.color || "#fbbf24"} 
-                              onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.color", e.target.value)} 
-                              className="flex-1 bg-gray-600 rounded px-2 py-1 font-mono text-sm" 
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">{t("settings.settingsClient.baseWidth")}</label>
-                          <input 
-                            type="number" 
-                            step="0.5" 
-                            value={lvl.node.hasChildrenBorder?.width || 2} 
-                            onChange={(e) => handleLevelChange(lvl.level, "node.hasChildrenBorder.width", Number(e.target.value))} 
-                            className="w-full bg-gray-600 rounded px-2 py-1" 
-                          />
-                          <p className="text-xs text-gray-500 mt-1">{t("settings.settingsClient.proportionalToSize")}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <label className="flex items-center gap-2">
-                            <ToggleSwitch
-                              checked={lvl.node.hasChildrenBorder?.dashed || false}
-                              onChange={(next) => handleLevelChange(lvl.level, "node.hasChildrenBorder.dashed", next)}
-                              ariaLabel={t("settings.settingsClient.dashed3")}
-                            />
-                            <span className="text-sm text-gray-400">{t("settings.settingsClient.dashed3")}</span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                       </div>
                     )}
                   </div>

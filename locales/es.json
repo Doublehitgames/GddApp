@@ -1280,6 +1280,21 @@
       "zoomOnClickHelp": "Al hacer clic en cualquier nodo, se ampliará a este tamaño en pantalla. Ej.: 200px = todos los nodos aparecen con 200px al hacer clic.",
       "showLine": "¿Mostrar línea?",
       "showLine2": "Visible"
+    },
+    "clean": {
+      "title": "Estilo del mapa",
+      "subtitle": "El mapa usa un solo color de acento. El color por nivel ya no existe.",
+      "accent": "Color de los nodos",
+      "line": "Color de las líneas",
+      "labelColor": "Color de los nombres",
+      "dotsTitle": "Tamaño de los puntos",
+      "dotsHelp": "En píxeles de pantalla — el punto no crece al acercar la cámara.",
+      "projectDot": "Proyecto",
+      "levelDot": "Nivel {{n}}",
+      "labelsTitle": "Cuándo aparece el nombre",
+      "labelsHelp": "Zoom mínimo para que cada profundidad muestre su nombre. De lejos solo la raíz; al acercarse, los niveles más profundos.",
+      "projectLabel": "Proyecto",
+      "levelLabel": "Nivel {{n}}"
     }
   },
   "agenda": {

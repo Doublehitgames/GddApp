@@ -1280,6 +1280,21 @@
       "zoomOnClickHelp": "Ao clicar em qualquer bolinha, ela será ampliada para ter este tamanho na tela. Ex: 200px = todas as bolinhas aparecem com 200px quando clicadas",
       "showLine": "Mostrar linha?",
       "showLine2": "Visível"
+    },
+    "clean": {
+      "title": "Estilo do Mapa",
+      "subtitle": "O mapa usa uma cor de acento só. Cor por nível deixou de existir.",
+      "accent": "Cor dos nós",
+      "line": "Cor das linhas",
+      "labelColor": "Cor dos nomes",
+      "dotsTitle": "Tamanho dos pontos",
+      "dotsHelp": "Em pixels de tela — o ponto não cresce ao aproximar a câmera.",
+      "projectDot": "Projeto",
+      "levelDot": "Nível {{n}}",
+      "labelsTitle": "Quando o nome aparece",
+      "labelsHelp": "Zoom mínimo para o nome de cada profundidade surgir. Longe você vê só a raiz; aproximando, aparecem os níveis mais fundos.",
+      "projectLabel": "Projeto",
+      "levelLabel": "Nível {{n}}"
     }
   },
   "agenda": {

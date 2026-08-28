@@ -6,17 +6,17 @@ import ReactFlow, {
   Node,
   Edge,
   Controls,
-  Background,
   useNodesState,
   useEdgesState,
   Panel,
-  BackgroundVariant,
   MarkerType,
   Handle,
   Position,
   useReactFlow,
   ReactFlowProvider,
   useStore,
+  useStoreApi,
+  type EdgeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
@@ -145,6 +145,21 @@ function calculateMaxZoom(maxDepth: number, config: typeof MINDMAP_CONFIG = MIND
   return Math.max(2, Math.min(configMaxZoom, maxZoom));
 }
 
+// Espessura e traco em px de TELA.
+//
+// Tentei antes com `vector-effect: non-scaling-stroke` e nao funciona aqui: o
+// React Flow aplica o zoom como transform CSS num DIV ancestral, nao como
+// transform dentro do SVG (conferido: .react-flow__viewport tem
+// matrix(z,0,0,z,...) e o <svg> das edges nao tem transform proprio). O
+// vector-effect so protege contra transform do proprio SVG, entao a linha
+// continuava escalando no compositor.
+//
+// Pior: `getComputedStyle` devolve o valor ESPECIFICADO, que nao muda com o
+// transform do ancestral — foi assim que eu medi "1.6px constante" enquanto na
+// tela a linha engrossava. Dividir pela --gdd-zoom no proprio valor resolve, e
+// e verificavel pela bbox real do path.
+const pxTela = (valor: number) => `calc(${valor}px / var(--gdd-zoom, 1))`;
+
 // Função para calcular tamanho de nó baseado no nível
 function getNodeSize(level: number, config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): number {
   const { baseSize, reductionFactor, minSize } = config.nodeSize;
@@ -161,8 +176,8 @@ interface SimulationNode extends d3.SimulationNodeDatum {
 }
 
 // Função para calcular posições usando Híbrido: Orbital + Force para colisões
-function calculateNodePositions(sections: SectionWithChildren[], config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): Map<string, { x: number; y: number; calculatedSize?: number }> {
-  const positions = new Map<string, { x: number; y: number; calculatedSize?: number }>();
+function calculateNodePositions(sections: SectionWithChildren[], config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }> {
+  const positions = new Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }>();
   
   // Coletar todos os nós
   const nodes: SimulationNode[] = [];
@@ -350,6 +365,19 @@ function calculateNodePositions(sections: SectionWithChildren[], config: typeof 
     simulation.tick();
   }
   
+  // Raio do cacho de cada pai: distancia ate o filho mais distante, ja com as
+  // posicoes finais. E o que o halo do hover usa para envolver a familia.
+  const porId = new Map((nodes as any[]).map((n) => [n.id, n]));
+  const raioPorPai = new Map<string, number>();
+  for (const l of links as any[]) {
+    // Depois do forceLink, source/target viram os proprios objetos de no.
+    const pai = porId.get(typeof l.source === "string" ? l.source : l.source?.id);
+    const filho = porId.get(typeof l.target === "string" ? l.target : l.target?.id);
+    if (!pai || !filho) continue;
+    const d = Math.hypot((filho.x || 0) - (pai.x || 0), (filho.y || 0) - (pai.y || 0)) + (filho.size || 0) / 2;
+    raioPorPai.set(pai.id, Math.max(raioPorPai.get(pai.id) || 0, d));
+  }
+
   // Extrair posições finais
   nodes.forEach(node => {
     if (node.id !== 'project-center') {
@@ -357,6 +385,7 @@ function calculateNodePositions(sections: SectionWithChildren[], config: typeof 
         x: node.x || 0,
         y: node.y || 0,
         calculatedSize: node.size,
+        raioDosFilhos: raioPorPai.get(node.id) || 0,
       });
     }
   });
@@ -370,7 +399,7 @@ function processSections(
   allSections: Section[],
   parentId: string | null = null,
   level: number = 0,
-  positions: Map<string, { x: number; y: number; calculatedSize?: number }>,
+  positions: Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }>,
   config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
@@ -400,6 +429,7 @@ function processSections(
   sections.forEach((section) => {
     const positionData = positions.get(section.id) || { x: 0, y: 0 };
     const { x, y, calculatedSize } = positionData;
+    const raioDosFilhos = (positionData as any).raioDosFilhos ?? 0;
     
     // ReactFlow usa position como canto superior esquerdo, não centro!
     // Ajustar para centralizar o nó: subtrair metade do tamanho
@@ -419,6 +449,7 @@ function processSections(
         hasSubsections: (section.subsections?.length || 0) > 0,
         isSelected: false, // Será atualizado depois
         calculatedSize, // Passar tamanho calculado
+        raioDosFilhos,  // Raio do cacho, usado pelo halo do hover
         customColor: section.color, // Cor customizada
       },
     });
@@ -438,18 +469,22 @@ function processSections(
         id: `${parentId}-${section.id}`,
         source: parentId,
         target: section.id,
-        type: 'straight',
+        type: 'centro',
         animated: edgeConfig.animated,
         style: { 
-          stroke: edgeConfig.color, 
-          strokeWidth: edgeConfig.strokeWidth,
-          ...(needsDashPattern && { strokeDasharray: dashValue }),
+          stroke: (config as any).clean.line,
+          strokeWidth: pxTela((config as any).clean.lineWidth),
+          ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
+          // O nivel do no de ORIGEM vai junto com a edge. Antes o efeito de estilo
+          // fazia nodes.find() para descobrir isso — uma varredura por edge, ~60 mil
+          // iteracoes por execucao, e o efeito reroda a cada frame de arrasto.
+          sourceLevel: level - 1,
           originalStyle: {
-            stroke: edgeConfig.color,
-            strokeWidth: edgeConfig.strokeWidth,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            stroke: (config as any).clean.line,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             animated: edgeConfig.animated,
           },
         },
@@ -537,8 +572,9 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   
   const fontSize = `${calculatedFontSize}px`;
   
-  // Usar cor customizada se disponível, senão usar cor padrão do nível
-  const bgColor = data.customColor || nodeConfig.color;
+  // Estilo limpo: uma cor so para todos os niveis. A cor customizada por pagina
+  // continua valendo, porque e escolha do usuario naquela pagina especifica.
+  const bgColor = data.customColor || (CONFIG as any).clean.accent;
   const isSelected = data.isSelected;
   const isInPath = data.isInPath; // Nó está no caminho mas não é o selecionado
   const isFaded = data.isFaded; // Nó não está no caminho e deve ser esmaecido
@@ -583,63 +619,177 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   const glowColor = isSelected ? bgColor : null;
   
   // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 20px, 40px, 60px de glow)
-  const glowSize1 = (finalSize / 100) * 20;
-  const glowSize2 = (finalSize / 100) * 40;
-  const glowSize3 = (finalSize / 100) * 60;
   
   // Assina o BOOLEANO, nao o numero do zoom: assim a bolinha so re-renderiza
   // quando a label de fato aparece ou some, em vez de a cada frame de camera.
   // Sao 245 bolinhas — assinar o numero custava 245 re-renders por frame.
-  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.section);
+  // Limiar de zoom da profundidade deste no. O array cobre os niveis; alem do
+  // ultimo, repete o ultimo valor.
+  const limiares = (CONFIG.zoom.labelVisibility as any).byLevel as number[];
+  const limiar = limiares[Math.min(data.level ?? 0, limiares.length - 1)];
+  const suavidade = (CONFIG.zoom.labelVisibility as any).suavidade ?? 2.5;
+  const opacidadeLabel = `clamp(0, calc((var(--gdd-zoom, 1) / ${limiar} - 1) / ${suavidade}), 1)`;
+  const showLabel = useStore((state) => state.transform[2] > limiar);
+
+  // Tamanho do ponto em px de TELA. O contra-scale pela --gdd-zoom faz o ponto
+  // (e a label junto) manter o mesmo tamanho em qualquer zoom — e isso que da o
+  // carater de "pontinho" do Nuclino. Aproximar espalha o mapa sem inchar os
+  // glifos. O tamanho em COORDENADAS (`size`) continua existindo pro layout e
+  // pra colisao do d3-force; sao coisas diferentes de proposito.
+  const pontos = (CONFIG as any).clean.dotSize as number[];
+  const pontoBase = pontos[Math.min(data.level ?? 0, pontos.length - 1)];
+  // Com uma bolinha selecionada, todo o conjunto em destaque cresce: a
+  // selecionada mais, o caminho e os filhos 25%. Da peso ao ramo em foco sem
+  // precisar de mais cor.
+  const destacado = Boolean(isSelected || isInPath || isReference);
+  const escala = isSelected ? 1.6 : destacado ? 1.25 : 1;
+  const ponto = pontoBase * escala;
+
+  // Durante o hover manda o hover: quem nao e o no sob o cursor nem vizinho
+  // dele apaga, independente do fade da selecao.
+  const apagadoPeloHover = Boolean(data.hoverAtivo && !data.isHovered && !data.hoverVizinho);
+  // Sob o cursor (ou vizinho de quem esta) o no ignora o fade da selecao.
+  const emFoco = Boolean(data.isHovered || data.hoverVizinho);
+
+  // Halo do cacho: circulo suave em volta do no sob o cursor, grande o
+  // bastante para envolver os filhos dele. O raio vem em coordenadas do MUNDO
+  // (`data.raioDosFilhos`), nao em px de tela como o ponto — ele precisa
+  // acompanhar a distancia real ate os filhos, senao descolaria do cacho
+  // conforme a camera aproxima.
+
+  const anel = isSelected
+    ? `0 0 0 3px ${(CONFIG as any).clean.accent}55`
+    : isInPath
+      ? `0 0 0 2px ${(CONFIG as any).clean.accent}44`
+      : isReference && (refConfig as any).nodeHighlight?.enabled
+        ? `0 0 0 2px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}`
+        : 'none';
 
   return (
-    <div style={{ width: size, height: size, position: 'relative' }}>
-      <Handle type="target" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+    // A caixa vive em coordenadas do mundo e portanto CRESCE com o zoom, enquanto
+    // o ponto tem tamanho fixo. Se ela capturasse o clique, aproximar criaria uma
+    // area invisivel de centenas de pixels em volta de cada ponto (medido: 2.5x o
+    // ponto no zoom de abertura, ~30x no maximo). O alvo e o ponto, nao a caixa.
+    <div style={{ width: size, height: size, position: 'relative', pointerEvents: 'none' }}>
+      {(data.raioDosFilhos || 0) > 0 && (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: (data.raioDosFilhos || 0) * 2,
+          height: (data.raioDosFilhos || 0) * 2,
+          marginLeft: -(data.raioDosFilhos || 0),
+          marginTop: -(data.raioDosFilhos || 0),
+          opacity: data.isHovered ? 1 : 0,
+          transition: "opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1)",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${(CONFIG as any).clean.accent}14 0%, ${(CONFIG as any).clean.accent}0a 55%, transparent 72%)`,
+          pointerEvents: "none",
+        }}
+      />
+      )}
+      {/* Os handles nao participam mais do desenho — a edge calcula os centros
+          sozinha (ver EdgeCentroACentro). Mas nao da para remover: sem eles o
+          React Flow simplesmente nao renderiza edge nenhuma (testado: 0 de 244).
+          Ficam invisiveis e sem tamanho. */}
+      <Handle type="target" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: finalSize,
-          height: finalSize,
-          borderRadius: '50%',
-          backgroundColor: bgColor,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: nodeConfig.textColor,
-          fontWeight: (CONFIG as any).nodeSize?.fontWeight || 'bold',
-          fontSize,
-          fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
-          textAlign: 'center',
-          padding: `${nodeConfig.padding * 100}%`,
-          cursor: 'pointer',
-          // Usar box-shadow para borda (fica por fora e não afeta layout)
-          boxShadow: glowColor 
-            ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 ${glowSize1}px ${glowColor}, 0 0 ${glowSize2}px ${glowColor}, 0 0 ${glowSize3}px ${glowColor}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}`
-            : isReference && (refConfig as any).nodeHighlight?.enabled
-              ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque azul para referências
-              : isInPath
-                ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)${finalBorderWidth > 0 ? `, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}` : ''}` // Destaque sutil: borda amarela semi-transparente
-                : finalBorderWidth > 0
-                  ? `0 4px 6px ${nodeConfig.shadowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-                  : `0 4px 6px ${nodeConfig.shadowColor}`,
-          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
-          wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
-          overflowWrap: 'break-word',
-          hyphens: 'auto',
-          lineHeight: CONFIG.fonts.lineHeight,
-          // Aplicar fade effect se o nó não está no caminho
-          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
-          filter: (isFaded && fadeConfig.enabled) 
-            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
-            : 'none',
+          width: ponto,
+          height: ponto,
+          transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
+          // O wrapper nao esmaece mais: quem esmaece e a cor do ponto e a
+          // opacidade da label, logo abaixo. Com o wrapper transparente, as
+          // linhas de tras apareciam atraves do ponto.
+          opacity: 1,
+          // O crescimento do destaque entra por aqui. Como o wrapper e centrado
+          // por translate(-50%,-50%), crescer nao desloca o ponto.
+          // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
+          // pisca em vez de acender. A transicao e de opacidade pura, entao o
+          // navegador resolve no compositor.
+          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: 'auto',
         }}
-        className={data.isDragging ? '' : 'hover:scale-110'}
       >
-        {showLabel && data.label}
+      {/* Alvo de clique um pouco maior que o ponto, e constante em px de tela
+            porque mora dentro do wrapper contra-escalado. Sem isso, um ponto de
+            6px seria dificil de acertar. */}
+        <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', cursor: 'pointer' }} />
+        {isSelected && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              border: `2px solid ${(CONFIG as any).clean.accent}`,
+              animation: 'gddPulso 1.9s cubic-bezier(0.2, 0.6, 0.3, 1) infinite',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            backgroundColor: (apagadoPeloHover || (!emFoco && isFaded && fadeConfig.enabled))
+              ? (CONFIG as any).clean.muted
+              : bgColor,
+            // emFoco entra aqui por opacidade, acima; a cor ja e a certa.
+            boxShadow: anel,
+            cursor: 'pointer',
+            transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease, background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+        {(showLabel || data.isHovered || data.hoverSaindo) && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              // Sob o cursor a label desce: no lugar normal ela ficaria embaixo
+              // do ponteiro, que fica exatamente sobre a bolinha.
+              marginTop: data.isHovered ? 14 : 4,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              color: apagadoPeloHover ? (CONFIG as any).clean.mutedLabel : (CONFIG as any).clean.label,
+              // A label do no sob o cursor tambem ignora o fade da selecao.
+              // Fundo e respiro: no meio de um feixe de conexoes a label sem
+              // fundo some. Usa a cor do proprio mapa para nao virar etiqueta.
+              backgroundColor: (CONFIG as any).clean.background,
+              padding: '1px 4px',
+              borderRadius: 3,
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+              // Gradacao continua: a label entra lavada no limiar e vai ganhando
+              // corpo conforme a camera se aproxima. Resolvido em CSS pela
+              // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
+              // Sempre montada: montagem/desmontagem nao transiciona, e era isso
+              // que fazia a label pipocar ao entrar e sumir de golpe ao sair.
+              opacity: data.isHovered
+                ? 1
+                : (apagadoPeloHover || (!emFoco && isFaded && fadeConfig.enabled))
+                  ? `calc(${opacidadeLabel} * 0.45)`
+                  : opacidadeLabel,
+              transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              // Montagem nao transiciona: quando a label so existe por causa do
+              // hover, ela nasce ja pronta e a transicao acima nao alcanca. Uma
+              // animacao de entrada cobre justamente esse caso.
+              animation: (data.isHovered && !showLabel) ? 'gddLabelEntra 0.35s cubic-bezier(0.4, 0, 0.2, 1)' : undefined,
+            }}
+          >
+            {data.label}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -671,7 +821,6 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   const finalBorderWidth = (finalSize / 100) * finalBorderWidthConfig;
   
   // Calcular glow proporcional ao tamanho da bolinha (baseado em 100px = 60px de glow)
-  const glowSize = (finalSize / 100) * 60;
   
   // Calcular font-size automaticamente usando configurações customizadas ou padrões
   const hasCustomFontSize = typeof (CONFIG as any).nodeSize?.baseFontSize === 'number';
@@ -689,65 +838,65 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   const fontSize = `${calculatedFontSize}px`;
   
   // Calcular se deve mostrar label
-  const showLabel = useStore((state) => finalSize * state.transform[2] > CONFIG.zoom.labelVisibility.project);
+  const showLabel = useStore((state) => state.transform[2] > (CONFIG.zoom.labelVisibility as any).project);
   
   const baseSize = config.size;
   
+  // Mesmo tratamento das secoes: ponto em px de tela, contra-escalado. Sem isso
+  // o sol cresceria com o zoom enquanto todo o resto fica parado.
+  const ponto = isSelected
+    ? (CONFIG as any).clean.projectDot * 1.4
+    : (CONFIG as any).clean.projectDot;
+
   return (
-    <div style={{ width: baseSize, height: baseSize, position: 'relative' }}>
-      <Handle type="source" position={Position.Top} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Right} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
-      <Handle type="source" position={Position.Left} style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+    <div style={{ width: baseSize, height: baseSize, position: 'relative', pointerEvents: 'none' }}>
+      <Handle type="source" position={Position.Top} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
+      <Handle type="source" position={Position.Left} style={{ opacity: 0, width: 1, height: 1, minWidth: 1, minHeight: 1, border: 'none', background: 'transparent', top: '50%', left: '50%', margin: 0, transform: 'none' }} />
       <div
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: finalSize,
-          height: finalSize,
-          borderRadius: '50%',
-          background: `linear-gradient(135deg, ${config.colors.gradient.from} 0%, ${config.colors.gradient.to} 100%)`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: config.colors.text,
-          fontWeight: (CONFIG as any).nodeSize?.fontWeight || 'bold',
-          fontSize,
-          fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
-          textAlign: 'center',
-          padding: `${config.padding * 100}%`,
-          cursor: 'pointer',
-          boxShadow: isSelected
-            ? finalBorderWidth > 0
-              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${finalBorderWidth}px ${finalBorderColor}`
-              : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`
-            : isReference && (refConfig as any).nodeHighlight?.enabled
-              ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * ((refConfig as any).nodeHighlight.borderWidth || 3)}px ${(refConfig as any).nodeHighlight.borderColor || '#3b82f6'}` // Destaque azul para referências
-              : isInPath
-                ? `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}, 0 0 0 ${(finalSize / 100) * 3}px rgba(251, 191, 36, 0.6)` // Destaque sutil para nós no caminho
-                : `0 8px 16px ${config.colors.shadow}, 0 0 ${glowSize}px ${glowColor}`,
-          transition: data.isDragging ? 'none' : (data.isReturning ? 'all 0.3s ease' : 'all 0.3s ease'),
-          wordBreak: CONFIG.fonts.wordBreak ? 'break-word' : 'normal',
-          overflowWrap: 'break-word',
-          hyphens: 'auto',
-          lineHeight: CONFIG.fonts.lineHeight,
-          // Aplicar fade effect se o nó não está no caminho
-          opacity: (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
-          filter: (isFaded && fadeConfig.enabled) 
-            ? `grayscale(${fadeConfig.grayscale}%) blur(${fadeConfig.blur}px)` 
-            : 'none',
+          width: ponto,
+          height: ponto,
+          transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
+          // Mesma suavizacao das secoes: o no do projeto tinha ficado de fora.
+          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+          pointerEvents: 'auto',
         }}
-        className={data.isDragging ? '' : 'hover:scale-110'}
       >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            backgroundColor: (CONFIG as any).clean.accent,
+            boxShadow: isSelected ? `0 0 0 4px ${(CONFIG as any).clean.accent}44` : 'none',
+            cursor: 'pointer',
+            transition: 'box-shadow 0.2s ease',
+          }}
+        />
         {showLabel && (
-          <div>
-            <div>{config.icon}</div>
-            <div style={{ marginTop: '8px' }}>{data.label}</div>
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: 5,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              color: (CONFIG as any).clean.label,
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+            }}
+          >
+            {data.label}
           </div>
         )}
-        {!showLabel && <div>{config.icon}</div>}
       </div>
     </div>
   );
@@ -834,7 +983,7 @@ function MarkdownWithMapReferences({
   });
 
   return (
-    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-100">
+    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-700">
       {heroThumbUrl && heroThumbWidth ? (
         <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
       ) : null}
@@ -873,7 +1022,7 @@ function MarkdownWithMapReferences({
                     e.preventDefault();
                     onSectionClick(sectionId);
                   }}
-                  className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  className="text-blue-600 hover:text-blue-700 underline cursor-pointer"
                 >
                   {children}
                 </button>
@@ -881,7 +1030,7 @@ function MarkdownWithMapReferences({
             }
             // Link normal
             return (
-              <a href={href} {...props} className="text-blue-400 hover:text-blue-300">
+              <a href={href} {...props} className="text-blue-600 hover:text-blue-700">
                 {children}
               </a>
             );
@@ -895,7 +1044,101 @@ function MarkdownWithMapReferences({
   );
 }
 
+// Publica o zoom atual numa CSS var, pra as labels se contra-escalarem e ficarem
+// do mesmo tamanho na tela em qualquer zoom.
+//
+// A assinatura e IMPERATIVA de proposito: `useStore` faria este componente
+// re-renderizar a cada frame de camera, que e exatamente o custo que a gente
+// acabou de remover. Aqui nao ha render nenhum — so uma escrita de propriedade,
+// escrita sincrona (ver o corpo).
+function ZoomCssVar() {
+  const store = useStoreApi();
+  useEffect(() => {
+    const alvo = document.documentElement;
+    let ultimo = -1;
+    // Escrita SINCRONA. A versao anterior agrupava por requestAnimationFrame, e
+    // quando o rAF nao roda (aba em segundo plano, compositor parado) a variavel
+    // congelava — e com ela congelada a contra-escala para de acompanhar, entao
+    // pontos, labels e linhas voltam a crescer junto com o zoom. Escrever uma
+    // custom property e barato; o recalculo de estilo o navegador ja agrupa
+    // sozinho ate o proximo paint.
+    const publicar = (z: number) => {
+      if (z === ultimo) return;
+      ultimo = z;
+      alvo.style.setProperty('--gdd-zoom', String(z));
+    };
+    publicar(store.getState().transform[2]);
+    const cancelar = store.subscribe((estado: any) => publicar(estado.transform[2]));
+    return () => {
+      cancelar();
+      alvo.style.removeProperty('--gdd-zoom');
+    };
+  }, [store]);
+  return null;
+}
+
+// Edge de centro a centro.
+//
+// O React Flow e um editor de NOS: a linha dele liga *handles* — portas na borda
+// da caixa — e a posicao do handle sai do DOM. Isso e certo para fluxograma e
+// errado para mapa mental, onde a linha vai do centro de uma bolinha ao centro
+// da outra. Foi de la que vinha o desvio: o calculo do handle soma metade do
+// tamanho dele, e `transform: translate(-50%,-50%)` nao entra nessa conta.
+//
+// Aqui a origem e o destino saem direto da posicao do no mais metade do tamanho.
+// Nao ha handle no meio do caminho, entao nao ha desvio a corrigir.
+const EdgeCentroACentro = memo(function EdgeCentroACentro({
+  id, source, target, style, markerEnd, label, labelStyle,
+}: EdgeProps) {
+  // Selector devolve string para a comparacao do zustand ser por valor: assim a
+  // edge so re-renderiza quando as pontas realmente se movem (arrasto), e nao a
+  // cada mudanca qualquer do store.
+  const coords = useStore((s: any) => {
+    const a = s.nodeInternals.get(source);
+    const b = s.nodeInternals.get(target);
+    if (!a || !b) return '';
+    const ax = a.position.x + (a.width ?? 0) / 2;
+    const ay = a.position.y + (a.height ?? 0) / 2;
+    const bx = b.position.x + (b.width ?? 0) / 2;
+    const by = b.position.y + (b.height ?? 0) / 2;
+    return `${ax},${ay},${bx},${by}`;
+  });
+
+  if (!coords) return null;
+  const [ax, ay, bx, by] = coords.split(',').map(Number);
+
+  return (
+    <>
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={`M ${ax},${ay} L ${bx},${by}`}
+        style={style}
+        markerEnd={markerEnd}
+        fill="none"
+      />
+      {label ? (
+        <text
+          x={(ax + bx) / 2}
+          y={(ay + by) / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          style={labelStyle}
+        >
+          {label}
+        </text>
+      ) : null}
+    </>
+  );
+});
+
 // Componente interno que tem acesso ao contexto do ReactFlow
+// Largura do painel: metade da tela, como na referencia — mapa e conteudo com
+// o mesmo peso. O piso de 380px e para telas estreitas, onde 50% nao caberia o
+// texto. Compartilhada com a margem do mapa: os dois PRECISAM ler o mesmo
+// valor, senao sobra faixa vazia ou o mapa passa por baixo.
+const LARGURA_PAINEL = "max(380px, 50vw)";
+
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -904,7 +1147,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     () => ({ sectionNode: SectionNode, projectNode: ProjectNode }),
     []
   );
-  const edgeTypesStable = useMemo(() => ({}), []);
+  const edgeTypesStable = useMemo(() => ({ centro: EdgeCentroACentro }), []);
   const { getProjectBySlug } = useProjectStore();
   const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
@@ -961,6 +1204,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Section | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Bolinha sob o cursor. E um estado separado da selecao de proposito: o hover
+  // e leitura passageira (some quando o mouse sai), a selecao e escolha do
+  // usuario (abre o painel e persiste).
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // Guarda quem tinha o hover no ciclo anterior, para a label ter tempo de sair.
+  const hoverAnteriorRef = useRef<string | null>(null);
   // Refs cruzadas ficam escondidas por padrao: numa bolinha muito referenciada
   // elas viram dezenas de linhas de uma vez e o mapa fica ilegivel. O usuario
   // liga no toggle do painel, e trocar de bolinha volta pro default.
@@ -978,9 +1227,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const [originalPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   
   // Estado para threshold de drag (evitar ativar drag em clicks)
-  const [dragStartMouse] = useState<Map<string, { x: number; y: number }>>(new Map());
-  const [dragActivated] = useState<Map<string, boolean>>(new Map());
-  const DRAG_THRESHOLD = 5; // pixels mínimos de movimento para considerar drag
   
   // Busca — termo vem do contexto compartilhado (input renderizado no breadcrumbs pelo layout
   // no modo privado, ou no header interno no modo público).
@@ -1050,10 +1296,21 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     performSearch(searchTerm);
   }, [searchTerm, performSearch]);
 
+  // Espelho dos nos para o foco da busca ler sem depender deles.
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
   // Centralizar a viewport no resultado ativo quando o usuário navega pelos resultados (↑/↓/Enter).
+  //
+  // A dependencia aqui e SO o `activeResultId`. Antes `nodes` estava na lista, e
+  // como a busca marca os resultados via setNodes, o efeito reexecutava durante
+  // a animacao e chamava setCenter de novo — cada chamada reiniciava a
+  // suavizacao a partir da posicao atual. O resultado era a camera indo em
+  // passinhos: medido, uma animacao de 600ms ainda nao tinha assentado depois
+  // de 1.56s.
   useEffect(() => {
-    if (!activeResultId || nodes.length === 0) return;
-    const node = nodes.find((n) => n.id === activeResultId);
+    if (!activeResultId) return;
+    const node = nodesRef.current.find((n) => n.id === activeResultId);
     if (!node) return;
     const targetSize = (config as any).zoom?.onClickTargetSize || 200;
     let nodeSize = 100;
@@ -1063,8 +1320,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       nodeSize = getNodeSize(node.data.level, config);
     }
     const zoomLevel = targetSize / nodeSize;
-    setCenter(node.position.x, node.position.y, { zoom: zoomLevel, duration: 600 });
-  }, [activeResultId, nodes, setCenter, config]);
+    setCenter(node.position.x + nodeSize / 2, node.position.y + nodeSize / 2, { zoom: zoomLevel, duration: 600 });
+  }, [activeResultId, setCenter, config]);
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
@@ -1167,18 +1424,19 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         id: `project-${section.id}`,
         source: 'project-center',
         target: section.id,
-        type: 'straight',
+        type: 'centro',
         animated: projectEdgeConfig.animated,
         style: { 
-          stroke: projectEdgeConfig.color, 
-          strokeWidth: projectEdgeConfig.strokeWidth,
-          ...(needsDashPattern && { strokeDasharray: dashValue }),
+          stroke: (config as any).clean.line, 
+          strokeWidth: pxTela((config as any).clean.lineWidth),
+          ...(needsDashPattern && { strokeDasharray: pxTela(Number(dashValue)) }),
         },
         data: {
+          sourceLevel: -1,
           originalStyle: {
-            stroke: projectEdgeConfig.color,
-            strokeWidth: projectEdgeConfig.strokeWidth,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            stroke: (config as any).clean.line,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             animated: projectEdgeConfig.animated,
           },
         },
@@ -1200,8 +1458,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     if (edge.source === 'project-center') {
       return (config.project?.edge as any)?.visible !== false;
     }
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const nivel = sourceNode?.data?.level ?? 0;
+    const nivel = (edge.data as any)?.sourceLevel ?? 0;
     const niveis = (config as any).levels;
     if (niveis && niveis.length > 0) {
       const doNivel = niveis[nivel] || niveis[niveis.length - 1];
@@ -1213,7 +1470,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         ? config.subsections.edge
         : config.deepSubsections.edge;
     return (legado as any)?.visible !== false;
-  }, [config, nodes]);
+  }, [config]);
 
   // Efeito para atualizar destaque das edges quando houver seleção
   useEffect(() => {
@@ -1236,8 +1493,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             edgeConfig = config.project.edge;
           } else {
             // Descobrir nível do nó source para usar a config correta
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const sourceLevel = sourceNode?.data?.level ?? 0;
+            const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
             
             // Usar config do nível apropriado
             if (sourceLevel === 0) {
@@ -1261,9 +1517,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             className: undefined,
             animated: edgeConfig.animated || false,
             style: {
-              stroke: edgeConfig.color || '#94a3b8',
-              strokeWidth: edgeConfig.strokeWidth || 0.5,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              stroke: (config as any).clean.line,
+              strokeWidth: pxTela((config as any).clean.lineWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
               opacity: 1, // Resetar opacity quando não há seleção
             },
           };
@@ -1330,8 +1586,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             highlightConfig = config.project.edge.highlighted;
           } else {
             // Descobrir nível do nó source para usar a config correta
-            const sourceNode = nodes.find(n => n.id === edge.source);
-            const sourceLevel = sourceNode?.data?.level ?? 0;
+            const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
             
             // Usar config do nível apropriado
             if (sourceLevel === 0) {
@@ -1343,7 +1598,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             }
           }
           
-          // Espessura e tracejado em unidades de TELA, via vector-effect (ver o
+          // Espessura e tracejado em unidades de TELA, via pxTela (ver o helper).
           // <style> abaixo, classe gdd-edge-fixa). Antes isso era feito
           // dividindo pelo zoom, o que exigia assinar `transform` do store e
           // re-renderizar o componente inteiro a cada frame de camera — 828
@@ -1366,9 +1621,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             className: "gdd-edge-fixa",
             animated: highlightConfig.animated,
             style: {
-              strokeWidth: baseStrokeWidth,
-              stroke: highlightConfig.color,
-              strokeDasharray: `${dashValue},${dashValue}`,
+              strokeWidth: pxTela((config as any).clean.highlightWidth),
+              stroke: (config as any).clean.highlight,
+              strokeDasharray: (config as any).clean.highlightDash > 0
+                ? `${pxTela((config as any).clean.highlightDash)} ${pxTela((config as any).clean.highlightDash)}`
+                : undefined,
               opacity: 1, // Edges destacadas ficam sempre visíveis
             },
           };
@@ -1382,8 +1639,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           edgeConfig = config.project.edge;
         } else {
           // Descobrir nível do nó source para usar a config correta
-          const sourceNode = nodes.find(n => n.id === edge.source);
-          const sourceLevel = sourceNode?.data?.level ?? 0;
+          const sourceLevel = (edge.data as any)?.sourceLevel ?? 0;
           
           // Usar config do nível apropriado
           if (sourceLevel === 0) {
@@ -1410,15 +1666,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           className: undefined, // idem para a classe de espessura fixa
           animated: edgeConfig.animated || false,
           style: {
-            stroke: edgeConfig.color || '#94a3b8',
-            strokeWidth: edgeConfig.strokeWidth || 0.5,
-            strokeDasharray: needsDashPattern ? dashValue : undefined,
+            stroke: (config as any).clean.line,
+            strokeWidth: pxTela((config as any).clean.lineWidth),
+            strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             opacity: edgeOpacity, // Aplicar opacity reduzida nas edges não destacadas
           },
         };
       });
     });
-  }, [selectedNodeId, setEdges, config, nodes, showReferences, linhaVisivelEmRepouso]);
+  }, [selectedNodeId, setEdges, config, showReferences, linhaVisivelEmRepouso]);
 
   // Efeito para marcar node selecionado visualmente (glow)
   useEffect(() => {
@@ -1429,6 +1685,66 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       }))
     );
   }, [selectedNodeId, setNodes]);
+
+  // Marca quem esta sob o cursor e quem e vizinho dele (pai e filhos diretos).
+  // Roda por ENTRADA no no, nao por frame, entao reconstruir o array de nos aqui
+  // custa pouco — diferente do efeito de camera, que rodava a 60fps.
+  // Marca quem esta sob o cursor, quem e vizinho, e quem ACABOU de sair.
+  //
+  // O "acabou de sair" existe porque desmontar nao transiciona: sem ele a label
+  // do no que perde o hover desaparece de golpe. A alternativa seria manter as
+  // 245 labels montadas o tempo todo, mas isso custava ~6ms a mais por passo de
+  // zoom (medido: 28.7ms contra 22.8ms) — caro para resolver o desaparecimento
+  // de UMA label.
+  //
+  // A marcacao acontece DENTRO deste efeito, e nao por um estado separado: com
+  // estado havia um render intermediario em que a label ja tinha desmontado, e
+  // remontar tambem nao transiciona.
+  useEffect(() => {
+    const anterior = hoverAnteriorRef.current;
+    hoverAnteriorRef.current = hoveredId;
+
+    setNodes((nds) => {
+      if (!hoveredId) {
+        if (!nds.some((n) => n.data.hoverAtivo || n.data.hoverSaindo)) return nds;
+        return nds.map((n) => ({
+          ...n,
+          data: {
+            ...n.data,
+            hoverAtivo: false,
+            isHovered: false,
+            hoverVizinho: false,
+            hoverSaindo: n.id === anterior,
+          },
+        }));
+      }
+      const vizinhos = new Set<string>();
+      for (const e of edges) {
+        if (e.id.startsWith("ref-")) continue;
+        if (e.source === hoveredId) vizinhos.add(e.target);
+        if (e.target === hoveredId) vizinhos.add(e.source);
+      }
+      return nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          hoverAtivo: true,
+          isHovered: n.id === hoveredId,
+          hoverVizinho: vizinhos.has(n.id),
+          hoverSaindo: false,
+        },
+      }));
+    });
+
+    // Nao ha temporizador para limpar o `hoverSaindo`: ele e zerado no proximo
+    // hover (ver o ramo acima). Havia um setTimeout de 600ms aqui e ele estava
+    // desfazendo a SELECAO — medido: a bolinha clicada ficava em 25.6px com
+    // aura ate os 400ms e voltava a 16px sem aura aos 600ms, e desligar o timer
+    // fazia a selecao persistir. Nao encontrei o mecanismo lendo o codigo (o
+    // callback preserva `isSelected` no spread), entao removi a causa em vez de
+    // insistir. O custo de nao limpar por tempo e uma label invisivel que fica
+    // montada ate o hover seguinte.
+  }, [hoveredId, edges, setNodes]);
 
   // Trocar de bolinha (ou fechar o painel) sempre volta ao estado escondido.
   useEffect(() => {
@@ -1583,9 +1899,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         const forwardReferenceEdges: Edge[] = Array.from(referencedNodeIds).map(targetId => {
           // Calcular dashPattern consistente com outras edges
           const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
-          const dashValue = refConfig.edgeAnimated 
-            ? (refConfig.edgeDashPattern || 5) * 15  // Animado: valor fixo maior para visibilidade
-            : refConfig.edgeDashPattern || 5;         // Estático: valor configurado
+          // Traco em px de tela, como o resto do estilo limpo.
+          const dashValue = (config as any).clean.referenceDash;
           
           const showIcon = refConfig.showIcon ?? true;
           const icon = refConfig.icon || '🔗';
@@ -1594,12 +1909,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             id: `ref-${selectedNodeId}-${targetId}`,
             source: selectedNodeId,
             target: targetId,
-            type: 'default',
+            type: 'centro',
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: refConfig.iconSize || 32,
-              fill: refConfig.edgeColor || '#3b82f6',
+              fontSize: pxTela((config as any).clean.referenceIcon),
+              fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
             labelBgStyle: {
@@ -1607,15 +1922,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             },
             labelShowBg: false,
             style: {
-              stroke: refConfig.edgeColor || '#3b82f6',
-              strokeWidth: refConfig.edgeWidth || 2,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              stroke: (config as any).clean.reference,
+              strokeWidth: pxTela((config as any).clean.referenceWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: refConfig.edgeColor || '#3b82f6',
-              width: 20,
-              height: 20,
+              color: (config as any).clean.reference,
+              width: 9,
+              height: 9,
             },
           };
         });
@@ -1623,9 +1938,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         // Criar edges de referência (chegando ao nó selecionado - backlinks)
         const backwardReferenceEdges: Edge[] = Array.from(backlinksNodeIds).map(sourceId => {
           const needsDashPattern = refConfig.edgeAnimated || refConfig.edgeDashed;
-          const dashValue = refConfig.edgeAnimated 
-            ? (refConfig.edgeDashPattern || 5) * 15
-            : refConfig.edgeDashPattern || 5;
+          // Traco em px de tela, como o resto do estilo limpo.
+          const dashValue = (config as any).clean.referenceDash;
           
           const showIcon = refConfig.showIcon ?? true;
           const icon = refConfig.icon || '🔗';
@@ -1634,12 +1948,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             id: `ref-${sourceId}-${selectedNodeId}`,
             source: sourceId,
             target: selectedNodeId,
-            type: 'default',
+            type: 'centro',
             animated: refConfig.edgeAnimated || false,
             label: showIcon ? icon : undefined,
             labelStyle: {
-              fontSize: refConfig.iconSize || 32,
-              fill: refConfig.edgeColor || '#3b82f6',
+              fontSize: pxTela((config as any).clean.referenceIcon),
+              fill: (config as any).clean.reference,
               fontWeight: 'bold',
             },
             labelBgStyle: {
@@ -1647,15 +1961,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             },
             labelShowBg: false,
             style: {
-              stroke: refConfig.edgeColor || '#3b82f6',
-              strokeWidth: refConfig.edgeWidth || 2,
-              strokeDasharray: needsDashPattern ? dashValue : undefined,
+              stroke: (config as any).clean.reference,
+              strokeWidth: pxTela((config as any).clean.referenceWidth),
+              strokeDasharray: needsDashPattern ? pxTela(Number(dashValue)) : undefined,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: refConfig.edgeColor || '#3b82f6',
-              width: 20,
-              height: 20,
+              color: (config as any).clean.reference,
+              width: 9,
+              height: 9,
             },
           };
         });
@@ -1715,55 +2029,24 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   }, [selectedNodeId, config, project, searchResults, searchTerm, showReferences]);
 
 
-  // Handler para salvar posição original ao iniciar drag
-  const onNodeDragStart = useCallback((event: React.MouseEvent, node: Node) => {
+  // Guarda a posicao para devolver o no ao soltar. O `nodeDragThreshold` do
+  // React Flow so dispara o arrasto depois de 5px de movimento, entao quando
+  // este handler roda o arrasto ja e real — nao ha clique disfarcado de arrasto
+  // para filtrar. Antes isso era feito a mao com dois Maps, um contador de
+  // distancia dentro do onNodeDrag e uma flag de "ativado".
+  const onNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
     if (node.position) {
       originalPositions.set(node.id, { ...node.position });
     }
-    // Salvar posição inicial do mouse
-    dragStartMouse.set(node.id, { x: event.clientX, y: event.clientY });
-    dragActivated.set(node.id, false);
-    // NÃO marcar isDragging ainda - só quando passar do threshold
-  }, [originalPositions, dragStartMouse, dragActivated]);
-
-  // Handler para verificar threshold durante o drag
-  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
-    const startMouse = dragStartMouse.get(node.id);
-    if (!startMouse) return;
-    
-    // Calcular distância do mouse desde o início
-    const distance = Math.sqrt(
-      Math.pow(event.clientX - startMouse.x, 2) + 
-      Math.pow(event.clientY - startMouse.y, 2)
+    setNodes((nds) =>
+      nds.map((n) => (n.id === node.id ? { ...n, data: { ...n.data, isDragging: true } } : n))
     );
-    
-    // Se passou do threshold e ainda não ativou o drag, ativar agora
-    if (distance > DRAG_THRESHOLD && !dragActivated.get(node.id)) {
-      dragActivated.set(node.id, true);
-      setNodes((nds) =>
-        nds.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              data: {
-                ...n.data,
-                isDragging: true,
-              },
-            };
-          }
-          return n;
-        })
-      );
-    }
-  }, [dragStartMouse, dragActivated, setNodes, DRAG_THRESHOLD]);
+  }, [originalPositions, setNodes]);
 
   // Handler para resetar posição ao soltar o nó
   const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
-    const wasActivated = dragActivated.get(node.id);
     const originalPos = originalPositions.get(node.id);
-    
-    // Só resetar posição se o drag foi realmente ativado (passou do threshold)
-    if (wasActivated && originalPos) {
+    if (originalPos) {
       // Resetar para posição original com transição suave
       setNodes((nds) =>
         nds.map((n) => {
@@ -1803,9 +2086,90 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     
     // Limpar estados
     originalPositions.delete(node.id);
-    dragStartMouse.delete(node.id);
-    dragActivated.delete(node.id);
-  }, [originalPositions, dragStartMouse, dragActivated, setNodes]);
+  }, [originalPositions, setNodes]);
+
+  // Caminho da raiz ate o PAI do no selecionado, montado subindo pelas edges
+  // de parentesco. Nao inclui o proprio no: o titulo logo abaixo ja o mostra,
+  // e repetir seria ruido.
+  const caminhoAteORaiz = useMemo(() => {
+    if (!selectedNodeId || selectedNodeId === "project-center") return [];
+    const pais = new Map<string, string>();
+    for (const e of edges) {
+      if (e.id.startsWith("ref-")) continue;
+      pais.set(e.target, e.source);
+    }
+    const trilha: { id: string; titulo: string }[] = [];
+    let atual = pais.get(selectedNodeId);
+    const visitados = new Set<string>([selectedNodeId]);
+    while (atual && !visitados.has(atual)) {
+      visitados.add(atual);
+      if (atual === "project-center") {
+        trilha.unshift({ id: atual, titulo: project?.title || "" });
+        break;
+      }
+      const sec = (project?.sections || []).find((x: Section) => x.id === atual);
+      if (sec) trilha.unshift({ id: atual, titulo: sec.title || atual });
+      atual = pais.get(atual);
+    }
+    return trilha;
+  }, [selectedNodeId, edges, project]);
+
+
+  // Centraliza a camera num no pelo id. Existe separado porque precisa ser
+  // chamado de novo depois que o painel abre (ver o efeito logo abaixo).
+  const centralizarNo = useCallback((nodeId: string) => {
+    const node = nodesRef.current.find((n) => n.id === nodeId);
+    if (!node) return;
+    const targetSize = (config as any).zoom?.onClickTargetSize || 200;
+    let nodeSize = 100;
+    if (node.id === 'project-center') {
+      nodeSize = config.project.node.size;
+    } else if (node.data?.calculatedSize) {
+      nodeSize = node.data.calculatedSize;
+    } else if (node.data?.level !== undefined) {
+      nodeSize = getNodeSize(node.data.level, config);
+    }
+    // position e o CANTO superior esquerdo; sem somar metade do tamanho a
+    // camera centraliza no canto e a bolinha sai do enquadramento.
+    setCenter(node.position.x + nodeSize / 2, node.position.y + nodeSize / 2, {
+      zoom: targetSize / nodeSize,
+      duration: 800,
+    });
+  }, [config, setCenter]);
+
+  // Seleciona um no pelo id, como se o usuario tivesse clicado nele no mapa.
+  const selecionarPorId = useCallback((id: string) => {
+    centralizarNo(id);
+    setNavigationStack([]);
+    setSelectedNodeId(id);
+    if (id === "project-center") {
+      setSelectedNode({
+        id: "project",
+        title: project?.title || "",
+        content: project?.description || "",
+        order: 0,
+        created_at: new Date().toISOString(),
+      } as Section);
+      return;
+    }
+    const sec = (project?.sections || []).find((x: Section) => x.id === id);
+    if (sec) setSelectedNode(sec);
+  }, [centralizarNo, project]);
+
+  // Quando o painel ABRE, o mapa encolhe para dar lugar a ele. A
+  // centralizacao feita no clique usou a largura ANTIGA (tela inteira), entao
+  // a bolinha acabava fora do enquadramento — e so no segundo clique, com o
+  // painel ja aberto, o foco saia certo. Aqui recentralizamos depois que a
+  // faixa terminou de abrir.
+  const painelAberto = Boolean(selectedNode);
+  const painelAbertoAntes = useRef(painelAberto);
+  useEffect(() => {
+    const abriuAgora = painelAberto && !painelAbertoAntes.current;
+    painelAbertoAntes.current = painelAberto;
+    if (!abriuAgora || !selectedNodeId) return;
+    const t = setTimeout(() => centralizarNo(selectedNodeId), 260);
+    return () => clearTimeout(t);
+  }, [painelAberto, selectedNodeId, centralizarNo]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     // Calcular zoom para que o nó apareça com o tamanho alvo na tela
@@ -1825,9 +2189,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     // Fórmula: zoom = tamanhoAlvo / tamanhoReal
     const zoomLevel = targetSize / nodeSize;
 
-    // Centralizar câmera no node com animação suave
-    const nodePosition = node.position;
-    setCenter(nodePosition.x, nodePosition.y, { zoom: zoomLevel, duration: 800 });
+    // So centraliza agora se o painel JA estiver aberto. Se ele vai abrir, o
+    // mapa esta prestes a encolher e essa centralizacao seria descartada — o
+    // efeito abaixo faz a boa depois que a faixa termina de abrir. Centralizar
+    // duas vezes custava ~3s ate a bolinha assentar.
+    if (selectedNode) centralizarNo(node.id);
 
     // Clique direto numa bolinha e escolha do usuario, nao um salto: zera a trilha.
     setNavigationStack([]);
@@ -1856,7 +2222,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
     const section = project ? findSectionById(project.sections || [], node.id) : null;
     setSelectedNode(section);
-  }, [project, setCenter, config]);
+  }, [project, setCenter, config, selectedNode, centralizarNo]);
 
   // Salto propriamente dito: centraliza a camera e seleciona a bolinha.
   // `cameDeId` empilha a origem, pra o painel poder oferecer a volta.
@@ -1955,6 +2321,20 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     <ConfigContext.Provider value={config}>
       <style>
         {`
+          /* Aura do no selecionado: um anel que nasce no tamanho do ponto e
+             se abre desaparecendo. Fica dentro do wrapper contra-escalado,
+             entao pulsa do mesmo tamanho em qualquer zoom. */
+          @keyframes gddPulso {
+            0%   { transform: scale(1);   opacity: 0.55; }
+            70%  { opacity: 0; }
+            100% { transform: scale(3.2); opacity: 0; }
+          }
+
+          @keyframes gddLabelEntra {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
           @keyframes dashdraw {
             from {
               stroke-dashoffset: 0;
@@ -1965,33 +2345,36 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
           
 
-          /* Espessura e traco em unidades de tela, sem depender do zoom.
-             Substitui a divisao por currentZoom, que obrigava o componente
-             inteiro a re-renderizar a cada frame de camera. */
-          .react-flow__edge.gdd-edge-fixa path {
-            vector-effect: non-scaling-stroke;
-          }
+          /* Bolinhas e labels acima das linhas. Sem isso, num cacho denso a
+             label fica atras do feixe de conexoes e vira ilegivel — as duas
+             camadas ficavam em z-index 0 e quem pintava por cima era a ordem
+             no DOM. */
+          .react-flow__nodes { z-index: 3; }
+
+          /* A espessura das linhas NAO e resolvida aqui — ver o helper pxTela.
+             O zoom do React Flow vem de um transform CSS em div ancestral, e
+             contra isso o vector-effect nao faz efeito. */
           /* Aplicar animação para TODAS as edges animadas (não só highlight) */
           .react-flow__edge.animated path {
             animation: dashdraw ${config.animation?.speed || 2}s linear infinite !important;
           }
         `}
       </style>
-      <div className="fixed inset-0 overflow-hidden bg-gray-900">
+      <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: (config as any).clean.background }}>
         {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
         {isPublicMode && (
-          <div className="absolute top-0 left-0 right-0 z-30 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between gap-4">
+          <div className="absolute top-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 onClick={() => router.push(`/s/${encodeURIComponent(publicToken || "")}?mode=view`)}
-                className="text-gray-400 hover:text-white transition-colors shrink-0"
+                className="text-gray-500 hover:text-gray-900 transition-colors shrink-0"
               >
                 ← {t("mindMap.backToDocument")}
               </button>
-              <h1 className="text-xl font-bold text-white shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
+              <h1 className="text-xl font-bold text-gray-900 shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
               <span className="text-gray-400 shrink-0 hidden md:inline">|</span>
-              <span className="text-gray-300 truncate hidden md:inline min-w-0">{project.title}</span>
-              <span className="text-green-300 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
+              <span className="text-gray-600 truncate hidden md:inline min-w-0">{project.title}</span>
+              <span className="text-emerald-600 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
             </div>
 
             {/* Busca inline (apenas em modo público, onde o breadcrumbs não renderiza o input) */}
@@ -2017,7 +2400,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     }
                   }}
                   placeholder={t("mindMap.searchPlaceholder")}
-                  className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
+                  className="bg-gray-50 text-gray-900 px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-300 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
                 {searchTerm.trim().length > 0 && (
@@ -2031,7 +2414,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                   >
                     ✕
                   </button>
@@ -2041,7 +2424,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 type="button"
                 onClick={() => navigateSearchResult(-1)}
                 disabled={resultCount === 0}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 title={t("mindMap.searchPrevious")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2052,7 +2435,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 type="button"
                 onClick={() => navigateSearchResult(1)}
                 disabled={resultCount === 0}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 title={t("mindMap.searchNext")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2065,19 +2448,29 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
 
         {/* React Flow - overflow-hidden evita barras de rolagem; onWheel evita scroll da página ao zoomar */}
-        <div className="h-full pt-16 overflow-hidden" ref={flowWrapperRef}>
+        {/* O mapa cede espaco para o painel em vez de ficar por baixo dele.
+            Posicionamento absoluto com `right`, e nao margem: por algum motivo a
+            margem era ignorada neste elemento (computava 0px ate com !important).
+            Com `right` o encaixe e explicito e nao depende disso. */}
+        <div
+          className="absolute left-0 top-16 bottom-0 overflow-hidden transition-[right] duration-200"
+          style={{ right: selectedNode ? LARGURA_PAINEL : 0 }}
+          ref={flowWrapperRef}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
+            onNodeMouseEnter={(_e, node) => setHoveredId(node.id)}
+            onNodeMouseLeave={() => setHoveredId(null)}
             onNodeDragStart={onNodeDragStart}
-            onNodeDrag={onNodeDrag}
             onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypesStable}
             edgeTypes={edgeTypesStable}
             nodesDraggable={true}
+            nodeDragThreshold={5}
             nodesConnectable={false}
             elementsSelectable={true}
             fitView
@@ -2086,17 +2479,20 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             minZoom={config.zoom.minZoom}
             proOptions={{ hideAttribution: true }}
             onlyRenderVisibleElements
-            className="bg-gray-900"
+            style={{ backgroundColor: (config as any).clean.background }}
           >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#374151" />
-          <Controls className="bg-gray-800 border-gray-700" />
+          <ZoomCssVar />
+          <Controls className="border-gray-300" />
         </ReactFlow>
       </div>
 
       {/* Panel Lateral */}
       {selectedNode && (
-        <div className="absolute top-16 right-0 w-96 h-[calc(100vh-4rem)] bg-gray-800 border-l border-gray-700 shadow-2xl overflow-y-auto z-20">
-          <div className="p-6">
+        <div
+          className="absolute top-16 right-0 h-[calc(100vh-4rem)] border-l border-gray-200 overflow-y-auto z-20"
+          style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.backgroundPainel }}
+        >
+          <div className="px-12 py-10">
             {/* Volta de um salto por referencia. So aparece quando o usuario foi
                 TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
                 ali ele escolheu o lugar e nao precisa de migalha. */}
@@ -2110,7 +2506,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 <button
                   type="button"
                   onClick={handleGoBack}
-                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-600/80 bg-gray-700/40 px-3 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 >
                   <span aria-hidden="true">←</span>
                   <span className="min-w-0 truncate">
@@ -2128,8 +2524,71 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {t("sectionDetail.flowchart.breadcrumb")}
               </div>
             )}
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">{selectedNode.title}</h2>
+            {caminhoAteORaiz.length > 0 && (
+              <nav aria-label="breadcrumb" className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
+                {caminhoAteORaiz.map((c, i) => (
+                  <span key={c.id} className="flex items-center gap-x-1 min-w-0">
+                    {i > 0 && <span className="text-gray-300" aria-hidden="true">›</span>}
+                    <button
+                      type="button"
+                      onClick={() => selecionarPorId(c.id)}
+                      className="max-w-[13rem] truncate rounded px-1 py-0.5 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    >
+                      {c.titulo}
+                    </button>
+                  </span>
+                ))}
+              </nav>
+            )}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 min-w-0">{selectedNode.title}</h2>
+              {/* Acoes no topo, junto do fechar: sao atalhos para sair do mapa e
+                  nao conclusao da leitura — no rodape ficavam depois de uma
+                  descricao que pode ter varias telas de rolagem. */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  title={t("mindMap.panel.goToDocument")}
+                  aria-label={t("mindMap.panel.goToDocument")}
+                  onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+                {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
+                  <button
+                    type="button"
+                    title={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
+                    aria-label={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
+                    onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                    </svg>
+                  </button>
+                )}
+                {!isPublicMode && (
+                  <button
+                    type="button"
+                    title={t("mindMap.panel.viewDetails")}
+                    aria-label={t("mindMap.panel.viewDetails")}
+                    onClick={() =>
+                      router.push(
+                        selectedNode.id === 'project'
+                          ? (project ? `${projectPath(project)}/edit` : "/")
+                          : sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id)
+                      )
+                    }
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
               <button
                 onClick={() => {
                   setSelectedNode(null);
@@ -2142,10 +2601,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     window.history.replaceState({}, '', url.toString());
                   }
                 }}
-                className="text-gray-400 hover:text-white text-2xl leading-none"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 text-2xl leading-none"
               >
                 ×
               </button>
+              </div>
             </div>
 
             {/* Tags de domínio (só para seções, não para o node do projeto) */}
@@ -2156,7 +2616,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   return (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-md bg-gray-600/80 px-2 py-0.5 text-xs font-medium text-gray-200 border border-gray-500/50"
+                      className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 border border-gray-200"
                     >
                       {label}
                     </span>
@@ -2176,8 +2636,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 aria-pressed={showReferences}
                 className={`mb-4 inline-flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   showReferences
-                    ? "border-blue-500/50 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30"
-                    : "border-gray-600 bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "border-gray-300 bg-gray-700/50 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
@@ -2188,7 +2648,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
-                    showReferences ? "bg-blue-500/30 text-blue-100" : "bg-gray-600/70 text-gray-200"
+                    showReferences ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-700"
                   }`}
                 >
                   {referenceCount}
@@ -2196,7 +2656,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
             )}
 
-            <div className="prose max-w-none text-gray-100" style={{ fontSize: `${panelContentScale}em` }}>
+            <div className="prose max-w-none text-gray-700" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
                 <MarkdownWithMapReferences
                   content={selectedNode.content}
@@ -2227,70 +2687,30 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               const backlinks = getBacklinks(selectedNode.id, project.sections || []);
               if (backlinks.length > 0) {
                 return (
-                  <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {backlinks.map((backlink) => {
-                        return (
-                          <button
-                            key={backlink.id}
-                            onClick={() => handleReferenceClick(backlink.id)}
-                            className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 hover:text-blue-200 rounded-full text-sm font-medium transition-all duration-200 border border-blue-500/30 hover:border-blue-400/50 hover:scale-105"
-                          >
-                            {backlink.title}
-                          </button>
-                        );
-                      })}
+                  // Sem caixa e sem contorno: eram doze pilulas azuis dentro de um
+                  // card, e o bloco pesava mais que a descricao da pagina. Agora e
+                  // uma lista discreta separada por um fio, no registro do resto
+                  // do painel.
+                  <div className="mt-8 border-t border-gray-200 pt-5">
+                    <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      {t("mindMap.panel.backlinks")}
+                    </h3>
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-1">
+                      {backlinks.map((backlink) => (
+                        <button
+                          key={backlink.id}
+                          onClick={() => handleReferenceClick(backlink.id)}
+                          className="max-w-full truncate rounded px-1.5 py-0.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        >
+                          {backlink.title}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 );
               }
               return null;
             })()}
-
-            <div className="mt-6">
-              <button
-                onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                {t("mindMap.panel.goToDocument")}
-              </button>
-            </div>
-
-            {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
-              <div className="mt-3">
-                <button
-                  onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
-                  className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2.5 rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/25 transition-all text-sm font-semibold"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
-                  </svg>
-                  {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
-                </button>
-              </div>
-            )}
-
-            {!isPublicMode && (
-              <div className="mt-6 flex gap-2">
-                {selectedNode.id !== 'project' && (
-                  <button
-                    onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {t("mindMap.panel.viewDetails")}
-                  </button>
-                )}
-                {selectedNode.id === 'project' && (
-                  <button
-                    onClick={() => router.push(project ? `${projectPath(project)}/edit` : "/")}
-                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {t("mindMap.panel.editProject")}
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -2298,7 +2718,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
       {pendingReference && (
         <SectionPreviewDialog
-          theme="dark"
+          theme="light"
           title={pendingReference.title}
           description={pendingReference.description}
           confirmLabel={t("mindMap.panel.goToTarget").replace("{{title}}", pendingReference.title)}
