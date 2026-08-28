@@ -161,7 +161,8 @@
     "back": "Voltar",
     "tabWrite": "Editar",
     "tabPreview": "Preview",
-    "confirmDelete": "Confirmar exclusão"
+    "confirmDelete": "Confirmar exclusão",
+    "clear": "Limpar"
   },
   "auth": {
     "login": {
@@ -2055,5 +2056,13 @@
         }
       }
     }
+  },
+  "projectTabs": {
+    "editor": "Editor",
+    "doc": "Doc",
+    "graph": "Graph",
+    "label": "Modos do projeto",
+    "mapTitle": "Game Design Map",
+    "docTitle": "Game Design Document"
   }
 }

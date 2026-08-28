@@ -8,6 +8,8 @@ interface PublicShareButtonProps {
   isPublic?: boolean | null;
   /** Visual variant. `card` is a solid chip (home project cards). `inline` is compact for headers/breadcrumbs. */
   variant?: "card" | "inline";
+  /** `dark` para barra escura, `light` para barra clara. So afeta a variante `inline`. */
+  theme?: "light" | "dark";
   className?: string;
 }
 
@@ -15,6 +17,7 @@ export function PublicShareButton({
   shareToken,
   isPublic,
   variant = "inline",
+  theme = "dark",
   className = "",
 }: PublicShareButtonProps) {
   const { t } = useI18n();
@@ -85,8 +88,12 @@ export function PublicShareButton({
       aria-label={baseLabel}
       className={`shrink-0 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
         copied
-          ? "border-emerald-400/60 bg-emerald-600/25 text-emerald-100"
-          : "border-sky-500/40 bg-sky-600/15 text-sky-200 hover:border-sky-400/70 hover:bg-sky-600/25 hover:text-white"
+          ? theme === "light"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+            : "border-emerald-400/60 bg-emerald-600/25 text-emerald-100"
+          : theme === "light"
+            ? "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100 hover:text-sky-900"
+            : "border-sky-500/40 bg-sky-600/15 text-sky-200 hover:border-sky-400/70 hover:bg-sky-600/25 hover:text-white"
       } ${className}`}
     >
       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

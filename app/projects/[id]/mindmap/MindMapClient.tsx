@@ -32,6 +32,7 @@ import {
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
+import { ProjectTopBar, IconeMapa } from "@/components/project/ProjectTopBar";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
@@ -2361,23 +2362,21 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         `}
       </style>
       <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: (config as any).clean.background }}>
-        {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
+        {/* A barra e a mesma do shell e do documento; em modo publico ela e a unica. */}
         {isPublicMode && (
-          <div className="absolute top-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <button
-                onClick={() => router.push(`/s/${encodeURIComponent(publicToken || "")}?mode=view`)}
-                className="text-gray-500 hover:text-gray-900 transition-colors shrink-0"
-              >
-                ← {t("mindMap.backToDocument")}
-              </button>
-              <h1 className="text-xl font-bold text-gray-900 shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
-              <span className="text-gray-400 shrink-0 hidden md:inline">|</span>
-              <span className="text-gray-600 truncate hidden md:inline min-w-0">{project.title}</span>
-              <span className="text-emerald-600 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
-            </div>
-
-            {/* Busca inline (apenas em modo público, onde o breadcrumbs não renderiza o input) */}
+          <ProjectTopBar
+            icone={<IconeMapa />}
+            titulo={t("projectTabs.mapTitle", "Game Design Map")}
+            projectSlug={projectId}
+            active="graph"
+            publicToken={publicToken}
+            badge={
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                <span>🔓</span>
+                <span className="hidden sm:inline">{t("mindMap.publicBadge")}</span>
+              </span>
+            }
+            busca={
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="relative">
                 <input
@@ -2443,7 +2442,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </svg>
               </button>
             </div>
-          </div>
+            }
+          />
         )}
 
 
@@ -2453,7 +2453,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             margem era ignorada neste elemento (computava 0px ate com !important).
             Com `right` o encaixe e explicito e nao depende disso. */}
         <div
-          className="absolute left-0 top-16 bottom-0 overflow-hidden transition-[right] duration-200"
+          className="absolute left-0 top-20 bottom-0 overflow-hidden transition-[right] duration-200"
           style={{ right: selectedNode ? LARGURA_PAINEL : 0 }}
           ref={flowWrapperRef}
         >
@@ -2489,7 +2489,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       {/* Panel Lateral */}
       {selectedNode && (
         <div
-          className="absolute top-16 right-0 h-[calc(100vh-4rem)] border-l border-gray-200 overflow-y-auto z-20"
+          className="absolute top-20 right-0 h-[calc(100vh-5rem)] border-l border-gray-200 overflow-y-auto z-20"
           style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.backgroundPainel }}
         >
           <div className="px-12 py-10">

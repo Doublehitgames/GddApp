@@ -1060,7 +1060,7 @@ function DiagramasFlow({
   const selectedNodeNote = selectedNode?.data.note || "";
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-16 md:top-20"} text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
+    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-20"} text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
       {isReadOnly && publicToken && (
         <div className="absolute top-0 left-0 right-0 z-50 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">

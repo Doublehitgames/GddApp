@@ -11,6 +11,8 @@ import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchCont
 import { toSlug, sectionPath } from "@/lib/utils/slug";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
+import { type ProjectView } from "@/components/project/ProjectViewTabs";
+import { ProjectTopBar, ALTURA_BARRA, IconeMapa, IconeEditor } from "@/components/project/ProjectTopBar";
 
 interface Props {
   children: React.ReactNode;
@@ -52,8 +54,8 @@ function BreadcrumbsMindMapSearch() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t("mindmap.searchPlaceholder", "Buscar seções...")}
-          className="w-full bg-gray-800/80 text-gray-100 placeholder:text-gray-500 border border-gray-600/80 rounded-md pl-8 pr-16 py-1.5 text-xs sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+          placeholder={t("mindMap.searchPlaceholder", "Buscar seções...")}
+          className="w-full bg-white text-gray-800 placeholder:text-gray-400 border border-gray-300 rounded-md pl-8 pr-16 py-1.5 text-xs sm:text-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
         />
         <svg
           className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
@@ -76,7 +78,7 @@ function BreadcrumbsMindMapSearch() {
           <button
             type="button"
             onClick={() => setSearchTerm("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 text-xs"
             aria-label={t("common.clear", "Clear")}
           >
             ✕
@@ -87,7 +89,7 @@ function BreadcrumbsMindMapSearch() {
         type="button"
         onClick={() => navigate(-1)}
         disabled={resultCount === 0}
-        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-600/80 text-gray-300 hover:text-white hover:bg-gray-800/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
         title={t("view.previousResult", "Previous result")}
         aria-label={t("view.previousResult", "Previous result")}
       >
@@ -99,7 +101,7 @@ function BreadcrumbsMindMapSearch() {
         type="button"
         onClick={() => navigate(1)}
         disabled={resultCount === 0}
-        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-600/80 text-gray-300 hover:text-white hover:bg-gray-800/90 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
         title={t("view.nextResult", "Next result")}
         aria-label={t("view.nextResult", "Next result")}
       >
@@ -148,6 +150,24 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return /^\/projects\/[^/]+\/view$/.test(normalizedPathname);
   }, [normalizedPathname]);
 
+  // O tema da barra segue a tela que ela emoldura. So o mapa e claro hoje; o
+  // resto do app continua escuro, entao a barra continua escura la.
+  const barraClara = isMindMapRoute;
+
+  const abaAtiva: ProjectView | null = useMemo(() => {
+    if (!normalizedPathname) return null;
+    if (isMindMapRoute) return "graph";
+    if (isDocumentViewRoute) return "doc";
+    // /projects/<slug> e a home do projeto — o Editor. Qualquer coisa mais
+    // funda (settings, kpi, uma secao) nao e nenhuma das tres abas.
+    if (normalizedPathname.split("/").length === 3) return "editor";
+    return null;
+  }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute]);
+
+  const clsIcone = barraClara
+    ? "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+    : "border-gray-600 bg-gray-900/75 text-gray-100 hover:border-indigo-400 hover:bg-gray-800/90";
+
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
     const rawSlug = match?.[1] ?? null;
@@ -178,6 +198,38 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     }
     return chain;
   }, [project, currentSectionId]);
+
+  const tituloDaTela: React.ReactNode = useMemo(() => {
+    if (isMindMapRoute) return t("projectTabs.mapTitle", "Game Design Map");
+    if (breadcrumbSections.length > 0) {
+      return (
+        <span className="flex min-w-0 items-center gap-1.5">
+          {breadcrumbSections.map((section: any, i: number) => (
+            <span key={section.id} className="flex min-w-0 items-center gap-1.5">
+              {i > 0 && <span className="shrink-0 font-normal text-gray-400">/</span>}
+              {section.id === currentSectionId && !isSectionDiagramRoute ? (
+                <span className="truncate">{section.title}</span>
+              ) : (
+                <Link
+                  href={project ? sectionPath(project, section) : "#"}
+                  className="truncate hover:underline"
+                >
+                  {section.title}
+                </Link>
+              )}
+            </span>
+          ))}
+          {isSectionDiagramRoute && (
+            <>
+              <span className="shrink-0 font-normal text-gray-400">/</span>
+              <span className="truncate">{t("sectionDetail.flowchart.breadcrumb")}</span>
+            </>
+          )}
+        </span>
+      );
+    }
+    return project?.title || "Projeto";
+  }, [isMindMapRoute, breadcrumbSections, currentSectionId, isSectionDiagramRoute, project, t]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1024px)");
@@ -211,64 +263,27 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     <GlobalPagePicker projectId={realProjectId} />
     <div className="min-h-screen bg-gray-900 pb-14">
       {!isDocumentViewRoute && (
-      <header className="print:hidden fixed inset-x-0 top-0 z-40 border-b border-gray-700/60 bg-gradient-to-r from-gray-900/92 via-gray-900/88 to-gray-900/92 backdrop-blur-md shadow-lg shadow-black/20">
-        <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8 h-14 md:h-16 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm text-gray-300 flex-1">
-            <Link
-              href="/"
-              className="shrink-0 rounded-md px-1.5 py-1 text-gray-300 hover:text-white hover:bg-gray-800/90 transition-colors"
-              aria-label={t("projectDetail.backHome")}
-            >
-              {t("projectDetail.backHome")}
-            </Link>
-            <span className="text-gray-500">/</span>
-            <Link
-              href={`/projects/${projectId}`}
-              className="min-w-0 truncate rounded-md px-1.5 py-1 text-gray-200 hover:text-white hover:bg-gray-800/90 transition-colors"
-              title={project?.title || "Projeto"}
-            >
-              {project?.title || "Projeto"}
-            </Link>
-            {breadcrumbSections.map((section: any) => (
-              <span key={section.id} className="min-w-0 flex items-center gap-2">
-                <span className="text-gray-500">/</span>
-                {section.id === currentSectionId && !isSectionDiagramRoute ? (
-                  <span className="min-w-0 truncate text-indigo-100 font-medium" title={section.title}>
-                    {section.title}
-                  </span>
-                ) : (
-                  <Link
-                    href={project ? sectionPath(project, section) : "#"}
-                    className="min-w-0 truncate rounded-md px-1.5 py-1 text-gray-200 hover:text-white hover:bg-gray-800/90 transition-colors"
-                    title={section.title}
-                  >
-                    {section.title}
-                  </Link>
-                )}
-              </span>
-            ))}
-            {isSectionDiagramRoute && (
-              <span className="min-w-0 flex items-center gap-2">
-                <span className="text-gray-500">/</span>
-                <span className="min-w-0 truncate text-emerald-200 font-medium" title={t("sectionDetail.flowchart.breadcrumb")}>
-                  {t("sectionDetail.flowchart.breadcrumb")}
-                </span>
-              </span>
-            )}
-            <PublicShareButton
-              shareToken={project?.mindMapSettings?.sharing?.shareToken}
-              isPublic={project?.mindMapSettings?.sharing?.isPublic}
-              variant="inline"
-              className="ml-2"
-            />
-          </div>
-
-          {isMindMapRoute && <BreadcrumbsMindMapSearch />}
-
+      <ProjectTopBar
+        icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
+        titulo={tituloDaTela}
+        projectSlug={projectId}
+        active={abaAtiva}
+        theme={barraClara ? "light" : "dark"}
+        badge={
+          <PublicShareButton
+            shareToken={project?.mindMapSettings?.sharing?.shareToken}
+            isPublic={project?.mindMapSettings?.sharing?.isPublic}
+            variant="inline"
+            theme={barraClara ? "light" : "dark"}
+          />
+        }
+        busca={isMindMapRoute ? <BreadcrumbsMindMapSearch /> : null}
+        acoes={
+          <>
           <button
             type="button"
             onClick={() => openShortcutsHelp()}
-            className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-100 transition-colors hover:border-indigo-400 hover:bg-gray-800/90"
+            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
             aria-label={t("shortcuts.modalTitle", "Atalhos de teclado")}
             title={`${t("shortcuts.modalTitle", "Atalhos de teclado")} (?)`}
           >
@@ -279,7 +294,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
           <Link
             href={`/projects/${projectId}/export`}
-            className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-100 transition-colors hover:border-indigo-400 hover:bg-gray-800/90"
+            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
             aria-label={t("projectDetail.exportLabel", "Exportar")}
             title={t("projectDetail.exportLabel", "Exportar")}
           >
@@ -290,7 +305,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
           <Link
             href={`/projects/${projectId}/settings`}
-            className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-100 transition-colors hover:border-indigo-400 hover:bg-gray-800/90"
+            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
             aria-label={t("projectDetail.settingsLabel")}
             title={t("projectDetail.settingsLabel")}
           >
@@ -304,7 +319,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
             <button
               type="button"
               onClick={() => setSidebarOpen((prev) => !prev)}
-              className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-100 transition-colors hover:border-indigo-400 hover:bg-gray-800/90"
+              className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
               aria-expanded={sidebarOpen}
               aria-controls="global-project-sections-sidebar"
               aria-label={sidebarOpen ? t("projectDetail.hideSectionsMenu") : t("projectDetail.showSectionsMenu")}
@@ -321,11 +336,15 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
               )}
             </button>
           )}
-        </div>
-      </header>
+          </>
+        }
+      />
       )}
 
-      <div className={isDocumentViewRoute ? undefined : "pt-16 md:pt-20 print:pt-0"}>
+      <div
+        className={isDocumentViewRoute ? undefined : "print:pt-0"}
+        style={isDocumentViewRoute ? undefined : { paddingTop: ALTURA_BARRA }}
+      >
       {shouldShowSidebar ? (
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8">
           <div

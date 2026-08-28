@@ -10,6 +10,8 @@ import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly"
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
+import { ProjectTopBar, IconeDocumento } from "@/components/project/ProjectTopBar";
+import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { resolveProjectSpecialTokensForProject } from "@/lib/sections/specialTokens";
@@ -1161,25 +1163,32 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         </div>
       )}
       
-      {/* Header/Toolbar */}
-      <div className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/85 backdrop-blur-md shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-2">
-          <div className="flex items-center gap-2 gdd-doc-searchbar">
-            {!isPublicMode ? (
-              <button
-                onClick={() => router.push("/")}
-                className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-transparent text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <span>🏠</span>
-                <span className="hidden sm:inline">{t("view.home")}</span>
-              </button>
-            ) : (
-              <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
-                <span>🔓</span>
-                <span className="hidden sm:inline">{t("view.publicView")}</span>
-              </span>
-            )}
-
+      {/* Header/Toolbar — a barra e a mesma do shell e do mapa publico. */}
+      <ProjectTopBar
+        icone={<IconeDocumento />}
+        titulo={t("projectTabs.docTitle", "Game Design Document")}
+        projectSlug={projectId}
+        active="doc"
+        publicToken={publicToken}
+        posicao="sticky"
+        larguraConteudo="max-w-6xl"
+        badge={
+          isPublicMode ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+              <span>🔓</span>
+              <span className="hidden sm:inline">{t("view.publicView")}</span>
+            </span>
+          ) : (
+            <PublicShareButton
+              shareToken={project?.mindMapSettings?.sharing?.shareToken}
+              isPublic={project?.mindMapSettings?.sharing?.isPublic}
+              variant="inline"
+              theme="light"
+            />
+          )
+        }
+        busca={
+          <div className="flex min-w-0 flex-1 max-w-md items-center gap-2 gdd-doc-searchbar">
             <div className="relative flex-1 min-w-0">
               <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
@@ -1233,7 +1242,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 {t("view.clearSearch")}
               </button>
             )}
-
+          </div>
+        }
+        acoes={
             <div className="relative shrink-0" ref={actionsMenuRef}>
               <button
                 type="button"
@@ -1291,9 +1302,8 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Document Content */}
       <div className="w-full px-2 py-4 sm:px-3 sm:py-6 md:px-4 md:py-8 lg:px-8 xl:px-10">
