@@ -85,8 +85,14 @@ export const MINDMAP_CONFIG = {
     // as folhas. Sem isso, 245 labels de uma vez viram sopa de letrinha.
     // O ultimo valor do array vale para todos os niveis alem dele.
     labelVisibility: {
-      byLevel: [0.09, 0.30, 0.85, 1.6],
+      byLevel: [0.09, 0.45, 1.2, 2.2],
       project: 0.02,
+      // A label nao acende de uma vez: a partir do limiar ela ganha corpo
+      // conforme a camera se aproxima. Este numero e quantas vezes o limiar o
+      // zoom precisa passar para ela chegar a opacidade cheia. Maior = mais
+      // suave, e mais labels fracas convivendo com poucas fortes — que e a
+      // leitura da referencia: o hub forte, os filhos lavados.
+      suavidade: 2.5,
     },
     // Cálculo de maxZoom dinâmico
     // No estilo limpo o ponto tem tamanho FIXO na tela, entao "aproximar ate a

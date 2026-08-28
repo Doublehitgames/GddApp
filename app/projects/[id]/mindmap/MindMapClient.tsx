@@ -611,6 +611,8 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // ultimo, repete o ultimo valor.
   const limiares = (CONFIG.zoom.labelVisibility as any).byLevel as number[];
   const limiar = limiares[Math.min(data.level ?? 0, limiares.length - 1)];
+  const suavidade = (CONFIG.zoom.labelVisibility as any).suavidade ?? 2.5;
+  const opacidadeLabel = `clamp(0, calc((var(--gdd-zoom, 1) / ${limiar} - 1) / ${suavidade}), 1)`;
   const showLabel = useStore((state) => state.transform[2] > limiar);
 
   // Tamanho do ponto em px de TELA. O contra-scale pela --gdd-zoom faz o ponto
@@ -683,6 +685,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               fontSize: 12,
               fontWeight: 600,
               fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
+              // Gradacao continua: a label entra lavada no limiar e vai ganhando
+              // corpo conforme a camera se aproxima. Resolvido em CSS pela
+              // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
+              opacity: opacidadeLabel,
             }}
           >
             {data.label}
