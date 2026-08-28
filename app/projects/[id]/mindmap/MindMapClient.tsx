@@ -1079,9 +1079,11 @@ const EdgeCentroACentro = memo(function EdgeCentroACentro({
 });
 
 // Componente interno que tem acesso ao contexto do ReactFlow
-// Largura do painel. Compartilhada com a margem do mapa: os dois PRECISAM ler
-// o mesmo valor, senao sobra faixa vazia ou o mapa passa por baixo.
-const LARGURA_PAINEL = "clamp(340px, 34vw, 520px)";
+// Largura do painel: metade da tela, como na referencia — mapa e conteudo com
+// o mesmo peso. O piso de 380px e para telas estreitas, onde 50% nao caberia o
+// texto. Compartilhada com a margem do mapa: os dois PRECISAM ler o mesmo
+// valor, senao sobra faixa vazia ou o mapa passa por baixo.
+const LARGURA_PAINEL = "max(380px, 50vw)";
 
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
@@ -2243,10 +2245,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
         {/* React Flow - overflow-hidden evita barras de rolagem; onWheel evita scroll da página ao zoomar */}
         {/* O mapa cede espaco para o painel em vez de ficar por baixo dele.
-            E isso que faz o painel ler como faixa e nao como popup. */}
+            Posicionamento absoluto com `right`, e nao margem: por algum motivo a
+            margem era ignorada neste elemento (computava 0px ate com !important).
+            Com `right` o encaixe e explicito e nao depende disso. */}
         <div
-          className="h-full pt-16 overflow-hidden transition-[margin] duration-200"
-          style={{ marginRight: selectedNode ? LARGURA_PAINEL : undefined }}
+          className="absolute left-0 top-16 bottom-0 overflow-hidden transition-[right] duration-200"
+          style={{ right: selectedNode ? LARGURA_PAINEL : 0 }}
           ref={flowWrapperRef}
         >
           <ReactFlow
