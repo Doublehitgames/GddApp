@@ -2088,6 +2088,33 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     originalPositions.delete(node.id);
   }, [originalPositions, setNodes]);
 
+  // Caminho da raiz ate o PAI do no selecionado, montado subindo pelas edges
+  // de parentesco. Nao inclui o proprio no: o titulo logo abaixo ja o mostra,
+  // e repetir seria ruido.
+  const caminhoAteORaiz = useMemo(() => {
+    if (!selectedNodeId || selectedNodeId === "project-center") return [];
+    const pais = new Map<string, string>();
+    for (const e of edges) {
+      if (e.id.startsWith("ref-")) continue;
+      pais.set(e.target, e.source);
+    }
+    const trilha: { id: string; titulo: string }[] = [];
+    let atual = pais.get(selectedNodeId);
+    const visitados = new Set<string>([selectedNodeId]);
+    while (atual && !visitados.has(atual)) {
+      visitados.add(atual);
+      if (atual === "project-center") {
+        trilha.unshift({ id: atual, titulo: project?.title || "" });
+        break;
+      }
+      const sec = (project?.sections || []).find((x: Section) => x.id === atual);
+      if (sec) trilha.unshift({ id: atual, titulo: sec.title || atual });
+      atual = pais.get(atual);
+    }
+    return trilha;
+  }, [selectedNodeId, edges, project]);
+
+
   // Centraliza a camera num no pelo id. Existe separado porque precisa ser
   // chamado de novo depois que o painel abre (ver o efeito logo abaixo).
   const centralizarNo = useCallback((nodeId: string) => {
@@ -2109,6 +2136,25 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       duration: 800,
     });
   }, [config, setCenter]);
+
+  // Seleciona um no pelo id, como se o usuario tivesse clicado nele no mapa.
+  const selecionarPorId = useCallback((id: string) => {
+    centralizarNo(id);
+    setNavigationStack([]);
+    setSelectedNodeId(id);
+    if (id === "project-center") {
+      setSelectedNode({
+        id: "project",
+        title: project?.title || "",
+        content: project?.description || "",
+        order: 0,
+        created_at: new Date().toISOString(),
+      } as Section);
+      return;
+    }
+    const sec = (project?.sections || []).find((x: Section) => x.id === id);
+    if (sec) setSelectedNode(sec);
+  }, [centralizarNo, project]);
 
   // Quando o painel ABRE, o mapa encolhe para dar lugar a ele. A
   // centralizacao feita no clique usou a largura ANTIGA (tela inteira), entao
@@ -2477,6 +2523,22 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </span>
                 {t("sectionDetail.flowchart.breadcrumb")}
               </div>
+            )}
+            {caminhoAteORaiz.length > 0 && (
+              <nav aria-label="breadcrumb" className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
+                {caminhoAteORaiz.map((c, i) => (
+                  <span key={c.id} className="flex items-center gap-x-1 min-w-0">
+                    {i > 0 && <span className="text-gray-300" aria-hidden="true">›</span>}
+                    <button
+                      type="button"
+                      onClick={() => selecionarPorId(c.id)}
+                      className="max-w-[13rem] truncate rounded px-1 py-0.5 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                    >
+                      {c.titulo}
+                    </button>
+                  </span>
+                ))}
+              </nav>
             )}
             <div className="flex items-start justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold text-gray-900 min-w-0">{selectedNode.title}</h2>
