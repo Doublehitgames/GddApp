@@ -929,7 +929,7 @@ function MarkdownWithMapReferences({
   });
 
   return (
-    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-100">
+    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-700">
       {heroThumbUrl && heroThumbWidth ? (
         <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
       ) : null}
@@ -968,7 +968,7 @@ function MarkdownWithMapReferences({
                     e.preventDefault();
                     onSectionClick(sectionId);
                   }}
-                  className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
+                  className="text-blue-600 hover:text-blue-700 underline cursor-pointer"
                 >
                   {children}
                 </button>
@@ -976,7 +976,7 @@ function MarkdownWithMapReferences({
             }
             // Link normal
             return (
-              <a href={href} {...props} className="text-blue-400 hover:text-blue-300">
+              <a href={href} {...props} className="text-blue-600 hover:text-blue-700">
                 {children}
               </a>
             );
@@ -2153,18 +2153,18 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: (config as any).clean.background }}>
         {/* Header interno — usado apenas em modo público, onde o breadcrumbs do layout não existe */}
         {isPublicMode && (
-          <div className="absolute top-0 left-0 right-0 z-30 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between gap-4">
+          <div className="absolute top-0 left-0 right-0 z-30 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <button
                 onClick={() => router.push(`/s/${encodeURIComponent(publicToken || "")}?mode=view`)}
-                className="text-gray-400 hover:text-white transition-colors shrink-0"
+                className="text-gray-500 hover:text-gray-900 transition-colors shrink-0"
               >
                 ← {t("mindMap.backToDocument")}
               </button>
-              <h1 className="text-xl font-bold text-white shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
+              <h1 className="text-xl font-bold text-gray-900 shrink-0 hidden sm:block">🧠 {t("mindMap.title")}</h1>
               <span className="text-gray-400 shrink-0 hidden md:inline">|</span>
-              <span className="text-gray-300 truncate hidden md:inline min-w-0">{project.title}</span>
-              <span className="text-green-300 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
+              <span className="text-gray-600 truncate hidden md:inline min-w-0">{project.title}</span>
+              <span className="text-emerald-600 text-sm shrink-0 hidden lg:inline">🔓 {t("mindMap.publicBadge")}</span>
             </div>
 
             {/* Busca inline (apenas em modo público, onde o breadcrumbs não renderiza o input) */}
@@ -2190,7 +2190,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     }
                   }}
                   placeholder={t("mindMap.searchPlaceholder")}
-                  className="bg-gray-700 text-white px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-600 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
+                  className="bg-gray-50 text-gray-900 px-3 py-1.5 pl-8 pr-16 rounded-lg text-sm border border-gray-300 focus:border-blue-500 focus:outline-none w-44 sm:w-56 md:w-64"
                 />
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
                 {searchTerm.trim().length > 0 && (
@@ -2204,7 +2204,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                   >
                     ✕
                   </button>
@@ -2214,7 +2214,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 type="button"
                 onClick={() => navigateSearchResult(-1)}
                 disabled={resultCount === 0}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 title={t("mindMap.searchPrevious")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2225,7 +2225,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 type="button"
                 onClick={() => navigateSearchResult(1)}
                 disabled={resultCount === 0}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-600 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                 title={t("mindMap.searchNext")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2270,7 +2270,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
       {/* Panel Lateral */}
       {selectedNode && (
-        <div className="absolute top-16 right-0 w-96 h-[calc(100vh-4rem)] bg-gray-800 border-l border-gray-700 shadow-2xl overflow-y-auto z-20">
+        <div className="absolute top-16 right-0 w-[40vw] min-w-[380px] max-w-[620px] h-[calc(100vh-4rem)] bg-white border-l border-gray-200 shadow-2xl overflow-y-auto z-20">
           <div className="p-6">
             {/* Volta de um salto por referencia. So aparece quando o usuario foi
                 TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
@@ -2285,7 +2285,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 <button
                   type="button"
                   onClick={handleGoBack}
-                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-600/80 bg-gray-700/40 px-3 py-2 text-left text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 >
                   <span aria-hidden="true">←</span>
                   <span className="min-w-0 truncate">
@@ -2304,7 +2304,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </div>
             )}
             <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">{selectedNode.title}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{selectedNode.title}</h2>
               <button
                 onClick={() => {
                   setSelectedNode(null);
@@ -2317,7 +2317,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     window.history.replaceState({}, '', url.toString());
                   }
                 }}
-                className="text-gray-400 hover:text-white text-2xl leading-none"
+                className="text-gray-400 hover:text-gray-900 text-2xl leading-none"
               >
                 ×
               </button>
@@ -2331,7 +2331,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   return (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-md bg-gray-600/80 px-2 py-0.5 text-xs font-medium text-gray-200 border border-gray-500/50"
+                      className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 border border-gray-200"
                     >
                       {label}
                     </span>
@@ -2351,8 +2351,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 aria-pressed={showReferences}
                 className={`mb-4 inline-flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   showReferences
-                    ? "border-blue-500/50 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30"
-                    : "border-gray-600 bg-gray-700/50 text-gray-300 hover:bg-gray-700 hover:text-white"
+                    ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "border-gray-300 bg-gray-700/50 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
@@ -2363,7 +2363,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
-                    showReferences ? "bg-blue-500/30 text-blue-100" : "bg-gray-600/70 text-gray-200"
+                    showReferences ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-700"
                   }`}
                 >
                   {referenceCount}
@@ -2371,7 +2371,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
             )}
 
-            <div className="prose max-w-none text-gray-100" style={{ fontSize: `${panelContentScale}em` }}>
+            <div className="prose max-w-none text-gray-700" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
                 <MarkdownWithMapReferences
                   content={selectedNode.content}
@@ -2402,15 +2402,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               const backlinks = getBacklinks(selectedNode.id, project.sections || []);
               if (backlinks.length > 0) {
                 return (
-                  <div className="mt-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-                    <h3 className="text-sm font-semibold text-gray-300 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="text-sm font-semibold text-gray-600 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
                     <div className="flex flex-wrap gap-2">
                       {backlinks.map((backlink) => {
                         return (
                           <button
                             key={backlink.id}
                             onClick={() => handleReferenceClick(backlink.id)}
-                            className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 hover:text-blue-200 rounded-full text-sm font-medium transition-all duration-200 border border-blue-500/30 hover:border-blue-400/50 hover:scale-105"
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 rounded-full text-sm font-medium transition-all duration-200 border border-blue-200 hover:border-blue-300 hover:scale-105"
                           >
                             {backlink.title}
                           </button>
@@ -2426,7 +2426,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             <div className="mt-6">
               <button
                 onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
               >
                 {t("mindMap.panel.goToDocument")}
               </button>
@@ -2436,7 +2436,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               <div className="mt-3">
                 <button
                   onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
-                  className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white px-4 py-2.5 rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/25 transition-all text-sm font-semibold"
+                  className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-gray-900 px-4 py-2.5 rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/25 transition-all text-sm font-semibold"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
@@ -2451,7 +2451,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {selectedNode.id !== 'project' && (
                   <button
                     onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
                   >
                     {t("mindMap.panel.viewDetails")}
                   </button>
@@ -2459,7 +2459,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {selectedNode.id === 'project' && (
                   <button
                     onClick={() => router.push(project ? `${projectPath(project)}/edit` : "/")}
-                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
                   >
                     {t("mindMap.panel.editProject")}
                   </button>
@@ -2473,7 +2473,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
       {pendingReference && (
         <SectionPreviewDialog
-          theme="dark"
+          theme="light"
           title={pendingReference.title}
           description={pendingReference.description}
           confirmLabel={t("mindMap.panel.goToTarget").replace("{{title}}", pendingReference.title)}
