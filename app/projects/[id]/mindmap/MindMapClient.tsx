@@ -643,6 +643,8 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // Durante o hover manda o hover: quem nao e o no sob o cursor nem vizinho
   // dele apaga, independente do fade da selecao.
   const apagadoPeloHover = Boolean(data.hoverAtivo && !data.isHovered && !data.hoverVizinho);
+  // Sob o cursor (ou vizinho de quem esta) o no ignora o fade da selecao.
+  const emFoco = Boolean(data.isHovered || data.hoverVizinho);
 
   // Halo do cacho: circulo suave em volta do no sob o cursor, grande o
   // bastante para envolver os filhos dele. O raio vem em coordenadas do MUNDO
@@ -697,7 +699,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
-          opacity: apagadoPeloHover ? 0.55 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          opacity: emFoco ? 1 : apagadoPeloHover ? 0.55 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
           // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
           // pisca em vez de acender. A transicao e de opacidade pura, entao o
           // navegador resolve no compositor.
@@ -728,6 +730,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
             height: '100%',
             borderRadius: '50%',
             backgroundColor: apagadoPeloHover ? (CONFIG as any).clean.muted : bgColor,
+            // emFoco entra aqui por opacidade, acima; a cor ja e a certa.
             boxShadow: anel,
             cursor: 'pointer',
             transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease, background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -746,6 +749,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
               color: apagadoPeloHover ? (CONFIG as any).clean.mutedLabel : (CONFIG as any).clean.label,
+              // A label do no sob o cursor tambem ignora o fade da selecao.
               // Fundo e respiro: no meio de um feixe de conexoes a label sem
               // fundo some. Usa a cor do proprio mapa para nao virar etiqueta.
               backgroundColor: (CONFIG as any).clean.background,
@@ -2068,6 +2072,43 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     originalPositions.delete(node.id);
   }, [originalPositions, setNodes]);
 
+  // Centraliza a camera num no pelo id. Existe separado porque precisa ser
+  // chamado de novo depois que o painel abre (ver o efeito logo abaixo).
+  const centralizarNo = useCallback((nodeId: string) => {
+    const node = nodesRef.current.find((n) => n.id === nodeId);
+    if (!node) return;
+    const targetSize = (config as any).zoom?.onClickTargetSize || 200;
+    let nodeSize = 100;
+    if (node.id === 'project-center') {
+      nodeSize = config.project.node.size;
+    } else if (node.data?.calculatedSize) {
+      nodeSize = node.data.calculatedSize;
+    } else if (node.data?.level !== undefined) {
+      nodeSize = getNodeSize(node.data.level, config);
+    }
+    // position e o CANTO superior esquerdo; sem somar metade do tamanho a
+    // camera centraliza no canto e a bolinha sai do enquadramento.
+    setCenter(node.position.x + nodeSize / 2, node.position.y + nodeSize / 2, {
+      zoom: targetSize / nodeSize,
+      duration: 800,
+    });
+  }, [config, setCenter]);
+
+  // Quando o painel ABRE, o mapa encolhe para dar lugar a ele. A
+  // centralizacao feita no clique usou a largura ANTIGA (tela inteira), entao
+  // a bolinha acabava fora do enquadramento — e so no segundo clique, com o
+  // painel ja aberto, o foco saia certo. Aqui recentralizamos depois que a
+  // faixa terminou de abrir.
+  const painelAberto = Boolean(selectedNode);
+  const painelAbertoAntes = useRef(painelAberto);
+  useEffect(() => {
+    const abriuAgora = painelAberto && !painelAbertoAntes.current;
+    painelAbertoAntes.current = painelAberto;
+    if (!abriuAgora || !selectedNodeId) return;
+    const t = setTimeout(() => centralizarNo(selectedNodeId), 260);
+    return () => clearTimeout(t);
+  }, [painelAberto, selectedNodeId, centralizarNo]);
+
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     // Calcular zoom para que o nó apareça com o tamanho alvo na tela
     const targetSize = (config as any).zoom?.onClickTargetSize || 200; // Tamanho alvo em pixels na tela
@@ -2086,9 +2127,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     // Fórmula: zoom = tamanhoAlvo / tamanhoReal
     const zoomLevel = targetSize / nodeSize;
 
-    // Centralizar câmera no node com animação suave
-    const nodePosition = node.position;
-    setCenter(nodePosition.x, nodePosition.y, { zoom: zoomLevel, duration: 800 });
+    // So centraliza agora se o painel JA estiver aberto. Se ele vai abrir, o
+    // mapa esta prestes a encolher e essa centralizacao seria descartada — o
+    // efeito abaixo faz a boa depois que a faixa termina de abrir. Centralizar
+    // duas vezes custava ~3s ate a bolinha assentar.
+    if (selectedNode) centralizarNo(node.id);
 
     // Clique direto numa bolinha e escolha do usuario, nao um salto: zera a trilha.
     setNavigationStack([]);
@@ -2117,7 +2160,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
     const section = project ? findSectionById(project.sections || [], node.id) : null;
     setSelectedNode(section);
-  }, [project, setCenter, config]);
+  }, [project, setCenter, config, selectedNode, centralizarNo]);
 
   // Salto propriamente dito: centraliza a camera e seleciona a bolinha.
   // `cameDeId` empilha a origem, pra o painel poder oferecer a volta.
