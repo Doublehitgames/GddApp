@@ -726,6 +726,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
               color: (CONFIG as any).clean.label,
+              // Fundo e respiro: no meio de um feixe de conexoes a label sem
+              // fundo some. Usa a cor do proprio mapa para nao virar etiqueta.
+              backgroundColor: (CONFIG as any).clean.background,
+              padding: '1px 4px',
+              borderRadius: 3,
               fontSize: 12,
               fontWeight: 600,
               fontFamily: (CONFIG as any).nodeSize?.fontFamily || 'system-ui',
@@ -1240,10 +1245,21 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     performSearch(searchTerm);
   }, [searchTerm, performSearch]);
 
+  // Espelho dos nos para o foco da busca ler sem depender deles.
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+
   // Centralizar a viewport no resultado ativo quando o usuário navega pelos resultados (↑/↓/Enter).
+  //
+  // A dependencia aqui e SO o `activeResultId`. Antes `nodes` estava na lista, e
+  // como a busca marca os resultados via setNodes, o efeito reexecutava durante
+  // a animacao e chamava setCenter de novo — cada chamada reiniciava a
+  // suavizacao a partir da posicao atual. O resultado era a camera indo em
+  // passinhos: medido, uma animacao de 600ms ainda nao tinha assentado depois
+  // de 1.56s.
   useEffect(() => {
-    if (!activeResultId || nodes.length === 0) return;
-    const node = nodes.find((n) => n.id === activeResultId);
+    if (!activeResultId) return;
+    const node = nodesRef.current.find((n) => n.id === activeResultId);
     if (!node) return;
     const targetSize = (config as any).zoom?.onClickTargetSize || 200;
     let nodeSize = 100;
@@ -1253,8 +1269,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       nodeSize = getNodeSize(node.data.level, config);
     }
     const zoomLevel = targetSize / nodeSize;
-    setCenter(node.position.x, node.position.y, { zoom: zoomLevel, duration: 600 });
-  }, [activeResultId, nodes, setCenter, config]);
+    setCenter(node.position.x + nodeSize / 2, node.position.y + nodeSize / 2, { zoom: zoomLevel, duration: 600 });
+  }, [activeResultId, setCenter, config]);
 
   // Ler parâmetro de foco da URL
   useEffect(() => {
@@ -2147,6 +2163,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
           
 
+          /* Bolinhas e labels acima das linhas. Sem isso, num cacho denso a
+             label fica atras do feixe de conexoes e vira ilegivel — as duas
+             camadas ficavam em z-index 0 e quem pintava por cima era a ordem
+             no DOM. */
+          .react-flow__nodes { z-index: 3; }
+
           /* A espessura das linhas NAO e resolvida aqui — ver o helper pxTela.
              O zoom do React Flow vem de um transform CSS em div ancestral, e
              contra isso o vector-effect nao faz efeito. */
@@ -2288,7 +2310,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           className="absolute top-16 right-0 h-[calc(100vh-4rem)] border-l border-gray-200 overflow-y-auto z-20"
           style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.background }}
         >
-          <div className="p-6">
+          <div className="px-8 py-7">
             {/* Volta de um salto por referencia. So aparece quando o usuario foi
                 TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
                 ali ele escolheu o lugar e nao precisa de migalha. */}
