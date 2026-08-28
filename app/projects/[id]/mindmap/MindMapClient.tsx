@@ -176,8 +176,8 @@ interface SimulationNode extends d3.SimulationNodeDatum {
 }
 
 // Função para calcular posições usando Híbrido: Orbital + Force para colisões
-function calculateNodePositions(sections: SectionWithChildren[], config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): Map<string, { x: number; y: number; calculatedSize?: number }> {
-  const positions = new Map<string, { x: number; y: number; calculatedSize?: number }>();
+function calculateNodePositions(sections: SectionWithChildren[], config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG): Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }> {
+  const positions = new Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }>();
   
   // Coletar todos os nós
   const nodes: SimulationNode[] = [];
@@ -365,6 +365,19 @@ function calculateNodePositions(sections: SectionWithChildren[], config: typeof 
     simulation.tick();
   }
   
+  // Raio do cacho de cada pai: distancia ate o filho mais distante, ja com as
+  // posicoes finais. E o que o halo do hover usa para envolver a familia.
+  const porId = new Map((nodes as any[]).map((n) => [n.id, n]));
+  const raioPorPai = new Map<string, number>();
+  for (const l of links as any[]) {
+    // Depois do forceLink, source/target viram os proprios objetos de no.
+    const pai = porId.get(typeof l.source === "string" ? l.source : l.source?.id);
+    const filho = porId.get(typeof l.target === "string" ? l.target : l.target?.id);
+    if (!pai || !filho) continue;
+    const d = Math.hypot((filho.x || 0) - (pai.x || 0), (filho.y || 0) - (pai.y || 0)) + (filho.size || 0) / 2;
+    raioPorPai.set(pai.id, Math.max(raioPorPai.get(pai.id) || 0, d));
+  }
+
   // Extrair posições finais
   nodes.forEach(node => {
     if (node.id !== 'project-center') {
@@ -372,6 +385,7 @@ function calculateNodePositions(sections: SectionWithChildren[], config: typeof 
         x: node.x || 0,
         y: node.y || 0,
         calculatedSize: node.size,
+        raioDosFilhos: raioPorPai.get(node.id) || 0,
       });
     }
   });
@@ -385,7 +399,7 @@ function processSections(
   allSections: Section[],
   parentId: string | null = null,
   level: number = 0,
-  positions: Map<string, { x: number; y: number; calculatedSize?: number }>,
+  positions: Map<string, { x: number; y: number; calculatedSize?: number; raioDosFilhos?: number }>,
   config: typeof MINDMAP_CONFIG = MINDMAP_CONFIG
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
@@ -415,6 +429,7 @@ function processSections(
   sections.forEach((section) => {
     const positionData = positions.get(section.id) || { x: 0, y: 0 };
     const { x, y, calculatedSize } = positionData;
+    const raioDosFilhos = (positionData as any).raioDosFilhos ?? 0;
     
     // ReactFlow usa position como canto superior esquerdo, não centro!
     // Ajustar para centralizar o nó: subtrair metade do tamanho
@@ -434,6 +449,7 @@ function processSections(
         hasSubsections: (section.subsections?.length || 0) > 0,
         isSelected: false, // Será atualizado depois
         calculatedSize, // Passar tamanho calculado
+        raioDosFilhos,  // Raio do cacho, usado pelo halo do hover
         customColor: section.color, // Cor customizada
       },
     });
@@ -628,6 +644,13 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // dele apaga, independente do fade da selecao.
   const apagadoPeloHover = Boolean(data.hoverAtivo && !data.isHovered && !data.hoverVizinho);
 
+  // Halo do cacho: circulo suave em volta do no sob o cursor, grande o
+  // bastante para envolver os filhos dele. O raio vem em coordenadas do MUNDO
+  // (`data.raioDosFilhos`), nao em px de tela como o ponto — ele precisa
+  // acompanhar a distancia real ate os filhos, senao descolaria do cacho
+  // conforme a camera aproxima.
+  const raioHalo = data.isHovered ? (data.raioDosFilhos || 0) : 0;
+
   const anel = isSelected
     ? `0 0 0 3px ${(CONFIG as any).clean.accent}55`
     : isInPath
@@ -642,6 +665,23 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
     // area invisivel de centenas de pixels em volta de cada ponto (medido: 2.5x o
     // ponto no zoom de abertura, ~30x no maximo). O alvo e o ponto, nao a caixa.
     <div style={{ width: size, height: size, position: 'relative', pointerEvents: 'none' }}>
+      {raioHalo > 0 && (
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: raioHalo * 2,
+          height: raioHalo * 2,
+          marginLeft: -raioHalo,
+          marginTop: -raioHalo,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${(CONFIG as any).clean.accent}14 0%, ${(CONFIG as any).clean.accent}0a 55%, transparent 72%)`,
+          pointerEvents: "none",
+        }}
+      />
+      )}
       {/* Os handles nao participam mais do desenho — a edge calcula os centros
           sozinha (ver EdgeCentroACentro). Mas nao da para remover: sem eles o
           React Flow simplesmente nao renderiza edge nenhuma (testado: 0 de 244).
@@ -660,7 +700,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           pointerEvents: 'auto',
         }}
       >
-        {/* Alvo de clique um pouco maior que o ponto, e constante em px de tela
+      {/* Alvo de clique um pouco maior que o ponto, e constante em px de tela
             porque mora dentro do wrapper contra-escalado. Sem isso, um ponto de
             6px seria dificil de acertar. */}
         <div style={{ position: 'absolute', inset: -6, borderRadius: '50%', cursor: 'pointer' }} />
