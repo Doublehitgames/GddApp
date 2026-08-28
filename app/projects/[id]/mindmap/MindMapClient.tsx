@@ -676,7 +676,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           marginLeft: -(data.raioDosFilhos || 0),
           marginTop: -(data.raioDosFilhos || 0),
           opacity: data.isHovered ? 1 : 0,
-          transition: "opacity 0.25s ease",
+          transition: "opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${(CONFIG as any).clean.accent}14 0%, ${(CONFIG as any).clean.accent}0a 55%, transparent 72%)`,
           pointerEvents: "none",
@@ -697,11 +697,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
-          opacity: apagadoPeloHover ? 0.12 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          opacity: apagadoPeloHover ? 0.22 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
           // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
           // pisca em vez de acender. A transicao e de opacidade pura, entao o
           // navegador resolve no compositor.
-          transition: 'opacity 0.18s ease',
+          transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'auto',
         }}
       >
@@ -743,7 +743,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // corpo conforme a camera se aproxima. Resolvido em CSS pela
               // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
               opacity: data.isHovered ? 1 : opacidadeLabel,
-              transition: 'opacity 0.18s ease',
+              transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+              // Montagem nao transiciona: quando a label aparece so por causa do
+              // hover, ela entra por animacao em vez de surgir pronta.
+              animation: (data.isHovered && !showLabel) ? 'gddLabelEntra 0.28s ease-out' : undefined,
             }}
           >
             {data.label}
@@ -822,7 +825,7 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
           // Mesma suavizacao das secoes: o no do projeto tinha ficado de fora.
-          transition: 'opacity 0.18s ease',
+          transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'auto',
         }}
       >
@@ -2161,6 +2164,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     <ConfigContext.Provider value={config}>
       <style>
         {`
+          @keyframes gddLabelEntra {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
           @keyframes dashdraw {
             from {
               stroke-dashoffset: 0;
