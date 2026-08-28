@@ -671,6 +671,7 @@
     "panel": {
       "noContent": "No content",
       "backlinks": "Referenced by:",
+      "navMenu": "Nearby pages",
       "goToDocument": "Go to Document",
       "viewDetails": "View Details",
       "editProject": "Edit Project",

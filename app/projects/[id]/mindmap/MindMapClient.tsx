@@ -75,6 +75,70 @@ interface SectionWithChildren extends Section {
   subsections?: SectionWithChildren[];
 }
 
+/**
+ * Um item do menu de navegacao do painel. Sem caixa e sem contorno, como o
+ * "Referenciado por" logo abaixo: sao doze titulos numa coluna, e pilula com
+ * fundo em cada um roubava da descricao a largura que ela precisa.
+ *
+ * O pai se distingue pela cor e pela seta que aponta pra cima da arvore. Nos
+ * filhos a mesma casa leva o ponto da cor da bolinha, o que amarra o titulo
+ * lido aqui ao no que voce esta vendo no mapa — e de quebra mantem a coluna de
+ * titulos alinhada em vez de serrilhada.
+ *
+ * `netos` e quantos filhos AQUELA pagina tem. O mapa ja marca com borda quais
+ * bolinhas continuam; aqui o numero evita que voce clique pra descobrir que era
+ * folha.
+ */
+function ItemNavegacao({
+  titulo,
+  variante,
+  cor,
+  netos = 0,
+  onClick,
+}: {
+  titulo: string;
+  variante: "pai" | "filho";
+  cor?: string;
+  netos?: number;
+  onClick: () => void;
+}) {
+  const ehPai = variante === "pai";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={titulo}
+      className={`flex w-full items-center gap-1.5 rounded px-1.5 py-0.5 text-left text-sm transition-colors ${
+        ehPai
+          ? "font-semibold text-[#ef5f56] hover:bg-[#ef5f56]/10"
+          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+      }`}
+    >
+      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden="true">
+        {ehPai ? (
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            viewBox="0 0 24 24"
+          >
+            <path d="M19 12H5m0 0 6-6m-6 6 6 6" />
+          </svg>
+        ) : (
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: cor }} />
+        )}
+      </span>
+      <span className="min-w-0 flex-1 truncate">{titulo}</span>
+      {netos > 0 && (
+        <span className="shrink-0 text-[11px] tabular-nums text-gray-400">{netos}</span>
+      )}
+    </button>
+  );
+}
+
 // Função para construir árvore de seções
 function buildSectionTree(sections: Section[]): SectionWithChildren[] {
   const roots: SectionWithChildren[] = [];
@@ -2089,10 +2153,12 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     originalPositions.delete(node.id);
   }, [originalPositions, setNodes]);
 
-  // Caminho da raiz ate o PAI do no selecionado, montado subindo pelas edges
-  // de parentesco. Nao inclui o proprio no: o titulo logo abaixo ja o mostra,
-  // e repetir seria ruido.
-  const caminhoAteORaiz = useMemo(() => {
+  // Caminho da raiz ate o AVO do no selecionado, montado subindo pelas edges de
+  // parentesco. Nao inclui o proprio no — o titulo logo abaixo ja o mostra — e
+  // tambem nao inclui o pai: ele abre o menu de navegacao em destaque, e ter os
+  // dois a 300px um do outro era dizer a mesma coisa duas vezes. Aqui fica o
+  // "por onde eu vim, la de cima"; o passo de um grau e do menu.
+  const caminhoAcimaDoPai = useMemo(() => {
     if (!selectedNodeId || selectedNodeId === "project-center") return [];
     const pais = new Map<string, string>();
     for (const e of edges) {
@@ -2112,8 +2178,82 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       if (sec) trilha.unshift({ id: atual, titulo: sec.title || atual });
       atual = pais.get(atual);
     }
-    return trilha;
+    // Fora o ultimo, que e o pai — quem o mostra e o menu.
+    return trilha.slice(0, -1);
   }, [selectedNodeId, edges, project]);
+
+  // O menu do painel: o PAI, para subir, e os filhos de primeiro grau, para
+  // descer. Um grau so de propositio — a arvore inteira ja e o mapa ali do
+  // lado; aqui a pergunta e so "e o que vem depois desta pagina?".
+  //
+  // A ordem dos filhos e a mesma do array de secoes, que e a ordenacao do
+  // projeto — a mesma que o mapa usa para distribuir as bolinhas.
+  const menuDeNavegacao = useMemo(() => {
+    const vazio = {
+      pai: null as { id: string; titulo: string } | null,
+      filhos: [] as Array<{ id: string; titulo: string; cor: string; netos: number }>,
+    };
+    if (!selectedNodeId || !project) return vazio;
+
+    const secoes = project.sections || [];
+    const corPadrao = (config as any).clean.accent;
+
+    // Quantos filhos cada pagina tem, numa passada so. Um filter por item da
+    // lista seria quadratico, e projeto grande aqui passa de 240 paginas.
+    const quantosFilhos = new Map<string, number>();
+    for (const s of secoes) {
+      if (!s.parentId) continue;
+      quantosFilhos.set(s.parentId, (quantosFilhos.get(s.parentId) || 0) + 1);
+    }
+
+    const comoItem = (s: Section) => ({
+      id: s.id,
+      titulo: s.title,
+      // A mesma cor da bolinha no mapa (ver `bgColor` no no): a customizada da
+      // pagina e, na falta dela, o acento do tema. E o que liga o titulo lido
+      // aqui a bolinha que voce esta vendo ao lado.
+      cor: s.color || corPadrao,
+      netos: quantosFilhos.get(s.id) || 0,
+    });
+
+    // A bolinha do centro nao tem pai e seus filhos sao as secoes de raiz.
+    if (selectedNodeId === "project-center") {
+      return { pai: null, filhos: secoes.filter((s: Section) => !s.parentId).map(comoItem) };
+    }
+
+    const atual = secoes.find((s: Section) => s.id === selectedNodeId);
+    if (!atual) return vazio;
+
+    const secaoPai = atual.parentId
+      ? secoes.find((s: Section) => s.id === atual.parentId)
+      : undefined;
+    // Sem parentId a pagina e de primeiro nivel: quem esta acima dela e o
+    // projeto, a bolinha do centro do mapa.
+    const pai = secaoPai
+      ? { id: secaoPai.id, titulo: secaoPai.title }
+      : atual.parentId
+        ? null
+        : { id: "project-center", titulo: project.title || "" };
+
+    return {
+      pai,
+      filhos: secoes.filter((s: Section) => s.parentId === selectedNodeId).map(comoItem),
+    };
+  }, [selectedNodeId, project, config]);
+
+  // A lista de filhos tem rolagem propria, e rolagem que nao se anuncia parece
+  // lista que acabou. O fio de esfumado so aparece enquanto sobra coisa embaixo.
+  const listaFilhosRef = useRef<HTMLDivElement>(null);
+  const [temMaisFilhosAbaixo, setTemMaisFilhosAbaixo] = useState(false);
+  const conferirRolagemDosFilhos = useCallback(() => {
+    const el = listaFilhosRef.current;
+    if (!el) return;
+    // 2px de folga: com alturas fracionarias o fim da rolagem nunca bate exato.
+    setTemMaisFilhosAbaixo(el.scrollHeight - el.scrollTop - el.clientHeight > 2);
+  }, []);
+  useEffect(() => {
+    conferirRolagemDosFilhos();
+  }, [conferirRolagemDosFilhos, menuDeNavegacao.filhos]);
 
 
   // Centraliza a camera num no pelo id. Existe separado porque precisa ser
@@ -2525,9 +2665,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {t("sectionDetail.flowchart.breadcrumb")}
               </div>
             )}
-            {caminhoAteORaiz.length > 0 && (
+            {caminhoAcimaDoPai.length > 0 && (
               <nav aria-label="breadcrumb" className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
-                {caminhoAteORaiz.map((c, i) => (
+                {caminhoAcimaDoPai.map((c, i) => (
                   <span key={c.id} className="flex items-center gap-x-1 min-w-0">
                     {i > 0 && <span className="text-gray-300" aria-hidden="true">›</span>}
                     <button
@@ -2657,6 +2797,66 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
             )}
 
+            {/* Daqui pra baixo o painel se divide em duas colunas: o menu de
+                navegacao e a leitura. O cabecalho e o botao das referencias
+                ficaram acima, na largura inteira — eles falam da pagina que voce
+                esta lendo, e nao de para onde voce pode ir. */}
+            <div className="flex flex-col gap-6 lg:flex-row lg:gap-7">
+              {(menuDeNavegacao.pai || menuDeNavegacao.filhos.length > 0) && (
+                // `sticky` porque a descricao pode ter varias telas: o menu e
+                // navegacao, e navegacao que rola pra fora da tela nao serve.
+                <nav
+                  aria-label={t("mindMap.panel.navMenu", "Páginas vizinhas")}
+                  className="shrink-0 self-start lg:sticky lg:top-2 lg:w-40 xl:w-48"
+                >
+                  {menuDeNavegacao.pai && (
+                    <ItemNavegacao
+                      titulo={menuDeNavegacao.pai.titulo}
+                      variante="pai"
+                      onClick={() => selecionarPorId(menuDeNavegacao.pai!.id)}
+                    />
+                  )}
+                  {menuDeNavegacao.filhos.length > 0 && (
+                    // Rolagem propria: o pai fica preso aqui em cima, sempre
+                    // visivel, e sao os filhos que correm quando sao muitos.
+                    // O fio separa quem esta acima de quem esta abaixo — e o
+                    // mesmo fio que separa o "Referenciado por" da descricao.
+                    <div
+                      className={`relative ${
+                        menuDeNavegacao.pai ? "mt-1.5 border-t border-gray-200 pt-1.5" : ""
+                      }`}
+                    >
+                      <div
+                        ref={listaFilhosRef}
+                        onScroll={conferirRolagemDosFilhos}
+                        className="flex max-h-[calc(100vh-18rem)] flex-col overflow-y-auto"
+                      >
+                        {menuDeNavegacao.filhos.map((filho) => (
+                          <ItemNavegacao
+                            key={filho.id}
+                            titulo={filho.titulo}
+                            variante="filho"
+                            cor={filho.cor}
+                            netos={filho.netos}
+                            onClick={() => selecionarPorId(filho.id)}
+                          />
+                        ))}
+                      </div>
+                      {temMaisFilhosAbaixo && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-x-0 bottom-0 h-6"
+                          style={{
+                            backgroundImage: `linear-gradient(to top, ${(config as any).clean.backgroundPainel}, transparent)`,
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
+                </nav>
+              )}
+
+              <div className="min-w-0 flex-1">
             <div className="prose max-w-none text-gray-700" style={{ fontSize: `${panelContentScale}em` }}>
               {selectedNode.content ? (
                 <MarkdownWithMapReferences
@@ -2712,6 +2912,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               }
               return null;
             })()}
+              </div>
+            </div>
           </div>
         </div>
       )}
