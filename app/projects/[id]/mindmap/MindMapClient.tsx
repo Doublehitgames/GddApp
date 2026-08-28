@@ -676,7 +676,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           marginLeft: -(data.raioDosFilhos || 0),
           marginTop: -(data.raioDosFilhos || 0),
           opacity: data.isHovered ? 1 : 0,
-          transition: "opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1)",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${(CONFIG as any).clean.accent}14 0%, ${(CONFIG as any).clean.accent}0a 55%, transparent 72%)`,
           pointerEvents: "none",
@@ -697,11 +697,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
-          opacity: apagadoPeloHover ? 0.22 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          opacity: apagadoPeloHover ? 0.55 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
           // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
           // pisca em vez de acender. A transicao e de opacidade pura, entao o
           // navegador resolve no compositor.
-          transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'auto',
         }}
       >
@@ -714,13 +714,13 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
             width: '100%',
             height: '100%',
             borderRadius: '50%',
-            backgroundColor: bgColor,
+            backgroundColor: apagadoPeloHover ? (CONFIG as any).clean.muted : bgColor,
             boxShadow: anel,
             cursor: 'pointer',
-            transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease',
+            transition: data.isDragging ? 'none' : 'box-shadow 0.2s ease, background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
-        {(showLabel || data.isHovered) && (
+        {(showLabel || data.isHovered || data.hoverSaindo) && (
           <div
             style={{
               position: 'absolute',
@@ -730,7 +730,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               marginTop: 4,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
-              color: (CONFIG as any).clean.label,
+              color: apagadoPeloHover ? (CONFIG as any).clean.mutedLabel : (CONFIG as any).clean.label,
               // Fundo e respiro: no meio de um feixe de conexoes a label sem
               // fundo some. Usa a cor do proprio mapa para nao virar etiqueta.
               backgroundColor: (CONFIG as any).clean.background,
@@ -742,11 +742,12 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // Gradacao continua: a label entra lavada no limiar e vai ganhando
               // corpo conforme a camera se aproxima. Resolvido em CSS pela
               // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
+              // Sempre montada: montagem/desmontagem nao transiciona, e era isso
+              // que fazia a label pipocar ao entrar e sumir de golpe ao sair.
               opacity: data.isHovered ? 1 : opacidadeLabel,
-              transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
               // Montagem nao transiciona: quando a label aparece so por causa do
               // hover, ela entra por animacao em vez de surgir pronta.
-              animation: (data.isHovered && !showLabel) ? 'gddLabelEntra 0.28s ease-out' : undefined,
             }}
           >
             {data.label}
@@ -825,7 +826,7 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
           // Mesma suavizacao das secoes: o no do projeto tinha ficado de fora.
-          transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'auto',
         }}
       >
@@ -1170,6 +1171,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // e leitura passageira (some quando o mouse sai), a selecao e escolha do
   // usuario (abre o painel e persiste).
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // Guarda quem tinha o hover no ciclo anterior, para a label ter tempo de sair.
+  const hoverAnteriorRef = useRef<string | null>(null);
   // Refs cruzadas ficam escondidas por padrao: numa bolinha muito referenciada
   // elas viram dezenas de linhas de uma vez e o mapa fica ilegivel. O usuario
   // liga no toggle do painel, e trocar de bolinha volta pro default.
@@ -1647,13 +1650,33 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // Marca quem esta sob o cursor e quem e vizinho dele (pai e filhos diretos).
   // Roda por ENTRADA no no, nao por frame, entao reconstruir o array de nos aqui
   // custa pouco — diferente do efeito de camera, que rodava a 60fps.
+  // Marca quem esta sob o cursor, quem e vizinho, e quem ACABOU de sair.
+  //
+  // O "acabou de sair" existe porque desmontar nao transiciona: sem ele a label
+  // do no que perde o hover desaparece de golpe. A alternativa seria manter as
+  // 245 labels montadas o tempo todo, mas isso custava ~6ms a mais por passo de
+  // zoom (medido: 28.7ms contra 22.8ms) — caro para resolver o desaparecimento
+  // de UMA label.
+  //
+  // A marcacao acontece DENTRO deste efeito, e nao por um estado separado: com
+  // estado havia um render intermediario em que a label ja tinha desmontado, e
+  // remontar tambem nao transiciona.
   useEffect(() => {
+    const anterior = hoverAnteriorRef.current;
+    hoverAnteriorRef.current = hoveredId;
+
     setNodes((nds) => {
       if (!hoveredId) {
-        if (!nds.some((n) => n.data.hoverAtivo)) return nds;
+        if (!nds.some((n) => n.data.hoverAtivo || n.data.hoverSaindo)) return nds;
         return nds.map((n) => ({
           ...n,
-          data: { ...n.data, hoverAtivo: false, isHovered: false, hoverVizinho: false },
+          data: {
+            ...n.data,
+            hoverAtivo: false,
+            isHovered: false,
+            hoverVizinho: false,
+            hoverSaindo: n.id === anterior,
+          },
         }));
       }
       const vizinhos = new Set<string>();
@@ -1669,9 +1692,21 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           hoverAtivo: true,
           isHovered: n.id === hoveredId,
           hoverVizinho: vizinhos.has(n.id),
+          hoverSaindo: false,
         },
       }));
     });
+
+    if (!hoveredId && anterior) {
+      const t = setTimeout(() => {
+        setNodes((nds) =>
+          nds.some((n) => n.data.hoverSaindo)
+            ? nds.map((n) => (n.data.hoverSaindo ? { ...n, data: { ...n.data, hoverSaindo: false } } : n))
+            : nds
+        );
+      }, 600);
+      return () => clearTimeout(t);
+    }
   }, [hoveredId, edges, setNodes]);
 
   // Trocar de bolinha (ou fechar o painel) sempre volta ao estado escondido.
@@ -2324,9 +2359,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       {selectedNode && (
         <div
           className="absolute top-16 right-0 h-[calc(100vh-4rem)] border-l border-gray-200 overflow-y-auto z-20"
-          style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.background }}
+          style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.backgroundPainel }}
         >
-          <div className="px-8 py-7">
+          <div className="px-12 py-10">
             {/* Volta de um salto por referencia. So aparece quando o usuario foi
                 TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
                 ali ele escolheu o lugar e nao precisa de migalha. */}

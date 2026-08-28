@@ -18,6 +18,11 @@ export const MINDMAP_CONFIG = {
   clean: {
     accent: '#ef5f56',       // Cor unica dos nos
     line: '#e7eaef',         // Fio das conexoes
+    // Cor de quem esta fora do foco. O efeito de hover NAO e so transparencia:
+    // quem nao interessa vira CINZA, e so o foco mantem o acento. Foi assim que
+    // a referencia resolveu — o mapa vira fundo, nao um mapa apagado.
+    muted: '#c9ccd2',
+    mutedLabel: '#b6bac2',
     lineWidth: 1,            // Espessura em px de TELA (nao escala com o zoom)
     label: '#e05a51',        // Texto das labels
     // Diametro do ponto em px de TELA, por profundidade. O ultimo vale para os
@@ -34,8 +39,10 @@ export const MINDMAP_CONFIG = {
     referenceWidth: 1.4,
     referenceDash: 5,
     referenceIcon: 13,
-    // Branco puro deixa o mapa duro; um azulado minimo assenta o conjunto.
-    background: '#f8f9fb',
+    // O mapa e levemente cinza e o painel e branco — a diferenca de tom e o que
+    // separa a tela de trabalho da tela de leitura.
+    background: '#f4f5f7',
+    backgroundPainel: '#ffffff',
   },
 
   nodeSize: {
