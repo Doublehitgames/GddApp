@@ -638,7 +638,12 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // pra colisao do d3-force; sao coisas diferentes de proposito.
   const pontos = (CONFIG as any).clean.dotSize as number[];
   const pontoBase = pontos[Math.min(data.level ?? 0, pontos.length - 1)];
-  const ponto = isSelected ? pontoBase * 1.6 : pontoBase;
+  // Com uma bolinha selecionada, todo o conjunto em destaque cresce: a
+  // selecionada mais, o caminho e os filhos 25%. Da peso ao ramo em foco sem
+  // precisar de mais cor.
+  const destacado = Boolean(isSelected || isInPath || isReference);
+  const escala = isSelected ? 1.6 : destacado ? 1.25 : 1;
+  const ponto = pontoBase * escala;
 
   // Durante o hover manda o hover: quem nao e o no sob o cursor nem vizinho
   // dele apaga, independente do fade da selecao.
@@ -703,10 +708,12 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           // opacidade da label, logo abaixo. Com o wrapper transparente, as
           // linhas de tras apareciam atraves do ponto.
           opacity: 1,
+          // O crescimento do destaque entra por aqui. Como o wrapper e centrado
+          // por translate(-50%,-50%), crescer nao desloca o ponto.
           // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
           // pisca em vez de acender. A transicao e de opacidade pura, entao o
           // navegador resolve no compositor.
-          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'auto',
         }}
       >
@@ -1729,16 +1736,14 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       }));
     });
 
-    if (!hoveredId && anterior) {
-      const t = setTimeout(() => {
-        setNodes((nds) =>
-          nds.some((n) => n.data.hoverSaindo)
-            ? nds.map((n) => (n.data.hoverSaindo ? { ...n, data: { ...n.data, hoverSaindo: false } } : n))
-            : nds
-        );
-      }, 600);
-      return () => clearTimeout(t);
-    }
+    // Nao ha temporizador para limpar o `hoverSaindo`: ele e zerado no proximo
+    // hover (ver o ramo acima). Havia um setTimeout de 600ms aqui e ele estava
+    // desfazendo a SELECAO — medido: a bolinha clicada ficava em 25.6px com
+    // aura ate os 400ms e voltava a 16px sem aura aos 600ms, e desligar o timer
+    // fazia a selecao persistir. Nao encontrei o mecanismo lendo o codigo (o
+    // callback preserva `isSelected` no spread), entao removi a causa em vez de
+    // insistir. O custo de nao limpar por tempo e uma label invisivel que fica
+    // montada ate o hover seguinte.
   }, [hoveredId, edges, setNodes]);
 
   // Trocar de bolinha (ou fechar o painel) sempre volta ao estado escondido.
