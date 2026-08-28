@@ -265,6 +265,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       {!isDocumentViewRoute && (
       <ProjectTopBar
         icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
+        iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
         titulo={tituloDaTela}
         projectSlug={projectId}
         active={abaAtiva}

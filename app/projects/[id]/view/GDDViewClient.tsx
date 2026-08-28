@@ -1166,6 +1166,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
       {/* Header/Toolbar — a barra e a mesma do shell e do mapa publico. */}
       <ProjectTopBar
         icone={<IconeDocumento />}
+        iconeProjetoUrl={documentSpotlight?.titleIconUrl}
         titulo={t("projectTabs.docTitle", "Game Design Document")}
         projectSlug={projectId}
         active="doc"

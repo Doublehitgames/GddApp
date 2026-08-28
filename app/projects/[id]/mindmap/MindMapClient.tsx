@@ -2366,6 +2366,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
         {isPublicMode && (
           <ProjectTopBar
             icone={<IconeMapa />}
+            iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
             titulo={t("projectTabs.mapTitle", "Game Design Map")}
             projectSlug={projectId}
             active="graph"

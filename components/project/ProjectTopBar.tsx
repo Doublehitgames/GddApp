@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
+import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { ProjectViewTabs, type ProjectView } from "./ProjectViewTabs";
 
 /** Altura total da barra, em px. Quem posiciona conteudo por baixo dela usa este numero. */
@@ -10,6 +12,9 @@ export const ALTURA_BARRA = 80;
 interface Props {
   /** Icone da tela, ja colorido. Vira link pra home — e o unico caminho de volta. */
   icone: React.ReactNode;
+  /** Icone do proprio projeto (o da Ficha Tecnica). Abre a barra, antes do icone
+   *  da tela: primeiro QUAL jogo, depois qual modo dele voce esta olhando. */
+  iconeProjetoUrl?: string;
   /** Nome da tela: "Game Design Map", "Game Design Document", o nome do projeto,
    *  ou a trilha de secoes quando voce esta dentro de uma. */
   titulo: React.ReactNode;
@@ -40,6 +45,7 @@ interface Props {
  */
 export function ProjectTopBar({
   icone,
+  iconeProjetoUrl,
   titulo,
   projectSlug,
   active,
@@ -67,41 +73,74 @@ export function ProjectTopBar({
       } border-b backdrop-blur-md ${moldura}`}
       style={{ height: ALTURA_BARRA }}
     >
-      <div className={"mx-auto flex h-full w-full flex-col justify-center px-4 md:px-6 lg:px-8 " + larguraConteudo}>
-        <div className="flex h-11 items-center gap-3">
-          <span className="flex min-w-0 items-center gap-2">
-            {isPublic ? (
-              <span className="shrink-0 text-[#ef5f56]">{icone}</span>
-            ) : (
-              <Link
-                href="/"
-                className="shrink-0 text-[#ef5f56] transition-opacity hover:opacity-70"
-                title={t("projectDetail.backHome")}
-                aria-label={t("projectDetail.backHome")}
-              >
-                {icone}
-              </Link>
-            )}
-            <span className={corTitulo + " min-w-0 truncate text-base font-bold tracking-tight"}>{titulo}</span>
-          </span>
+      <div className={"mx-auto flex h-full w-full items-center gap-3 px-4 md:px-6 lg:px-8 " + larguraConteudo}>
+        {/* O icone do projeto fica fora da coluna das duas linhas: ele vale pela
+            barra inteira, e nao so pela linha do titulo. */}
+        <IconeDoProjeto url={iconeProjetoUrl} />
 
-          <div className="flex-1" />
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <div className="flex h-11 items-center gap-3">
+            <span className="flex min-w-0 items-center gap-2">
+              {isPublic ? (
+                <span className="shrink-0 text-[#ef5f56]">{icone}</span>
+              ) : (
+                <Link
+                  href="/"
+                  className="shrink-0 text-[#ef5f56] transition-opacity hover:opacity-70"
+                  title={t("projectDetail.backHome")}
+                  aria-label={t("projectDetail.backHome")}
+                >
+                  {icone}
+                </Link>
+              )}
+              <span className={corTitulo + " min-w-0 truncate text-base font-bold tracking-tight"}>{titulo}</span>
+            </span>
 
-          {busca}
-          {acoes}
-        </div>
+            <div className="flex-1" />
 
-        <div className="flex h-9 items-center gap-2">
-          <ProjectViewTabs
-            projectSlug={projectSlug}
-            active={active}
-            publicToken={publicToken}
-            theme={theme}
-          />
-          {badge}
+            {busca}
+            {acoes}
+          </div>
+
+          <div className="flex h-9 items-center gap-2">
+            <ProjectViewTabs
+              projectSlug={projectSlug}
+              active={active}
+              publicToken={publicToken}
+              theme={theme}
+            />
+            {badge}
+          </div>
         </div>
       </div>
     </header>
+  );
+}
+
+/**
+ * A miniatura do projeto na barra. O Drive serve a mesma imagem por varias URLs
+ * e nem todas passam em todo navegador, entao a gente desce a lista de
+ * candidatas a cada erro e, quando elas acabam, o icone some — melhor sem ele
+ * do que com um quadradinho quebrado na barra.
+ */
+function IconeDoProjeto({ url }: { url?: string }) {
+  const candidatas = useMemo(() => getDriveImageDisplayCandidates(url || ""), [url]);
+  const [indice, setIndice] = useState(0);
+
+  useEffect(() => {
+    setIndice(0);
+  }, [url]);
+
+  if (!url || indice >= candidatas.length) return null;
+
+  return (
+    <img
+      src={candidatas[indice]}
+      alt=""
+      aria-hidden="true"
+      className="h-16 w-16 shrink-0 rounded-xl object-cover"
+      onError={() => setIndice((i) => i + 1)}
+    />
   );
 }
 
