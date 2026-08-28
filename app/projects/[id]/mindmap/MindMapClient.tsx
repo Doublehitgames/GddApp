@@ -649,7 +649,6 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   // (`data.raioDosFilhos`), nao em px de tela como o ponto — ele precisa
   // acompanhar a distancia real ate os filhos, senao descolaria do cacho
   // conforme a camera aproxima.
-  const raioHalo = data.isHovered ? (data.raioDosFilhos || 0) : 0;
 
   const anel = isSelected
     ? `0 0 0 3px ${(CONFIG as any).clean.accent}55`
@@ -665,17 +664,19 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
     // area invisivel de centenas de pixels em volta de cada ponto (medido: 2.5x o
     // ponto no zoom de abertura, ~30x no maximo). O alvo e o ponto, nao a caixa.
     <div style={{ width: size, height: size, position: 'relative', pointerEvents: 'none' }}>
-      {raioHalo > 0 && (
+      {(data.raioDosFilhos || 0) > 0 && (
       <div
         aria-hidden
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
-          width: raioHalo * 2,
-          height: raioHalo * 2,
-          marginLeft: -raioHalo,
-          marginTop: -raioHalo,
+          width: (data.raioDosFilhos || 0) * 2,
+          height: (data.raioDosFilhos || 0) * 2,
+          marginLeft: -(data.raioDosFilhos || 0),
+          marginTop: -(data.raioDosFilhos || 0),
+          opacity: data.isHovered ? 1 : 0,
+          transition: "opacity 0.25s ease",
           borderRadius: "50%",
           background: `radial-gradient(circle, ${(CONFIG as any).clean.accent}14 0%, ${(CONFIG as any).clean.accent}0a 55%, transparent 72%)`,
           pointerEvents: "none",
@@ -697,6 +698,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
           opacity: apagadoPeloHover ? 0.12 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
+          // pisca em vez de acender. A transicao e de opacidade pura, entao o
+          // navegador resolve no compositor.
+          transition: 'opacity 0.18s ease',
           pointerEvents: 'auto',
         }}
       >
@@ -738,6 +743,7 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // corpo conforme a camera se aproxima. Resolvido em CSS pela
               // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
               opacity: data.isHovered ? 1 : opacidadeLabel,
+              transition: 'opacity 0.18s ease',
             }}
           >
             {data.label}
@@ -815,6 +821,8 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
+          // Mesma suavizacao das secoes: o no do projeto tinha ficado de fora.
+          transition: 'opacity 0.18s ease',
           pointerEvents: 'auto',
         }}
       >
