@@ -1079,6 +1079,10 @@ const EdgeCentroACentro = memo(function EdgeCentroACentro({
 });
 
 // Componente interno que tem acesso ao contexto do ReactFlow
+// Largura do painel. Compartilhada com a margem do mapa: os dois PRECISAM ler
+// o mesmo valor, senao sobra faixa vazia ou o mapa passa por baixo.
+const LARGURA_PAINEL = "clamp(340px, 34vw, 520px)";
+
 function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -2238,7 +2242,13 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
 
         {/* React Flow - overflow-hidden evita barras de rolagem; onWheel evita scroll da página ao zoomar */}
-        <div className="h-full pt-16 overflow-hidden" ref={flowWrapperRef}>
+        {/* O mapa cede espaco para o painel em vez de ficar por baixo dele.
+            E isso que faz o painel ler como faixa e nao como popup. */}
+        <div
+          className="h-full pt-16 overflow-hidden transition-[margin] duration-200"
+          style={{ marginRight: selectedNode ? LARGURA_PAINEL : undefined }}
+          ref={flowWrapperRef}
+        >
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -2270,7 +2280,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
       {/* Panel Lateral */}
       {selectedNode && (
-        <div className="absolute top-16 right-0 w-[40vw] min-w-[380px] max-w-[620px] h-[calc(100vh-4rem)] bg-white border-l border-gray-200 shadow-2xl overflow-y-auto z-20">
+        <div
+          className="absolute top-16 right-0 h-[calc(100vh-4rem)] border-l border-gray-200 overflow-y-auto z-20"
+          style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.background }}
+        >
           <div className="p-6">
             {/* Volta de um salto por referencia. So aparece quando o usuario foi
                 TRAZIDO pra ca — clicar direto numa bolinha zera a trilha, porque
@@ -2402,7 +2415,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               const backlinks = getBacklinks(selectedNode.id, project.sections || []);
               if (backlinks.length > 0) {
                 return (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
                     <h3 className="text-sm font-semibold text-gray-600 mb-3" style={{ fontSize: `${panelContentScale}em` }}>{t("mindMap.panel.backlinks")}</h3>
                     <div className="flex flex-wrap gap-2">
                       {backlinks.map((backlink) => {
@@ -2426,7 +2439,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             <div className="mt-6">
               <button
                 onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
               >
                 {t("mindMap.panel.goToDocument")}
               </button>
@@ -2451,7 +2464,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {selectedNode.id !== 'project' && (
                   <button
                     onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
+                    className="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
                   >
                     {t("mindMap.panel.viewDetails")}
                   </button>
