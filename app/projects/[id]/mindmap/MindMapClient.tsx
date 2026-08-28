@@ -2462,8 +2462,42 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 {t("sectionDetail.flowchart.breadcrumb")}
               </div>
             )}
-            <div className="flex items-start justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">{selectedNode.title}</h2>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h2 className="text-xl font-bold text-gray-900 min-w-0">{selectedNode.title}</h2>
+              {/* Acoes no topo, junto do fechar: sao atalhos para sair do mapa e
+                  nao conclusao da leitura — no rodape ficavam depois de uma
+                  descricao que pode ter varias telas de rolagem. */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  title={t("mindMap.panel.goToDocument")}
+                  aria-label={t("mindMap.panel.goToDocument")}
+                  onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+                {!isPublicMode && (
+                  <button
+                    type="button"
+                    title={t("mindMap.panel.viewDetails")}
+                    aria-label={t("mindMap.panel.viewDetails")}
+                    onClick={() =>
+                      router.push(
+                        selectedNode.id === 'project'
+                          ? (project ? `${projectPath(project)}/edit` : "/")
+                          : sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id)
+                      )
+                    }
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
               <button
                 onClick={() => {
                   setSelectedNode(null);
@@ -2476,10 +2510,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     window.history.replaceState({}, '', url.toString());
                   }
                 }}
-                className="text-gray-400 hover:text-gray-900 text-2xl leading-none"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 text-2xl leading-none"
               >
                 ×
               </button>
+              </div>
             </div>
 
             {/* Tags de domínio (só para seções, não para o node do projeto) */}
@@ -2582,15 +2617,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               return null;
             })()}
 
-            <div className="mt-6">
-              <button
-                onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              >
-                {t("mindMap.panel.goToDocument")}
-              </button>
-            </div>
-
             {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
               <div className="mt-3">
                 <button
@@ -2605,26 +2631,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </div>
             )}
 
-            {!isPublicMode && (
-              <div className="mt-6 flex gap-2">
-                {selectedNode.id !== 'project' && (
-                  <button
-                    onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id))}
-                    className="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    {t("mindMap.panel.viewDetails")}
-                  </button>
-                )}
-                {selectedNode.id === 'project' && (
-                  <button
-                    onClick={() => router.push(project ? `${projectPath(project)}/edit` : "/")}
-                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-gray-900 px-4 py-2 rounded-lg transition-colors"
-                  >
-                    {t("mindMap.panel.editProject")}
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
