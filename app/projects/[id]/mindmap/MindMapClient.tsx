@@ -699,7 +699,10 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
           width: ponto,
           height: ponto,
           transform: 'translate(-50%, -50%) scale(calc(1 / var(--gdd-zoom, 1)))',
-          opacity: emFoco ? 1 : apagadoPeloHover ? 0.55 : (isFaded && fadeConfig.enabled) ? fadeConfig.opacity : 1,
+          // O wrapper nao esmaece mais: quem esmaece e a cor do ponto e a
+          // opacidade da label, logo abaixo. Com o wrapper transparente, as
+          // linhas de tras apareciam atraves do ponto.
+          opacity: 1,
           // Sem isso os 245 pontos trocam de opacidade de uma vez, e o hover
           // pisca em vez de acender. A transicao e de opacidade pura, entao o
           // navegador resolve no compositor.
@@ -729,7 +732,9 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
             width: '100%',
             height: '100%',
             borderRadius: '50%',
-            backgroundColor: apagadoPeloHover ? (CONFIG as any).clean.muted : bgColor,
+            backgroundColor: (apagadoPeloHover || (!emFoco && isFaded && fadeConfig.enabled))
+              ? (CONFIG as any).clean.muted
+              : bgColor,
             // emFoco entra aqui por opacidade, acima; a cor ja e a certa.
             boxShadow: anel,
             cursor: 'pointer',
@@ -763,7 +768,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
               // --gdd-zoom, para nao re-renderizar as 245 bolinhas a cada frame.
               // Sempre montada: montagem/desmontagem nao transiciona, e era isso
               // que fazia a label pipocar ao entrar e sumir de golpe ao sair.
-              opacity: data.isHovered ? 1 : opacidadeLabel,
+              opacity: data.isHovered
+                ? 1
+                : (apagadoPeloHover || (!emFoco && isFaded && fadeConfig.enabled))
+                  ? `calc(${opacidadeLabel} * 0.45)`
+                  : opacidadeLabel,
               transition: 'opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1), color 0.45s cubic-bezier(0.4, 0, 0.2, 1), margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               // Montagem nao transiciona: quando a label so existe por causa do
               // hover, ela nasce ja pronta e a transicao acima nao alcanca. Uma
@@ -1607,7 +1616,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             style: {
               strokeWidth: pxTela((config as any).clean.highlightWidth),
               stroke: (config as any).clean.highlight,
-              strokeDasharray: `${pxTela((config as any).clean.highlightDash)} ${pxTela((config as any).clean.highlightDash)}`,
+              strokeDasharray: (config as any).clean.highlightDash > 0
+                ? `${pxTela((config as any).clean.highlightDash)} ${pxTela((config as any).clean.highlightDash)}`
+                : undefined,
               opacity: 1, // Edges destacadas ficam sempre visíveis
             },
           };
@@ -2479,6 +2490,19 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </button>
+                {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
+                  <button
+                    type="button"
+                    title={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
+                    aria-label={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
+                    onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                  >
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                    </svg>
+                  </button>
+                )}
                 {!isPublicMode && (
                   <button
                     type="button"
@@ -2616,21 +2640,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               }
               return null;
             })()}
-
-            {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
-              <div className="mt-3">
-                <button
-                  onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
-                  className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-gray-900 px-4 py-2.5 rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/25 transition-all text-sm font-semibold"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
-                  </svg>
-                  {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
-                </button>
-              </div>
-            )}
-
           </div>
         </div>
       )}

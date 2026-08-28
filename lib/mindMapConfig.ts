@@ -32,7 +32,9 @@ export const MINDMAP_CONFIG = {
     // Linha do caminho destacado ao selecionar. Tambem em px de tela.
     highlight: '#ef5f56',
     highlightWidth: 1.6,
-    highlightDash: 4,
+    // 0 = linha lisa. O tracejado competia com as refs cruzadas, que ja sao
+    // tracejadas, e as duas juntas viravam ruido.
+    highlightDash: 0,
     // Refs cruzadas: mesma logica, px de tela. O config antigo usava 10px de
     // espessura e icone de 160px, dimensionados para bolinhas de 1000px.
     reference: '#6b8afd',
