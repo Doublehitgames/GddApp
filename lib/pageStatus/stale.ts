@@ -19,6 +19,8 @@ export type StaleCandidate = {
   title: string;
   content?: string;
   updated_at?: string | null;
+  /** Quando o texto mudou. Ausente em bancos sem a migração; aí vale updated_at. */
+  content_updated_at?: string | null;
   status?: PageStatus;
   statusAt?: string | null;
 };
@@ -35,6 +37,20 @@ function time(iso: string | null | undefined): number | null {
   if (!iso) return null;
   const value = new Date(iso).getTime();
   return Number.isNaN(value) ? null : value;
+}
+
+/**
+ * Quando o texto daquela página mudou pela última vez.
+ *
+ * `updated_at` responde outra pergunta — "a linha mudou" — e sobe também
+ * quando alguém troca a cor do nó ou arrasta a página na árvore. Usar ele aqui
+ * acendia o aviso em todo mundo que cita a página, sem uma palavra ter mudado.
+ * O `content_updated_at` vem do trigger; onde a migração ainda não rodou ele
+ * não existe, e o `updated_at` volta a ser a melhor aproximação disponível.
+ */
+function lastTextChange(section: StaleCandidate | undefined): number | null {
+  if (!section) return null;
+  return time(section.content_updated_at) ?? time(section.updated_at);
 }
 
 /**
@@ -61,9 +77,13 @@ export function checkStale(section: StaleCandidate, all: StaleCandidate[]): Stal
     seen.add(target.id);
 
     const full = all.find((s) => s.id === target.id);
-    const updated = time(full?.updated_at);
-    if (updated != null && updated > since) {
-      changedRefs.push({ id: target.id, title: target.title, updatedAt: full!.updated_at as string });
+    const changedAt = lastTextChange(full);
+    if (changedAt != null && changedAt > since) {
+      changedRefs.push({
+        id: target.id,
+        title: target.title,
+        updatedAt: new Date(changedAt).toISOString(),
+      });
     }
   }
 

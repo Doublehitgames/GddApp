@@ -111,3 +111,59 @@ describe("checkStale", () => {
     expect([...listStaleSections([receita, outra, moinho])]).toEqual(["r"]);
   });
 });
+
+describe("qual data conta como mudanca", () => {
+  const APPROVED = "2026-08-20T10:00:00.000Z";
+
+  it("ignora linha mexida sem o texto mudar (cor, ordem, pai)", () => {
+    // A pagina citada foi salva hoje, mas o texto dela e de antes da aprovacao.
+    const moinho = page({
+      id: "m",
+      title: "Moinho",
+      updated_at: "2026-08-28T10:00:00.000Z",
+      content_updated_at: "2026-08-01T10:00:00.000Z",
+    });
+    const receita = page({
+      id: "r",
+      title: "Receita: Pão",
+      content: "Moído no $[Moinho].",
+      status: "approved",
+      statusAt: APPROVED,
+    });
+
+    expect(checkStale(receita, [receita, moinho]).stale).toBe(false);
+  });
+
+  it("acusa quando o texto mudou, mesmo com updated_at antigo", () => {
+    const moinho = page({
+      id: "m",
+      title: "Moinho",
+      updated_at: "2026-08-01T10:00:00.000Z",
+      content_updated_at: "2026-08-28T10:00:00.000Z",
+    });
+    const receita = page({
+      id: "r",
+      title: "Receita: Pão",
+      content: "Moído no $[Moinho].",
+      status: "approved",
+      statusAt: APPROVED,
+    });
+
+    const verdict = checkStale(receita, [receita, moinho]);
+    expect(verdict.stale).toBe(true);
+    expect(verdict.changedRefs[0].updatedAt).toBe("2026-08-28T10:00:00.000Z");
+  });
+
+  it("cai no updated_at onde a migracao ainda nao rodou", () => {
+    const moinho = page({ id: "m", title: "Moinho", updated_at: "2026-08-28T10:00:00.000Z" });
+    const receita = page({
+      id: "r",
+      title: "Receita: Pão",
+      content: "Moído no $[Moinho].",
+      status: "approved",
+      statusAt: APPROVED,
+    });
+
+    expect(checkStale(receita, [receita, moinho]).stale).toBe(true);
+  });
+});

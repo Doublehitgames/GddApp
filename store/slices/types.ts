@@ -307,8 +307,15 @@ export type Section = {
   /** Quem criou a seção (id e nome para exibição). */
   created_by?: string | null;
   created_by_name?: string | null;
-  /** Última modificação. */
+  /** Última modificação da linha (qualquer campo, menos o estado). */
   updated_at?: string | null;
+  /**
+   * Última vez que o TEXTO mudou — título, descrição ou blocks. Mantido pelo
+   * trigger do banco, nunca escrito pelo app. É o que o selo de "pode estar
+   * desatualizada" lê: mudar a cor de uma página não desatualiza quem a cita.
+   * Ausente em bancos sem a migração `add_sections_content_updated_at.sql`.
+   */
+  content_updated_at?: string | null;
   updated_by?: string | null;
   updated_by_name?: string | null;
 };

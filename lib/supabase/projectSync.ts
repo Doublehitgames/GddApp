@@ -382,6 +382,7 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     dataId: (row.data_id as string) || undefined,
     status: parsePageStatus(row.status),
     statusAt: (row.status_at as string) || null,
+    content_updated_at: (row.content_updated_at as string) || null,
     domainTags,
   };
 }

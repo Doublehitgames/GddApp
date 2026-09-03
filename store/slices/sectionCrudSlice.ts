@@ -486,6 +486,12 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                           // De propósito NÃO mexe em updated_at: marcar uma
                           // página como aprovada não é editar a página, e o
                           // changelog não deve ganhar uma linha por isso.
+                          //
+                          // Do lado do banco o trigger sections_updated_at
+                          // carimbava now() em qualquer update e desfazia isto
+                          // — a migração add_sections_content_updated_at.sql
+                          // ensina o trigger a ignorar mudança só de estado, e
+                          // a marcar em separado quando o texto mudou.
                         }
                       : s
                   ),
