@@ -47,7 +47,8 @@ export function activityOrigin(source: AuthOk["source"]): "app" | "mcp" {
   return source === "session" ? "app" : "mcp";
 }
 
-async function resolveActorName(
+/** Exported so the version snapshot writer reuses the same cached lookup. */
+export async function resolveActorName(
   supabase: SupabaseClient,
   userId: string
 ): Promise<string | null> {

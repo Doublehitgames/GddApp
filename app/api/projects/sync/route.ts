@@ -820,8 +820,18 @@ export async function POST(request: NextRequest) {
           updated_by_name: r.updated_by_name ?? null,
         }));
       if (versionRows.length > 0) {
-        const { error: verErr } = await supabase.from("section_versions").insert(versionRows);
-        if (verErr) console.error("[api/projects/sync] section_versions insert failed:", verErr);
+        // O changelog separa o que o time escreveu do que o agente escreveu, e
+        // tudo que passa por aqui veio do navegador. A coluna `origin` chegou
+        // depois: sem a migração aplicada, grava-se o snapshot sem ela.
+        const { error: verErr } = await supabase
+          .from("section_versions")
+          .insert(versionRows.map((row) => ({ ...row, origin: "app" })));
+        if (verErr) {
+          const retry = await supabase.from("section_versions").insert(versionRows);
+          if (retry.error) {
+            console.error("[api/projects/sync] section_versions insert failed:", retry.error);
+          }
+        }
       }
     }
 

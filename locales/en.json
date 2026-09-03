@@ -2025,7 +2025,8 @@
     "timeDays": "{n}d ago",
     "timeWeeks": "{n}wk ago",
     "timeMonths": "{n}mo ago",
-    "timeYears": "{n}y ago"
+    "timeYears": "{n}y ago",
+    "openChangelog": "what changed"
   },
   "blockEditor": {
     "slashMenu": {
@@ -2065,5 +2066,46 @@
     "label": "Project views",
     "mapTitle": "Game Design Map",
     "docTitle": "Game Design Document"
+  },
+  "changelog": {
+    "navLabel": "Changes",
+    "pageTitle": "What changed",
+    "backToProject": "back to project",
+    "loading": "Loading…",
+    "loadError": "Could not load the history right now.",
+    "loadOlder": "load older changes",
+    "empty": "No changes recorded yet.",
+    "emptyFiltered": "Nothing changed in this period.",
+    "localOnly": "This project is not in the cloud yet — history starts being kept on the first sync.",
+    "count": "{n} changes",
+    "countOne": "1 change",
+    "newSince": "{n} changes since your last visit",
+    "newSinceOne": "1 change since your last visit",
+    "markRead": "mark as read",
+    "everyone": "Everyone",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "showDiff": "see change",
+    "hideDiff": "hide",
+    "renamedFrom": "was: {title}",
+    "wordDelta": "word balance",
+    "originMcp": "agent",
+    "period": {
+      "day": "24h",
+      "week": "7 days",
+      "month": "30 days",
+      "all": "All"
+    },
+    "origin": {
+      "all": "All",
+      "app": "People",
+      "mcp": "Agent"
+    },
+    "kind": {
+      "created": "created",
+      "edited": "edited",
+      "renamed": "renamed",
+      "deleted": "deleted"
+    }
   }
 }

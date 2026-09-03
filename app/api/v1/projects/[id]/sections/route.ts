@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
 import { logApiSectionActivity, logBatchActivity } from "@/lib/api/v1/activityLog";
+import { snapshotSectionVersions } from "@/lib/api/v1/sectionVersions";
 import {
   BATCH_CONCURRENCY,
   BATCH_SECTION_LIMIT,
@@ -141,6 +142,8 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     .eq("id", id);
 
   if (!created) return apiError("Failed to read created section", 500, "db_error");
+
+  await snapshotSectionVersions(auth, id, [section.id], now);
 
   await logApiSectionActivity(auth, {
     projectId: id,
@@ -280,6 +283,21 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   if (updated > 0) {
     await auth.supabase.from("projects").update({ updated_at: now }).eq("id", id);
   }
+
+  // Só as páginas cujo texto ou título mudou entram no histórico — mexer em
+  // parentId ou cor não é uma versão nova da página.
+  const snapshotIds = items
+    .filter((item) => {
+      const outcome = results.find((r) => r.sectionId === item.sectionId);
+      if (!outcome?.ok) return false;
+      return (
+        item.title !== undefined ||
+        item.content !== undefined ||
+        item.contentBlocks !== undefined
+      );
+    })
+    .map((item) => item.sectionId);
+  await snapshotSectionVersions(auth, id, snapshotIds, now);
 
   await logBatchActivity(auth, id, items, titles, results);
 

@@ -12,6 +12,7 @@ import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
 import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
 import { DETAIL_DESCRIPTION, logApiSectionActivity } from "@/lib/api/v1/activityLog";
+import { snapshotSectionVersions } from "@/lib/api/v1/sectionVersions";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
 
@@ -131,6 +132,10 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const titleChanged = parsed.data.title !== undefined && parsed.data.title !== before.title;
   const contentChanged =
     parsed.data.content !== undefined || parsed.data.contentBlocks !== undefined;
+
+  if (titleChanged || contentChanged) {
+    await snapshotSectionVersions(auth, id, [sectionId], now);
+  }
 
   if (titleChanged) {
     await logApiSectionActivity(auth, {

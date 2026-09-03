@@ -2025,7 +2025,8 @@
     "timeDays": "{n}d atrás",
     "timeWeeks": "{n}sem atrás",
     "timeMonths": "{n}m atrás",
-    "timeYears": "{n}a atrás"
+    "timeYears": "{n}a atrás",
+    "openChangelog": "o que mudou"
   },
   "blockEditor": {
     "slashMenu": {
@@ -2065,5 +2066,46 @@
     "label": "Modos do projeto",
     "mapTitle": "Game Design Map",
     "docTitle": "Game Design Document"
+  },
+  "changelog": {
+    "navLabel": "Mudanças",
+    "pageTitle": "O que mudou",
+    "backToProject": "voltar ao projeto",
+    "loading": "Carregando…",
+    "loadError": "Não deu para carregar o histórico agora.",
+    "loadOlder": "carregar mudanças mais antigas",
+    "empty": "Nenhuma mudança registrada ainda.",
+    "emptyFiltered": "Nada mudou nesse período.",
+    "localOnly": "Este projeto ainda não está na nuvem — o histórico começa a ser guardado no primeiro sync.",
+    "count": "{n} mudanças",
+    "countOne": "1 mudança",
+    "newSince": "{n} mudanças desde a sua última visita",
+    "newSinceOne": "1 mudança desde a sua última visita",
+    "markRead": "marcar como lido",
+    "everyone": "Todo mundo",
+    "today": "Hoje",
+    "yesterday": "Ontem",
+    "showDiff": "ver mudança",
+    "hideDiff": "ocultar",
+    "renamedFrom": "antes: {title}",
+    "wordDelta": "saldo de palavras",
+    "originMcp": "agente",
+    "period": {
+      "day": "24h",
+      "week": "7 dias",
+      "month": "30 dias",
+      "all": "Tudo"
+    },
+    "origin": {
+      "all": "Todos",
+      "app": "Pessoas",
+      "mcp": "Agente"
+    },
+    "kind": {
+      "created": "criada",
+      "edited": "editada",
+      "renamed": "renomeada",
+      "deleted": "apagada"
+    }
   }
 }

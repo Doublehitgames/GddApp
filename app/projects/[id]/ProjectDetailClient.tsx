@@ -564,6 +564,16 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const navigationActions = [
         {
+            href: `/projects/${projectId}/changelog`,
+            label: t("changelog.navLabel", "Mudanças"),
+            accentClass: "from-violet-400/25 to-fuchsia-500/10",
+            icon: (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+        },
+        {
             href: `/projects/${projectId}/agenda`,
             label: "Diário",
             accentClass: "from-sky-400/25 to-blue-500/10",

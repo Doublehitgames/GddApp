@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useProjectStore } from "@/store/projectStore";
 import type { ActivityLogEvent } from "@/store/slices/activityLogSlice";
+import { readChangelogSeen } from "@/lib/changelog/seen";
 import { toSlug } from "@/lib/utils/slug";
 import { useI18n } from "@/lib/i18n/provider";
 
@@ -230,6 +231,21 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
 
   const events = useMemo(() => activityLogByProject[realProjectId] ?? [], [activityLogByProject, realProjectId]);
 
+  // Selo de novidade: quantos eventos são posteriores à última leitura do
+  // changelog neste aparelho. Lido depois da montagem porque o marcador mora no
+  // localStorage e o servidor não tem como saber dele.
+  const [changelogSeenAt, setChangelogSeenAt] = useState<string | null>(null);
+  useEffect(() => {
+    setChangelogSeenAt(readChangelogSeen(realProjectId));
+  }, [realProjectId]);
+  // Por instante, não por texto: o Postgres devolve "+00:00" e o marcador local
+  // grava "Z", e os dois não ordenam igual como string.
+  const unreadCount = useMemo(() => {
+    if (!changelogSeenAt) return 0;
+    const seen = new Date(changelogSeenAt).getTime();
+    return events.filter((e) => new Date(e.created_at).getTime() > seen).length;
+  }, [events, changelogSeenAt]);
+
   // O filtro de origem só aparece quando há as duas origens no log — num projeto
   // que ninguém automatizou ele seria um controle sem nada para controlar.
   const hasAgentEvents = events.some((e) => e.origin === "mcp");
@@ -267,6 +283,21 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
             </svg>
           </div>
           <span className="text-sm font-semibold text-white">{t("activityLog.widgetTitle")}</span>
+
+          {/* O widget mostra o que aconteceu; o changelog mostra o que mudou no
+              texto. Quem quer o diff sai por aqui. */}
+          <Link
+            href={`/projects/${projectId}/changelog`}
+            prefetch={false}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-200"
+          >
+            {t("activityLog.openChangelog", "o que mudou")}
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-emerald-300">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
 
           <div className="ml-auto flex items-center gap-3">
             {showOriginFilter && (
