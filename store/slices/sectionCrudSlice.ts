@@ -326,6 +326,12 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         audit.updated_by = updatedBy.userId;
         audit.updated_by_name = updatedBy.displayName ?? null;
       }
+      // Espelha aqui o que o trigger do banco fará no sync: só texto conta.
+      // Sem isto o selo de "pode estar desatualizada" ficaria cego entre a
+      // edição e o próximo sync — e num uso offline isso pode ser o dia todo.
+      if (titleChanged || contentChanged) {
+        audit.content_updated_at = now;
+      }
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
@@ -418,6 +424,9 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                       content: contentMarkdown,
                       contentBlocks: contentBlocks.length ? contentBlocks : undefined,
                       updated_at: now,
+                      // Este caminho é sempre texto. Espelha o trigger do banco
+                      // para o selo de desatualizada não ficar cego até o sync.
+                      content_updated_at: now,
                     };
                     if (updatedBy) {
                       updated.updated_by = updatedBy.userId;
@@ -465,6 +474,15 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
     },
 
     setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => {
+      get().setSectionsStatus(projectId, [sectionId], status);
+    },
+
+    setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => {
+      if (sectionIds.length === 0) return;
+      // Um set só para o lote inteiro: marcar um ramo de 30 páginas é uma
+      // decisão, não trinta — e trinta chamadas seriam trinta re-renders da
+      // árvore e trinta agendamentos de sync.
+      const alvos = new Set(sectionIds);
       const now = new Date().toISOString();
       engine.wrappedSetWithSync(
         (prev) =>
@@ -474,7 +492,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                   ...p,
                   updatedAt: now,
                   sections: (p.sections || []).map((s) =>
-                    s.id === sectionId
+                    alvos.has(s.id)
                       ? {
                           ...s,
                           status,

@@ -2126,6 +2126,8 @@
     "staleExplain": "Settled pages that cite something rewritten after the last confirmation:",
     "staleMore": "and {n} more",
     "staleTitle": "Marked as {status}, but something it cites changed afterwards.",
-    "confirmStillValid": "reread it, still valid"
+    "confirmStillValid": "reread it, still valid",
+    "applySubtree": "apply to the {n} subpages too",
+    "applySubtreeOne": "apply to the subpage too"
   }
 }

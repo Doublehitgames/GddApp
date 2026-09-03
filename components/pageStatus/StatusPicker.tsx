@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { collectDescendantIds } from "@/lib/pageStatus/subtree";
 import { PAGE_STATUSES, PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
+
+/** Referência estável para o projeto sem páginas, para não re-renderizar à toa. */
+const NO_SECTIONS: Array<{ id: string; parentId?: string }> = [];
 
 interface Props {
   /** UUID do projeto, não o slug. */
@@ -30,9 +34,22 @@ export default function StatusPicker({
   className = "",
 }: Props) {
   const { t } = useI18n();
-  const setSectionStatus = useProjectStore((s) => s.setSectionStatus);
+  const setSectionsStatus = useProjectStore((s) => s.setSectionsStatus);
+  const sections = useProjectStore(
+    (s) => s.projects.find((p) => p.id === projectId)?.sections ?? NO_SECTIONS
+  );
   const [open, setOpen] = useState(false);
+  // Vale só enquanto o menu está aberto: aplicar ao ramo é uma decisão daquela
+  // vez, não um modo em que a pessoa fica.
+  const [includeSubtree, setIncludeSubtree] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // Só quando o menu abre — varrer a árvore a cada render de uma página com
+  // 250 irmãs não se paga para um menu que passa fechado a maior parte do tempo.
+  const descendantIds = useMemo(
+    () => (open ? collectDescendantIds(sections, sectionId) : []),
+    [open, sections, sectionId]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -56,8 +73,10 @@ export default function StatusPicker({
   };
 
   const choose = (value: PageStatus | undefined) => {
-    setSectionStatus(projectId, sectionId, value);
+    const targets = includeSubtree ? [sectionId, ...descendantIds] : [sectionId];
+    setSectionsStatus(projectId, targets, value);
     setOpen(false);
+    setIncludeSubtree(false);
   };
 
   const pill = status ? (
@@ -121,6 +140,26 @@ export default function StatusPicker({
             >
               {t("pageStatus.clear", "sem estado")}
             </button>
+          )}
+
+          {/* O ramo é o lote natural do GDD: "Sementes" e as 30 sementes
+              embaixo dela nascem e entram no jogo juntas. Só aparece onde
+              existe ramo — numa folha seria um controle sem nada para pegar. */}
+          {descendantIds.length > 0 && (
+            <label className="flex cursor-pointer items-start gap-2 border-t border-gray-800 bg-gray-950/60 px-3 py-2.5 text-[11px] text-gray-400 transition-colors hover:text-gray-200">
+              <input
+                type="checkbox"
+                checked={includeSubtree}
+                onChange={(event) => setIncludeSubtree(event.target.checked)}
+                className="mt-0.5 h-3 w-3 shrink-0 accent-emerald-500"
+              />
+              <span>
+                {(descendantIds.length === 1
+                  ? t("pageStatus.applySubtreeOne", "aplicar também à subpágina")
+                  : t("pageStatus.applySubtree", "aplicar também às {n} subpáginas")
+                ).replace("{n}", String(descendantIds.length))}
+              </span>
+            </label>
           )}
         </div>
       )}

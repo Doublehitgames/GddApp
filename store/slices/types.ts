@@ -484,6 +484,8 @@ export interface ProjectStore {
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
   /** Carimba a maturidade da página. `undefined` volta a página para "sem estado". */
   setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => void;
+  /** O mesmo para um lote de páginas — um ramo inteiro da árvore, tipicamente. */
+  setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;

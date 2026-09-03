@@ -2126,6 +2126,8 @@
     "staleExplain": "Páginas firmes que citam algo reescrito depois da última confirmação:",
     "staleMore": "e mais {n}",
     "staleTitle": "Marcada como {status}, mas algo que ela cita mudou depois.",
-    "confirmStillValid": "reli, continua valendo"
+    "confirmStillValid": "reli, continua valendo",
+    "applySubtree": "aplicar também às {n} subpáginas",
+    "applySubtreeOne": "aplicar também à subpágina"
   }
 }
