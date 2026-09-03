@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type ApiFetcher, McpApiError } from "./api";
+import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   batchReceipt,
@@ -71,6 +72,21 @@ const CONTENT_BLOCKS_FIELD = z
   .array(z.record(z.string(), z.unknown()))
   .optional()
   .describe("Rich BlockNote JSON blocks — only needed for headings, tables, callouts or images; plain markdown in `content` is derived into blocks for you. Call get_content_blocks_guide once for the block types and a worked example, and always pair blocks with a plain-text `content` for search.");
+
+/**
+ * Maturity of the page. The one field an agent should be conservative with:
+ * a page marked approved or implemented is a promise the team made to itself,
+ * so change the text if asked, but leave the state to a human unless they said
+ * otherwise.
+ */
+const PAGE_STATUS_FIELD = z
+  .enum(PAGE_STATUSES as unknown as [string, ...string[]])
+  .nullable()
+  .optional()
+  .describe(
+    "Page maturity: draft, review, approved, implemented (in the game) or obsolete. " +
+      "null clears it. Setting it re-stamps the date the state was confirmed.",
+  );
 
 /** Section icon. Same field the web app sets from the Drive picker. */
 const THUMB_FIELD = z
@@ -145,7 +161,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -154,7 +170,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -176,6 +192,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
         color: z.string().optional(),
         domainTags: z.array(z.string()).optional(),
         dataId: z.string().optional(),
+        status: PAGE_STATUS_FIELD,
         thumbImageUrl: THUMB_FIELD,
       })).describe("One entry per section to update (max 50)"),
     },

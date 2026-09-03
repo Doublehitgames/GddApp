@@ -171,6 +171,8 @@ export type SectionRow = {
   thumb_image_url: string | null;
   domain_tags: string[];
   data_id: string | null;
+  status: string | null;
+  status_at: string | null;
   flowchart_state: unknown | null;
   created_at: string;
   updated_at: string;
@@ -183,7 +185,7 @@ export type SectionRow = {
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
 const SECTION_COLUMNS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks";
 
 // Progressive fallback: drop the newest/most optional columns first.
 // Level 1: drop flowchart_state, data_id, audit columns
@@ -224,6 +226,8 @@ export async function selectSections(
       const rows = ((midResult.data ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
         ...r,
         data_id: null,
+        status: null,
+        status_at: null,
         flowchart_state: null,
         content_blocks: null,
         created_by: null,
@@ -243,6 +247,8 @@ export async function selectSections(
       thumb_image_url: null,
       domain_tags: [] as string[],
       data_id: null,
+      status: null,
+      status_at: null,
       flowchart_state: null,
       content_blocks: null,
       created_by: null,
@@ -306,6 +312,8 @@ export function sectionToApi(s: SectionRow) {
     thumbImageUrl: s.thumb_image_url,
     domainTags: s.domain_tags ?? [],
     dataId: s.data_id,
+    status: s.status,
+    statusAt: s.status_at,
     flowchartState: s.flowchart_state,
     createdAt: s.created_at,
     updatedAt: s.updated_at,

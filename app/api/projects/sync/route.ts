@@ -59,7 +59,7 @@ type CloudSyncQuotaStatus = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId" | "status">;
 };
 
 function getHourlyCreditLimit(): number {
@@ -155,6 +155,22 @@ function isMissingSectionContentBlocksColumn(error: unknown) {
       : "";
   const combined = `${message} ${details}`.toLowerCase();
   return combined.includes("content_blocks") && combined.includes("column");
+}
+
+function isMissingSectionStatusColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  if (!combined.includes("column")) return false;
+  // O Postgres diz "column sections.status does not exist"; o PostgREST diz
+  // "Could not find the 'status' column of 'sections'". As duas formas contam.
+  return /sections\.status(_at)?\b/.test(combined) || /'status(_at)?'/.test(combined) || combined.includes("status_at");
 }
 
 function stableSerialize(value: unknown): string {
@@ -352,10 +368,13 @@ export async function POST(request: NextRequest) {
     let includeThumbImageColumn = true;
     let includeFlowchartStateColumn = true;
     let includeContentBlocksColumn = true;
+    let includeStatusColumn = true;
     let existingSections: any[] | null = null;
     let existingErr: unknown = null;
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    // Uma tentativa por coluna que a migração pode não ter aplicado ainda,
+    // mais a boa.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
       const selectedColumns = [
         "id",
         "parent_id",
@@ -368,6 +387,8 @@ export async function POST(request: NextRequest) {
         includeThumbImageColumn ? "thumb_image_url" : null,
         includeFlowchartStateColumn ? "flowchart_state" : null,
         includeContentBlocksColumn ? "content_blocks" : null,
+        includeStatusColumn ? "status" : null,
+        includeStatusColumn ? "status_at" : null,
       ]
         .filter(Boolean)
         .join(",");
@@ -384,6 +405,8 @@ export async function POST(request: NextRequest) {
           thumb_image_url: includeThumbImageColumn ? section.thumb_image_url ?? null : null,
           flowchart_state: includeFlowchartStateColumn ? section.flowchart_state ?? null : null,
           content_blocks: includeContentBlocksColumn ? section.content_blocks ?? null : null,
+          status: includeStatusColumn ? section.status ?? null : null,
+          status_at: includeStatusColumn ? section.status_at ?? null : null,
         }));
         break;
       }
@@ -399,6 +422,10 @@ export async function POST(request: NextRequest) {
       }
       if (includeContentBlocksColumn && isMissingSectionContentBlocksColumn(existingErr)) {
         includeContentBlocksColumn = false;
+        retried = true;
+      }
+      if (includeStatusColumn && isMissingSectionStatusColumn(existingErr)) {
+        includeStatusColumn = false;
         retried = true;
       }
       if (!retried) break;
@@ -433,6 +460,7 @@ export async function POST(request: NextRequest) {
         if ((existing.color || null) !== (section.color || null)) facets.push("color");
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
         if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
+        if ((existing.status || null) !== (section.status || null)) facets.push("status");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -456,6 +484,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) !== (section.color || null) ||
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         (existing.data_id || null) !== (section.dataId || null) ||
+        (existing.status || null) !== (section.status || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
         stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
@@ -490,6 +519,7 @@ export async function POST(request: NextRequest) {
         (existing.color || null) === (section.color || null) &&
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         (existing.data_id || null) === (section.dataId || null) &&
+        (existing.status || null) === (section.status || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
       if (onlyOrderChanged) {
@@ -713,6 +743,8 @@ export async function POST(request: NextRequest) {
         updated_by: s.updated_by ?? null,
         updated_by_name: s.updated_by_name ?? null,
         data_id: s.dataId != null ? String(s.dataId) : null,
+        status: s.status != null ? String(s.status) : null,
+        status_at: s.statusAt != null ? String(s.statusAt) : null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         flowchart_state: s.flowchartState ?? null,
         content_blocks: Array.isArray(s.contentBlocks) && s.contentBlocks.length > 0 ? s.contentBlocks : null,
@@ -720,6 +752,7 @@ export async function POST(request: NextRequest) {
       const hasAnyThumbPayload = rows.some((row) => typeof row.thumb_image_url === "string" && row.thumb_image_url.trim().length > 0);
       const hasAnyFlowchartPayload = rows.some((row) => row.flowchart_state != null);
       const hasAnyContentBlocksPayload = rows.some((row) => row.content_blocks != null);
+      const hasAnyStatusPayload = rows.some((row) => row.status != null);
 
       // Garante que parent_id só aponta para seções que sobreviverão ao sync.
       // Evita FK violation quando o store tem seções órfãs (pai deletado sem cascade no store).
@@ -739,8 +772,9 @@ export async function POST(request: NextRequest) {
       let droppedThumbColumn = false;
       let droppedFlowchartColumn = false;
       let droppedContentBlocksColumn = false;
+      let droppedStatusColumn = false;
       let sErr: unknown = null;
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
         const upsertResult = await supabase
           .from("sections")
           .upsert(rowsForUpsert as unknown as object[], { onConflict: "id" });
@@ -763,10 +797,20 @@ export async function POST(request: NextRequest) {
           droppedContentBlocksColumn = true;
           retried = true;
         }
+        if (!droppedStatusColumn && isMissingSectionStatusColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(
+            ({ status: _status, status_at: _statusAt, ...rest }) => rest
+          );
+          droppedStatusColumn = true;
+          retried = true;
+        }
         if (!retried) break;
       }
       if (!sErr && droppedThumbColumn && hasAnyThumbPayload) {
         console.warn("[api/projects/sync] sections.thumb_image_url ausente; sincronizando sem thumbs.");
+      }
+      if (!sErr && droppedStatusColumn && hasAnyStatusPayload) {
+        console.warn("[api/projects/sync] sections.status ausente; sincronizando sem o estado das páginas. Aplique add_sections_status.sql.");
       }
       if (!sErr && droppedContentBlocksColumn && hasAnyContentBlocksPayload) {
         // Aviso (não erro): a descrição ainda persiste via `content` (markdown

@@ -32,6 +32,7 @@ import AgendaWidget from "@/components/agenda/AgendaWidget";
 import KpiWidget from "@/components/kpi/KpiWidget";
 import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
 import RecentActivityWidget from "@/components/project/RecentActivityWidget";
+import StatusCoverageWidget from "@/components/pageStatus/StatusCoverageWidget";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
@@ -1172,6 +1173,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             </div>
                         </section>
 
+                        <StatusCoverageWidget projectId={projectId} realProjectId={realProjectId} />
                         <AgendaWidget projectId={projectId} realProjectId={realProjectId} />
                         <KpiWidget projectId={projectId} realProjectId={realProjectId} />
                         <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />

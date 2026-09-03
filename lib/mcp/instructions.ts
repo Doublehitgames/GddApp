@@ -21,6 +21,9 @@ Whenever a description mentions something that has its own page, write it as $[E
 WRITING DESCRIPTIONS:
 A description is prose with design value — context, role, flavour, how the thing connects to the rest of the game. It is not a spec sheet: do not restate numbers, prices, currencies, quantities or ids that the page already displays on its own. Send \`content\` as markdown and the server derives \`contentBlocks\` from it, so the two cannot disagree; send \`contentBlocks\` yourself only when you need headings, tables or callouts, and pair it with a plain-text \`content\` for search.
 
+PAGE STATUS:
+A page may carry a \`status\`: draft, review, approved, implemented or obsolete. It is the team's own signal of what can be trusted, so read it before rewriting and leave it alone unless you were asked to change it — a page marked approved or implemented was a decision someone made.
+
 CONVENTIONS PER PROJECT:
 A project may carry its own rules in \`aiInstructions\`. Read them with get_project before writing, and follow them over these defaults when they disagree.
 

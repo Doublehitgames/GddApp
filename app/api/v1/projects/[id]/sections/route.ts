@@ -118,6 +118,8 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       color: parsed.data.color,
       domain_tags: parsed.data.domainTags,
       data_id: parsed.data.dataId,
+      status: parsed.data.status,
+      status_at: parsed.data.status ? now : null,
       thumb_image_url: parsed.data.thumbImageUrl,
       created_at: now,
       updated_at: now,

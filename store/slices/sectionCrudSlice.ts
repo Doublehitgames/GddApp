@@ -1,4 +1,5 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
+import type { PageStatus } from "@/lib/pageStatus/types";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
@@ -455,6 +456,38 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                   updatedAt: new Date().toISOString(),
                   sections: (p.sections || []).map((s) =>
                     s.id === sectionId ? { ...s, dataId: dataId || undefined, updated_at: new Date().toISOString() } : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
+    setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => {
+      const now = new Date().toISOString();
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    s.id === sectionId
+                      ? {
+                          ...s,
+                          status,
+                          // O carimbo acompanha o estado: é dele que o selo de
+                          // "pode estar desatualizada" mede o tempo. Tirar o
+                          // estado apaga o carimbo junto, senão sobra uma data
+                          // medindo coisa nenhuma.
+                          statusAt: status ? now : null,
+                          // De propósito NÃO mexe em updated_at: marcar uma
+                          // página como aprovada não é editar a página, e o
+                          // changelog não deve ganhar uma linha por isso.
+                        }
+                      : s
                   ),
                 }
               : p

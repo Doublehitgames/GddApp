@@ -55,6 +55,7 @@ export function sectionRow(section: unknown): Rec {
     ...(s.parentId ? { parentId: s.parentId } : {}),
     order: s.order,
     ...(s.dataId ? { dataId: s.dataId } : {}),
+    ...(s.status ? { status: s.status } : {}),
     ...(s.content || blocks.length ? { hasDescription: true } : {}),
   };
 }

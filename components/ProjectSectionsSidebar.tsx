@@ -10,6 +10,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { getSectionSearchText } from "@/utils/sectionSearchText";
 import { projectPath, sectionPath, toSlug } from "@/lib/utils/slug";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
+import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import {
   Collision,
   CollisionDetection,
@@ -768,6 +769,7 @@ function SortableRootItem({
   };
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const highlightText = (text: string, term?: string) => {
     if (!term || !term.trim()) return text;
     const regex = new RegExp(`(${term})`, "gi");
@@ -922,6 +924,17 @@ function SortableRootItem({
         >
           {highlightText(section.title, searchTerm)}
         </span>
+        {/* Na árvore não cabe a pílula: a bolinha diz o estado sem roubar
+            largura do título, que é o que se lê aqui. */}
+        {section?.status && PAGE_STATUS_META[section.status as PageStatus] && (
+          <span
+            className={`relative h-2 w-2 shrink-0 rounded-full pointer-events-none ${PAGE_STATUS_META[section.status as PageStatus].dotClass}`}
+            title={t(
+              PAGE_STATUS_META[section.status as PageStatus].labelKey,
+              PAGE_STATUS_META[section.status as PageStatus].labelFallback
+            )}
+          />
+        )}
         {hasChildren && (
           <span
             className={`relative inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full border px-1.5 text-[10px] font-semibold pointer-events-none shrink-0 ${

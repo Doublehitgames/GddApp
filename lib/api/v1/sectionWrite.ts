@@ -62,6 +62,12 @@ export function buildSectionUpdates(
   if (fields.color !== undefined) updates.color = fields.color;
   if (fields.domainTags !== undefined) updates.domain_tags = fields.domainTags;
   if (fields.dataId !== undefined) updates.data_id = fields.dataId;
+  if (fields.status !== undefined) {
+    updates.status = fields.status;
+    // O carimbo anda junto com o estado: e dele que o selo de "pode estar
+    // desatualizada" mede o tempo. Sair do estado apaga o carimbo.
+    updates.status_at = fields.status ? ctx.now : null;
+  }
   if (fields.thumbImageUrl !== undefined) updates.thumb_image_url = fields.thumbImageUrl;
 
   const touched = Object.keys(fields).filter((k) => k !== "sectionId" && fields[k as keyof SectionUpdate] !== undefined);

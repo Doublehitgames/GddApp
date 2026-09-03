@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { parsePageStatus } from "@/lib/pageStatus/types";
 import type { Project, Section } from "@/store/projectStore";
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -379,6 +380,8 @@ function dbSectionToStore(row: Record<string, unknown>): Section {
     updated_by: (row.updated_by as string) || undefined,
     updated_by_name: (row.updated_by_name as string) || undefined,
     dataId: (row.data_id as string) || undefined,
+    status: parsePageStatus(row.status),
+    statusAt: (row.status_at as string) || null,
     domainTags,
   };
 }

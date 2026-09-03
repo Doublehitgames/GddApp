@@ -20,6 +20,8 @@ import {
 } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
+import StatusPicker from "@/components/pageStatus/StatusPicker";
+import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import {
@@ -1537,9 +1539,14 @@ function SectionDetailContent({
               </>
             )}
               </div>
-              {/* DataID - abaixo do título, dentro do card */}
+              {/* Estado e DataID - abaixo do título, dentro do card */}
               {!isEditingTitle && (
-                <div className="pl-10">
+                <div className="pl-10 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <StatusPicker
+                    projectId={realProjectId}
+                    sectionId={realSectionId}
+                    status={section?.status}
+                  />
                   {!isEditingDataId && section?.dataId && (
                     <button
                       type="button"
@@ -1729,6 +1736,18 @@ function SectionDetailContent({
       {sectionThumbError && (
         <div className="max-w-6xl mx-auto mb-2 text-xs text-red-300">
           {sectionThumbError}
+        </div>
+      )}
+
+      {/* Aviso de página firme cujas referências mudaram depois da confirmação */}
+      {section && !inlineEdit && (
+        <div className="max-w-6xl mx-auto">
+          <StaleNotice
+            projectId={realProjectId}
+            projectSlug={projectId}
+            section={section}
+            sections={sections || []}
+          />
         </div>
       )}
 

@@ -2107,5 +2107,25 @@
       "renamed": "renamed",
       "deleted": "deleted"
     }
+  },
+  "pageStatus": {
+    "draft": "Draft",
+    "review": "In review",
+    "approved": "Approved",
+    "implemented": "In the game",
+    "obsolete": "Obsolete",
+    "setStatus": "+ status",
+    "pickerTitle": "Maturity of this page",
+    "clear": "no status",
+    "unset": "no status",
+    "widgetTitle": "GDD maturity",
+    "widgetEmpty": "No page classified yet. Open a page and mark where it stands — draft, approved, in the game.",
+    "classified": "{done} of {total} classified",
+    "staleBadge": "{n} need a reread",
+    "staleBadgeOne": "1 needs a reread",
+    "staleExplain": "Settled pages that cite something rewritten after the last confirmation:",
+    "staleMore": "and {n} more",
+    "staleTitle": "Marked as {status}, but something it cites changed afterwards.",
+    "confirmStillValid": "reread it, still valid"
   }
 }

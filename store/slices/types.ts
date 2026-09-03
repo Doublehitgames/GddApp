@@ -6,6 +6,7 @@ import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
+import type { PageStatus } from "@/lib/pageStatus/types";
 
 export type UUID = string;
 
@@ -289,6 +290,17 @@ export type Section = {
   color?: string; // Cor personalizada para o mapa mental (formato hex: #3b82f6)
   /** Tags de domínio de game design (combat, economy, progression, etc.) para IA e relações entre sistemas. */
   domainTags?: string[];
+  /**
+   * Maturidade da página: rascunho, em revisão, aprovado, no jogo, obsoleto.
+   * Ausente é o normal — um GDD antigo tem centenas de páginas sem classificar.
+   */
+  status?: PageStatus;
+  /**
+   * Quando o estado atual foi carimbado. É a partir daqui que o selo de "pode
+   * estar desatualizada" compara as páginas citadas: sem esta data não há de
+   * quando comparar, e a página nunca é acusada.
+   */
+  statusAt?: string | null;
   /** ID da planilha cadastrada no projeto usada como fonte de dados desta seção. */
   /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
   pageTypeId?: string;
@@ -463,6 +475,8 @@ export interface ProjectStore {
     updatedBy?: SectionAuditBy
   ) => void;
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
+  /** Carimba a maturidade da página. `undefined` volta a página para "sem estado". */
+  setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;

@@ -2107,5 +2107,25 @@
       "renamed": "renombrada",
       "deleted": "eliminada"
     }
+  },
+  "pageStatus": {
+    "draft": "Borrador",
+    "review": "En revisión",
+    "approved": "Aprobado",
+    "implemented": "En el juego",
+    "obsolete": "Obsoleto",
+    "setStatus": "+ estado",
+    "pickerTitle": "Madurez de esta página",
+    "clear": "sin estado",
+    "unset": "sin estado",
+    "widgetTitle": "Madurez del GDD",
+    "widgetEmpty": "Ninguna página clasificada todavía. Abre una página y marca en qué punto está — borrador, aprobado, en el juego.",
+    "classified": "{done} de {total} clasificadas",
+    "staleBadge": "{n} piden relectura",
+    "staleBadgeOne": "1 pide relectura",
+    "staleExplain": "Páginas firmes que citan algo reescrito después de la última confirmación:",
+    "staleMore": "y {n} más",
+    "staleTitle": "Marcada como {status}, pero algo que cita cambió después.",
+    "confirmStillValid": "la releí, sigue valiendo"
   }
 }
