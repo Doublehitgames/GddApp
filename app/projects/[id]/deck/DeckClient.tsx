@@ -380,6 +380,10 @@ export default function DeckClient({ projectId, publicToken }: Props) {
         onEnterFloor={goToFloor}
         onClose={closeDrawer}
         onReferenceNavigate={revealSection}
+        onTrailNavigate={(id) => {
+          const node = tree.byId.get(id);
+          if (node) goToTrail(node);
+        }}
         projectSlug={projectId}
         publicToken={publicToken}
       />

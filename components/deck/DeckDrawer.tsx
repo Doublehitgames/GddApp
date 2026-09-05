@@ -38,6 +38,8 @@ export interface DeckDrawerProps<S extends DeckSection> {
   onEnterFloor: (sectionId: string) => void;
   onClose: () => void;
   onReferenceNavigate: (sectionId: string) => void;
+  /** Um passo da trilha: leva a gaveta (ou o andar) até aquela página. */
+  onTrailNavigate: (sectionId: string) => void;
   /** Slug do projeto e token público: o trio de "ver noutro modo" monta as rotas. */
   projectSlug: string;
   publicToken?: string;
@@ -79,6 +81,7 @@ export default function DeckDrawer<S extends DeckSection>({
   onEnterFloor,
   onClose,
   onReferenceNavigate,
+  onTrailNavigate,
   projectSlug,
   publicToken,
 }: DeckDrawerProps<S>) {
@@ -135,12 +138,6 @@ export default function DeckDrawer<S extends DeckSection>({
             className="shrink-0 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11.5px] font-semibold text-amber-800"
           >
             {DECK_STALE_GLYPH} {t("deck.stale", "pode estar desatualizada")}
-          </span>
-        )}
-
-        {trail.length > 1 && (
-          <span className="hidden truncate text-xs text-gray-400 md:inline">
-            {trail.slice(0, -1).map((node) => labelOf(node.section)).join(" › ")}
           </span>
         )}
 
@@ -230,9 +227,35 @@ export default function DeckDrawer<S extends DeckSection>({
 
         <article className="max-h-none overflow-auto px-5 pb-7 pt-5 md:max-h-[60vh] md:px-6">
           <h2 className="text-[19px] font-semibold -tracking-[0.02em] text-gray-900">{labelOf(content.section)}</h2>
-          <p className="mb-4 mt-0.5 text-[12.5px] text-gray-400">
-            {trail.map((node) => labelOf(node.section)).join(" › ")}
-          </p>
+          {/*
+            A trilha do conteúdo é o atalho de subir sem rolar até o topo: quem
+            lê uma carta no fundo de um inventário volta ao capítulo daqui mesmo.
+            Ela é a única da gaveta — o cabeçalho tinha uma segunda, que dizia o
+            mesmo depois de dois selos e só atrasava a leitura.
+          */}
+          <nav className="-ml-1 mb-4 mt-0.5 flex flex-wrap items-center gap-0.5 text-[12.5px] text-gray-400">
+            {trail.map((node, index) => (
+              <span key={node.section.id} className="flex items-center gap-0.5">
+                {index > 0 && (
+                  <span aria-hidden className="select-none">
+                    ›
+                  </span>
+                )}
+                {index === trail.length - 1 ? (
+                  <span className="px-1 py-0.5">{labelOf(node.section)}</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onTrailNavigate(node.section.id)}
+                    title={t("deck.trailGo", "Ir para {{title}}").replace("{{title}}", labelOf(node.section))}
+                    className="rounded px-1 py-0.5 hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    {labelOf(node.section)}
+                  </button>
+                )}
+              </span>
+            ))}
+          </nav>
 
           {hasBody ? (
             <div className="gdd-light-prose gdd-reading-prose prose max-w-none">
