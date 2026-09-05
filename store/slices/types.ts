@@ -493,6 +493,11 @@ export interface ProjectStore {
   setSectionDeckLayout: (projectId: UUID, sectionId: UUID, deckLayout: DeckLayout | undefined) => void;
   /** O mesmo para um lote de páginas — um ramo inteiro da árvore, tipicamente. */
   setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => void;
+  /**
+   * "Reli, continua valendo" para um lote: recarimba a data sem tocar no
+   * estado de ninguém. Cada página guarda o estado que já tinha.
+   */
+  confirmSectionsRead: (projectId: UUID, sectionIds: UUID[]) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
   moveSectionUp: (projectId: UUID, sectionId: UUID) => void;
   moveSectionDown: (projectId: UUID, sectionId: UUID) => void;

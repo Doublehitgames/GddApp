@@ -547,6 +547,33 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       );
     },
 
+    confirmSectionsRead: (projectId: UUID, sectionIds: UUID[]) => {
+      if (sectionIds.length === 0) return;
+      // Recarimbar não é reclassificar: cada página fica com o estado que já
+      // tinha, e só a data anda. Por isso não dá para reaproveitar
+      // setSectionsStatus, que impõe UM estado ao lote inteiro.
+      //
+      // Página sem estado é ignorada de propósito: não há confirmação a
+      // renovar, e inventar uma data ali deixaria um carimbo sem nada carimbado.
+      const alvos = new Set(sectionIds);
+      const now = new Date().toISOString();
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) =>
+                    alvos.has(s.id) && s.status ? { ...s, statusAt: now } : s
+                  ),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
     removeSection: (projectId: UUID, sectionId: UUID) => {
       const project = get().projects.find((p) => p.id === projectId);
       const sections = project?.sections || [];

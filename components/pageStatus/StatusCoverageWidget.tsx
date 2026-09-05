@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { checkStale, type StaleCandidate } from "@/lib/pageStatus/stale";
 import { PAGE_STATUSES, PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { toSlug } from "@/lib/utils/slug";
@@ -31,6 +31,9 @@ const NO_SECTIONS: StaleCandidate[] = [];
  */
 export default function StatusCoverageWidget({ projectId, realProjectId }: Props) {
   const { t } = useI18n();
+  const confirmSectionsRead = useProjectStore((s) => s.confirmSectionsRead);
+  /** O lote pede um segundo clique: 160 carimbos não se desfazem um a um. */
+  const [confirmando, setConfirmando] = useState(false);
 
   // Assina só as páginas deste projeto, e não a lista de projetos inteira: a
   // varredura de referências abaixo custa uma passada por todo o texto do GDD,
@@ -141,12 +144,61 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
 
         {stale.length > 0 && (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
-            <p className="text-[11px] text-amber-300/90">
-              {t(
-                "pageStatus.staleExplain",
-                "Páginas firmes que citam algo reescrito depois da última confirmação:"
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+              <p className="text-[11px] text-amber-300/90">
+                {t(
+                  "pageStatus.staleExplain",
+                  "Páginas firmes que citam algo reescrito depois da última confirmação:"
+                )}
+              </p>
+              {/*
+                Renomear uma página reescreve o título dentro de todas que a
+                citam, e cada uma delas passa a pedir releitura no mesmo
+                segundo. Quando a mudança foi essa — e quem mexeu sabe que foi
+                —, abrir 160 páginas para clicar "reli" em cada uma não é
+                revisão, é pedágio. O lote existe para esse caso.
+              */}
+              {!confirmando ? (
+                <button
+                  type="button"
+                  onClick={() => setConfirmando(true)}
+                  className="shrink-0 rounded-lg border border-amber-500/30 px-2.5 py-1 text-[11px] text-amber-300 transition-colors hover:bg-amber-500/10"
+                >
+                  {t("pageStatus.confirmAll", "reli todas ({n})").replace("{n}", String(stale.length))}
+                </button>
+              ) : (
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      confirmSectionsRead(
+                        realProjectId,
+                        stale.map((section) => section.id)
+                      );
+                      setConfirmando(false);
+                    }}
+                    className="rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-500/25"
+                  >
+                    {t("pageStatus.confirmAllYes", "confirmar as {n}").replace("{n}", String(stale.length))}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmando(false)}
+                    className="rounded-lg px-2 py-1 text-[11px] text-amber-300/70 transition-colors hover:text-amber-200"
+                  >
+                    {t("common.cancel", "Cancelar")}
+                  </button>
+                </span>
               )}
-            </p>
+            </div>
+            {confirmando && (
+              <p className="mt-1.5 text-[11px] leading-snug text-amber-300/70">
+                {t(
+                  "pageStatus.confirmAllAsk",
+                  "Recarimba a data das {n} de uma vez, sem abrir nenhuma. O estado de cada página continua o que é — só o selo de releitura sai."
+                ).replace("{n}", String(stale.length))}
+              </p>
+            )}
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {stale.slice(0, STALE_PREVIEW).map((section) => (
                 <li key={section.id}>

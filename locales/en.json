@@ -2131,6 +2131,9 @@
     "staleMore": "and {n} more",
     "staleTitle": "Marked as {status}, but something it cites changed afterwards.",
     "confirmStillValid": "reread it, still valid",
+    "confirmAll": "reread them all ({n})",
+    "confirmAllYes": "confirm all {n}",
+    "confirmAllAsk": "Restamps all {n} at once, without opening any. Each page keeps the status it has — only the reread seal goes away.",
     "applySubtree": "apply to the {n} subpages too",
     "applySubtreeOne": "apply to the subpage too"
   },

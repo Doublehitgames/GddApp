@@ -2131,6 +2131,9 @@
     "staleMore": "e mais {n}",
     "staleTitle": "Marcada como {status}, mas algo que ela cita mudou depois.",
     "confirmStillValid": "reli, continua valendo",
+    "confirmAll": "reli todas ({n})",
+    "confirmAllYes": "confirmar as {n}",
+    "confirmAllAsk": "Recarimba a data das {n} de uma vez, sem abrir nenhuma. O estado de cada página continua o que é — só o selo de releitura sai.",
     "applySubtree": "aplicar também às {n} subpáginas",
     "applySubtreeOne": "aplicar também à subpágina"
   },
