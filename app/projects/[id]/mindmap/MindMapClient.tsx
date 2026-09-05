@@ -25,6 +25,7 @@ import { extractSectionReferences, findSection, getBacklinks, SectionReference }
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { SectionPreviewDialog, toShortDescription } from "@/components/common/SectionPreviewDialog";
+import { PAGE_STATUSES, PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import {
   DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
   normalizeDocumentHeroThumbWidth,
@@ -639,7 +640,11 @@ const SectionNode = memo(function SectionNode({ data }: { data: any }) {
   
   // Estilo limpo: uma cor so para todos os niveis. A cor customizada por pagina
   // continua valendo, porque e escolha do usuario naquela pagina especifica.
-  const bgColor = data.customColor || (CONFIG as any).clean.accent;
+  //
+  // No modo "colorir por estado" a cor do estado vem na frente ate da cor
+  // customizada: o mapa inteiro passa a responder uma pergunta so — o que ja
+  // esta no jogo — e uma bolinha fora da escala ali seria ruido.
+  const bgColor = data.statusColor || data.customColor || (CONFIG as any).clean.accent;
   const isSelected = data.isSelected;
   const isInPath = data.isInPath; // Nó está no caminho mas não é o selecionado
   const isFaded = data.isFaded; // Nó não está no caminho e deve ser esmaecido
@@ -1280,6 +1285,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // liga no toggle do painel, e trocar de bolinha volta pro default.
   const [showReferences, setShowReferences] = useState(false);
   const [referenceCount, setReferenceCount] = useState(0);
+  // Colorir por maturidade. Nao persiste de propósito: e um modo de vistoria
+  // ("quanto do GDD ja esta no jogo?"), nao o jeito de ler o mapa todo dia.
+  const [colorirPorEstado, setColorirPorEstado] = useState(false);
   // Previa pendente: clicar numa referencia abre o modal em vez de saltar.
   const [pendingReference, setPendingReference] = useState<{ sectionId: string; title: string; description: string } | null>(null);
   // Trilha de saltos por referencia, pra oferecer a volta. Zera quando o usuario
@@ -2093,6 +2101,46 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     });
   }, [selectedNodeId, config, project, searchResults, searchTerm, showReferences]);
 
+  /** Estado de cada pagina, para o modo de cor por maturidade. */
+  const estadoPorId = useMemo(() => {
+    const mapa = new Map<string, PageStatus | undefined>();
+    for (const s of project?.sections ?? []) mapa.set(s.id, s.status);
+    return mapa;
+  }, [project?.sections]);
+
+  /** Quantas paginas em cada estado — a legenda so mostra o que existe. */
+  const contagemPorEstado = useMemo(() => {
+    const contagem = new Map<string, number>();
+    for (const estado of estadoPorId.values()) {
+      const chave = estado ?? "__sem__";
+      contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+    }
+    return contagem;
+  }, [estadoPorId]);
+
+  /**
+   * Pinta as bolinhas por estado sem refazer o layout.
+   *
+   * De proposito uma passada leve sobre os nodes existentes, e nao um parametro
+   * do processSections: refazer o layout recalcularia as posicoes das 250
+   * bolinhas a cada clique no toggle, e o mapa saltaria na cara do usuario so
+   * por trocar de cor.
+   */
+  useEffect(() => {
+    const corDoNo = (id: string): string | undefined => {
+      if (!colorirPorEstado || !estadoPorId.has(id)) return undefined;
+      const estado = estadoPorId.get(id);
+      // Sem estado nao fica invisivel, fica em segundo plano: e o cinza que o
+      // mapa ja usa para "isso nao e o assunto agora".
+      return estado ? PAGE_STATUS_META[estado].graphColor : (config as any).clean.muted;
+    };
+
+    setNodes((nds) => {
+      if (nds.every((n) => n.data.statusColor === corDoNo(n.id))) return nds;
+      return nds.map((n) => ({ ...n, data: { ...n.data, statusColor: corDoNo(n.id) } }));
+    });
+  }, [colorirPorEstado, estadoPorId, config, setNodes]);
+
 
   // Guarda a posicao para devolver o no ao soltar. O `nodeDragThreshold` do
   // React Flow so dispara o arrasto depois de 5px de movimento, entao quando
@@ -2624,6 +2672,67 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           >
           <ZoomCssVar />
           <Controls className="border-gray-300" />
+
+          {/* Vistoria de maturidade. Fica sobre o mapa, e nao no painel do no,
+              porque fala do documento inteiro — o painel so aparece quando ha
+              uma pagina selecionada, e a pergunta aqui e "quanto do GDD ja
+              esta no jogo", nao "o que e esta pagina". */}
+          <Panel position="top-left" className="!m-3">
+            <div className="rounded-lg border border-gray-300 bg-white/95 shadow-sm backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setColorirPorEstado((v) => !v)}
+                aria-pressed={colorirPorEstado}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  colorirPorEstado
+                    ? "text-gray-900"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{
+                    backgroundColor: colorirPorEstado
+                      ? PAGE_STATUS_META.implemented.graphColor
+                      : (config as any).clean.accent,
+                  }}
+                />
+                {t("mindMap.statusColors.toggle", "Cores por maturidade")}
+              </button>
+
+              {colorirPorEstado && (
+                <div className="flex flex-col gap-1 border-t border-gray-200 px-3 py-2">
+                  {PAGE_STATUSES.filter((estado) => contagemPorEstado.get(estado)).map((estado) => (
+                    <span key={estado} className="flex items-center gap-2 text-xs text-gray-600">
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: PAGE_STATUS_META[estado].graphColor }}
+                      />
+                      {t(PAGE_STATUS_META[estado].labelKey, PAGE_STATUS_META[estado].labelFallback)}
+                      <span className="ml-auto tabular-nums text-gray-400">
+                        {contagemPorEstado.get(estado)}
+                      </span>
+                    </span>
+                  ))}
+                  {(contagemPorEstado.get("__sem__") ?? 0) > 0 && (
+                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: (config as any).clean.muted }}
+                      />
+                      {t("pageStatus.unset", "sem estado")}
+                      <span className="ml-auto tabular-nums text-gray-400">
+                        {contagemPorEstado.get("__sem__")}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </Panel>
         </ReactFlow>
       </div>
 

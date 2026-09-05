@@ -24,6 +24,9 @@ A description is prose with design value — context, role, flavour, how the thi
 PAGE STATUS:
 A page may carry a \`status\`: draft, review, approved, implemented or obsolete. It is the team's own signal of what can be trusted, so read it before rewriting and leave it alone unless you were asked to change it — a page marked approved or implemented was a decision someone made.
 
+WHAT CHANGED, AND WHEN:
+A page carries two dates. \`contentUpdatedAt\` is when its text last changed; \`updatedAt\` also moves for a colour, an order or a parent. To find what was actually rewritten since some moment, compare against \`contentUpdatedAt\`.
+
 CONVENTIONS PER PROJECT:
 A project may carry its own rules in \`aiInstructions\`. Read them with get_project before writing, and follow them over these defaults when they disagree.
 

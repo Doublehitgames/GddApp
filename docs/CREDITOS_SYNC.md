@@ -4,9 +4,13 @@
 
 **Cada chamada a `POST /api/projects/sync` cobra pelo *diff* daquela requisição:** diferença entre o estado que você está enviando e o que já está no cloud. Não cobramos por “ações” do usuário (criar, editar, mover, apagar), e sim pelo efeito líquido daquela sync.
 
-- **Seção nova** (não existe no cloud) ou **alterada** (título, conteúdo, cor, pai) → 1 crédito por seção.
-- **Só reordenação** (várias seções só mudaram de ordem) → 1 crédito no total (não por seção).
+- **Seção nova** (não existe no cloud) ou **alterada** (título, conteúdo, cor, pai, ícone, dataId, tags, fluxograma) → 1 crédito por seção.
 - **Exclusão no cloud** → 1 crédito por seção que **já estava no cloud** e você está removendo.
+- **Metadado não cobra nada**: hoje, **ordem** (posição no mapa) e **estado** (maturidade da página). Uma sync que só mexeu nisso custa **0** — inclusive quando marca 200 páginas de uma vez.
+
+A razão do metadado ser grátis: são escritas minúsculas, não geram versão no histórico nem linha no changelog, e cobrar por elas inviabilizava o uso que a feature existe para incentivar — num GDD maduro, classificar o documento inteiro custaria vários dias de cota, então ninguém classificaria.
+
+Como o custo é zero, uma sync só de metadado **passa mesmo com a cota da hora esgotada**, e numa sync parcial o metadado vai junto sempre: segurá-lo não economizaria crédito de ninguém.
 
 ## Exemplo que você descreveu
 
@@ -47,7 +51,7 @@ Assim você paga apenas pelo **diff final** (ex.: 0 créditos se no fim não sob
 
 - **API:** `app/api/projects/sync/route.ts`  
   - `removedSectionIds`: só inclui IDs que **existem no DB** e não vêm no payload (delete no cloud).  
-  - `consumedThisSync = contentChangeCount + (orderOnlyCount > 0 ? 1 : 0) + sectionsDeleted`.
+  - `consumedThisSync = contentChangeCount + sectionsDeleted`.
 
 - **Comentários no código** deixam explícito que não cobramos delete de seção que nunca foi para o cloud.
 
@@ -56,8 +60,9 @@ Assim você paga apenas pelo **diff final** (ex.: 0 créditos se no fim não sob
 O sync também envia metadados do projeto (ex.: título, descrição e `cover_image_url` da capa), mas a regra de créditos deste documento continua baseada no diff de **seções**:
 
 - criação/edição de seção;
-- reordenação;
 - exclusão de seção já existente no cloud.
+
+(Reordenação e estado da página entram no sync, mas não na contagem.)
 
 Em outras palavras, alterar só metadados visuais do projeto não entra na contagem “1 crédito por seção” descrita acima.
 

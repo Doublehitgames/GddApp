@@ -503,34 +503,45 @@ export async function POST(request: NextRequest) {
     const sectionsDeleted = removedSectionIds.length;
     const sectionsUnchanged = Math.max(0, sectionsTotal - sectionsUpserted);
 
-    // Créditos: 1 por seção nova/conteúdo, 1 no total por reordenação, 1 por delete. Listas para sync parcial.
+    // Crédito é o preço do CONTEÚDO: página nova, texto novo, página apagada.
+    //
+    // Metadado não entra na conta — hoje a ordem no mapa e o estado da página.
+    // São escritas minúsculas, não geram versão no histórico nem linha no
+    // changelog, e cobrar por elas inviabilizava justamente o uso que a gente
+    // quer incentivar: num GDD maduro, classificar 200 páginas custaria vários
+    // dias de cota, então ninguém classificaria.
+    //
+    // As listas continuam separadas porque o sync parcial precisa saber o que
+    // cabe no que sobrou de crédito.
     const contentUpsertList: any[] = [];
-    const orderOnlyList: any[] = [];
+    const metadataOnlyList: any[] = [];
     for (const section of sectionsToUpsert) {
       const existing = existingById.get(section.id);
       if (!existing) {
         contentUpsertList.push(section);
         continue;
       }
-      const onlyOrderChanged =
+      // Ordem e estado ficam de fora da comparação de propósito: são exatamente
+      // os dois campos que podem mudar de graça.
+      const onlyMetadataChanged =
         (existing.parent_id || null) === (section.parentId || null) &&
         (existing.title || "") === (section.title || "") &&
         (existing.content || "") === (section.content || "") &&
+        stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) ===
+          stableSerialize(section.contentBlocks ?? null) &&
         (existing.color || null) === (section.color || null) &&
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         (existing.data_id || null) === (section.dataId || null) &&
-        (existing.status || null) === (section.status || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
-      if (onlyOrderChanged) {
-        orderOnlyList.push(section);
+      if (onlyMetadataChanged) {
+        metadataOnlyList.push(section);
       } else {
         contentUpsertList.push(section);
       }
     }
-    const orderOnlyCount = orderOnlyList.length;
     const contentChangeCount = contentUpsertList.length;
-    const consumedThisSync = contentChangeCount + (orderOnlyCount > 0 ? 1 : 0) + sectionsDeleted;
+    const consumedThisSync = contentChangeCount + sectionsDeleted;
 
     // Ordenar conteúdo por profundidade (pais antes de filhos) para sync parcial
     const byId = new Map(contentUpsertList.map((s: any) => [s.id, s]));
@@ -589,7 +600,10 @@ export async function POST(request: NextRequest) {
     }
 
     const availableCredits = Math.max(0, hourlyLimit - usageBefore);
-    const wouldExceedQuota = quotaEnabled && usageBefore + consumedThisSync > hourlyLimit;
+    // Sync que não custa nada não passa pela cota: classificar páginas ou
+    // reordenar o mapa tem que funcionar mesmo com a cota do dia esgotada.
+    const wouldExceedQuota =
+      quotaEnabled && consumedThisSync > 0 && usageBefore + consumedThisSync > hourlyLimit;
 
     if (wouldExceedQuota && availableCredits <= 0) {
       return NextResponse.json(
@@ -609,7 +623,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sync parcial: usar só os créditos disponíveis (upserts por profundidade, depois order-only, depois deletes)
+    // Sync parcial: usar só os créditos disponíveis (upserts por profundidade, depois deletes).
+    // O metadado vai junto sempre, custe o que custar o resto — segurar a ordem
+    // ou o estado numa sincronização parcial não economizaria crédito nenhum.
     let sectionsToApply: any[] = [];
     let deletesToApply: string[] = [];
     let actualCredits = 0;
@@ -619,19 +635,14 @@ export async function POST(request: NextRequest) {
       partial = true;
       let remaining = availableCredits;
       const nContent = Math.min(remaining, contentUpsertSorted.length);
-      sectionsToApply = contentUpsertSorted.slice(0, nContent);
+      sectionsToApply = [...contentUpsertSorted.slice(0, nContent), ...metadataOnlyList];
       remaining -= nContent;
       actualCredits += nContent;
-      if (remaining >= 1 && orderOnlyList.length > 0) {
-        sectionsToApply = [...sectionsToApply, ...orderOnlyList];
-        actualCredits += 1;
-        remaining -= 1;
-      }
       const nDelete = Math.min(remaining, removedSectionIds.length);
       deletesToApply = removedSectionIds.slice(0, nDelete);
       actualCredits += nDelete;
     } else {
-      sectionsToApply = [...contentUpsertSorted, ...orderOnlyList];
+      sectionsToApply = [...contentUpsertSorted, ...metadataOnlyList];
       deletesToApply = [...removedSectionIds];
       actualCredits = consumedThisSync;
     }

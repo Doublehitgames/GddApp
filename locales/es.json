@@ -681,6 +681,9 @@
     "references": {
       "show": "Mostrar referencias",
       "hide": "Ocultar referencias"
+    },
+    "statusColors": {
+      "toggle": "Colores por madurez"
     }
   },
   "projectExport": {
@@ -1144,7 +1147,7 @@
         "lastSyncUnchanged": "Sin cambios",
         "creditsToSyncAll": "~{{count}} créditos para sincronizar todo",
         "creditsToSyncThis": "~{{count}} créditos para sincronizar este proyecto",
-        "pendingNoCredits": "Hay cambios pendientes con costo cero de créditos (descripción/ficha/capa)",
+        "pendingNoCredits": "Hay cambios pendientes sin costo de crédito (descripción, ficha, portada, orden de las páginas y madurez)",
         "previewClickHint": "Haz clic para ver qué se sincronizará",
         "previewTitle": "Incluido en el próximo sync",
         "previewNew": "Nuevas",
@@ -1167,7 +1170,7 @@
         "used": "Usados",
         "remaining": "Restantes",
         "resetAt": "Reinicio de la ventana",
-        "howItWorks": "Cada sección creada o actualizada (título, contenido, etc.) = 1 crédito. Reordenar varias secciones = 1 crédito en total. Cada sección eliminada = 1 crédito."
+        "howItWorks": "Cada sección creada o modificada (título, contenido, color, icono) = 1 crédito. Cada sección eliminada = 1 crédito. Reordenar páginas y marcar su madurez no cuesta créditos, ni siquiera en lote."
       }
     },
     "settingsClient": {

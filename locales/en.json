@@ -681,6 +681,9 @@
     "references": {
       "show": "Show references",
       "hide": "Hide references"
+    },
+    "statusColors": {
+      "toggle": "Colour by maturity"
     }
   },
   "projectExport": {
@@ -1144,7 +1147,7 @@
         "lastSyncUnchanged": "Unchanged",
         "creditsToSyncAll": "~{{count}} credits to sync all",
         "creditsToSyncThis": "~{{count}} credits to sync this project",
-        "pendingNoCredits": "There are pending changes with zero credit cost (description/spotlight/cover)",
+        "pendingNoCredits": "There are pending changes with zero credit cost (description, spotlight, cover, page order and maturity)",
         "previewClickHint": "Click to see what will be synced",
         "previewTitle": "Included in next sync",
         "previewNew": "New",
@@ -1164,7 +1167,7 @@
       },
       "credits": {
         "title": "Cloud sync credits",
-        "howItWorks": "Each section created or updated (title, content, etc.) = 1 credit. Reordering multiple sections = 1 credit total. Each section deleted = 1 credit.",
+        "howItWorks": "Each section created or changed (title, content, colour, icon) = 1 credit. Each section deleted = 1 credit. Reordering pages and marking their maturity cost nothing, not even in bulk.",
         "used": "Used",
         "remaining": "Remaining",
         "resetAt": "Window resets at"

@@ -41,6 +41,11 @@ export type PageStatusMeta = {
   badgeClass: string;
   /** Bolinha para listas apertadas, onde não cabe a pílula. */
   dotClass: string;
+  /**
+   * Cor do nó no mapa mental quando ele é colorido por estado. Hex cru, e não
+   * classe do Tailwind: quem pinta ali é o React Flow, por style inline.
+   */
+  graphColor: string;
 };
 
 export const PAGE_STATUS_META: Record<PageStatus, PageStatusMeta> = {
@@ -49,30 +54,35 @@ export const PAGE_STATUS_META: Record<PageStatus, PageStatusMeta> = {
     labelFallback: "Rascunho",
     badgeClass: "border-gray-600/50 bg-gray-700/25 text-gray-300",
     dotClass: "bg-gray-500",
+    graphColor: "#94a3b8",
   },
   review: {
     labelKey: "pageStatus.review",
     labelFallback: "Em revisão",
     badgeClass: "border-amber-500/30 bg-amber-500/10 text-amber-400",
     dotClass: "bg-amber-500",
+    graphColor: "#f59e0b",
   },
   approved: {
     labelKey: "pageStatus.approved",
     labelFallback: "Aprovado",
     badgeClass: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
     dotClass: "bg-emerald-500",
+    graphColor: "#10b981",
   },
   implemented: {
     labelKey: "pageStatus.implemented",
     labelFallback: "No jogo",
     badgeClass: "border-sky-500/30 bg-sky-500/10 text-sky-400",
     dotClass: "bg-sky-500",
+    graphColor: "#0ea5e9",
   },
   obsolete: {
     labelKey: "pageStatus.obsolete",
     labelFallback: "Obsoleto",
     badgeClass: "border-rose-500/25 bg-rose-500/10 text-rose-400/90",
     dotClass: "bg-rose-500/70",
+    graphColor: "#f43f5e",
   },
 };
 

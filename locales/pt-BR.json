@@ -681,6 +681,9 @@
     "references": {
       "show": "Mostrar referências",
       "hide": "Ocultar referências"
+    },
+    "statusColors": {
+      "toggle": "Cores por maturidade"
     }
   },
   "projectExport": {
@@ -1144,7 +1147,7 @@
         "lastSyncUnchanged": "Sem mudança",
         "creditsToSyncAll": "~{{count}} créditos para sincronizar tudo",
         "creditsToSyncThis": "~{{count}} créditos para sincronizar este projeto",
-        "pendingNoCredits": "Há pendências sem custo de crédito (descrição/ficha/capa)",
+        "pendingNoCredits": "Há pendências sem custo de crédito (descrição, ficha, capa, ordem das páginas e maturidade)",
         "previewClickHint": "Clique para ver o que será sincronizado",
         "previewTitle": "Incluso no próximo sync",
         "previewNew": "Novas",
@@ -1167,7 +1170,7 @@
         "used": "Usados",
         "remaining": "Restantes",
         "resetAt": "Reinício da janela",
-        "howItWorks": "Cada seção criada ou alterada (título, conteúdo, etc.) = 1 crédito. Reordenar várias seções = 1 crédito no total. Cada seção excluída = 1 crédito."
+        "howItWorks": "Cada seção criada ou alterada (título, conteúdo, cor, ícone) = 1 crédito. Cada seção excluída = 1 crédito. Reordenar páginas e marcar a maturidade delas não custa crédito nenhum, nem em lote."
       }
     },
     "settingsClient": {
