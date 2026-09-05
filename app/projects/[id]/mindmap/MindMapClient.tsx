@@ -34,6 +34,7 @@ import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchCont
 import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfig";
 import { useI18n } from "@/lib/i18n/provider";
 import { ProjectTopBar, IconeMapa } from "@/components/project/ProjectTopBar";
+import PageModeLinks from "@/components/project/PageModeLinks";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import * as d3 from "d3-force";
 import ReactMarkdown from "react-markdown";
@@ -2796,17 +2797,32 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   nao conclusao da leitura — no rodape ficavam depois de uma
                   descricao que pode ter varias telas de rolagem. */}
               <div className="flex items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  title={t("mindMap.panel.goToDocument")}
-                  aria-label={t("mindMap.panel.goToDocument")}
-                  onClick={() => router.push(getDocumentTargetUrl(selectedNode.id !== 'project' ? selectedNode.id : undefined))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </button>
+                {/* Para uma pagina, o trio compartilhado: ver no Doc, no Deck,
+                    editar. Para o node do projeto nao ha pagina para levar, so
+                    o documento inteiro. */}
+                {selectedNode.id === "project" ? (
+                  <button
+                    type="button"
+                    title={t("mindMap.panel.goToDocument")}
+                    aria-label={t("mindMap.panel.goToDocument")}
+                    onClick={() => router.push(getDocumentTargetUrl())}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <PageModeLinks
+                    current="graph"
+                    projectId={projectId}
+                    project={project}
+                    sectionId={selectedNode.id}
+                    publicToken={publicToken}
+                    iconClassName="h-[18px] w-[18px]"
+                    buttonClassName="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  />
+                )}
                 {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
                   <button
                     type="button"
@@ -2820,7 +2836,9 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     </svg>
                   </button>
                 )}
-                {!isPublicMode && (
+                {/* So o node do projeto: para uma pagina, o lapis ja veio no
+                    trio acima e este botao seria o mesmo destino duas vezes. */}
+                {!isPublicMode && selectedNode.id === "project" && (
                   <button
                     type="button"
                     title={t("mindMap.panel.viewDetails")}

@@ -2150,9 +2150,12 @@
     "stale": "puede estar desactualizada",
     "staleHint": "El texto de una página citada cambió después del sello",
     "emptyContent": "Esta página aún no tiene descripción.",
-    "emptyLevel": "Esta página no tiene subpáginas.",
-    "openInDoc": "Ver en el Doc",
-    "openInGraph": "Ver en el mapa mental",
-    "openInEditor": "Editar la página"
+    "emptyLevel": "Esta página no tiene subpáginas."
+  },
+  "pageModes": {
+    "doc": "Ver en el Doc",
+    "deck": "Ver en el Deck",
+    "graph": "Ver en el mapa mental",
+    "editor": "Editar la página"
   }
 }

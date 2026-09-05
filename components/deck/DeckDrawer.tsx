@@ -2,7 +2,7 @@
 
 import type React from "react";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
-import { IconeDocumento, IconeMapa } from "@/components/project/ProjectTopBar";
+import PageModeLinks from "@/components/project/PageModeLinks";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { useI18n } from "@/lib/i18n/provider";
 import { PAGE_STATUS_META } from "@/lib/pageStatus/types";
@@ -37,43 +37,10 @@ export interface DeckDrawerProps<S extends DeckSection> {
   onEnterFloor: (sectionId: string) => void;
   onClose: () => void;
   onReferenceNavigate: (sectionId: string) => void;
-  /** Leva a página para outro modo do projeto. */
-  onOpenIn: (target: DeckOpenTarget, sectionId: string) => void;
-  /** Quais destinos existem aqui — o editor não existe no modo público. */
-  openTargets: DeckOpenTarget[];
+  /** Slug do projeto e token público: o trio de "ver noutro modo" monta as rotas. */
+  projectSlug: string;
+  publicToken?: string;
 }
-
-export type DeckOpenTarget = "editor" | "doc" | "graph";
-
-/** Um lápis: editar, e não "o editor" — o destino é a página aberta para escrita. */
-function IconeLapis({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M11 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5v-5"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M17.4 3.6a1.9 1.9 0 0 1 2.7 2.7L13 13.4l-3.4.7.7-3.4Z" />
-    </svg>
-  );
-}
-
-/**
- * Os destinos do cabeçalho da gaveta.
- *
- * Doc e mapa reusam o ícone da própria aba, então o botão e a tela onde ele
- * cai falam a mesma língua. O editor ganha lápis: ali a página abre para ser
- * escrita, e é isso que o ícone precisa prometer.
- */
-const OPEN_TARGETS: Record<
-  DeckOpenTarget,
-  { Icone: (props: { className?: string }) => React.ReactElement; label: { key: string; fallback: string } }
-> = {
-  doc: { Icone: IconeDocumento, label: { key: "deck.openInDoc", fallback: "Ver no Doc" } },
-  graph: { Icone: IconeMapa, label: { key: "deck.openInGraph", fallback: "Ver no mapa mental" } },
-  editor: { Icone: IconeLapis, label: { key: "deck.openInEditor", fallback: "Editar a página" } },
-};
 
 /** Ícone curto para menu, trilha e cabeçalho: emoji, ou as iniciais em cinza. */
 function MiniIcon({ section }: { section: DeckSection }) {
@@ -107,8 +74,8 @@ export default function DeckDrawer<S extends DeckSection>({
   onEnterFloor,
   onClose,
   onReferenceNavigate,
-  onOpenIn,
-  openTargets,
+  projectSlug,
+  publicToken,
 }: DeckDrawerProps<S>) {
   const { t } = useI18n();
 
@@ -171,22 +138,13 @@ export default function DeckDrawer<S extends DeckSection>({
         )}
 
         <span className="ml-auto flex shrink-0 items-center gap-1">
-          {openTargets.map((target) => {
-            const { Icone, label } = OPEN_TARGETS[target];
-            const titulo = t(label.key, label.fallback);
-            return (
-              <button
-                key={target}
-                type="button"
-                onClick={() => onOpenIn(target, content.section.id)}
-                title={titulo}
-                aria-label={titulo}
-                className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-transparent text-gray-400 hover:border-gray-200 hover:bg-white hover:text-gray-900"
-              >
-                <Icone className="h-[17px] w-[17px]" />
-              </button>
-            );
-          })}
+          <PageModeLinks
+            current="deck"
+            projectId={projectSlug}
+            project={projectTokenSource}
+            sectionId={content.section.id}
+            publicToken={publicToken}
+          />
           <span aria-hidden className="mx-0.5 h-5 w-px bg-gray-200" />
           <button
             type="button"

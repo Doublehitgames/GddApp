@@ -2150,9 +2150,12 @@
     "stale": "may be out of date",
     "staleHint": "A referenced page changed after this one was stamped",
     "emptyContent": "This page has no description yet.",
-    "emptyLevel": "This page has no subpages.",
-    "openInDoc": "See in the Doc",
-    "openInGraph": "See in the mind map",
-    "openInEditor": "Edit the page"
+    "emptyLevel": "This page has no subpages."
+  },
+  "pageModes": {
+    "doc": "See in the Doc",
+    "deck": "See in the Deck",
+    "graph": "See in the mind map",
+    "editor": "Edit the page"
   }
 }

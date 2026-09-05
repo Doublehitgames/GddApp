@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import PageModeLinks from "@/components/project/PageModeLinks";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
@@ -1652,25 +1653,24 @@ function SectionDetailContent({
                     </svg>
                   )}
                 </button>
-                <button
-                  onClick={() => router.push(`${projectPath(project)}/mindmap?focus=${realSectionId}`)}
-                  className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg border border-blue-400/40 hover:bg-blue-700 transition-colors"
-                  title={t("sectionDetail.actions.goToMindMap")}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16M8 4a16 16 0 000 16m8-16a16 16 0 010 16" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => router.push(`${projectPath(project)}/view?focus=${encodeURIComponent(realSectionId)}#section-${realSectionId}`)}
-                  className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-lg border border-indigo-400/40 hover:bg-indigo-700 transition-colors"
-                  title={t('sectionDetail.actions.goToDocument')}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 3h7l5 5v13a1 1 0 01-1 1H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 3v6h6M9 13h6M9 17h6" />
-                  </svg>
-                </button>
+                {/* Ver esta pagina nos outros modos. As cores continuam as
+                    daqui — o componente so decide QUAIS modos e para onde. */}
+                <PageModeLinks
+                  current="editor"
+                  projectId={projectId}
+                  project={project}
+                  sectionId={realSectionId}
+                  className="gap-2"
+                  iconClassName="w-4 h-4"
+                  buttonClassName={(mode) =>
+                    "w-8 h-8 flex items-center justify-center text-white rounded-lg border transition-colors " +
+                    (mode === "graph"
+                      ? "bg-blue-600 border-blue-400/40 hover:bg-blue-700"
+                      : mode === "doc"
+                        ? "bg-indigo-600 border-indigo-400/40 hover:bg-indigo-700"
+                        : "bg-teal-600 border-teal-400/40 hover:bg-teal-700")
+                  }
+                />
                 <button
                   onClick={() => setShowMoveModal(true)}
                   className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded-lg border border-amber-400/40 hover:bg-amber-700 transition-colors"

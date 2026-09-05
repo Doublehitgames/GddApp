@@ -2150,9 +2150,12 @@
     "stale": "pode estar desatualizada",
     "staleHint": "O texto de uma página citada mudou depois do carimbo",
     "emptyContent": "Esta página ainda não tem descrição.",
-    "emptyLevel": "Esta página não tem subpáginas.",
-    "openInDoc": "Ver no Doc",
-    "openInGraph": "Ver no mapa mental",
-    "openInEditor": "Editar a página"
+    "emptyLevel": "Esta página não tem subpáginas."
+  },
+  "pageModes": {
+    "doc": "Ver no Doc",
+    "deck": "Ver no Deck",
+    "graph": "Ver no mapa mental",
+    "editor": "Editar a página"
   }
 }

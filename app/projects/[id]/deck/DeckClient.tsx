@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
-import { sectionPathById } from "@/lib/utils/slug";
 import { useI18n } from "@/lib/i18n/provider";
-import { ProjectTopBar } from "@/components/project/ProjectTopBar";
+import { ProjectTopBar, IconeDeck } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import DeckCard from "@/components/deck/DeckCard";
-import DeckDrawer, { type DeckOpenTarget } from "@/components/deck/DeckDrawer";
+import DeckDrawer from "@/components/deck/DeckDrawer";
 import { listStaleSections } from "@/lib/pageStatus/stale";
 import { PAGE_STATUS_META, PAGE_STATUSES } from "@/lib/pageStatus/types";
 import {
@@ -46,18 +45,6 @@ const GRID = { min: 118, gap: 10 };
 /** Altura em que a descrição do andar fica dobrada. */
 const INTRO_MAX = 104;
 
-/** Cartas empilhadas — o Deck. */
-export function IconeDeck({ className = "h-6 w-6" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="4" width="7.5" height="7.5" rx="1.6" />
-      <rect x="13.5" y="4" width="7.5" height="7.5" rx="1.6" />
-      <rect x="3" y="14.5" width="7.5" height="5.5" rx="1.6" />
-      <rect x="13.5" y="14.5" width="7.5" height="5.5" rx="1.6" />
-    </svg>
-  );
-}
-
 /**
  * Modo Deck: o GDD como um navegador de níveis.
  *
@@ -68,7 +55,7 @@ export function IconeDeck({ className = "h-6 w-6" }: { className?: string }) {
  */
 export default function DeckClient({ projectId, publicToken }: Props) {
   const { t } = useI18n();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
   const projects = useProjectStore((s) => s.projects);
 
@@ -226,28 +213,29 @@ export default function DeckClient({ projectId, publicToken }: Props) {
     [tree]
   );
 
-  /**
-   * A mesma página, vista de outro jeito. Doc e mapa recebem a página em foco
-   * pelo `?focus=`, que as duas telas já sabem ler; o editor abre a página pra
-   * escrita. No modo público o editor não existe, então nem aparece.
+  /*
+   * `?focus=<id>` traz a pessoa de outro modo direto numa página — é o que
+   * fecha o círculo com Doc, mapa e editor, que já sabiam receber foco.
+   * Roda uma vez, quando a árvore já existe: antes disso não há onde pousar.
    */
-  const openTargets: DeckOpenTarget[] = isPublicMode ? ["doc", "graph"] : ["doc", "graph", "editor"];
+  const focusHandledRef = useRef(false);
+  useEffect(() => {
+    if (focusHandledRef.current || !tree.byId.size) return;
+    const alvo = (searchParams?.get("focus") || "").trim();
+    if (!alvo) return;
 
-  const openIn = useCallback(
-    (target: DeckOpenTarget, sectionId: string) => {
-      const foco = encodeURIComponent(sectionId);
-      if (isPublicMode) {
-        const token = encodeURIComponent(publicToken || "");
-        const modo = target === "graph" ? "mindmap" : "view";
-        router.push(`/s/${token}?mode=${modo}&focus=${foco}`);
-        return;
+    focusHandledRef.current = true;
+    revealSection(alvo);
+
+    // Some da URL depois de usada: recarregar não deve reabrir a mesma gaveta.
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("focus")) {
+        url.searchParams.delete("focus");
+        window.history.replaceState({}, "", url.toString());
       }
-      if (target === "editor") return router.push(sectionPathById(project, sectionId));
-      const rota = target === "graph" ? "mindmap" : "view";
-      router.push(`/projects/${projectId}/${rota}?focus=${foco}`);
-    },
-    [isPublicMode, publicToken, project, projectId, router]
-  );
+    }
+  }, [tree, searchParams, revealSection]);
 
   const pickInMenu = useCallback(
     (sectionId: string) => {
@@ -347,8 +335,8 @@ export default function DeckClient({ projectId, publicToken }: Props) {
         onEnterFloor={goToFloor}
         onClose={closeDrawer}
         onReferenceNavigate={revealSection}
-        onOpenIn={openIn}
-        openTargets={openTargets}
+        projectSlug={projectId}
+        publicToken={publicToken}
       />
     );
   }

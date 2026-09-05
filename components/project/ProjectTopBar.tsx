@@ -174,3 +174,32 @@ export function IconeEditor({ className = "h-6 w-6" }: { className?: string }) {
     </svg>
   );
 }
+
+/** Cartas lado a lado — o Deck. */
+export function IconeDeck({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="4" width="7.5" height="7.5" rx="1.6" />
+      <rect x="13.5" y="4" width="7.5" height="7.5" rx="1.6" />
+      <rect x="3" y="14.5" width="7.5" height="5.5" rx="1.6" />
+      <rect x="13.5" y="14.5" width="7.5" height="5.5" rx="1.6" />
+    </svg>
+  );
+}
+
+/**
+ * Um lapis. Nao e o icone do Editor: promete escrita, e nao um modo de
+ * leitura, e e isso que a pessoa espera do botao que abre a pagina para editar.
+ */
+export function IconeLapis({ className = "h-6 w-6" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5v-5"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.4 3.6a1.9 1.9 0 0 1 2.7 2.7L13 13.4l-3.4.7.7-3.4Z" />
+    </svg>
+  );
+}
