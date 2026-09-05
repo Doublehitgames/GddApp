@@ -2157,5 +2157,15 @@
     "deck": "Ver en el Deck",
     "graph": "Ver en el mapa mental",
     "editor": "Editar la página"
+  },
+  "deckLayout": {
+    "set": "+ visualización en el Deck",
+    "pickerTitle": "Cómo esta página muestra las subpáginas en el Deck",
+    "grid": "Cuadrícula",
+    "gridHint": "Las subpáginas abren como un muro de cartas, en su propio nivel.",
+    "list": "Lista",
+    "listHint": "Las subpáginas quedan en la lista lateral, junto al texto de esta página.",
+    "auto": "Automático",
+    "autoHint": "Decide por cantidad. Con {n} subpáginas, hoy sería {modo}."
   }
 }

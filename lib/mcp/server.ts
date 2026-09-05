@@ -7,6 +7,7 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type ApiFetcher, McpApiError } from "./api";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
+import { DECK_LAYOUTS } from "@/lib/deck/deck";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   batchReceipt,
@@ -79,6 +80,16 @@ const CONTENT_BLOCKS_FIELD = z
  * so change the text if asked, but leave the state to a human unless they said
  * otherwise.
  */
+const DECK_LAYOUT_FIELD = z
+  .enum(DECK_LAYOUTS as unknown as [string, ...string[]])
+  .nullable()
+  .optional()
+  .describe(
+    "How this page shows its children in Deck mode: 'grid' opens them as a wall of cards on their own floor, " +
+      "'list' keeps them in the drawer's side list. null (the normal case) lets the app decide by how many " +
+      "children there are — set it only when a page is a catalogue of items and the count alone would not say so."
+  );
+
 const PAGE_STATUS_FIELD = z
   .enum(PAGE_STATUSES as unknown as [string, ...string[]])
   .nullable()
@@ -161,7 +172,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -170,7 +181,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -193,6 +204,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
         domainTags: z.array(z.string()).optional(),
         dataId: z.string().optional(),
         status: PAGE_STATUS_FIELD,
+        deckLayout: DECK_LAYOUT_FIELD,
         thumbImageUrl: THUMB_FIELD,
       })).describe("One entry per section to update (max 50)"),
     },

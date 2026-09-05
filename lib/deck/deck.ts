@@ -12,9 +12,26 @@ import type { PageStatus } from "@/lib/pageStatus/types";
  * O subconjunto de Section que o Deck lê. Estrutural de propósito: serve tanto
  * a seção do store quanto a que volta do payload público.
  */
+/**
+ * Como uma página mostra as filhas dela no Deck: numa lista dentro da gaveta,
+ * ou numa parede de cartas com andar próprio.
+ *
+ * Ausente é o normal, e quer dizer "decide por mim" — um GDD antigo tem
+ * centenas de páginas que ninguém vai classificar uma a uma.
+ */
+export type DeckLayout = "list" | "grid";
+
+export const DECK_LAYOUTS: readonly DeckLayout[] = ["list", "grid"] as const;
+
+export function parseDeckLayout(value: unknown): DeckLayout | undefined {
+  return value === "list" || value === "grid" ? value : undefined;
+}
+
 export type DeckSection = {
   id: string;
   title: string;
+  /** Escolha manual de exibição das filhas. Ausente = automático. */
+  deckLayout?: DeckLayout;
   parentId?: string;
   order?: number;
   created_at?: string;
@@ -127,13 +144,16 @@ export function levelOf<S extends DeckSection>(tree: DeckTree<S>, floor: DeckNod
 }
 
 /**
- * Um nível com muitas filhas é inventário: cartas pequenas, ícone mandando.
+ * As filhas desta página abrem como parede de cartas (andar próprio) em vez de
+ * lista dentro da gaveta?
  *
- * O térreo nunca é: as raízes são os capítulos do GDD, e capítulo se lê pelo
- * nome. Um projeto com 30 raízes continua abrindo com cartas grandes.
+ * A escolha da pessoa manda. Sem escolha, decide a contagem — e o térreo nunca
+ * é inventário: as raízes são os capítulos do GDD, e capítulo se lê pelo nome.
  */
 export function isInventory<S extends DeckSection>(node: DeckNode<S> | null, tree: DeckTree<S>): boolean {
   if (!node) return false;
+  const escolha = parseDeckLayout(node.section.deckLayout);
+  if (escolha) return escolha === "grid";
   return levelOf(tree, node).length >= DECK_GRID_THRESHOLD;
 }
 

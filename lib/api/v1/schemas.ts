@@ -4,10 +4,19 @@
 
 import { z } from "zod";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
+import { DECK_LAYOUTS } from "@/lib/deck/deck";
 
 /** Maturidade da página. Enviar null tira o estado e apaga o carimbo. */
 export const pageStatusSchema = z.enum(
   PAGE_STATUSES as unknown as [string, ...string[]]
+);
+
+/**
+ * Como a página mostra as filhas no modo Deck. Enviar null devolve ao
+ * automático, que decide pela quantidade de filhas.
+ */
+export const deckLayoutSchema = z.enum(
+  DECK_LAYOUTS as unknown as [string, ...string[]]
 );
 
 // ── Projects ──────────────────────────────────────────────────────────
@@ -42,6 +51,7 @@ export const createSectionSchema = z.object({
   domainTags: z.array(z.string().max(50)).max(20).optional().default([]),
   dataId: z.string().max(200).nullable().optional().default(null),
   status: pageStatusSchema.nullable().optional().default(null),
+  deckLayout: deckLayoutSchema.nullable().optional().default(null),
   thumbImageUrl: z.string().url().nullable().optional().default(null),
 });
 
@@ -59,6 +69,7 @@ export const updateSectionSchema = z.object({
   domainTags: z.array(z.string().max(50)).max(20).optional(),
   dataId: z.string().max(200).nullable().optional(),
   status: pageStatusSchema.nullable().optional(),
+  deckLayout: deckLayoutSchema.nullable().optional(),
   thumbImageUrl: z.string().url().nullable().optional(),
 });
 // ── Search ────────────────────────────────────────────────────────────

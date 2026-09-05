@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Project } from "@/store/projectStore";
+import { parseDeckLayout } from "@/lib/deck/deck";
 
 function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== "object") return false;
@@ -69,6 +70,7 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       order: (row.sort_order ?? row.order) ?? 0,
       color: row.color || undefined,
       dataId: row.data_id || undefined,
+      deckLayout: parseDeckLayout(row.deck_layout),
       domainTags: Array.isArray(row.domain_tags) && row.domain_tags.length > 0 ? row.domain_tags : undefined,
     })),
   };

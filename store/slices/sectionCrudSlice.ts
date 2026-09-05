@@ -1,5 +1,6 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
 import type { PageStatus } from "@/lib/pageStatus/types";
+import type { DeckLayout } from "@/lib/deck/deck";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
@@ -475,6 +476,32 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
 
     setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => {
       get().setSectionsStatus(projectId, [sectionId], status);
+    },
+
+    /**
+     * Como a página mostra as filhas no Deck. `undefined` devolve ao automático
+     * — e é por isso que o campo sai do objeto em vez de virar null: página sem
+     * escolha é o normal, e o normal não ocupa espaço.
+     */
+    setSectionDeckLayout: (projectId: UUID, sectionId: UUID, deckLayout: DeckLayout | undefined) => {
+      const now = new Date().toISOString();
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) => {
+                    if (s.id !== sectionId) return s;
+                    const { deckLayout: _atual, ...resto } = s;
+                    return deckLayout ? { ...resto, deckLayout, updated_at: now } : { ...resto, updated_at: now };
+                  }),
+                }
+              : p
+          ),
+        projectId
+      );
     },
 
     setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => {

@@ -68,6 +68,7 @@ export function buildSectionUpdates(
     // desatualizada" mede o tempo. Sair do estado apaga o carimbo.
     updates.status_at = fields.status ? ctx.now : null;
   }
+  if (fields.deckLayout !== undefined) updates.deck_layout = fields.deckLayout;
   if (fields.thumbImageUrl !== undefined) updates.thumb_image_url = fields.thumbImageUrl;
 
   const touched = Object.keys(fields).filter((k) => k !== "sectionId" && fields[k as keyof SectionUpdate] !== undefined);

@@ -22,6 +22,7 @@ import {
 import { useAIConfig } from "@/hooks/useAIConfig";
 import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
 import StatusPicker from "@/components/pageStatus/StatusPicker";
+import DeckLayoutPicker from "@/components/deck/DeckLayoutPicker";
 import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
@@ -1547,6 +1548,11 @@ function SectionDetailContent({
                     projectId={realProjectId}
                     sectionId={realSectionId}
                     status={section?.status}
+                  />
+                  <DeckLayoutPicker
+                    projectId={realProjectId}
+                    sectionId={realSectionId}
+                    deckLayout={section?.deckLayout}
                   />
                   {!isEditingDataId && section?.dataId && (
                     <button

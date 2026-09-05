@@ -10,7 +10,7 @@ import {
 import { searchSchema } from "@/lib/api/v1/schemas";
 
 const SECTION_COLS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, deck_layout";
 const SECTION_COLS_SAFE =
   "id, project_id, parent_id, title, content, sort_order, color, created_at, updated_at";
 
@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
         data_id: null,
         status: null,
         status_at: null,
+        deck_layout: null,
         content_updated_at: null,
         flowchart_state: null,
         created_by: null,

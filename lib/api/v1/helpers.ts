@@ -173,6 +173,7 @@ export type SectionRow = {
   data_id: string | null;
   status: string | null;
   status_at: string | null;
+  deck_layout: string | null;
   content_updated_at: string | null;
   flowchart_state: unknown | null;
   created_at: string;
@@ -186,7 +187,7 @@ export type SectionRow = {
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
 const SECTION_COLUMNS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks, deck_layout";
 
 // Progressive fallback: drop the newest/most optional columns first.
 // Level 1: drop flowchart_state, data_id, audit columns
@@ -229,6 +230,7 @@ export async function selectSections(
         data_id: null,
         status: null,
         status_at: null,
+        deck_layout: null,
         content_updated_at: null,
         flowchart_state: null,
         content_blocks: null,
@@ -251,6 +253,7 @@ export async function selectSections(
       data_id: null,
       status: null,
       status_at: null,
+      deck_layout: null,
       content_updated_at: null,
       flowchart_state: null,
       content_blocks: null,
@@ -317,6 +320,8 @@ export function sectionToApi(s: SectionRow) {
     dataId: s.data_id,
     status: s.status,
     statusAt: s.status_at,
+    // Como a pagina mostra as filhas no Deck. `null` = automatico.
+    deckLayout: s.deck_layout,
     // Quando o TEXTO mudou, separado de updated_at (que sobe tambem por cor,
     // ordem ou pai). E por esta data que um agente descobre o que foi
     // reescrito desde a ultima vez que passou por aqui.

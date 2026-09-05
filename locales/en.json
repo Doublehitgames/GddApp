@@ -2157,5 +2157,15 @@
     "deck": "See in the Deck",
     "graph": "See in the mind map",
     "editor": "Edit the page"
+  },
+  "deckLayout": {
+    "set": "+ Deck display",
+    "pickerTitle": "How this page shows its subpages in the Deck",
+    "grid": "Grid",
+    "gridHint": "Subpages open as a wall of cards, on their own level.",
+    "list": "List",
+    "listHint": "Subpages stay in the side list, next to this page text.",
+    "auto": "Automatic",
+    "autoHint": "Decides by count. With {n} subpages, today it would be {modo}."
   }
 }

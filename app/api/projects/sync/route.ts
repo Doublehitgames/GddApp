@@ -59,7 +59,7 @@ type CloudSyncQuotaStatus = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId" | "status">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId" | "status" | "deckLayout">;
 };
 
 function getHourlyCreditLimit(): number {
@@ -171,6 +171,26 @@ function isMissingSectionStatusColumn(error: unknown) {
   // O Postgres diz "column sections.status does not exist"; o PostgREST diz
   // "Could not find the 'status' column of 'sections'". As duas formas contam.
   return /sections\.status(_at)?\b/.test(combined) || /'status(_at)?'/.test(combined) || combined.includes("status_at");
+}
+
+/**
+ * Enquanto a migração não roda, o app tem que sincronizar sem esta coluna.
+ * O Postgres diz "column sections.deck_layout does not exist"; o PostgREST diz
+ * "Could not find the deck_layout column of sections". As duas contam —
+ * pegar só uma derruba todo o sync com 500 até alguém aplicar o SQL.
+ */
+function isMissingSectionDeckLayoutColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  if (!combined.includes("column")) return false;
+  return /sections.deck_layout/.test(combined) || /.deck_layout./.test(combined);
 }
 
 function stableSerialize(value: unknown): string {
@@ -369,12 +389,13 @@ export async function POST(request: NextRequest) {
     let includeFlowchartStateColumn = true;
     let includeContentBlocksColumn = true;
     let includeStatusColumn = true;
+    let includeDeckLayoutColumn = true;
     let existingSections: any[] | null = null;
     let existingErr: unknown = null;
 
     // Uma tentativa por coluna que a migração pode não ter aplicado ainda,
     // mais a boa.
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
       const selectedColumns = [
         "id",
         "parent_id",
@@ -389,6 +410,7 @@ export async function POST(request: NextRequest) {
         includeContentBlocksColumn ? "content_blocks" : null,
         includeStatusColumn ? "status" : null,
         includeStatusColumn ? "status_at" : null,
+        includeDeckLayoutColumn ? "deck_layout" : null,
       ]
         .filter(Boolean)
         .join(",");
@@ -407,6 +429,7 @@ export async function POST(request: NextRequest) {
           content_blocks: includeContentBlocksColumn ? section.content_blocks ?? null : null,
           status: includeStatusColumn ? section.status ?? null : null,
           status_at: includeStatusColumn ? section.status_at ?? null : null,
+          deck_layout: includeDeckLayoutColumn ? section.deck_layout ?? null : null,
         }));
         break;
       }
@@ -426,6 +449,10 @@ export async function POST(request: NextRequest) {
       }
       if (includeStatusColumn && isMissingSectionStatusColumn(existingErr)) {
         includeStatusColumn = false;
+        retried = true;
+      }
+      if (includeDeckLayoutColumn && isMissingSectionDeckLayoutColumn(existingErr)) {
+        includeDeckLayoutColumn = false;
         retried = true;
       }
       if (!retried) break;
@@ -461,6 +488,7 @@ export async function POST(request: NextRequest) {
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
         if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
         if ((existing.status || null) !== (section.status || null)) facets.push("status");
+        if ((existing.deck_layout || null) !== (section.deck_layout || null)) facets.push("deckLayout");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -485,6 +513,7 @@ export async function POST(request: NextRequest) {
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         (existing.data_id || null) !== (section.dataId || null) ||
         (existing.status || null) !== (section.status || null) ||
+        (existing.deck_layout || null) !== (section.deck_layout || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
         stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
@@ -756,6 +785,7 @@ export async function POST(request: NextRequest) {
         data_id: s.dataId != null ? String(s.dataId) : null,
         status: s.status != null ? String(s.status) : null,
         status_at: s.statusAt != null ? String(s.statusAt) : null,
+        deck_layout: s.deckLayout != null ? String(s.deckLayout) : null,
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         flowchart_state: s.flowchartState ?? null,
         content_blocks: Array.isArray(s.contentBlocks) && s.contentBlocks.length > 0 ? s.contentBlocks : null,
@@ -764,6 +794,7 @@ export async function POST(request: NextRequest) {
       const hasAnyFlowchartPayload = rows.some((row) => row.flowchart_state != null);
       const hasAnyContentBlocksPayload = rows.some((row) => row.content_blocks != null);
       const hasAnyStatusPayload = rows.some((row) => row.status != null);
+      const hasAnyDeckLayoutPayload = rows.some((row) => row.deck_layout != null);
 
       // Garante que parent_id só aponta para seções que sobreviverão ao sync.
       // Evita FK violation quando o store tem seções órfãs (pai deletado sem cascade no store).
@@ -784,8 +815,9 @@ export async function POST(request: NextRequest) {
       let droppedFlowchartColumn = false;
       let droppedContentBlocksColumn = false;
       let droppedStatusColumn = false;
+      let droppedDeckLayoutColumn = false;
       let sErr: unknown = null;
-      for (let attempt = 0; attempt < 5; attempt += 1) {
+      for (let attempt = 0; attempt < 6; attempt += 1) {
         const upsertResult = await supabase
           .from("sections")
           .upsert(rowsForUpsert as unknown as object[], { onConflict: "id" });
@@ -808,6 +840,11 @@ export async function POST(request: NextRequest) {
           droppedContentBlocksColumn = true;
           retried = true;
         }
+        if (!droppedDeckLayoutColumn && isMissingSectionDeckLayoutColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(({ deck_layout: _deckLayout, ...rest }) => rest);
+          droppedDeckLayoutColumn = true;
+          retried = true;
+        }
         if (!droppedStatusColumn && isMissingSectionStatusColumn(sErr)) {
           rowsForUpsert = rowsForUpsert.map(
             ({ status: _status, status_at: _statusAt, ...rest }) => rest
@@ -819,6 +856,9 @@ export async function POST(request: NextRequest) {
       }
       if (!sErr && droppedThumbColumn && hasAnyThumbPayload) {
         console.warn("[api/projects/sync] sections.thumb_image_url ausente; sincronizando sem thumbs.");
+      }
+      if (!sErr && droppedDeckLayoutColumn && hasAnyDeckLayoutPayload) {
+        console.warn("[api/projects/sync] sections.deck_layout ausente; sincronizando sem a exibição no Deck. Aplique add_sections_deck_layout.sql.");
       }
       if (!sErr && droppedStatusColumn && hasAnyStatusPayload) {
         console.warn("[api/projects/sync] sections.status ausente; sincronizando sem o estado das páginas. Aplique add_sections_status.sql.");

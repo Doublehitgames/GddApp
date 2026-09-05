@@ -141,6 +141,30 @@ describe("regra do inventário", () => {
     expect(isInventory(capitulo.byId.get("pai")!, capitulo)).toBe(false);
   });
 
+  it("a escolha da pessoa manda sobre a contagem", () => {
+    // Um capítulo de 3 filhas que alguém quis ver como grade
+    const forcaGrade = buildDeckTree([
+      s("pai", "Pai", { deckLayout: "grid" }),
+      ...filhas(3),
+    ]);
+    expect(isInventory(forcaGrade.byId.get("pai")!, forcaGrade)).toBe(true);
+
+    // E um inventário de 30 que alguém preferiu ler como lista
+    const forcaLista = buildDeckTree([
+      s("pai", "Pai", { deckLayout: "list" }),
+      ...filhas(30),
+    ]);
+    expect(isInventory(forcaLista.byId.get("pai")!, forcaLista)).toBe(false);
+  });
+
+  it("valor estranho no campo cai no automático em vez de quebrar", () => {
+    const tree = buildDeckTree([
+      s("pai", "Pai", { deckLayout: "mosaico" as never }),
+      ...filhas(30),
+    ]);
+    expect(isInventory(tree.byId.get("pai")!, tree)).toBe(true);
+  });
+
   it("o térreo nunca é inventário, por mais raízes que existam", () => {
     const tree = buildDeckTree(Array.from({ length: 30 }, (_, i) => s(`r${i}`, `Raiz ${i}`, { order: i })));
     expect(levelOf(tree, null)).toHaveLength(30);

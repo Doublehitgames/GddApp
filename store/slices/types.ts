@@ -7,6 +7,7 @@ import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
 import type { PageStatus } from "@/lib/pageStatus/types";
+import type { DeckLayout } from "@/lib/deck/deck";
 
 export type UUID = string;
 
@@ -301,6 +302,11 @@ export type Section = {
    * quando comparar, e a página nunca é acusada.
    */
   statusAt?: string | null;
+  /**
+   * Como esta página mostra as filhas dela no Deck: `list` na gaveta, `grid`
+   * como andar próprio. Ausente = automático (decide pela quantidade).
+   */
+  deckLayout?: DeckLayout;
   /** ID da planilha cadastrada no projeto usada como fonte de dados desta seção. */
   /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
   pageTypeId?: string;
@@ -484,6 +490,7 @@ export interface ProjectStore {
   setSectionDataId: (projectId: UUID, sectionId: UUID, dataId: string | undefined) => void;
   /** Carimba a maturidade da página. `undefined` volta a página para "sem estado". */
   setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => void;
+  setSectionDeckLayout: (projectId: UUID, sectionId: UUID, deckLayout: DeckLayout | undefined) => void;
   /** O mesmo para um lote de páginas — um ramo inteiro da árvore, tipicamente. */
   setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => void;
   removeSection: (projectId: UUID, sectionId: UUID) => void;
