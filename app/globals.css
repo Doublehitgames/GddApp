@@ -634,3 +634,52 @@ html .bn-root,
   color: white !important;
   border-color: rgb(129, 140, 248) !important;
 }
+
+/*
+ * Prosa sobre fundo claro.
+ *
+ * O `--foreground` do :root e fixo no escuro (#ededed), entao qualquer texto
+ * que so herde a cor nasce quase branco — invisivel numa tela clara. Telas
+ * claras que renderizam descricao de secao vestem esta classe no container.
+ *
+ * O /view mantem hoje a propria copia destas regras num `style jsx global`;
+ * quando alguem for unificar, e esta classe que deve sobrar.
+ */
+.gdd-light-prose {
+  color: #1f2937; /* gray-800 */
+}
+.gdd-light-prose p {
+  color: #374151; /* gray-700 */
+  line-height: 1.75;
+}
+.gdd-light-prose li {
+  color: #374151; /* gray-700 */
+  line-height: 1.7;
+}
+.gdd-light-prose strong {
+  color: #111827; /* gray-900 */
+  font-weight: 600;
+}
+.gdd-light-prose h1,
+.gdd-light-prose h2,
+.gdd-light-prose h3,
+.gdd-light-prose h4 {
+  color: #111827; /* gray-900 */
+}
+.gdd-light-prose blockquote {
+  color: #4b5563; /* gray-600 */
+  border-left-color: #9ca3af;
+}
+.gdd-light-prose code {
+  color: #1f2937; /* gray-800 */
+  background-color: #f3f4f6;
+}
+.gdd-light-prose .markdown-with-refs th,
+.gdd-light-prose .markdown-with-refs td {
+  color: #1f2937;
+  background-color: #ffffff;
+  border-color: #d1d5db;
+}
+.gdd-light-prose .markdown-with-refs th {
+  font-weight: 600;
+}

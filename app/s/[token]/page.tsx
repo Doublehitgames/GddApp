@@ -1,5 +1,6 @@
 import GDDViewClient from "@/app/projects/[id]/view/GDDViewClient";
 import MindMapClient from "@/app/projects/[id]/mindmap/MindMapClient";
+import DeckClient from "@/app/projects/[id]/deck/DeckClient";
 import DiagramasClient from "@/app/projects/[id]/diagramas/DiagramasClient";
 import { getPublicProjectByToken } from "@/lib/supabase/publicShare";
 import { cache } from "react";
@@ -117,9 +118,14 @@ export default async function PublicSharePage({
 
   const isMindMapMode = mode === "mindmap";
   const isDiagramMode = mode === "diagramas";
+  const isDeckMode = mode === "deck";
 
   if (isMindMapMode) {
     return <MindMapClient projectId={project.id} publicToken={token} />;
+  }
+
+  if (isDeckMode) {
+    return <DeckClient projectId={project.id} publicToken={token} />;
   }
 
   if (isDiagramMode) {

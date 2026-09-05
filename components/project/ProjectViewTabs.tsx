@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
 
-export type ProjectView = "editor" | "doc" | "graph";
+export type ProjectView = "editor" | "doc" | "deck" | "graph";
 
 interface Props {
   /** Slug do projeto. Ignorado em modo publico, que navega por token. */
@@ -51,6 +51,11 @@ export function ProjectViewTabs({
       id: "doc",
       label: t("projectTabs.doc", "Doc"),
       href: isPublic ? `/s/${token}?mode=view` : `/projects/${projectSlug}/view`,
+    },
+    {
+      id: "deck",
+      label: t("projectTabs.deck", "Deck"),
+      href: isPublic ? `/s/${token}?mode=deck` : `/projects/${projectSlug}/deck`,
     },
     {
       id: "graph",

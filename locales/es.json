@@ -2068,7 +2068,8 @@
     "graph": "Graph",
     "label": "Modos del proyecto",
     "mapTitle": "Game Design Map",
-    "docTitle": "Game Design Document"
+    "docTitle": "Game Design Document",
+    "deck": "Deck"
   },
   "changelog": {
     "navLabel": "Cambios",
@@ -2132,5 +2133,26 @@
     "confirmStillValid": "la releí, sigue valiendo",
     "applySubtree": "aplicar también a las {n} subpáginas",
     "applySubtreeOne": "aplicar también a la subpágina"
+  },
+  "deck": {
+    "title": "Deck",
+    "home": "Deck",
+    "rootHint": "Haz clic en una carta para abrirla.",
+    "rootLevel": "Páginas raíz",
+    "levelCount": "{{count}} páginas en este nivel",
+    "inventory": "inventario",
+    "readAll": "leer la página entera ▾",
+    "collapse": "contraer ▴",
+    "close": "Cerrar",
+    "enterFloor": "Ver las {{count}} páginas de {{title}}",
+    "directChildren": "{{count}} subpáginas directas",
+    "branchTotal": "{{count}} páginas en toda la rama",
+    "stale": "puede estar desactualizada",
+    "staleHint": "El texto de una página citada cambió después del sello",
+    "emptyContent": "Esta página aún no tiene descripción.",
+    "emptyLevel": "Esta página no tiene subpáginas.",
+    "openInDoc": "Ver en el Doc",
+    "openInGraph": "Ver en el mapa mental",
+    "openInEditor": "Editar la página"
   }
 }

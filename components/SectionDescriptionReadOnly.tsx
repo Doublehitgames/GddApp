@@ -73,6 +73,12 @@ interface SectionDescriptionReadOnlyProps {
   documentAnchorOffset?: number;
   /** Returns a preview card for a referenced section, shown before navigating. */
   resolveDocumentAnchorPreview?: (sectionId: string) => AnchorPreview | null;
+  /**
+   * Takes over the "go" of a `$[reference]`. Screens that navigate on their own
+   * — the Deck moves the grid instead of routing or scrolling — pass this so a
+   * reference is not a dead click there.
+   */
+  onReferenceNavigate?: (sectionId: string) => void;
 }
 
 /**
@@ -96,6 +102,7 @@ export default function SectionDescriptionReadOnly({
   heroThumbWidth,
   documentAnchorOffset = 180,
   resolveDocumentAnchorPreview,
+  onReferenceNavigate,
 }: SectionDescriptionReadOnlyProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -278,7 +285,9 @@ export default function SectionDescriptionReadOnly({
                 onClick={() => {
                   const sid = pendingAnchor.sectionId;
                   setPendingAnchor(null);
-                  if (referenceLinkMode === "manager" && project) {
+                  if (onReferenceNavigate) {
+                    onReferenceNavigate(sid);
+                  } else if (referenceLinkMode === "manager" && project) {
                     router.push(sectionPathById(project, sid));
                   } else {
                     scrollToAnchor(sid);

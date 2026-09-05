@@ -134,6 +134,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return (
       !normalizedPathname.endsWith("/mindmap") &&
       !normalizedPathname.endsWith("/view") &&
+      !normalizedPathname.endsWith("/deck") &&
       !normalizedPathname.endsWith("/diagramas") &&
       !normalizedPathname.endsWith("/agenda") &&
       !normalizedPathname.endsWith("/kpi")
@@ -150,6 +151,17 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return /^\/projects\/[^/]+\/view$/.test(normalizedPathname);
   }, [normalizedPathname]);
 
+  const isDeckRoute = useMemo(() => {
+    if (!normalizedPathname) return false;
+    return /^\/projects\/[^/]+\/deck$/.test(normalizedPathname);
+  }, [normalizedPathname]);
+
+  /**
+   * Telas que montam a propria barra. O shell nao pode montar a dele por cima,
+   * senao a pessoa ve duas fitas de abas empilhadas.
+   */
+  const trazPropriaBarra = isDocumentViewRoute || isDeckRoute;
+
   // O tema da barra segue a tela que ela emoldura. So o mapa e claro hoje; o
   // resto do app continua escuro, entao a barra continua escura la.
   const barraClara = isMindMapRoute;
@@ -157,12 +169,13 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
   const abaAtiva: ProjectView | null = useMemo(() => {
     if (!normalizedPathname) return null;
     if (isMindMapRoute) return "graph";
+    if (isDeckRoute) return "deck";
     if (isDocumentViewRoute) return "doc";
     // /projects/<slug> e a home do projeto — o Editor. Qualquer coisa mais
     // funda (settings, kpi, uma secao) nao e nenhuma das tres abas.
     if (normalizedPathname.split("/").length === 3) return "editor";
     return null;
-  }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute]);
+  }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute, isDeckRoute]);
 
   const clsIcone = barraClara
     ? "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
@@ -262,7 +275,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     <MindMapSearchProvider>
     <GlobalPagePicker projectId={realProjectId} />
     <div className="min-h-screen bg-gray-900 pb-14">
-      {!isDocumentViewRoute && (
+      {!trazPropriaBarra && (
       <ProjectTopBar
         icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
         iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
@@ -343,8 +356,8 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       )}
 
       <div
-        className={isDocumentViewRoute ? undefined : "print:pt-0"}
-        style={isDocumentViewRoute ? undefined : { paddingTop: ALTURA_BARRA }}
+        className={trazPropriaBarra ? undefined : "print:pt-0"}
+        style={trazPropriaBarra ? undefined : { paddingTop: ALTURA_BARRA }}
       >
       {shouldShowSidebar ? (
         <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8">
