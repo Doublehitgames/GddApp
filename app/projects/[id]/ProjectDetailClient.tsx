@@ -7,8 +7,7 @@ import { useProjectStore, type Project } from "@/store/projectStore";
 import { sectionPath, toSlug } from "@/lib/utils/slug";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useAuthStore } from "@/store/authStore";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import {
   DndContext,
   closestCenter,
@@ -809,8 +808,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             </div>
 
                             <div className="text-gray-200">
-                                {project.description ? (
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{project.description}</ReactMarkdown>
+                                {(project.contentBlocks?.length || project.description) ? (
+                                    <SectionDescriptionReadOnly
+                                        blocks={project.contentBlocks}
+                                        markdown={project.description}
+                                        projectId={project.id}
+                                        sections={project.sections || []}
+                                    />
                                 ) : (
                                     <p className="text-gray-400 italic">{t("projectDetail.noDescription")}</p>
                                 )}

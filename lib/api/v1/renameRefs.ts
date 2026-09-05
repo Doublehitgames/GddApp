@@ -60,15 +60,35 @@ export async function sweepRenamedRefs(
       rows = full.data as Array<Record<string, unknown>>;
     }
 
-    const { data: projectRow } = await supabase
+    // `content_blocks` pode não existir ainda (add_project_content_blocks.sql);
+    // sem ele varremos só o markdown, como antes.
+    let projectRow: Record<string, unknown> | null = null;
+    const projectFull = await supabase
       .from("projects")
-      .select("description")
+      .select("description, content_blocks")
       .eq("id", projectId)
       .maybeSingle();
+    if (projectFull.error) {
+      const lean = await supabase
+        .from("projects")
+        .select("description")
+        .eq("id", projectId)
+        .maybeSingle();
+      projectRow = (lean.data as Record<string, unknown>) ?? null;
+    } else {
+      projectRow = (projectFull.data as Record<string, unknown>) ?? null;
+    }
 
     const patches = buildRenameRefPatches(
       [
-        { id: PROJECT_DESCRIPTION_KEY, title: "", content: (projectRow?.description as string) ?? "" },
+        {
+          id: PROJECT_DESCRIPTION_KEY,
+          title: "",
+          content: (projectRow?.description as string) ?? "",
+          contentBlocks: Array.isArray(projectRow?.content_blocks)
+            ? (projectRow?.content_blocks as unknown[])
+            : undefined,
+        },
         ...(rows ?? []).map((r) => ({
           id: r.id as string,
           title: r.title as string,
@@ -84,11 +104,18 @@ export async function sweepRenamedRefs(
     const descriptionPatch = patches.find((p) => p.id === PROJECT_DESCRIPTION_KEY);
     const sectionPatches = patches.filter((p) => p.id !== PROJECT_DESCRIPTION_KEY);
 
-    if (descriptionPatch?.content !== undefined) {
-      await supabase
-        .from("projects")
-        .update({ description: descriptionPatch.content, updated_at: now })
-        .eq("id", projectId);
+    if (descriptionPatch?.content !== undefined || descriptionPatch?.contentBlocks !== undefined) {
+      const updates: Record<string, unknown> = { updated_at: now };
+      if (descriptionPatch.content !== undefined) updates.description = descriptionPatch.content;
+      if (descriptionPatch.contentBlocks !== undefined) updates.content_blocks = descriptionPatch.contentBlocks;
+      const { error } = await supabase.from("projects").update(updates).eq("id", projectId);
+      // Banco sem a coluna nova: regrava só o markdown para não perder a varredura.
+      if (error && updates.content_blocks !== undefined && updates.description !== undefined) {
+        await supabase
+          .from("projects")
+          .update({ description: updates.description, updated_at: now })
+          .eq("id", projectId);
+      }
     }
 
     if (sectionPatches.length === 0) return 0;

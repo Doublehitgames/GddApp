@@ -125,4 +125,21 @@ describe("editSection — cross-reference rename sweep", () => {
 
     expect(sectionOf(projectId, troughId)).toBe(before);
   });
+
+  it("rewrites refs in the project description's blocks, not just its markdown", () => {
+    const { projectId, feedId } = setup();
+    const md = "O loop gira em torno de $[Racoes Animal].";
+    useProjectStore.getState().editProject(projectId, "P", md, {
+      contentBlocks: blocksWithRef(md),
+    });
+
+    useProjectStore.getState().editSection(projectId, feedId, "Rações de Animal", "A ração base.");
+
+    const project = useProjectStore.getState().getProject(projectId)!;
+    const expected = "O loop gira em torno de $[Rações de Animal].";
+    // Blocks são a fonte de verdade: se só o espelho markdown fosse varrido, a
+    // referência morreria na próxima abertura do editor.
+    expect((project.contentBlocks as any)[0].content[0].text).toBe(expected);
+    expect(project.description).toBe(expected);
+  });
 });

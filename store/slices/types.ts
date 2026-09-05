@@ -353,8 +353,19 @@ export type ProjectImageLibrary = {
 //Definição do Projeto. Um projeto pode ter várias seções.
 export type Project = {
   id: UUID;
-  title: string;
+  /**
+   * Markdown da descrição do projeto. ESPELHO derivado de `contentBlocks` no
+   * save — mesmo arranjo de `Section.content`. Serve os leitores de texto puro
+   * (busca, IA, MCP) e não deve ser editado à mão.
+   */
   description?: string;
+  /**
+   * Fonte de verdade da descrição do projeto: blocks do BlockNote. Quando
+   * presente, a edição carrega/salva daqui (lossless) e `description` é
+   * derivado. Ausente em projetos que ainda não foram abertos no editor novo.
+   */
+  contentBlocks?: RichDocBlock[];
+  title: string;
   coverImageUrl?: string;
   sections?: Section[];
   createdAt: string;
@@ -460,7 +471,16 @@ export interface ProjectStore {
   removeProject: (id: UUID) => void;
   /** Remove projeto só localmente (e persiste), sem chamar API de delete. Usado quando o dono já excluiu e o servidor retorna 410. */
   removeProjectLocally: (id: UUID) => void;
-  editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => void;
+  /**
+   * `description` é o markdown espelho; passe `contentBlocks` junto para gravar
+   * a fonte de verdade. Omitir uma chave de `opts` deixa o valor atual intacto.
+   */
+  editProject: (
+    id: UUID,
+    name: string,
+    description: string,
+    opts?: { aiInstructions?: string; contentBlocks?: RichDocBlock[] }
+  ) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
   setProjectImageLibrary: (id: UUID, imageLibrary?: ProjectImageLibrary) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;

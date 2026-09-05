@@ -336,6 +336,11 @@ function dbProjectToStore(
     id: row.id as string,
     title: row.title as string,
     description: (row.description as string) || "",
+    // Coluna nova: ausente até rodar add_project_content_blocks.sql. Vira
+    // undefined em vez de quebrar, e o editor semeia a partir do markdown.
+    contentBlocks: Array.isArray(row.content_blocks)
+      ? (row.content_blocks as Project["contentBlocks"])
+      : undefined,
     coverImageUrl: (row.cover_image_url as string) || undefined,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,

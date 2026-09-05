@@ -29,6 +29,7 @@ export const createProjectSchema = z.object({
 export const updateProjectSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional(),
+  contentBlocks: z.array(z.record(z.string(), z.unknown())).optional(),
   coverImageUrl: z.string().url().nullable().optional(),
   mindmapSettings: z.record(z.string(), z.unknown()).optional(),
   aiInstructions: z.string().max(20000).nullable().optional(),

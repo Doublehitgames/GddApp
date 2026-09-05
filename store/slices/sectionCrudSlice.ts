@@ -300,7 +300,12 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       const refPatches = titleChanged && oldSection
         ? buildRenameRefPatches(
             [
-              { id: PROJECT_DESCRIPTION_KEY, title: "", content: project?.description },
+              {
+                id: PROJECT_DESCRIPTION_KEY,
+                title: "",
+                content: project?.description,
+                contentBlocks: project?.contentBlocks,
+              },
               ...(project?.sections || []).map((s) =>
                 s.id === sectionId
                   ? {
@@ -342,6 +347,9 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
                   updatedAt: now,
                   ...(descriptionPatch?.content !== undefined
                     ? { description: descriptionPatch.content }
+                    : {}),
+                  ...(descriptionPatch?.contentBlocks !== undefined
+                    ? { contentBlocks: descriptionPatch.contentBlocks as RichDocBlock[] }
                     : {}),
                   sections: (p.sections || []).map((s) => {
                     const refPatch = refPatchById.get(s.id);

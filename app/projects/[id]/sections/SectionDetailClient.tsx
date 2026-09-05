@@ -143,7 +143,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       const tag = target.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (target.isContentEditable) return;
-      if (target.closest?.(".toastui-editor, .ProseMirror, .CodeMirror, .cm-editor")) return;
+      if (target.closest?.(".ProseMirror, .CodeMirror, .cm-editor")) return;
 
       const key = event.key.toLowerCase();
       // Ctrl+M (or Ctrl+Shift+M on Mac) → move section modal

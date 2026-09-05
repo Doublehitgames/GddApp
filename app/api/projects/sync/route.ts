@@ -170,7 +170,8 @@ function isMissingSectionFlowchartStateColumn(error: unknown) {
   return combined.includes("flowchart_state") && combined.includes("column");
 }
 
-function isMissingSectionContentBlocksColumn(error: unknown) {
+/** Serve `sections.content_blocks` e `projects.content_blocks` — só o nome da coluna importa. */
+function isMissingContentBlocksColumn(error: unknown) {
   const message =
     typeof error === "object" && error && "message" in error
       ? String((error as { message?: unknown }).message || "")
@@ -181,6 +182,21 @@ function isMissingSectionContentBlocksColumn(error: unknown) {
       : "";
   const combined = `${message} ${details}`.toLowerCase();
   return combined.includes("content_blocks") && combined.includes("column");
+}
+
+/**
+ * Colunas de `projects` que podem faltar em bancos que ainda não rodaram as
+ * migrations. Ao gravar, uma que faltar é podada do payload e a escrita é
+ * repetida — o resto do projeto sincroniza mesmo assim.
+ */
+const OPTIONAL_PROJECT_COLUMNS: ReadonlyArray<[string, (e: unknown) => boolean]> = [
+  ["content_blocks", isMissingContentBlocksColumn],
+  ["cover_image_url", isMissingProjectCoverImageColumn],
+];
+
+function omitKey(payload: Record<string, unknown>, key: string): Record<string, unknown> {
+  const { [key]: _dropped, ...rest } = payload;
+  return rest;
 }
 
 function isMissingSectionStatusColumn(error: unknown) {
@@ -469,7 +485,7 @@ export async function POST(request: NextRequest) {
         includeFlowchartStateColumn = false;
         retried = true;
       }
-      if (includeContentBlocksColumn && isMissingSectionContentBlocksColumn(existingErr)) {
+      if (includeContentBlocksColumn && isMissingContentBlocksColumn(existingErr)) {
         includeContentBlocksColumn = false;
         retried = true;
       }
@@ -726,18 +742,21 @@ export async function POST(request: NextRequest) {
       const updatePayload = {
         title: project.title,
         description: project.description || "",
+        content_blocks: project.contentBlocks ?? null,
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: mergedMindmapSettings,
         ai_instructions: project.aiInstructions || "",
         updated_at: project.updatedAt,
       };
-      let { error: pErr } = await supabase
-        .from("projects")
-        .update(updatePayload)
-        .eq("id", project.id);
-      if (pErr && isMissingProjectCoverImageColumn(pErr)) {
-        const { cover_image_url: _ignore, ...payloadWithoutCover } = updatePayload;
-        const retry = await supabase.from("projects").update(payloadWithoutCover).eq("id", project.id);
+      let payload: Record<string, unknown> = updatePayload;
+      let { error: pErr } = await supabase.from("projects").update(payload).eq("id", project.id);
+      // Colunas novas podem não existir ainda no banco do usuário. Cada retry
+      // parte do payload já podado, para que faltarem as duas não desfaça a
+      // poda anterior.
+      for (const [column, isMissing] of OPTIONAL_PROJECT_COLUMNS) {
+        if (!pErr || !isMissing(pErr)) continue;
+        payload = omitKey(payload, column);
+        const retry = await supabase.from("projects").update(payload).eq("id", project.id);
         pErr = retry.error;
       }
       if (pErr) {
@@ -750,16 +769,19 @@ export async function POST(request: NextRequest) {
         owner_id: projectOwnerId,
         title: project.title,
         description: project.description || "",
+        content_blocks: project.contentBlocks ?? null,
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: project.mindMapSettings || {},
         ai_instructions: project.aiInstructions || "",
         created_at: project.createdAt,
         updated_at: project.updatedAt,
       };
-      let { error: pErr } = await supabase.from("projects").upsert(upsertPayload, { onConflict: "id" });
-      if (pErr && isMissingProjectCoverImageColumn(pErr)) {
-        const { cover_image_url: _ignore, ...payloadWithoutCover } = upsertPayload;
-        const retry = await supabase.from("projects").upsert(payloadWithoutCover, { onConflict: "id" });
+      let payload: Record<string, unknown> = upsertPayload;
+      let { error: pErr } = await supabase.from("projects").upsert(payload, { onConflict: "id" });
+      for (const [column, isMissing] of OPTIONAL_PROJECT_COLUMNS) {
+        if (!pErr || !isMissing(pErr)) continue;
+        payload = omitKey(payload, column);
+        const retry = await supabase.from("projects").upsert(payload, { onConflict: "id" });
         pErr = retry.error;
       }
 
@@ -864,7 +886,7 @@ export async function POST(request: NextRequest) {
           droppedFlowchartColumn = true;
           retried = true;
         }
-        if (!droppedContentBlocksColumn && isMissingSectionContentBlocksColumn(sErr)) {
+        if (!droppedContentBlocksColumn && isMissingContentBlocksColumn(sErr)) {
           rowsForUpsert = rowsForUpsert.map(({ content_blocks: _ignored, ...rest }) => rest);
           droppedContentBlocksColumn = true;
           retried = true;

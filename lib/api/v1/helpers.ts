@@ -54,6 +54,7 @@ export type ProjectRow = {
   owner_id: string;
   title: string;
   description: string;
+  content_blocks: unknown[] | null;
   cover_image_url: string | null;
   mindmap_settings: Record<string, unknown> | null;
   ai_instructions: string | null;
@@ -62,7 +63,7 @@ export type ProjectRow = {
   updated_at: string;
 };
 
-export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, cover_image_url, mindmap_settings, ai_instructions, image_library, created_at, updated_at";
+export const PROJECT_COLUMNS_FULL = "id, owner_id, title, description, content_blocks, cover_image_url, mindmap_settings, ai_instructions, image_library, created_at, updated_at";
 export const PROJECT_COLUMNS_SAFE = "id, owner_id, title, description, cover_image_url, mindmap_settings, created_at, updated_at";
 
 /** Select projects with fallback if ai_instructions column doesn't exist. */
@@ -88,7 +89,7 @@ export async function selectProjects(
     const fbResult = await fb;
     if (fbResult.error) return { data: null, error: fbResult.error };
     const rows = (fbResult.data ?? []).map((r: Record<string, unknown>) => ({
-      ...r, ai_instructions: null, image_library: null,
+      ...r, content_blocks: null, ai_instructions: null, image_library: null,
     })) as unknown as ProjectRow[];
     return { data: rows, error: null };
   }
@@ -123,7 +124,7 @@ export async function requireProject(
       .eq("id", projectId)
       .maybeSingle();
     if (fb.data) {
-      project = { ...fb.data, ai_instructions: null, image_library: null } as unknown as typeof project;
+      project = { ...fb.data, content_blocks: null, ai_instructions: null, image_library: null } as unknown as typeof project;
       error = null;
     }
   }
@@ -295,6 +296,7 @@ export function projectToApi(p: ProjectRow) {
     ownerId: p.owner_id,
     title: p.title,
     description: p.description,
+    contentBlocks: Array.isArray(p.content_blocks) ? p.content_blocks : null,
     coverImageUrl: p.cover_image_url,
     mindmapSettings: p.mindmap_settings,
     aiInstructions: p.ai_instructions ?? "",

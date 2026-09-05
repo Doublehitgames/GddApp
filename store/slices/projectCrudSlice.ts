@@ -1,4 +1,5 @@
 import type { ProjectStore, UUID, ProjectImageLibrary } from "./types";
+import type { RichDocBlock } from "@/lib/richDoc/types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
 import { toSlug } from "@/lib/utils/slug";
 import { buildSectionDiagramKey, persistDiagrams, persist, logInfo } from "./storageHelpers";
@@ -43,7 +44,12 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return get().projects.find((p) => toSlug(p.title) === slug);
     },
 
-    editProject: (id: UUID, name: string, description: string, aiInstructions?: string) => {
+    editProject: (
+      id: UUID,
+      name: string,
+      description: string,
+      opts?: { aiInstructions?: string; contentBlocks?: RichDocBlock[] }
+    ) => {
       const { projects, userId } = get();
       const newSlug = toSlug(name);
       const slugTaken = projects.some(
@@ -52,11 +58,19 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       if (slugTaken) {
         throw new Error("duplicate_project_name");
       }
+      const { aiInstructions, contentBlocks } = opts || {};
       engine.wrappedSetWithSync(
         (prev) =>
           prev.map((p) =>
             p.id === id
-              ? { ...p, title: name, description, ...(aiInstructions !== undefined ? { aiInstructions } : {}), updatedAt: new Date().toISOString() }
+              ? {
+                  ...p,
+                  title: name,
+                  description,
+                  ...(aiInstructions !== undefined ? { aiInstructions } : {}),
+                  ...(contentBlocks !== undefined ? { contentBlocks } : {}),
+                  updatedAt: new Date().toISOString(),
+                }
               : p
           ),
         id

@@ -106,5 +106,5 @@ export async function POST(request: NextRequest) {
 
   // Re-read with fallback
   const { data: created } = await selectProjects(auth.supabase, { eq: ["id", project.id] });
-  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, cover_image_url: null, mindmap_settings: null, ai_instructions: null, image_library: null, created_at: now, updated_at: now }), 201);
+  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, content_blocks: null, cover_image_url: null, mindmap_settings: null, ai_instructions: null, image_library: null, created_at: now, updated_at: now }), 201);
 }

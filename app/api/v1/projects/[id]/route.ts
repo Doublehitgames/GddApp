@@ -10,6 +10,7 @@ import {
   sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { updateProjectSchema } from "@/lib/api/v1/schemas";
+import { buildProjectUpdates } from "@/lib/api/v1/projectWrite";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -63,13 +64,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     return apiError("No fields to update", 400, "empty_update");
   }
 
-  // Map camelCase → snake_case for DB
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (parsed.data.title !== undefined) updates.title = parsed.data.title;
-  if (parsed.data.description !== undefined) updates.description = parsed.data.description;
-  if (parsed.data.coverImageUrl !== undefined) updates.cover_image_url = parsed.data.coverImageUrl;
-  if (parsed.data.mindmapSettings !== undefined) updates.mindmap_settings = parsed.data.mindmapSettings;
-  if (parsed.data.aiInstructions !== undefined) updates.ai_instructions = parsed.data.aiInstructions;
+  const updates = buildProjectUpdates(parsed.data, { now: new Date().toISOString() });
 
   const { error } = await auth.supabase
     .from("projects")
