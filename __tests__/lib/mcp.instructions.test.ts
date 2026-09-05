@@ -172,3 +172,25 @@ describe("what update_project can set, get_project can read", () => {
     }
   });
 });
+
+/**
+ * The stdio server (packages/mcp-server) ships its own copy of the very same
+ * instructions. Nothing but a comment asked the two to stay in sync, and they
+ * had already drifted — the published copy was missing PAGE STATUS and the
+ * contentUpdatedAt note, so every agent on the npm server flew without them.
+ */
+describe("the two copies of the server instructions", () => {
+  const readInstructions = (path: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    const src = fs.readFileSync(path, "utf8");
+    const start = src.indexOf("export const SERVER_INSTRUCTIONS");
+    return src.slice(start);
+  };
+
+  it("say exactly the same thing", () => {
+    expect(readInstructions("packages/mcp-server/src/instructions.ts")).toBe(
+      readInstructions("lib/mcp/instructions.ts"),
+    );
+  });
+});
