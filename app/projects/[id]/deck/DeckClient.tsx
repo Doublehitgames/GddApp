@@ -394,7 +394,7 @@ export default function DeckClient({ projectId, publicToken }: Props) {
     <div className="min-h-screen bg-white">
       <ProjectTopBar
         icone={<IconeDeck />}
-        iconeProjetoUrl={project.iconUrl || project.coverImageUrl}
+        iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
         titulo={t("deck.title", "Deck")}
         projectSlug={projectId}
         active="deck"
