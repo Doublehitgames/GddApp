@@ -11,7 +11,7 @@ export type PageMode = "editor" | "doc" | "deck" | "graph";
 /** A ordem em que os modos aparecem, sempre a mesma em qualquer tela. */
 const ORDEM: PageMode[] = ["doc", "deck", "graph", "editor"];
 
-const MODOS: Record<
+export const PAGE_MODE_META: Record<
   PageMode,
   { Icone: (props: { className?: string }) => React.ReactElement; chave: string; padrao: string }
 > = {
@@ -58,6 +58,19 @@ interface Props extends PageModeTarget {
   iconClassName?: string;
 }
 
+/**
+ * Os modos que valem como destino a partir de onde você está.
+ *
+ * Exportada porque nem toda tela desenha esta navegação como a fileira de
+ * ícones daqui — o DOC, por exemplo, tem um menu com texto. O que não pode é
+ * cada tela ter a sua lista: foi assim que o Deck nasceu invisível lá.
+ */
+export function listPageModes(current: PageMode, publicToken?: string): PageMode[] {
+  return ORDEM.filter((mode) => mode !== current).filter(
+    (mode) => !(mode === "editor" && publicToken)
+  );
+}
+
 const BOTAO_PADRAO =
   "grid h-[30px] w-[30px] place-items-center rounded-lg border border-transparent text-gray-400 transition-colors hover:border-gray-200 hover:bg-white hover:text-gray-900";
 
@@ -83,14 +96,12 @@ export default function PageModeLinks({
   const { t } = useI18n();
   const router = useRouter();
 
-  const modos = ORDEM.filter((mode) => mode !== current).filter(
-    (mode) => !(mode === "editor" && publicToken)
-  );
+  const modos = listPageModes(current, publicToken);
 
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
       {modos.map((mode) => {
-        const { Icone, chave, padrao } = MODOS[mode];
+        const { Icone, chave, padrao } = PAGE_MODE_META[mode];
         const titulo = t(chave, padrao);
         const classe =
           typeof buttonClassName === "function"

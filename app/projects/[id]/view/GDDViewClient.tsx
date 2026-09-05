@@ -11,6 +11,7 @@ import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
 import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
+import { PAGE_MODE_META, listPageModes, pageModeUrl } from "@/components/project/PageModeLinks";
 import { ProjectTopBar, IconeDocumento } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
@@ -892,13 +893,9 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
     focusSectionById(matchedSectionIds[nextIndex]);
   };
 
-  const getMindMapFocusUrl = (sectionId: string) => {
-    if (isPublicMode) {
-      return `/s/${encodeURIComponent(publicToken || "")}?mode=mindmap&focus=${encodeURIComponent(sectionId)}`;
-    }
-    return `/projects/${projectId}/mindmap?focus=${encodeURIComponent(sectionId)}`;
-  };
-
+  // A rota do mapa saía daqui numa cópia própria; hoje é `pageModeUrl`, que
+  // vale para os quatro modos. O fluxograma continua tendo a sua: ele não é um
+  // modo de leitura da página, é uma tela da página.
   const getFlowchartUrl = (sectionId: string) => {
     if (isPublicMode) {
       return `/s/${encodeURIComponent(publicToken || "")}?mode=diagramas&sectionId=${encodeURIComponent(sectionId)}`;
@@ -1030,9 +1027,12 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         .filter(Boolean)
         .join(" ");
       const headingClassName = isRootSection ? `${headingClass} gdd-root-heading` : headingClass;
+      // `gdd-heading-button` existe para a impressão: lá todo <button> some, e o
+      // título de cada seção é um deles — sem esta marca, imprimir o documento
+      // saía com os textos e nenhum título em cima deles.
       const headingButtonClass = isRootSection
-        ? "gdd-root-heading-button text-left rounded-lg md:rounded-xl px-2.5 py-1.5 md:px-3 md:py-2 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-2 md:gap-3"
-        : "text-left rounded-md hover:bg-gray-100 px-0.5 md:px-1 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-1.5 md:gap-2";
+        ? "gdd-heading-button gdd-root-heading-button text-left rounded-lg md:rounded-xl px-2.5 py-1.5 md:px-3 md:py-2 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-2 md:gap-3"
+        : "gdd-heading-button text-left rounded-md hover:bg-gray-100 px-0.5 md:px-1 -mx-0.5 md:-mx-1 transition-colors inline-flex items-center gap-1.5 md:gap-2";
 
       return (
         <div key={node.id} className={sectionShellClass}>
@@ -1088,32 +1088,38 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                       <span>{t("sectionDetail.flowchart.breadcrumb")}</span>
                     </span>
                   )}
-                  <span className="text-gray-400 text-sm shrink-0" aria-hidden>▾</span>
+                  <span className="gdd-heading-caret text-gray-400 text-sm shrink-0" aria-hidden>▾</span>
                 </button>
                 {openSectionMenuId === node.id && (
                   <div className="absolute left-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenSectionMenuId(null);
-                        router.push(getMindMapFocusUrl(node.id));
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                    >
-                      🧠 {t("sectionDetail.actions.goToMindMap")}
-                    </button>
-                    {!isPublicMode && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpenSectionMenuId(null);
-                          router.push(sectionPathById(project ?? { title: "", sections: [] }, node.id));
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                      >
-                        📄 {t("sectionDetail.actions.goToSectionPage")}
-                      </button>
-                    )}
+                    {/* Os destinos saem da mesma lista que o mapa, a página e a
+                        gaveta do Deck usam. Quando este menu tinha os itens
+                        escritos à mão, o Deck nasceu e ninguém o via daqui —
+                        agora um modo novo aparece nas quatro telas de uma vez. */}
+                    {listPageModes("doc", publicToken).map((mode) => {
+                      const { Icone, chave, padrao } = PAGE_MODE_META[mode];
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            setOpenSectionMenuId(null);
+                            router.push(
+                              pageModeUrl(mode, {
+                                projectId,
+                                project: project ?? { title: "", sections: [] },
+                                sectionId: node.id,
+                                publicToken,
+                              })
+                            );
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <Icone className="h-4 w-4 shrink-0" />
+                          {t(chave, padrao)}
+                        </button>
+                      );
+                    })}
                     {Boolean((node as any).flowchartEnabled) && (
                       <button
                         type="button"
@@ -2280,6 +2286,19 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
             position: static !important;
           }
           button {
+            display: none !important;
+          }
+          /* O título de cada seção é um <button> (ele abre o menu de ações), e a
+             regra acima o levava junto: o documento impresso saía com os textos
+             e nenhum título em cima deles. Aqui ele volta, sem a cara de botão
+             e sem a setinha, que no papel não abre coisa nenhuma. */
+          .gdd-heading-button {
+            display: inline-flex !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .gdd-heading-caret {
             display: none !important;
           }
           .bg-gradient-to-br {
