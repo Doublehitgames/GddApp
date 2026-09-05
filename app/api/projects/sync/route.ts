@@ -488,7 +488,10 @@ export async function POST(request: NextRequest) {
         if ((existing.thumb_image_url || null) !== (section.thumbImageUrl || null)) facets.push("thumbnail");
         if ((existing.data_id || null) !== (section.dataId || null)) facets.push("dataId");
         if ((existing.status || null) !== (section.status || null)) facets.push("status");
-        if ((existing.deck_layout || null) !== (section.deck_layout || null)) facets.push("deckLayout");
+        // `section` é o payload do store, em camelCase; `existing` é a linha do
+        // banco, em snake_case. Ler section.deck_layout comparava a coluna com
+        // undefined e a escolha de exibição no Deck nunca subia sozinha.
+        if ((existing.deck_layout || null) !== (section.deckLayout || null)) facets.push("deckLayout");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -513,7 +516,7 @@ export async function POST(request: NextRequest) {
         (existing.thumb_image_url || null) !== (section.thumbImageUrl || null) ||
         (existing.data_id || null) !== (section.dataId || null) ||
         (existing.status || null) !== (section.status || null) ||
-        (existing.deck_layout || null) !== (section.deck_layout || null) ||
+        (existing.deck_layout || null) !== (section.deckLayout || null) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
         stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
