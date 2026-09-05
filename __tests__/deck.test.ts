@@ -11,6 +11,7 @@ import {
   labelOf,
   levelOf,
   pathOf,
+  placeInDeck,
   splitTitleIcon,
   type DeckSection,
 } from "@/lib/deck/deck";
@@ -169,6 +170,85 @@ describe("regra do inventário", () => {
     const tree = buildDeckTree(Array.from({ length: 30 }, (_, i) => s(`r${i}`, `Raiz ${i}`, { order: i })));
     expect(levelOf(tree, null)).toHaveLength(30);
     expect(isInventory(null, tree)).toBe(false);
+  });
+});
+
+describe("onde uma página aparece no Deck", () => {
+  // Um GDD com as duas formas: Insumos é capítulo (poucas filhas, vira carta
+  // com gaveta) e Sementes é inventário (muitas filhas, vira andar).
+  const sementes = Array.from({ length: 24 }, (_, i) =>
+    s(`sem${i}`, `Semente ${i}`, { parentId: "sementes", order: i })
+  );
+  const tree = buildDeckTree([
+    s("insumos", "Insumos", { order: 0 }),
+    s("sementes", "Sementes", { parentId: "insumos", order: 0 }),
+    s("frutos", "Frutos", { parentId: "insumos", order: 1 }),
+    ...sementes,
+    s("cor", "Cor da semente", { parentId: "sem0", order: 0 }),
+  ]);
+
+  it("uma raiz é carta do térreo", () => {
+    expect(placeInDeck(tree, "insumos")).toEqual({
+      floorId: null,
+      openId: "insumos",
+      menuId: "insumos",
+      contentId: "insumos",
+    });
+  });
+
+  it("um capítulo não vira andar: reabre como carta com gaveta", () => {
+    // É o caminho da trilha — clicar em "Insumos" a partir do andar Sementes
+    // tem que devolver o capítulo do mesmo jeito que ele aparece por cima.
+    expect(isInventory(tree.byId.get("insumos"), tree)).toBe(false);
+    expect(placeInDeck(tree, "insumos").floorId).toBeNull();
+  });
+
+  it("um inventário aparece como carta, com a passagem para o andar dentro", () => {
+    // Sementes mora na lista da gaveta de Insumos; virar andar é um clique a
+    // mais, e não o efeito colateral de chegar nela.
+    expect(placeInDeck(tree, "sementes")).toEqual({
+      floorId: null,
+      openId: "insumos",
+      menuId: "insumos",
+      contentId: "sementes",
+    });
+  });
+
+  it("uma filha de inventário é carta do andar do inventário", () => {
+    expect(placeInDeck(tree, "sem3")).toEqual({
+      floorId: "sementes",
+      openId: "sem3",
+      menuId: null,
+      contentId: "sem3",
+    });
+  });
+
+  it("uma neta sobe até a carta que o andar mostra, e o menu é o pai", () => {
+    expect(placeInDeck(tree, "cor")).toEqual({
+      floorId: "sementes",
+      openId: "sem0",
+      menuId: "sem0",
+      contentId: "cor",
+    });
+  });
+
+  it("pula os capítulos empilhados até achar o andar de verdade", () => {
+    const fundo = buildDeckTree([
+      s("a", "Capítulo A"),
+      s("b", "Capítulo B", { parentId: "a" }),
+      s("c", "Capítulo C", { parentId: "b" }),
+      s("d", "Página D", { parentId: "c" }),
+    ]);
+    expect(placeInDeck(fundo, "d")).toEqual({
+      floorId: null,
+      openId: "a",
+      menuId: "c",
+      contentId: "d",
+    });
+  });
+
+  it("página que sumiu do projeto não posiciona nada", () => {
+    expect(placeInDeck(tree, "fantasma")).toBeNull();
   });
 });
 

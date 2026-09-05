@@ -168,6 +168,57 @@ export function pathOf<S extends DeckSection>(tree: DeckTree<S>, node: DeckNode<
   return trail;
 }
 
+/**
+ * Onde o Deck precisa estar para mostrar uma página — andar, carta aberta,
+ * menu e conteúdo da gaveta.
+ *
+ * Uma página não escolhe sozinha como aparece: quem manda é o andar em que ela
+ * mora. Só um inventário vira andar; um capítulo continua sendo carta com
+ * gaveta, mesmo quando se chega nele pela trilha. É esta função que garante
+ * que a mesma página se apresente igual, venha o clique de onde vier.
+ */
+export type DeckPlacement = {
+  floorId: string | null;
+  openId: string;
+  menuId: string | null;
+  contentId: string;
+};
+
+export function placeInDeck<S extends DeckSection>(
+  tree: DeckTree<S>,
+  sectionId: string
+): DeckPlacement | null {
+  const node = tree.byId.get(sectionId);
+  if (!node) return null;
+  const parent = tree.parentOf.get(sectionId) ?? null;
+
+  // Filha de inventário (ou raiz): a página é uma carta do próprio andar.
+  if (!parent || isInventory(parent, tree)) {
+    return {
+      floorId: parent ? parent.section.id : null,
+      openId: sectionId,
+      menuId: node.children.length && !isInventory(node, tree) ? sectionId : null,
+      contentId: sectionId,
+    };
+  }
+
+  // Senão, a página mora na lista de uma gaveta: sobe até a carta que o andar
+  // de fato mostra, e o menu continua sendo o pai, onde ela aparece marcada.
+  let card = parent;
+  let floor = tree.parentOf.get(card.section.id) ?? null;
+  while (floor && !isInventory(floor, tree)) {
+    card = floor;
+    floor = tree.parentOf.get(card.section.id) ?? null;
+  }
+
+  return {
+    floorId: floor ? floor.section.id : null,
+    openId: card.section.id,
+    menuId: parent.section.id,
+    contentId: sectionId,
+  };
+}
+
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 function normalizeHex(value: string | undefined): string | null {

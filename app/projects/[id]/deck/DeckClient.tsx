@@ -25,6 +25,7 @@ import {
   labelOf,
   levelOf,
   pathOf,
+  placeInDeck,
   type DeckNode,
   type DeckSection,
 } from "@/lib/deck/deck";
@@ -181,32 +182,15 @@ export default function DeckClient({ projectId, publicToken }: Props) {
     [openId, closeDrawer, tree]
   );
 
-  /** Leva o Deck até uma página qualquer: andar do pai, carta aberta nela. */
+  /** Leva o Deck até uma página qualquer, no lugar em que ela mora. */
   const revealSection = useCallback(
     (sectionId: string) => {
-      const node = tree.byId.get(sectionId);
-      if (!node) return;
-      const parent = tree.parentOf.get(sectionId) ?? null;
-      const grandParent = parent ? tree.parentOf.get(parent.section.id) ?? null : null;
-
-      // Se o pai é um inventário, o andar é o próprio pai; senão é o avô, e o
-      // pai é a carta aberta com a página selecionada no menu.
-      if (parent && isInventory(parent, tree)) {
-        setFloorId(parent.section.id);
-        setOpenId(sectionId);
-        setContentId(sectionId);
-        setMenuId(node.children.length && !isInventory(node, tree) ? sectionId : null);
-      } else if (parent) {
-        setFloorId(grandParent ? grandParent.section.id : null);
-        setOpenId(parent.section.id);
-        setContentId(sectionId);
-        setMenuId(parent.section.id);
-      } else {
-        setFloorId(null);
-        setOpenId(sectionId);
-        setContentId(sectionId);
-        setMenuId(node.children.length && !isInventory(node, tree) ? sectionId : null);
-      }
+      const lugar = placeInDeck(tree, sectionId);
+      if (!lugar) return;
+      setFloorId(lugar.floorId);
+      setOpenId(lugar.openId);
+      setMenuId(lugar.menuId);
+      setContentId(lugar.contentId);
       setIntroOpen(false);
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     },
@@ -214,20 +198,67 @@ export default function DeckClient({ projectId, publicToken }: Props) {
   );
 
   /*
+   * A trilha devolve a página ao jeito dela, e não a transforma em andar.
+   *
+   * Só inventário vira parede de cartas; um capítulo é carta com gaveta, venha
+   * o clique de cima ou da trilha. Voltar por aqui virava um andar improvisado,
+   * que mostrava o capítulo de um jeito que ele não tem em nenhum outro
+   * caminho.
+   */
+  const goToTrail = useCallback(
+    (node: DeckNode<DeckSection>) => {
+      if (isInventory(node, tree)) goToFloor(node.section.id);
+      else revealSection(node.section.id);
+    },
+    [tree, goToFloor, revealSection]
+  );
+
+  /*
+   * Onde o Deck estava, por aba e por projeto.
+   *
+   * Atualizar a página não podia custar o caminho de volta: quem estava lendo
+   * a carta de uma semente no fundo de um inventário caía no térreo e tinha
+   * que refazer a descida inteira. A sessão é o lugar certo para isso — é
+   * lembrança de leitura, não endereço: quem quer mandar uma página para
+   * alguém usa `?focus=`, que continua sendo o link.
+   */
+  const memoryKey = `gdd:deck:${projectId}`;
+
+  /*
    * `?focus=<id>` traz a pessoa de outro modo direto numa página — é o que
-   * fecha o círculo com Doc, mapa e editor, que já sabiam receber foco.
+   * fecha o círculo com Doc, mapa e editor, que já sabiam receber foco. Sem
+   * foco, o Deck volta para onde a pessoa parou.
+   *
    * Roda uma vez, quando a árvore já existe: antes disso não há onde pousar.
    */
-  const focusHandledRef = useRef(false);
+  const [restored, setRestored] = useState(false);
   useEffect(() => {
-    if (focusHandledRef.current || !tree.byId.size) return;
+    if (restored || !tree.byId.size) return;
+    setRestored(true);
+
     const alvo = (searchParams?.get("focus") || "").trim();
-    if (!alvo) return;
+    if (alvo) {
+      revealSection(alvo);
+    } else if (typeof window !== "undefined") {
+      try {
+        const guardado = JSON.parse(window.sessionStorage.getItem(memoryKey) || "null");
+        if (guardado && typeof guardado === "object") {
+          // A árvore muda entre uma visita e outra: id que sumiu vira `null`,
+          // e um andar que deixou de ser inventário não volta como andar.
+          const vivo = (id: unknown) => (typeof id === "string" && tree.byId.has(id) ? id : null);
+          const andar = vivo(guardado.floorId);
+          setFloorId(andar && isInventory(tree.byId.get(andar) ?? null, tree) ? andar : null);
+          setOpenId(vivo(guardado.openId));
+          setMenuId(vivo(guardado.menuId));
+          setContentId(vivo(guardado.contentId));
+        }
+      } catch {
+        // Aba sem sessionStorage é caso normal: o Deck só não lembra.
+      }
+    }
 
-    focusHandledRef.current = true;
-    revealSection(alvo);
-
-    // Some da URL depois de usada: recarregar não deve reabrir a mesma gaveta.
+    // Some da URL depois de usado: o foco é um empurrão de entrada, e daí em
+    // diante quem guarda o estado do Deck é a sessão.
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       if (url.searchParams.has("focus")) {
@@ -235,7 +266,20 @@ export default function DeckClient({ projectId, publicToken }: Props) {
         window.history.replaceState({}, "", url.toString());
       }
     }
-  }, [tree, searchParams, revealSection]);
+  }, [restored, tree, searchParams, revealSection, memoryKey]);
+
+  /* Só grava depois de ter lido: senão o primeiro render apaga a lembrança. */
+  useEffect(() => {
+    if (!restored || typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(
+        memoryKey,
+        JSON.stringify({ floorId, openId, menuId, contentId })
+      );
+    } catch {
+      // Sem storage o Deck segue funcionando — só não lembra.
+    }
+  }, [restored, memoryKey, floorId, openId, menuId, contentId]);
 
   const pickInMenu = useCallback(
     (sectionId: string) => {
@@ -383,7 +427,7 @@ export default function DeckClient({ projectId, publicToken }: Props) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => goToFloor(node.section.id)}
+                  onClick={() => goToTrail(node)}
                   className="rounded-md px-1.5 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                 >
                   {labelOf(node.section)}
@@ -411,7 +455,7 @@ export default function DeckClient({ projectId, publicToken }: Props) {
             <div
               ref={introRef}
               style={introOpen ? undefined : { maxHeight: INTRO_MAX, overflow: "hidden" }}
-              className="relative max-w-[68ch] text-[14.5px] text-gray-700"
+              className="relative text-[14.5px] text-gray-700"
             >
               <div className="gdd-light-prose gdd-reading-prose prose max-w-none">
                 <SectionDescriptionReadOnly
