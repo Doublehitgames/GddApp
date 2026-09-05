@@ -10,6 +10,7 @@ import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly"
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
+import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { ProjectTopBar, IconeDocumento } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
@@ -1060,6 +1061,22 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                     </span>
                   )}
                   {highlightSearchTerm(node.title)}
+                  {/* A maturidade da página vale mais aqui do que nos outros
+                      modos: no DOC alguém lê o GDD inteiro de cima a baixo, e é
+                      lendo que se pergunta "posso confiar nisto?". Página sem
+                      estado não mostra nada — um GDD não classificado continua
+                      exatamente como era. */}
+                  {node.status && PAGE_STATUS_META[node.status as PageStatus] && (
+                    <span
+                      className="gdd-status-chip"
+                      style={{ ["--gdd-status-cor" as string]: PAGE_STATUS_META[node.status as PageStatus].graphColor }}
+                    >
+                      {t(
+                        PAGE_STATUS_META[node.status as PageStatus].labelKey,
+                        PAGE_STATUS_META[node.status as PageStatus].labelFallback
+                      )}
+                    </span>
+                  )}
                   {hasFlowchart && (
                     <span className="gdd-flowchart-chip" title={t("sectionDetail.flowchart.open")}>
                       <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -2059,6 +2076,33 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
         .gdd-root-section .section-content {
           margin-bottom: 2rem;
+        }
+
+        /* A cor vem do estado, por variável inline, para a paleta continuar
+           morando num lugar só (PAGE_STATUS_META) em vez de virar cinco regras
+           daqui. O fundo é a mesma cor lavada no papel, não um tom escolhido a
+           mão: assim o selo pertence ao documento e não grita mais alto que o
+           título ao lado. */
+        .gdd-status-chip {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          border: 1px solid color-mix(in srgb, var(--gdd-status-cor) 45%, transparent);
+          background: color-mix(in srgb, var(--gdd-status-cor) 12%, #ffffff);
+          color: color-mix(in srgb, var(--gdd-status-cor) 70%, #111827);
+          padding: 0.14rem 0.5rem;
+          font-size: 0.66rem;
+          font-weight: 700;
+          line-height: 1;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+
+        .gdd-doc-paper.gdd-doc-theme-night .gdd-status-chip {
+          background: color-mix(in srgb, var(--gdd-status-cor) 20%, #0b1220);
+          color: color-mix(in srgb, var(--gdd-status-cor) 60%, #ffffff);
+          border-color: color-mix(in srgb, var(--gdd-status-cor) 55%, transparent);
         }
 
         .gdd-flowchart-chip {
