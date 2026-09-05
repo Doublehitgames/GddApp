@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
+import DeckThumb from "@/components/deck/DeckThumb";
 import { inkOn, plateOn, type DeckIcon } from "@/lib/deck/deck";
 
 export interface DeckCardProps {
@@ -21,29 +20,6 @@ export interface DeckCardProps {
   branchTotalLabel: string;
   open?: boolean;
   onClick: () => void;
-}
-
-/** Imagem da página, com os candidatos do Drive em cascata. */
-function CardImage({ url }: { url: string }) {
-  const candidates = useMemo(() => getDriveImageDisplayCandidates(url), [url]);
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    setIndex(0);
-  }, [url]);
-
-  if (index >= candidates.length) return null;
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={candidates[index]}
-      alt=""
-      loading="lazy"
-      onError={() => setIndex((prev) => prev + 1)}
-      className="h-[70px] w-[70px] object-contain"
-    />
-  );
 }
 
 /**
@@ -108,7 +84,7 @@ export default function DeckCard({
 
         {/* metade de cima: só o ícone */}
         <span className="relative z-[2] mt-0.5 grid min-h-[80px] flex-1 place-items-center text-[46px] leading-none">
-          {icon.kind === "image" && <CardImage url={icon.url} />}
+          {icon.kind === "image" && <DeckThumb url={icon.url} className="h-[70px] w-[70px]" />}
           {icon.kind === "emoji" && icon.char}
           {icon.kind === "initials" && (
             <span

@@ -3,6 +3,7 @@
 import type React from "react";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import PageModeLinks from "@/components/project/PageModeLinks";
+import DeckThumb from "@/components/deck/DeckThumb";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { useI18n } from "@/lib/i18n/provider";
 import { PAGE_STATUS_META } from "@/lib/pageStatus/types";
@@ -49,7 +50,11 @@ function MiniIcon({ section }: { section: DeckSection }) {
     return <span className="w-5 shrink-0 text-center text-[11px] font-extrabold tracking-wide text-gray-400">{icon.text}</span>;
   }
   if (icon.kind === "image") {
-    return <span className="w-5 shrink-0 text-center text-[15px]">📄</span>;
+    return (
+      <span className="grid w-5 shrink-0 place-items-center">
+        <DeckThumb url={icon.url} className="h-[18px] w-[18px]" />
+      </span>
+    );
   }
   return <span className="w-5 shrink-0 text-center text-[15px]">{icon.char}</span>;
 }
@@ -109,10 +114,12 @@ export default function DeckDrawer<S extends DeckSection>({
           style={{ background: color, color: inkOn(color) }}
           className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] text-[17px] font-extrabold leading-none"
         >
-          {headIcon.kind === "emoji" ? headIcon.char : headIcon.kind === "initials" ? (
+          {headIcon.kind === "emoji" ? (
+            headIcon.char
+          ) : headIcon.kind === "initials" ? (
             <span className="text-[11px] tracking-wide">{headIcon.text}</span>
           ) : (
-            "📄"
+            <DeckThumb url={headIcon.url} className="h-[26px] w-[26px]" />
           )}
         </span>
         <span className="text-[15px] font-bold -tracking-[0.01em] text-gray-900">{labelOf(content.section)}</span>
