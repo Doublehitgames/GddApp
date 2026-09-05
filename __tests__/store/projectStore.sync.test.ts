@@ -355,6 +355,113 @@ describe('ProjectStore sync behavior', () => {
     expect(syncedSection.flowchartState.nodes).toHaveLength(1)
   })
 
+  it('keeps the newest page status even when the other side wins by timestamp', async () => {
+    // Marcar o estado nao mexe em updated_at de proposito, entao a escolha da
+    // pagina inteira nao pode arrastar o estado junto: aqui a copia local e mais
+    // nova (edicao de texto pendente), mas quem classificou foi a nuvem.
+    const projectId = 'proj-status'
+    const sectionId = 'sec-status'
+
+    const localProject = {
+      id: projectId,
+      title: 'Projeto',
+      description: '',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Galinha',
+          content: 'texto local mais novo',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T15:00:00.000Z',
+          order: 0,
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T15:00:00.000Z',
+    }
+
+    const remoteProject = {
+      id: projectId,
+      title: 'Projeto',
+      description: '',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Galinha',
+          content: 'texto da nuvem',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T09:00:00.000Z',
+          order: 0,
+          status: 'implemented',
+          statusAt: '2026-03-01T14:00:00.000Z',
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T09:00:00.000Z',
+    }
+
+    useProjectStore.setState({ projects: [localProject as any], diagramsBySection: {} })
+    storage['gdd_projects_v1'] = JSON.stringify([localProject])
+    fetchProjectsMock.mockResolvedValue([remoteProject])
+
+    expect(await useProjectStore.getState().loadFromSupabase()).toBe('loaded')
+
+    const merged = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === sectionId)
+    // O texto local pendente sobrevive...
+    expect(merged?.content).toBe('texto local mais novo')
+    // ...e a classificacao da nuvem tambem.
+    expect(merged?.status).toBe('implemented')
+    expect(merged?.statusAt).toBe('2026-03-01T14:00:00.000Z')
+  })
+
+  it('does not let the cloud erase a status marked locally a moment ago', async () => {
+    const projectId = 'proj-status-local'
+    const sectionId = 'sec-status-local'
+
+    const localProject = {
+      id: projectId,
+      title: 'Projeto',
+      description: '',
+      sections: [
+        {
+          id: sectionId,
+          title: 'Galinha',
+          content: 'mesmo texto',
+          created_at: '2026-03-01T08:00:00.000Z',
+          updated_at: '2026-03-01T09:00:00.000Z',
+          order: 0,
+          status: 'approved',
+          statusAt: '2026-03-01T16:00:00.000Z',
+        },
+      ],
+      createdAt: '2026-03-01T08:00:00.000Z',
+      updatedAt: '2026-03-01T09:00:00.000Z',
+    }
+
+    const remoteProject = {
+      ...localProject,
+      sections: [
+        {
+          ...localProject.sections[0],
+          content: 'texto reescrito na nuvem',
+          updated_at: '2026-03-01T12:00:00.000Z',
+          status: undefined,
+          statusAt: null,
+        },
+      ],
+      updatedAt: '2026-03-01T12:00:00.000Z',
+    }
+
+    useProjectStore.setState({ projects: [localProject as any], diagramsBySection: {} })
+    storage['gdd_projects_v1'] = JSON.stringify([localProject])
+    fetchProjectsMock.mockResolvedValue([remoteProject])
+
+    expect(await useProjectStore.getState().loadFromSupabase()).toBe('loaded')
+
+    const merged = useProjectStore.getState().getProject(projectId)?.sections?.find((s) => s.id === sectionId)
+    expect(merged?.content).toBe('texto reescrito na nuvem')
+    expect(merged?.status).toBe('approved')
+  })
   it('keeps remote flowchart section data even when local project wins by project timestamp', async () => {
     const projectId = 'proj-collab'
     const sectionId = 'sec-flow'

@@ -228,7 +228,24 @@ export function createCloudSyncSlice(set: StoreSet, get: StoreGet, engine: SyncE
               const remoteSectionUpdated = toTimestampMs(remoteSection.updated_at || remoteSection.created_at || null);
               const preferLocalSection = localSectionUpdated > remoteSectionUpdated;
 
-              return preferLocalSection ? localSection : remoteSection;
+              // A escolha acima é da página inteira, por `updated_at`. O estado
+              // de maturidade não pode pegar carona nela: marcar uma página de
+              // propósito NÃO mexe em `updated_at` (aprovar não é editar), então
+              // o lado perdedor pode carregar a classificação mais recente e ela
+              // sumiria sem erro nenhum — o mapa mostrando tudo "sem estado"
+              // depois de alguém classificar em outro aparelho.
+              //
+              // Por isso o estado é decidido pelo próprio carimbo dele, e vale
+              // nos dois sentidos: nem a nuvem apaga o que você acabou de
+              // marcar, nem a sua cópia local apaga o que o time marcou.
+              const base = preferLocalSection ? localSection : remoteSection;
+              const outro = preferLocalSection ? remoteSection : localSection;
+              const estadoDoOutroEMaisNovo =
+                toTimestampMs(outro.statusAt || null) > toTimestampMs(base.statusAt || null);
+
+              return estadoDoOutroEMaisNovo
+                ? { ...base, status: outro.status, statusAt: outro.statusAt }
+                : base;
             })
             .filter((section): section is Section => Boolean(section));
 

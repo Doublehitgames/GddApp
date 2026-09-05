@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Project } from "@/store/projectStore";
 import { parseDeckLayout } from "@/lib/deck/deck";
+import { parsePageStatus } from "@/lib/pageStatus/types";
 
 function isMissingColumnError(error: unknown, column: string): boolean {
   if (!error || typeof error !== "object") return false;
@@ -16,8 +17,12 @@ function isMissingCoverImageColumn(error: unknown): boolean {
 // `content_blocks` e `thumb_image_url` vieram de migração (add_sections_thumb_image.sql).
 // Numa instalação que ainda não rodou o SQL, pedir a coluna derruba a query inteira —
 // então caímos no select antigo em vez de perder o share público por completo.
+// Esta lista é a fonte de verdade do que o link público enxerga. Campo que o
+// mapeador lá embaixo lê e que não estiver aqui volta sempre vazio — foi o que
+// aconteceu com `status` e `deck_layout`: no mapa público toda página aparecia
+// como "sem estado" e o Deck ignorava a escolha da página, sem erro nenhum.
 const SECTION_COLUMNS =
-  "id,title,content,content_blocks,thumb_image_url,created_at,parent_id,sort_order,color,domain_tags,flowchart_state";
+  "id,title,content,content_blocks,thumb_image_url,created_at,parent_id,sort_order,color,domain_tags,data_id,status,status_at,deck_layout,flowchart_state";
 const SECTION_COLUMNS_LEGACY =
   "id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state";
 
@@ -71,6 +76,8 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       color: row.color || undefined,
       dataId: row.data_id || undefined,
       deckLayout: parseDeckLayout(row.deck_layout),
+      status: parsePageStatus(row.status),
+      statusAt: row.status_at || null,
       domainTags: Array.isArray(row.domain_tags) && row.domain_tags.length > 0 ? row.domain_tags : undefined,
     })),
   };
