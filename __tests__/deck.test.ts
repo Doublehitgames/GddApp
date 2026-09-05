@@ -199,8 +199,8 @@ describe("onde uma página aparece no Deck", () => {
   it("um capítulo não vira andar: reabre como carta com gaveta", () => {
     // É o caminho da trilha — clicar em "Insumos" a partir do andar Sementes
     // tem que devolver o capítulo do mesmo jeito que ele aparece por cima.
-    expect(isInventory(tree.byId.get("insumos"), tree)).toBe(false);
-    expect(placeInDeck(tree, "insumos").floorId).toBeNull();
+    expect(isInventory(tree.byId.get("insumos")!, tree)).toBe(false);
+    expect(placeInDeck(tree, "insumos")!.floorId).toBeNull();
   });
 
   it("um inventário aparece como carta, com a passagem para o andar dentro", () => {

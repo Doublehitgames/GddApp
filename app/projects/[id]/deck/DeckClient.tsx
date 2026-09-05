@@ -7,6 +7,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { ProjectTopBar, IconeDeck } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
+import PageModeLinks from "@/components/project/PageModeLinks";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import DeckCard from "@/components/deck/DeckCard";
 import DeckDrawer from "@/components/deck/DeckDrawer";
@@ -446,6 +447,22 @@ export default function DeckClient({ projectId, publicToken }: Props) {
             <span className="mb-0.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11.5px] font-semibold text-emerald-800">
               ▦ {t("deck.inventory", "inventário")}
             </span>
+          )}
+          {/*
+            A página que virou andar continua sendo uma página, e daqui também
+            se sai para os outros modos. Sem isto, a única porta era a gaveta de
+            uma carta — quem estava justamente NESTA página não tinha como abri-la
+            no editor sem antes descer numa filha qualquer e voltar.
+          */}
+          {floor && (
+            <PageModeLinks
+              current="deck"
+              projectId={projectId}
+              project={project}
+              sectionId={floor.section.id}
+              publicToken={publicToken}
+              className="mb-px"
+            />
           )}
         </header>
 
