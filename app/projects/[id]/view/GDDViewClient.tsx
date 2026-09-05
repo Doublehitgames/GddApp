@@ -799,19 +799,89 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
     initialFocusHandledRef.current = true;
 
-    const timer = window.setTimeout(() => {
-      focusSectionById(focusId);
+    // Um GDD grande nao termina de montar em 120ms. Quando a secao alvo ainda
+    // nao existe, o scroll falha calado — e como a flag acima ja foi marcada,
+    // ninguem tenta de novo e o link cai no topo do documento. Entao insiste-se
+    // ate a pagina aparecer, com teto para nao ficar tentando eternamente uma
+    // secao que de fato nao existe.
+    const INTERVALO = 50;
+    const TENTATIVAS = 40; // ~2s
+    let tentativas = 0;
+    let timer = 0;
 
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        if (url.searchParams.has("focus")) {
-          url.searchParams.delete("focus");
-          window.history.replaceState({}, "", url.toString());
+    /*
+     * O documento nao para de crescer depois do primeiro salto: as imagens
+     * chegam e empurram tudo para baixo, e o alvo escorrega centenas de pixels.
+     * Entao a ancora e refeita ate o documento assentar — e some na hora em que
+     * a pessoa mexe no scroll, porque a partir dali quem manda e ela.
+     */
+    let desistiu = false;
+    const soltarAncora = () => {
+      desistiu = true;
+    };
+
+    const reancorar = () => {
+      let ultimoTopo = Number.NaN;
+      let estaveis = 0;
+      let rodadas = 0;
+
+      const passo = () => {
+        if (desistiu) return;
+        const alvo = document.getElementById(`section-${focusId}`);
+        if (!alvo) return;
+
+        const topo = Math.round(alvo.getBoundingClientRect().top);
+        if (Math.abs(topo - ultimoTopo) <= 8) {
+          if (++estaveis >= 2) return; // parou de crescer: o alvo esta no lugar
+        } else {
+          estaveis = 0;
+          alvo.scrollIntoView({ block: "start" });
         }
-      }
-    }, 120);
 
-    return () => window.clearTimeout(timer);
+        ultimoTopo = Math.round(alvo.getBoundingClientRect().top);
+        if (++rodadas < 20) timer = window.setTimeout(passo, 250);
+      };
+
+      window.addEventListener("wheel", soltarAncora, { passive: true });
+      window.addEventListener("touchstart", soltarAncora, { passive: true });
+      window.addEventListener("keydown", soltarAncora);
+      timer = window.setTimeout(passo, 400);
+    };
+
+    const tentar = () => {
+      if (!document.getElementById(`section-${focusId}`)) {
+        if (tentativas++ >= TENTATIVAS) return;
+        timer = window.setTimeout(tentar, INTERVALO);
+        return;
+      }
+
+      focusSectionById(focusId);
+      reancorar();
+
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("focus")) {
+        url.searchParams.delete("focus");
+        window.history.replaceState({}, "", url.toString());
+      }
+    };
+
+    timer = window.setTimeout(tentar, 120);
+
+    /*
+     * A limpeza NAO cancela a rotina de foco.
+     *
+     * Este efeito depende de `searchParams`, que muda de identidade a cada
+     * render — cancelar aqui matava o timer antes dele disparar, e na volta a
+     * flag acima fazia o efeito sair na primeira linha. Resultado: o link caia
+     * no topo do documento. A rotina e de um tiro so (a flag garante isso) e
+     * limitada no tempo, e cada passo verifica se a secao ainda existe, entao
+     * deixa-la terminar depois de um desmonte nao faz mal a ninguem.
+     */
+    return () => {
+      window.removeEventListener("wheel", soltarAncora);
+      window.removeEventListener("touchstart", soltarAncora);
+      window.removeEventListener("keydown", soltarAncora);
+    };
   }, [mounted, project?.id, searchParams]);
 
   const goToSearchMatch = (direction: 1 | -1) => {
