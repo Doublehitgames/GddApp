@@ -223,7 +223,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         e instanceof Error &&
         e.message === "structural_limit_sections_per_project"
       ) {
-        setNameError(t("sidebar.limitReached", "Limite de páginas atingido."));
+        setNameError(t("limits.sectionsPerProject"));
         return undefined;
       }
       throw e;

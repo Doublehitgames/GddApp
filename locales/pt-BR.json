@@ -120,7 +120,8 @@
       "titleRequired": "Digite um nome para a página.",
       "limitPerProject": "Limite de páginas por projeto atingido.",
       "limitTotal": "Limite total de páginas da conta atingido.",
-      "generic": "Não foi possível criar a página."
+      "generic": "Não foi possível criar a página.",
+      "duplicateName": "Já existe uma página com esse nome neste nível. Escolha um nome diferente."
     }
   },
   "shortcuts": {
@@ -162,7 +163,8 @@
     "tabWrite": "Editar",
     "tabPreview": "Preview",
     "confirmDelete": "Confirmar exclusão",
-    "clear": "Limpar"
+    "clear": "Limpar",
+    "reset": "Resetar"
   },
   "auth": {
     "login": {
@@ -430,7 +432,8 @@
       "errors": {
         "nameRequired": "Defina um nome para o projeto.",
         "sectionRequired": "Selecione pelo menos uma seção para criar o projeto.",
-        "createFailed": "Não foi possível criar o projeto. Tente novamente."
+        "createFailed": "Não foi possível criar o projeto. Tente novamente.",
+        "duplicateName": "Já existe um projeto com esse nome. Escolha um nome diferente."
       }
     }
   },
@@ -576,6 +579,9 @@
       "analysis": "Análise",
       "settings": "Configurações",
       "backup": "Backup"
+    },
+    "visibility": {
+      "public": "Público"
     }
   },
   "projectEdit": {
@@ -586,7 +592,11 @@
     "decreaseHeight": "Diminuir altura",
     "increaseHeight": "Aumentar altura",
     "modeLabel": "Modo",
-    "exit": "Sair"
+    "exit": "Sair",
+    "duplicateNameError": "Já existe um projeto com esse nome. Escolha um nome diferente.",
+    "specialTokens": {
+      "title": "Chaves especiais"
+    }
   },
   "sectionEdit": {
     "title": "Editar Seção",
@@ -913,7 +923,12 @@
         "thumbnail": "Thumb"
       }
     },
-    "backlinks": "Referenciado por:"
+    "backlinks": "Referenciado por:",
+    "specialTokens": {
+      "title": "Chaves especiais"
+    },
+    "descriptionDone": "Concluir",
+    "descriptionAutosaveHint": "Salvo automaticamente"
   },
   "settings": {
     "imageLibrary": {
@@ -2153,7 +2168,8 @@
     "stale": "pode estar desatualizada",
     "staleHint": "O texto de uma página citada mudou depois do carimbo",
     "emptyContent": "Esta página ainda não tem descrição.",
-    "emptyLevel": "Esta página não tem subpáginas."
+    "emptyLevel": "Esta página não tem subpáginas.",
+    "trailGo": "Ir para {{title}}"
   },
   "pageModes": {
     "doc": "Ver no Doc",

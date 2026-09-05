@@ -120,7 +120,8 @@
       "titleRequired": "Please enter a name for the page.",
       "limitPerProject": "Project page limit reached.",
       "limitTotal": "Account page limit reached.",
-      "generic": "Could not create the page."
+      "generic": "Could not create the page.",
+      "duplicateName": "A page with this name already exists on this level. Choose a different name."
     }
   },
   "shortcuts": {
@@ -162,7 +163,8 @@
     "tabWrite": "Write",
     "tabPreview": "Preview",
     "confirmDelete": "Confirm delete",
-    "clear": "Clear"
+    "clear": "Clear",
+    "reset": "Reset"
   },
   "auth": {
     "login": {
@@ -430,7 +432,8 @@
       "errors": {
         "nameRequired": "Set a name for the project.",
         "sectionRequired": "Select at least one section to create the project.",
-        "createFailed": "Could not create the project. Try again."
+        "createFailed": "Could not create the project. Try again.",
+        "duplicateName": "A project with this name already exists. Choose a different name."
       }
     }
   },
@@ -576,6 +579,9 @@
       "analysis": "Analysis",
       "settings": "Settings",
       "backup": "Backup"
+    },
+    "visibility": {
+      "public": "Public"
     }
   },
   "projectEdit": {
@@ -586,7 +592,11 @@
     "decreaseHeight": "Decrease height",
     "increaseHeight": "Increase height",
     "modeLabel": "Mode",
-    "exit": "Exit"
+    "exit": "Exit",
+    "duplicateNameError": "A project with this name already exists. Choose a different name.",
+    "specialTokens": {
+      "title": "Special tokens"
+    }
   },
   "sectionEdit": {
     "title": "Edit Section",
@@ -913,7 +923,12 @@
         "thumbnail": "Thumbnail"
       }
     },
-    "backlinks": "Referenced by:"
+    "backlinks": "Referenced by:",
+    "specialTokens": {
+      "title": "Special tokens"
+    },
+    "descriptionDone": "Done",
+    "descriptionAutosaveHint": "Saved automatically"
   },
   "settings": {
     "imageLibrary": {
@@ -2153,7 +2168,8 @@
     "stale": "may be out of date",
     "staleHint": "A referenced page changed after this one was stamped",
     "emptyContent": "This page has no description yet.",
-    "emptyLevel": "This page has no subpages."
+    "emptyLevel": "This page has no subpages.",
+    "trailGo": "Go to {{title}}"
   },
   "pageModes": {
     "doc": "See in the Doc",
