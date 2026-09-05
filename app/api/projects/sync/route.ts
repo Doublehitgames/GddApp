@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
 import { getRemoteConfig } from "@/lib/remoteConfig";
+import type { Section } from "@/store/slices/types";
 
 /** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
 const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
@@ -10,6 +11,31 @@ const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
 const CLOUD_SYNC_USAGE_BY_PROJECT_TABLE = "cloud_sync_usage_hourly_by_project";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
+/**
+ * A linha de `sections` como ela volta do banco: snake_case.
+ *
+ * O payload que o app envia é o `Section` do store, camelCase. Os dois
+ * circulam lado a lado nesta rota, e enquanto ambos eram `any` uma
+ * comparação entre a chave errada dos dois lados compilava calada — foi
+ * exatamente assim que a escolha de exibição no Deck deixou de subir.
+ */
+type LinhaDeSecao = {
+  id: string;
+  parent_id: string | null;
+  title: string | null;
+  content: string | null;
+  sort_order: number | null;
+  color: string | null;
+  domain_tags: string[] | null;
+  data_id: string | null;
+  thumb_image_url: string | null;
+  status: string | null;
+  status_at: string | null;
+  deck_layout: string | null;
+  flowchart_state: unknown;
+  content_blocks: unknown;
+};
 
 type RateLimitEntry = { count: number; windowStartMs: number };
 const syncRequestCountByUser = new Map<string, RateLimitEntry>();
@@ -344,7 +370,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const incomingSections = project.sections || [];
+    const incomingSections: Section[] = project.sections || [];
 
     // Limites estruturais: aplicados ao DONO do projeto (membros sujeitos aos limites do dono).
     // Contar projetos só interessa ao criar um projeto novo — e nesse caso quem
@@ -390,7 +416,7 @@ export async function POST(request: NextRequest) {
     let includeContentBlocksColumn = true;
     let includeStatusColumn = true;
     let includeDeckLayoutColumn = true;
-    let existingSections: any[] | null = null;
+    let existingSections: LinhaDeSecao[] | null = null;
     let existingErr: unknown = null;
 
     // Uma tentativa por coluna que a migração pode não ter aplicado ainda,
@@ -422,7 +448,7 @@ export async function POST(request: NextRequest) {
 
       existingErr = current.error;
       if (!existingErr) {
-        existingSections = (current.data || []).map((section: any) => ({
+        existingSections = ((current.data || []) as unknown as LinhaDeSecao[]).map((section) => ({
           ...section,
           thumb_image_url: includeThumbImageColumn ? section.thumb_image_url ?? null : null,
           flowchart_state: includeFlowchartStateColumn ? section.flowchart_state ?? null : null,
@@ -463,8 +489,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: msg, code: "sections_select" }, { status: 500 });
     }
 
-    const existingById = new Map((existingSections || []).map((section: any) => [section.id, section]));
-    const incomingIds = new Set(incomingSections.map((section: any) => section.id));
+    const existingById = new Map((existingSections || []).map((section) => [section.id, section]));
+    const incomingIds = new Set(incomingSections.map((section) => section.id));
 
     const domainTagsEqual = (a: unknown, b: unknown): boolean => {
       const arrA = Array.isArray(a) ? [...a].sort() : [];
@@ -473,7 +499,7 @@ export async function POST(request: NextRequest) {
       return arrA.every((v, i) => v === arrB[i]);
     };
     const flowchartStateEqual = (a: unknown, b: unknown): boolean => stableSerialize(a) === stableSerialize(b);
-    const getSectionChangeSummary = (existing: any | undefined, section: any): SyncSectionChangeSummary => {
+    const getSectionChangeSummary = (existing: LinhaDeSecao | undefined, section: Section): SyncSectionChangeSummary => {
       const facets: SyncSectionChangeSummary["facets"] = [];
 
       if (!existing) {
@@ -503,7 +529,7 @@ export async function POST(request: NextRequest) {
       };
     };
 
-    const sectionsToUpsert = incomingSections.filter((section: any) => {
+    const sectionsToUpsert = incomingSections.filter((section) => {
       const existing = existingById.get(section.id);
       if (!existing) return true;
 
@@ -527,7 +553,7 @@ export async function POST(request: NextRequest) {
     // Só contamos como "excluídas" seções que JÁ ESTÃO no cloud. Se o usuário criou uma seção
     // localmente e apagou sem nunca ter sincronizado, ela não está no DB → 0 créditos de delete.
     const removedSectionIds = (existingSections || [])
-      .map((section: any) => section.id)
+      .map((section) => section.id)
       .filter((id: string) => !incomingIds.has(id));
 
     const sectionsTotal = incomingSections.length;
@@ -545,8 +571,8 @@ export async function POST(request: NextRequest) {
     //
     // As listas continuam separadas porque o sync parcial precisa saber o que
     // cabe no que sobrou de crédito.
-    const contentUpsertList: any[] = [];
-    const metadataOnlyList: any[] = [];
+    const contentUpsertList: Section[] = [];
+    const metadataOnlyList: Section[] = [];
     for (const section of sectionsToUpsert) {
       const existing = existingById.get(section.id);
       if (!existing) {
@@ -576,22 +602,22 @@ export async function POST(request: NextRequest) {
     const consumedThisSync = contentChangeCount + sectionsDeleted;
 
     // Ordenar conteúdo por profundidade (pais antes de filhos) para sync parcial
-    const byId = new Map(contentUpsertList.map((s: any) => [s.id, s]));
-    const getDepth = (s: any): number => (s.parentId && byId.get(s.parentId) ? 1 + getDepth(byId.get(s.parentId)!) : 0);
+    const byId = new Map(contentUpsertList.map((s) => [s.id, s]));
+    const getDepth = (s: Section): number => (s.parentId && byId.get(s.parentId) ? 1 + getDepth(byId.get(s.parentId)!) : 0);
     const contentUpsertSorted = [...contentUpsertList].sort(
-      (a: any, b: any) => getDepth(a) - getDepth(b) || Number(a.order) - Number(b.order)
+      (a, b) => getDepth(a) - getDepth(b) || Number(a.order) - Number(b.order)
     );
 
     if (dryRun) {
       const existingArr = existingSections || [];
       const sectionsNew = sectionsToUpsert
-        .filter((s: { id: string }) => !existingById.has(s.id))
-        .map((s: { id: string; title?: string }) => ({ id: s.id, title: (s.title && String(s.title).trim()) || "Sem título" }));
+        .filter((s) => !existingById.has(s.id))
+        .map((s) => ({ id: s.id, title: (s.title && String(s.title).trim()) || "Sem título" }));
       const sectionsUpdated = sectionsToUpsert
-        .filter((s: { id: string }) => existingById.has(s.id))
-        .map((s: { id: string; title?: string }) => ({ id: s.id, title: (s.title && String(s.title).trim()) || "Sem título" }));
+        .filter((s) => existingById.has(s.id))
+        .map((s) => ({ id: s.id, title: (s.title && String(s.title).trim()) || "Sem título" }));
       const sectionsDeletedList = removedSectionIds.map((id: string) => {
-        const ex = existingArr.find((e: { id: string; title?: string }) => e.id === id);
+        const ex = existingArr.find((e) => e.id === id);
         return { id, title: (ex && ex.title && String(ex.title).trim()) ? String(ex.title) : "Seção removida" };
       });
       return NextResponse.json({
@@ -658,7 +684,7 @@ export async function POST(request: NextRequest) {
     // Sync parcial: usar só os créditos disponíveis (upserts por profundidade, depois deletes).
     // O metadado vai junto sempre, custe o que custar o resto — segurar a ordem
     // ou o estado numa sincronização parcial não economizaria crédito nenhum.
-    let sectionsToApply: any[] = [];
+    let sectionsToApply: Section[] = [];
     let deletesToApply: string[] = [];
     let actualCredits = 0;
     let partial = false;
@@ -679,7 +705,7 @@ export async function POST(request: NextRequest) {
       actualCredits = consumedThisSync;
     }
 
-    const appliedSectionChanges = sectionsToApply.map((section: any) =>
+    const appliedSectionChanges = sectionsToApply.map((section) =>
       getSectionChangeSummary(existingById.get(section.id), section)
     );
 
@@ -762,15 +788,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (sectionsToApply.length > 0) {
-      const byIdApply = new Map(sectionsToApply.map((s: any) => [s.id, s]));
-      const getDepthApply = (s: any): number =>
+      const byIdApply = new Map(sectionsToApply.map((s) => [s.id, s]));
+      const getDepthApply = (s: Section): number =>
         s.parentId && byIdApply.get(s.parentId) ? 1 + getDepthApply(byIdApply.get(s.parentId)!) : 0;
       const sortedApply = [...sectionsToApply].sort(
-        (a: any, b: any) => getDepthApply(a) - getDepthApply(b) || Number(a.order) - Number(b.order)
+        (a, b) => getDepthApply(a) - getDepthApply(b) || Number(a.order) - Number(b.order)
       );
 
       const nowIso = new Date().toISOString();
-      const rows = sortedApply.map((s: any) => ({
+      const rows = sortedApply.map((s) => ({
         id: String(s.id),
         project_id: String(project.id),
         parent_id: s.parentId != null ? String(s.parentId) : null,
