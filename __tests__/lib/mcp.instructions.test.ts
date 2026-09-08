@@ -78,8 +78,20 @@ describe("server instructions", () => {
     expect(SERVER_INSTRUCTIONS).toContain("get_section");
   });
 
+  it("say that a project may belong to someone else", () => {
+    // The one collaboration fact that fits in no single tool's schema: the
+    // account may reach documents it did not create, and a page it is about to
+    // rewrite may have been rewritten by a person minutes ago.
+    expect(SERVER_INSTRUCTIONS).toContain("whoami");
+    expect(SERVER_INSTRUCTIONS).toContain("list_recent_activity");
+    expect(SERVER_INSTRUCTIONS).toMatch(/viewer/i);
+  });
+
   it("stay short enough to send every session", () => {
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(2600);
+    // Raised from 2600 when the paragraph above was added: shared projects are
+    // worth the ~130 characters, since the alternative is an agent planning a
+    // rewrite it has no permission to save.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(2800);
   });
 });
 

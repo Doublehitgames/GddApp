@@ -30,7 +30,7 @@ async function main() {
   const client = new GddApiClient();
 
   const server = new McpServer(
-    { name: "gdd-manager", version: "0.6.0" },
+    { name: "gdd-manager", version: "0.7.0" },
     // Sent once in the initialize response: conventions that apply to every
     // write but belong in no single tool's schema.
     { instructions: SERVER_INSTRUCTIONS },

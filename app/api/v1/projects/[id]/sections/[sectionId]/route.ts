@@ -11,7 +11,7 @@ import {
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
 import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
-import { DETAIL_DESCRIPTION, logApiSectionActivity } from "@/lib/api/v1/activityLog";
+import { DETAIL_DESCRIPTION, logApiSectionActivity, resolveActorName } from "@/lib/api/v1/activityLog";
 import { snapshotSectionVersions } from "@/lib/api/v1/sectionVersions";
 
 type Ctx = { params: Promise<{ id: string; sectionId: string }> };
@@ -86,7 +86,10 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
-  const { updates } = buildSectionUpdates(parsed.data, { userId: auth.userId, now });
+  // The app shows the author's NAME on the page footer and in its history, so
+  // the write stamps the name as well as the id.
+  const actorName = await resolveActorName(auth.supabase, auth.userId);
+  const { updates } = buildSectionUpdates(parsed.data, { userId: auth.userId, now, userName: actorName });
 
   const { error } = await auth.supabase
     .from("sections")
@@ -110,6 +113,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       oldTitle: renamedFrom,
       newTitle: parsed.data.title as string,
       userId: auth.userId,
+      userName: actorName,
       now,
     });
   }

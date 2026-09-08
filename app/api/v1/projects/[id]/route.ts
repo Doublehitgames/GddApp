@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { data: sections } = await selectSections(auth.supabase, { projectId: id });
 
   return apiJson({
-    ...projectToApi(pResult.project),
+    ...projectToApi(pResult.project, pResult.access),
     sections: (sections ?? []).map(sectionToApi),
   });
 }
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const { data: rows } = await selectProjects(auth.supabase, { eq: ["id", id] });
   if (!rows || rows.length === 0) return apiError("Project not found after update", 500, "db_error");
 
-  return apiJson(projectToApi(rows[0]));
+  return apiJson(projectToApi(rows[0], pResult.access));
 }
 
 /**

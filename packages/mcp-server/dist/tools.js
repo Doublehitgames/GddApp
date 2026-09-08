@@ -6,7 +6,7 @@
  */
 import { z } from "zod/v3";
 import { GddApiError } from "./client.js";
-import { batchReceipt, deleted, filterSections, json, projectCreated, projectIndex, projectReceipt, projectRow, sectionFull, searchProjection, sectionCreated, sectionReceipt, sectionRow, text, touched, } from "./project.js";
+import { activityRows, batchReceipt, deleted, filterSections, json, memberRows, projectCreated, projectIndex, projectReceipt, projectRow, sectionFull, searchProjection, sectionCreated, sectionReceipt, sectionRow, text, touched, whoami, } from "./project.js";
 function err(e) {
     if (e instanceof GddApiError) {
         return { content: [{ type: "text", text: `Error (${e.code}): ${e.message}` }], isError: true };
@@ -19,8 +19,17 @@ const returning = z
     .optional()
     .describe('"full" echoes the whole saved record instead of a receipt (default "minimal")');
 export function registerTools(server, client) {
+    // ── Identity ────────────────────────────────────────────────────
+    server.tool("whoami", "Which GDD Manager account this connection is acting as: userId, display name, how it authenticated, how many projects it owns versus how many were shared with it, and the account's own effective limits (max projects, max pages per project — a project shared with you is governed by ITS owner's limits, not yours). Worth calling once at the start of a session that will write — it is the only way to know whose documents these are, and the limits are otherwise met as a 403 halfway through creating pages.", {}, async () => {
+        try {
+            return json(whoami(await client.me()));
+        }
+        catch (e) {
+            return err(e);
+        }
+    });
     // ── Projects ────────────────────────────────────────────────────
-    server.tool("list_projects", "List all GDD projects you have access to (owned and shared). Returns one index row per project (id, title, description, updatedAt); the project's aiInstructions live in get_project.", {}, async () => {
+    server.tool("list_projects", "List all GDD projects you have access to — owned and shared with you. Returns one index row per project (id, title, description, access, updatedAt); `access` is owner, editor or viewer, and viewer means every write here will be refused. The project's aiInstructions live in get_project.", {}, async () => {
         try {
             return json((await client.listProjects()).map(projectRow));
         }
@@ -28,7 +37,7 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description). This is the map of the document — use it to find the section you need, then get_section for its contents.", {
+    server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.", {
         projectId: z.string(),
     }, async ({ projectId }) => {
         try {
@@ -82,6 +91,27 @@ export function registerTools(server, client) {
     }, async ({ projectId, match }) => {
         try {
             return json(await client.listProjectImages(projectId, match));
+        }
+        catch (e) {
+            return err(e);
+        }
+    });
+    // ── Collaboration ───────────────────────────────────────────────
+    server.tool("list_project_members", "Who works on this project: the owner first, then everyone it was shared with, each with their access (owner / editor / viewer) and the entry for you flagged `isYou`. Use it when a page's history names someone, or before assuming a document is yours alone.", { projectId: z.string() }, async ({ projectId }) => {
+        try {
+            return json(memberRows(await client.listMembers(projectId)));
+        }
+        catch (e) {
+            return err(e);
+        }
+    });
+    server.tool("list_recent_activity", "What changed in this project lately, newest first: which page, what happened (created / modified / renamed / deleted), who did it and whether it came from the app or through the API (`origin`). On a document several people write, check this before rewriting a page — it is how you find out someone edited it an hour ago. A batch write appears as one event carrying a `pages` count. The log is a recent window (the database keeps 90 days, 200 events per project), not a full ledger.", {
+        projectId: z.string(),
+        limit: z.number().optional().describe("Max events (default 20, max 100)"),
+        since: z.string().optional().describe("ISO timestamp — only events after it"),
+    }, async ({ projectId, ...opts }) => {
+        try {
+            return json(activityRows(await client.listActivity(projectId, opts)));
         }
         catch (e) {
             return err(e);

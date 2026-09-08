@@ -55,6 +55,7 @@ export function sectionRow(section: unknown): Rec {
     ...(s.parentId ? { parentId: s.parentId } : {}),
     order: s.order,
     ...(s.dataId ? { dataId: s.dataId } : {}),
+    ...(s.status ? { status: s.status } : {}),
     ...(s.content || blocks.length ? { hasDescription: true } : {}),
   };
 }
@@ -134,6 +135,10 @@ export function projectRow(project: unknown): Rec {
     id: p.id,
     title: p.title,
     ...(p.description ? { description: p.description } : {}),
+    // owner / editor / viewer. Worth the handful of characters: it is the
+    // difference between planning a rewrite and discovering a 403 halfway
+    // through one on a project someone shared read-only.
+    ...(p.access ? { access: p.access } : {}),
     updatedAt: p.updatedAt,
   };
 }
@@ -146,6 +151,7 @@ export function projectIndex(project: unknown): Rec {
     id: p.id,
     title: p.title,
     ...(p.description ? { description: p.description } : {}),
+    ...(p.access ? { access: p.access } : {}),
     // Settable through update_project, so it should be readable here too.
     ...(p.coverImageUrl ? { coverImageUrl: p.coverImageUrl } : {}),
     ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
@@ -207,6 +213,91 @@ export function batchReceipt(result: unknown): Rec {
     ...(failures.length
       ? { failures: failures.map((row) => ({ sectionId: row.sectionId, error: row.error })) }
       : {}),
+  };
+}
+
+// ── Identity and collaboration ────────────────────────────────────
+
+/**
+ * Who the connection is acting as, and what that account may do.
+ *
+ * An agent holding an API key has no other way to know whose documents it is
+ * about to edit — and the limits belong here because meeting a ceiling as a
+ * 403 halfway through creating pages is a worse way to learn it.
+ */
+export function whoami(me: unknown): Rec {
+  const m = asRec(me);
+  const projects = asRec(m.projects);
+  const limits = asRec(m.limits);
+  return {
+    userId: m.id,
+    ...(m.displayName ? { displayName: m.displayName } : {}),
+    ...(m.email ? { email: m.email } : {}),
+    // 'apiKey', 'oauth' or 'session' — how this connection authenticated.
+    authSource: m.authSource,
+    projects: {
+      owned: projects.owned ?? 0,
+      sharedAsEditor: projects.editor ?? 0,
+      sharedAsViewer: projects.viewer ?? 0,
+    },
+    limits: {
+      maxProjects: limits.maxProjects,
+      maxSectionsPerProject: limits.maxSectionsPerProject,
+    },
+  };
+}
+
+/**
+ * The project's team. Names, not ids, are what a human asking "who wrote this"
+ * means — the id tags along for cross-referencing an activity event.
+ */
+export function memberRows(result: unknown): Rec {
+  const r = asRec(result);
+  const members = Array.isArray(r.members) ? r.members : [];
+  return {
+    projectId: r.projectId,
+    yourAccess: r.yourAccess,
+    members: members.map((member) => {
+      const m = asRec(member);
+      return {
+        name: m.displayName ?? m.email ?? null,
+        access: m.access,
+        ...(m.isYou ? { isYou: true } : {}),
+        userId: m.userId,
+      };
+    }),
+  };
+}
+
+const BATCH_DETAIL = "batch:";
+
+/**
+ * Recent history as one line per event. `detail` carries machine tokens the app
+ * renders into a sentence; here a batch token becomes a plain `pages` count and
+ * the rest is dropped, since 'description' only repeats what `action` said.
+ */
+export function activityRows(result: unknown): Rec {
+  const r = asRec(result);
+  const events = Array.isArray(r.events) ? r.events : [];
+  return {
+    events: events.map((event) => {
+      const e = asRec(event);
+      const detail = typeof e.detail === "string" ? e.detail : "";
+      const pages = detail.startsWith(BATCH_DETAIL)
+        ? Number(detail.slice(BATCH_DETAIL.length))
+        : null;
+      return {
+        at: e.at,
+        action: e.action,
+        title: e.sectionTitle,
+        ...(e.oldTitle ? { oldTitle: e.oldTitle } : {}),
+        ...(pages && Number.isFinite(pages) ? { pages } : {}),
+        ...(e.by ? { by: e.by } : {}),
+        // 'app' = someone in the browser, 'mcp' = a write through the API.
+        origin: e.origin,
+        sectionId: e.sectionId,
+      };
+    }),
   };
 }
 

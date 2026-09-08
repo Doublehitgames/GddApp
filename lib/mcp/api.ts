@@ -44,6 +44,9 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
   }
 
   return {
+    // Identity
+    me: () => api("GET", "/me"),
+
     // Projects
     listProjects: () => api("GET", "/projects"),
     getProject: (id: string) => api("GET", `/projects/${id}`),
@@ -63,6 +66,16 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
 
     listProjectImages: (projectId: string, match?: string) =>
       api("GET", `/projects/${projectId}/images${match ? `?match=${encodeURIComponent(match)}` : ""}`),
+
+    // Collaboration
+    listMembers: (projectId: string) => api("GET", `/projects/${projectId}/members`),
+    listActivity: (projectId: string, opts: { limit?: number; since?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (opts.limit) params.set("limit", String(opts.limit));
+      if (opts.since) params.set("since", opts.since);
+      const qs = params.toString();
+      return api("GET", `/projects/${projectId}/activity${qs ? `?${qs}` : ""}`);
+    },
 
     // Search
     search: (q: string, type?: string, limit?: number) => {

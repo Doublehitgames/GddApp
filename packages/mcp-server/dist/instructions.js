@@ -26,6 +26,9 @@ A page may carry a \`status\`: draft, review, approved, implemented or obsolete.
 WHAT CHANGED, AND WHEN:
 A page carries two dates. \`contentUpdatedAt\` is when its text last changed; \`updatedAt\` also moves for a colour, an order or a parent. To find what was actually rewritten since some moment, compare against \`contentUpdatedAt\`.
 
+WHOSE DOCUMENT THIS IS:
+Not every project here is yours: an account also reaches the ones shared with it, where \`access\` may be viewer and every write is refused. whoami says which account you are. On a shared project, check list_recent_activity before rewriting a page — someone else may have just touched it.
+
 CONVENTIONS PER PROJECT:
 A project may carry its own rules in \`aiInstructions\`. Read them with get_project before writing, and follow them over these defaults when they disagree.
 

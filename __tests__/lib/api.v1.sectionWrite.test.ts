@@ -23,6 +23,31 @@ describe("buildSectionUpdates", () => {
     expect(updates).toMatchObject({ updated_at: CTX.now, updated_by: "user-1", title: "Galinha" });
   });
 
+  it("stamps the author's NAME when the caller resolved one", () => {
+    // The page footer and the version history render the stored name, not the
+    // id: writing only the id left every edit made through /api/v1 — which is
+    // every edit an agent makes — showing the previous editor as the author.
+    const { updates } = buildSectionUpdates({ content: "texto" }, { ...CTX, userName: "Julio" });
+    expect(updates.updated_by_name).toBe("Julio");
+  });
+
+  it("clears the name when the account has none", () => {
+    const { updates } = buildSectionUpdates({ content: "texto" }, { ...CTX, userName: null });
+    expect(updates.updated_by_name).toBeNull();
+  });
+
+  it("leaves the stored name alone when no name was resolved", () => {
+    // Not the same as null: a caller that never looked up a name must not
+    // overwrite the one already on the row.
+    const { updates } = buildSectionUpdates({ content: "texto" }, CTX);
+    expect(updates).not.toHaveProperty("updated_by_name");
+  });
+
+  it("does not report the stamped name as a field the caller touched", () => {
+    const { touched } = buildSectionUpdates({ content: "texto" }, { ...CTX, userName: "Julio" });
+    expect(touched).toEqual(["content"]);
+  });
+
   it("maps the API names onto column names", () => {
     const { updates } = buildSectionUpdates({
       order: 4, dataId: "FARM_ANIMAL_CHICKEN", parentId: null,

@@ -59,5 +59,24 @@ export declare function searchProjection(result: unknown): Rec;
  * one line each, so a 50-page batch still answers in a few hundred characters.
  */
 export declare function batchReceipt(result: unknown): Rec;
+/**
+ * Who the connection is acting as, and what that account may do.
+ *
+ * An agent holding an API key has no other way to know whose documents it is
+ * about to edit — and the limits belong here because meeting a ceiling as a
+ * 403 halfway through creating pages is a worse way to learn it.
+ */
+export declare function whoami(me: unknown): Rec;
+/**
+ * The project's team. Names, not ids, are what a human asking "who wrote this"
+ * means — the id tags along for cross-referencing an activity event.
+ */
+export declare function memberRows(result: unknown): Rec;
+/**
+ * Recent history as one line per event. `detail` carries machine tokens the app
+ * renders into a sentence; here a batch token becomes a plain `pages` count and
+ * the rest is dropped, since 'description' only repeats what `action` said.
+ */
+export declare function activityRows(result: unknown): Rec;
 export declare function deleted(kind: string, id: string): Rec;
 export {};

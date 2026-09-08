@@ -38,12 +38,18 @@ export const BATCH_CONCURRENCY = 8;
  */
 export function buildSectionUpdates(
   fields: SectionUpdate,
-  ctx: { userId: string; now: string },
+  ctx: { userId: string; now: string; userName?: string | null },
 ): { updates: Record<string, unknown>; touched: string[] } {
   const updates: Record<string, unknown> = {
     updated_at: ctx.now,
     updated_by: ctx.userId,
   };
+
+  // The page footer and the version list read the NAME, not the id. Writing the
+  // id alone left every /api/v1 edit — which is every edit an agent makes —
+  // showing the previous editor as the author. `undefined` means the caller did
+  // not resolve a name and the stored one should be left alone.
+  if (ctx.userName !== undefined) updates.updated_by_name = ctx.userName;
 
   if (fields.title !== undefined) updates.title = fields.title;
 

@@ -22,6 +22,8 @@ type SweepArgs = {
   oldTitle: string;
   newTitle: string;
   userId: string;
+  /** Display name of whoever renamed the page, stamped on every page it rewrites. */
+  userName?: string | null;
   now: string;
 };
 
@@ -35,7 +37,7 @@ export async function sweepRenamedRefs(
   supabase: SupabaseClient,
   args: SweepArgs,
 ): Promise<number> {
-  const { projectId, sectionId, oldTitle, newTitle, userId, now } = args;
+  const { projectId, sectionId, oldTitle, newTitle, userId, userName, now } = args;
   if (!oldTitle || oldTitle.trim().toLowerCase() === newTitle.trim().toLowerCase()) return 0;
 
   try {
@@ -122,6 +124,7 @@ export async function sweepRenamedRefs(
 
     const outcomes = await mapWithConcurrency(sectionPatches, BATCH_CONCURRENCY, async (patch) => {
       const updates: Record<string, unknown> = { updated_at: now, updated_by: userId };
+      if (userName !== undefined) updates.updated_by_name = userName;
       if (patch.content !== undefined) updates.content = patch.content;
       if (patch.contentBlocks !== undefined) updates.content_blocks = patch.contentBlocks;
 

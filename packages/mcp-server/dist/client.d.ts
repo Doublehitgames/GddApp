@@ -14,6 +14,7 @@ export declare class GddApiClient {
     private apiKey;
     constructor();
     private request;
+    me(): Promise<unknown>;
     listProjects(): Promise<unknown>;
     getProject(id: string): Promise<unknown>;
     createProject(params: {
@@ -23,6 +24,11 @@ export declare class GddApiClient {
     updateProject(id: string, params: Record<string, unknown>): Promise<unknown>;
     deleteProject(id: string): Promise<unknown>;
     listProjectImages(id: string, match?: string): Promise<unknown>;
+    listMembers(projectId: string): Promise<unknown>;
+    listActivity(projectId: string, opts?: {
+        limit?: number;
+        since?: string;
+    }): Promise<unknown>;
     listSections(projectId: string): Promise<unknown>;
     getSection(projectId: string, sectionId: string): Promise<unknown>;
     createSection(projectId: string, params: Record<string, unknown>): Promise<unknown>;

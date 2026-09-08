@@ -10,10 +10,12 @@ import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
+  activityRows,
   batchReceipt,
   deleted,
   filterSections,
   json,
+  memberRows,
   projectCreated,
   projectIndex,
   projectReceipt,
@@ -25,6 +27,7 @@ import {
   sectionRow,
   text,
   touched,
+  whoami,
 } from "./project";
 
 /** Escape hatch on every write: opt back into the whole saved record. */
@@ -116,10 +119,15 @@ function err(e: unknown) {
 // ── Generic tools ─────────────────────────────────────────────────
 
 export function registerGenericTools(server: McpServer, api: ApiFetcher) {
-  server.tool("list_projects", "List all GDD projects you have access to. Returns one index row per project (id, title, description, updatedAt); the project's aiInstructions live in get_project.", {},
+  server.tool("whoami",
+    "Which GDD Manager account this connection is acting as: userId, display name, how it authenticated, how many projects it owns versus how many were shared with it, and the account's own effective limits (max projects, max pages per project — a project shared with you is governed by ITS owner's limits, not yours). Worth calling once at the start of a session that will write — it is the only way to know whose documents these are, and the limits are otherwise met as a 403 halfway through creating pages.",
+    {},
+    async () => { try { return json(whoami(await api.me())); } catch (e) { return err(e); } });
+
+  server.tool("list_projects", "List all GDD projects you have access to — owned and shared with you. Returns one index row per project (id, title, description, access, updatedAt); `access` is owner, editor or viewer, and viewer means every write here will be refused. The project's aiInstructions live in get_project.", {},
     async () => { try { return json(((await api.listProjects()) as unknown[]).map(projectRow)); } catch (e) { return err(e); } });
 
-  server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description). This is the map of the document — use it to find the section you need, then get_section for its contents.",
+  server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.",
     { projectId: z.string().describe("Project UUID") },
     async ({ projectId }) => {
       try {
@@ -220,6 +228,20 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
   server.tool("list_project_images", "The project's Google Drive image library: each file's name plus the ready-to-write URL for a page icon (thumbImageUrl on create_section / update_section / batch_update_sections). File names are the handle — match them against a page's dataId or title. Files inside subfolders also carry `path`. Pass `match` to filter by name or subfolder instead of pulling the whole library; responses cap at 200 files and say `truncated` when they do.",
     { projectId: z.string(), match: z.string().optional().describe("Only files whose name contains this (case-insensitive)") },
     async ({ projectId, match }) => { try { return json(await api.listProjectImages(projectId, match)); } catch (e) { return err(e); } });
+
+  server.tool("list_project_members",
+    "Who works on this project: the owner first, then everyone it was shared with, each with their access (owner / editor / viewer) and the entry for you flagged `isYou`. Use it when a page's history names someone, or before assuming a document is yours alone.",
+    { projectId: z.string().describe("Project UUID") },
+    async ({ projectId }) => { try { return json(memberRows(await api.listMembers(projectId))); } catch (e) { return err(e); } });
+
+  server.tool("list_recent_activity",
+    "What changed in this project lately, newest first: which page, what happened (created / modified / renamed / deleted), who did it and whether it came from the app or through the API (`origin`). On a document several people write, check this before rewriting a page — it is how you find out someone edited it an hour ago. A batch write appears as one event carrying a `pages` count. The log is a recent window (the database keeps 90 days, 200 events per project), not a full ledger.",
+    {
+      projectId: z.string().describe("Project UUID"),
+      limit: z.number().optional().describe("Max events (default 20, max 100)"),
+      since: z.string().optional().describe("ISO timestamp — only events after it"),
+    },
+    async ({ projectId, ...opts }) => { try { return json(activityRows(await api.listActivity(projectId, opts))); } catch (e) { return err(e); } });
 
   server.tool("search", "Search across all projects and sections. Each section hit comes back as a pointer — id, projectId, title, dataId, and a 200-character excerpt — because the match itself is what you asked for, not the page. Follow up with get_section on the hits that matter.",
     { query: z.string(), type: z.enum(["all", "projects", "sections"]).optional(), limit: z.number().optional() },

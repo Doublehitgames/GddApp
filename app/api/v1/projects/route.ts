@@ -4,49 +4,34 @@ import {
   selectProjects,
   apiJson,
   apiError,
+  projectAccessMap,
   projectToApi,
 } from "@/lib/api/v1/helpers";
 import { createProjectSchema } from "@/lib/api/v1/schemas";
 import { getRemoteConfig } from "@/lib/remoteConfig";
 
 /**
- * GET /api/v1/projects — list the caller's projects (owned + member).
+ * GET /api/v1/projects — every project the caller can reach, owned or shared.
+ *
+ * Each row carries `access` (owner / editor / viewer), so a caller working
+ * across other people's documents knows what it may write before it tries.
  */
 export async function GET(request: NextRequest) {
   const result = await requireAuth(request);
   if ("response" in result) return result.response;
   const { auth } = result;
 
-  const { data: owned, error: e1 } = await selectProjects(auth.supabase, {
-    eq: ["owner_id", auth.userId],
+  const access = await projectAccessMap(auth.supabase, auth.userId);
+  if (access.size === 0) return apiJson([]);
+
+  const { data: projects, error } = await selectProjects(auth.supabase, {
+    in: ["id", [...access.keys()]],
     order: "updated_at",
   });
 
-  if (e1) return apiError("Failed to fetch projects", 500, "db_error");
+  if (error) return apiError("Failed to fetch projects", 500, "db_error");
 
-  // Also load projects where user is a member
-  const { data: memberRows } = await auth.supabase
-    .from("project_members")
-    .select("project_id")
-    .eq("user_id", auth.userId);
-
-  let memberProjects: typeof owned = [];
-  if (memberRows && memberRows.length > 0) {
-    const memberIds = memberRows
-      .map((r) => r.project_id)
-      .filter((id) => !owned?.some((p) => p.id === id));
-
-    if (memberIds.length > 0) {
-      const { data: mp } = await selectProjects(auth.supabase, {
-        in: ["id", memberIds],
-        order: "updated_at",
-      });
-      memberProjects = mp ?? [];
-    }
-  }
-
-  const all = [...(owned ?? []), ...memberProjects];
-  return apiJson(all.map((p) => projectToApi(p)));
+  return apiJson((projects ?? []).map((p) => projectToApi(p, access.get(p.id))));
 }
 
 /**
@@ -106,5 +91,5 @@ export async function POST(request: NextRequest) {
 
   // Re-read with fallback
   const { data: created } = await selectProjects(auth.supabase, { eq: ["id", project.id] });
-  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, content_blocks: null, cover_image_url: null, mindmap_settings: null, ai_instructions: null, image_library: null, created_at: now, updated_at: now }), 201);
+  return apiJson(projectToApi(created?.[0] ?? { ...project, owner_id: auth.userId, title: parsed.data.title, description: parsed.data.description, content_blocks: null, cover_image_url: null, mindmap_settings: null, ai_instructions: null, image_library: null, created_at: now, updated_at: now }, "owner"), 201);
 }

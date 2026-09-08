@@ -49,6 +49,58 @@ export async function requireAuth(
 
 // ── Project access ────────────────────────────────────────────────────
 
+/**
+ * How the caller reaches a project. `owner` and `editor` may write; `viewer`
+ * may only read.
+ *
+ * It travels all the way out to the API response because a caller working
+ * across someone else's projects otherwise discovers its own permission from a
+ * 403 in the middle of a sweep — the MCP server surfaces this as `access` so an
+ * agent can plan before it writes.
+ */
+export type ProjectAccess = "owner" | "editor" | "viewer";
+
+/** A `project_members.role` as access. Anything but 'editor' reads only. */
+export function accessFromRole(role: unknown): ProjectAccess {
+  return role === "editor" ? "editor" : "viewer";
+}
+
+/** Owner and editor write; viewer does not. */
+export function canWrite(access: ProjectAccess): boolean {
+  return access !== "viewer";
+}
+
+/**
+ * Every project the caller can reach, mapped to how they reach it: the ones
+ * they own plus the ones they were invited to. Ownership outranks a membership
+ * row, since a project can carry a `project_members` row for its own owner.
+ */
+export async function projectAccessMap(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Map<string, ProjectAccess>> {
+  const access = new Map<string, ProjectAccess>();
+
+  const { data: owned } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("owner_id", userId);
+
+  for (const row of owned ?? []) access.set(row.id as string, "owner");
+
+  const { data: memberships } = await supabase
+    .from("project_members")
+    .select("project_id, role")
+    .eq("user_id", userId);
+
+  for (const row of memberships ?? []) {
+    const id = row.project_id as string;
+    if (!access.has(id)) access.set(id, accessFromRole(row.role));
+  }
+
+  return access;
+}
+
 export type ProjectRow = {
   id: string;
   owner_id: string;
@@ -107,7 +159,7 @@ export async function requireProject(
   userId: string,
   opts: { write?: boolean; ownerOnly?: boolean } = {}
 ): Promise<
-  | { project: ProjectRow; isOwner: boolean }
+  | { project: ProjectRow; isOwner: boolean; access: ProjectAccess }
   | { response: NextResponse }
 > {
   let { data: project, error } = await supabase
@@ -139,6 +191,8 @@ export async function requireProject(
     return { response: apiError("Only the project owner can do this", 403, "forbidden") };
   }
 
+  let access: ProjectAccess = "owner";
+
   if (!isOwner) {
     const { data: member } = await supabase
       .from("project_members")
@@ -151,12 +205,14 @@ export async function requireProject(
       return { response: apiError("Project not found", 404, "not_found") };
     }
 
-    if (opts.write && member.role !== "editor") {
+    access = accessFromRole(member.role);
+
+    if (opts.write && !canWrite(access)) {
       return { response: apiError("Editor role required", 403, "forbidden") };
     }
   }
 
-  return { project: project as ProjectRow, isOwner };
+  return { project: project as ProjectRow, isOwner, access };
 }
 
 // ── Section access ────────────────────────────────────────────────────
@@ -290,10 +346,12 @@ export function imageLibraryCount(p: { image_library?: Record<string, unknown> |
   return Array.isArray(files) ? files.length : null;
 }
 
-export function projectToApi(p: ProjectRow) {
+export function projectToApi(p: ProjectRow, access?: ProjectAccess) {
   return {
     id: p.id,
     ownerId: p.owner_id,
+    // Owner, editor or viewer — omitted only when the caller did not resolve it.
+    ...(access ? { access } : {}),
     title: p.title,
     description: p.description,
     contentBlocks: Array.isArray(p.content_blocks) ? p.content_blocks : null,

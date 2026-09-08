@@ -8,7 +8,7 @@ import {
   sectionToApi,
 } from "@/lib/api/v1/helpers";
 import { createSectionSchema } from "@/lib/api/v1/schemas";
-import { logApiSectionActivity, logBatchActivity } from "@/lib/api/v1/activityLog";
+import { logApiSectionActivity, logBatchActivity, resolveActorName } from "@/lib/api/v1/activityLog";
 import { snapshotSectionVersions } from "@/lib/api/v1/sectionVersions";
 import {
   BATCH_CONCURRENCY,
@@ -102,6 +102,9 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
+  // Who to show as the author. The app renders the stored NAME, so an id alone
+  // would leave every page an agent creates without one.
+  const actorName = await resolveActorName(auth.supabase, auth.userId);
   // contentBlocks from caller takes priority; fall back to auto-generating from markdown.
   const resolvedBlocks = parsed.data.contentBlocks && parsed.data.contentBlocks.length > 0
     ? parsed.data.contentBlocks
@@ -124,7 +127,9 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       created_at: now,
       updated_at: now,
       created_by: auth.userId,
+      created_by_name: actorName,
       updated_by: auth.userId,
+      updated_by_name: actorName,
     })
     .select("id")
     .single();
@@ -227,6 +232,8 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   }
 
   const now = new Date().toISOString();
+  // Resolved once for the whole batch — the author is the same on every page.
+  const actorName = await resolveActorName(auth.supabase, auth.userId);
 
   const results = await mapWithConcurrency(items, BATCH_CONCURRENCY, async (item) => {
     const { sectionId, ...fields } = item;
@@ -244,7 +251,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       return { sectionId, ok: false as const, error: "Parent section not found in this project", code: "invalid_parent" };
     }
 
-    const { updates, touched } = buildSectionUpdates(fields, { userId: auth.userId, now });
+    const { updates, touched } = buildSectionUpdates(fields, { userId: auth.userId, now, userName: actorName });
     const { error } = await auth.supabase
       .from("sections")
       .update(updates)
@@ -275,6 +282,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       oldTitle,
       newTitle: item.title,
       userId: auth.userId,
+      userName: actorName,
       now,
     });
   }

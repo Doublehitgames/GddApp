@@ -43,6 +43,10 @@ export class GddApiClient {
         }
         return json.data;
     }
+    // ── Identity ──────────────────────────────────────────────────────
+    async me() {
+        return this.request("GET", "/me");
+    }
     // ── Projects ──────────────────────────────────────────────────────
     async listProjects() {
         return this.request("GET", "/projects");
@@ -62,6 +66,19 @@ export class GddApiClient {
     async listProjectImages(id, match) {
         const qs = match ? `?match=${encodeURIComponent(match)}` : "";
         return this.request("GET", `/projects/${id}/images${qs}`);
+    }
+    // ── Collaboration ─────────────────────────────────────────────────
+    async listMembers(projectId) {
+        return this.request("GET", `/projects/${projectId}/members`);
+    }
+    async listActivity(projectId, opts = {}) {
+        const params = new URLSearchParams();
+        if (opts.limit)
+            params.set("limit", String(opts.limit));
+        if (opts.since)
+            params.set("since", opts.since);
+        const qs = params.toString();
+        return this.request("GET", `/projects/${projectId}/activity${qs ? `?${qs}` : ""}`);
     }
     // ── Sections ──────────────────────────────────────────────────────
     async listSections(projectId) {

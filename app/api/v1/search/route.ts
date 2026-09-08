@@ -4,6 +4,7 @@ import {
   selectProjects,
   apiJson,
   apiError,
+  projectAccessMap,
   projectToApi,
   sectionToApi,
 } from "@/lib/api/v1/helpers";
@@ -38,26 +39,14 @@ export async function GET(request: NextRequest) {
   const { q, type, limit } = parsed.data;
   const pattern = `%${q}%`;
 
-  // Collect all project IDs the user can access (owned + member)
-  const { data: ownedProjects } = await auth.supabase
-    .from("projects")
-    .select("id")
-    .eq("owner_id", auth.userId);
+  // Every project the caller can reach, owned or shared, with their role in it.
+  const access = await projectAccessMap(auth.supabase, auth.userId);
 
-  const { data: memberRows } = await auth.supabase
-    .from("project_members")
-    .select("project_id")
-    .eq("user_id", auth.userId);
-
-  const projectIds = new Set<string>();
-  for (const p of ownedProjects ?? []) projectIds.add(p.id);
-  for (const m of memberRows ?? []) projectIds.add(m.project_id);
-
-  if (projectIds.size === 0) {
+  if (access.size === 0) {
     return apiJson({ projects: [], sections: [] });
   }
 
-  const ids = Array.from(projectIds);
+  const ids = [...access.keys()];
   const results: { projects: unknown[]; sections: unknown[] } = {
     projects: [],
     sections: [],
@@ -70,7 +59,7 @@ export async function GET(request: NextRequest) {
       limit,
     });
 
-    results.projects = (projects ?? []).map((p) => projectToApi(p));
+    results.projects = (projects ?? []).map((p) => projectToApi(p, access.get(p.id)));
   }
 
   if (type === "all" || type === "sections") {
