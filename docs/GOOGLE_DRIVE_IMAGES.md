@@ -1,18 +1,22 @@
-# Imagens do Google Drive na descrição das seções
+# Imagens do Google Drive no GDD
 
-O editor de descrição das seções (página "Editar Seção") tem um botão **"Inserir do Google Drive"** na barra de ferramentas (logo após o ícone de inserir imagem por URL). O usuário escolhe uma imagem do próprio Drive e ela é inserida no texto em Markdown.
+O app nunca guarda imagem: ele guarda **link** para um arquivo no seu Google
+Drive. Isso aparece em três lugares — imagem no meio da descrição de uma página,
+ícone de página e capa do projeto — e todos passam pelo mesmo fluxo de
+autorização.
 
 ---
 
 ## Como o usuário final usa
 
-1. Na edição da seção, clicar no ícone de Drive na barra do editor.
-2. Na primeira vez, o Google pode pedir permissão para acessar o Drive (somente leitura).
+1. No editor de blocos da página, escolher inserir imagem e selecionar o Drive.
+2. Na primeira vez, o Google pede permissão para acessar o Drive (somente leitura).
 3. Abre o **Google Picker**: o usuário seleciona uma imagem (PNG, JPEG, GIF, WebP, etc.).
-4. O Markdown `![nome](url)` é inserido na posição do cursor.
-5. A imagem aparece no preview e no documento **desde que** o arquivo no Drive esteja compartilhado como **"Qualquer pessoa com o link"**.
+4. A imagem entra no bloco, apontando para o arquivo do Drive.
+5. A imagem aparece para quem lê o documento **desde que** o arquivo no Drive esteja compartilhado como **"Qualquer pessoa com o link"**.
 
-Há uma dica abaixo do editor lembrando do compartilhamento.
+Se você tem uma pasta inteira de arte, vale conectá-la como **Biblioteca de
+Imagens** (seção mais abaixo) em vez de escolher arquivo por arquivo.
 
 ---
 
@@ -54,7 +58,7 @@ O que isso muda:
 
 Detalhes:
 
-- O índice é um **retrato**, igual às colunas das planilhas vinculadas: imagem nova na pasta só aparece depois de clicar **Atualizar índice**.
+- O índice é um **retrato** da pasta, não uma janela: imagem nova no Drive só aparece depois de clicar **Atualizar índice**.
 - A leitura da pasta acontece **no navegador**, com a mesma autorização do picker. O servidor nunca recebe credencial do seu Drive — só nomes e ids.
 - A pasta continua precisando estar compartilhada como **"qualquer pessoa com o link"** para as imagens renderizarem (inclusive no modo leitura pública).
 - **Subpastas entram também**: a varredura desce a árvore inteira e guarda o caminho relativo, então dois arquivos de mesmo nome em pastas diferentes continuam distinguíveis (a grade mostra a subpasta embaixo do nome, e o filtro busca por pasta também). Limites: 2000 imagens e 300 pastas por biblioteca — se estourar, o app avisa que truncou.
@@ -139,7 +143,7 @@ A variável deve se chamar **`NEXT_PUBLIC_GOOGLE_CLIENT_ID`** e o **valor** é e
 |-----------------|------------------|--------|
 | `.env.local` (local) e Vercel (produção) | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | O **ID do cliente** do aplicativo da Web (termina em `.apps.googleusercontent.com`), copiado em Credenciais no Google Cloud |
 
-Se a variável não estiver definida, o botão do Drive ainda aparece; ao clicar, o usuário vê uma mensagem pedindo para configurar (texto em `sectionEdit.driveNotConfigured` nos locales).
+Se a variável não estiver definida, o botão do Drive ainda aparece; ao clicar, o usuário vê uma mensagem pedindo para configurar.
 
 ---
 

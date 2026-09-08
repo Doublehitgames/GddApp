@@ -4,7 +4,7 @@
 
 **Tudo é atrelado ao DONO do projeto:**
 
-- **Limites estruturais** (2 projetos, 120 seções por projeto, 200 seções totais): aplicam ao **dono**. Os membros estão sujeitos aos limites do dono do projeto em que atuam — ou seja, ao sincronizar o projeto X validamos contra os projetos e seções do **owner** do projeto X, não do usuário que está fazendo o sync.
+- **Limites estruturais** (N projetos × M páginas **por projeto**; os valores vivem no `app_config`, ver `lib/remoteConfig.ts`): aplicam ao **dono**. Os membros estão sujeitos aos limites do dono do projeto em que atuam — ou seja, ao sincronizar o projeto X validamos contra os projetos e seções do **owner** do projeto X, não do usuário que está fazendo o sync. **Não existe cota de páginas somada entre projetos**: o pool total (`FREE_MAX_SECTIONS_TOTAL`) foi removido em 2026-08-26 justamente porque vazava entre pessoas — página criada por um membro convidado tirava espaço de projetos que ele nem enxergava.
 - **Créditos de sync** (30/hora): um pool **por projeto**; dono e membros **compartilham** esse pool. Ao sincronizar o projeto X, qualquer um (dono ou membro) consome dos 30 créditos/hora daquele projeto (que é o limite aplicado ao dono para aquele projeto).
 
 Resumo: membros estão sujeitos aos limites do dono do projeto do qual são membros; no sync, todos consomem da mesma cota do projeto.
@@ -64,7 +64,7 @@ Isso evita tabelas obsoletas e usa só `project_members` e `projects`.
   - `owner_id !== currentUserId` → “Compartilhados comigo”.
 - **3.2** Na **home** (tela inicial):
   - Duas áreas: “Meus projetos” e “Projetos compartilhados comigo” (títulos localizados).
-  - Contadores e limites (ex.: X/2 projetos, Y/200 seções) podem considerar só “Meus projetos” para o plano Free (limite de criação é do dono); compartilhados só entram na listagem e no sync.
+  - Contadores e limites (ex.: X/N projetos, Y/M páginas naquele projeto) podem considerar só “Meus projetos” para o plano Free (limite de criação é do dono); compartilhados só entram na listagem e no sync.
 - **3.3** Store: manter um único array `projects` com `owner_id` em cada item (ou derivar do payload do Supabase). A separação “meus” vs “compartilhados” fica na apresentação (filter por owner_id === me ou !== me).
 
 Sem novas tabelas; só uso de `owner_id` e da lista que o RLS já retorna.

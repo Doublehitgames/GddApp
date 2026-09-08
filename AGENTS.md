@@ -1,136 +1,198 @@
-# Contexto para o agente (Cursor)
+# Contexto para agentes — GDD Manager
 
-Este documento resume o projeto, o estado atual e os próximos passos para qualquer sessão do Cursor.
+Briefing de entrada para qualquer sessão de agente neste repo. É a **única** fonte
+de contexto do projeto: não existe regra de Cursor nem instrução de Copilot em
+paralelo (foram removidas por divergirem desta).
+
+Números que envelhecem (limites de plano, contagem de testes) **não** ficam aqui —
+o texto aponta para onde o valor vive de verdade.
 
 ---
 
 ## O que é o projeto
 
-- **GDD Manager**: app para criar e gerenciar **Game Design Documents** (GDDs).
-- **Stack**: Next.js 16 (App Router), TypeScript, React 19, Zustand, Supabase (auth + DB), i18n (pt-BR, en, es).
-- **Deploy**: app implantado na **Vercel**. Variáveis de ambiente de **produção** são configuradas no projeto Vercel (Settings → Environment Variables). Em desenvolvimento local usam-se `.env.local`.
-- **Fluxo**: projetos e seções editados em Markdown; mapa mental (ReactFlow); referências entre seções (`$[Nome]` / `$[#id]`); IA para gerar/melhorar conteúdo; **offline-first** com sync opcional para a nuvem (Supabase).
+- **GDD Manager**: app para escrever e navegar **Game Design Documents**. Um GDD é
+  uma **árvore de páginas**; cada página tem título e uma **descrição em blocos**.
+- **Stack**: Next.js 16 (App Router, `--webpack` no dev), React 19, TypeScript,
+  Zustand, Tailwind 4, Supabase (auth + Postgres), MDX para a doc do usuário.
+- **Editor**: **BlockNote** (`@blocknote/react`) na tela da página. O markdown
+  continua sendo o formato de intercâmbio, mas o que o usuário edita são blocos.
+- **Deploy**: Vercel, auto-deploy na `master`. Env de produção fica no painel da
+  Vercel; local, em `.env.local`. Ver `docs/ENV_VERCEL.md`.
+- **Offline-first**: tudo vive em `localStorage` e o sync para o Supabase é
+  opcional e por projeto.
 
-Documentação geral: `docs/QUICKSTART.md`, `docs/TESTES_COMPLETOS.md`, `docs/GUIA_TESTES.md`. Deploy e env: `docs/ENV_VERCEL.md`.
+### O que o app **não** é mais
 
----
-
-## O que já foi feito (últimos commits)
-
-1. **Localização**: 3 idiomas (pt-BR, en, es) para o usuário gerenciar projetos; arquivos em `locales/*.json`; provider em `lib/i18n/`.
-2. **Sync com Supabase**: persistência local (localStorage) + sincronização com Supabase; rota `POST /api/projects/sync`; `lib/supabase/projectSync.ts` e `store/projectStore.ts` com debounce, retry e tratamento de erro.
-3. **Início da refatoração de limites (quota)**:
-   - Tabela `cloud_sync_usage_hourly` e SQL em `lib/supabase/add_cloud_sync_quota.sql` (rodar no Supabase).
-   - Na rota de sync: cálculo de créditos pelo **diff** (contentChangeCount + 1 se houver só reordenação + sectionsDeleted); janela por hora; retorno 429 com `quota_exceeded`. **Dry run** (`?dryRun=1`): retorna `estimatedCredits` e `details` (sectionsNew/Updated/Deleted com títulos) sem gravar.
-   - No store: ao receber `quota_exceeded`, seta `cloudSyncPausedUntil` (até `windowEndsAt`) e mensagem de limite; `barra/rodapé de sync` mostra créditos e estado “pausado”; app continua funcionando localmente.
-   - Limite configurável por env: `CLOUD_SYNC_CREDITS_PER_HOUR`; default no código **30** (plano Free). Para Pro/maior, definir a env.
-
----
-
-## Regras de negócio desejadas (plano Free)
-
-- **Limites estruturais** (implementados):
-  - Até **2 projetos** por conta (`lib/structuralLimits.ts` + checagem na API de sync e no store).
-  - Até **120 seções/subseções por projeto**.
-  - Até **200 seções totais** na conta.
-  - API retorna 403 `structural_limit_exceeded` com `reason`; store bloqueia criação (throw) e UI mostra mensagem i18n (`limits.projects`, `limits.sectionsPerProject`, `limits.sectionsTotal`).
-- **Limite de escrita na nuvem** (parcialmente implementado):
-  - Até **30 créditos de escrita por hora** (para Free: usar `CLOUD_SYNC_CREDITS_PER_HOUR=30` ou ajustar default).
-  - Janela: 1 hora (hoje é fixa por hora; “1h deslizante” pode ser evolução).
-- **Consumo de créditos**: cobrança pelo **diff** de cada sync (estado enviado vs. cloud), não por "ações". 1 crédito por seção nova/alterada (conteúdo); 1 no total por reordenação; 1 por seção **já no cloud** que é excluída. Criar+editar+mover+apagar sem nunca dar sync → próximo sync 0 seções = 0 créditos. Ver `docs/CREDITOS_SYNC.md`. Tudo que gera escrita (autosync, import, “Sincronizar agora”) consome do mesmo balde.
-- **UX ao bater limite**: app segue local; cloud pausa até o reset da janela; mensagem tipo: “Você atingiu o limite de escrita cloud do plano Free.”
+Em 2026-08-25 os 18 tipos de **addon** saíram do produto inteiro, junto com os
+satélites que só existiam para alimentá-los: binding de Google Sheets, Remote
+Config (`exportSchema`), `pageTypes` e os wizards de criação de página (~38 mil
+linhas). Não sugira nada disso — não existe. Comentários no código que citam
+addons são explicações históricas de onde um arquivo morava antes.
 
 ---
 
-## Onde está o código relevante
+## Núcleo hoje
 
 | O quê | Onde |
-|-------|------|
-| API de sync e quota | `app/api/projects/sync/route.ts` |
-| Lógica de sync (client) | `lib/supabase/projectSync.ts` |
-| Estado e fila de sync | `store/projectStore.ts` |
-| Barra de sync na home (créditos, último sync, estimativa) | `components/HomeSyncBar.tsx` |
-| Rodapé de sync dentro do projeto (sync este projeto) | `components/ProjectSyncFooter.tsx` |
-| Tabela de uso por hora | `lib/supabase/add_cloud_sync_quota.sql` |
-| Config de persistência | `app/settings/persistence/page.tsx` |
-| Estimativa e preview do próximo sync | `getSyncPreview()` em `lib/supabase/projectSync.ts` (chama API com dryRun=1) |
-| Limpar histórico de syncs | `clearSyncHistory()` no store; botão na página de persistência |
-| Doc. regra de créditos | `docs/CREDITOS_SYNC.md` |
-| i18n | `lib/i18n/`, `locales/*.json` |
-| Editor de descrição das seções | **Único:** Toast UI em `SectionDetailClient` (tela da seção). Rota `/sections/[sectionId]/edit` redireciona para a seção com `?edit=1` (abre direto no modo edição). Imagem por URL e Google Drive: `utils/toastui-color-plugin.ts`. |
-| Capa do projeto (cover image) | `app/projects/[id]/ProjectDetailClient.tsx`, `app/projects/[id]/view/GDDViewClient.tsx`, `app/page.tsx`, `lib/googleDrivePicker.ts`, `store/projectStore.ts` (`coverImageUrl`) |
-| SQL da capa do projeto | `lib/supabase/add_project_cover_image.sql` (`projects.cover_image_url`) |
-| Emojis (atalho de UI) | `components/EmojiQuickPicker.tsx`, `app/projects/[id]/ProjectEditClient.tsx`, `app/projects/[id]/sections/SectionDetailClient.tsx` |
+|---|---|
+| Árvore de páginas / CRUD de seção | `store/slices/sectionCrudSlice.ts`, `app/projects/[id]/sections/` |
+| Descrição em blocos | `lib/richDoc/` (`types.ts`, `serialize.ts`, `transformRefs.ts`) |
+| Referências cruzadas `$[...]` | `utils/sectionReferences.ts`, `lib/api/v1/renameRefs.ts` |
+| Status de maturidade da página | `lib/pageStatus/` |
+| "O que mudou" (changelog) | `lib/changelog/`, `app/projects/[id]/changelog/` |
+| Mapa mental (ReactFlow) | `app/projects/[id]/mindmap/`, `lib/mindMapConfig.ts` |
+| Modo documento / deck | `app/projects/[id]/view/`, `app/projects/[id]/deck/`, `lib/deck/` |
+| Export (md / pdf / docx) | `app/projects/[id]/export/` |
+| IA | `utils/ai/`, `app/api/ai/*`, `lib/gameDesignDomains.ts` |
+| MCP | `lib/mcp/` (remoto) e `packages/mcp-server/` (local, npm) |
+| Biblioteca de imagens (Google Drive) | `lib/googleDriveFolder.ts`, `lib/googleDrivePicker.ts` |
+| i18n | `lib/i18n/`, `locales/{pt-BR,en,es}.json` |
+| Doc do usuário (MDX) | `content/docs/<locale>/`, servida em `app/(docs)/` |
+
+### Referências cruzadas — a convenção que mais se erra
+
+Ao citar no texto qualquer coisa que tenha página própria, escreve-se
+`$[Título Exato da Página]`. É texto normal dentro de `content` e do texto de um
+bloco; o renderizador read-only converte em link.
+
+- O casamento é **por título, case-insensitive**, e **emoji faz parte do título**:
+  `$[🦴Osso]` acha, `$[Osso]` não.
+- O nome é a forma canônica de armazenamento. `$[#uuid]` é legado — ainda
+  resolve, mas nada novo deve gravar assim.
+- Renomear uma página **reescreve as refs** que apontam para ela
+  (`lib/api/v1/renameRefs.ts` e o slice equivalente no store).
+
+Detalhe completo do sistema (funções, varredura de rename, backlinks) em
+[`GUIA_REFERENCIAS.md`](GUIA_REFERENCIAS.md).
 
 ---
 
-## Testes
+## Limites de plano e créditos de sync
 
-- **Unitários (Jest)**: 118 testes; `npm test`; ver `docs/TESTES_COMPLETOS.md` e `docs/GUIA_TESTES.md`.
-- **Sync/store**: `__tests__/store/projectStore.test.ts`, `__tests__/store/projectStore.sync.test.ts`, `__tests__/lib/projectSync.test.ts`.
-- **E2E (Playwright)**: `e2e/smoke-ui.spec.ts` (@smoke), `e2e/sync-critical.spec.ts` (@critical); `npm run test:e2e`, `npm run test:e2e:smoke`, `npm run test:e2e:critical`.
-
-Ao alterar sync ou quota, rodar os testes de store e de projectSync e os E2E críticos.
+- **Modelo**: N projetos × M páginas **por projeto**. Não existe cota de páginas
+  somada entre projetos — o pool total (`FREE_MAX_SECTIONS_TOTAL`) foi removido em
+  2026-08-26, porque vazava entre pessoas: página que um membro convidado criava
+  consumia o plano do dono e tirava espaço de projetos que o membro nem enxergava.
+- **De onde vem o valor**: da tabela `app_config` no Supabase, via
+  `lib/remoteConfig.ts` (cache de 5 min). As constantes em `lib/structuralLimits.ts`
+  são **só referência histórica**. Servidor: `getRemoteConfig(ownerId)`. Cliente:
+  `store.appLimits` / `limitsByOwner` (`store/slices/limits.ts`). Nunca as constantes.
+- **Override por pessoa**: linha `<CHAVE>:<user_id>` no `app_config`.
+- **Limites são avaliados no DONO do projeto**, não em quem está sincronizando.
+- **Crédito de sync = preço do conteúdo**: página nova, texto novo, página apagada.
+  **Metadado é grátis** — hoje ordem (posição no mapa) e status de maturidade. Um
+  sync que só mexeu nisso custa 0, passa mesmo com a cota da hora esgotada, e numa
+  sync parcial vai junto sempre. A conta vive em `app/api/projects/sync/route.ts`
+  (`contentUpsertList` vs `metadataOnlyList`); a regra, em `docs/CREDITOS_SYNC.md`.
 
 ---
 
-## Próximos passos (prioridade)
+## Sync: como se comporta quando dá errado
 
-1. **Validação de sync + créditos**: garantir que a validação de quota está correta (incl. janela, contagem e 429); ajustar para 30 créditos/hora no plano Free se fizer sentido (env ou constante).
-2. **Limites estruturais**: implementar checagens de “máx. 2 projetos”, “máx. 120 seções por projeto” e “máx. 200 seções na conta” (na API de sync e/ou no store antes de criar projeto/seção).
-3. **Ajuste fino Free/Pro**: definir valores exatos para Free vs Pro (projeto, seções, créditos/hora) e onde configurar (env, feature flags, etc.).
-4. **Checklist de produção**: build, lint, testes unitários + E2E, fluxo manual (login, criar projeto/seção, sync, bater limite, limpar histórico). **Testes**: cobrir `clearSyncHistory`; cenários de estimativa. **Doc na UI**: link para `docs/CREDITOS_SYNC.md` na página de persistência.
+- **Fluxo normal**: edição agenda sync com debounce (~1,5 s). Barra fixa na home
+  (`components/HomeSyncBar.tsx`) mostra créditos e estimativa; rodapé dentro do
+  projeto (`components/ProjectSyncFooter.tsx`) tem o botão de sincronizar.
+- **429 `quota_exceeded`**: store seta `cloudSyncPausedUntil` até `windowEndsAt`
+  (janela de 1 h, fixa no início da hora). Sem retentativa até expirar.
+- **429 `rate_limit`**: a API limita requisições POST de sync por usuário por
+  minuto (`SYNC_REQUESTS_PER_MINUTE`, também no `app_config`). Cliente pausa 1 min.
+- **Circuit breaker**: 5 falhas em 2 min (timeout, rede, 5xx) → pausa de 5 min,
+  `cloudSyncPauseReason: "failures"`. O motivo técnico fica em
+  `lastSyncFailureReason` e aparece em Configurações → Persistência.
+- **403 estrutural**: não pausa; o app segue local.
+- **`profile_missing`**: o usuário está autenticado mas não tem linha em
+  `public.profiles`. `ensureUserProfile()` cura isso, desde que a policy de INSERT
+  (`lib/supabase/add_profiles_insert_policy.sql`) esteja aplicada.
+
+O Supabase Free tem [limite de Disk I/O](https://supabase.com/docs/guides/troubleshooting/exhaust-disk-io);
+créditos, rate limit e debounce existem em boa parte para não estourá-lo.
 
 ---
 
-## Observações técnicas
+## MCP — a armadilha das duas cópias
 
-- **Rate limits de IA** (Groq): são distintos do limite de sync Supabase; ver `docs/RATE_LIMITS.md`.
-- **Login/Google quebrado ou página de erro do Supabase:** verificar se o projeto Supabase não está **pausado** (plano Free pausa projetos inativos). Despausar no dashboard resolve. Ver `docs/AUTH_FLOW.md` (seção Troubleshooting).
-- **Variáveis de ambiente**: o app usa `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (recomendado; anon em desuso). Fallback: `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Opcionais: `CLOUD_SYNC_CREDITS_PER_HOUR`, `SUPABASE_SERVICE_ROLE_KEY`. Em **produção (Vercel)** essas variáveis ficam em **Vercel** (Dashboard do projeto → Settings → Environment Variables). No **Supabase** você só vê/copia a URL e as chaves do projeto (Project Settings → API); quem “guarda” as vars para o Next.js é o Vercel (e localmente o `.env.local`).
-- **Google Drive (imagens)**: `NEXT_PUBLIC_GOOGLE_CLIENT_ID` habilita picker para imagens em seções e para capa do projeto; em produção, requer redeploy após configurar a variável.
-- **Janela de quota**: hoje a janela é “início da hora atual” (ex.: 14:00–15:00). “Janela deslizante de 1h” exigiria mudança no modelo (ex.: uma linha por “bucket” de 1h deslizante ou recalcular com base em `now - 1h`).
-- **Mensagem de limite**: já existe texto no store; conferir se as chaves em `locales/*.json` para “limite de escrita cloud do plano Free” estão usadas na barra/rodapé de sync e na página de persistência.
+O GDD é exposto por MCP em **dois transportes que não compartilham código**:
 
-### Comportamento do sync (cotas vs falhas)
+- **local (stdio)** — `packages/mcp-server/`, publicado no npm como
+  `@doublehitgames/gdd-mcp`. Só muda depois de `npm run build` + publish.
+- **remoto (`/api/mcp`, conectores do claude.ai)** — `lib/mcp/server.ts`. Só muda
+  **depois de deploy na Vercel**.
 
-- **Fluxo normal**: após edição, o sync é agendado com debounce (ex.: 1,5 s). Dentro do projeto, o rodapé tem botão "Sincronizar este projeto"; na home, a barra fixa mostra créditos e estimativa (sem botão global). Novas edições disparam novo ciclo.
-- **Pausa por limite de créditos (429 `quota_exceeded`)**: a API retorna 429 e `windowEndsAt`. O store seta `cloudSyncPausedUntil` e `cloudSyncPauseReason: "quota"`. O botão "Sincronizar este projeto" no rodapé fica desabilitado até o fim da janela (1 h). Não há retentativas até expirar; ao expirar, o store limpa a pausa.
-- **Pausa por falhas repetidas (circuit breaker)**: após **5** falhas em 2 min (timeout, rede, 5xx), o store seta pausa de **5 min** e `cloudSyncPauseReason: "failures"`. O **último motivo técnico** fica em `lastSyncFailureReason` (ex.: `sync_route_timeout`) e é exibido na página Persistência para debug. Erros 429 (quota/rate_limit) e 403 estrutural não entram no contador.
-- **Pausa por rate limit (429 `rate_limit`)**: API limita a 30 requisições POST de sync por usuário por minuto (proteção disk I/O). Cliente pausa 1 min.
-- **Erro estrutural (403)**: não pausa por tempo; app continua local.
-- **UI de sync**: na home, `HomeSyncBar` (barra fixa); dentro do projeto, `ProjectSyncFooter` (rodapé com botão de sync). i18n em `settings.persistencePage.syncBadge.*` (creditsUsed, resetsAt, preview*, etc.).
+Toda tool nova entra nas **duas** cópias e nos dois testes-gêmeos
+(`__tests__/lib/mcp.instructions.test.ts` e `mcp.collab.test.ts` comparam os
+arquivos byte a byte). `lib/mcp/project.ts` e `packages/mcp-server/src/project.ts`
+são gêmeos de propósito — o pacote npm precisa ser autocontido.
 
-### Disk I/O no Supabase (plano Free)
+Formato de resposta, por família: **escritas** devolvem recibo
+(`{ok, id, title, updated, updatedAt}`, com `returning: "full"` como escape hatch);
+**listagens** devolvem linha de índice; **leituras** (`get_section`) vêm cheias;
+**deletes**, `{ok, deleted, id}`. Definição de tool é custo de contexto — vai em
+toda request; convenção que vale para toda escrita mora em `instructions` do
+handshake (`lib/mcp/instructions.ts` + gêmeo), não na descrição da tool.
 
-O Supabase tem [limite de Disk I/O](https://supabase.com/docs/guides/troubleshooting/exhaust-disk-io) (throughput e IOPS). Esgotar o orçamento pode causar lentidão, timeouts e até instabilidade. Para reduzir o impacto dos syncs:
+Nunca vai direto ao Supabase: MCP → REST `/api/v1/*`. Auth em
+`lib/auth/getApiUser.ts` (aceita API key `gdd_sk_`, token OAuth `gdd_at_` e sessão).
 
-- **Créditos por hora (30)**: limitam a quantidade de escritas (seções alteradas) por usuário.
-- **Rate limit na API**: máx. **30 requisições POST** de sync por usuário por minuto (`SYNC_REQUESTS_PER_MINUTE` em `app/api/projects/sync/route.ts`), reduzindo picos de IOPS.
-- **Debounce no cliente**: evita uma requisição por keystroke; agrupa em um sync após ~1,5 s sem edição.
-- **Timeout do cliente (20 s)**: se o Supabase estiver sob carga (disk I/O alto), respostas lentas podem gerar `sync_route_timeout` → falhas → circuit breaker (pausa 5 min), evitando insistir enquanto o servidor está lento.
+---
 
-Monitorar em **Database Health** (Observability) no dashboard do Supabase. Em caso de alto disk I/O, considerar upgrade de compute ou otimização de queries.
+## Comandos
 
-### Tabela `profiles` e usuários “órfãos”
+```bash
+npm run dev              # dev server na 3000
+npm run build            # build de produção
+npm run lint             # eslint
+npm test                 # jest
+npm run test:e2e         # playwright (:smoke e :critical filtram por tag)
+npm run i18n:validate    # check de chaves + audit de hardcode
+```
 
-O sync e outras partes do app **dependem de existir uma linha em `public.profiles`** para o usuário autenticado. O trigger `handle_new_user()` cria o profile ao se registrar; se alguém **apagar linhas de `profiles`** mas manter usuários em **Authentication**, o usuário fica “órfão” e o sync pode falhar (ex.: respostas estranhas ou quebra em operações que esperam profile).
+Ao mexer em sync ou quota, rodar os testes de store e de `projectSync`, e o E2E
+crítico (`e2e/sync-critical.spec.ts`).
 
-**Solução implementada:**
+---
 
-- **`ensureUserProfile(supabase, user)`** (`lib/supabase/ensureUserProfile.ts`): verifica se existe linha em `profiles` para `user.id`; se não existir, insere uma com `id`, `email` e `display_name`. É chamado na rota de sync (após `getUser`) e no `useAuthInit` (ao ter usuário logado), para “curar” usuários órfãos.
-- **Policy de INSERT em `profiles`**: por padrão só o trigger (security definer) insere. Para o app poder criar o profile quando faltar, é necessário rodar a migração **`lib/supabase/add_profiles_insert_policy.sql`** no SQL Editor do Supabase (policy “Usuário pode inserir próprio profile” com `WITH CHECK (auth.uid() = id)`).
+## Armadilhas comuns
 
-Se o sync retornar `profile_missing`, o usuário está autenticado mas não tem (ou não consegue criar) profile; conferir se a policy de INSERT foi aplicada.
+- **Coluna de ordem**: em `sections` é `sort_order`, nunca `order` (palavra
+  reservada no SQL/PostgREST).
+- **`content_blocks` derivado**: só é derivado do markdown quando o chamador **não**
+  mandou blocos. Se os dois caminhos de escrita divergirem nisso, descrição
+  formatada é silenciosamente sobrescrita. `buildSectionUpdates` em
+  `lib/api/v1/sectionWrite.ts` é compartilhado justamente por isso.
+- **Estimativa de créditos**: quando o conteúdo pendente muda (ex.: usuário deleta
+  página), zerar a estimativa na hora e mostrar "Calculando…", senão parece que o
+  número "só soma".
+- **`.prose`**: a classe é **do projeto**, não do plugin de typography do Tailwind
+  — o plugin não está instalado e não deve ser.
+- **Tema**: as vars do `:root` são fixas no escuro, mas o app **não** é dark-only —
+  existem telas claras de verdade. Não presuma fundo escuro.
+- **i18n**: chave nova entra nos **3** arquivos (`pt-BR`, `en`, `es`).
+- **E2E**: cookie `gdd_locale=pt-BR` para placeholders em pt-BR; após clique que
+  navega, `waitForURL` antes de asserção; sync pode sair em payloads separados
+  (debounce) — usar `expect.poll`.
+- **Worktree**: não herda `.env.local` (copiar antes de subir o dev server) e o
+  `jest.config.ts` ignora `/.claude/`, então `npx jest` de dentro de um worktree
+  não acha teste nenhum — sobrescrever `--testPathIgnorePatterns`.
+- **UUID em fixture**: zod v4 valida nibble de versão e variante, então
+  `1111...-2222-...` é recusado. Usar ids reais.
 
-### Armadilhas comuns (evitar em novas sessões)
+## Segredo em arquivo
 
-- **Créditos**: a cobrança é pelo **diff** da requisição (estado enviado vs. cloud), não por "ações". Seção criada e depois deletada **sem nunca ter dado sync** → próximo sync envia 0 seções → **0 créditos**. Só entram em `removedSectionIds` (delete) seções que **já estão no DB**. Ver `docs/CREDITOS_SYNC.md`.
-- **Coluna na DB**: em `sections` usar **`sort_order`**, não `order` (palavra reservada no SQL/PostgREST). Migração: `lib/supabase/migrate_sections_order_to_sort_order.sql`.
-- **Coluna `cover_image_url` ausente**: se o banco ainda não recebeu `lib/supabase/add_project_cover_image.sql`, a API de sync tenta novamente sem o campo (fallback), então o sync geral funciona, mas a capa não persiste no cloud até aplicar a migração.
-- **Estimativa (barra/rodapé)**: quando o conteúdo pendente muda (ex.: usuário deleta seção), **zerar a estimativa na hora** e mostrar "Calculando...", senão o usuário acha que o número "só soma". Dependência do efeito: `pendingSignature` (projects + getPendingProjectIds) para refetch com debounce.
-- **Projetos pendentes após refresh**: `dirtyProjectIds` é **persistido** em `SYNC_STATE_KEY` junto com lastQuotaStatus, lastSyncedAt, lastSyncStatsHistory. No `loadFromStorage` restaurar só IDs que ainda existem em `get().projects`.
-- **Histórico de syncs**: `lastSyncStatsHistory` (máx. 12), persistido; **limpar** via `clearSyncHistory()` no store (ação exposta na página de persistência). Não confundir "limpar histórico" com limpar dados de projetos.
-- **E2E (Playwright)**: usar cookie `gdd_locale=pt-BR` para placeholders em pt-BR; após cliques que navegam, usar `waitForURL` antes de asserções; sync pode enviar em payloads separados (debounce) — usar `expect.poll` com timeout se precisar esperar valor.
-- **i18n**: chaves em `settings.persistencePage.*` (incl. `syncBadge.*`, `history.clearButton`). Traduzir nos 3 arquivos: `locales/pt-BR.json`, `locales/en.json`, `locales/es.json`.
-- **Drive para renderização de imagem**: alguns links do Drive falham dependendo de permissão/endpoint; usar helpers de candidatos (`getDriveImageDisplayCandidates`) e garantir arquivo como "Qualquer pessoa com o link".
+`Doublehitgames/GddApp` é um repositório **público**. Config local lê `${VAR}` do
+ambiente e o arquivo fica no `.gitignore`; o que é versionado é um `*.example` com
+a forma. Se um diff toca `.mcp.json`, `.env*` ou config de MCP/editor, conferir se
+tem segredo dentro antes de commitar — já aconteceu de uma chave viva ficar meses
+no histórico. Ao encontrar um segredo versionado, a **revogação** é o conserto;
+reescrever histórico de repo público não des-vaza nada.
+
+---
+
+## Documentação
+
+- **Para o usuário** (game designer, dentro do app): `content/docs/`. Linguagem
+  humana, tom de colega, zero jargão de dev.
+- **Para quem mexe no código**: `docs/`. Ver `docs/QUICKSTART.md` (setup),
+  `docs/ENV_VERCEL.md` (env), `docs/CREDITOS_SYNC.md` (regra de crédito),
+  `docs/COLLABORATION_STEPS.md` (multi-usuário), `docs/AUTH_FLOW.md`,
+  `docs/GUIA_TESTES.md`, `docs/LOCALIZATION.md`.

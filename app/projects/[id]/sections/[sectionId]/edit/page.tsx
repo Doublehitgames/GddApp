@@ -6,7 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 /**
  * Rota legada: /projects/[id]/sections/[sectionId]/edit
  * Redireciona para a tela da seção com ?edit=1 para abrir direto no modo edição inline.
- * O editor único é o Toast UI na própria tela da seção.
+ * Não existe mais tela de edição separada: o editor é o de blocos (BlockNote) na
+ * própria tela da seção.
  */
 export default function SectionEditRedirectPage() {
   const router = useRouter();

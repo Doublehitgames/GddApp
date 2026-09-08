@@ -47,22 +47,14 @@
 
 **Você NÃO precisa mudar NADA!** ✨
 
-#### ⚙️ Variáveis de Ambiente (Opcional - Para IA)
+#### ⚙️ Variáveis de Ambiente
 
-Se quiser usar a IA no projeto online:
+O app precisa das variáveis do Supabase para login e sync — a lista completa
+está em [ENV_VERCEL.md](ENV_VERCEL.md).
 
-1. Clique em **"Environment Variables"**
-2. Adicione:
-
-```
-Name: AI_PROVIDER
-Value: groq
-
-Name: GROQ_API_KEY
-Value: sua_chave_aqui
-```
-
-**Importante:** Sem essas variáveis, o app funciona normalmente, mas sem IA.
+**A IA não usa variável de ambiente:** cada usuário cola a própria chave em
+**Configurações → IA** dentro do app. Nada a configurar aqui para isso
+(ver [AI_SETUP.md](AI_SETUP.md)).
 
 ---
 
@@ -187,9 +179,9 @@ Quer usar `seuprojeto.com` ao invés de `.vercel.app`?
 3. Geralmente é dependência faltando
 
 ### IA Não Funciona
-1. Verifique se adicionou variáveis de ambiente
-2. `AI_PROVIDER` e `GROQ_API_KEY` corretos?
-3. Redeploy após adicionar variáveis
+1. A chave é por usuário: confira **Configurações → IA** no app
+2. A chave é válida e do provider selecionado?
+3. Não é variável de ambiente — redeploy não muda nada aqui
 
 ### Site Não Carrega
 1. Aguarde ~2 minutos após deploy
@@ -232,16 +224,6 @@ Antes de liberar para usuários, confirme também:
 - [ ] E2E crítico passou (`npm run test:e2e:critical`)
 - [ ] Smoke E2E passou (`npm run test:e2e:smoke`)
 - [ ] Fluxo manual validado: criar projeto → seção/subseção → sem refresh → dados no cloud
-
----
-
-## ⚠️ Risco Conhecido (Acompanhar)
-
-- Dependência `@toast-ui/editor` (versão atual oficial) ainda referencia `dompurify@^2.x`.
-- Isso mantém um alerta `moderate` no `npm audit --omit=dev`.
-- Decisão atual: **não forçar override** de `dompurify` para evitar regressão no editor em produção.
-- Mitigação já aplicada: `next` e `jspdf` atualizados; risco crítico removido.
-- Ação futura: planejar migração/atualização do editor em uma sprint dedicada e revalidar `npm audit`.
 
 ---
 

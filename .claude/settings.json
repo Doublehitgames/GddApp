@@ -14,7 +14,6 @@
       "mcp__gdd-manager__get_section",
       "mcp__gdd-manager__get_project",
       "mcp__gdd-manager__list_sections",
-      "mcp__gdd-manager__list_addons",
       "mcp__gdd-manager__list_projects",
       "Bash(npx tsc *)",
       "Bash(npx jest *)",

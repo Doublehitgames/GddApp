@@ -47,14 +47,9 @@ Acesse: http://localhost:3000
 
 ## Configuração opcional de IA
 
-Se quiser usar IA, configure também:
-
-```env
-NEXT_PUBLIC_AI_PROVIDER=groq
-GROQ_API_KEY=gsk_...
-```
-
-Veja detalhes em [AI_SETUP.md](AI_SETUP.md).
+A IA **não** usa variável de ambiente: cada usuário cola a própria chave em
+**Configurações → IA** (`/settings/ai`) depois de logar. Veja
+[AI_SETUP.md](AI_SETUP.md).
 
 ---
 

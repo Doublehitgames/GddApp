@@ -74,516 +74,45 @@ PASS  __tests__/store/projectStore.test.ts
       ✓ should add a new project (3 ms)
       ✓ should add multiple projects (1 ms)
 
-Test Suites: 7 passed, 7 total
-Tests:       118 passed, 118 total
-Time:        1.14 s
+Test Suites: <N> passed, <N> total
+Tests:       <N> passed, <N> total
+Time:        <N> s
 ```
 
 - **PASS**: Todos os testes do arquivo passaram ✅
 - **FAIL**: Algum teste falhou ❌
-- **Tempo**: Quanto demorou (deve ser < 2s)
+- **Total**: a contagem muda a cada feature. O que importa é que o número de
+  `failed` seja zero, não que bata com algum número anotado numa doc.
 
 ---
 
 ## Testes Unitários
 
-### 1. Setup & Configuração (3 testes)
+As suítes vivem em `__tests__/`, espelhando a estrutura do código:
 
-**Arquivo:** `__tests__/setup.test.ts`
+| Pasta | O que cobre |
+|---|---|
+| `__tests__/store/` | store Zustand: CRUD de projeto e seção, sync, limites do dono, refs em rename, log de atividade |
+| `__tests__/lib/` | API v1, MCP (os dois servidores), changelog, status de página, chaves de API, Drive, richDoc |
+| `__tests__/utils/` | referências cruzadas, import de docx/markdown, prompts de IA, texto de busca |
+| `__tests__/components/` | componentes com lógica de verdade (biblioteca de imagens, link de seção, picker) |
+| `__tests__/api/` | rotas de API |
 
-**O que testa:**
-- Validação da configuração do Jest
-- Mocks de localStorage funcionando
-- Mocks de window.matchMedia funcionando
+**Este guia não lista as suítes uma por uma de propósito.** A lista anterior
+envelheceu em semanas: virou um inventário de 7 arquivos num projeto com dezenas,
+com contagens que nunca batiam. Para ver o que existe agora:
 
-**Para que serve:**
-- Garante que o ambiente de testes está configurado corretamente
-- Verifica que os mocks essenciais estão disponíveis
-
-**Como executar:**
 ```bash
-npm test -- setup
+npx jest --listTests          # todos os arquivos de teste
+npm test -- <parte-do-nome>   # roda só o que casa com o nome
+npm run test:coverage         # o que está coberto e o que não está
 ```
 
-**O que esperar:**
-- 3 testes simples que devem sempre passar
-- Se falharem, há problema na configuração do Jest
-
----
-
-### 2. ProjectStore (34+ testes)
-
-**Arquivo:** `__tests__/store/projectStore.test.ts`
-
-**O que testa:**
-Este é o coração da aplicação. Testa TODAS as operações do Zustand store.
-
-#### addProject (3 testes)
-```typescript
-it('should add a new project')
-it('should add multiple projects')
-it('should persist project to localStorage')
-```
-
-**O que faz:** Verifica criação de projetos
-**Por que importa:** Sem isso, nenhum projeto seria criado
-**Como testar manualmente:** Criar projeto na UI e ver se aparece
-
-#### getProject (2 testes)
-```typescript
-it('should return project by id')
-it('should return undefined for non-existent project')
-```
-
-**O que faz:** Busca projeto por ID
-**Por que importa:** Necessário para abrir/editar projetos
-**Como testar manualmente:** Clicar em um projeto na lista
-
-#### editProject (2 testes)
-```typescript
-it('should edit project name and description')
-it('should update updatedAt timestamp')
-```
-
-**O que faz:** Edita informações do projeto
-**Por que importa:** Usuário precisa atualizar nome/descrição
-**Como testar manualmente:** Editar projeto existente
-
-#### removeProject (2 testes)
-```typescript
-it('should remove project by id')
-it('should not affect other projects')
-```
-
-**O que faz:** Deleta projeto
-**Por que importa:** Limpar projetos não utilizados
-**Como testar manualmente:** Deletar projeto e verificar que sumiu
-
-#### addSection (3 testes)
-```typescript
-it('should add a root section to project')
-it('should add multiple sections with correct order')
-it('should set default empty content if not provided')
-```
-
-**O que faz:** Adiciona seção raiz ao projeto
-**Por que importa:** Estrutura principal do GDD
-**Como testar manualmente:** Adicionar nova seção em um projeto
-
-#### addSubsection (2 testes)
-```typescript
-it('should add subsection to parent section')
-it('should handle multiple subsections with correct order')
-```
-
-**O que faz:** Adiciona subseção (filho) de outra seção
-**Por que importa:** Hierarquia de seções (ex: Mecânicas > Combate > Sistema de Dano)
-**Como testar manualmente:** Adicionar subseção dentro de uma seção
-
-#### editSection (1 teste)
-```typescript
-it('should edit section title and content')
-```
-
-**O que faz:** Edita título e conteúdo de seção
-**Por que importa:** Atualizar informações das seções
-**Como testar manualmente:** Editar seção existente
-
-#### removeSection (2 testes)
-```typescript
-it('should remove section from project')
-it('should not remove subsections automatically')
-```
-
-**O que faz:** Remove seção
-**Por que importa:** Limpar seções não necessárias
-**Nota:** Não remove subseções automaticamente (design choice)
-
-#### moveSectionUp/Down (4 testes)
-```typescript
-it('should move section up in order')
-it('should not move first section up')
-it('should move section down in order')
-it('should not move last section down')
-```
-
-**O que faz:** Move seções para cima/baixo na lista
-**Por que importa:** Reorganizar ordem das seções
-**Como testar manualmente:** Usar botões ↑↓ nas seções
-
-#### reorderSections (1 teste)
-```typescript
-it('should reorder sections based on array of IDs')
-```
-
-**O que faz:** Reordena múltiplas seções de uma vez
-**Por que importa:** Usado pelo drag & drop
-**Como testar manualmente:** Arrastar seções para reordenar
-
-#### countDescendants (2 testes)
-```typescript
-it('should count all descendants recursively')
-it('should return 0 for section with no descendants')
-```
-
-**O que faz:** Conta todos os filhos/netos de uma seção
-**Por que importa:** Mostrar "X subseções" na UI
-**Como testar manualmente:** Ver contador de subseções
-
-#### hasDuplicateName (4 testes)
-```typescript
-it('should detect duplicate section names at same level')
-it('should be case insensitive')
-it('should allow same name in different levels')
-it('should exclude current section when editing')
-```
-
-**O que faz:** Valida se nome de seção já existe
-**Por que importa:** Evitar confusão com seções de mesmo nome
-**Como testar manualmente:** Tentar criar seção com nome duplicado
-
-#### loadFromStorage (3 testes)
-```typescript
-it('should load projects from localStorage')
-it('should handle empty localStorage')
-it('should migrate old projects without timestamps')
-```
-
-**O que faz:** Carrega dados salvos do navegador
-**Por que importa:** Persistência entre sessões
-**Como testar manualmente:** Recarregar página e ver projetos
-
-#### importProject (2 testes)
-```typescript
-it('should import a new project')
-it('should replace existing project with same ID')
-```
-
-**O que faz:** Importa projeto de backup
-**Por que importa:** Restaurar backups
-**Como testar manualmente:** Usar funcionalidade de import
-
-#### importAllProjects (1 teste)
-```typescript
-it('should replace all projects with imported ones')
-```
-
-**O que faz:** Importa múltiplos projetos
-**Por que importa:** Restaurar backup completo
-**Como testar manualmente:** Importar arquivo JSON completo
-
-**Como executar:**
-```bash
-npm test -- projectStore
-```
-
-**O que esperar:**
-- 34 testes devem passar
-- Tempo: ~600ms
-- Se falhar: problema crítico no store (coração da app)
-
----
-
-### 3. Referências Cruzadas (38 testes)
-### 6. Sincronização Supabase (novos)
-
-**Arquivos:**
-- `__tests__/lib/projectSync.test.ts`
-- `__tests__/store/projectStore.sync.test.ts`
-
-**O que validam:**
-- Sessão/auth fallback (`getSession`/`getUser`)
-- Upsert sem refresh no fluxo de criação/edição
-- Merge local + cloud com precedência por `updatedAt`
-- Retry em cenário não autenticado
-- Compatibilidade de assinatura de `editSection`
-
----
-
-## Testes E2E (Playwright)
-
-**Arquivos:**
-- `e2e/smoke-ui.spec.ts` (`@smoke`)
-- `e2e/sync-critical.spec.ts` (`@critical`)
-
-**Cobertura principal:**
-- Smoke de navegação e telas essenciais
-- Fluxo crítico de sync: criar projeto → seção/subseção → confirmar requests de sync sem refresh
-
----
-
-**Arquivo:** `__tests__/utils/sectionReferences.test.ts`
-
-**O que testa:**
-Sistema de links entre seções usando sintaxe `$[Nome da Seção]` ou `$[#id]`
-
-#### extractSectionReferences (7 testes)
-
-**O que faz:** Encontra todas as referências no texto markdown
-
-Exemplos:
-```markdown
-Veja $[Game Mechanics] para mais detalhes
-Check $[#section-123] também
-```
-
-Testes:
-```typescript
-it('should extract name-based references')  // $[Nome]
-it('should extract ID-based references')    // $[#id]
-it('should extract multiple references')
-it('should handle references with spaces')
-it('should return empty array for no references')
-it('should handle empty content')
-it('should extract references in markdown formatted text')
-```
-
-**Por que importa:** Base do sistema de referências cruzadas
-
-#### findSection (6 testes)
-
-**O que faz:** Busca seção por nome ou ID
-
-Testes:
-```typescript
-it('should find section by name (case-insensitive)')
-it('should find section by exact name')
-it('should find section by ID')
-it('should return null for non-existent name')
-it('should return null for non-existent ID')
-it('should handle names with extra spaces')
-```
-
-**Por que importa:** Resolver referências para links clicáveis
-
-#### convertReferencesToIds (7 testes)
-
-**O que faz:** Converte `$[Nome]` → `$[#id]`
-
-Por exemplo:
-- Input: `Veja $[Combat System]`
-- Output: `Veja $[#abc-123]`
-
-**Por que importa:** IDs são estáveis, nomes podem mudar
-
-Testes:
-```typescript
-it('should convert name references to ID references')
-it('should convert multiple name references')
-it('should keep ID references unchanged')
-it('should handle mixed references')
-it('should not modify references to non-existent sections')
-it('should handle empty content')
-it('should preserve text around references')
-```
-
-#### convertReferencesToNames (5 testes)
-
-**O que faz:** Converte `$[#id]` → `$[Nome]` (inverso)
-
-**Por que importa:** Editor fica mais amigável mostrando nomes
-
-#### validateReferences (5 testes)
-
-**O que faz:** Separa referências válidas e inválidas
-
-Exemplo:
-```markdown
-$[Exists]     ← válida
-$[NotFound]   ← inválida
-```
-
-**Por que importa:** Mostrar erros de referências quebradas
-
-#### getBacklinks (6 testes)
-
-**O que faz:** Encontra quem referencia uma seção
-
-Se "Combat" é referenciada em "Weapons" e "Tutorial":
-```javascript
-getBacklinks('combat-id') 
-// Retorna: [{ id: 'weapons-id', title: 'Weapons' }, ...]
-```
-
-**Por que importa:** Ver onde uma seção é mencionada
-
-#### Integration Tests (2 testes)
-
-**O que faz:** Testa conversão round-trip (nome→id→nome)
-
-**Por que importa:** Garantir que conversões não perdem informação
-
-**Como executar:**
-```bash
-npm test -- sectionReferences
-```
-
-**O que esperar:**
-- 38 testes devem passar
-- Tempo: ~600ms
-- Falhas indicam problema no sistema de referências cruzadas
-
----
-
-### 4. Componente SectionLink (14 testes)
-
-**Arquivo:** `__tests__/components/SectionLink.test.tsx`
-
-**O que testa:**
-Componente React que renderiza links entre seções
-
-#### Valid Section Link (5 testes)
-
-**Cenário:** Link para seção que existe
-
-```tsx
-<SectionLink 
-  sectionName="Combat" 
-  projectId="proj-1" 
-  sectionId="sect-123"
->
-  Combat System
-</SectionLink>
-```
-
-Renderiza: `<button>` azul clicável
-
-Testes:
-```typescript
-it('should render as a clickable button when sectionId exists')
-it('should have correct title attribute')
-it('should navigate to correct URL when clicked')
-it('should prevent default event behavior')
-it('should render children content')
-```
-
-**Como testar manualmente:** Clicar em referência no documento
-
-#### Invalid Section Link (5 testes)
-
-**Cenário:** Link para seção que NÃO existe
-
-```tsx
-<SectionLink 
-  sectionName="Deleted Section" 
-  projectId="proj-1" 
-  sectionId={null}
->
-  Deleted Section
-</SectionLink>
-```
-
-Renderiza: `<span>` vermelho com linha ondulada
-
-Testes:
-```typescript
-it('should render as span when sectionId is null')
-it('should have error styling when sectionId is null')
-it('should show error message in title')
-it('should not navigate when clicked if sectionId is null')
-it('should render children even when invalid')
-```
-
-**Como testar manualmente:** Deletar seção e ver referências quebradas
-
-#### Different Content Types (2 testes)
-
-**O que faz:** Testa diferentes tipos de children (texto, JSX)
-
-#### Accessibility (2 testes)
-
-**O que faz:** Verifica acessibilidade (teclado, hover)
-
-**Como executar:**
-```bash
-npm test -- SectionLink
-```
-
-**O que esperar:**
-- 14 testes devem passar
-- Tempo: ~800ms
-- Falhas indicam problema visual ou de navegação
-
----
-
-### 5. API de Upload (21 testes)
-
-**Arquivo:** `__tests__/api/upload.test.ts`
-
-**O que testa:**
-Validações da API de upload de imagens (sem testar filesystem)
-
-#### File Type Validation (3 testes)
-
-**O que valida:**
-```javascript
-allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-```
-
-Testes:
-```typescript
-it('should accept valid image types')
-it('should reject non-image types')  // PDF, ZIP, MP4, etc
-it('should handle case sensitivity correctly')
-```
-
-**Por que importa:** Evitar upload de arquivos não suportados
-
-#### File Size Validation (3 testes)
-
-**O que valida:**
-- Máximo: 5MB
-- Rejeitar: > 5MB
-
-**Por que importa:** Evitar uploads gigantes
-
-#### Filename Sanitization (4 testes)
-
-**O que faz:** Remove caracteres especiais de nomes de arquivo
-
-Exemplos:
-```
-"file name.png" → "file_name.png"
-"file@#$.jpg"   → "file___.jpg"
-```
-
-**Por que importa:** Evitar problemas com caracteres especiais no filesystem
-
-#### URL Path Generation (3 testes)
-
-**O que faz:** Gera URL pública do arquivo
-
-```javascript
-projectId = "proj-123"
-filename = "1234-image.png"
-url = "/uploads/proj-123/1234-image.png"
-```
-
-**Por que importa:** Imagem precisa ser acessível via URL
-
-#### Request Validation (3 testes)
-
-**O que valida:**
-- `file` é obrigatório
-- `projectId` é obrigatório
-
-#### Timestamp Generation (2 testes)
-
-**O que faz:** Gera timestamps únicos para nomes de arquivo
-
-#### Error Scenarios (3 testes)
-
-**O que valida:** Diferentes cenários de erro
-
-**Como executar:**
-```bash
-npm test -- upload
-```
-
-**O que esperar:**
-- 21 testes devem passar
-- Tempo: ~200ms
-- Falhas indicam problema nas validações de upload
+O nome do arquivo diz o que ele cobre, e o `describe` de cima diz o resto.
+Ao mexer em **sync ou quota**, os que importam são
+`__tests__/store/projectStore*.test.ts` e `__tests__/lib/projectSync.test.ts`.
+Ao mexer em **tool de MCP**, `__tests__/lib/mcp.*.test.ts` — dois deles comparam
+as duas cópias do servidor byte a byte, então falham se você atualizar só uma.
 
 ---
 
@@ -608,77 +137,26 @@ Usamos **Playwright** para testes E2E. Ele:
 - Tira screenshots de falhas
 - Gera vídeos dos testes
 
-### Testes Implementados (10 testes)
+### Suítes E2E
 
-**Arquivo:** `e2e/gdd-manager.spec.ts`
+| Arquivo | Tag | O que cobre |
+|---|---|---|
+| `e2e/smoke-ui.spec.ts` | `@smoke` | a home carrega e a criação manual de projeto abre |
+| `e2e/sync-critical.spec.ts` | `@critical` | sync sai sem refresh depois de criar projeto e páginas; dado local sobrevive a reload |
 
-#### Fluxo Principal (5 testes)
+São poucos e de propósito: E2E é caro de manter, então cobre só o que quebra
+silencioso e machuca — o sync e a porta de entrada do app. O resto fica com
+teste unitário.
 
-```typescript
-test('deve carregar a página inicial')
-```
-**O que faz:** Abre http://localhost:3000 e verifica que carregou
-**Por que importa:** Primeira coisa que usuário vê
+Dois detalhes que fazem os E2E deste repo passarem:
 
-```typescript
-test('deve criar um novo projeto')
-```
-**O que faz:** 
-1. Clica em "Novo Projeto"
-2. Preenche título e descrição
-3. Salva
-4. Verifica que aparece na lista
+- **Cookie de locale**: os testes setam `gdd_locale=pt-BR` para que os
+  placeholders venham em português; sem isso, os seletores por texto falham
+  dependendo do idioma do navegador.
+- **Sync em payloads separados**: o debounce pode dividir uma edição em mais de
+  uma requisição, então esperar por um número exato de requests é frágil — usar
+  `expect.poll`. E depois de clique que navega, `waitForURL` antes da asserção.
 
-**Por que importa:** Funcionalidade principal
-
-```typescript
-test('deve adicionar uma seção ao projeto')
-```
-**O que faz:**
-1. Cria projeto
-2. Abre projeto
-3. Adiciona seção
-4. Verifica que aparece
-
-**Por que importa:** Segunda funcionalidade mais importante
-
-```typescript
-test('deve navegar entre páginas')
-```
-**O que faz:** Testa navegação (home → backup → home)
-
-```typescript
-test('deve persistir dados após recarregar página')
-```
-**O que faz:**
-1. Cria projeto
-2. Recarrega página (F5)
-3. Verifica que projeto ainda existe
-
-**Por que importa:** Dados não podem sumir ao recarregar
-
-#### Edição de Conteúdo (1 teste)
-
-```typescript
-test('deve editar nome do projeto')
-```
-**O que faz:** Edita projeto existente
-
-#### Funcionalidade de IA (1 teste)
-
-```typescript
-test('deve navegar para página de criação com IA')
-```
-**O que faz:** Verifica navegação para /ai-create
-
-#### Responsividade (2 testes)
-
-```typescript
-test('deve funcionar em mobile')    // 375x667
-test('deve funcionar em tablet')    // 768x1024
-```
-
-**O que faz:** Simula diferentes tamanhos de tela
 
 ### Como Executar E2E
 
