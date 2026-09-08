@@ -51,3 +51,7 @@ packages/*/node_modules/
 
 # claude runtime
 .claude/scheduled_tasks.lock
+
+# Configuracao local do MCP: carrega a chave de API da maquina, nunca do repo.
+# A chave vem da variavel de ambiente GDD_API_KEY (ver .mcp.json.example).
+.mcp.json

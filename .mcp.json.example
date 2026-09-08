@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "gdd-manager": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@doublehitgames/gdd-mcp"],
+      "env": {
+        "GDD_API_KEY": "${GDD_API_KEY}"
+      }
+    }
+  }
+}
