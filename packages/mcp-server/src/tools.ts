@@ -245,6 +245,28 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     .optional()
     .describe("Page icon URL — get one from list_project_images. null clears it.");
 
+  // The values are inlined rather than imported: lib/pageStatus/types.ts and
+  // lib/deck/deck.ts belong to the app, and this package ships on its own.
+  // Twins of the fields in lib/mcp/server.ts — keep the descriptions verbatim.
+  const PAGE_STATUS_FIELD = z
+    .enum(["draft", "review", "approved", "implemented", "obsolete"])
+    .nullable()
+    .optional()
+    .describe(
+      "Page maturity: draft, review, approved, implemented (in the game) or obsolete. " +
+        "null clears it. Setting it re-stamps the date the state was confirmed.",
+    );
+
+  const DECK_LAYOUT_FIELD = z
+    .enum(["list", "grid"])
+    .nullable()
+    .optional()
+    .describe(
+      "How this page shows its children in Deck mode: 'grid' opens them as a wall of cards on their own floor, " +
+        "'list' keeps them in the drawer's side list. null (the normal case) lets the app decide by how many " +
+        "children there are — set it only when a page is a catalogue of items and the count alone would not say so."
+    );
+
   server.tool(
     "get_content_blocks_guide",
     "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
@@ -265,6 +287,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       color: z.string().optional().describe("Hex color (#rrggbb)"),
       domainTags: z.array(z.string()).optional().describe("Game design domain tags (e.g. combat, economy)"),
       dataId: z.string().optional().describe("User-defined data identifier (e.g. FARM_ANIMAL_CHICKEN)"),
+      status: PAGE_STATUS_FIELD,
+      deckLayout: DECK_LAYOUT_FIELD,
       thumbImageUrl: THUMB_FIELD,
       returning,
     },
@@ -291,6 +315,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       color: z.string().optional().describe("New hex color"),
       domainTags: z.array(z.string()).optional().describe("New domain tags"),
       dataId: z.string().optional().describe("New data identifier"),
+      status: PAGE_STATUS_FIELD,
+      deckLayout: DECK_LAYOUT_FIELD,
       thumbImageUrl: THUMB_FIELD,
       returning,
     },
@@ -320,6 +346,8 @@ export function registerTools(server: McpServer, client: GddApiClient) {
             color: z.string().optional(),
             domainTags: z.array(z.string()).optional(),
             dataId: z.string().optional(),
+            status: PAGE_STATUS_FIELD,
+            deckLayout: DECK_LAYOUT_FIELD,
             thumbImageUrl: THUMB_FIELD,
           }),
         )

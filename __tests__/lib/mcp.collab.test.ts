@@ -253,6 +253,46 @@ describe("the remote server as a client sees it", () => {
 });
 
 /**
+ * The write tools are the place the two copies actually drifted: the published
+ * stdio server had no `status` and no `deckLayout`, so an agent connected over
+ * npm could not set a page's maturity even though the instructions told it
+ * about the field.
+ *
+ * The check is deliberately crude — a text search over the stdio source rather
+ * than its registered schemas. That package cannot be imported from here: it
+ * resolves its own modules with ESM `.js` specifiers this jest config does not
+ * map. A field name that never appears in that file is still exactly the
+ * failure worth catching.
+ */
+describe("the two copies of the write tools", () => {
+  const WRITE_TOOLS = ["create_section", "update_section", "batch_update_sections"];
+
+  /** Field names a tool accepts, reaching inside the array for the batch one. */
+  function fieldsOf(schema: Record<string, unknown>): string[] {
+    const names = new Set(Object.keys(schema));
+    for (const value of Object.values(schema)) {
+      const shape = (value as { element?: { shape?: Record<string, unknown> } })?.element?.shape;
+      if (shape) for (const key of Object.keys(shape)) names.add(key);
+    }
+    names.delete("sections");
+    return [...names];
+  }
+
+  it("accept the same fields", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    const stdio = fs.readFileSync("packages/mcp-server/src/tools.ts", "utf8");
+    const h = harness();
+
+    for (const tool of WRITE_TOOLS) {
+      for (const field of fieldsOf(h.schemaOf(tool))) {
+        expect(stdio).toContain(`${field}:`);
+      }
+    }
+  });
+});
+
+/**
  * The stdio server ships its own copy of the projections. They had already
  * drifted once; a byte comparison is the only thing that keeps an addition here
  * from missing the published npm server.

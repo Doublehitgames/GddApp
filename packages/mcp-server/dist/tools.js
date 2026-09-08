@@ -180,6 +180,22 @@ export function registerTools(server, client) {
         .nullable()
         .optional()
         .describe("Page icon URL — get one from list_project_images. null clears it.");
+    // The values are inlined rather than imported: lib/pageStatus/types.ts and
+    // lib/deck/deck.ts belong to the app, and this package ships on its own.
+    // Twins of the fields in lib/mcp/server.ts — keep the descriptions verbatim.
+    const PAGE_STATUS_FIELD = z
+        .enum(["draft", "review", "approved", "implemented", "obsolete"])
+        .nullable()
+        .optional()
+        .describe("Page maturity: draft, review, approved, implemented (in the game) or obsolete. " +
+        "null clears it. Setting it re-stamps the date the state was confirmed.");
+    const DECK_LAYOUT_FIELD = z
+        .enum(["list", "grid"])
+        .nullable()
+        .optional()
+        .describe("How this page shows its children in Deck mode: 'grid' opens them as a wall of cards on their own floor, " +
+        "'list' keeps them in the drawer's side list. null (the normal case) lets the app decide by how many " +
+        "children there are — set it only when a page is a catalogue of items and the count alone would not say so.");
     server.tool("get_content_blocks_guide", "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.", {}, async () => text(CONTENT_BLOCKS_GUIDE));
     server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.", {
         projectId: z.string(),
@@ -191,6 +207,8 @@ export function registerTools(server, client) {
         color: z.string().optional().describe("Hex color (#rrggbb)"),
         domainTags: z.array(z.string()).optional().describe("Game design domain tags (e.g. combat, economy)"),
         dataId: z.string().optional().describe("User-defined data identifier (e.g. FARM_ANIMAL_CHICKEN)"),
+        status: PAGE_STATUS_FIELD,
+        deckLayout: DECK_LAYOUT_FIELD,
         thumbImageUrl: THUMB_FIELD,
         returning,
     }, async ({ projectId, returning: returnMode, ...params }) => {
@@ -213,6 +231,8 @@ export function registerTools(server, client) {
         color: z.string().optional().describe("New hex color"),
         domainTags: z.array(z.string()).optional().describe("New domain tags"),
         dataId: z.string().optional().describe("New data identifier"),
+        status: PAGE_STATUS_FIELD,
+        deckLayout: DECK_LAYOUT_FIELD,
         thumbImageUrl: THUMB_FIELD,
         returning,
     }, async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
@@ -237,6 +257,8 @@ export function registerTools(server, client) {
             color: z.string().optional(),
             domainTags: z.array(z.string()).optional(),
             dataId: z.string().optional(),
+            status: PAGE_STATUS_FIELD,
+            deckLayout: DECK_LAYOUT_FIELD,
             thumbImageUrl: THUMB_FIELD,
         }))
             .describe("One entry per section to update (max 50)"),
