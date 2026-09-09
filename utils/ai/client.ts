@@ -7,12 +7,6 @@ interface AIClientConfig {
   model?: string;
 }
 
-// Modelos disponíveis para fallback no Groq
-export const GROQ_MODELS = {
-  PREMIUM: 'llama-3.3-70b-versatile',    // ~14K tokens/min, melhor qualidade
-  FAST: 'llama-3.1-8b-instant',          // ~30K tokens/min, mais barato
-} as const;
-
 export class AIClient {
   private provider: AIProvider;
   private apiKey: string;
