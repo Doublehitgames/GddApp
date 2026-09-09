@@ -1,11 +1,7 @@
 import type { ProjectStore, UUID, Project, PersistenceConfig, MindMapSettings } from "./types";
 import { STORAGE_KEY } from "./types";
-import type { AgendaTask } from "@/lib/agenda/types";
 import {
-  loadLastAnalyses,
-  loadLastRelations,
   loadDiagrams,
-  loadAgendaTasks,
   parseProjectsFromStorage,
   persist,
   persistPersistenceConfig,
@@ -39,26 +35,9 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
 
     loadFromStorage: () => {
       try {
-        const analyses = loadLastAnalyses();
-        if (Object.keys(analyses).length > 0) {
-          set({ lastConsistencyAnalysisByProject: analyses });
-        }
-        const relations = loadLastRelations();
-        if (Object.keys(relations).length > 0) {
-          set({ lastRelationsAnalysisByProject: relations });
-        }
         const diagrams = loadDiagrams();
         if (Object.keys(diagrams).length > 0) {
           set({ diagramsBySection: diagrams });
-        }
-        const agendaTasks = loadAgendaTasks();
-        if (Object.keys(agendaTasks).length > 0) {
-          set({ tasksByProject: agendaTasks });
-          // Restore activeTaskId: find any task that was running when browser closed
-          for (const tasks of Object.values(agendaTasks)) {
-            const running = tasks.find((t) => t.status === "running");
-            if (running) { set({ activeTaskId: running.id }); break; }
-          }
         }
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
@@ -149,36 +128,6 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
             : p
         )
       );
-    },
-
-    loadAgendaFromSupabase: async () => {
-      try {
-        const userId = (get() as ProjectStore & { userId?: string }).userId;
-        if (!userId) return;
-        const projectIds = get().projects.map((p: { id: string }) => p.id);
-        if (projectIds.length === 0) return;
-
-        const { fetchAgendaTasks } = await import("@/lib/supabase/agendaSync");
-        const { persistAgendaTasks } = await import("./storageHelpers");
-
-        const updates: Record<string, AgendaTask[]> = {};
-        await Promise.all(
-          projectIds.map(async (projectId: string) => {
-            const tasks = await fetchAgendaTasks(userId, projectId);
-            if (tasks && tasks.length > 0) {
-              updates[projectId] = tasks;
-            }
-          })
-        );
-
-        if (Object.keys(updates).length > 0) {
-          const merged = { ...get().tasksByProject, ...updates };
-          set({ tasksByProject: merged });
-          persistAgendaTasks(merged);
-        }
-      } catch (e) {
-        console.warn("[agendaSync] loadAgendaFromSupabase failed", e);
-      }
     },
 
     loadRoadmapFromSupabase: async () => {
@@ -276,87 +225,6 @@ export function createPersistenceSlice(set: StoreSet, get: StoreGet, engine: Syn
         }
       } catch (e) {
         console.warn("[roadmapSync] loadRoadmapFromSupabase failed", e);
-      }
-    },
-
-    loadKpiFromSupabase: async () => {
-      try {
-        const userId = (get() as ProjectStore & { userId?: string }).userId;
-        if (!userId) return;
-        const projects = get().projects as Array<{ id: string; ownerId?: string | null }>;
-        if (projects.length === 0) return;
-
-        const { fetchKpiEntries, fetchKpiConfig } = await import("@/lib/supabase/kpiSync");
-        const { persistKpiEntries, persistKpiConfigs } = await import("./storageHelpers");
-
-        const entryUpdates: Record<string, import("@/lib/kpi/types").KpiEntry[]> = {};
-        const configUpdates: Record<string, import("@/lib/kpi/types").KpiProjectConfig> = {};
-
-        const state = get() as ProjectStore & {
-          kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
-          kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
-        };
-
-        const { upsertKpiEntries, upsertKpiConfig } = await import("@/lib/supabase/kpiSync");
-
-        await Promise.all(
-          projects.map(async (project) => {
-            const projectId = project.id;
-            const isOwner = !project.ownerId || project.ownerId === userId;
-
-            // Membros lêem os dados do dono; donos lêem os próprios dados
-            const fetchUserId = isOwner ? userId : (project.ownerId as string);
-
-            const [remoteEntries, remoteConfig] = await Promise.all([
-              fetchKpiEntries(fetchUserId, projectId),
-              fetchKpiConfig(fetchUserId, projectId),
-            ]);
-
-            // Supabase tem dados → usa o remoto (fonte de verdade na nuvem)
-            if (remoteEntries && remoteEntries.length > 0) {
-              entryUpdates[projectId] = remoteEntries;
-            } else if (isOwner) {
-              // Supabase vazio → migra dados locais existentes para a nuvem (só o dono escreve)
-              const localEntries = state.kpiEntriesByProject[projectId];
-              if (localEntries && localEntries.length > 0) {
-                void upsertKpiEntries(userId, projectId, localEntries);
-              }
-            }
-
-            if (remoteConfig) {
-              configUpdates[projectId] = remoteConfig;
-            } else if (isOwner) {
-              // Supabase vazio → migra config local para a nuvem (só o dono escreve)
-              const localConfig = state.kpiConfigByProject[projectId];
-              if (localConfig) {
-                void upsertKpiConfig(userId, projectId, localConfig);
-              }
-            }
-          })
-        );
-
-        const hasEntries = Object.keys(entryUpdates).length > 0;
-        const hasConfigs = Object.keys(configUpdates).length > 0;
-
-        if (hasEntries || hasConfigs) {
-          const mergedEntries = hasEntries
-            ? { ...state.kpiEntriesByProject, ...entryUpdates }
-            : state.kpiEntriesByProject;
-
-          const mergedConfigs = hasConfigs
-            ? { ...state.kpiConfigByProject, ...configUpdates }
-            : state.kpiConfigByProject;
-
-          set({
-            kpiEntriesByProject: mergedEntries,
-            kpiConfigByProject: mergedConfigs,
-          } as Partial<ProjectStore>);
-
-          if (hasEntries) persistKpiEntries(mergedEntries);
-          if (hasConfigs) persistKpiConfigs(mergedConfigs);
-        }
-      } catch (e) {
-        console.warn("[kpiSync] loadKpiFromSupabase failed", e);
       }
     },
   };

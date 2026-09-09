@@ -8,7 +8,7 @@ export type ProjectView = "editor" | "doc" | "deck" | "graph";
 interface Props {
   /** Slug do projeto. Ignorado em modo publico, que navega por token. */
   projectSlug: string;
-  /** Aba destacada. `null` nas telas que nao sao nenhuma das tres (settings, kpi...). */
+  /** Aba destacada. `null` nas telas que nao sao nenhuma das tres (settings, uma secao...). */
   active: ProjectView | null;
   /** Token de compartilhamento. Presente = modo publico: sem Editor, rotas via /s/. */
   publicToken?: string;

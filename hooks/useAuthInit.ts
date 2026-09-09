@@ -14,7 +14,7 @@ import { migrateLocalProjectsToSupabase } from "@/lib/supabase/projectSync";
  */
 export function useAuthInit() {
   const { initialize, user } = useAuthStore();
-  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig, refreshQuotaStatus, loadAgendaFromSupabase, loadKpiFromSupabase, loadRoadmapFromSupabase } = useProjectStore();
+  const { loadFromSupabase, loadFromStorage, setUserId, persistToStorage, flushPendingSyncs, persistenceConfig, refreshQuotaStatus, loadRoadmapFromSupabase } = useProjectStore();
   const migratedRef = useRef(false);
 
   // Inicializa auth uma vez
@@ -30,12 +30,6 @@ export function useAuthInit() {
 
       // Atualiza cota no badge (tempo de reset e créditos restantes) ao abrir/voltar ao app
       void refreshQuotaStatus();
-
-      // Carrega tasks de agenda do Supabase
-      void loadAgendaFromSupabase();
-
-      // Carrega dados KPI do Supabase
-      void loadKpiFromSupabase();
 
       // Carrega dados do Roadmap do Supabase
       void loadRoadmapFromSupabase();

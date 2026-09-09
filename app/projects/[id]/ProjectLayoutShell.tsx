@@ -135,9 +135,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       !normalizedPathname.endsWith("/mindmap") &&
       !normalizedPathname.endsWith("/view") &&
       !normalizedPathname.endsWith("/deck") &&
-      !normalizedPathname.endsWith("/diagramas") &&
-      !normalizedPathname.endsWith("/agenda") &&
-      !normalizedPathname.endsWith("/kpi")
+      !normalizedPathname.endsWith("/diagramas")
     );
   }, [normalizedPathname]);
 
@@ -172,7 +170,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     if (isDeckRoute) return "deck";
     if (isDocumentViewRoute) return "doc";
     // /projects/<slug> e a home do projeto — o Editor. Qualquer coisa mais
-    // funda (settings, kpi, uma secao) nao e nenhuma das tres abas.
+    // funda (settings, uma secao) nao e nenhuma das tres abas.
     if (normalizedPathname.split("/").length === 3) return "editor";
     return null;
   }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute, isDeckRoute]);

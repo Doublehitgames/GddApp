@@ -27,8 +27,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import AIChat from "@/components/AIChat";
-import AgendaWidget from "@/components/agenda/AgendaWidget";
-import KpiWidget from "@/components/kpi/KpiWidget";
 import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
 import RecentActivityWidget from "@/components/project/RecentActivityWidget";
 import StatusCoverageWidget from "@/components/pageStatus/StatusCoverageWidget";
@@ -574,26 +572,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
             ),
         },
         {
-            href: `/projects/${projectId}/agenda`,
-            label: "Diário",
-            accentClass: "from-sky-400/25 to-blue-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/kpi`,
-            label: "Análise",
-            accentClass: "from-emerald-400/25 to-teal-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            ),
-        },
-        {
             href: `/projects/${projectId}/roadmap`,
             label: t("roadmap.navLabel"),
             accentClass: "from-violet-400/25 to-purple-500/10",
@@ -646,26 +624,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         },
     ];
 
-    const aiActions = [
-        {
-            href: `/projects/${projectId}/relations`,
-            label: t("projectDetail.aiMenu.suggestRelations"),
-            emoji: "🔗",
-            accentClass: "from-fuchsia-500/25 to-purple-500/10",
-        },
-        {
-            href: `/projects/${projectId}/analysis`,
-            label: t("projectDetail.aiMenu.analyzeConsistency"),
-            emoji: "⚖️",
-            accentClass: "from-violet-500/25 to-indigo-500/10",
-        },
-        {
-            href: `/projects/${projectId}/assign-tags`,
-            label: t("projectDetail.aiMenu.assignTags"),
-            emoji: "🏷️",
-            accentClass: "from-pink-500/25 to-fuchsia-500/10",
-        },
-    ];
     const activeSectionId = useMemo(() => {
         const match = pathname.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
         return match?.[1] ?? null;
@@ -1178,8 +1136,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         </section>
 
                         <StatusCoverageWidget projectId={projectId} realProjectId={realProjectId} />
-                        <AgendaWidget projectId={projectId} realProjectId={realProjectId} />
-                        <KpiWidget projectId={projectId} realProjectId={realProjectId} />
                         <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />
                         <RecentActivityWidget projectId={projectId} realProjectId={realProjectId} />
 
@@ -1189,24 +1145,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 <p className="text-xs text-gray-400 mt-1">{t("projectDetail.aiMenu.improveHint")}</p>
                             </div>
                             <div className="scrollbar-premium scrollbar-premium-subtle flex gap-3 overflow-x-auto overflow-y-visible pt-1 pb-2 snap-x snap-mandatory scroll-px-1 sm:snap-none">
-                                {aiActions.map((action) => {
-                                    const isActive = pathname === action.href;
-                                    return (
-                                        <Link
-                                            key={action.href}
-                                            href={action.href}
-                                            prefetch={false}
-                                            className={`group relative overflow-hidden shrink-0 snap-start w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-xl border flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${isActive
-                                                ? "border-fuchsia-300 bg-fuchsia-600/20 text-fuchsia-100 shadow-lg shadow-fuchsia-900/40 -translate-y-0.5"
-                                                : "border-gray-600 bg-gray-900/60 text-gray-300 hover:border-fuchsia-500 hover:text-white hover:bg-gray-800/90 hover:-translate-y-px hover:shadow-sm hover:shadow-black/25"
-                                                }`}
-                                        >
-                                            <span className={`absolute inset-0 bg-gradient-to-br ${action.accentClass} opacity-80`} aria-hidden />
-                                            <span className="relative text-xl sm:text-2xl leading-none group-hover:scale-105 transition-transform">{action.emoji}</span>
-                                            <span className="relative text-[11px] sm:text-xs font-medium leading-tight">{action.label}</span>
-                                        </Link>
-                                    );
-                                })}
                                 <button
                                     type="button"
                                     onClick={() => setChatOpen(true)}

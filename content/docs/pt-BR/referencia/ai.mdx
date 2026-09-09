@@ -16,7 +16,6 @@ O GDD Manager integra modelos de linguagem pra **acelerar tarefas tediosas** sem
 | **Geração de template** | "Quero um GDD inicial pra um RPG de fantasia" → IA gera estrutura completa com 5 grupos, atributos, personagens, economia, callouts didáticos |
 | **Chat com contexto** | "Sugira páginas pra esta seção" → IA olha o projeto inteiro (com tags) e propõe páginas coerentes com o tema |
 | **Conteúdo de seção** | "Preencha esta página de Núcleo de Combate" → IA escreve conteúdo respeitando o que já existe |
-| **Análise** | "Revise meu GDD" → IA aponta gaps, inconsistências, sugestões de melhoria |
 | **Melhoria de prosa** | Botão "Melhorar com IA" em qualquer richDoc — refina o texto sem mudar significado |
 
 ## Provedores suportados
@@ -134,16 +133,6 @@ O chat recebe metadata de toda seção:
 ```
 
 Tags ajudam o chat a entender domínios — "sugira melhorias na economia" filtra seções com tag `economy`.
-
-## Análise de GDD
-
-Roda heurísticas + IA pra apontar:
-
-- **Páginas vazias** que deveriam ter conteúdo
-- **Refs quebradas** (skill aponta pra modifier deletado)
-- **Inconsistências** (atributo definido mas nunca usado, moeda sem economyLink)
-- **Gaps** estruturais (tem inimigos mas não tem curva de XP)
-- **Sugestões** específicas pra melhorar coverage
 
 ## Melhoria de prosa
 

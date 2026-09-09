@@ -41,11 +41,7 @@ sincroniza com a nuvem quando quiser.
 
 **Planejar**
 
-- **Diário de desenvolvimento**: agenda semanal com timer, subtarefas e
-  carry-over do que não foi feito.
 - **Roadmap** e **diagramas** do projeto.
-- **KPI Tracker**: acompanhamento de métricas de jogo (retenção, funil, evolução).
-- **Análise** e **relações entre sistemas**, com apoio de IA.
 
 **Trabalhar junto**
 
@@ -56,8 +52,8 @@ sincroniza com a nuvem quando quiser.
 **Automatizar**
 
 - **IA** para gerar a estrutura inicial do GDD, melhorar o texto de uma página,
-  sugerir tags de domínio, propor relações entre sistemas e apontar
-  inconsistências. Funciona com Groq, OpenAI ou Claude — ver
+  sugerir tags de domínio e conversar sobre o projeto no chat. Funciona com
+  Groq, OpenAI ou Claude — ver
   [docs/AI_SETUP.md](docs/AI_SETUP.md).
 - **MCP**: conecte um assistente de IA direto ao seu GDD e peça "cria uma página
   descrevendo o core loop". Dá para conectar pelo claude.ai (OAuth, sem instalar

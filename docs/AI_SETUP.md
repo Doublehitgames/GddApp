@@ -41,9 +41,7 @@ como fallback quando o primeiro bate rate limit.
 | Gerar a estrutura inicial de um GDD | `/ai-create` |
 | Chat assistente com o contexto do projeto | botão flutuante dentro do projeto |
 | Melhorar o texto de uma página | ações de IA na página |
-| Sugerir tags de domínio (economia, combate, progressão…) | menu de ações com IA |
-| Sugerir relações entre sistemas | menu de ações com IA |
-| Analisar consistência do documento | menu de ações com IA |
+| Sugerir tags de domínio (economia, combate, progressão…) | ações de IA na página |
 | Importar um GDD existente | `/import` |
 
 As rotas ficam em `app/api/ai/*` e os prompts em `utils/ai/prompts.ts`.

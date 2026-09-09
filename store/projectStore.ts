@@ -6,11 +6,8 @@ import { createSyncEngine } from "./slices/syncEngine";
 import { createProjectCrudSlice } from "./slices/projectCrudSlice";
 import { createSectionCrudSlice } from "./slices/sectionCrudSlice";
 import { createDiagramSlice } from "./slices/diagramSlice";
-import { createAnalysisSlice } from "./slices/analysisSlice";
 import { createCloudSyncSlice } from "./slices/cloudSyncSlice";
 import { createPersistenceSlice } from "./slices/persistenceSlice";
-import { createAgendaSlice } from "./slices/agendaSlice";
-import { createKpiSlice } from "./slices/kpiSlice";
 import { createRoadmapSlice } from "./slices/roadmapSlice";
 import { createActivityLogSlice } from "./slices/activityLogSlice";
 import { DEFAULT_APP_LIMITS } from "./slices/types";
@@ -18,8 +15,6 @@ import { DEFAULT_APP_LIMITS } from "./slices/types";
 // Re-export ALL types for backward compatibility (zero breaking changes for consumers)
 export type {
   UUID,
-  LastConsistencyAnalysis,
-  LastRelationsAnalysis,
   DiagramMarkerType,
   DiagramNode,
   DiagramEdge,
@@ -78,19 +73,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       } catch {}
     },
 
-    lastConsistencyAnalysisByProject: {},
-    lastRelationsAnalysisByProject: {},
     diagramsBySection: {},
 
     // ── Composed actions ─────────────────────────────────────────────────
     ...createProjectCrudSlice(set, get, engine),
     ...createSectionCrudSlice(set, get, engine),
     ...createDiagramSlice(set, get, engine),
-    ...createAnalysisSlice(set, get),
     ...createCloudSyncSlice(set, get, engine),
     ...createPersistenceSlice(set, get, engine),
-    ...createAgendaSlice(set, get),
-    ...createKpiSlice(set, get),
     ...createRoadmapSlice(set, get),
     ...createActivityLogSlice(set as Parameters<typeof createActivityLogSlice>[0], get as Parameters<typeof createActivityLogSlice>[1]),
   };

@@ -16,7 +16,6 @@ GDD Manager integrates language models to **speed up tedious tasks** without tak
 | **Template generation** | "I want an initial GDD for a fantasy RPG" → AI generates a full structure with 5 groups, attributes, characters, economy, and didactic callouts |
 | **Context-aware chat** | "Suggest pages for this section" → AI looks at the whole project (with tags) and proposes pages that fit the theme |
 | **Section content** | "Fill in this Combat Core page" → AI writes content respecting what's already there |
-| **Analysis** | "Review my GDD" → AI points out gaps, inconsistencies, and improvement suggestions |
 | **Prose improvement** | "Improve with AI" button in any richDoc — refines the text without changing the meaning |
 
 ## Supported providers
@@ -133,16 +132,6 @@ The chat receives metadata from every section:
 ```
 
 Tags help the chat understand domains — "suggest improvements to the economy" filters sections tagged `economy`.
-
-## GDD Analysis
-
-Runs heuristics + AI to highlight:
-
-- **Empty pages** that should have content
-- **Broken refs** (a skill points to a deleted modifier)
-- **Inconsistencies** (attribute defined but never used, currency without an economyLink)
-- **Structural gaps** (has enemies but no XP curve)
-- **Specific suggestions** to improve coverage
 
 ## Prose improvement
 

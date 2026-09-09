@@ -30,6 +30,14 @@ Config (`exportSchema`), `pageTypes` e os wizards de criação de página (~38 m
 linhas). Não sugira nada disso — não existe. Comentários no código que citam
 addons são explicações históricas de onde um arquivo morava antes.
 
+Em 2026-09-09 saíram também o **Diário** (agenda semanal com timer e tarefas
+por página), o **KPI Tracker** (retenção, funil, benchmarks) e as três telas de
+IA que auditavam o doc (sugerir relações, analisar consistência, atribuir tags
+em massa). O critério foi o mesmo nos três: não apresentavam informação de
+design. As tabelas do Supabase se derrubam com `lib/supabase/drop_agenda_kpi.sql`.
+O endpoint `/api/ai/suggest-relations` ficou de pé — quem o usa hoje é o botão
+dentro do chat de IA.
+
 ---
 
 ## Núcleo hoje

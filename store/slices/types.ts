@@ -5,24 +5,10 @@ import type { CloudSyncQuotaStatus, SyncStats } from "@/lib/supabase/projectSync
 import type { DocumentThemeId } from "@/lib/documentThemes";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
-import type { AgendaTask, RecurrenceRule } from "@/lib/agenda/types";
 import type { PageStatus } from "@/lib/pageStatus/types";
 import type { DeckLayout } from "@/lib/deck/deck";
 
 export type UUID = string;
-
-/** Resultado da última análise de consistência por projeto (persistido em localStorage). */
-export type LastConsistencyAnalysis = {
-  alerts: Array<{ severity?: string; title?: string; message?: string; relatedSections?: string[] }>;
-  simulation: { combat?: { playerHP: number; enemyDamage: number; healPerPotion?: number; hitsToDie: number; healsToOffsetOneHit?: number } } | null;
-  runAt: string;
-};
-
-/** Resultado da última análise de relações entre sistemas por projeto (persistido em localStorage). */
-export type LastRelationsAnalysis = {
-  suggestions: Array<{ type?: string; fromTitle?: string; toTitle?: string; domains?: string[]; suggestion?: string }>;
-  runAt: string;
-};
 
 export type DiagramMarkerType = "none" | "arrow" | "circle";
 
@@ -536,14 +522,6 @@ export interface ProjectStore {
   flushPendingSyncs: () => Promise<void>;
   /** IDs dos projetos com alterações ainda não enviadas (para estimativa de créditos). */
   getPendingProjectIds: () => string[];
-  /** Última análise de consistência por projectId (persistida). */
-  lastConsistencyAnalysisByProject: Record<string, LastConsistencyAnalysis>;
-  setLastConsistencyAnalysis: (projectId: string, data: LastConsistencyAnalysis) => void;
-  getLastConsistencyAnalysis: (projectId: string) => LastConsistencyAnalysis | undefined;
-  /** Última análise de relações entre sistemas por projectId (persistida). */
-  lastRelationsAnalysisByProject: Record<string, LastRelationsAnalysis>;
-  setLastRelationsAnalysis: (projectId: string, data: LastRelationsAnalysis) => void;
-  getLastRelationsAnalysis: (projectId: string) => LastRelationsAnalysis | undefined;
   /** Estado local do editor de diagramas por seção (fonte imediata do editor; pode espelhar no sync). */
   diagramsBySection: Record<string, DiagramState>;
   getSectionDiagram: (projectId: string, sectionId: string) => DiagramState | undefined;
@@ -563,33 +541,6 @@ export interface ProjectStore {
   updateProjectSettings: (projectId: UUID, settings: MindMapSettings) => void;
   /** Atualiza só mindMapSettings no store e persiste (sem marcar dirty nem disparar sync). Usado com pushProjectMindMapSettings. */
   updateProjectMindMapSettingsOnly: (projectId: UUID, settings: MindMapSettings) => void;
-  // ── Agenda ────────────────────────────────────────────────────────────────
-  tasksByProject: Record<string, AgendaTask[]>;
-  activeTaskId: string | null;
-  addAgendaTask: (projectId: string, date: string, title: string, opts?: { sectionId?: string; sectionTitle?: string }) => string;
-  carryOverAgendaTask: (projectId: string, sourceTask: AgendaTask, targetDate: string) => string;
-  updateAgendaTask: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "title" | "date" | "order">>) => void;
-  updateAgendaTaskDetail: (projectId: string, taskId: string, patch: Partial<Pick<AgendaTask, "description" | "priority" | "category">>) => void;
-  addSubTask: (projectId: string, taskId: string, title: string) => void;
-  toggleSubTask: (projectId: string, taskId: string, subTaskId: string) => void;
-  deleteSubTask: (projectId: string, taskId: string, subTaskId: string) => void;
-  deleteAgendaTask: (projectId: string, taskId: string) => void;
-  playAgendaTask: (projectId: string, taskId: string) => void;
-  pauseAgendaTask: (projectId: string, taskId: string) => void;
-  finishAgendaTask: (projectId: string, taskId: string) => void;
-  getAgendaTasksForWeek: (projectId: string, weekStart: string) => AgendaTask[];
-  setAgendaTaskRecurrence: (projectId: string, taskId: string, recurrence: RecurrenceRule | undefined) => void;
-  ensureRecurringTasksForRange: (projectId: string, dateStart: string, dateEnd: string) => void;
-  loadAgendaFromSupabase: () => Promise<void>;
-  loadKpiFromSupabase: () => Promise<void>;
-  // ── KPI tracker ───────────────────────────────────────────────────────────
-  kpiEntriesByProject: Record<string, import("@/lib/kpi/types").KpiEntry[]>;
-  kpiConfigByProject: Record<string, import("@/lib/kpi/types").KpiProjectConfig>;
-  setKpiGenre: (projectId: string, genre: import("@/lib/kpi/types").GameGenre) => void;
-  updateKpiConfig: (projectId: string, patch: Partial<Omit<import("@/lib/kpi/types").KpiProjectConfig, "genre">>) => void;
-  addKpiEntry: (projectId: string, entry: Omit<import("@/lib/kpi/types").KpiEntry, "id" | "createdAt">) => string;
-  updateKpiEntry: (projectId: string, entryId: string, patch: Partial<Pick<import("@/lib/kpi/types").KpiEntry, "date" | "hypothesis" | "hypothesisArea" | "outcome" | "learning" | "metrics">>) => void;
-  deleteKpiEntry: (projectId: string, entryId: string) => void;
   // ── Roadmap ───────────────────────────────────────────────────────────────
   roadmapsByProject: Record<string, import("@/lib/roadmap/types").Roadmap[]>;
   phasesByProject:   Record<string, import("@/lib/roadmap/types").RoadmapPhase[]>;
@@ -633,10 +584,7 @@ export interface ProjectStore {
 export const STORAGE_KEY = "gdd_projects_v1";
 export const PERSISTENCE_CONFIG_KEY = "gdd_persistence_config_v1";
 export const SYNC_STATE_KEY = "gdd_sync_state_v1";
-export const LAST_ANALYSES_KEY = "gdd_last_analyses_v1";
-export const LAST_RELATIONS_KEY = "gdd_last_relations_v1";
 export const DIAGRAMS_KEY = "gdd_diagrams_by_section_v1";
-export const AGENDA_KEY = "gdd_agenda_tasks_v1";
 export const MAX_IMAGE_SRC_LENGTH = 2048;
 export const DATA_IMAGE_URI_RE = /data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+/g;
 export const SYNC_FAILURE_WINDOW_MS = 120000;

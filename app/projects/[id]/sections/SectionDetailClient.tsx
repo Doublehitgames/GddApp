@@ -20,7 +20,6 @@ import {
   openGoogleDriveImagePicker,
 } from "@/lib/googleDrivePicker";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import SectionTasksPanel from "@/components/agenda/SectionTasksPanel";
 import StatusPicker from "@/components/pageStatus/StatusPicker";
 import DeckLayoutPicker from "@/components/deck/DeckLayoutPicker";
 import StaleNotice from "@/components/pageStatus/StaleNotice";
@@ -1821,15 +1820,6 @@ function SectionDetailContent({
             {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
           </button>
         </div>
-      )}
-      
-      {/* Tarefas vinculadas a esta seção */}
-      {!inlineEdit && project?.id && section?.id && (
-        <SectionTasksPanel
-          projectId={project.id}
-          sectionId={section.id}
-          sectionTitle={section.title ?? ""}
-        />
       )}
 
       {/* Mensagem de erro/aviso da IA */}

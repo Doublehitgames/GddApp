@@ -1,13 +1,12 @@
 // store/slices/storageHelpers.ts
 // Pure helper functions extracted from store/projectStore.ts (no set/get dependency).
 
-import type { Project, LastConsistencyAnalysis, LastRelationsAnalysis, DiagramState, PersistenceConfig } from "./types";
+import type { Project, DiagramState, PersistenceConfig } from "./types";
 import {
-  STORAGE_KEY, PERSISTENCE_CONFIG_KEY, LAST_ANALYSES_KEY, LAST_RELATIONS_KEY,
-  DIAGRAMS_KEY, AGENDA_KEY, MAX_IMAGE_SRC_LENGTH, DATA_IMAGE_URI_RE, DEFAULT_PERSISTENCE_CONFIG,
+  STORAGE_KEY, PERSISTENCE_CONFIG_KEY,
+  DIAGRAMS_KEY, MAX_IMAGE_SRC_LENGTH, DATA_IMAGE_URI_RE, DEFAULT_PERSISTENCE_CONFIG,
   SYNC_STATS_HISTORY_LIMIT, SYNC_STATE_KEY,
 } from "./types";
-import type { AgendaTask } from "@/lib/agenda/types";
 import type { PersistedSyncState } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -112,56 +111,6 @@ export function persistPersistenceConfig(config: PersistenceConfig): void {
 }
 
 // ---------------------------------------------------------------------------
-// Last analyses
-// ---------------------------------------------------------------------------
-
-export function loadLastAnalyses(): Record<string, LastConsistencyAnalysis> {
-  try {
-    if (typeof window === "undefined") return {};
-    const raw = localStorage.getItem(LAST_ANALYSES_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, LastConsistencyAnalysis>;
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-export function persistLastAnalyses(data: Record<string, LastConsistencyAnalysis>): void {
-  try {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LAST_ANALYSES_KEY, JSON.stringify(data));
-  } catch (e) {
-    logWarn("Could not persist last analyses", e);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Last relations
-// ---------------------------------------------------------------------------
-
-export function loadLastRelations(): Record<string, LastRelationsAnalysis> {
-  try {
-    if (typeof window === "undefined") return {};
-    const raw = localStorage.getItem(LAST_RELATIONS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, LastRelationsAnalysis>;
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-export function persistLastRelations(data: Record<string, LastRelationsAnalysis>): void {
-  try {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(LAST_RELATIONS_KEY, JSON.stringify(data));
-  } catch (e) {
-    logWarn("Could not persist last relations", e);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Diagrams
 // ---------------------------------------------------------------------------
 
@@ -195,74 +144,6 @@ export function buildSectionDiagramKey(projectId: string, sectionId: string): st
   return `${projectId}:${sectionId}`;
 }
 
-// ---------------------------------------------------------------------------
-// Agenda tasks
-// ---------------------------------------------------------------------------
-
-export function loadAgendaTasks(): Record<string, AgendaTask[]> {
-  try {
-    if (typeof window === "undefined") return {};
-    const raw = localStorage.getItem(AGENDA_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, AgendaTask[]>;
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
-  } catch {
-    return {};
-  }
-}
-
-export function persistAgendaTasks(data: Record<string, AgendaTask[]>): void {
-  try {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(AGENDA_KEY, JSON.stringify(data));
-  } catch (e) {
-    logWarn("Could not persist agenda tasks", e);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// KPI entries persistence
-// ---------------------------------------------------------------------------
-
-const KPI_ENTRIES_KEY = "gdd_kpi_entries_v1";
-const KPI_CONFIGS_KEY = "gdd_kpi_configs_v1";
-
-export function loadKpiEntries(): Record<string, import("@/lib/kpi/types").KpiEntry[]> {
-  try {
-    if (typeof window === "undefined") return {};
-    const raw = localStorage.getItem(KPI_ENTRIES_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
-  } catch { return {}; }
-}
-
-export function persistKpiEntries(data: Record<string, import("@/lib/kpi/types").KpiEntry[]>): void {
-  try {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(KPI_ENTRIES_KEY, JSON.stringify(data));
-  } catch (e) { logWarn("Could not persist KPI entries", e); }
-}
-
-export function loadKpiConfigs(): Record<string, import("@/lib/kpi/types").KpiProjectConfig> {
-  try {
-    if (typeof window === "undefined") return {};
-    const raw = localStorage.getItem(KPI_CONFIGS_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return {};
-    return parsed;
-  } catch { return {}; }
-}
-
-export function persistKpiConfigs(data: Record<string, import("@/lib/kpi/types").KpiProjectConfig>): void {
-  try {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(KPI_CONFIGS_KEY, JSON.stringify(data));
-  } catch (e) { logWarn("Could not persist KPI configs", e); }
-}
 
 // ---------------------------------------------------------------------------
 // Roadmap persistence
