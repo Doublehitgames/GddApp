@@ -1,6 +1,6 @@
 ---
 title: "AI"
-description: "How the app's AI integration works — template generation, context-aware chat, section improvement."
+description: "How the app's AI integration works — template generation, section improvement, domain tags."
 emoji: "🤖"
 order: 30
 ---
@@ -14,7 +14,6 @@ GDD Manager integrates language models to **speed up tedious tasks** without tak
 | Feature | When you use it |
 |---|---|
 | **Template generation** | "I want an initial GDD for a fantasy RPG" → AI generates a full structure with 5 groups, attributes, characters, economy, and didactic callouts |
-| **Context-aware chat** | "Suggest pages for this section" → AI looks at the whole project (with tags) and proposes pages that fit the theme |
 | **Section content** | "Fill in this Combat Core page" → AI writes content respecting what's already there |
 | **Prose improvement** | "Improve with AI" button in any richDoc — refines the text without changing the meaning |
 
@@ -102,36 +101,6 @@ Additional info: Pixel art, single player, build-crafting focus.
 ```
 
 Each page comes with rich prose, callouts explaining jargon, and cross-references between subjects.
-
-## Context-aware chat
-
-Conversational mode that knows **which project/section you're looking at** and responds with that in mind.
-
-### Capabilities
-
-- Suggest new pages for an existing context
-- Edit section content (returns Markdown)
-- Analyze and give constructive feedback
-- Suggest relationships between sections via domain tags
-- Fill in gaps with coherent content
-
-### How it "sees" the project
-
-The chat receives metadata from every section:
-
-```
-**Project:** Spire of Echoes
-**Description:** Top-down roguelike wizard...
-**Existing sections (tags in brackets):**
-- Overview [narrative] (320 chars)
-- Base Attributes [combat] (empty)
-- Explorer Wizard [characters, combat] (180 chars)
-- Floor Goblin [characters, combat] (95 chars)
-- Fire Rune [items, combat] (empty)
-...
-```
-
-Tags help the chat understand domains — "suggest improvements to the economy" filters sections tagged `economy`.
 
 ## Prose improvement
 

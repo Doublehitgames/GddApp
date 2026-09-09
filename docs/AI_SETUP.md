@@ -38,14 +38,14 @@ como fallback quando o primeiro bate rate limit.
 
 | Recurso | Onde |
 |---|---|
-| Gerar a estrutura inicial de um GDD | `/ai-create` |
-| Chat assistente com o contexto do projeto | botão flutuante dentro do projeto |
+| Gerar a estrutura inicial de um GDD | `/ai-create-simple` |
 | Melhorar o texto de uma página | ações de IA na página |
 | Sugerir tags de domínio (economia, combate, progressão…) | ações de IA na página |
 | Importar um GDD existente | `/import` |
 
 As rotas ficam em `app/api/ai/*` e os prompts em `utils/ai/prompts.ts`.
-Exemplos de coisas para pedir no chat: [AI_PROMPTS_EXAMPLES.md](AI_PROMPTS_EXAMPLES.md).
+Para conversar sobre o GDD com um assistente, o caminho hoje é o MCP — ver a
+seção de MCP no [AGENTS.md](../AGENTS.md).
 
 ## Quando dá errado
 

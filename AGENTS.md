@@ -35,8 +35,11 @@ por página), o **KPI Tracker** (retenção, funil, benchmarks) e as três telas
 IA que auditavam o doc (sugerir relações, analisar consistência, atribuir tags
 em massa). O critério foi o mesmo nos três: não apresentavam informação de
 design. As tabelas do Supabase se derrubam com `lib/supabase/drop_agenda_kpi.sql`.
-O endpoint `/api/ai/suggest-relations` ficou de pé — quem o usa hoje é o botão
-dentro do chat de IA.
+Na sequência saiu também o **chat de IA** do projeto (`AIChat`, as rotas
+`chat-with-tools`, `execute-tool` e `suggest-relations`, e `utils/ai/tools.ts`):
+ele criava e editava páginas por conversa, que é exatamente o que o MCP faz
+melhor. A IA que sobrou é a que ajuda a escrever — gerar o GDD inicial
+(`/ai-create-simple`), melhorar o texto de uma página e sugerir tags de domínio.
 
 ---
 

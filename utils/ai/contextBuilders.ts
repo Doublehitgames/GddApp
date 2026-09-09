@@ -10,15 +10,8 @@
 
 
 // ────────────────────────────────────────────────────────────────────────────
-// Minimal shapes — callers don't need to pass full domain objects.
+// Minimal shape — callers do not need to pass full domain objects.
 // ────────────────────────────────────────────────────────────────────────────
-
-export interface PromptSectionLite {
-  id: string;
-  title: string;
-  parentId?: string;
-  domainTags?: string[];
-}
 
 export interface SectionContextInput {
   sectionTitle: string;
@@ -74,48 +67,3 @@ export function buildSectionContextBlock(input: SectionContextInput): string {
 
   return lines.join("\n");
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// buildProjectTreeBlock — tree renderer used by chat, suggest-relations,
-// suggest-section-path. Annotates each section with its domain tags.
-// ────────────────────────────────────────────────────────────────────────────
-
-export interface BuildTreeOptions {
-  /** Whether to include section IDs (needed for EDIT/REMOVE commands). Default: false. */
-  includeIds?: boolean;
-  /** Whether to show domainTags. Default: true. */
-  showTags?: boolean;
-}
-
-export function buildProjectTreeBlock(
-  sections: PromptSectionLite[],
-  options: BuildTreeOptions = {}
-): string {
-  const { includeIds = false, showTags = true } = options;
-
-  const byParent = new Map<string | undefined, PromptSectionLite[]>();
-  for (const s of sections) {
-    const pid = s.parentId ?? undefined;
-    if (!byParent.has(pid)) byParent.set(pid, []);
-    byParent.get(pid)!.push(s);
-  }
-
-  const render = (parentId: string | undefined, indent: number): string[] => {
-    const children = byParent.get(parentId) ?? [];
-    const lines: string[] = [];
-    for (const s of children) {
-      const parts: string[] = [];
-      const prefix = parentId ? "  ".repeat(indent) + "└─ " : "📁 ";
-      parts.push(`${prefix}${s.title}`);
-      if (includeIds) parts.push(`(ID: ${s.id})`);
-      if (showTags && s.domainTags?.length) parts.push(`[${s.domainTags.join(", ")}]`);
-      lines.push(parts.join(" "));
-      lines.push(...render(s.id, indent + 1));
-    }
-    return lines;
-  };
-
-  const out = render(undefined, 0).join("\n");
-  return out || "(nenhuma seção ainda)";
-}
-

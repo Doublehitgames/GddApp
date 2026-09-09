@@ -455,11 +455,6 @@
     "relationsSuggestHint": "Usa las etiquetas de las secciones (Combate, Economía, Objetos…) para sugerir conexiones.",
     "relationsSuggesting": "Analizando...",
     "openAIChat": "Abrir asistente IA",
-    "aiMenu": {
-      "title": "Acciones de IA",
-      "openChat": "Abrir chat (avanzado)",
-      "improveHint": "Mejorar contenido (✨) disponible en cada sección."
-    },
     "aiChat": {
       "invalidJsonObject": "JSON inválido: se esperaba un objeto.",
       "invalidJsonSyntax": "JSON inválido: revisa comillas, comas y llaves.",

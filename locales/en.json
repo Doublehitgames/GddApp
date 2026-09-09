@@ -455,11 +455,6 @@
     "relationsSuggestHint": "Uses section tags (Combat, Economy, Items…) to suggest connections.",
     "relationsSuggesting": "Analyzing...",
     "openAIChat": "Open AI assistant",
-    "aiMenu": {
-      "title": "AI actions",
-      "openChat": "Open chat (advanced)",
-      "improveHint": "Improve content (✨) available on each section page."
-    },
     "aiChat": {
       "invalidJsonObject": "Invalid JSON: expected an object.",
       "invalidJsonSyntax": "Invalid JSON: check quotes, commas, and braces.",

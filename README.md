@@ -51,9 +51,8 @@ sincroniza com a nuvem quando quiser.
 
 **Automatizar**
 
-- **IA** para gerar a estrutura inicial do GDD, melhorar o texto de uma página,
-  sugerir tags de domínio e conversar sobre o projeto no chat. Funciona com
-  Groq, OpenAI ou Claude — ver
+- **IA** para gerar a estrutura inicial do GDD, melhorar o texto de uma página
+  e sugerir tags de domínio. Funciona com Groq, OpenAI ou Claude — ver
   [docs/AI_SETUP.md](docs/AI_SETUP.md).
 - **MCP**: conecte um assistente de IA direto ao seu GDD e peça "cria uma página
   descrevendo o core loop". Dá para conectar pelo claude.ai (OAuth, sem instalar

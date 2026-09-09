@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
 import { sectionPath, toSlug } from "@/lib/utils/slug";
-import { getSectionAiContent } from "@/utils/sectionAiContent";
 import { useAuthStore } from "@/store/authStore";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import {
@@ -26,7 +25,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
-import AIChat from "@/components/AIChat";
 import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
 import RecentActivityWidget from "@/components/project/RecentActivityWidget";
 import StatusCoverageWidget from "@/components/pageStatus/StatusCoverageWidget";
@@ -308,7 +306,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
     const [mounted, setMounted] = useState(false);
     const [project, setProject] = useState<Project | null>(null);
     const realProjectId = project?.id ?? "";
-    const [chatOpen, setChatOpen] = useState(false);
     const [sectionTitle, setSectionTitle] = useState("");
     const [nameError, setNameError] = useState<string>("");
     const [searchTerm, setSearchTerm] = useState("");
@@ -545,20 +542,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         setSpotlightError("");
         setSpotlightSaved(true);
     }
-
-    const projectContext = project ? {
-        projectId: project.id,
-        projectTitle: project.title,
-        projectDescription: project.description,
-        sections: (project.sections || []).map((s) => ({
-            id: s.id,
-            title: s.title,
-            content: getSectionAiContent(s),
-            parentId: s.parentId,
-            domainTags: s.domainTags,
-            pageTypeId: s.pageTypeId,
-        })),
-    } : undefined;
 
     const navigationActions = [
         {
@@ -1139,44 +1122,11 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />
                         <RecentActivityWidget projectId={projectId} realProjectId={realProjectId} />
 
-                        <section className="ui-card-premium">
-                            <div className="mb-4">
-                                <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.aiMenu.title")}</h2>
-                                <p className="text-xs text-gray-400 mt-1">{t("projectDetail.aiMenu.improveHint")}</p>
-                            </div>
-                            <div className="scrollbar-premium scrollbar-premium-subtle flex gap-3 overflow-x-auto overflow-y-visible pt-1 pb-2 snap-x snap-mandatory scroll-px-1 sm:snap-none">
-                                <button
-                                    type="button"
-                                    onClick={() => setChatOpen(true)}
-                                    className={`group relative overflow-hidden shrink-0 snap-start w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-xl border flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${chatOpen
-                                        ? "border-fuchsia-300 bg-fuchsia-600/20 text-fuchsia-100 shadow-lg shadow-fuchsia-900/40 -translate-y-0.5"
-                                        : "border-gray-600 bg-gray-900/60 text-gray-300 hover:border-fuchsia-500 hover:text-white hover:bg-gray-800/90 hover:-translate-y-px hover:shadow-sm hover:shadow-black/25"
-                                        }`}
-                                >
-                                    <span className="absolute inset-0 bg-gradient-to-br from-rose-500/25 to-fuchsia-500/10 opacity-80" aria-hidden />
-                                    <span className="relative text-xl sm:text-2xl leading-none group-hover:scale-105 transition-transform">💬</span>
-                                    <span className="relative text-[11px] sm:text-xs font-medium leading-tight">{t("projectDetail.aiMenu.openChat")}</span>
-                                </button>
-                            </div>
-                        </section>
                     </div>
 
                 </div>
             </div>
 
-            {/* Painel do chat IA (drawer lateral) - aberto pelo menu */}
-            {chatOpen && (
-                <div className="fixed inset-0 z-50 flex justify-end">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setChatOpen(false)} aria-hidden />
-                    <div className="relative w-full max-w-md bg-white shadow-xl flex flex-col h-full">
-                        <AIChat
-                            projectContext={projectContext}
-                            onClose={() => setChatOpen(false)}
-                            isOpen={chatOpen}
-                        />
-                    </div>
-                </div>
-            )}
         </main>
     );
 }

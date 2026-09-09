@@ -1,6 +1,6 @@
 ---
 title: "AI"
-description: "Cómo funciona la integración de IA del app — generación de plantillas, chat con contexto, mejora de secciones."
+description: "Cómo funciona la integración de IA del app — generación de plantillas, mejora de secciones, etiquetas de dominio."
 emoji: "🤖"
 order: 30
 ---
@@ -14,7 +14,6 @@ GDD Manager integra modelos de lenguaje para **acelerar tareas tediosas** sin qu
 | Función | Cuándo se usa |
 |---|---|
 | **Generación de plantilla** | "Quiero un GDD inicial para un RPG de fantasía" → la IA genera una estructura completa con 5 grupos, atributos, personajes, economía y callouts didácticos |
-| **Chat con contexto** | "Sugiere páginas para esta sección" → la IA revisa el proyecto completo (con etiquetas) y propone páginas coherentes con el tema |
 | **Contenido de sección** | "Rellena esta página de Núcleo de Combate" → la IA escribe contenido respetando lo que ya existe |
 | **Mejora de prosa** | Botón "Mejorar con IA" en cualquier richDoc — refina el texto sin cambiar el significado |
 
@@ -104,36 +103,6 @@ Información adicional: Pixel art, un jugador, enfoque en construcción de build
 ```
 
 Cada página viene con prosa rica, callouts que explican el vocabulario y referencias cruzadas entre los temas.
-
-## Chat con contexto
-
-Modo conversacional que sabe **qué proyecto/sección estás viendo** y responde teniendo eso en cuenta.
-
-### Capacidades
-
-- Sugerir páginas nuevas para un contexto existente
-- Editar el contenido de secciones (devuelve Markdown)
-- Analizar y dar retroalimentación constructiva
-- Sugerir relaciones entre secciones mediante etiquetas de dominio
-- Completar vacíos con contenido coherente
-
-### Cómo "ve" el proyecto
-
-El chat recibe metadatos de cada sección:
-
-```
-**Proyecto:** Spire of Echoes
-**Descripción:** Roguelike top-down de mago...
-**Secciones existentes (etiquetas entre corchetes):**
-- Visión General [narrative] (320 chars)
-- Atributos Base [combat] (vacía)
-- Mago Explorador [characters, combat] (180 chars)
-- Goblin de Piso [characters, combat] (95 chars)
-- Runa de Fuego [items, combat] (vacía)
-...
-```
-
-Las etiquetas ayudan al chat a entender los dominios — "sugiere mejoras en la economía" filtra las secciones con la etiqueta `economy`.
 
 ## Mejora de prosa
 

@@ -1,6 +1,6 @@
 ---
 title: "AI"
-description: "Como funciona a integração de IA do app — geração de templates, chat com contexto, melhoria de seções."
+description: "Como funciona a integração de IA do app — geração de templates, melhoria de seções, tags de domínio."
 emoji: "🤖"
 order: 30
 ---
@@ -14,7 +14,6 @@ O GDD Manager integra modelos de linguagem pra **acelerar tarefas tediosas** sem
 | Feature | Quando usa |
 |---|---|
 | **Geração de template** | "Quero um GDD inicial pra um RPG de fantasia" → IA gera estrutura completa com 5 grupos, atributos, personagens, economia, callouts didáticos |
-| **Chat com contexto** | "Sugira páginas pra esta seção" → IA olha o projeto inteiro (com tags) e propõe páginas coerentes com o tema |
 | **Conteúdo de seção** | "Preencha esta página de Núcleo de Combate" → IA escreve conteúdo respeitando o que já existe |
 | **Melhoria de prosa** | Botão "Melhorar com IA" em qualquer richDoc — refina o texto sem mudar significado |
 
@@ -103,36 +102,6 @@ Informações adicionais: Pixel art, single player, foco em build-craft.
 ```
 
 Cada página vem com prosa rica, callouts explicando jargão, e referências cruzadas entre os assuntos.
-
-## Chat com contexto
-
-Modo conversacional que sabe **qual projeto/seção você está olhando** e responde considerando isso.
-
-### Capacidades
-
-- Sugerir páginas novas pra contexto existente
-- Editar conteúdo de seções (devolve Markdown)
-- Analisar e dar feedback construtivo
-- Sugerir relações entre seções via tags de domínio
-- Completar lacunas com conteúdo coerente
-
-### Como ele "vê" o projeto
-
-O chat recebe metadata de toda seção:
-
-```
-**Projeto:** Spire of Echoes
-**Descrição:** Roguelike top-down de mago...
-**Seções existentes (tags entre colchetes):**
-- Visão Geral [narrative] (320 chars)
-- Atributos Base [combat] (vazia)
-- Mago Explorador [characters, combat] (180 chars)
-- Goblin de Andar [characters, combat] (95 chars)
-- Runa de Fogo [items, combat] (vazia)
-...
-```
-
-Tags ajudam o chat a entender domínios — "sugira melhorias na economia" filtra seções com tag `economy`.
 
 ## Melhoria de prosa
 
