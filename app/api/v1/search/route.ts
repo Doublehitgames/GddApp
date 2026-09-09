@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       })) as typeof sections;
     }
 
-    results.sections = (sections ?? []).map(sectionToApi);
+    results.sections = (sections ?? []).map((s) => sectionToApi(s));
   }
 
   return apiJson(results);

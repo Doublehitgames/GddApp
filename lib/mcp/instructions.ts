@@ -21,6 +21,9 @@ Whenever a description mentions something that has its own page, write it as $[E
 WRITING DESCRIPTIONS:
 A description is prose with design value — context, role, flavour, how the thing connects to the rest of the game. It is not a spec sheet. Balance numbers — prices, times, quantities, levels, rates — go stale every time the game is retuned, and a page built on them rots with it; describe the relation instead ("the shortest production cycle on the ranch") and leave the values out unless you were asked for them. Send \`content\` as markdown and the server derives \`contentBlocks\` from it, so the two cannot disagree; send \`contentBlocks\` yourself only when you need headings, tables or callouts, and pair it with a plain-text \`content\` for search.
 
+FLOWCHARTS:
+A page can also carry a flowchart, separate from its description — write it with the \`flowchart\` field: the nodes and which one leads to which, positions left to the server. Reach for it when the subject is a branching sequence (a puzzle flow, an onboarding, a state machine): prose and tables cannot show a loop. Writing replaces the whole diagram, so read the current one first with get_section({ includeFlowchart: true }).
+
 PAGE STATUS:
 A page may carry a \`status\`: draft, review, approved, implemented or obsolete. It is the team's own signal of what can be trusted, so read it before rewriting and leave it alone unless you were asked to change it — a page marked approved or implemented was a decision someone made.
 

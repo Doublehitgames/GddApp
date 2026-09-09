@@ -18,6 +18,7 @@ import {
   mapWithConcurrency,
 } from "@/lib/api/v1/sectionWrite";
 import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
+import { buildFlowchartState, FlowchartInputError, type FlowchartInput } from "@/lib/flowchart/flowchart";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 import { getRemoteConfig } from "@/lib/remoteConfig";
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 
   if (error) return apiError("Failed to fetch sections", 500, "db_error");
 
-  return apiJson((sections ?? []).map(sectionToApi));
+  return apiJson((sections ?? []).map((s) => sectionToApi(s)));
 }
 
 /**
@@ -109,6 +110,20 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   const resolvedBlocks = parsed.data.contentBlocks && parsed.data.contentBlocks.length > 0
     ? parsed.data.contentBlocks
     : (parsed.data.content ? markdownToBlocks(parsed.data.content) : null);
+
+  // Página nova não tem estilo anterior a preservar: o layout é todo derivado.
+  let flowchartState: unknown = null;
+  if (parsed.data.flowchart) {
+    try {
+      flowchartState = buildFlowchartState(parsed.data.flowchart as FlowchartInput, { now });
+    } catch (e) {
+      if (e instanceof FlowchartInputError) {
+        return apiError(e.message, 400, "invalid_flowchart");
+      }
+      throw e;
+    }
+  }
+
   const { data: section, error } = await auth.supabase
     .from("sections")
     .insert({
@@ -123,7 +138,11 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       data_id: parsed.data.dataId,
       status: parsed.data.status,
       status_at: parsed.data.status ? now : null,
+      // deck_layout entrava no schema e não chegava à tabela: uma página criada
+      // por agente com deckLayout nascia no automático.
+      deck_layout: parsed.data.deckLayout,
       thumb_image_url: parsed.data.thumbImageUrl,
+      flowchart_state: flowchartState,
       created_at: now,
       updated_at: now,
       created_by: auth.userId,
@@ -159,7 +178,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     action: "created",
   });
 
-  return apiJson(sectionToApi(created), 201);
+  return apiJson(sectionToApi(created, { flowchart: true }), 201);
 }
 
 /**
@@ -231,6 +250,21 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     validParents = new Set((parents ?? []).map((r) => r.id as string));
   }
 
+  // O estado anterior do fluxograma só é carregado para quem vai reescrever
+  // um: numa varredura de 50 descrições, puxar 50 diagramas seria peso morto.
+  const flowchartIds = items.filter((i) => i.flowchart).map((i) => i.sectionId);
+  const previousFlowcharts = new Map<string, unknown>();
+  if (flowchartIds.length > 0) {
+    const { data: rows } = await auth.supabase
+      .from("sections")
+      .select("id, flowchart_state")
+      .eq("project_id", id)
+      .in("id", flowchartIds);
+    for (const row of rows ?? []) {
+      previousFlowcharts.set(row.id as string, (row as { flowchart_state?: unknown }).flowchart_state);
+    }
+  }
+
   const now = new Date().toISOString();
   // Resolved once for the whole batch — the author is the same on every page.
   const actorName = await resolveActorName(auth.supabase, auth.userId);
@@ -251,7 +285,23 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       return { sectionId, ok: false as const, error: "Parent section not found in this project", code: "invalid_parent" };
     }
 
-    const { updates, touched } = buildSectionUpdates(fields, { userId: auth.userId, now, userName: actorName });
+    let updates: Record<string, unknown>;
+    let touched: string[];
+    try {
+      ({ updates, touched } = buildSectionUpdates(fields, {
+        userId: auth.userId,
+        now,
+        userName: actorName,
+        previousFlowchart: previousFlowcharts.get(sectionId),
+      }));
+    } catch (e) {
+      // Um fluxograma malformado derruba a própria entrada, não o lote.
+      if (e instanceof FlowchartInputError) {
+        return { sectionId, ok: false as const, error: e.message, code: "invalid_flowchart" };
+      }
+      throw e;
+    }
+
     const { error } = await auth.supabase
       .from("sections")
       .update(updates)

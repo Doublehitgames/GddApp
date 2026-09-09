@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, AuthResult } from "@/lib/auth/getApiUser";
+import { flowchartDigest } from "@/lib/flowchart/flowchart";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ── Response helpers ──────────────────────────────────────────────────
@@ -366,7 +367,14 @@ export function projectToApi(p: ProjectRow, access?: ProjectAccess) {
   };
 }
 
-export function sectionToApi(s: SectionRow) {
+/**
+ * `opts.flowchart` adds the readable form of the diagram — the nodes and
+ * arrows, the same shape a write accepts. It is off by default because a
+ * listing of a mature project would otherwise carry every diagram in the
+ * document twice, once in pixels and once in prose, to answer a question
+ * nobody asked. The single-section reads turn it on.
+ */
+export function sectionToApi(s: SectionRow, opts: { flowchart?: boolean } = {}) {
   return {
     id: s.id,
     projectId: s.project_id,
@@ -386,7 +394,11 @@ export function sectionToApi(s: SectionRow) {
     // ordem ou pai). E por esta data que um agente descobre o que foi
     // reescrito desde a ultima vez que passou por aqui.
     contentUpdatedAt: s.content_updated_at,
+    // Duas leituras do mesmo diagrama: `flowchartState` é o que o app carrega
+    // no editor, `flowchart` é a mesma coisa na forma que a escrita aceita de
+    // volta — os nós e as setas, sem pixel nem espessura de borda.
     flowchartState: s.flowchart_state,
+    ...(opts.flowchart ? { flowchart: flowchartDigest(s.flowchart_state) } : {}),
     createdAt: s.created_at,
     updatedAt: s.updated_at,
     createdBy: s.created_by,

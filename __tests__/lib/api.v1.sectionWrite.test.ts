@@ -129,6 +129,51 @@ describe("batchSectionsSchema", () => {
   });
 });
 
+describe("the flowchart field", () => {
+  const FLOW = {
+    nodes: [{ id: "p1", label: "Puzzle 1" }, { id: "p2", label: "Puzzle 2" }],
+    edges: [{ from: "p1", to: "p2" }],
+  };
+
+  it("writes a built diagram into the column the editor reads", () => {
+    const { updates } = buildSectionUpdates({ flowchart: FLOW }, CTX);
+    const state = updates.flowchart_state as { nodes: unknown[]; updatedAt: string };
+    expect(state.nodes).toHaveLength(2);
+    // The app's cloud merge compares this date against the copy in the
+    // browser: stamped with the write, or the local one wins and the diagram
+    // an agent just wrote never shows up.
+    expect(state.updatedAt).toBe(CTX.now);
+  });
+
+  it("clears the diagram on null, which is how the app reads 'no flowchart'", () => {
+    const { updates } = buildSectionUpdates({ flowchart: null }, CTX);
+    expect(updates.flowchart_state).toBeNull();
+  });
+
+  it("leaves the column alone when the caller said nothing about it", () => {
+    const { updates } = buildSectionUpdates({ content: "texto" }, CTX);
+    expect(updates).not.toHaveProperty("flowchart_state");
+  });
+
+  it("carries the previous diagram's hand-tuned styling forward", () => {
+    const previousFlowchart = {
+      version: 1,
+      updatedAt: "2026-01-01T00:00:00Z",
+      nodes: [{ id: "p1", type: "diagramNode", position: { x: 500, y: 500 }, data: { label: "Puzzle 1", color: "#22c55e" } }],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    };
+    const { updates } = buildSectionUpdates({ flowchart: FLOW }, { ...CTX, previousFlowchart });
+    const state = updates.flowchart_state as { nodes: { id: string; data: { color?: string } }[] };
+    expect(state.nodes.find((n) => n.id === "p1")?.data.color).toBe("#22c55e");
+  });
+
+  it("reports flowchart as a field the caller touched", () => {
+    const { touched } = buildSectionUpdates({ flowchart: FLOW }, CTX);
+    expect(touched).toEqual(["flowchart"]);
+  });
+});
+
 describe("mapWithConcurrency", () => {
   it("keeps results in input order regardless of completion order", async () => {
     const out = await mapWithConcurrency([30, 10, 20, 0], 2, async (ms, i) => {

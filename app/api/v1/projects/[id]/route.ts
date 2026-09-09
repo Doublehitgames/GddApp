@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
 
   return apiJson({
     ...projectToApi(pResult.project, pResult.access),
-    sections: (sections ?? []).map(sectionToApi),
+    sections: (sections ?? []).map((s) => sectionToApi(s)),
   });
 }
 

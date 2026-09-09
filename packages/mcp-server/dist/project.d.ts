@@ -42,8 +42,18 @@ export declare function filterSections(sections: unknown[], opts?: {
     subtreeOf?: string;
     withoutDescription?: boolean;
 }): unknown[];
-/** Full section, minus the columns that only the web app reads. */
-export declare function sectionFull(section: unknown): Rec;
+/**
+ * Full section, minus the columns that only the web app reads.
+ *
+ * The flowchart is the one part a caller has to ask for: most pages have none,
+ * and a page that does would otherwise spend a few hundred tokens on a diagram
+ * nobody was reading. `withFlowchart` keeps it — and drops the key entirely
+ * when the page has no diagram, so the answer to "does it have one" is not a
+ * line of `null`.
+ */
+export declare function sectionFull(section: unknown, opts?: {
+    withFlowchart?: boolean;
+}): Rec;
 export declare function sectionReceipt(section: unknown, updated: string[]): Rec;
 export declare function sectionCreated(section: unknown): Rec;
 /** One index row. The project settings live in get_project. */

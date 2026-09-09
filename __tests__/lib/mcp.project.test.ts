@@ -83,17 +83,27 @@ describe("sectionRow", () => {
       order: 3,
       dataId: "FARM_ANIMAL_CHICKEN",
       hasDescription: true,
+      hasFlowchart: true,
     });
   });
 
-  it("omits parentId, dataId and hasDescription when there is nothing to say", () => {
+  it("omits parentId, dataId and the two flags when there is nothing to say", () => {
     const bare = sectionRow(makeSection({
       parentId: null,
       dataId: null,
       content: "",
       contentBlocks: [],
+      flowchartState: null,
     }));
     expect(bare).toEqual({ id: "sec-1", title: "Galinha", order: 3 });
+  });
+
+  it("says which pages carry a diagram, without carrying the diagram", () => {
+    // One bit answers "where are the flowcharts in this document" — the
+    // alternative is a get_section per page just to look.
+    const row = sectionRow(makeSection());
+    expect(row.hasFlowchart).toBe(true);
+    expect(row).not.toHaveProperty("flowchartState");
   });
 
   it("flags a description that exists only as blocks", () => {
@@ -126,6 +136,17 @@ describe("sectionFull", () => {
     const input = makeSection();
     sectionFull(input);
     expect(input).toHaveProperty("flowchartState");
+  });
+
+  it("leaves the flowchart out unless the caller asked for it", () => {
+    const withDiagram = makeSection({ flowchart: { nodes: [{ id: "a", label: "A" }], edges: [] } });
+    expect(sectionFull(withDiagram)).not.toHaveProperty("flowchart");
+    expect(sectionFull(withDiagram, { withFlowchart: true })).toHaveProperty("flowchart");
+  });
+
+  it("does not answer 'no diagram' with a line of null", () => {
+    const out = sectionFull(makeSection({ flowchart: null }), { withFlowchart: true });
+    expect(out).not.toHaveProperty("flowchart");
   });
 });
 

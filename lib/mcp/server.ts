@@ -102,6 +102,71 @@ const PAGE_STATUS_FIELD = z
       "null clears it. Setting it re-stamps the date the state was confirmed.",
   );
 
+/**
+ * The page's flowchart. The one field where the agent describes a shape and
+ * the server draws it: coordinates are optional because nobody lays out
+ * twenty boxes correctly by writing pixel values.
+ */
+const FLOWCHART_FIELD = z
+  .object({
+    direction: z
+      .enum(["down", "right"])
+      .optional()
+      .describe("Which way the flow runs when the server lays it out. Default 'down'."),
+    nodes: z
+      .array(
+        z.object({
+          id: z
+            .string()
+            .optional()
+            .describe(
+              "Stable handle for this node — what edges point at, and what keeps a hand-picked colour or position across a rewrite. Defaults to a slug of the label.",
+            ),
+          label: z.string().describe("The text in the box. Keep it short — it is a box, not a paragraph."),
+          shape: z
+            .enum(["retangulo", "losango", "pill", "circulo"])
+            .optional()
+            .describe(
+              "retangulo (default) is a step, losango is a decision, pill is an entry or exit, circulo is a small marker.",
+            ),
+          note: z
+            .string()
+            .optional()
+            .describe("The detail that does not fit in the box — the app shows it in the node's note popover."),
+          color: z.string().optional().describe("Fill as #rrggbb. Omit it and the diagram's theme decides."),
+          position: z
+            .object({ x: z.number(), y: z.number() })
+            .optional()
+            .describe(
+              "Pixel position. Leave it out — that is the normal case, and the server lays the flow out in layers. Send it only to place a node yourself.",
+            ),
+          width: z.number().optional().describe("Node width in pixels; derived from the label when omitted."),
+          height: z.number().optional(),
+        }),
+      )
+      .describe("Every box in the flow."),
+    edges: z
+      .array(
+        z.object({
+          from: z.string().describe("Node id, or the exact label of a node."),
+          to: z.string().describe("Node id, or the exact label of a node."),
+          label: z
+            .string()
+            .optional()
+            .describe("What the arrow means — the condition that takes the flow this way, e.g. 'errou 3x'."),
+          dashed: z.boolean().optional().describe("Dashed arrow, for a path that is optional or implicit."),
+        }),
+      )
+      .optional()
+      .describe("The arrows. A flow that loops back is fine — say it and the layout handles it."),
+  })
+  .nullable()
+  .optional()
+  .describe(
+    "The page's flowchart, the same diagram the app opens in its Diagramas view. Describe the LOGIC — the nodes and which one leads to which — and the server derives the layout. " +
+      "Writing one REPLACES the diagram saved on the page, so read the current one with get_section({ includeFlowchart: true }) before editing an existing flow; a node that keeps its id keeps the colour, size and position someone gave it in the editor. null clears the flowchart.",
+  );
+
 /** Section icon. Same field the web app sets from the Drive picker. */
 const THUMB_FIELD = z
   .string()
@@ -127,7 +192,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
   server.tool("list_projects", "List all GDD projects you have access to — owned and shared with you. Returns one index row per project (id, title, description, access, updatedAt); `access` is owner, editor or viewer, and viewer means every write here will be refused. The project's aiInstructions live in get_project.", {},
     async () => { try { return json(((await api.listProjects()) as unknown[]).map(projectRow)); } catch (e) { return err(e); } });
 
-  server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.",
+  server.tool("get_project", "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description or a flowchart), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.",
     { projectId: z.string().describe("Project UUID") },
     async ({ projectId }) => {
       try {
@@ -157,7 +222,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     { projectId: z.string().describe("Project UUID") },
     async ({ projectId }) => { try { await api.deleteProject(projectId); return json(deleted("project", projectId)); } catch (e) { return err(e); } });
 
-  server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId and hasDescription. The descriptions themselves are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription instead of listing everything and filtering yourself.",
+  server.tool("list_sections", "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription and hasFlowchart. The descriptions themselves are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription instead of listing everything and filtering yourself.",
     {
       projectId: z.string(),
       subtreeOf: z.string().optional().describe("Only this section and its descendants"),
@@ -170,9 +235,22 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("get_section", "Get a single section in full — description and contentBlocks. This is the right place to read a page's contents; the write tools deliberately do not echo it back.",
-    { projectId: z.string().describe("Project UUID"), sectionId: z.string().describe("Section UUID") },
-    async ({ projectId, sectionId }) => { try { return json(sectionFull(await api.getSection(projectId, sectionId))); } catch (e) { return err(e); } });
+  server.tool("get_section", "Get a single section in full — description and contentBlocks. This is the right place to read a page's contents; the write tools deliberately do not echo it back. Pass includeFlowchart to also get the page's flowchart, which is left out by default.",
+    {
+      projectId: z.string().describe("Project UUID"),
+      sectionId: z.string().describe("Section UUID"),
+      includeFlowchart: z
+        .boolean()
+        .optional()
+        .describe(
+          "Also return the page's flowchart as nodes and edges — omitted by default, since most pages have none. Ask for it before rewriting one, because writing replaces the whole diagram.",
+        ),
+    },
+    async ({ projectId, sectionId, includeFlowchart }) => {
+      try {
+        return json(sectionFull(await api.getSection(projectId, sectionId), { withFlowchart: includeFlowchart }));
+      } catch (e) { return err(e); }
+    });
 
   server.tool("get_content_blocks_guide",
     "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
@@ -180,7 +258,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -189,7 +267,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -214,6 +292,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
         status: PAGE_STATUS_FIELD,
         deckLayout: DECK_LAYOUT_FIELD,
         thumbImageUrl: THUMB_FIELD,
+        flowchart: FLOWCHART_FIELD,
       })).describe("One entry per section to update (max 50)"),
     },
     async ({ projectId, sections }) => {

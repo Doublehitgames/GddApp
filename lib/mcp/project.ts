@@ -38,6 +38,8 @@ export function touched(fields: Rec): string[] {
 
 /** UI-only or audit columns that never help an agent reason about a section. */
 const SECTION_NOISE = [
+  // O diagrama em pixels: posição, largura, handle de cada aresta. O agente lê
+  // a versão legível (`flowchart`), e só quando pede.
   "flowchartState",
   "createdBy",
   "createdByName",
@@ -57,6 +59,9 @@ export function sectionRow(section: unknown): Rec {
     ...(s.dataId ? { dataId: s.dataId } : {}),
     ...(s.status ? { status: s.status } : {}),
     ...(s.content || blocks.length ? { hasDescription: true } : {}),
+    // Um bit, não o diagrama: sem ele, achar as páginas que já têm fluxograma
+    // custaria um get_section por página do documento.
+    ...(s.flowchartState ? { hasFlowchart: true } : {}),
   };
 }
 
@@ -101,10 +106,19 @@ export function filterSections(
   return out;
 }
 
-/** Full section, minus the columns that only the web app reads. */
-export function sectionFull(section: unknown): Rec {
+/**
+ * Full section, minus the columns that only the web app reads.
+ *
+ * The flowchart is the one part a caller has to ask for: most pages have none,
+ * and a page that does would otherwise spend a few hundred tokens on a diagram
+ * nobody was reading. `withFlowchart` keeps it — and drops the key entirely
+ * when the page has no diagram, so the answer to "does it have one" is not a
+ * line of `null`.
+ */
+export function sectionFull(section: unknown, opts: { withFlowchart?: boolean } = {}): Rec {
   const s = { ...asRec(section) };
   for (const k of SECTION_NOISE) delete s[k];
+  if (!opts.withFlowchart || !s.flowchart) delete s.flowchart;
   return s;
 }
 

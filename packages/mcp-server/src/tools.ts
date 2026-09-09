@@ -69,7 +69,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "get_project",
-    "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.",
+    "Get a project's settings plus a lightweight index of every section (id, title, parentId, order, dataId, and whether it has a description or a flowchart), and your own `access` to it. This is the map of the document — use it to find the section you need, then get_section for its contents.",
     {
       projectId: z.string(),
     },
@@ -172,7 +172,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "list_sections",
-    "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId and hasDescription. The descriptions themselves are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription instead of listing everything and filtering yourself.",
+    "List a project's sections as an index, sorted by order: id, title, parentId, order, dataId, hasDescription and hasFlowchart. The descriptions themselves are omitted — fetch a specific page with get_section. Narrow the result with subtreeOf / withoutDescription instead of listing everything and filtering yourself.",
     {
       projectId: z.string(),
       subtreeOf: z.string().optional().describe("Only this section and its descendants"),
@@ -189,13 +189,23 @@ export function registerTools(server: McpServer, client: GddApiClient) {
 
   server.tool(
     "get_section",
-    "Get a single section in full — description and contentBlocks. This is the right place to read a page's contents; the write tools deliberately do not echo it back.",
+    "Get a single section in full — description and contentBlocks. This is the right place to read a page's contents; the write tools deliberately do not echo it back. Pass includeFlowchart to also get the page's flowchart, which is left out by default.",
     {
       projectId: z.string(),
       sectionId: z.string(),
+      includeFlowchart: z
+        .boolean()
+        .optional()
+        .describe(
+          "Also return the page's flowchart as nodes and edges — omitted by default, since most pages have none. Ask for it before rewriting one, because writing replaces the whole diagram.",
+        ),
     },
-    async ({ projectId, sectionId }) => {
-      try { return json(sectionFull(await client.getSection(projectId, sectionId))); }
+    async ({ projectId, sectionId, includeFlowchart }) => {
+      try {
+        return json(
+          sectionFull(await client.getSection(projectId, sectionId), { withFlowchart: includeFlowchart }),
+        );
+      }
       catch (e) { return err(e); }
     },
   );
@@ -267,6 +277,71 @@ export function registerTools(server: McpServer, client: GddApiClient) {
         "children there are — set it only when a page is a catalogue of items and the count alone would not say so."
     );
 
+  /**
+   * The page's flowchart. The one field where the agent describes a shape and
+   * the server draws it: coordinates are optional because nobody lays out
+   * twenty boxes correctly by writing pixel values.
+   */
+  const FLOWCHART_FIELD = z
+    .object({
+      direction: z
+        .enum(["down", "right"])
+        .optional()
+        .describe("Which way the flow runs when the server lays it out. Default 'down'."),
+      nodes: z
+        .array(
+          z.object({
+            id: z
+              .string()
+              .optional()
+              .describe(
+                "Stable handle for this node — what edges point at, and what keeps a hand-picked colour or position across a rewrite. Defaults to a slug of the label.",
+              ),
+            label: z.string().describe("The text in the box. Keep it short — it is a box, not a paragraph."),
+            shape: z
+              .enum(["retangulo", "losango", "pill", "circulo"])
+              .optional()
+              .describe(
+                "retangulo (default) is a step, losango is a decision, pill is an entry or exit, circulo is a small marker.",
+              ),
+            note: z
+              .string()
+              .optional()
+              .describe("The detail that does not fit in the box — the app shows it in the node's note popover."),
+            color: z.string().optional().describe("Fill as #rrggbb. Omit it and the diagram's theme decides."),
+            position: z
+              .object({ x: z.number(), y: z.number() })
+              .optional()
+              .describe(
+                "Pixel position. Leave it out — that is the normal case, and the server lays the flow out in layers. Send it only to place a node yourself.",
+              ),
+            width: z.number().optional().describe("Node width in pixels; derived from the label when omitted."),
+            height: z.number().optional(),
+          }),
+        )
+        .describe("Every box in the flow."),
+      edges: z
+        .array(
+          z.object({
+            from: z.string().describe("Node id, or the exact label of a node."),
+            to: z.string().describe("Node id, or the exact label of a node."),
+            label: z
+              .string()
+              .optional()
+              .describe("What the arrow means — the condition that takes the flow this way, e.g. 'errou 3x'."),
+            dashed: z.boolean().optional().describe("Dashed arrow, for a path that is optional or implicit."),
+          }),
+        )
+        .optional()
+        .describe("The arrows. A flow that loops back is fine — say it and the layout handles it."),
+    })
+    .nullable()
+    .optional()
+    .describe(
+      "The page's flowchart, the same diagram the app opens in its Diagramas view. Describe the LOGIC — the nodes and which one leads to which — and the server derives the layout. " +
+        "Writing one REPLACES the diagram saved on the page, so read the current one with get_section({ includeFlowchart: true }) before editing an existing flow; a node that keeps its id keeps the colour, size and position someone gave it in the editor. null clears the flowchart.",
+    );
+
   server.tool(
     "get_content_blocks_guide",
     "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
@@ -290,6 +365,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       status: PAGE_STATUS_FIELD,
       deckLayout: DECK_LAYOUT_FIELD,
       thumbImageUrl: THUMB_FIELD,
+      flowchart: FLOWCHART_FIELD,
       returning,
     },
     async ({ projectId, returning: returnMode, ...params }) => {
@@ -318,6 +394,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       status: PAGE_STATUS_FIELD,
       deckLayout: DECK_LAYOUT_FIELD,
       thumbImageUrl: THUMB_FIELD,
+      flowchart: FLOWCHART_FIELD,
       returning,
     },
     async ({ projectId, sectionId, returning: returnMode, ...fields }) => {
@@ -349,6 +426,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
             status: PAGE_STATUS_FIELD,
             deckLayout: DECK_LAYOUT_FIELD,
             thumbImageUrl: THUMB_FIELD,
+            flowchart: FLOWCHART_FIELD,
           }),
         )
         .describe("One entry per section to update (max 50)"),

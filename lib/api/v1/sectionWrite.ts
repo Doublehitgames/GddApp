@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
+import { buildFlowchartState, type FlowchartInput } from "@/lib/flowchart/flowchart";
 import { updateSectionSchema } from "./schemas";
 
 export type SectionUpdate = z.infer<typeof updateSectionSchema>;
@@ -38,7 +39,18 @@ export const BATCH_CONCURRENCY = 8;
  */
 export function buildSectionUpdates(
   fields: SectionUpdate,
-  ctx: { userId: string; now: string; userName?: string | null },
+  ctx: {
+    userId: string;
+    now: string;
+    userName?: string | null;
+    /**
+     * O `flowchart_state` salvo hoje. É dele que uma reescrita de fluxograma
+     * herda o viewport e o estilo de cada nó que sobreviveu, então quem chama
+     * com `flowchart` deve passá-lo — sem ele, a cor que alguém escolheu no
+     * editor se perde na primeira reescrita do agente.
+     */
+    previousFlowchart?: unknown;
+  },
 ): { updates: Record<string, unknown>; touched: string[] } {
   const updates: Record<string, unknown> = {
     updated_at: ctx.now,
@@ -76,6 +88,17 @@ export function buildSectionUpdates(
   }
   if (fields.deckLayout !== undefined) updates.deck_layout = fields.deckLayout;
   if (fields.thumbImageUrl !== undefined) updates.thumb_image_url = fields.thumbImageUrl;
+  if (fields.flowchart !== undefined) {
+    // null apaga: é assim que o app entende "esta página não tem fluxograma"
+    // (flowchartEnabled é derivado de flowchart_state != null na leitura).
+    updates.flowchart_state =
+      fields.flowchart === null
+        ? null
+        : buildFlowchartState(fields.flowchart as FlowchartInput, {
+            now: ctx.now,
+            previous: ctx.previousFlowchart,
+          });
+  }
 
   const touched = Object.keys(fields).filter((k) => k !== "sectionId" && fields[k as keyof SectionUpdate] !== undefined);
 

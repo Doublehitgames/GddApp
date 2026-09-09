@@ -52,6 +52,7 @@ claude mcp add gdd-manager -e GDD_API_KEY=gdd_sk_your_key_here -- npx -y @double
 - **Who you are** — `whoami` reports the account the key belongs to, how it authenticated, how many projects it owns versus how many were shared with it, and its effective limits.
 - **Projects and sections** — full CRUD (list, read, create, update, delete), plus `batch_update_sections` for writing many pages in one request.
 - **Rich descriptions** — write a page's description as BlockNote blocks (`contentBlocks`); `get_content_blocks_guide` explains the format on demand.
+- **Flowcharts** — a page's diagram, through the `flowchart` field on the section write tools: the assistant describes the nodes and which one leads to which, and the server works out the layout. `get_section({ includeFlowchart: true })` reads back a flow it should edit rather than replace.
 - **Page icons** — the project's Google Drive image library (`list_project_images`) plus `thumbImageUrl` on the section write tools, so the assistant can set a page's icon by itself.
 - **Shared projects** — everything above works on projects other people invited you to, and every project row says whether you are its `owner`, an `editor` or a `viewer`. `list_project_members` names the team; `list_recent_activity` shows what changed lately, who changed it, and whether it came from the app or through the API.
 - **Search** across your projects and sections.

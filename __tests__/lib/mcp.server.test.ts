@@ -213,7 +213,9 @@ describe("listings return index rows", () => {
     const h = harness({ listSections: [SECTION] });
     const out = (await h.call("list_sections", { projectId: "p1" })) as unknown as Record<string, unknown>[];
     expect(out[0]).toEqual({
-      id: "sec-1", title: "Galinha", order: undefined, hasDescription: true,
+      // hasFlowchart because the fixture carries a diagram — the flag is the
+      // whole point: the index says which pages have one and nothing more.
+      id: "sec-1", title: "Galinha", order: undefined, hasDescription: true, hasFlowchart: true,
     });
     expect(JSON.stringify(out)).not.toContain("bota ovos");
   });

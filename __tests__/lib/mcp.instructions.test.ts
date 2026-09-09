@@ -91,7 +91,16 @@ describe("server instructions", () => {
     // Raised from 2600 when the paragraph above was added: shared projects are
     // worth the ~130 characters, since the alternative is an agent planning a
     // rewrite it has no permission to save.
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(2800);
+    //
+    // Raised again from 2800 for FLOWCHARTS. Same reasoning: a page's diagram
+    // is invisible from the description, and an agent that is not told it
+    // exists reports back that the server cannot draw one.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(3300);
+  });
+
+  it("say that a page can carry a flowchart, and how to read it first", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/flowchart/i);
+    expect(SERVER_INSTRUCTIONS).toContain("includeFlowchart");
   });
 });
 

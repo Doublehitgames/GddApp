@@ -5,6 +5,11 @@
 import { z } from "zod";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
+import {
+  FLOWCHART_DIRECTIONS,
+  MAX_FLOWCHART_EDGES,
+  MAX_FLOWCHART_NODES,
+} from "@/lib/flowchart/flowchart";
 
 /** Maturidade da página. Enviar null tira o estado e apaga o carimbo. */
 export const pageStatusSchema = z.enum(
@@ -18,6 +23,46 @@ export const pageStatusSchema = z.enum(
 export const deckLayoutSchema = z.enum(
   DECK_LAYOUTS as unknown as [string, ...string[]]
 );
+
+/**
+ * O fluxograma da página, na forma que se descreve por escrito: os nós e quem
+ * aponta para quem. Posição é opcional — sem ela o servidor calcula o layout
+ * (lib/flowchart/flowchart.ts). Enviar null apaga o fluxograma.
+ *
+ * A validação aqui é de forma; quem checa se uma aresta aponta para um nó que
+ * existe é o construtor, que tem os dois lados na mão.
+ */
+export const flowchartSchema = z.object({
+  direction: z
+    .enum(FLOWCHART_DIRECTIONS as unknown as [string, ...string[]])
+    .optional(),
+  nodes: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(80).optional(),
+        label: z.string().max(200),
+        shape: z.string().max(30).optional(),
+        note: z.string().max(2000).optional(),
+        color: z.string().max(9).optional(),
+        position: z.object({ x: z.number(), y: z.number() }).optional(),
+        width: z.number().min(40).max(1200).optional(),
+        height: z.number().min(24).max(1200).optional(),
+      }),
+    )
+    .min(1)
+    .max(MAX_FLOWCHART_NODES),
+  edges: z
+    .array(
+      z.object({
+        from: z.string().min(1).max(200),
+        to: z.string().min(1).max(200),
+        label: z.string().max(120).optional(),
+        dashed: z.boolean().optional(),
+      }),
+    )
+    .max(MAX_FLOWCHART_EDGES)
+    .optional(),
+});
 
 // ── Projects ──────────────────────────────────────────────────────────
 
@@ -54,6 +99,7 @@ export const createSectionSchema = z.object({
   status: pageStatusSchema.nullable().optional().default(null),
   deckLayout: deckLayoutSchema.nullable().optional().default(null),
   thumbImageUrl: z.string().url().nullable().optional().default(null),
+  flowchart: flowchartSchema.nullable().optional(),
 });
 
 export const updateSectionSchema = z.object({
@@ -72,6 +118,7 @@ export const updateSectionSchema = z.object({
   status: pageStatusSchema.nullable().optional(),
   deckLayout: deckLayoutSchema.nullable().optional(),
   thumbImageUrl: z.string().url().nullable().optional(),
+  flowchart: flowchartSchema.nullable().optional(),
 });
 // ── Search ────────────────────────────────────────────────────────────
 

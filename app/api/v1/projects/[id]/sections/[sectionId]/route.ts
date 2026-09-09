@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/v1/helpers";
 import { updateSectionSchema } from "@/lib/api/v1/schemas";
 import { buildSectionUpdates } from "@/lib/api/v1/sectionWrite";
+import { FlowchartInputError } from "@/lib/flowchart/flowchart";
 import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
 import { DETAIL_DESCRIPTION, logApiSectionActivity, resolveActorName } from "@/lib/api/v1/activityLog";
 import { snapshotSectionVersions } from "@/lib/api/v1/sectionVersions";
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const sResult = await requireSection(auth.supabase, id, sectionId);
   if ("response" in sResult) return sResult.response;
 
-  return apiJson(sectionToApi(sResult.section));
+  return apiJson(sectionToApi(sResult.section, { flowchart: true }));
 }
 
 /**
@@ -89,7 +90,22 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   // The app shows the author's NAME on the page footer and in its history, so
   // the write stamps the name as well as the id.
   const actorName = await resolveActorName(auth.supabase, auth.userId);
-  const { updates } = buildSectionUpdates(parsed.data, { userId: auth.userId, now, userName: actorName });
+  let updates: Record<string, unknown>;
+  try {
+    ({ updates } = buildSectionUpdates(parsed.data, {
+      userId: auth.userId,
+      now,
+      userName: actorName,
+      // Reescrever o fluxograma preserva o estilo e as posições que alguém
+      // ajustou no editor, e para isso precisa do estado atual.
+      previousFlowchart: sResult.section.flowchart_state,
+    }));
+  } catch (e) {
+    if (e instanceof FlowchartInputError) {
+      return apiError(e.message, 400, "invalid_flowchart");
+    }
+    throw e;
+  }
 
   const { error } = await auth.supabase
     .from("sections")
@@ -159,7 +175,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     });
   }
 
-  return apiJson(sectionToApi(rows[0]));
+  return apiJson(sectionToApi(rows[0], { flowchart: true }));
 }
 
 /**
