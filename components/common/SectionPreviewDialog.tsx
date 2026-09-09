@@ -3,19 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 
-/**
- * Reduz markdown a uma linha de prosa curta, pra caber na previa do modal.
- */
-export function toShortDescription(raw: string): string {
-  const plain = (raw || "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[#>*`~_-]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!plain) return "";
-  return plain.length > 160 ? `${plain.slice(0, 157)}...` : plain;
-}
+/* A prosa curta que este modal mostra vem de `toPreviewText`, em
+   `lib/richDoc/previewText.ts` — é a régua única de prévia, e é ela que
+   garante que o texto de um spoiler não apareça num card onde não há o que
+   clicar para revelar. */
 
 interface SectionPreviewDialogProps {
   title: string;

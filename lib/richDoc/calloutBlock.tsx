@@ -97,5 +97,19 @@ export const CalloutBlock = createReactBlockSpec(
         </div>
       );
     },
+
+    /**
+     * O que o bloco vira fora do editor — o espelho markdown da página, e daí
+     * o export. Sem isto o espelho levava o ícone como parágrafo solto (um
+     * "⚠️" órfão) e perdia a variante, então um callout escrito no editor não
+     * voltava a ser callout. Com o marcador, `markdownToBlocks` reconstrói o
+     * bloco — é a mesma sintaxe que os prompts da IA ensinam.
+     */
+    toExternalHTML: ({ block, contentRef }) => (
+      <blockquote>
+        <p>{`[!${resolveVariant((block.props as { variant?: string }).variant).id}]`}</p>
+        <p ref={contentRef} />
+      </blockquote>
+    ),
   },
 );

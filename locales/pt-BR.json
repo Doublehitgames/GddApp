@@ -2002,6 +2002,10 @@
           "title": "Nota de balanceamento",
           "subtext": "Observação de playtest ou preocupação de balanceamento"
         }
+      },
+      "spoiler": {
+        "title": "Spoiler",
+        "subtext": "Conteúdo escondido — o leitor clica para revelar"
       }
     }
   },

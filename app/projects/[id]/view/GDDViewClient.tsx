@@ -17,6 +17,7 @@ import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { resolveProjectSpecialTokensForProject } from "@/lib/sections/specialTokens";
+import { toPreviewText } from "@/lib/richDoc/previewText";
 import {
   normalizeDocumentTheme,
   normalizeDocumentHeroThumbWidth,
@@ -117,20 +118,6 @@ function replaceReferenceTokens(text: string, sections: any[]): string {
     const normalizedRef = normalizeReferenceText(ref);
     return sectionByNormalizedName.get(normalizedRef)?.title || ref;
   });
-}
-
-function toAnchorPreviewMarkdown(value: string): string {
-  if (!value) return "";
-
-  return value
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-    .trim();
-}
-
-function truncatePreview(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
 function parseSpotlightDetails(lines: string[]): Array<{ label: string; value: string }> {
@@ -721,11 +708,10 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           : section?.content || "";
       const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project, section.id);
       const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionWithResolvedTokens, projectSections);
-      const markdownDescription = toAnchorPreviewMarkdown(descriptionWithResolvedReferences);
 
       map.set(section.id, {
         title,
-        shortDescription: truncatePreview(markdownDescription, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
+        shortDescription: toPreviewText(descriptionWithResolvedReferences, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
       });
     }
 

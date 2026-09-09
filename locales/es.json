@@ -2002,6 +2002,10 @@
           "title": "Nota de balance",
           "subtext": "Observación de playtest o preocupación de balance"
         }
+      },
+      "spoiler": {
+        "title": "Spoiler",
+        "subtext": "Contenido oculto — el lector hace clic para revelarlo"
       }
     }
   },

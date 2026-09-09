@@ -26,6 +26,7 @@ import DeckLayoutPicker from "@/components/deck/DeckLayoutPicker";
 import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
+import { toPreviewText } from "@/lib/richDoc/previewText";
 import {
   DndContext,
   closestCenter,
@@ -2392,14 +2393,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
   const handleClick = (link: { id: string; title: string }) => {
     const sec = sections.find((s: any) => s.id === link.id);
     const rawContent = typeof sec?.content === "string" ? sec.content : "";
-    const shortDescription = rawContent
-      .replace(/[$@]\[[^\]]*\]/g, "")
-      .replace(/^#{1,6}\s+/gm, "")
-      .replace(/[*_`>~|]/g, "")
-      .replace(/\n+/g, " ")
-      .trim()
-      .slice(0, 150);
-    setPending({ id: link.id, title: link.title, shortDescription });
+    setPending({ id: link.id, title: link.title, shortDescription: toPreviewText(rawContent, 150) });
   };
 
   const navigate = (id: string) => {

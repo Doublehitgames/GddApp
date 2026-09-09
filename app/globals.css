@@ -431,6 +431,77 @@ body {
   --callout-accent: #047857;
 }
 
+/* /spoiler custom block — a framed aside the reader opens on purpose (the
+   answer to a puzzle, the safe combination). Dashed frame + lock bar so it
+   reads as "something is behind this". These rules dress the block inside
+   the editor, where it is always open; the closed/reveal state belongs to
+   the read-only renderer in components/BlocksReadOnly.tsx. */
+.rich-doc-spoiler {
+  margin: 4px 0;
+  border: 1px dashed var(--spoiler-border, rgba(148, 163, 184, 0.55));
+  border-radius: 8px;
+  background: var(--spoiler-bg, rgba(30, 41, 59, 0.4));
+  overflow: hidden;
+}
+.rich-doc-spoiler-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  user-select: none;
+}
+.rich-doc-spoiler[data-open="true"] .rich-doc-spoiler-bar {
+  border-bottom: 1px dashed var(--spoiler-border, rgba(148, 163, 184, 0.4));
+}
+.rich-doc-spoiler-lock {
+  font-size: 15px;
+  line-height: 1.4;
+}
+/* The label reads as part of the document, not as a form field — no box,
+   no background, until you hover or focus it. */
+.rich-doc-spoiler-label-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.rich-doc-spoiler-label-input::placeholder {
+  opacity: 0.5;
+  font-weight: 500;
+}
+.rich-doc-spoiler-label-input:hover,
+.rich-doc-spoiler-label-input:focus {
+  background: rgba(148, 163, 184, 0.14);
+}
+.rich-doc-spoiler-toggle {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rich-doc-spoiler-content {
+  padding: 8px 12px 10px;
+  line-height: 1.55;
+  outline: none;
+}
+.rich-doc-readonly-host[data-theme="light"] .rich-doc-spoiler {
+  --spoiler-border: rgba(100, 116, 139, 0.5);
+  --spoiler-bg: rgba(100, 116, 139, 0.08);
+}
+
 /* Tables: stretch the wrapper to the full container width and force the
    table to fill it. Column widths stored by BlockNote (from the resize
    handles) are honoured proportionally under `table-layout: fixed`, so

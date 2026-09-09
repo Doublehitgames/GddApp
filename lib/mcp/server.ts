@@ -54,7 +54,8 @@ const CONTENT_BLOCKS_GUIDE =
   "\n• checkListItem — { type:'checkListItem', props:{checked:false}, content:[...inline], children:[] }" +
   "\n• quote — { type:'quote', content:[...inline], children:[] }" +
   "\n• codeBlock — { type:'codeBlock', props:{language:'javascript'}, content:[{type:'text',text:'...'}], children:[] }" +
-  "\n• callout — { type:'callout', props:{emoji:'💡',variant:'info'|'warning'|'error'|'success'}, content:[...inline], children:[] }" +
+  "\n• callout — { type:'callout', props:{variant:'note'|'warning'|'design-decision'|'balance-note'}, content:[...inline], children:[] } — the icon comes from the variant, there is no emoji prop. In markdown: `> [!warning]` and the text on the next `> ` line." +
+  "\n• spoiler — { type:'spoiler', props:{label:'Senha do cofre'}, content:[...inline], children:[] } — closed on the page: the reader sees only the label and clicks to reveal the content. Use it for what a reader may not want handed to them — the answer to a puzzle, a plot twist — so the page can hold both the guide and the solution. In markdown: `> [!spoiler] Senha do cofre` and the hidden text on the next `> ` line." +
   "\n• image — { type:'image', props:{url:'https://...',caption:'',width:512}, content:[], children:[] }" +
   "\n• table — { type:'table', content:{type:'tableContent',rows:[{cells:[[...inline],[...inline]]}]}, children:[] }" +
   "\n\nINLINE CONTENT (used in `content` arrays of most blocks):" +
@@ -62,7 +63,7 @@ const CONTENT_BLOCKS_GUIDE =
   "\n• Link: { type:'link', href:'https://...', content:[text nodes] }" +
   "\n• Section cross-reference: write $[Section Name] as plain text inside a text node — it renders as a clickable link to that section." +
   "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
-  '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"emoji":"⚠️","variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
+  '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
 
 const CONTENT_FIELD = z
   .string()

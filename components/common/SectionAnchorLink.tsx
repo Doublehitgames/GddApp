@@ -4,7 +4,8 @@ import { useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { sectionPathById } from "@/lib/utils/slug";
-import { SectionPreviewDialog, toShortDescription } from "./SectionPreviewDialog";
+import { SectionPreviewDialog } from "./SectionPreviewDialog";
+import { toPreviewText } from "@/lib/richDoc/previewText";
 
 type Pending = { sectionId: string; title: string; shortDescription: string };
 
@@ -96,7 +97,7 @@ export function SectionAnchorLink({
           setPending({
             sectionId,
             title: meta.title,
-            shortDescription: toShortDescription(meta.content),
+            shortDescription: toPreviewText(meta.content),
           });
         }}
         className={`${baseClass} ${className || ""}`}

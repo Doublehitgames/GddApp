@@ -21,10 +21,12 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useProjectStore, Section, Project, MindMapSettings } from "@/store/projectStore";
 import { sectionPathById, projectPath } from "@/lib/utils/slug";
-import { extractSectionReferences, findSection, getBacklinks, SectionReference } from "@/utils/sectionReferences";
-import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
+import { extractSectionReferences, findSection, getBacklinks } from "@/utils/sectionReferences";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
-import { SectionPreviewDialog, toShortDescription } from "@/components/common/SectionPreviewDialog";
+import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
+import { toPreviewText } from "@/lib/richDoc/previewText";
+import type { RichDocBlock } from "@/lib/richDoc/types";
+import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import { PAGE_STATUSES, PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import {
   DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
@@ -37,9 +39,6 @@ import { ProjectTopBar, IconeMapa } from "@/components/project/ProjectTopBar";
 import PageModeLinks from "@/components/project/PageModeLinks";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import * as d3 from "d3-force";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 
 interface MindMapClientProps {
   projectId: string;
@@ -973,146 +972,52 @@ const ProjectNode = memo(function ProjectNode({ data }: { data: any }) {
   );
 });
 
-// Componente para renderizar markdown com referências clicáveis no mapa mental
-function MarkdownWithMapReferences({
-  content,
-  sections,
-  onSectionClick,
-  heroThumbUrl,
-  heroThumbWidth,
-}: {
-  content: string;
-  sections: Section[];
-  onSectionClick: (sectionId: string) => void;
-  heroThumbUrl?: string | null;
-  heroThumbWidth?: number;
-}) {
-  const normalizeContentForMapMarkdown = (input: string): string => {
-    const normalized = input.replace(/\r\n/g, "\n");
+/**
+ * Conteúdo tabulado colado de planilha: quando TODA linha com texto tem tab e
+ * não há um único `|`, vira tabela markdown. É legado de páginas antigas do
+ * mapa, mantido aqui porque só este painel via esse tipo de colagem.
+ */
+function normalizeContentForMapMarkdown(input: string): string {
+  const normalized = (input || "").replace(/\r\n/g, "\n");
 
-    const meaningfulLines = normalized.split("\n").filter((line) => line.trim().length > 0);
-    const tabLines = meaningfulLines.filter((line) => line.includes("\t"));
+  const meaningfulLines = normalized.split("\n").filter((line) => line.trim().length > 0);
+  const tabLines = meaningfulLines.filter((line) => line.includes("\t"));
 
-    const shouldConvertTsvToTable =
-      meaningfulLines.length >= 2 &&
-      tabLines.length === meaningfulLines.length &&
-      !normalized.includes("|");
+  const shouldConvertTsvToTable =
+    meaningfulLines.length >= 2 &&
+    tabLines.length === meaningfulLines.length &&
+    !normalized.includes("|");
 
-    if (!shouldConvertTsvToTable) {
-      return normalized;
-    }
+  if (!shouldConvertTsvToTable) {
+    return normalized;
+  }
 
-    const rows = meaningfulLines.map((line) =>
-      line
-        .split("\t")
-        .map((cell) => cell.trim())
-        .filter((cell, index, array) => !(index === array.length - 1 && cell === ""))
-    );
+  const rows = meaningfulLines.map((line) =>
+    line
+      .split("\t")
+      .map((cell) => cell.trim())
+      .filter((cell, index, array) => !(index === array.length - 1 && cell === ""))
+  );
 
-    const columnCount = Math.max(...rows.map((row) => row.length));
-    if (columnCount < 2) {
-      return normalized;
-    }
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  if (columnCount < 2) {
+    return normalized;
+  }
 
-    const padRow = (row: string[]) => {
-      const padded = [...row];
-      while (padded.length < columnCount) padded.push("");
-      return padded;
-    };
-
-    const header = padRow(rows[0]);
-    const body = rows.slice(1).map(padRow);
-
-    const headerLine = `| ${header.join(" | ")} |`;
-    const separatorLine = `| ${new Array(columnCount).fill("---").join(" | ")} |`;
-    const bodyLines = body.map((row) => `| ${row.join(" | ")} |`);
-
-    return [headerLine, separatorLine, ...bodyLines].join("\n");
+  const padRow = (row: string[]) => {
+    const padded = [...row];
+    while (padded.length < columnCount) padded.push("");
+    return padded;
   };
 
-  const normalizedContent = normalizeContentForMapMarkdown(content);
+  const header = padRow(rows[0]);
+  const body = rows.slice(1).map(padRow);
 
-  // Processar conteúdo substituindo referências por links clicáveis
-  const processedContent = normalizedContent.replace(/\$\[([^\]]+)\]/g, (match, ref) => {
-    const rawContent = ref.trim();
-    const isId = rawContent.startsWith('#');
-    
-    // Criar objeto SectionReference conforme esperado pela função findSection
-    const sectionRef: SectionReference = {
-      raw: match,
-      refType: isId ? 'id' : 'name',
-      refValue: isId ? rawContent.substring(1) : rawContent,
-      startIndex: 0,
-      endIndex: 0
-    };
-    
-    const section = findSection(sections, sectionRef);
-    if (section) {
-      return `[${section.title}](#ref-${section.id})`;
-    }
-    return match;
-  });
+  const headerLine = `| ${header.join(" | ")} |`;
+  const separatorLine = `| ${new Array(columnCount).fill("---").join(" | ")} |`;
+  const bodyLines = body.map((row) => `| ${row.join(" | ")} |`);
 
-  return (
-    <div className="prose max-w-none markdown-with-refs overflow-x-auto text-gray-700">
-      {heroThumbUrl && heroThumbWidth ? (
-        <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
-      ) : null}
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw as any]}
-        allowedElements={[
-          "p", "br", "strong", "em", "u", "del", "code", "pre", "blockquote",
-          "ul", "ol", "li",
-          "h1", "h2", "h3", "h4", "h5", "h6",
-          "a", "span", "img",
-          "table", "thead", "tbody", "tr", "th", "td",
-        ]}
-        unwrapDisallowed
-        components={{
-          img: ({ src, alt }) => {
-            const safeSrc = typeof src === "string" ? src.trim() : "";
-            if (!safeSrc) return null;
-            const displaySrc = getDriveImageDisplayUrl(safeSrc);
-            return (
-              <img
-                src={displaySrc}
-                alt={alt || ""}
-                className="max-w-full h-auto rounded-md my-3"
-                loading="lazy"
-              />
-            );
-          },
-          a: ({ node, href, children, ...props }) => {
-            // Se é uma referência de seção
-            if (href && href.startsWith('#ref-')) {
-              const sectionId = href.replace('#ref-', '');
-              return (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSectionClick(sectionId);
-                  }}
-                  className="text-blue-600 hover:text-blue-700 underline cursor-pointer"
-                >
-                  {children}
-                </button>
-              );
-            }
-            // Link normal
-            return (
-              <a href={href} {...props} className="text-blue-600 hover:text-blue-700">
-                {children}
-              </a>
-            );
-          },
-        }}
-      >
-        {processedContent}
-      </ReactMarkdown>
-      {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}
-    </div>
-  );
+  return [headerLine, separatorLine, ...bodyLines].join("\n");
 }
 
 // Publica o zoom atual numa CSS var, pra as labels se contra-escalarem e ficarem
@@ -2453,6 +2358,22 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     }
   }, [nodes, config, setCenter, project]);
 
+  // O painel lê a descrição pelo renderizador compartilhado, como as outras
+  // telas de leitura — antes ele montava markdown cru na mão e por isso um
+  // spoiler chegava aberto, um callout virava citação e um embed sumia. A
+  // página do centro guarda os blocos dela no próprio projeto; o markdown vai
+  // junto como espelho, e o renderizador converte o que faltar.
+  const painel = useMemo(() => {
+    if (!selectedNode) return { blocos: undefined as RichDocBlock[] | undefined, markdown: "" };
+    const blocos =
+      selectedNode.id === "project"
+        ? (project?.contentBlocks as RichDocBlock[] | undefined)
+        : ((selectedNode as Section).contentBlocks as RichDocBlock[] | undefined);
+    return { blocos, markdown: normalizeContentForMapMarkdown(selectedNode.content || "") };
+  }, [selectedNode, project]);
+  const painelTemDescricao =
+    (painel.blocos?.length ?? 0) > 0 || painel.markdown.trim().length > 0;
+
   // Clicar numa referencia NAO salta direto: abre a previa e espera confirmacao.
   // Saltar na hora fazia o usuario perder de vista onde estava — o mapa some
   // debaixo dele e nao ha titulo de pagina pra ancorar, so bolinhas.
@@ -2462,7 +2383,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     setPendingReference({
       sectionId,
       title: section.title || sectionId,
-      description: toShortDescription(section.content || ""),
+      description: toPreviewText(section.content || ""),
     });
   }, [project]);
 
@@ -2985,15 +2906,19 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
               <div className="min-w-0 flex-1">
             <div className="prose max-w-none text-gray-700" style={{ fontSize: `${panelContentScale}em` }}>
-              {selectedNode.content ? (
-                <MarkdownWithMapReferences
-                  content={selectedNode.content}
+              {painelTemDescricao ? (
+                <SectionDescriptionReadOnly
+                  blocks={painel.blocos}
+                  markdown={painel.markdown}
+                  projectId={project.id}
                   sections={project.sections || []}
-                  onSectionClick={handleReferenceClick}
+                  currentSectionId={selectedNode.id !== "project" ? selectedNode.id : undefined}
+                  theme="light"
                   heroThumbUrl={
                     selectedNode.id !== "project" ? (selectedNode as Section).thumbImageUrl : undefined
                   }
                   heroThumbWidth={heroThumbWidth}
+                  onReferenceClick={handleReferenceClick}
                 />
               ) : (
                 <>

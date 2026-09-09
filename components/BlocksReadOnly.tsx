@@ -9,6 +9,7 @@
 import React from "react";
 import { toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { CALLOUT_VARIANTS, type CalloutVariantId } from "@/lib/richDoc/calloutBlock";
+import { spoilerLabelOf } from "@/lib/richDoc/spoilerBlock";
 
 // ─── Types (minimal subset of what BlockNote persists) ────────────────────────
 
@@ -178,6 +179,50 @@ function inlineOf(b: Block): InlineNode[] {
   return Array.isArray(b.content) ? (b.content as InlineNode[]) : [];
 }
 
+/**
+ * Spoiler block — closed until the reader asks for it. This is the reading
+ * side of `lib/richDoc/spoilerBlock.tsx`: someone documenting a puzzle can
+ * keep the answer on the page without putting it in the eye of a reader who
+ * only wanted the walkthrough.
+ */
+function SpoilerView({
+  label,
+  dark,
+  children,
+}: {
+  label: string;
+  dark: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const frame = open
+    ? dark
+      ? "border-gray-700 bg-gray-800/40"
+      : "border-gray-300 bg-gray-50"
+    : dark
+      ? "border-dashed border-gray-600 bg-gray-800/60"
+      : "border-dashed border-gray-400 bg-gray-100";
+  return (
+    <div className={`my-2 rounded-lg border ${frame}`}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium ${
+          dark ? "text-gray-300 hover:text-gray-100" : "text-gray-700 hover:text-gray-900"
+        }`}
+      >
+        <span aria-hidden="true">{open ? "🔓" : "🔒"}</span>
+        <span>{label}</span>
+        <span className="ml-auto text-xs opacity-60" aria-hidden="true">
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+      {open && <div className="px-3 pb-3 text-sm leading-relaxed">{children}</div>}
+    </div>
+  );
+}
+
 function Block({ b, dark }: { b: Block; dark: boolean }) {
   const p = b.props;
   const nodes = inlineOf(b);
@@ -272,6 +317,23 @@ function Block({ b, dark }: { b: Block; dark: boolean }) {
         </div>
       );
     }
+
+    case "spoiler":
+      return (
+        // A chave carrega a identidade do spoiler de propósito. Sem ela, trocar
+        // de página reaproveita esta instância — os blocos são renderizados por
+        // índice — e o "revelado" da página anterior vem junto: o leitor abre
+        // uma página nova e o segredo dela já está na tela.
+        <SpoilerView
+          key={`${spoilerLabelOf(p)}|${nodes.map((n) => (n as StyledText).text ?? "").join("")}`}
+          label={spoilerLabelOf(p)}
+          dark={dark}
+        >
+          <div className={ac} style={bs}>
+            <Inline nodes={nodes} dark={dark} />{kids}
+          </div>
+        </SpoilerView>
+      );
 
     case "table": {
       const tc = b.content as TableContent | undefined;

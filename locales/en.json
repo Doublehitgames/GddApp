@@ -2002,6 +2002,10 @@
           "title": "Balance note",
           "subtext": "Playtesting observation or balance concern"
         }
+      },
+      "spoiler": {
+        "title": "Spoiler",
+        "subtext": "Hidden content — the reader clicks to reveal it"
       }
     }
   },

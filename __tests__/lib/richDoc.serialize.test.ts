@@ -155,3 +155,56 @@ describe("richDocToMarkdown", () => {
     expect(richDocToMarkdown(blocks)).toBe("preserved");
   });
 });
+
+describe("richDocToMarkdown — spoiler", () => {
+  it("reveals the text but keeps the marker and the label", () => {
+    const blocks = [
+      {
+        type: "spoiler",
+        props: { label: "Senha do cofre" },
+        content: [{ type: "text", text: "4-7-1-9" }],
+      },
+    ];
+    expect(richDocToMarkdown(blocks)).toBe("> [!spoiler] Senha do cofre\n> 4-7-1-9");
+  });
+
+  it("labels an unlabelled spoiler so the reader still knows what it is", () => {
+    const blocks = [{ type: "spoiler", props: {}, content: [{ type: "text", text: "segredo" }] }];
+    expect(richDocToMarkdown(blocks)).toBe("> [!spoiler] Spoiler\n> segredo");
+  });
+
+  it("quotes nested blocks too, so nothing escapes the spoiler", () => {
+    const blocks = [
+      {
+        type: "spoiler",
+        props: { label: "Passos" },
+        content: [{ type: "text", text: "Na ordem:" }],
+        children: [
+          { type: "bulletListItem", content: [{ type: "text", text: "girar a estátua" }] },
+          { type: "bulletListItem", content: [{ type: "text", text: "puxar a alavanca" }] },
+        ],
+      },
+    ];
+    expect(richDocToMarkdown(blocks)).toBe(
+      "> [!spoiler] Passos\n> Na ordem:\n> - girar a estátua\n> - puxar a alavanca",
+    );
+  });
+});
+
+describe("richDocToMarkdown — callout", () => {
+  it("escreve o marcador da variante, para o bloco voltar a ser callout", () => {
+    const blocks = [
+      {
+        type: "callout",
+        props: { variant: "warning" },
+        content: [{ type: "text", text: "Não solte o boss antes da cutscene." }],
+      },
+    ];
+    expect(richDocToMarkdown(blocks)).toBe("> [!warning]\n> Não solte o boss antes da cutscene.");
+  });
+
+  it("cai na variante padrão quando o bloco não traz uma", () => {
+    const blocks = [{ type: "callout", content: [{ type: "text", text: "aviso" }] }];
+    expect(richDocToMarkdown(blocks)).toBe("> [!note]\n> aviso");
+  });
+});

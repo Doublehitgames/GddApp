@@ -19,6 +19,7 @@ import {
 import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { CalloutBlock, CALLOUT_VARIANTS, type CalloutVariant } from "@/lib/richDoc/calloutBlock";
+import { SpoilerBlock } from "@/lib/richDoc/spoilerBlock";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -49,6 +50,7 @@ const schema = BlockNoteSchema.create({
     ...defaultBlockSpecs,
     embed: EmbedBlock(),
     callout: CalloutBlock(),
+    spoiler: SpoilerBlock(),
   },
 });
 
@@ -204,9 +206,27 @@ export default function RichDocEditor({
           );
         },
       }));
+      // Spoiler rides in the same group as the callouts: it is the same
+      // family of block (a framed aside), only one the reader opens.
+      const spoilerItem = {
+        key: "spoiler",
+        title: t("blockEditor.slashMenu.spoiler.title", "Spoiler"),
+        subtext: t(
+          "blockEditor.slashMenu.spoiler.subtext",
+          "Hidden content — the reader clicks to reveal it",
+        ),
+        aliases: ["spoiler", "hidden", "escondido", "revelar", "reveal", "segredo", "solucao", "resposta"],
+        group: calloutsGroup,
+        icon: <span style={{ fontSize: 18 }}>🔒</span>,
+        onItemClick: () => {
+          const cursor = editor.getTextCursorPosition().block;
+          editor.insertBlocks([{ type: "spoiler", props: { label: "" } }], cursor, "after");
+        },
+      };
+      const asideItems = [...calloutItems, spoilerItem];
       const combined = lastMediaIdx >= 0
-        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), ...calloutItems]
-        : [...defaults, embedItem, driveImageItem, ...calloutItems];
+        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), ...asideItems]
+        : [...defaults, embedItem, driveImageItem, ...asideItems];
       return filterSuggestionItems(combined, query);
     };
   }, [editor, mediaGroupLabel, t]);

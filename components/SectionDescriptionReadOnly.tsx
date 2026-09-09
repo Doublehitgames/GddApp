@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { RichDocBlock } from "@/lib/richDoc/types";
@@ -13,6 +12,8 @@ import {
   type SectionLike,
 } from "@/lib/richDoc/transformRefs";
 import { resolveTokensInBlocks } from "@/lib/richDoc/resolveTokens";
+import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
+import { toPreviewText } from "@/lib/richDoc/previewText";
 import type { ProjectTokenSource } from "@/lib/sections/specialTokens";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
@@ -37,11 +38,6 @@ function normalizeDriveImages(blocks: RichDocBlock[]): RichDocBlock[] {
     return next;
   });
 }
-
-const RichDocEditor = dynamic(() => import("@/components/RichDocEditor"), {
-  ssr: false,
-  loading: () => <div className="min-h-[40px] text-xs text-gray-500">…</div>,
-});
 
 interface AnchorPreview {
   title: string;
@@ -79,15 +75,26 @@ interface SectionDescriptionReadOnlyProps {
    * reference is not a dead click there.
    */
   onReferenceNavigate?: (sectionId: string) => void;
+  /**
+   * Takes over the whole click on a `$[reference]` — preview card included, so
+   * this component shows none of its own. The mind map passes it: it already
+   * has its own preview ("go to the dot") and a back trail this component
+   * knows nothing about.
+   */
+  onReferenceClick?: (sectionId: string) => void;
 }
 
 /**
- * Read-only renderer for a section description, rendering native BlockNote
- * blocks (the Fase 2 replacement for MarkdownWithReferences). Reuses the shared
- * RichDocEditor in non-editable mode — the same proven path the editor
- * read-only view already uses — so embeds, callouts, images and tables render
- * with full parity. Descriptions not yet migrated fall back to parsing their
- * markdown mirror once, on the fly.
+ * Read-only renderer for a section description: every screen that shows a page
+ * without editing it comes through here — documento, deck, gerenciador, painel
+ * do mapa mental.
+ *
+ * Renderiza com BlocksReadOnly, e só. Já foi um editor BlockNote em modo
+ * não-editável, o que custava um import dinâmico e uma inicialização de editor
+ * a cada leitura, e trazia o parser de markdown dele junto — o que abria
+ * spoiler na tela, porque aquele parser não conhece a sintaxe do bloco.
+ * Descrição que só tem o espelho markdown passa pelo parser da casa,
+ * `lib/richDoc/markdownToBlocks.ts`.
  */
 export default function SectionDescriptionReadOnly({
   blocks,
@@ -103,6 +110,7 @@ export default function SectionDescriptionReadOnly({
   documentAnchorOffset = 180,
   resolveDocumentAnchorPreview,
   onReferenceNavigate,
+  onReferenceClick,
 }: SectionDescriptionReadOnlyProps) {
   const router = useRouter();
   const { t } = useI18n();
@@ -110,65 +118,27 @@ export default function SectionDescriptionReadOnly({
   const project = projects.find((p) => p.id === projectId);
   const isDocumentMode = referenceLinkMode === "document";
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<any>(null);
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
   const anchorCardRef = useRef<HTMLDivElement>(null);
 
-  // Fast path: when blocks are available, process them synchronously and render
-  // with BlocksReadOnly — no dynamic import, no editor init, instant display.
+  // Bloco é a fonte da verdade; página que só tem o espelho markdown (legado,
+  // ou escrita pela API antes de passar pelo editor) é convertida aqui, pelo
+  // parser da casa. Ler nunca carrega o editor: nem import dinâmico, nem
+  // inicialização de BlockNote, nem o `[!spoiler]` virando texto na tela
+  // porque o parser do editor não conhece a sintaxe.
   const processedBlocks = useMemo(() => {
-    if (!Array.isArray(blocks) || blocks.length === 0) return null;
-    const tokenSource = projectTokenSource ?? { sections: sections as never[] };
-    const resolved = resolveTokensInBlocks(blocks, tokenSource, currentSectionId);
-    const withImages = normalizeDriveImages(resolved as RichDocBlock[]);
-    return transformRichDocRefs(withImages, sections);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, sections, currentSectionId, projectTokenSource?.updatedAt]);
-
-  // Build the final, render-ready block tree: blocks-or-parsed-markdown →
-  // resolve @[tokens] → rewrite $[refs] into internal link nodes.
-  const buildBlocks = (editor: any): RichDocBlock[] => {
-    let base: RichDocBlock[] = Array.isArray(blocks) && blocks.length > 0 ? blocks : [];
+    let base: RichDocBlock[] =
+      Array.isArray(blocks) && blocks.length > 0 ? (blocks as RichDocBlock[]) : [];
     if (base.length === 0 && markdown && markdown.trim()) {
-      try {
-        base = (editor.tryParseMarkdownToBlocks(markdown) as RichDocBlock[]) || [];
-      } catch (e) {
-        console.error("[sectionDescRead] markdown→blocks failed:", e);
-        base = [];
-      }
+      base = markdownToBlocks(markdown) as unknown as RichDocBlock[];
     }
+    if (base.length === 0) return null;
     const tokenSource = projectTokenSource ?? { sections: sections as never[] };
     const resolved = resolveTokensInBlocks(base, tokenSource, currentSectionId);
     const withImages = normalizeDriveImages(resolved as RichDocBlock[]);
     return transformRichDocRefs(withImages, sections);
-  };
-
-  const seed = (editor: any) => {
-    try {
-      const next = buildBlocks(editor);
-      editor.replaceBlocks(editor.document, next.length ? next : [{ type: "paragraph" } as RichDocBlock]);
-    } catch (e) {
-      console.error("[sectionDescRead] seed failed:", e);
-    }
-  };
-
-  const handleReady = (editor: any) => {
-    editorRef.current = editor;
-    seed(editor);
-  };
-
-  // Re-seed when the source content or resolution inputs change.
-  const depsKey = JSON.stringify({
-    b: blocks ?? null,
-    m: markdown ?? null,
-    s: sections.map((s) => [s.id, s.title]),
-    cur: currentSectionId ?? null,
-    u: projectTokenSource?.updatedAt ?? null,
-  });
-  useEffect(() => {
-    if (editorRef.current) seed(editorRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [depsKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, markdown, sections, currentSectionId, projectTokenSource?.updatedAt]);
 
   // Dismiss the anchor-preview popup on outside click / Escape.
   useEffect(() => {
@@ -211,6 +181,11 @@ export default function SectionDescriptionReadOnly({
     const sectionId = href.slice(SECTION_REF_HREF_PREFIX.length);
     if (!sectionId) return;
 
+    if (onReferenceClick) {
+      onReferenceClick(sectionId);
+      return;
+    }
+
     if (isDocumentMode) {
       const preview = resolveDocumentAnchorPreview?.(sectionId) || null;
       if (preview) {
@@ -226,14 +201,7 @@ export default function SectionDescriptionReadOnly({
     const targetSection = (fullProject?.sections as any[])?.find((s: any) => s.id === sectionId);
     const title = targetSection?.title || sections.find((s) => s.id === sectionId)?.title || "";
     const rawContent = typeof targetSection?.content === "string" ? targetSection.content : "";
-    const shortDescription = rawContent
-      .replace(/[$@]\[[^\]]*\]/g, "")
-      .replace(/^#{1,6}\s+/gm, "")
-      .replace(/[*_`>~|]/g, "")
-      .replace(/\n+/g, " ")
-      .trim()
-      .slice(0, 150);
-    setPendingAnchor({ sectionId, title, shortDescription });
+    setPendingAnchor({ sectionId, title, shortDescription: toPreviewText(rawContent, 150) });
   };
 
   return (
@@ -241,11 +209,7 @@ export default function SectionDescriptionReadOnly({
       {heroThumbUrl && heroThumbWidth ? (
         <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
       ) : null}
-      {processedBlocks ? (
-        <BlocksReadOnly blocks={processedBlocks as any} theme={theme} />
-      ) : (
-        <RichDocEditor blocks={[]} editable={false} theme={theme} onReady={handleReady} />
-      )}
+      {processedBlocks ? <BlocksReadOnly blocks={processedBlocks as any} theme={theme} /> : null}
       {/* Fecha o float da hero thumb: sem isto, uma descrição mais curta que a
           imagem deixa o float vazar e o próximo título/thumb sai indentado. */}
       {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}

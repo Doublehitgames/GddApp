@@ -145,6 +145,31 @@ function renderBlocks(
     } else if (type === "embed") {
       const url = typeof props.url === "string" ? props.url : "";
       if (url) out.push(`[Embed: ${url}](${url})\n\n`);
+    } else if (type === "callout") {
+      // Mesma sintaxe de ida e volta do spoiler, só que sem esconder nada.
+      const variant = typeof props.variant === "string" ? props.variant : "note";
+      const quoted = text
+        ? text.split("\n").map((l) => (l ? `> ${l}` : ">")).join("\n")
+        : "";
+      out.push(`> [!${variant}]\n${quoted ? `${quoted}\n` : ""}\n`);
+    } else if (type === "spoiler") {
+      // Markdown cannot be clicked open, so the text is revealed — but the
+      // `[!spoiler]` marker and the label stay, both to warn the reader and
+      // so markdownToBlocks can read it back as a spoiler block.
+      const label =
+        typeof props.label === "string" && props.label.trim() ? props.label.trim() : "Spoiler";
+      const inner: string[] = [];
+      if (text) inner.push(`${text}\n`);
+      if (Array.isArray(block.children) && block.children.length) {
+        renderBlocks(block.children, inner, 0, null);
+      }
+      const body = inner
+        .join("")
+        .trimEnd()
+        .split("\n")
+        .map((l) => (l ? `> ${l}` : ">"))
+        .join("\n");
+      out.push(`> [!spoiler] ${label}\n${body ? `${body}\n` : ""}\n`);
     } else if (type === "table") {
       out.push(renderTable(block.content));
     } else {
