@@ -20,6 +20,12 @@ import * as bnLocales from "@blocknote/core/locales";
 import { EmbedBlock, toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { CalloutBlock, CALLOUT_VARIANTS, type CalloutVariant } from "@/lib/richDoc/calloutBlock";
 import { SpoilerBlock } from "@/lib/richDoc/spoilerBlock";
+import {
+  withMultiColumn,
+  multiColumnDropCursor,
+  getMultiColumnSlashMenuItems,
+  locales as multiColumnLocales,
+} from "@blocknote/xl-multi-column";
 import { openGoogleDriveImagePicker, driveFileIdToImageUrl } from "@/lib/googleDrivePicker";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -45,25 +51,44 @@ function toInitialContent(blocks: RichDocBlock[]): PartialBlock[] | undefined {
   return blocks as unknown as PartialBlock[];
 }
 
-const schema = BlockNoteSchema.create({
-  blockSpecs: {
-    ...defaultBlockSpecs,
-    embed: EmbedBlock(),
-    callout: CalloutBlock(),
-    spoiler: SpoilerBlock(),
-  },
-});
+// `withMultiColumn` adds the `columnList`/`column` pair on top of our own
+// blocks, which is what lets content sit side by side — an image next to the
+// text that explains it, three short columns in a row. Whatever renders blocks
+// outside the editor has to know the pair too: `components/BlocksReadOnly.tsx`.
+const schema = withMultiColumn(
+  BlockNoteSchema.create({
+    blockSpecs: {
+      ...defaultBlockSpecs,
+      embed: EmbedBlock(),
+      callout: CalloutBlock(),
+      spoiler: SpoilerBlock(),
+    },
+  }),
+);
 
-/** Map the app locale to a BlockNote bundled dictionary. The package
- *  ships a generic Portuguese (`pt`) — close enough for pt-BR — and
- *  Spanish (`es`); anything else falls back to English. */
-function pickBlockNoteDictionary(locale: string) {
+/** Map the app locale to the BlockNote bundled dictionaries. The packages
+ *  ship a generic Portuguese (`pt`) — close enough for pt-BR — and
+ *  Spanish (`es`); anything else falls back to English. The column strings
+ *  come from their own package and ride along under `multi_column`. */
+function pickDictionaries(locale: string) {
   const head = locale.toLowerCase().split(/[-_]/)[0];
   switch (head) {
-    case "pt": return bnLocales.pt;
-    case "es": return bnLocales.es;
-    default: return bnLocales.en;
+    case "pt": return { base: bnLocales.pt, columns: multiColumnLocales.pt };
+    case "es": return { base: bnLocales.es, columns: multiColumnLocales.es };
+    default: return { base: bnLocales.en, columns: multiColumnLocales.en };
   }
+}
+
+/** Insert `items` right after the LAST item of `group`. Appending them to the
+ *  end instead splits the group in two, and BlockNote then pushes the group
+ *  label twice — twice with the same React key. */
+function insertAfterGroup<T, U>(list: T[], group: string, items: U[]): (T | U)[] {
+  for (let i = list.length - 1; i >= 0; i--) {
+    if ((list[i] as { group?: string }).group === group) {
+      return [...list.slice(0, i + 1), ...items, ...list.slice(i + 1)];
+    }
+  }
+  return [...list, ...items];
 }
 
 export default function RichDocEditor({
@@ -75,13 +100,22 @@ export default function RichDocEditor({
   onReady,
 }: RichDocEditorProps) {
   const { locale, t } = useI18n();
-  const dictionary = useMemo(() => pickBlockNoteDictionary(locale), [locale]);
+  const dictionary = useMemo(() => {
+    const { base, columns } = pickDictionaries(locale);
+    return { ...base, multi_column: columns };
+  }, [locale]);
   const mediaGroupLabel = (dictionary.slash_menu?.image?.group as string | undefined) || "Media";
+  const basicGroupLabel =
+    (dictionary.slash_menu?.paragraph?.group as string | undefined) || "Basic blocks";
 
   const editor = useCreateBlockNote({
     schema,
     initialContent: toInitialContent(blocks),
     dictionary,
+    // Dragging a block onto the left or right edge of another one turns the
+    // two into columns. Without this cursor the sideways drop still works,
+    // but nothing on screen tells the user it is there.
+    dropCursor: multiColumnDropCursor,
     tables: {
       splitCells: true,
       cellBackgroundColor: true,
@@ -177,18 +211,14 @@ export default function RichDocEditor({
           }
         },
       };
-      // Append right after the LAST item in the Media group, otherwise we
-      // split the group in half and BlockNote pushes two separate
-      // group labels with the same React key. Compare against the
-      // *localised* group label so this still works when the editor's
-      // dictionary is pt or es.
-      let lastMediaIdx = -1;
-      for (let i = defaults.length - 1; i >= 0; i--) {
-        if ((defaults[i] as { group?: string }).group === mediaGroupLabel) {
-          lastMediaIdx = i;
-          break;
-        }
-      }
+      // The two column items come from the multi-column package already
+      // localised — including their group, which is the same "basic blocks"
+      // group the default items use, so they slot in there instead of
+      // opening a group of their own. They ship without a React key.
+      const columnItems = getMultiColumnSlashMenuItems(editor).map((item, i) => ({
+        ...item,
+        key: `multi-column-${i}`,
+      }));
       const calloutsGroup = t("blockEditor.slashMenu.calloutsGroup", "Callouts");
       const calloutItems = CALLOUT_VARIANTS.map((variant: CalloutVariant) => ({
         key: `callout-${variant.id}`,
@@ -224,12 +254,15 @@ export default function RichDocEditor({
         },
       };
       const asideItems = [...calloutItems, spoilerItem];
-      const combined = lastMediaIdx >= 0
-        ? [...defaults.slice(0, lastMediaIdx + 1), embedItem, driveImageItem, ...defaults.slice(lastMediaIdx + 1), ...asideItems]
-        : [...defaults, embedItem, driveImageItem, ...asideItems];
+      // Each insertion is against the *localised* group label, so the grouping
+      // survives the editor running in pt or es. The callouts are a group of
+      // our own — nothing to slot into, so they just go last.
+      const withMedia = insertAfterGroup(defaults, mediaGroupLabel, [embedItem, driveImageItem]);
+      const withColumns = insertAfterGroup(withMedia, basicGroupLabel, columnItems);
+      const combined = [...withColumns, ...asideItems];
       return filterSuggestionItems(combined, query);
     };
-  }, [editor, mediaGroupLabel, t]);
+  }, [editor, mediaGroupLabel, basicGroupLabel, t]);
 
   return (
     <BlockNoteView

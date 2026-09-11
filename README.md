@@ -132,7 +132,16 @@ Issues e pull requests são bem-vindos. Antes de abrir um PR, rode
 
 ## Licença
 
-MIT.
+**GPL-3.0** — o texto completo está em [LICENSE](LICENSE).
+Copyright (C) 2026 Doublehit Games.
+
+Na prática: use, copie e modifique à vontade, inclusive rodando a sua própria
+cópia do app. Se você distribuir uma versão modificada, ela também precisa ser
+GPL e vir acompanhada do código.
+
+A licença é essa porque o editor de colunas vem do pacote
+[`@blocknote/xl-multi-column`](https://www.npmjs.com/package/@blocknote/xl-multi-column),
+que é GPL-3.0 ou licença comercial.
 
 ## Autores
 

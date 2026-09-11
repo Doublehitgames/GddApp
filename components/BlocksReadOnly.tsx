@@ -335,6 +335,26 @@ function Block({ b, dark }: { b: Block; dark: boolean }) {
         </SpoilerView>
       );
 
+    // Columns. `columnList` holds the columns in `children`, each `column`
+    // holds its own blocks — the same shape the editor writes, see
+    // `withMultiColumn` in `components/RichDocEditor.tsx`. They wrap instead
+    // of stacking at a breakpoint because this renderer is read inside narrow
+    // boxes on a wide screen too — the deck drawer, the mind map preview —
+    // and a viewport breakpoint cannot see those.
+    case "columnList":
+      return <div className="my-2 flex flex-wrap gap-x-6 gap-y-3">{kids}</div>;
+
+    case "column": {
+      // `width` is a relative share, not pixels — a column the user dragged
+      // wider is 1.4 next to a 0.6, and flex-grow reproduces that ratio. The
+      // floor is what makes the wrap happen: below it the column takes the
+      // whole line instead of squeezing into a ribbon of two words.
+      const width = typeof p?.width === "number" && p.width > 0 ? p.width : 1;
+      return (
+        <div style={{ flex: `${width} 1 0%`, minWidth: "min(100%, 14rem)" }}>{kids}</div>
+      );
+    }
+
     case "table": {
       const tc = b.content as TableContent | undefined;
       if (!tc?.rows) return null;
