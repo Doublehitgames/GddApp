@@ -30,3 +30,39 @@ export function sectionPathById(
   if (!section) return projectPath(project);
   return sectionPath(project, section);
 }
+
+/** O que vem de uma rota pode ser o UUID ou o slug do título — as URLs do app
+ *  são slug desde a migração de rotas, mas links antigos e o modo público ainda
+ *  carregam o id. Resolver os dois aqui evita que uma tela receba um "id" que
+ *  não casa com nada da store e conclua que a página está vazia. */
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export function findProjectByRef<T extends Pick<Project, "id" | "title">>(
+  projects: T[] | undefined,
+  ref: string | undefined
+): T | undefined {
+  if (!projects || !ref) return undefined;
+  const value = safeDecode(ref);
+  return (
+    projects.find((p) => p.id === value) ??
+    projects.find((p) => toSlug(p.title) === value)
+  );
+}
+
+export function findSectionByRef<T extends Pick<Section, "id" | "title">>(
+  sections: T[] | undefined,
+  ref: string | undefined
+): T | undefined {
+  if (!sections || !ref) return undefined;
+  const value = safeDecode(ref);
+  return (
+    sections.find((s) => s.id === value) ??
+    sections.find((s) => toSlug(s.title) === value)
+  );
+}

@@ -21,6 +21,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { DiagramMarkerType, DiagramState, useProjectStore } from "@/store/projectStore";
+import { findProjectByRef, findSectionByRef } from "@/lib/utils/slug";
 import { useI18n } from "@/lib/i18n/provider";
 import DiagramToolbar from "./components/DiagramToolbar";
 import PropertiesSidebar from "./components/PropertiesSidebar";
@@ -142,6 +143,20 @@ function DiagramasFlow({
   const getSectionDiagram = useProjectStore((state) => state.getSectionDiagram);
   const saveSectionDiagram = useProjectStore((state) => state.saveSectionDiagram);
   const resetSectionDiagram = useProjectStore((state) => state.resetSectionDiagram);
+  // A rota do editor é slug; a store guarda UUID. Enquanto a página não for
+  // encontrada, não há o que hidratar — e hidratar vazio aqui é exatamente o
+  // que apagava o fluxograma, porque o autosave logo atrás gravava o quadro em
+  // branco por cima. Os dois seletores devolvem string para não reassinar a
+  // store a cada render.
+  const resolvedSectionId = useProjectStore((state) => {
+    const project = findProjectByRef(state.projects, projectId);
+    return findSectionByRef(project?.sections, sectionId)?.id ?? null;
+  });
+  // Muda quando o diagrama salvo muda — inclusive quando uma escrita de fora
+  // (API, MCP) chega pelo sync com a tela aberta.
+  const storedUpdatedAt = useProjectStore(
+    (state) => state.getSectionDiagram(projectId, sectionId)?.updatedAt ?? null
+  );
   const [nodes, setNodes, onNodesChange] = useNodesState<DiagramNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
@@ -161,6 +176,9 @@ function DiagramasFlow({
   const [historyAvailability, setHistoryAvailability] = useState({ canUndo: false, canRedo: false });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
+  /** Carimbo do diagrama que está na tela, para distinguir "mudou lá fora" de
+   *  "fomos nós que salvamos agora". */
+  const appliedUpdatedAtRef = useRef<string | null>(null);
   const nodesRef = useRef<Node<DiagramNodeData>[]>([]);
   const edgesRef = useRef<Edge[]>([]);
   const copiedSelectionRef = useRef<CopiedSelectionSnapshot | null>(null);
@@ -409,8 +427,16 @@ function DiagramasFlow({
   }, [refreshClipboardAvailability]);
 
   useEffect(() => {
+    if (!isReadOnly) {
+      // Store ainda não carregou a página: esperar é melhor que abrir vazio.
+      if (!resolvedSectionId) return;
+      // Já está na tela e nada mudou no que está salvo — reidratar aqui só
+      // jogaria fora o que a pessoa acabou de arrastar.
+      if (hydratedRef.current && storedUpdatedAt === appliedUpdatedAtRef.current) return;
+    }
     const initial = (isReadOnly ? (initialDiagramState || createEmptyDiagramState()) : getSectionDiagram(projectId, sectionId))
       || createEmptyDiagramState();
+    appliedUpdatedAtRef.current = storedUpdatedAt;
     const flowNodes = toFlowNodes(initial.nodes || [], theme);
     const flowEdges = toFlowEdges(initial.edges || [], activeTheme);
     const hydratedEdges = backfillMissingEdgeHandles(flowEdges, flowNodes);
@@ -430,7 +456,7 @@ function DiagramasFlow({
       setFlowViewport(initial.viewport || { x: 0, y: 0, zoom: 1 }, { duration: 250 });
     }, 0);
     hydratedRef.current = true;
-  }, [projectId, sectionId, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles, isReadOnly, initialDiagramState, createHistorySnapshot, syncHistoryAvailability]);
+  }, [projectId, sectionId, resolvedSectionId, storedUpdatedAt, getSectionDiagram, setNodes, setEdges, setFlowViewport, backfillMissingEdgeHandles, isReadOnly, initialDiagramState, createHistorySnapshot, syncHistoryAvailability]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -518,9 +544,11 @@ function DiagramasFlow({
     if (!hydratedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
+      const updatedAt = new Date().toISOString();
+      appliedUpdatedAtRef.current = updatedAt;
       saveSectionDiagram(projectId, sectionId, {
         version: 1,
-        updatedAt: new Date().toISOString(),
+        updatedAt,
         nodes: serializeNodes(nodes),
         edges: serializeEdges(edges),
         viewport,
