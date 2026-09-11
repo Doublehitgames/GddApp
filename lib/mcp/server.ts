@@ -58,12 +58,15 @@ const CONTENT_BLOCKS_GUIDE =
   "\n• spoiler — { type:'spoiler', props:{label:'Senha do cofre'}, content:[...inline], children:[] } — closed on the page: the reader sees only the label and clicks to reveal the content. Use it for what a reader may not want handed to them — the answer to a puzzle, a plot twist — so the page can hold both the guide and the solution. In markdown: `> [!spoiler] Senha do cofre` and the hidden text on the next `> ` line." +
   "\n• image — { type:'image', props:{url:'https://...',caption:'',width:512}, content:[], children:[] }" +
   "\n• table — { type:'table', content:{type:'tableContent',rows:[{cells:[[...inline],[...inline]]}]}, children:[] }" +
+  "\n• columnList — { type:'columnList', children:[{ type:'column', props:{width:1}, children:[...blocks] }, ...] } — content side by side: the art next to the text that explains it, two or three short columns in a row. A columnList's children are only `column` blocks and a column's children are ordinary blocks; neither carries `content` of its own. `width` is a relative share, not pixels — 1.6 beside 1 makes the first column wider. Use it when two things are read together, never to fake a table. Read in a narrow box the columns wrap back into a stack, and markdown has no columns at all, so each one has to stand on its own." +
   "\n\nINLINE CONTENT (used in `content` arrays of most blocks):" +
   "\n• Text node: { type:'text', text:'Hello', styles:{bold?:true, italic?:true, underline?:true, strikethrough?:true, code?:true, textColor?:'blue'|'red'|'green'|'yellow'|'orange'|'purple'|'pink'|'gray'|'brown', backgroundColor?:same palette} }" +
   "\n• Link: { type:'link', href:'https://...', content:[text nodes] }" +
   "\n• Section cross-reference: write $[Section Name] as plain text inside a text node — it renders as a clickable link to that section." +
   "\n\nEXAMPLE — a section with heading, paragraph, callout, and table:" +
-  '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]';
+  '\n[{"type":"heading","props":{"level":2},"content":[{"type":"text","text":"Overview","styles":{}}],"children":[]},{"type":"paragraph","content":[{"type":"text","text":"This section covers "},{"type":"text","text":"core mechanics","styles":{"bold":true}},{"type":"text","text":" of the game.","styles":{}}],"children":[]},{"type":"callout","props":{"variant":"warning"},"content":[{"type":"text","text":"Balance values are subject to change.","styles":{}}],"children":[]},{"type":"table","content":{"type":"tableContent","rows":[{"cells":[[{"type":"text","text":"Attribute","styles":{"bold":true}}],[{"type":"text","text":"Value","styles":{"bold":true}}]]},{"cells":[[{"type":"text","text":"Speed"}],[{"type":"text","text":"5.0"}]]}]},"children":[]}]' +
+  "\n\nEXAMPLE — an image beside the text that explains it:" +
+  '\n[{"type":"columnList","children":[{"type":"column","props":{"width":1},"children":[{"type":"image","props":{"url":"https://example.com/moinho.png","caption":"O moinho"},"content":[],"children":[]}]},{"type":"column","props":{"width":1.6},"children":[{"type":"paragraph","content":[{"type":"text","text":"O $[Moinho] é a primeira máquina que o jogador constrói.","styles":{}}],"children":[]}]}]}]';
 
 const CONTENT_FIELD = z
   .string()
@@ -76,7 +79,7 @@ const CONTENT_FIELD = z
 const CONTENT_BLOCKS_FIELD = z
   .array(z.record(z.string(), z.unknown()))
   .optional()
-  .describe("Rich BlockNote JSON blocks — only needed for headings, tables, callouts or images; plain markdown in `content` is derived into blocks for you. Call get_content_blocks_guide once for the block types and a worked example, and always pair blocks with a plain-text `content` for search.");
+  .describe("Rich BlockNote JSON blocks — needed only for what markdown cannot say: an embed, side-by-side columns, per-block colour or alignment. Markdown in `content` already derives headings, tables, callouts, lists, quotes, code and images for you. Call get_content_blocks_guide once for the block types and a worked example, and always pair blocks with a plain-text `content` for search.");
 
 /**
  * Maturity of the page. The one field an agent should be conservative with:
@@ -254,11 +257,11 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("get_content_blocks_guide",
-    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — not needed when you send the description as markdown in `content`.",
+    "Reference for building `contentBlocks`: every supported block type, inline content and styles, section cross-references, and a worked example. Call it once before hand-building blocks for create_section, update_section or batch_update_sections — that is for an embed, side-by-side columns or a coloured block, since markdown in `content` already covers headings, tables, callouts, lists and images on its own.",
     {},
     async () => text(CONTENT_BLOCKS_GUIDE));
 
-  server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step. Build `contentBlocks` yourself only when you need headings, tables, callouts or images; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
+  server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step, and markdown already covers headings, tables, callouts, lists and images. Build `contentBlocks` yourself for what markdown cannot say — an embed, side-by-side columns, a coloured block; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
     { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
@@ -267,7 +270,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it; pass `contentBlocks` only when you need headings, tables, callouts or images. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
+  server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it, and markdown already covers headings, tables, callouts, lists and images; pass `contentBlocks` for what markdown cannot say — an embed, side-by-side columns, a coloured block. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
     { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {

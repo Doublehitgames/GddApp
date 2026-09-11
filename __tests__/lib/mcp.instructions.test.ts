@@ -95,7 +95,12 @@ describe("server instructions", () => {
     // Raised again from 2800 for FLOWCHARTS. Same reasoning: a page's diagram
     // is invisible from the description, and an agent that is not told it
     // exists reports back that the server cannot draw one.
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(3300);
+    //
+    // Raised from 3300 for the sentence about the shape of a page. Agents were
+    // writing every description as one column of prose — correctly, since the
+    // only thing said about form was "markdown", and the tools claimed a table
+    // needed hand-built blocks when markdown gives one for free.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(3700);
   });
 
   it("say that a page can carry a flowchart, and how to read it first", () => {
