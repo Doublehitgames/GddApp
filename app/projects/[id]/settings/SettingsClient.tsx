@@ -39,7 +39,7 @@ export default function SettingsClient({ projectId }: Props) {
   const { t } = useI18n();
   const { user } = useAuthStore();
   const {
-    getProjectBySlug,
+    getProjectByRef,
     updateProjectSettings,
     updateProjectMindMapSettingsOnly,
     setProjectImageLibrary,
@@ -48,7 +48,7 @@ export default function SettingsClient({ projectId }: Props) {
     refreshQuotaStatus,
     setProjectOwnerLocally,
   } = useProjectStore();
-  const project = getProjectBySlug(projectId);
+  const project = getProjectByRef(projectId);
   const realProjectId = project?.id ?? "";
   const [settings, setSettings] = useState(project?.mindMapSettings || {});
   const [showSuccess, setShowSuccess] = useState(false);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useProjectStore } from "@/store/projectStore";
-import { toSlug, projectPath, sectionPath, sectionPathById } from "@/lib/utils/slug";
+import { toSlug, projectPath, sectionPath, sectionPathById, findSectionByRef, stableProjectSegment, stableSectionSegment } from "@/lib/utils/slug";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
@@ -70,11 +70,11 @@ type SectionVersionEntry = {
   updated_by_name?: string | null;
 };
 
-export default function SectionDetailClient({ projectId, sectionId, openEdit = false }: Props) {
+export default function SectionDetailClient({ projectId, sectionId: sectionRef, openEdit = false }: Props) {
   const { t } = useI18n();
   const { user, profile } = useAuthStore();
   const { hasValidConfig, getAIHeaders } = useAIConfig();
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const removeSection = useProjectStore((s) => s.removeSection);
   const addSection = useProjectStore((s) => s.addSection);
   const addSubsection = useProjectStore((s) => s.addSubsection);
@@ -101,6 +101,10 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   const lastKnownSectionUUIDRef = useRef<string | null>(null);
   const realProjectId = project?.id ?? "";
   const realSectionId = section?.id ?? "";
+  // A URL traz slug ou UUID; daqui pra baixo `sectionId` é sempre o UUID, que é
+  // o que parentId, reorder e mover comparam. Antes de resolver fica vazio — a
+  // tela só renderiza depois de achar a seção.
+  const sectionId = realSectionId;
   const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [nameError, setNameError] = useState<string>("");
@@ -348,7 +352,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
       );
     }
 
-    const updatedProject = getProjectBySlug(projectId) ?? project;
+    const updatedProject = getProjectByRef(projectId) ?? project;
     router.push(sectionPathById(updatedProject ?? { title: "", sections: [] }, outcome.newRootId));
   }
 
@@ -433,16 +437,18 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
   }
 
   useEffect(() => {
-    const proj = getProjectBySlug(projectId);
+    const proj = getProjectByRef(projectId);
     setProject(proj || null);
-    let sec = proj?.sections?.find((s: any) => toSlug(s.title) === sectionId);
+    let sec = findSectionByRef<any>(proj?.sections, sectionRef);
 
     // Slug lookup failed — could be a title rename that updated the store before the URL changed.
     // Fall back to the last known UUID so we don't flash "not found" while navigating.
     if (!sec && lastKnownSectionUUIDRef.current && proj) {
       const renamed = proj.sections?.find((s: any) => s.id === lastKnownSectionUUIDRef.current);
       if (renamed) {
-        router.replace(sectionPath(proj, renamed));
+        router.replace(
+          `/projects/${stableProjectSegment(projects, proj)}/sections/${stableSectionSegment(proj.sections, renamed)}`
+        );
         return;
       }
     }
@@ -468,7 +474,7 @@ export default function SectionDetailClient({ projectId, sectionId, openEdit = f
     setBreadcrumbs(trail);
     setSectionColor(sec?.color || "#3b82f6");
     setLoaded(true);
-  }, [projectId, sectionId, getProjectBySlug, projects, router]);
+  }, [projectId, sectionRef, getProjectByRef, projects, router]);
 
   useEffect(() => {
     setSectionThumbCandidateIndex(0);
@@ -2081,7 +2087,7 @@ function SectionDetailContent({
             editSection(realProjectId, realSectionId,section.title, newContent, undefined, undefined);
             setSection({ ...section, content: newContent });
           }}
-          projectId={projectId}
+          projectId={realProjectId}
           sectionId={sectionId}
           sections={sections || []}
           currentContextPath={getBreadcrumb(sectionId, sections || [])}
@@ -2233,7 +2239,7 @@ function SectionDetailContent({
                   projectDescription={project?.description || ""}
                   previewContent={previewContent || ""}
                   setPreviewContent={setPreviewContent}
-                  projectId={projectId}
+                  projectId={realProjectId}
                   sectionId={sectionId}
                   sections={sections || []}
                   currentContextPath={getBreadcrumb(sectionId, sections || [])}

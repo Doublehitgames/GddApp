@@ -13,7 +13,7 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { appendEmojiWithSpacing } from "@/lib/emojiPresets";
 import SpecialTokensHelp from "@/components/SpecialTokensHelp";
 import { normalizeSpecialTokenSyntax } from "@/lib/sections/specialTokens";
-import { toSlug, projectPath } from "@/lib/utils/slug";
+import { toSlug, projectPath, findProjectByRef } from "@/lib/utils/slug";
 import SectionDescriptionEditor, {
   type SectionDescriptionEditorApi,
 } from "@/components/SectionDescriptionEditor";
@@ -27,10 +27,10 @@ export default function ProjectEditClient({ projectId }: Props) {
   const { t } = useI18n();
   const router = useRouter();
   const editProject = useProjectStore((s) => s.editProject);
-  // Selecionar o projeto direto da lista (em vez de chamar getProjectBySlug, que
+  // Selecionar o projeto direto da lista (em vez de chamar getProjectByRef, que
   // é um método estável) é o que re-renderiza esta tela quando ele chega do
   // Supabase. Sem essa assinatura, abrir a URL direto trava em "não encontrado".
-  const project = useProjectStore((s) => s.projects.find((p) => toSlug(p.title) === projectId));
+  const project = useProjectStore((s) => findProjectByRef(s.projects, projectId));
 
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");

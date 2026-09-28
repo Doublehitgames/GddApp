@@ -247,7 +247,7 @@ export default function RoadmapPrintClient({ projectId }: { projectId: string })
   useEffect(() => { setMounted(true); }, []);
 
   const projects           = useProjectStore((s) => s.projects);
-  const getProjectBySlug   = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef   = useProjectStore((s) => s.getProjectByRef);
   const roadmapsByProject  = useProjectStore((s) => s.roadmapsByProject);
   const getRoadmaps        = useProjectStore((s) => s.getRoadmaps);
   const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
@@ -256,7 +256,7 @@ export default function RoadmapPrintClient({ projectId }: { projectId: string })
   const getRoadmapItems    = useProjectStore((s) => s.getRoadmapItems);
 
   // projectId from the URL is a slug — resolve it to the real UUID
-  const project        = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const project        = useMemo(() => getProjectByRef(projectId), [getProjectByRef, projectId, projects]);
   const realProjectId  = project?.id ?? projectId;
 
   const activeRoadmapId = useMemo(() => getActiveRoadmapId(realProjectId), [getActiveRoadmapId, realProjectId, roadmapsByProject]);

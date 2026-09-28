@@ -38,13 +38,13 @@ export default function ExportPage() {
   const router = useRouter();
   const projectId = params.id as string;
 
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('pdf');
   const [isExporting, setIsExporting] = useState(false);
   const [includeEmptySections, setIncludeEmptySections] = useState(false);
 
-  const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const project = useMemo(() => getProjectByRef(projectId), [getProjectByRef, projectId, projects]);
   const realProjectId = project?.id ?? "";
 
   if (!project) {

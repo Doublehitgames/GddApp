@@ -22,7 +22,7 @@ export default function ProjectSyncFooter() {
   const lastSyncError = useProjectStore((s) => s.lastSyncError);
   const syncStatus = useProjectStore((s) => s.syncStatus);
   const cloudSyncPausedUntil = useProjectStore((s) => s.cloudSyncPausedUntil);
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const getPendingProjectIds = useProjectStore((s) => s.getPendingProjectIds);
   const syncProjectToSupabase = useProjectStore((s) => s.syncProjectToSupabase);
   const discardPendingChangesForProject = useProjectStore((s) => s.discardPendingChangesForProject);
@@ -37,7 +37,7 @@ export default function ProjectSyncFooter() {
   const [nowMs, setNowMs] = useState(0);
   const previewPopoverRef = useRef<HTMLDivElement>(null);
 
-  const project = projectSlug ? getProjectBySlug(projectSlug) : null;
+  const project = projectSlug ? getProjectByRef(projectSlug) : null;
   const projectId = project?.id ?? null;
   const isDirty = projectId ? getPendingProjectIds().includes(projectId) : false;
   const pendingSignature = useMemo(() => {

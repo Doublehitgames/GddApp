@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useProjectStore, Project } from '@/store/projectStore';
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n/provider';
-import { toSlug, projectPath } from '@/lib/utils/slug';
+import { findProjectByRef, projectPath } from '@/lib/utils/slug';
 
 export default function BackupPage() {
   const params = useParams();
@@ -16,7 +16,7 @@ export default function BackupPage() {
   const projectId = params.id as string;
   
   const project = useProjectStore((state) =>
-    state.projects.find((p) => toSlug(p.title) === projectId)
+    findProjectByRef(state.projects, projectId)
   );
   const sections = project?.sections || [];
   const importProject = useProjectStore((state) => state.importProject);
@@ -92,7 +92,7 @@ export default function BackupPage() {
       const restoredProject = data.project as Project;
       
       // Validate if backup is from the current project
-      if (restoredProject.id !== projectId) {
+      if (restoredProject.id !== project.id) {
         setRestoreMessage(
           tr(
             `❌ Este backup é do projeto "${restoredProject.title}". Você só pode restaurar backups deste projeto ("${project.title}").`,
@@ -159,9 +159,9 @@ export default function BackupPage() {
           <h2 className="text-xl font-semibold mb-2">{project.title}</h2>
           <p className="text-gray-400 text-sm">
             {tr(
-              `${sections.length} seção/seções • ID: ${projectId}`,
-              `${sections.length} section(s) • ID: ${projectId}`,
-              `${sections.length} sección(es) • ID: ${projectId}`
+              `${sections.length} seção/seções • ID: ${project.id}`,
+              `${sections.length} section(s) • ID: ${project.id}`,
+              `${sections.length} sección(es) • ID: ${project.id}`
             )}
           </p>
         </div>

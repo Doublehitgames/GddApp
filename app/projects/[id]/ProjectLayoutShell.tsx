@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import ProjectSectionsSidebar from "@/components/ProjectSectionsSidebar";
 import { GlobalPagePicker } from "@/components/GlobalPagePicker";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
-import { toSlug, sectionPath } from "@/lib/utils/slug";
+import { sectionPath, findSectionByRef, canonicalProjectPathname } from "@/lib/utils/slug";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
 import { type ProjectView } from "@/components/project/ProjectViewTabs";
@@ -116,13 +116,23 @@ function BreadcrumbsMindMapSearch() {
 export default function ProjectLayoutShell({ children, projectId }: Props) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const router = useRouter();
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
-  const project = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const project = useMemo(() => getProjectByRef(projectId), [getProjectByRef, projectId, projects]);
   const realProjectId = project?.id ?? "";
+
+  // Link por UUID (plugin Unity, links antigos) abre direto; aqui só se troca a
+  // barra de endereço pela forma em slug, que é a que o app mostra. Mora no
+  // shell porque ele envolve todas as telas de /projects/[id]/*.
+  useEffect(() => {
+    if (!project || !pathname) return;
+    const canonical = canonicalProjectPathname(pathname, projects, project);
+    if (canonical) router.replace(`${canonical}${window.location.search}${window.location.hash}`);
+  }, [pathname, project, projects, router]);
 
   const normalizedPathname = useMemo(() => {
     if (!pathname) return "";
@@ -181,15 +191,9 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
 
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
-    const rawSlug = match?.[1] ?? null;
-    if (!rawSlug) return null;
-    let slug: string;
-    try {
-      slug = decodeURIComponent(rawSlug);
-    } catch {
-      slug = rawSlug;
-    }
-    return project?.sections?.find((s) => toSlug(s.title) === slug)?.id ?? null;
+    const rawRef = match?.[1] ?? null;
+    if (!rawRef) return null;
+    return findSectionByRef(project?.sections, rawRef)?.id ?? null;
   }, [pathname, project]);
   const isSectionDiagramRoute = useMemo(() => {
     if (!pathname) return false;

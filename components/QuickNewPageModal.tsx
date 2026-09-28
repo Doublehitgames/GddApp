@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
-import { toSlug, sectionPathById } from "@/lib/utils/slug";
+import { findProjectByRef, sectionPathById } from "@/lib/utils/slug";
 
 export const QUICK_NEW_PAGE_EVENT = "gdd:open-new-page";
 
@@ -51,7 +51,7 @@ export function QuickNewPageModal() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const project = useMemo(
-    () => (projectId ? projects.find((p) => toSlug(p.title) === projectId) : null),
+    () => (projectId ? findProjectByRef(projects, projectId) ?? null : null),
     [projectId, projects]
   );
   const realProjectId = project?.id ?? "";

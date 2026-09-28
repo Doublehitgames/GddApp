@@ -15,7 +15,7 @@ export default function RoadmapClient({ projectId }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const getProjectBySlug   = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef   = useProjectStore((s) => s.getProjectByRef);
   const projects           = useProjectStore((s) => s.projects);
   const getRoadmaps        = useProjectStore((s) => s.getRoadmaps);
   const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
@@ -44,7 +44,7 @@ export default function RoadmapClient({ projectId }: Props) {
 
   const currentUser = useAuthStore((s) => s.user);
 
-  const project       = useMemo(() => getProjectBySlug(projectId), [getProjectBySlug, projectId, projects]);
+  const project       = useMemo(() => getProjectByRef(projectId), [getProjectByRef, projectId, projects]);
   const realProjectId = project?.id ?? projectId;
 
   // Membro = não é o dono do projeto

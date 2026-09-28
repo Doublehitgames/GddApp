@@ -295,7 +295,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     const router = useRouter();
     const pathname = usePathname();
-    const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+    const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
     const addSection = useProjectStore((s) => s.addSection);
     const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
     const reorderSections = useProjectStore((s) => s.reorderSections);
@@ -342,7 +342,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     useEffect(() => {
         if (mounted) {
-            const p = getProjectBySlug(projectId);
+            const p = getProjectByRef(projectId);
             setProject(p ?? null);
         }
     }, [mounted, projectId, projects]);

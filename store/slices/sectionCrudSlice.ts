@@ -2,7 +2,7 @@ import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
 import type { PageStatus } from "@/lib/pageStatus/types";
 import type { DeckLayout } from "@/lib/deck/deck";
 import type { RichDocBlock } from "@/lib/richDoc/types";
-import { toSlug } from "@/lib/utils/slug";
+import { toSlug, findSectionByRef } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
 import { limitsForProject } from "./limits";
 import { buildRenameRefPatches } from "@/utils/sectionReferences";
@@ -741,7 +741,7 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
 
     getSectionBySlug: (projectId: UUID, slug: string) => {
       const project = get().projects.find((p) => p.id === projectId);
-      return project?.sections?.find((s) => toSlug(s.title) === slug);
+      return findSectionByRef(project?.sections, slug);
     },
 
     hasDuplicateName: (projectId: UUID, title: string, parentId?: UUID, excludeId?: UUID) => {

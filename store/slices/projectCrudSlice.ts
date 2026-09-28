@@ -1,7 +1,7 @@
 import type { ProjectStore, UUID, ProjectImageLibrary } from "./types";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
-import { toSlug } from "@/lib/utils/slug";
+import { toSlug, findProjectByRef } from "@/lib/utils/slug";
 import { buildSectionDiagramKey, persistDiagrams, persist, logInfo } from "./storageHelpers";
 import type { SyncEngineAPI } from "./syncEngine";
 
@@ -40,8 +40,10 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       return get().projects.find((p) => p.id === id);
     },
 
-    getProjectBySlug: (slug: string) => {
-      return get().projects.find((p) => toSlug(p.title) === slug);
+    /** O segmento da URL pode ser o slug do título (a URL canônica) ou o UUID
+     *  (o link estável: sobrevive a renomear e é o que o plugin Unity monta). */
+    getProjectByRef: (ref: string) => {
+      return findProjectByRef(get().projects, ref);
     },
 
     editProject: (

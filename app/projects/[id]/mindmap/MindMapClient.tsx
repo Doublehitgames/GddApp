@@ -1124,11 +1124,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     []
   );
   const edgeTypesStable = useMemo(() => ({ centro: EdgeCentroACentro }), []);
-  const { getProjectBySlug } = useProjectStore();
+  const { getProjectByRef } = useProjectStore();
   const projects = useProjectStore((s) => s.projects);
   const [publicProject, setPublicProject] = useState<Project | null>(null);
   const [isPublicLoading, setIsPublicLoading] = useState(Boolean(publicToken));
-  const projectFromStore = getProjectBySlug(projectId);
+  const projectFromStore = getProjectByRef(projectId);
   const project: Project | undefined = publicProject || projectFromStore;
   const realProjectId = project?.id ?? "";
   const isPublicMode = Boolean(publicToken);

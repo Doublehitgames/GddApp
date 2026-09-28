@@ -537,7 +537,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
   const getRoadmapPhases   = useProjectStore((s) => s.getRoadmapPhases);
   const getActiveRoadmapId = useProjectStore((s) => s.getActiveRoadmapId);
@@ -635,7 +635,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
   useEffect(() => {
     if (mounted && !isPublicMode) {
-      const p = getProjectBySlug(projectId);
+      const p = getProjectByRef(projectId);
       setProject(p);
       
       // Check if coming from creation flow
@@ -648,7 +648,7 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
         return () => clearTimeout(timer);
       }
     }
-  }, [mounted, projectId, projects, getProjectBySlug, searchParams, isPublicMode]);
+  }, [mounted, projectId, projects, getProjectByRef, searchParams, isPublicMode]);
 
   useEffect(() => {
     if (!mounted || !isPublicMode || !publicToken) return;

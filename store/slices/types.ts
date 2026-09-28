@@ -443,7 +443,8 @@ export interface ProjectStore {
   // Mutations
   addProject: (name: string, description: string) => string;
   getProject: (id: UUID) => Project | undefined;
-  getProjectBySlug: (slug: string) => Project | undefined;
+  /** Aceita UUID ou slug do título. */
+  getProjectByRef: (ref: string) => Project | undefined;
   getSectionById: (projectId: UUID, sectionId: UUID) => Section | undefined;
   getSectionBySlug: (projectId: UUID, slug: string) => Section | undefined;
   addSection: (projectId: UUID, title: string, content?: string, createdBy?: SectionAuditBy, domainTags?: string[]) => UUID;

@@ -68,14 +68,14 @@ export default function ChangelogClient({ projectId }: Props) {
   const { t } = useI18n();
   const dayLabel = useDayLabel();
 
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
   const fetchActivityLog = useProjectStore((s) => s.fetchActivityLog);
   const activityLogByProject = useProjectStore((s) => s.activityLogByProject);
 
   const project = useMemo(
-    () => getProjectBySlug(projectId),
-    [getProjectBySlug, projectId, projects]
+    () => getProjectByRef(projectId),
+    [getProjectByRef, projectId, projects]
   );
   const realProjectId = project?.id ?? projectId;
   const isCloudProject = UUID_RE.test(realProjectId);

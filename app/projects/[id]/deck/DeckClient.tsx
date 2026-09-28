@@ -58,7 +58,7 @@ const INTRO_MAX = 104;
 export default function DeckClient({ projectId, publicToken }: Props) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const getProjectBySlug = useProjectStore((s) => s.getProjectBySlug);
+  const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
 
   const [mounted, setMounted] = useState(false);
@@ -84,8 +84,8 @@ export default function DeckClient({ projectId, publicToken }: Props) {
 
   useEffect(() => {
     if (!mounted || isPublicMode) return;
-    setProject(getProjectBySlug(projectId));
-  }, [mounted, projectId, projects, getProjectBySlug, isPublicMode]);
+    setProject(getProjectByRef(projectId));
+  }, [mounted, projectId, projects, getProjectByRef, isPublicMode]);
 
   useEffect(() => {
     if (!mounted || !isPublicMode || !publicToken) return;
