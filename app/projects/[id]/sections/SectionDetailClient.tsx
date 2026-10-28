@@ -1647,12 +1647,13 @@ function SectionDetailContent({
                 <button
                   onClick={handleImproveWithAI}
                   disabled={isImproving || !hasValidConfig}
-                  className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg border border-purple-400/40 hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={SECTION_ICON_BTN}
                   title={
                     hasValidConfig
                       ? t("sectionDetail.ai.improveTooltip")
                       : t("sectionDetail.ai.configureApiKeyTooltip")
                   }
+                  aria-label={t("sectionDetail.ai.improveTooltip")}
                 >
                   {isImproving ? (
                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" aria-hidden="true">
@@ -1665,62 +1666,28 @@ function SectionDetailContent({
                     </svg>
                   )}
                 </button>
-                {/* Ver esta pagina nos outros modos. As cores continuam as
-                    daqui — o componente so decide QUAIS modos e para onde. */}
+                {/* Ver esta pagina nos outros modos. */}
                 <PageModeLinks
                   current="editor"
                   projectId={projectId}
                   project={project}
                   sectionId={realSectionId}
-                  className="gap-2"
+                  className="gap-1"
                   iconClassName="w-4 h-4"
-                  buttonClassName={(mode) =>
-                    "w-8 h-8 flex items-center justify-center text-ink rounded-lg border transition-colors " +
-                    (mode === "graph"
-                      ? "bg-blue-600 border-blue-400/40 hover:bg-blue-700"
-                      : mode === "doc"
-                        ? "bg-indigo-600 border-indigo-400/40 hover:bg-indigo-700"
-                        : "bg-teal-600 border-teal-400/40 hover:bg-teal-700")
-                  }
+                  buttonClassName={() => SECTION_ICON_BTN}
                 />
-                <button
-                  onClick={() => setShowMoveModal(true)}
-                  className="w-8 h-8 flex items-center justify-center bg-amber-600 text-white rounded-lg border border-amber-400/40 hover:bg-amber-700 transition-colors"
-                  title={t("sectionDetail.actions.moveSection")}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17L17 7M10 7h7v7" />
-                  </svg>
-                </button>
-                {sections.some((s: any) => s.parentId === realSectionId) && (
-                  <button
-                    onClick={() => setShowMoveChildrenModal(true)}
-                    className="w-8 h-8 flex items-center justify-center bg-amber-500 text-white rounded-lg border border-amber-400/40 hover:bg-amber-600 transition-colors"
-                    title={t("sectionDetail.actions.moveChildren", "Mover todos os filhos para...")}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  onClick={handleDuplicateSection}
-                  className="w-8 h-8 flex items-center justify-center bg-violet-600 text-white rounded-lg border border-violet-400/40 hover:bg-violet-700 transition-colors"
-                  title={t("sectionDetail.actions.duplicateSection")}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2" strokeWidth={2} />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15V6a1 1 0 011-1h9" />
-                  </svg>
-                </button>
               </>
             )}
             {!isEditingTitle && (
-              <button
-                className="w-8 h-8 flex items-center justify-center bg-red-600 text-white rounded-lg border border-red-400/40 hover:bg-red-700 transition-colors"
-                onClick={() => {
+              <SectionActionsMenu
+                canMoveChildren={!inlineEdit && sections.some((s: any) => s.parentId === realSectionId)}
+                showEditActions={!inlineEdit}
+                onMove={() => setShowMoveModal(true)}
+                onMoveChildren={() => setShowMoveChildrenModal(true)}
+                onDuplicate={handleDuplicateSection}
+                onDelete={() => {
                   const count = countDescendants(realProjectId, realSectionId);
-                  const msg = count > 0 
+                  const msg = count > 0
                     ? t('sectionDetail.confirmDeleteWithChildren').replace('{count}', String(count))
                     : t('sectionDetail.confirmDelete');
                   if (window.confirm(msg)) {
@@ -1733,12 +1700,7 @@ function SectionDetailContent({
                     }
                   }
                 }}
-                title={t('sectionDetail.actions.deleteSection')}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12h8l1-12" />
-                </svg>
-              </button>
+              />
             )}
           </div>
           </div>
@@ -2463,5 +2425,88 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
         </div>
       )}
     </>
+  );
+}
+
+const SECTION_ICON_BTN =
+  "w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+/** Mover, duplicar e excluir moram num menu: são ações raras, e excluir não pode ficar a um clique de "ver no deck". */
+function SectionActionsMenu({
+  canMoveChildren,
+  showEditActions,
+  onMove,
+  onMoveChildren,
+  onDuplicate,
+  onDelete,
+}: {
+  canMoveChildren: boolean;
+  showEditActions: boolean;
+  onMove: () => void;
+  onMoveChildren: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const item = "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-surface-2";
+  const run = (fn: () => void) => () => {
+    setOpen(false);
+    fn();
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={SECTION_ICON_BTN}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("sectionDetail.actions.more", "Mais ações")}
+        title={t("sectionDetail.actions.more", "Mais ações")}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.8" />
+          <circle cx="12" cy="12" r="1.8" />
+          <circle cx="19" cy="12" r="1.8" />
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="ui-menu-pop absolute right-0 top-10 z-40 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-xl">
+          {showEditActions && (
+            <>
+              <button type="button" role="menuitem" className={`${item} text-ink`} onClick={run(onMove)}>
+                {t("sectionDetail.actions.moveSection")}
+              </button>
+              {canMoveChildren && (
+                <button type="button" role="menuitem" className={`${item} text-ink`} onClick={run(onMoveChildren)}>
+                  {t("sectionDetail.actions.moveChildren", "Mover todos os filhos para...")}
+                </button>
+              )}
+              <button type="button" role="menuitem" className={`${item} text-ink`} onClick={run(onDuplicate)}>
+                {t("sectionDetail.actions.duplicateSection")}
+                <kbd className="ml-auto text-[11px] text-subtle">Ctrl D</kbd>
+              </button>
+              <div className="my-1 border-t border-line" />
+            </>
+          )}
+          <button type="button" role="menuitem" className={`${item} text-danger`} onClick={run(onDelete)}>
+            {t("sectionDetail.actions.deleteSection")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
