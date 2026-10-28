@@ -639,14 +639,22 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             onEdit={() => router.push(`/projects/${projectId}/edit`)}
                         />
                         <VisionEditor project={project} slug={projectId} />
-                        <section className="ui-card-premium">
-                            <div className="flex items-center gap-3 mb-3 flex-wrap">
-                                <h2 className="text-lg font-semibold tracking-tight">{t("visionPage.aboutTitle", "Sobre o jogo")}</h2>
+                        <section className="rounded-2xl border border-line bg-surface p-5">
+                            <div className="mb-3 flex items-center gap-2.5">
+                                <span className="grid h-9 w-9 place-items-center rounded-xl bg-area-doc-soft text-area-doc">
+                                    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                        <path d="M4 5.5C6 4.5 9 4.5 12 6c3-1.5 6-1.5 8-.5V19c-2-1-5-1-8 .5-3-1.5-6-1.5-8-.5zM12 6v13.5" />
+                                    </svg>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-[15px] font-semibold text-ink">{t("visionPage.aboutTitle", "Sobre o jogo")}</h2>
+                                    <p className="text-xs text-muted">{t("visionPage.aboutHint", "A descrição longa do projeto, para quem quer mais que uma frase.")}</p>
+                                </div>
                                 <button
-                                    className="ml-auto rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 transition-colors"
+                                    className="rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft"
                                     onClick={() => router.push(`/projects/${projectId}/edit`)}
                                 >
-                                    {t("projectDetail.edit")}
+                                    {t("visionPage.editShort", "Editar")}
                                 </button>
                             </div>
                             <div className="text-ink">
