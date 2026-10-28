@@ -7,6 +7,7 @@ import { useShellProject } from "@/components/project/useShellProject";
 import { DomainIcon, domainVisual } from "@/components/project/domainVisual";
 import { CoverImage, ProjectGlyph } from "@/components/project/ProjectCover";
 import { areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
+import { PillarList } from "@/components/vision/PillarList";
 import { IconHome } from "@/components/project/ProjectSidebar";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { useI18n } from "@/lib/i18n/provider";
@@ -441,13 +442,7 @@ function DocsRail({ project, slug, written }: { project: Project; slug: string; 
         {!!v.pillars?.length && (
           <>
             <h3 className="mb-2 mt-4 border-t border-line pt-4 text-sm font-semibold text-ink">{t("projectHome.pillars", "Pilares de design")}</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {v.pillars.map((p, i) => (
-                <span key={`${p}-${i}`} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-ink-2">
-                  {p}
-                </span>
-              ))}
-            </div>
+            <PillarList pillars={v.pillars} compact />
           </>
         )}
 
