@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectCover } from "@/components/project/ProjectCover";
@@ -13,20 +13,86 @@ import { isValidDomainId } from "@/lib/gameDesignDomains";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import { sectionPath } from "@/lib/utils/slug";
 import { useProjectStore } from "@/store/projectStore";
-import type { Project, Section } from "@/store/slices/types";
+import type { Project, ProjectVision, Section } from "@/store/slices/types";
 import { validateReferences } from "@/utils/sectionReferences";
+import { StarterDrawer, areaLabel, areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
+import { STARTER_AREAS, type StarterArea } from "@/lib/onboarding/starterQuestions";
 
-/** O que a home lê da Visão do jogo. Vira o tipo do store quando o campo `vision` chegar. */
-type VisionView = { logline?: string; playerVerb?: string; feeling?: string; pillars?: string[]; genre?: string };
-const visionOf = (project: Project): VisionView => (project as Project & { vision?: VisionView }).vision ?? {};
+const visionOf = (project: Project): ProjectVision => project.vision ?? {};
 
 const PILLAR_DOTS = ["bg-red-500", "bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-violet-500", "bg-pink-500"];
 
-/** Quantas das cinco perguntas da Visão já têm resposta (o nome do projeto conta como a primeira). */
-function visionProgress(project: Project) {
-  const v = visionOf(project);
-  const answered = [true, !!v.logline?.trim(), !!v.playerVerb?.trim(), !!v.feeling?.trim(), (v.pillars?.length ?? 0) > 0].filter(Boolean).length;
-  return { answered, total: 5 };
+const AREA_TONE: Record<StarterArea, string> = {
+  vision: "bg-area-vis-soft text-area-vis",
+  docs: "bg-area-doc-soft text-area-doc",
+  library: "bg-area-lib-soft text-area-lib",
+  systems: "bg-area-sys-soft text-area-sys",
+};
+const AREA_ICON: Record<StarterArea, React.ReactNode> = {
+  vision: <IconVision className="h-4 w-4" />,
+  docs: <IconDoc className="h-4 w-4" />,
+  library: <IconLibrary className="h-4 w-4" />,
+  systems: <IconSystems className="h-4 w-4" />,
+};
+
+/**
+ * Primeiros passos: as perguntas por área. A Visão vem primeiro; as outras
+ * abrem quando ela foi respondida ou pulada. Some quando tudo foi visto — o
+ * contador não pode virar uma métrica eterna.
+ */
+function FirstStepsCard({ project, slug }: { project: Project; slug: string }) {
+  const { t } = useI18n();
+  if (project.vision?.starter?.doneAt) {
+    return (
+      <div className="rounded-2xl bg-accent-soft p-5">
+        <h2 className="text-base font-semibold text-ink">{t("projectHome.stepsDoneTitle", "Primeiros passos feitos")}</h2>
+        <p className="mt-1 text-sm text-ink-2">{t("projectHome.stepsDoneText", "As perguntas iniciais já foram vistas. Daqui em diante, o GDD é seu.")}</p>
+      </div>
+    );
+  }
+  const visionDone = areaProgress(project, "vision").done;
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-5">
+      <h2 className="text-base font-semibold text-ink">{t("projectHome.firstSteps", "Primeiros passos")}</h2>
+      <p className="mt-1 text-sm text-muted">{t("projectHome.firstStepsLead", "Perguntas para o GDD começar. Não é o fim: depois daqui, continue como quiser.")}</p>
+      <ul className="mt-3 flex flex-col gap-1">
+        {STARTER_AREAS.map((area) => {
+          const p = areaProgress(project, area);
+          const locked = area !== "vision" && !visionDone;
+          const isNext = !locked && !p.done && (area === "vision" || STARTER_AREAS.slice(0, STARTER_AREAS.indexOf(area)).every((a) => areaProgress(project, a).done));
+          const body = (
+            <>
+              <span className={`grid h-8 w-8 place-items-center rounded-lg ${AREA_TONE[area]}`}>{AREA_ICON[area]}</span>
+              <span className="min-w-0 flex-1 text-sm text-ink">
+                {areaLabel(area, t)}
+                <span className="block text-xs text-muted">
+                  {locked ? t("projectHome.stepAfter", "Depois da Visão") : p.done ? t("projectHome.stepDone", "Feito — dá para voltar e mudar") : area === "vision" ? t("projectHome.stepIdea", "A ideia do jogo") : t("projectHome.stepNext", "Próximo passo")}
+                </span>
+              </span>
+              {isNext && p.answered === 0 && area === "vision" ? (
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent">{t("projectHome.startHere", "Comece aqui")}</span>
+              ) : (
+                <span className="text-xs tabular-nums text-muted">
+                  {p.answered}/{p.total}
+                </span>
+              )}
+            </>
+          );
+          return (
+            <li key={area}>
+              {locked ? (
+                <span className="flex items-center gap-3 rounded-xl p-2 opacity-60">{body}</span>
+              ) : (
+                <Link href={starterHref(slug, area)} scroll={false} className="flex items-center gap-3 rounded-xl p-2 hover:bg-surface-2">
+                  {body}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 /**
@@ -38,7 +104,14 @@ export default function ProjectHomeClient({ projectId }: { projectId: string }) 
   if (!project) return null;
   const v = visionOf(project);
   const isNew = (project.sections?.length ?? 0) === 0 && !v.logline && !(v.pillars?.length);
-  return isNew ? <NewProjectHome project={project} slug={projectId} /> : <GameHome project={project} slug={projectId} />;
+  return (
+    <>
+      {isNew ? <NewProjectHome project={project} slug={projectId} /> : <GameHome project={project} slug={projectId} />}
+      <Suspense fallback={null}>
+        <StarterDrawer project={project} />
+      </Suspense>
+    </>
+  );
 }
 
 function GameHome({ project, slug }: { project: Project; slug: string }) {
@@ -48,7 +121,6 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
   const sections = project.sections ?? [];
   const roots = sections.filter((s) => !s.parentId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const logline = v.logline?.trim() || toPreviewText(project.description ?? "", 220);
-  const progress = visionProgress(project);
 
   return (
     <div className="mx-auto grid max-w-7xl items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -80,7 +152,7 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
             </ul>
           ) : (
             <Invite
-              href={`${base}/visao`}
+              href={starterHref(slug, "vision")}
               text={t("projectHome.pillarsInvite", "Quais são as 3 ou 4 regras que decidem as brigas de design do seu jogo?")}
               action={t("projectHome.answer", "Responder")}
             />
@@ -102,26 +174,7 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
 
       <aside className="flex flex-col gap-5">
         <LooseEnds project={project} slug={slug} />
-        {progress.answered < progress.total && (
-          <div className="rounded-2xl border border-line bg-surface p-5">
-            <h2 className="text-base font-semibold text-ink">{t("projectHome.firstSteps", "Primeiros passos")}</h2>
-            <p className="mt-1 text-sm text-muted">{t("projectHome.firstStepsLead", "Perguntas para o GDD começar. Não é o fim: depois daqui, continue como quiser.")}</p>
-            <Link href={`${base}/visao`} className="mt-3 flex items-center gap-3 rounded-xl p-2 hover:bg-surface-2">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-area-vis-soft text-area-vis">
-                <IconVision className="h-4 w-4" />
-              </span>
-              <span className="min-w-0 flex-1 text-sm text-ink">
-                {t("projectShell.vision", "Visão do jogo")}
-                <span className="mt-1 block h-1 overflow-hidden rounded bg-surface-2">
-                  <span className="block h-full bg-area-vis" style={{ width: `${(progress.answered / progress.total) * 100}%` }} />
-                </span>
-              </span>
-              <span className="text-xs tabular-nums text-muted">
-                {progress.answered}/{progress.total}
-              </span>
-            </Link>
-          </div>
-        )}
+        <FirstStepsCard project={project} slug={slug} />
       </aside>
     </div>
   );
@@ -258,13 +311,10 @@ function Invite({ href, text, action }: { href: string; text: string; action: st
 
 function NewProjectHome({ project, slug }: { project: Project; slug: string }) {
   const { t } = useI18n();
-  const base = `/projects/${slug}`;
-  const progress = visionProgress(project);
-
   const doors = [
-    { href: `${base}/visao`, main: true, icon: <IconVision className="h-5 w-5" />, title: t("projectHome.doorZero", "Começar do zero"), text: t("projectHome.doorZeroText", "Responda as perguntas da Visão do jogo. Leva uns cinco minutos."), cta: t("projectHome.doorZeroCta", "Responder a primeira") },
+    { href: starterHref(slug, "vision"), main: true, icon: <IconVision className="h-5 w-5" />, title: t("projectHome.doorZero", "Começar do zero"), text: t("projectHome.doorZeroText", "Responda as perguntas da Visão do jogo. Leva uns cinco minutos."), cta: t("projectHome.doorZeroCta", "Responder a primeira") },
     { href: "/import", main: false, icon: <IconDoc className="h-5 w-5" />, title: t("projectHome.doorImport", "Trazer o que já tenho"), text: t("projectHome.doorImportText", "Arquivos .md, um documento, ou o Claude que já escreve o seu jogo."), cta: t("projectHome.doorImportCta", "Importar") },
-    { href: `${base}/visao`, main: false, icon: <IconLibrary className="h-5 w-5" />, title: t("projectHome.doorGenre", "Partir de um gênero"), text: t("projectHome.doorGenreText", "As perguntas se ajustam ao tipo de jogo. Nada de jogo de exemplo para apagar."), cta: t("projectHome.doorGenreCta", "Escolher gênero") },
+    { href: starterHref(slug, "genre"), main: false, icon: <IconLibrary className="h-5 w-5" />, title: t("projectHome.doorGenre", "Partir de um gênero"), text: t("projectHome.doorGenreText", "As perguntas se ajustam ao tipo de jogo. Nada de jogo de exemplo para apagar."), cta: t("projectHome.doorGenreCta", "Escolher gênero") },
   ];
   const parts = [
     { tone: "bg-area-vis-soft text-area-vis", icon: <IconVision className="h-4 w-4" />, title: t("projectShell.vision", "Visão do jogo"), text: t("projectHome.partVision", "A ideia, os pilares e a sensação que o jogo deve deixar."), ex: t("projectHome.partVisionEx", "Ex.: \"combate com impacto\"") },
@@ -330,31 +380,7 @@ function NewProjectHome({ project, slug }: { project: Project; slug: string }) {
       </div>
 
       <aside className="flex flex-col gap-5">
-        <div className="rounded-2xl border border-line bg-surface p-5">
-          <h2 className="text-base font-semibold text-ink">{t("projectHome.firstSteps", "Primeiros passos")}</h2>
-          <p className="mt-1 text-sm text-muted">{t("projectHome.firstStepsLead", "Perguntas para o GDD começar. Não é o fim: depois daqui, continue como quiser.")}</p>
-          <ul className="mt-3 flex flex-col gap-1">
-            {[
-              { title: t("projectShell.vision", "Visão do jogo"), tone: "bg-area-vis-soft text-area-vis", icon: <IconVision className="h-4 w-4" />, first: true, count: `${progress.answered}/${progress.total}` },
-              { title: t("projectShell.docs", "Documentação"), tone: "bg-area-doc-soft text-area-doc", icon: <IconDoc className="h-4 w-4" />, first: false, count: "0/6" },
-              { title: t("projectShell.library", "Biblioteca do jogo"), tone: "bg-area-lib-soft text-area-lib", icon: <IconLibrary className="h-4 w-4" />, first: false, count: "0/4" },
-              { title: t("projectShell.systems", "Sistemas e relações"), tone: "bg-area-sys-soft text-area-sys", icon: <IconSystems className="h-4 w-4" />, first: false, count: "0/3" },
-            ].map((step) => (
-              <li key={step.title} className={`flex items-center gap-3 rounded-xl p-2 ${step.first ? "" : "opacity-60"}`}>
-                <span className={`grid h-8 w-8 place-items-center rounded-lg ${step.tone}`}>{step.icon}</span>
-                <span className="min-w-0 flex-1 text-sm text-ink">
-                  {step.title}
-                  <span className="block text-xs text-muted">{step.first ? t("projectHome.stepIdea", "A ideia do jogo") : t("projectHome.stepAfter", "Depois da Visão")}</span>
-                </span>
-                {step.first ? (
-                  <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent">{t("projectHome.startHere", "Comece aqui")}</span>
-                ) : (
-                  <span className="text-xs tabular-nums text-muted">{step.count}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <FirstStepsCard project={project} slug={slug} />
         <div className="rounded-2xl bg-area-doc-soft p-5">
           <h3 className="text-sm font-semibold text-ink">{t("projectHome.tipTitle", "Comece pelo jogador")}</h3>
           <p className="mt-1 text-sm text-ink-2">{t("projectHome.tipText", "Antes das regras, pense no que a pessoa sente nos primeiros cinco minutos. O resto do design sai daí.")}</p>
