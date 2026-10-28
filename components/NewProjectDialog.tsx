@@ -10,7 +10,21 @@ import { projectPath } from "@/lib/utils/slug";
  * Criar um projeto pede só o nome — e nem isso é obrigatório. O resto vem das
  * perguntas dos Primeiros passos, na home do projeto.
  */
-export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NewProjectDialog({
+  open,
+  onClose,
+  then,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Depois de criar, abrir já nas perguntas de gênero. */
+  then?: "genre";
+}) {
+  // Montar só ao abrir: o campo nasce vazio a cada vez, sem zerar estado num efeito.
+  return open ? <DialogBody onClose={onClose} then={then} /> : null;
+}
+
+function DialogBody({ onClose, then }: { onClose: () => void; then?: "genre" }) {
   const { t } = useI18n();
   const router = useRouter();
   const addProject = useProjectStore((s) => s.addProject);
@@ -19,21 +33,12 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  // Só ao abrir: depender de onClose (função nova a cada render) zeraria o campo enquanto se digita.
   useEffect(() => {
-    if (!open) return;
-    setName("");
-    setError("");
     inputRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCloseRef.current();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  if (!open) return null;
+  }, [onClose]);
 
   /** "Projeto sem nome", "Projeto sem nome 2"… — o nome é a rota, não pode repetir. */
   const fallbackName = () => {
@@ -51,7 +56,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
     try {
       addProject(title, "");
       onClose();
-      router.push(projectPath({ title }));
+      router.push(then === "genre" ? `${projectPath({ title })}?perguntas=genre` : projectPath({ title }));
     } catch (err) {
       const code = err instanceof Error ? err.message : String(err);
       setError(

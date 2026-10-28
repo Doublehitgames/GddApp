@@ -33,6 +33,9 @@ export function coverPalette(seedSource: string) {
   };
 }
 
+/** Duas casas bastam para desenhar, e evitam que servidor e navegador discordem na 15ª casa (erro de hidratação). */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 function CoverArt({ seedSource, width, height }: { seedSource: string; width: number; height: number }) {
   const art = useMemo(() => {
     const rand = seededRandom(hashString(seedSource) || 7);
@@ -43,8 +46,8 @@ function CoverArt({ seedSource, width, height }: { seedSource: string; width: nu
       const a = (i / 60) * Math.PI * 2;
       const big = i % 5 === 0;
       const r1 = r * (big ? 0.86 : 0.92);
-      const r2 = r * 0.97;
-      return { x1: cx + Math.cos(a) * r1, y1: cy + Math.sin(a) * r1, x2: cx + Math.cos(a) * r2, y2: cy + Math.sin(a) * r2, big };
+      const rOuter = r * 0.97;
+      return { x1: r2(cx + Math.cos(a) * r1), y1: r2(cy + Math.sin(a) * r1), x2: r2(cx + Math.cos(a) * rOuter), y2: r2(cy + Math.sin(a) * rOuter), big };
     });
     let x = cx - r * 1.1;
     let y = cy - r * 0.2;
@@ -55,10 +58,10 @@ function CoverArt({ seedSource, width, height }: { seedSource: string; width: nu
       crack += ` L${x.toFixed(1)} ${y.toFixed(1)}`;
     }
     const sand = Array.from({ length: 60 }, () => ({
-      cx: cx - r * 1.4 + rand() * r * 2.6,
-      cy: rand() * height,
-      r: rand() * 1.8 + 0.4,
-      o: rand() * 0.5 + 0.15,
+      cx: r2(cx - r * 1.4 + rand() * r * 2.6),
+      cy: r2(rand() * height),
+      r: r2(rand() * 1.8 + 0.4),
+      o: r2(rand() * 0.5 + 0.15),
     }));
     return { r, cx, cy, ticks, crack, sand };
   }, [seedSource, width, height]);

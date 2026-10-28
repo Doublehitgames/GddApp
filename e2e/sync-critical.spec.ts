@@ -4,7 +4,6 @@ import { test, expect, type Page } from '@playwright/test';
 async function createProject(page: Page, name: string) {
   await page.goto('/');
   await page.getByRole('button', { name: /Novo projeto/i }).first().click();
-  await page.getByRole('button', { name: /Novo projeto em branco/i }).click();
   await page.getByPlaceholder('Nome do jogo').fill(name);
   await page.getByRole('button', { name: 'Criar projeto', exact: true }).click();
   await page.waitForURL(/\/projects\/[^/?]+/, { timeout: 15000 });
