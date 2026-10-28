@@ -674,23 +674,23 @@ export default function ProjectDetailClient({ projectId }: Props) {
         );
     };
 
-    if (!mounted) return <div className="min-h-screen bg-gray-900 text-white p-6">{t("common.loading")}</div>;
+    if (!mounted) return <div className="min-h-screen bg-canvas text-ink p-6">{t("common.loading")}</div>;
 
     if (!project) {
         return (
-            <div className="min-h-screen bg-gray-900 text-white p-6">
+            <div className="min-h-screen bg-canvas text-ink p-6">
                 <div className="max-w-5xl mx-auto">
-                    <button className="mb-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => router.push("/")}>
+                    <button className="mb-4 px-4 py-2 bg-surface-2 text-ink rounded-lg hover:bg-surface-3 transition-colors" onClick={() => router.push("/")}>
                         {t("projectDetail.backHome")}
                     </button>
-                    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 text-red-300">{t("projectDetail.notFound")} "{projectId}"</div>
+                    <div className="bg-surface border border-line rounded-xl p-5 text-red-700 dark:text-red-300">{t("projectDetail.notFound")} "{projectId}"</div>
                 </div>
             </div>
         );
     }
 
     return (
-        <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10">
+        <main className="min-h-screen bg-canvas text-ink px-4 py-8 md:px-8 md:py-10 lg:px-10">
             <div className="mx-auto w-full max-w-7xl">
                 <div className="grid gap-6 items-start">
                     <div className="space-y-4">
@@ -707,14 +707,14 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
                             <div className="mb-4">
                                 {coverImageError && (
-                                    <p className="text-sm text-red-300 mb-3">{coverImageError}</p>
+                                    <p className="text-sm text-red-700 dark:text-red-300 mb-3">{coverImageError}</p>
                                 )}
                                 <button
                                     type="button"
                                     onClick={handlePickCoverImage}
                                     disabled={isPickingCoverImage}
                                     aria-label={t("projectDetail.cover.selectFromDrive")}
-                                    className="w-full text-left rounded-xl overflow-hidden border border-gray-600/70 bg-gray-900/60 hover:border-blue-500/70 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                    className="w-full text-left rounded-xl overflow-hidden border border-line-strong/70 bg-canvas/60 hover:border-blue-500/70 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     {project.coverImageUrl && coverImageCandidateIndex < coverImageCandidates.length ? (
                                         <div className="relative">
@@ -727,28 +727,28 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 className="w-full max-h-[320px] object-cover"
                                                 loading="lazy"
                                             />
-                                            <div className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs bg-black/55 text-gray-100">
+                                            <div className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs bg-black/55 text-ink">
                                                 {isPickingCoverImage ? t("projectDetail.cover.picking") : t("projectDetail.cover.hint")}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="h-48 md:h-56 border-2 border-dashed border-gray-600 rounded-xl m-3 flex flex-col items-center justify-center gap-2 text-center px-4">
+                                        <div className="h-48 md:h-56 border-2 border-dashed border-line-strong rounded-xl m-3 flex flex-col items-center justify-center gap-2 text-center px-4">
                                             <span className="text-3xl">🖼️</span>
-                                            <p className="text-sm font-medium text-gray-200">
+                                            <p className="text-sm font-medium text-ink">
                                                 {isPickingCoverImage
                                                     ? t("projectDetail.cover.picking")
                                                     : t("projectDetail.cover.selectFromDrive")}
                                             </p>
-                                            <p className="text-xs text-gray-400">{t("projectDetail.cover.noImage")}</p>
+                                            <p className="text-xs text-muted">{t("projectDetail.cover.noImage")}</p>
                                         </div>
                                     )}
                                 </button>
                                 {project.coverImageUrl && coverImageCandidateIndex >= coverImageCandidates.length && (
-                                    <p className="text-amber-300 text-sm mt-2">{t("projectDetail.cover.loadFailed")}</p>
+                                    <p className="text-amber-700 dark:text-amber-300 text-sm mt-2">{t("projectDetail.cover.loadFailed")}</p>
                                 )}
                             </div>
 
-                            <div className="text-gray-200">
+                            <div className="text-ink">
                                 {(project.contentBlocks?.length || project.description) ? (
                                     <SectionDescriptionReadOnly
                                         blocks={project.contentBlocks}
@@ -757,7 +757,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                         sections={project.sections || []}
                                     />
                                 ) : (
-                                    <p className="text-gray-400 italic">{t("projectDetail.noDescription")}</p>
+                                    <p className="text-muted italic">{t("projectDetail.noDescription")}</p>
                                 )}
                             </div>
                         </section>
@@ -766,13 +766,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
                                 <div>
                                     <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.spotlight.title")}</h2>
-                                    <p className="text-sm text-gray-400 mt-1">{t("projectDetail.spotlight.subtitle")}</p>
+                                    <p className="text-sm text-muted mt-1">{t("projectDetail.spotlight.subtitle")}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setShowSpotlightEditor((prev) => !prev)}
-                                        className="px-4 py-2 rounded-lg bg-gray-700 text-white font-semibold hover:bg-gray-600 transition-colors"
+                                        className="px-4 py-2 rounded-lg bg-surface-2 text-ink font-semibold hover:bg-surface-3 transition-colors"
                                     >
                                         {showSpotlightEditor
                                             ? t("projectDetail.spotlight.hidePanel")
@@ -791,17 +791,17 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             </div>
 
                             {!showSpotlightEditor && (
-                                <p className="text-sm text-gray-400 italic">{t("projectDetail.spotlight.hiddenHint")}</p>
+                                <p className="text-sm text-muted italic">{t("projectDetail.spotlight.hiddenHint")}</p>
                             )}
 
                             {showSpotlightEditor && (
                                 <>
-                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-gray-100 mb-1">{t("projectDetail.spotlight.iconLabel")}</p>
-                                <p className="text-xs text-gray-400 mb-3">{t("projectDetail.spotlight.iconHelp")}</p>
+                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-ink mb-1">{t("projectDetail.spotlight.iconLabel")}</p>
+                                <p className="text-xs text-muted mb-3">{t("projectDetail.spotlight.iconHelp")}</p>
 
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-600 bg-gray-900/80 flex items-center justify-center">
+                                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-line-strong bg-canvas/80 flex items-center justify-center">
                                         {spotlightTitleIconUrl && spotlightIconCandidateIndex < spotlightTitleIconCandidates.length ? (
                                             <img
                                                 src={spotlightTitleIconCandidates[spotlightIconCandidateIndex]}
@@ -834,7 +834,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                     setSpotlightSaved(false);
                                                     setSpotlightIconError("");
                                                 }}
-                                                className="px-3 py-2 rounded-lg bg-gray-700 text-gray-100 text-sm font-medium hover:bg-gray-600"
+                                                className="px-3 py-2 rounded-lg bg-surface-2 text-ink text-sm font-medium hover:bg-surface-3"
                                             >
                                                 {t("projectDetail.spotlight.iconRemove")}
                                             </button>
@@ -843,15 +843,15 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
 
                                 {spotlightIconError && (
-                                    <p className="mt-2 text-sm text-rose-300">{spotlightIconError}</p>
+                                    <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">{spotlightIconError}</p>
                                 )}
                             </div>
 
-                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
+                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-ink mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
                                 <div className="grid gap-2 md:grid-cols-2">
                                     {FEATURE_PRESETS.map((feature) => (
-                                        <div key={feature} className="flex items-center gap-2 text-sm text-gray-200">
+                                        <div key={feature} className="flex items-center gap-2 text-sm text-ink">
                                             <ToggleSwitch
                                                 checked={Boolean(featureEnabled[feature])}
                                                 onChange={(next) => {
@@ -867,8 +867,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-gray-100 mb-3">{t("projectDetail.spotlight.detailsLabel", "Detalhes")}</p>
+                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
+                                <p className="text-sm font-semibold text-ink mb-3">{t("projectDetail.spotlight.detailsLabel", "Detalhes")}</p>
                                 <div className="grid gap-3">
                                     {DETAIL_PRESETS.map((preset) => {
                                         const state = detailState[preset.id] || { enabled: false, value: "" };
@@ -883,7 +883,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                             : [];
                                         return (
                                             <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                <div className="flex items-center gap-2 text-sm text-gray-200">
+                                                <div className="flex items-center gap-2 text-sm text-ink">
                                                     <ToggleSwitch
                                                         checked={state.enabled}
                                                         onChange={(checked) => {
@@ -902,7 +902,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 </div>
                                                 {quickPreset ? (
                                                     <div className="space-y-2">
-                                                        <p className="text-xs text-gray-400">{quickPreset.hint}</p>
+                                                        <p className="text-xs text-muted">{quickPreset.hint}</p>
                                                         <div className="flex flex-wrap gap-2">
                                                             {quickOptions.map((option) => {
                                                                 const isSelected = hasValue(selectedPresetValues, option);
@@ -929,8 +929,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                             setSpotlightSaved(false);
                                                                         }}
                                                                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
-                                                                            ? "border-sky-300 bg-sky-500/20 text-sky-100"
-                                                                            : "border-gray-600 bg-gray-900/70 text-gray-200 hover:border-sky-400 hover:text-white"
+                                                                            ? "border-sky-300 bg-sky-500/20 text-sky-900 dark:text-sky-100"
+                                                                            : "border-line-strong bg-canvas/70 text-ink hover:border-sky-400 hover:text-ink"
                                                                             }`}
                                                                     >
                                                                         {option}
@@ -951,7 +951,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                 setSpotlightSaved(false);
                                                             }}
                                                             placeholder={preset.placeholder}
-                                                            className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         />
                                                     </div>
                                                 ) : (
@@ -968,7 +968,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                             setSpotlightSaved(false);
                                                         }}
                                                         placeholder={preset.placeholder}
-                                                        className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     />
                                                 )}
                                             </div>
@@ -977,13 +977,13 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-gray-700 bg-gray-950/40 p-4">
-                                <p className="text-sm font-semibold text-gray-100 mb-1">{t("projectDetail.spotlight.linksLabel", "Links e botões")}</p>
-                                <p className="text-xs text-gray-400 mb-3">{t("projectDetail.spotlight.linksHelp", "Ative e preencha a URL completa para cada botão")}</p>
+                            <div className="rounded-xl border border-line bg-canvas/40 p-4">
+                                <p className="text-sm font-semibold text-ink mb-1">{t("projectDetail.spotlight.linksLabel", "Links e botões")}</p>
+                                <p className="text-xs text-muted mb-3">{t("projectDetail.spotlight.linksHelp", "Ative e preencha a URL completa para cada botão")}</p>
 
                                 {(Object.keys(groupedLinkPresets) as Array<keyof typeof groupedLinkPresets>).map((category) => (
                                     <div key={category} className="mb-4 last:mb-0">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300 mb-2">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300 mb-2">
                                             {LINK_CATEGORY_LABEL[category]}
                                         </p>
                                         <div className="grid gap-2">
@@ -991,7 +991,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 const state = linkState[preset.id] || { enabled: false, url: "" };
                                                 return (
                                                     <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                        <div className="flex items-center gap-2 text-sm text-gray-200">
+                                                        <div className="flex items-center gap-2 text-sm text-ink">
                                                             <ToggleSwitch
                                                                 checked={state.enabled}
                                                                 onChange={(checked) => {
@@ -1022,7 +1022,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                 if (spotlightError) setSpotlightError("");
                                                             }}
                                                             placeholder={preset.placeholder}
-                                                            className="w-full rounded-lg border border-gray-600 bg-gray-900/80 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         />
                                                     </div>
                                                 );
@@ -1033,25 +1033,25 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             </div>
 
                             {spotlightError && (
-                                <p className="mt-3 text-sm text-rose-300">{spotlightError}</p>
+                                <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{spotlightError}</p>
                             )}
                             {spotlightSaved && !spotlightError && (
-                                <p className="mt-3 text-sm text-emerald-300">{t("projectDetail.spotlight.saved")}</p>
+                                <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">{t("projectDetail.spotlight.saved")}</p>
                             )}
 
-                            <div className="mt-5 rounded-xl border border-gray-700 bg-gray-950/60 p-4">
-                                <h3 className="text-sm uppercase tracking-wide text-gray-300 mb-3">
+                            <div className="mt-5 rounded-xl border border-line bg-canvas/60 p-4">
+                                <h3 className="text-sm uppercase tracking-wide text-ink-2 mb-3">
                                     {t("projectDetail.spotlight.previewTitle")}
                                 </h3>
 
                                 {!currentSpotlight && (
-                                    <p className="text-sm text-gray-400 italic">{t("projectDetail.spotlight.previewEmpty")}</p>
+                                    <p className="text-sm text-muted italic">{t("projectDetail.spotlight.previewEmpty")}</p>
                                 )}
 
                                 {currentSpotlight?.features?.length ? (
                                     <div className="mb-3">
-                                        <p className="text-xs font-semibold text-emerald-300 mb-1">{t("view.spotlight.featuresTitle")}</p>
-                                        <ul className="space-y-1 text-sm text-gray-200 list-disc pl-5">
+                                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">{t("view.spotlight.featuresTitle")}</p>
+                                        <ul className="space-y-1 text-sm text-ink list-disc pl-5">
                                             {currentSpotlight.features.map((item) => (
                                                 <li key={item}>{item}</li>
                                             ))}
@@ -1061,8 +1061,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
                                 {currentSpotlight?.technicalDetails?.length ? (
                                     <div className="mb-3">
-                                        <p className="text-xs font-semibold text-sky-300 mb-1">{t("view.spotlight.detailsTitle")}</p>
-                                        <ul className="space-y-1 text-sm text-gray-200 list-disc pl-5">
+                                        <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">{t("view.spotlight.detailsTitle")}</p>
+                                        <ul className="space-y-1 text-sm text-ink list-disc pl-5">
                                             {currentSpotlight.technicalDetails.map((item) => (
                                                 <li key={item}>{item}</li>
                                             ))}
@@ -1078,7 +1078,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 href={link.url}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="inline-flex items-center rounded-full border border-indigo-400/70 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20"
+                                                className="inline-flex items-center rounded-full border border-indigo-400/70 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-800 dark:text-indigo-200 hover:bg-indigo-500/20"
                                             >
                                                 {link.label}
                                             </a>
@@ -1087,7 +1087,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 ) : null}
 
                                 {currentSpotlight?.titleIconUrl ? (
-                                    <p className="mt-3 text-xs text-gray-400">{t("projectDetail.spotlight.iconConfigured")}</p>
+                                    <p className="mt-3 text-xs text-muted">{t("projectDetail.spotlight.iconConfigured")}</p>
                                 ) : null}
                             </div>
                                 </>
@@ -1105,8 +1105,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                             href={action.href}
                                             prefetch={false}
                                             className={`group relative overflow-hidden shrink-0 snap-start w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-xl border flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${isActive
-                                                ? "border-indigo-300 bg-indigo-600/20 text-indigo-100 shadow-lg shadow-indigo-900/40 -translate-y-0.5"
-                                                : "border-gray-600 bg-gray-900/60 text-gray-300 hover:border-indigo-500 hover:text-white hover:bg-gray-800/90 hover:-translate-y-px hover:shadow-sm hover:shadow-black/25"
+                                                ? "border-indigo-300 bg-indigo-600/20 text-indigo-900 dark:text-indigo-100 shadow-lg shadow-indigo-900/40 -translate-y-0.5"
+                                                : "border-line-strong bg-canvas/60 text-ink-2 hover:border-indigo-500 hover:text-ink hover:bg-surface/90 hover:-translate-y-px hover:shadow-sm hover:shadow-black/25"
                                                 }`}
                                         >
                                             <span className={`absolute inset-0 bg-gradient-to-br ${action.accentClass} opacity-80`} aria-hidden />
@@ -1196,7 +1196,7 @@ function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm
     return (
         <>
             {(searchTerm.trim() || selectedTagFilters.length > 0) && totalMatches > 0 && (
-                <p className="text-sm text-gray-400 mb-2 ml-1">
+                <p className="text-sm text-muted mb-2 ml-1">
                     {totalMatches} {totalMatches === 1 ? labels.resultsFoundOne : labels.resultsFoundMany}
                 </p>
             )}
@@ -1293,11 +1293,11 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
         <li ref={setNodeRef} style={style} className="mb-2">
             <div className={`group relative overflow-hidden flex items-center gap-2 border p-2.5 rounded-xl transition-all duration-150 ${isActiveSection
                 ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25"
-                : "border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 hover:-translate-y-px"
+                : "border-line bg-canvas/70 hover:border-indigo-500/60 hover:-translate-y-px"
                 }`}>
                 <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
                 <span
-                    className="relative text-gray-400 cursor-grab active:cursor-grabbing"
+                    className="relative text-muted cursor-grab active:cursor-grabbing"
                     {...attributes}
                     {...listeners}
                     aria-label={labels.reorder}
@@ -1316,8 +1316,8 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
                             setExpandedSections(newExpanded);
                         }}
                         className={`relative inline-flex items-center justify-center h-5 w-5 rounded-md border text-sm transition-colors ${isActiveSection
-                            ? "border-indigo-300/60 text-indigo-100 bg-indigo-500/20"
-                            : "border-gray-600 text-gray-300 hover:text-white hover:border-indigo-400"
+                            ? "border-indigo-300/60 text-indigo-900 dark:text-indigo-100 bg-indigo-500/20"
+                            : "border-line-strong text-ink-2 hover:text-ink hover:border-indigo-400"
                             }`}
                     >
                         {isExpanded ? '−' : '+'}
@@ -1326,17 +1326,17 @@ function SortableRootItem({ section, sections, projectId, searchTerm, selectedTa
                 {!hasChildren && <span className="w-4"></span>}
                 <Link
                     href={`/projects/${projectId}/sections/${toSlug(section.title)}`}
-                    className={`relative flex-1 min-w-0 truncate text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset rounded px-0.5 ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
+                    className={`relative flex-1 min-w-0 truncate text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset rounded px-0.5 ${isActiveSection ? "text-indigo-900 dark:text-indigo-100 font-semibold" : "text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"}`}
                     prefetch={false}
                 >
                     {highlightText(section.title, searchTerm)}
                 </Link>
                 {directMatch && searchTerm.trim() && (
-                    <span className="relative text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ {labels.match}</span>
+                    <span className="relative text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ {labels.match}</span>
                 )}
             </div>
             {contentSnippet && (
-                <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded-lg">
+                <div className="ml-8 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded-lg">
                     {highlightText(contentSnippet, searchTerm)}
                 </div>
             )}
@@ -1427,7 +1427,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
 
     if (kids.length === 0) return null;
     return (
-        <ul className="ml-4 mt-2 pl-3 border-l border-gray-700/70 space-y-2">
+        <ul className="ml-4 mt-2 pl-3 border-l border-line/70 space-y-2">
             {kids.map((sec) => {
                 const directMatch = matchesSearch(sec);
                 const contentSnippet = directMatch && sec.content && searchTerm ? getContentSnippet(sec.content, searchTerm) : '';
@@ -1439,7 +1439,7 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                     <li key={sec.id} className="mb-2">
                         <div className={`group relative overflow-hidden flex items-center gap-2 rounded-lg border px-2.5 py-2 transition-colors ${isActiveSection
                             ? "border-indigo-300/60 bg-indigo-600/20"
-                            : "border-gray-700/80 bg-gray-900/50 hover:border-indigo-500/50"
+                            : "border-line/80 bg-canvas/50 hover:border-indigo-500/50"
                             }`}>
                             {hasChildren && (
                                 <button
@@ -1453,8 +1453,8 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                                         setExpandedSections(newExpanded);
                                     }}
                                     className={`inline-flex items-center justify-center h-5 w-5 rounded-md border text-sm transition-colors ${isActiveSection
-                                        ? "border-indigo-300/60 text-indigo-100 bg-indigo-500/20"
-                                        : "border-gray-600 text-gray-300 hover:text-white hover:border-indigo-400"
+                                        ? "border-indigo-300/60 text-indigo-900 dark:text-indigo-100 bg-indigo-500/20"
+                                        : "border-line-strong text-ink-2 hover:text-ink hover:border-indigo-400"
                                         }`}
                                 >
                                     {isExpanded ? '−' : '+'}
@@ -1463,17 +1463,17 @@ function SectionChildren({ parentId, sections, projectId, searchTerm, selectedTa
                             {!hasChildren && <span className="w-5" />}
                             <Link
                                 href={`/projects/${projectId}/sections/${toSlug(sec.title)}`}
-                                className={`flex-1 min-w-0 truncate text-sm transition-colors ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 hover:text-blue-200"}`}
+                                className={`flex-1 min-w-0 truncate text-sm transition-colors ${isActiveSection ? "text-indigo-900 dark:text-indigo-100 font-semibold" : "text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200"}`}
                                 prefetch={false}
                             >
                                 {highlightText(sec.title, searchTerm)}
                             </Link>
                             {directMatch && searchTerm && searchTerm.trim() && (
-                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ {labels.match}</span>
+                                <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ {labels.match}</span>
                             )}
                         </div>
                         {contentSnippet && (
-                            <div className="text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded ml-4">
+                            <div className="text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded ml-4">
                                 {highlightText(contentSnippet, searchTerm || '')}
                             </div>
                         )}

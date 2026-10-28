@@ -1,7 +1,6 @@
-import ProjectDetailClient from "./ProjectDetailClient";
+import ProjectHomeClient from "./ProjectHomeClient";
 
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
- 
-  return <ProjectDetailClient projectId={resolvedParams.id} />;
+  const { id } = await params;
+  return <ProjectHomeClient projectId={id} />;
 }
