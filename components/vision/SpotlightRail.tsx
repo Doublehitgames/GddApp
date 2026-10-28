@@ -56,8 +56,8 @@ export function SpotlightRail({ spotlight, editing, onEdit }: { spotlight?: Proj
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-subtle">{t("visionPage.sheetFeatures", "Destaques")}</h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {features.map((f) => (
-                    <span key={f} className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
+                  {features.map((f, i) => (
+                    <span key={`${i}-${f}`} className="rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
                       {f}
                     </span>
                   ))}
@@ -69,10 +69,10 @@ export function SpotlightRail({ spotlight, editing, onEdit }: { spotlight?: Proj
               <div>
                 <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-subtle">{t("visionPage.sheetDetails", "Detalhes")}</h3>
                 <dl className="divide-y divide-line">
-                  {details.map((line) => {
+                  {details.map((line, i) => {
                     const [label, value] = splitDetail(line);
                     return (
-                      <div key={line} className="flex gap-3 py-2 text-sm">
+                      <div key={`${i}-${line}`} className="flex gap-3 py-2 text-sm">
                         {label && <dt className="w-24 shrink-0 text-muted">{label}</dt>}
                         <dd className="min-w-0 flex-1 font-medium text-ink">{value}</dd>
                       </div>
@@ -86,9 +86,9 @@ export function SpotlightRail({ spotlight, editing, onEdit }: { spotlight?: Proj
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-subtle">{t("visionPage.sheetLinks", "Onde jogar")}</h3>
                 <div className="flex flex-col gap-1.5">
-                  {links.map((link) => (
+                  {links.map((link, i) => (
                     <a
-                      key={link.url}
+                      key={`${i}-${link.url}`}
                       href={link.url}
                       target="_blank"
                       rel="noreferrer"
