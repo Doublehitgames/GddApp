@@ -83,7 +83,7 @@ function CoverArt({ seedSource, width, height }: { seedSource: string; width: nu
   );
 }
 
-function CoverImage({ src, alt }: { src: string; alt: string }) {
+export function CoverImage({ src, alt }: { src: string; alt: string }) {
   const candidates = useMemo(() => getDriveImageDisplayCandidates(src), [src]);
   const [attempt, setAttempt] = useState(0);
   if (attempt >= candidates.length) return null;

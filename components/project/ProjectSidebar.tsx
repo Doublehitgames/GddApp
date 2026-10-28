@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ProjectSectionsSidebar from "@/components/ProjectSectionsSidebar";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Project } from "@/store/slices/types";
 import { ProjectGlyph } from "@/components/project/ProjectCover";
 
 /**
- * A navegação fixa do projeto: as quatro áreas do GDD, a árvore de páginas,
- * as coleções (por enquanto uma promessa — chegam com a Biblioteca), o
+ * A navegação fixa do projeto: as quatro áreas do GDD (as páginas se acham
+ * pela Documentação e pela busca), as coleções (por enquanto uma promessa — chegam com a Biblioteca), o
  * andamento e os modos de apresentar.
  */
 export function ProjectSidebar({
@@ -86,10 +85,6 @@ export function ProjectSidebar({
           ))}
         </ul>
       </nav>
-
-      <div>
-        <ProjectSectionsSidebar projectId={project.id} projectSlug={projectSlug} variant="embedded" />
-      </div>
 
       <nav aria-label={t("projectShell.collectionsLabel", "Coleções")}>
         <SectionLabel>{t("projectShell.collectionsLabel", "Coleções")}</SectionLabel>

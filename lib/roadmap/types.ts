@@ -21,12 +21,12 @@ export const ITEM_TAG_CONFIG: Record<RoadmapItemTag, {
   /** Light pill — for inside light chips (doc view) */
   docStyle: string;
 }> = {
-  new:    { label: "NEW",  style: "border-emerald-700/60 bg-emerald-950/50 text-emerald-300", chipStyle: "bg-emerald-900/70 text-emerald-300",  docStyle: "bg-emerald-100 text-emerald-700"  },
-  fix:    { label: "FIX",  style: "border-rose-700/60    bg-rose-950/50    text-rose-300",    chipStyle: "bg-rose-900/70    text-rose-300",    docStyle: "bg-rose-100    text-rose-700"    },
-  refact: { label: "RFCT", style: "border-amber-700/60   bg-amber-950/50   text-amber-300",   chipStyle: "bg-amber-900/70   text-amber-300",   docStyle: "bg-amber-100   text-amber-700"   },
-  add:    { label: "+",    style: "border-sky-700/60     bg-sky-950/50     text-sky-300",     chipStyle: "bg-sky-900/70     text-sky-300",     docStyle: "bg-sky-100     text-sky-700"     },
-  remove: { label: "−",    style: "border-pink-700/60    bg-pink-950/50    text-pink-300",    chipStyle: "bg-pink-900/70    text-pink-300",    docStyle: "bg-pink-100    text-pink-700"    },
-  chore:  { label: "~",    style: "border-slate-700/60   bg-slate-800/50   text-slate-400",   chipStyle: "bg-slate-800/70   text-slate-400",   docStyle: "bg-slate-100   text-slate-600"   },
+  new:    { label: "NEW",  style: "border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300", chipStyle: "bg-emerald-100 dark:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300",  docStyle: "bg-emerald-100 text-emerald-700"  },
+  fix:    { label: "FIX",  style: "border-rose-300/60 dark:border-rose-700/60    bg-rose-50 dark:bg-rose-950/50    text-rose-700 dark:text-rose-300",    chipStyle: "bg-rose-100 dark:bg-rose-900/70    text-rose-700 dark:text-rose-300",    docStyle: "bg-rose-100    text-rose-700"    },
+  refact: { label: "RFCT", style: "border-amber-300/60 dark:border-amber-700/60   bg-amber-50 dark:bg-amber-950/50   text-amber-700 dark:text-amber-300",   chipStyle: "bg-amber-100 dark:bg-amber-900/70   text-amber-700 dark:text-amber-300",   docStyle: "bg-amber-100   text-amber-700"   },
+  add:    { label: "+",    style: "border-sky-300/60 dark:border-sky-700/60     bg-sky-50 dark:bg-sky-950/50     text-sky-700 dark:text-sky-300",     chipStyle: "bg-sky-100 dark:bg-sky-900/70     text-sky-700 dark:text-sky-300",     docStyle: "bg-sky-100     text-sky-700"     },
+  remove: { label: "−",    style: "border-pink-300/60 dark:border-pink-700/60    bg-pink-50 dark:bg-pink-950/50    text-pink-700 dark:text-pink-300",    chipStyle: "bg-pink-100 dark:bg-pink-900/70    text-pink-700 dark:text-pink-300",    docStyle: "bg-pink-100    text-pink-700"    },
+  chore:  { label: "~",    style: "border-line/60   bg-surface/50   text-muted",   chipStyle: "bg-surface/70   text-muted",   docStyle: "bg-slate-100   text-subtle"   },
 };
 
 // ─── Entities ────────────────────────────────────────────────────────────────
