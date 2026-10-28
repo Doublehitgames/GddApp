@@ -245,10 +245,56 @@ export function starterQuestionsFor(area: StarterArea, genre?: string): StarterQ
 /** Progresso guardado em `project.vision.starter`. */
 export type StarterProgress = { answered: string[]; skipped: string[]; doneAt?: string };
 
+/**
+ * O que é preciso saber do projeto para dizer se uma pergunta já tem resposta.
+ * `rootPageTitles` são os títulos das páginas de primeiro nível.
+ */
+export type StarterState = {
+  vision?: {
+    logline?: string;
+    playerVerb?: string;
+    feeling?: string;
+    pillars?: string[];
+    genre?: string;
+    starter?: StarterProgress;
+  } | null;
+  rootPageTitles: string[];
+};
+
+const norm = (s: string) => s.trim().toLowerCase();
+
+/**
+ * Respondida é o que tem conteúdo, não só o que passou pela gaveta: um agente
+ * que preenche a Visão pelo MCP, ou alguém que cria a página "História" à mão,
+ * também fecha a pergunta. O nome do jogo só fecha quando foi respondido de
+ * fato — todo projeto tem um título, nem que seja "Projeto sem nome".
+ */
+export function isStarterAnswered(q: StarterQuestion, state: StarterState): boolean {
+  if (state.vision?.starter?.answered?.includes(q.id)) return true;
+  if (q.target.kind === "vision") {
+    const v = state.vision ?? {};
+    switch (q.target.field) {
+      case "title":
+        return false;
+      case "pillars":
+        return (v.pillars?.length ?? 0) > 0;
+      default:
+        return !!v[q.target.field]?.trim();
+    }
+  }
+  const titles = new Set(state.rootPageTitles.map(norm));
+  const t = q.target.title;
+  return titles.has(norm(t["pt-BR"])) || titles.has(norm(t.en)) || titles.has(norm(t.es));
+}
+
+export function isStarterClosed(q: StarterQuestion, state: StarterState): boolean {
+  return isStarterAnswered(q, state) || !!state.vision?.starter?.skipped?.includes(q.id);
+}
+
 /** As perguntas ainda abertas (nem respondidas nem puladas), na ordem das áreas. */
-export function openStarterQuestions(progress: StarterProgress | undefined, genre?: string): StarterQuestion[] {
-  const closed = new Set([...(progress?.answered ?? []), ...(progress?.skipped ?? [])]);
-  return STARTER_AREAS.flatMap((area) => starterQuestionsFor(area, genre)).filter((q) => !closed.has(q.id));
+export function openStarterQuestions(state: StarterState): StarterQuestion[] {
+  const genre = state.vision?.genre;
+  return STARTER_AREAS.flatMap((area) => starterQuestionsFor(area, genre)).filter((q) => !isStarterClosed(q, state));
 }
 
 export function localized(text: LocalizedText, locale: string): string {

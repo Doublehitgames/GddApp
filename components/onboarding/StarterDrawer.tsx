@@ -7,11 +7,14 @@ import { useI18n } from "@/lib/i18n/provider";
 import {
   STARTER_AREAS,
   STARTER_GENRES,
+  isStarterAnswered,
+  isStarterClosed,
   localized,
   starterQuestionsFor,
   type StarterArea,
   type StarterProgress,
   type StarterQuestion,
+  type StarterState,
 } from "@/lib/onboarding/starterQuestions";
 import { projectPath, toSlug } from "@/lib/utils/slug";
 import { useProjectStore } from "@/store/projectStore";
@@ -47,12 +50,19 @@ export function starterProgress(project: Project): StarterProgress {
   return project.vision?.starter ?? { answered: [], skipped: [] };
 }
 
+export function starterState(project: Project, starter?: StarterProgress): StarterState {
+  return {
+    vision: { ...(project.vision ?? {}), starter: starter ?? starterProgress(project) },
+    rootPageTitles: (project.sections ?? []).filter((s) => !s.parentId).map((s) => s.title),
+  };
+}
+
 /** Respondidas e total de uma área, para o gênero do projeto. */
 export function areaProgress(project: Project, area: StarterArea) {
   const list = starterQuestionsFor(area, project.vision?.genre);
-  const p = starterProgress(project);
-  const answered = list.filter((q) => p.answered.includes(q.id)).length;
-  const closed = list.filter((q) => p.answered.includes(q.id) || p.skipped.includes(q.id)).length;
+  const state = starterState(project);
+  const answered = list.filter((q) => isStarterAnswered(q, state)).length;
+  const closed = list.filter((q) => isStarterClosed(q, state)).length;
   return { answered, total: list.length, done: closed === list.length };
 }
 
@@ -83,9 +93,9 @@ function DrawerBody({ project, requested, onClose }: { project: Project; request
   const [area, setArea] = useState<StarterArea>(startArea);
   // A fila é fixada ao abrir a área: responder não pode fazer a pergunta atual sumir debaixo da pessoa.
   const queue = useMemo(() => {
-    const p = starterProgress(project);
+    const state = starterState(project);
     const list = starterQuestionsFor(area, project.vision?.genre);
-    const open = list.filter((q) => !p.answered.includes(q.id) && !p.skipped.includes(q.id));
+    const open = list.filter((q) => !isStarterClosed(q, state));
     return open.length ? open : list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [area, project.vision?.genre]);
@@ -117,9 +127,8 @@ function DrawerBody({ project, requested, onClose }: { project: Project; request
     skipped.delete(id);
     (how === "answered" ? answered : skipped).add(id);
     const next: StarterProgress = { answered: [...answered], skipped: [...skipped] };
-    const allClosed = STARTER_AREAS.flatMap((a) => starterQuestionsFor(a, project.vision?.genre)).every(
-      (q) => answered.has(q.id) || skipped.has(q.id),
-    );
+    const state = starterState(project, next);
+    const allClosed = STARTER_AREAS.flatMap((a) => starterQuestionsFor(a, project.vision?.genre)).every((q) => isStarterClosed(q, state));
     if (allClosed) next.doneAt = p.doneAt ?? new Date().toISOString();
     else if (p.doneAt) next.doneAt = p.doneAt;
     updateProjectVision(project.id, { starter: next });

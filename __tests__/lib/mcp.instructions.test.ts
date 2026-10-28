@@ -185,15 +185,44 @@ describe("descriptions do not promise what the schema cannot do", () => {
   });
 });
 
+describe("first steps in get_project", () => {
+  const load = async () => (await import("@/lib/mcp/project")).projectIndex;
+
+  it("a young project carries its open questions and how to answer them", async () => {
+    const projectIndex = await load();
+    const out = projectIndex({
+      id: "p1", title: "T", vision: { logline: "Um aprendiz quebra o tempo.", starter: { answered: [], skipped: ["docs.controls"] } },
+      sections: [{ id: "s1", title: "História", order: 0 }],
+    }) as { starterHelp?: string; starterQuestions?: { id: string; answerIn: unknown }[]; vision?: Record<string, unknown> };
+    const ids = (out.starterQuestions ?? []).map((q) => q.id);
+    expect(out.starterHelp).toBeTruthy();
+    expect(ids).toContain("vision.feeling");
+    expect(ids).not.toContain("vision.logline"); // already has content
+    expect(ids).not.toContain("docs.story"); // the page exists
+    expect(ids).not.toContain("docs.controls"); // skipped
+    expect(ids).not.toContain("vision.name"); // an agent does not rename the project
+    expect(out.starterQuestions?.find((q) => q.id === "vision.feeling")?.answerIn).toBe("update_project vision.feeling");
+    expect(out.vision).toEqual({ logline: "Um aprendiz quebra o tempo." }); // no app bookkeeping
+  });
+
+  it("says nothing once the first steps are done or the project has grown", async () => {
+    const projectIndex = await load();
+    const done = projectIndex({ id: "p1", title: "T", vision: { starter: { answered: [], skipped: [], doneAt: "2026-10-28" } }, sections: [] });
+    expect(done).not.toHaveProperty("starterQuestions");
+    const big = projectIndex({ id: "p1", title: "T", sections: Array.from({ length: 16 }, (_, i) => ({ id: `s${i}`, title: `P${i}`, order: i })) });
+    expect(big).not.toHaveProperty("starterQuestions");
+  });
+});
+
 describe("what update_project can set, get_project can read", () => {
   it("no write-only fields", async () => {
     const { projectIndex } = await import("@/lib/mcp/project");
     const out = projectIndex({
       id: "p1", title: "T", description: "d", coverImageUrl: "https://x.test/c.png",
-      aiInstructions: "conv", sections: [],
+      aiInstructions: "conv", vision: { logline: "l" }, sections: [],
     });
-    // update_project accepts title, description, coverImageUrl, aiInstructions
-    for (const field of ["title", "description", "coverImageUrl", "aiInstructions"]) {
+    // update_project accepts title, description, coverImageUrl, aiInstructions, vision
+    for (const field of ["title", "description", "coverImageUrl", "aiInstructions", "vision"]) {
       expect(out).toHaveProperty(field);
     }
   });

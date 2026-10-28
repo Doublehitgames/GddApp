@@ -213,8 +213,16 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("update_project", "Update project metadata: title, description, cover image or aiInstructions. Returns a receipt naming the fields that were written.",
-    { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional(), aiInstructions: z.string().optional().describe("AI instructions for this project"), returning },
+  server.tool("update_project", "Update project metadata: title, description, cover image, aiInstructions or vision. Returns a receipt naming the fields that were written.",
+    { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional(), aiInstructions: z.string().optional().describe("AI instructions for this project"),
+      vision: z.object({
+        logline: z.string().optional(),
+        playerVerb: z.string().optional(),
+        feeling: z.string().optional(),
+        pillars: z.array(z.string()).optional(),
+        genre: z.string().optional(),
+      }).optional().describe("The game's vision. Merges into the current one key by key; pillars is replaced whole."),
+      returning },
     async ({ projectId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateProject(projectId, f);
