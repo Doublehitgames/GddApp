@@ -46,7 +46,7 @@ function seed(state: DiagramState | undefined) {
         p.id === projectId
           ? {
               ...p,
-              sections: p.sections.map((s) =>
+              sections: (p.sections ?? []).map((s) =>
                 s.id === sectionId ? { ...s, flowchartEnabled: true, flowchartState: state } : s
               ),
             }
@@ -121,7 +121,7 @@ describe("saveSectionDiagram", () => {
     const section = useProjectStore
       .getState()
       .projects.find((p) => p.id === projectId)
-      ?.sections.find((s) => s.id === sectionId);
+      ?.sections?.find((s) => s.id === sectionId);
 
     expect(section?.flowchartState?.nodes.map((n) => n.id)).toEqual(["novo"]);
     expect(section?.flowchartEnabled).toBe(true);
