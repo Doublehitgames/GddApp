@@ -23,6 +23,14 @@ import { STARTER_AREAS, type StarterArea } from "@/lib/onboarding/starterQuestio
 const visionOf = (project: Project): ProjectVision => project.vision ?? {};
 
 const PILLAR_DOTS = ["bg-red-500", "bg-amber-500", "bg-sky-500", "bg-emerald-500", "bg-violet-500", "bg-pink-500"];
+const PILLAR_SOFT = [
+  "bg-red-50 dark:bg-red-950/40",
+  "bg-amber-50 dark:bg-amber-950/40",
+  "bg-sky-50 dark:bg-sky-950/40",
+  "bg-emerald-50 dark:bg-emerald-950/40",
+  "bg-violet-50 dark:bg-violet-950/40",
+  "bg-pink-50 dark:bg-pink-950/40",
+];
 
 const AREA_TONE: Record<StarterArea, string> = {
   vision: "bg-area-vis-soft text-area-vis",
@@ -212,10 +220,11 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             <OverviewCard title={t("projectHome.pillars", "Pilares de design")} lead={t("projectHome.pillarsLead", "As regras que decidem as brigas de design.")} icon={<IconVision className="h-4 w-4" />} tone="bg-area-vis-soft text-area-vis" footer={<Link href={`${base}/visao`} className="text-xs font-medium text-accent hover:underline">{t("projectHome.edit", "Editar")}</Link>}>
               {v.pillars?.length ? (
-                <ul className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-1.5">
                   {v.pillars.map((pillar, i) => (
-                    <li key={`${pillar}-${i}`} className="flex items-start gap-2.5 text-sm text-ink">
-                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PILLAR_DOTS[i % PILLAR_DOTS.length]}`} aria-hidden />
+                    <li key={`${pillar}-${i}`} className={`relative overflow-hidden rounded-lg ${PILLAR_SOFT[i % PILLAR_SOFT.length]} py-2 pl-4 pr-3 text-sm font-medium text-ink`}>
+                      <span className={`absolute inset-y-0 left-0 w-1 ${PILLAR_DOTS[i % PILLAR_DOTS.length]}`} aria-hidden />
+                      <span className="mr-1.5 text-xs font-bold tabular-nums text-muted">{String(i + 1).padStart(2, "0")}</span>
                       {pillar}
                     </li>
                   ))}

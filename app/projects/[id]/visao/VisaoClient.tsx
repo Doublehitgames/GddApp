@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AreaHeader } from "@/components/project/AreaHeader";
-import { IconVision } from "@/components/project/ProjectSidebar";
 import { VisionEditor } from "@/components/vision/VisionEditor";
+import { VisionHero } from "@/components/vision/VisionHero";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
@@ -631,17 +630,18 @@ export default function ProjectDetailClient({ projectId }: Props) {
             <div className="w-full">
                 <div className="grid gap-6 items-start">
                     <div className="space-y-4">
-                        <AreaHeader
-                            icon={<IconVision className="h-5 w-5" />}
-                            tone="vis"
-                            title={t("projectShell.vision", "Visão do jogo")}
-                            lead={t("visionPage.lead", "O que o jogo é, em poucas frases: a ideia, os pilares e a sensação. É o que aparece na capa e o que decide as brigas de design.")}
+                        <VisionHero
+                            project={project}
+                            onPickCover={handlePickCoverImage}
+                            picking={isPickingCoverImage}
+                            coverError={coverImageError || (project.coverImageUrl && coverImageCandidateIndex >= coverImageCandidates.length ? t("projectDetail.cover.loadFailed") : null)}
+                            onEdit={() => router.push(`/projects/${projectId}/edit`)}
                         />
                         <VisionEditor project={project} slug={projectId} />
                         <div className="grid items-start gap-4 xl:grid-cols-2">
                         <section className="ui-card-premium">
-                            <div className="flex items-center gap-3 mb-4 flex-wrap">
-                                <h2 className="text-xl font-semibold tracking-tight">{t("visionPage.coverTitle", "Capa e descrição")}</h2>
+                            <div className="flex items-center gap-3 mb-3 flex-wrap">
+                                <h2 className="text-lg font-semibold tracking-tight">{t("visionPage.aboutTitle", "Sobre o jogo")}</h2>
                                 <button
                                     className="ml-auto rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 transition-colors"
                                     onClick={() => router.push(`/projects/${projectId}/edit`)}
@@ -649,50 +649,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     {t("projectDetail.edit")}
                                 </button>
                             </div>
-
-                            <div className="mb-4">
-                                {coverImageError && (
-                                    <p className="text-sm text-red-700 dark:text-red-300 mb-3">{coverImageError}</p>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={handlePickCoverImage}
-                                    disabled={isPickingCoverImage}
-                                    aria-label={t("projectDetail.cover.selectFromDrive")}
-                                    className="w-full text-left rounded-xl overflow-hidden border border-line-strong/70 bg-canvas/60 hover:border-blue-500/70 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    {project.coverImageUrl && coverImageCandidateIndex < coverImageCandidates.length ? (
-                                        <div className="relative">
-                                            <img
-                                                src={coverImageCandidates[coverImageCandidateIndex]}
-                                                alt={t("projectDetail.cover.alt", "Capa do projeto")}
-                                                onError={() => {
-                                                    setCoverImageCandidateIndex((prev) => prev + 1);
-                                                }}
-                                                className="w-full max-h-[320px] object-cover"
-                                                loading="lazy"
-                                            />
-                                            <div className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs bg-black/55 text-ink">
-                                                {isPickingCoverImage ? t("projectDetail.cover.picking") : t("projectDetail.cover.hint")}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="h-48 md:h-56 border-2 border-dashed border-line-strong rounded-xl m-3 flex flex-col items-center justify-center gap-2 text-center px-4">
-                                            <span className="text-3xl">🖼️</span>
-                                            <p className="text-sm font-medium text-ink">
-                                                {isPickingCoverImage
-                                                    ? t("projectDetail.cover.picking")
-                                                    : t("projectDetail.cover.selectFromDrive")}
-                                            </p>
-                                            <p className="text-xs text-muted">{t("projectDetail.cover.noImage")}</p>
-                                        </div>
-                                    )}
-                                </button>
-                                {project.coverImageUrl && coverImageCandidateIndex >= coverImageCandidates.length && (
-                                    <p className="text-amber-700 dark:text-amber-300 text-sm mt-2">{t("projectDetail.cover.loadFailed")}</p>
-                                )}
-                            </div>
-
                             <div className="text-ink">
                                 {(project.contentBlocks?.length || project.description) ? (
                                     <SectionDescriptionReadOnly
