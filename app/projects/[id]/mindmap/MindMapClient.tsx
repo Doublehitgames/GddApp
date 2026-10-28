@@ -113,7 +113,7 @@ function ItemNavegacao({
       className={`flex w-full items-center gap-1.5 rounded px-1.5 py-0.5 text-left text-sm transition-colors ${
         ehPai
           ? "font-semibold text-[#ef5f56] hover:bg-[#ef5f56]/10"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          : "text-muted hover:bg-surface-2 hover:text-ink"
       }`}
     >
       <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden="true">
@@ -135,7 +135,7 @@ function ItemNavegacao({
       </span>
       <span className="min-w-0 flex-1 truncate">{titulo}</span>
       {netos > 0 && (
-        <span className="shrink-0 text-[11px] tabular-nums text-gray-400">{netos}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-subtle">{netos}</span>
       )}
     </button>
   );
@@ -1172,10 +1172,25 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   }, [isPublicMode, publicToken, projectId]);
   
   // Merge de configurações: custom settings do projeto sobre defaults
-  const config = useMemo(() => 
-    deepMerge(MINDMAP_CONFIG, project?.mindMapSettings),
-    [project?.mindMapSettings]
-  );
+  const config = useMemo(() => {
+    const merged = deepMerge(MINDMAP_CONFIG, project?.mindMapSettings);
+    // Fundo, painel e o cinza de "fora de foco" seguem o tema do app (tokens em
+    // globals.css). O fio tambem, a menos que o projeto tenha escolhido outra cor
+    // nas configuracoes — o default salvo junto com o resto nao conta como escolha.
+    const fioEscolhido = (project?.mindMapSettings as any)?.clean?.line;
+    const fioPadrao = !fioEscolhido || fioEscolhido === MINDMAP_CONFIG.clean.line;
+    return {
+      ...merged,
+      clean: {
+        ...merged.clean,
+        line: fioPadrao ? "var(--map-line)" : fioEscolhido,
+        muted: "var(--map-muted)",
+        mutedLabel: "var(--map-muted-label)",
+        background: "var(--canvas)",
+        backgroundPainel: "var(--surface)",
+      },
+    };
+  }, [project?.mindMapSettings]);
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -2416,15 +2431,15 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   if (!project) {
     if (isPublicMode && isPublicLoading) {
       return (
-        <div className="flex items-center justify-center h-screen bg-gray-900">
-          <p className="text-gray-400">{t("common.loading")}</p>
+        <div className="flex items-center justify-center h-screen bg-canvas">
+          <p className="text-subtle">{t("common.loading")}</p>
         </div>
       );
     }
 
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <p className="text-gray-400">{isPublicMode ? t("mindMap.publicProjectNotFound") : t("mindMap.projectNotFound")}</p>
+      <div className="flex items-center justify-center h-screen bg-canvas">
+        <p className="text-subtle">{isPublicMode ? t("mindMap.publicProjectNotFound") : t("mindMap.projectNotFound")}</p>
       </div>
     );
   }
@@ -2457,6 +2472,16 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
           
 
+          /* Os controles de zoom do React Flow vem brancos; aqui seguem o tema. */
+          .react-flow__controls { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+          .react-flow__controls-button {
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            color: var(--ink);
+            fill: var(--ink);
+          }
+          .react-flow__controls-button:hover { background: var(--surface-2); }
+
           /* Bolinhas e labels acima das linhas. Sem isso, num cacho denso a
              label fica atras do feixe de conexoes e vira ilegivel — as duas
              camadas ficavam em z-index 0 e quem pintava por cima era a ordem
@@ -2472,7 +2497,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
           }
         `}
       </style>
-      <div className="fixed inset-0 overflow-hidden" style={{ backgroundColor: (config as any).clean.background }}>
+      {/* No app o mapa ocupa a area de conteudo da casca; no modo publico, a tela toda. */}
+      <div className={`${isPublicMode ? "fixed" : "absolute"} inset-0 overflow-hidden`} style={{ backgroundColor: (config as any).clean.background }}>
         {/* A barra e a mesma do shell e do documento; em modo publico ela e a unica. */}
         {isPublicMode && (
           <ProjectTopBar
@@ -2565,7 +2591,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             margem era ignorada neste elemento (computava 0px ate com !important).
             Com `right` o encaixe e explicito e nao depende disso. */}
         <div
-          className="absolute left-0 top-20 bottom-0 overflow-hidden transition-[right] duration-200"
+          className={`absolute left-0 ${isPublicMode ? "top-20" : "top-0"} bottom-0 overflow-hidden transition-[right] duration-200`}
           style={{ right: selectedNode ? LARGURA_PAINEL : 0 }}
           ref={flowWrapperRef}
         >
@@ -2594,22 +2620,22 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
             style={{ backgroundColor: (config as any).clean.background }}
           >
           <ZoomCssVar />
-          <Controls className="border-gray-300" />
+          <Controls className="border-line-strong" />
 
           {/* Vistoria de maturidade. Fica sobre o mapa, e nao no painel do no,
               porque fala do documento inteiro — o painel so aparece quando ha
               uma pagina selecionada, e a pergunta aqui e "quanto do GDD ja
               esta no jogo", nao "o que e esta pagina". */}
           <Panel position="top-left" className="!m-3">
-            <div className="rounded-lg border border-gray-300 bg-white/95 shadow-sm backdrop-blur">
+            <div className="rounded-lg border border-line-strong bg-surface/95 shadow-sm backdrop-blur">
               <button
                 type="button"
                 onClick={() => setColorirPorEstado((v) => !v)}
                 aria-pressed={colorirPorEstado}
                 className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   colorirPorEstado
-                    ? "text-gray-900"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "text-ink"
+                    : "text-muted hover:bg-surface-2 hover:text-ink"
                 }`}
               >
                 <span
@@ -2625,29 +2651,29 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </button>
 
               {colorirPorEstado && (
-                <div className="flex flex-col gap-1 border-t border-gray-200 px-3 py-2">
+                <div className="flex flex-col gap-1 border-t border-line px-3 py-2">
                   {PAGE_STATUSES.filter((estado) => contagemPorEstado.get(estado)).map((estado) => (
-                    <span key={estado} className="flex items-center gap-2 text-xs text-gray-600">
+                    <span key={estado} className="flex items-center gap-2 text-xs text-muted">
                       <span
                         aria-hidden="true"
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: PAGE_STATUS_META[estado].graphColor }}
                       />
                       {t(PAGE_STATUS_META[estado].labelKey, PAGE_STATUS_META[estado].labelFallback)}
-                      <span className="ml-auto tabular-nums text-gray-400">
+                      <span className="ml-auto tabular-nums text-subtle">
                         {contagemPorEstado.get(estado)}
                       </span>
                     </span>
                   ))}
                   {(contagemPorEstado.get("__sem__") ?? 0) > 0 && (
-                    <span className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="flex items-center gap-2 text-xs text-muted">
                       <span
                         aria-hidden="true"
                         className="h-2 w-2 shrink-0 rounded-full"
                         style={{ backgroundColor: (config as any).clean.muted }}
                       />
                       {t("pageStatus.unset", "sem estado")}
-                      <span className="ml-auto tabular-nums text-gray-400">
+                      <span className="ml-auto tabular-nums text-subtle">
                         {contagemPorEstado.get("__sem__")}
                       </span>
                     </span>
@@ -2662,7 +2688,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       {/* Panel Lateral */}
       {selectedNode && (
         <div
-          className="absolute top-20 right-0 h-[calc(100vh-5rem)] border-l border-gray-200 overflow-y-auto z-20"
+          className={`absolute ${isPublicMode ? "top-20" : "top-0"} right-0 bottom-0 border-l border-line overflow-y-auto z-20`}
           style={{ width: LARGURA_PAINEL, backgroundColor: (config as any).clean.backgroundPainel }}
         >
           <div className="px-12 py-10">
@@ -2679,7 +2705,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 <button
                   type="button"
                   onClick={handleGoBack}
-                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  className="mb-3 flex w-full items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                 >
                   <span aria-hidden="true">←</span>
                   <span className="min-w-0 truncate">
@@ -2689,7 +2715,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               );
             })()}
             {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/45 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/45 bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
@@ -2698,14 +2724,14 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </div>
             )}
             {caminhoAcimaDoPai.length > 0 && (
-              <nav aria-label="breadcrumb" className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
+              <nav aria-label="breadcrumb" className="mb-3 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted">
                 {caminhoAcimaDoPai.map((c, i) => (
                   <span key={c.id} className="flex items-center gap-x-1 min-w-0">
-                    {i > 0 && <span className="text-gray-300" aria-hidden="true">›</span>}
+                    {i > 0 && <span className="text-subtle" aria-hidden="true">›</span>}
                     <button
                       type="button"
                       onClick={() => selecionarPorId(c.id)}
-                      className="max-w-[13rem] truncate rounded px-1 py-0.5 transition-colors hover:bg-gray-100 hover:text-gray-800"
+                      className="max-w-[13rem] truncate rounded px-1 py-0.5 transition-colors hover:bg-surface-2 hover:text-ink"
                     >
                       {c.titulo}
                     </button>
@@ -2714,7 +2740,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               </nav>
             )}
             <div className="flex items-start justify-between gap-3 mb-4">
-              <h2 className="text-xl font-bold text-gray-900 min-w-0">{selectedNode.title}</h2>
+              <h2 className="text-xl font-bold text-ink min-w-0">{selectedNode.title}</h2>
               {/* Acoes no topo, junto do fechar: sao atalhos para sair do mapa e
                   nao conclusao da leitura — no rodape ficavam depois de uma
                   descricao que pode ter varias telas de rolagem. */}
@@ -2728,7 +2754,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     title={t("mindMap.panel.goToDocument")}
                     aria-label={t("mindMap.panel.goToDocument")}
                     onClick={() => router.push(getDocumentTargetUrl())}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                   >
                     <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2742,7 +2768,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     sectionId={selectedNode.id}
                     publicToken={publicToken}
                     iconClassName="h-[18px] w-[18px]"
-                    buttonClassName="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    buttonClassName="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                   />
                 )}
                 {selectedNode.id !== "project" && (
@@ -2752,7 +2778,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     sectionId={selectedNode.id}
                     publicToken={publicToken}
                     iconClassName="h-[18px] w-[18px]"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                   />
                 )}
                 {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (
@@ -2761,7 +2787,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     title={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
                     aria-label={t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", selectedNode.title)}
                     onClick={() => router.push(getFlowchartTargetUrl(selectedNode.id))}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-600 dark:text-emerald-400 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300"
                   >
                     <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
@@ -2782,7 +2808,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                           : sectionPathById(project ?? { title: "", sections: [] }, selectedNode.id)
                       )
                     }
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                   >
                     <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -2801,7 +2827,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     window.history.replaceState({}, '', url.toString());
                   }
                 }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-900 text-2xl leading-none"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-subtle transition-colors hover:bg-surface-2 hover:text-ink text-2xl leading-none"
               >
                 ×
               </button>
@@ -2816,7 +2842,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   return (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 border border-gray-200"
+                      className="inline-flex items-center rounded-md bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-2 border border-line"
                     >
                       {label}
                     </span>
@@ -2836,8 +2862,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 aria-pressed={showReferences}
                 className={`mb-4 inline-flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   showReferences
-                    ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    : "border-gray-300 bg-gray-700/50 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25"
+                    : "border-line-strong bg-surface-2 text-muted hover:bg-surface-2 hover:text-ink"
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
@@ -2848,7 +2874,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                 </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${
-                    showReferences ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-700"
+                    showReferences ? "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300" : "bg-surface-3 text-ink-2"
                   }`}
                 >
                   {referenceCount}
@@ -2882,7 +2908,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     // mesmo fio que separa o "Referenciado por" da descricao.
                     <div
                       className={`relative ${
-                        menuDeNavegacao.pai ? "mt-1.5 border-t border-gray-200 pt-1.5" : ""
+                        menuDeNavegacao.pai ? "mt-1.5 border-t border-line pt-1.5" : ""
                       }`}
                     >
                       <div
@@ -2916,7 +2942,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
               )}
 
               <div className="min-w-0 flex-1">
-            <div className="prose max-w-none text-gray-700" style={{ fontSize: `${panelContentScale}em` }}>
+            <div className="prose max-w-none text-ink-2" style={{ fontSize: `${panelContentScale}em` }}>
               {painelTemDescricao ? (
                 <SectionDescriptionReadOnly
                   blocks={painel.blocos}
@@ -2940,7 +2966,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                       width={heroThumbWidth}
                     />
                   )}
-                  <p className="text-gray-500 italic">{t("mindMap.panel.noContent")}</p>
+                  <p className="text-muted italic">{t("mindMap.panel.noContent")}</p>
                   <div style={{ clear: "both" }} />
                 </>
               )}
@@ -2955,8 +2981,8 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                   // card, e o bloco pesava mais que a descricao da pagina. Agora e
                   // uma lista discreta separada por um fio, no registro do resto
                   // do painel.
-                  <div className="mt-8 border-t border-gray-200 pt-5">
-                    <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  <div className="mt-8 border-t border-line pt-5">
+                    <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-subtle">
                       {t("mindMap.panel.backlinks")}
                     </h3>
                     <div className="flex flex-wrap gap-x-1.5 gap-y-1">
@@ -2964,7 +2990,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                         <button
                           key={backlink.id}
                           onClick={() => handleReferenceClick(backlink.id)}
-                          className="max-w-full truncate rounded px-1.5 py-0.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                          className="max-w-full truncate rounded px-1.5 py-0.5 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                         >
                           {backlink.title}
                         </button>

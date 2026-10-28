@@ -235,13 +235,13 @@ export default function DiagramToolbar({
                 </ToolbarIcon>
               </button>
               <label
-                className={`flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/20 px-1.5 py-1 text-xs md:gap-2 md:px-2 ${
+                className={`flex items-center gap-1.5 rounded-xl border border-line bg-surface-2/60 px-1.5 py-1 text-xs md:gap-2 md:px-2 ${
                   snapToGrid ? "text-ink/80" : "text-ink/45"
                 }`}
               >
                 <span className="hidden md:inline">Grade</span>
                 <select
-                  className="w-12 rounded-md border border-white/20 bg-black/30 px-1 py-0.5 text-xs text-white disabled:cursor-not-allowed disabled:opacity-45"
+                  className="w-12 rounded-md border border-line bg-surface px-1 py-0.5 text-xs text-ink disabled:cursor-not-allowed disabled:opacity-45"
                   value={snapGridSize}
                   onChange={(event) => onSnapGridSizeChange(Number(event.target.value))}
                   disabled={!snapToGrid}
@@ -265,7 +265,7 @@ export default function DiagramToolbar({
               </button>
             </>
           )}
-          <div className="ml-0 flex items-center gap-1 rounded-xl border border-white/15 bg-black/20 p-1 md:ml-1">
+          <div className="ml-0 flex items-center gap-1 rounded-xl border border-line bg-surface-2/60 p-1 md:ml-1">
             {themeOptions.map((theme) => (
               <button
                 key={theme.key}
@@ -273,8 +273,8 @@ export default function DiagramToolbar({
                 onClick={() => onThemeChange(theme.key)}
                 className={`inline-flex h-8 w-8 items-center justify-center rounded-lg p-1 text-xs font-semibold transition md:h-9 md:w-9 ${
                   currentTheme === theme.key
-                    ? "bg-white/20 text-ink"
-                    : "text-ink/70 hover:bg-white/10 hover:text-ink"
+                    ? "bg-surface-3 text-ink"
+                    : "text-ink/70 hover:bg-surface-2 hover:text-ink"
                 }`}
                 aria-label={`Tema ${theme.label}`}
                 title={theme.label}
@@ -287,8 +287,8 @@ export default function DiagramToolbar({
           </div>
         </div>
 
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/45 to-transparent md:hidden" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/45 to-transparent md:hidden" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-surface to-transparent md:hidden" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-surface to-transparent md:hidden" />
       </div>
     </div>
   );

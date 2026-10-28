@@ -186,7 +186,10 @@ crítico (`e2e/sync-critical.spec.ts`).
   `text-muted`, `border-line`, `bg-accent`…), nunca de um cinza fixo. Cor do Tailwind
   que só funciona num tema vai em par: `text-blue-700 dark:text-blue-300` — o `dark:`
   segue o `data-theme` do app. Modo Doc, Deck e impressão são `data-theme="paper"`:
-  sempre claros. Mapa mental e diagramas ainda são só claros.
+  sempre claros. Mapa mental e fluxograma seguem o tema: cor que o React Flow pinta
+  direto no SVG não aceita token, então o mapa usa `var(--map-*)` em `style` e o
+  fluxograma escolhe o hex por tema em `getDiagramTheme`. No fluxograma, Neon e
+  Pastel são estilos escuros de propósito (`data-theme="dark"` no editor).
 - **i18n**: chave nova entra nos **3** arquivos (`pt-BR`, `en`, `es`).
 - **E2E**: cookie `gdd_locale=pt-BR` para placeholders em pt-BR; após clique que
   navega, `waitForURL` antes de asserção; sync pode sair em payloads separados

@@ -23,10 +23,18 @@ import "reactflow/dist/style.css";
 import { DiagramMarkerType, DiagramState, useProjectStore } from "@/store/projectStore";
 import { findProjectByRef, findSectionByRef } from "@/lib/utils/slug";
 import { useI18n } from "@/lib/i18n/provider";
+import { useTheme } from "@/lib/theme/provider";
 import DiagramToolbar from "./components/DiagramToolbar";
 import PropertiesSidebar from "./components/PropertiesSidebar";
 import DiagramNodeComponent from "./components/DiagramNodeComponent";
-import { DIAGRAM_THEMES, THEME_STORAGE_KEY, getThemeOptions, isDiagramThemeKey } from "./diagramTheme";
+import {
+  DEFAULT_DIAGRAM_THEME,
+  THEME_STORAGE_KEY,
+  diagramThemeIsAlwaysDark,
+  getDiagramTheme,
+  getThemeOptions,
+  isDiagramThemeKey,
+} from "./diagramTheme";
 import { DiagramBlockType, DiagramNodeData, DiagramThemeKey } from "./diagramTypes";
 import {
   DEFAULT_BORDER_WIDTH,
@@ -162,7 +170,7 @@ function DiagramasFlow({
   const [viewport, setViewport] = useState({ x: 0, y: 0, zoom: 1 });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [theme, setTheme] = useState<DiagramThemeKey>("neon");
+  const [theme, setTheme] = useState<DiagramThemeKey>(DEFAULT_DIAGRAM_THEME);
   const [defaultBlockType, setDefaultBlockType] = useState<DiagramBlockType>(DEFAULT_BLOCK_TYPE);
   const [defaultEdgeType, setDefaultEdgeType] = useState<"straight" | "step" | "smoothstep" | "bezier">(DEFAULT_EDGE_TYPE);
   const [defaultEdgeStrokeWidth, setDefaultEdgeStrokeWidth] = useState<number>(DEFAULT_EDGE_STROKE_WIDTH);
@@ -196,7 +204,9 @@ function DiagramasFlow({
     sourceStartPosition: { x: number; y: number };
   } | null>(null);
   const { fitView, setViewport: setFlowViewport, screenToFlowPosition } = useReactFlow();
-  const activeTheme = DIAGRAM_THEMES[theme];
+  const { theme: appTheme } = useTheme();
+  // Memo de propósito: o efeito que repinta as arestas depende deste objeto.
+  const activeTheme = useMemo(() => getDiagramTheme(theme, appTheme), [theme, appTheme]);
   const nodesLimitMessage = (count: number) =>
     t("sectionDetail.flowchart.editor.nodesLimit", "Limite de {{count}} blocos atingido neste MVP.").replace("{{count}}", String(count));
   const edgesLimitMessage = (count: number) =>
@@ -1088,7 +1098,11 @@ function DiagramasFlow({
   const selectedNodeNote = selectedNode?.data.note || "";
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-20"} text-ink flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
+    // No app o editor ocupa a área de conteúdo da casca; na página pública, a tela toda.
+    <div
+      data-theme={diagramThemeIsAlwaysDark(theme) ? "dark" : undefined}
+      className={`${isReadOnly ? "fixed inset-0" : "absolute inset-0"} text-ink flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}
+    >
       {isReadOnly && publicToken && (
         <div className="absolute top-0 left-0 right-0 z-50 bg-surface border-b border-line px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
@@ -1261,11 +1275,12 @@ function DiagramasFlow({
             }
             .react-flow__controls { border-radius: 14px !important; overflow: hidden; }
             .react-flow__controls-button {
-              background: rgba(10, 15, 25, 0.92);
-              border-bottom: 1px solid rgba(70, 75, 90, 0.5);
-              color: rgb(226, 232, 240);
+              background: var(--surface);
+              border-bottom: 1px solid var(--line);
+              color: var(--ink);
+              fill: var(--ink);
             }
-            .react-flow__controls-button:hover { background: rgba(35, 42, 56, 0.95); }
+            .react-flow__controls-button:hover { background: var(--surface-2); }
           `}</style>
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} color={activeTheme.dotColor} />
           <Controls className={activeTheme.controlsClass} />

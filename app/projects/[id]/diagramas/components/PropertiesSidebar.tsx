@@ -142,7 +142,7 @@ function ColorPaletteControl({
               type="button"
               aria-label={`Selecionar cor ${presetColor}`}
               onClick={() => onChange(presetColor)}
-              className={`h-6 w-6 rounded-full border transition ${isActive ? "scale-110 border-white shadow-md shadow-black/35" : "border-white/35 hover:scale-105"}`}
+              className={`h-6 w-6 rounded-full border transition ${isActive ? "scale-110 border-ink shadow-md shadow-black/25" : "border-line-strong hover:scale-105"}`}
               style={{ backgroundColor: presetColor }}
             />
           );
@@ -151,13 +151,13 @@ function ColorPaletteControl({
           <button
             type="button"
             onClick={() => onChange("")}
-            className={`h-6 px-2 rounded-md border text-xs transition ${!activeColor ? "border-white/70 text-ink bg-white/10" : "border-white/25 text-ink/80 hover:border-white/45"}`}
+            className={`h-6 px-2 rounded-md border text-xs transition ${!activeColor ? "border-ink-2 text-ink bg-surface-3" : "border-line text-ink/80 hover:border-line-strong"}`}
           >
             Tema
           </button>
         )}
       </div>
-      <div className="rounded-lg border border-white/15 bg-black/20 p-2">
+      <div className="rounded-lg border border-line bg-surface-2/60 p-2">
         <div className="overflow-hidden rounded-md">
           <HexColorPicker
             color={normalizedActiveColor}
@@ -251,7 +251,7 @@ export default function PropertiesSidebar({
   ];
 
   const renderBlockTypeIcon = (type: DiagramBlockType) => {
-    const baseShapeClass = "border border-white/70 bg-white/15";
+    const baseShapeClass = "border border-ink-2/70 bg-surface-3";
     if (type === "losango") {
       return <span className={`h-12 w-12 rotate-45 rounded-[4px] ${baseShapeClass}`} aria-hidden="true" />;
     }
@@ -307,7 +307,7 @@ export default function PropertiesSidebar({
               <option value="circulo">Circulo</option>
             </select>
           </label>
-          <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+          <div className="rounded-lg border border-line bg-surface-2/40 p-2">
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "text" ? null : "text"))}
@@ -337,14 +337,14 @@ export default function PropertiesSidebar({
                 </label>
                 <label className="text-sm text-ink-2">
                   Alinhamento horizontal
-                  <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                  <div className="mt-1 flex items-center gap-1 rounded-lg border border-line bg-surface-2 p-1">
                     {alignOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => onNodeTextAlignChange(option.value)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeTextAlign === option.value ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                          nodeTextAlign === option.value ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                         }`}
                       >
                         {option.label}
@@ -354,14 +354,14 @@ export default function PropertiesSidebar({
                 </label>
                 <label className="text-sm text-ink-2">
                   Alinhamento vertical
-                  <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                  <div className="mt-1 flex items-center gap-1 rounded-lg border border-line bg-surface-2 p-1">
                     {verticalAlignOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"
                         onClick={() => onNodeTextVerticalAlignChange(option.value)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeTextVerticalAlign === option.value ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                          nodeTextVerticalAlign === option.value ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                         }`}
                       >
                         {option.label}
@@ -377,7 +377,7 @@ export default function PropertiesSidebar({
             )}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+          <div className="rounded-lg border border-line bg-surface-2/40 p-2">
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "note" ? null : "note"))}
@@ -400,7 +400,7 @@ export default function PropertiesSidebar({
             )}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+          <div className="rounded-lg border border-line bg-surface-2/40 p-2">
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "border" ? null : "border"))}
@@ -428,7 +428,7 @@ export default function PropertiesSidebar({
             )}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/10 p-2">
+          <div className="rounded-lg border border-line bg-surface-2/40 p-2">
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "layout" ? null : "layout"))}
@@ -450,12 +450,12 @@ export default function PropertiesSidebar({
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-sm text-ink-2">
                     Gradiente
-                    <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                    <div className="mt-1 flex items-center gap-1 rounded-lg border border-line bg-surface-2 p-1">
                       <button
                         type="button"
                         onClick={() => onNodeGradientEnabledChange(true)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeGradientEnabled ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                          nodeGradientEnabled ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                         }`}
                       >
                         Ligado
@@ -464,7 +464,7 @@ export default function PropertiesSidebar({
                         type="button"
                         onClick={() => onNodeGradientEnabledChange(false)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          !nodeGradientEnabled ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                          !nodeGradientEnabled ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                         }`}
                       >
                         Desligado
@@ -536,12 +536,12 @@ export default function PropertiesSidebar({
           </label>
           <label className="block text-sm text-ink-2">
             Tracejado
-            <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+            <div className="mt-1 flex items-center gap-1 rounded-lg border border-line bg-surface-2 p-1">
               <button
                 type="button"
                 onClick={() => onEdgeDashedChange(true)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  edgeDashed ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                  edgeDashed ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                 }`}
               >
                 Ligado
@@ -550,7 +550,7 @@ export default function PropertiesSidebar({
                 type="button"
                 onClick={() => onEdgeDashedChange(false)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  !edgeDashed ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                  !edgeDashed ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                 }`}
               >
                 Desligado
@@ -583,12 +583,12 @@ export default function PropertiesSidebar({
           </div>
           <label className="block text-sm text-ink-2">
             Tracejado animado
-            <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+            <div className="mt-1 flex items-center gap-1 rounded-lg border border-line bg-surface-2 p-1">
               <button
                 type="button"
                 onClick={() => onEdgeAnimatedChange(true)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  edgeAnimated ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                  edgeAnimated ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                 }`}
                 disabled={!edgeDashed}
               >
@@ -598,7 +598,7 @@ export default function PropertiesSidebar({
                 type="button"
                 onClick={() => onEdgeAnimatedChange(false)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  !edgeAnimated ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
+                  !edgeAnimated ? "bg-surface-3 text-ink" : "text-ink/70 hover:bg-surface-3/60"
                 }`}
               >
                 Desligado

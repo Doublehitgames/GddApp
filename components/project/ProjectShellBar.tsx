@@ -17,11 +17,14 @@ export function ProjectShellBar({
   projectSlug,
   project,
   onOpenMenu,
+  busca,
 }: {
   title: React.ReactNode;
   projectSlug: string;
   project?: Project;
   onOpenMenu: () => void;
+  /** Busca própria da tela (a do mapa mental). Com ela, a de páginas vira só o ícone. */
+  busca?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const { theme } = useTheme();
@@ -42,10 +45,11 @@ export function ProjectShellBar({
 
       <div className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{title}</div>
 
+      {busca}
       <button
         type="button"
         onClick={openPagePicker}
-        className="hidden h-9 w-64 items-center gap-2 rounded-lg border border-line bg-canvas px-3 text-sm text-subtle transition-colors hover:border-line-strong sm:flex"
+        className={`${busca ? "hidden" : "hidden sm:flex"} h-9 w-64 items-center gap-2 rounded-lg border border-line bg-canvas px-3 text-sm text-subtle transition-colors hover:border-line-strong`}
       >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>
           <circle cx="11" cy="11" r="7" />
@@ -57,7 +61,7 @@ export function ProjectShellBar({
       <button
         type="button"
         onClick={openPagePicker}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink sm:hidden"
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink ${busca ? "" : "sm:hidden"}`}
         aria-label={t("projectShell.search", "Buscar páginas…")}
       >
         <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden>

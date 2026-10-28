@@ -672,46 +672,42 @@ export default function ProjectDetailClient({ projectId }: Props) {
                         </section>
 
                         {showSpotlightEditor && (
-                        <section className="ui-card-premium" id="ficha-editor">
-                            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-                                <div>
-                                    <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.spotlight.title")}</h2>
-                                    <p className="text-sm text-muted mt-1">{t("projectDetail.spotlight.subtitle")}</p>
+                        <section className="scroll-mt-20 rounded-2xl border border-line bg-surface p-5" id="ficha-editor">
+                            <div className="mb-5 flex flex-wrap items-center gap-3">
+                                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-area-vis-soft text-area-vis">
+                                    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                        <path d="M9 4h6M9 4a2 2 0 0 0-2 2h10a2 2 0 0 0-2-2M7 6H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2M8 11h8M8 15h5" />
+                                    </svg>
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-[15px] font-semibold text-ink">{t("visionPage.sheetEdit", "Editar ficha técnica")}</h2>
+                                    <p className="text-xs text-muted">{t("visionPage.sheetHint", "Aparece em destaque no modo Documento.")}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setShowSpotlightEditor((prev) => !prev)}
-                                        className="px-4 py-2 rounded-lg bg-surface-2 text-ink font-semibold hover:bg-surface-3 transition-colors"
+                                        onClick={() => setShowSpotlightEditor(false)}
+                                        className="inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-medium text-ink transition-colors hover:border-line-strong hover:bg-surface-2"
                                     >
-                                        {showSpotlightEditor
-                                            ? t("projectDetail.spotlight.hidePanel")
-                                            : t("projectDetail.spotlight.showPanel")}
+                                        {t("common.close", "Fechar")}
                                     </button>
-                                    {showSpotlightEditor && (
-                                        <button
-                                            type="button"
-                                            onClick={handleSaveSpotlight}
-                                            className="px-4 py-2 rounded-lg bg-emerald-500 text-black font-semibold hover:bg-emerald-400 transition-colors"
-                                        >
-                                            {t("projectDetail.spotlight.save")}
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveSpotlight}
+                                        className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-on-accent transition-opacity hover:opacity-90"
+                                    >
+                                        {t("projectDetail.spotlight.save")}
+                                    </button>
                                 </div>
                             </div>
 
-                            {!showSpotlightEditor && (
-                                <p className="text-sm text-muted italic">{t("projectDetail.spotlight.hiddenHint")}</p>
-                            )}
-
-                            {showSpotlightEditor && (
-                                <>
-                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-ink mb-1">{t("projectDetail.spotlight.iconLabel")}</p>
-                                <p className="text-xs text-muted mb-3">{t("projectDetail.spotlight.iconHelp")}</p>
+                            <div className="flex flex-col gap-4">
+                            <div className="rounded-xl border border-line p-4">
+                                <h3 className="text-sm font-semibold text-ink">{t("projectDetail.spotlight.iconLabel")}</h3>
+                                <p className="mb-3 mt-0.5 text-xs text-muted">{t("projectDetail.spotlight.iconHelp")}</p>
 
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-line-strong bg-canvas/80 flex items-center justify-center">
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-2">
                                         {spotlightTitleIconUrl && spotlightIconCandidateIndex < spotlightTitleIconCandidates.length ? (
                                             <img
                                                 src={spotlightTitleIconCandidates[spotlightIconCandidateIndex]}
@@ -730,7 +726,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                             type="button"
                                             onClick={() => void handlePickSpotlightIcon()}
                                             disabled={isPickingSpotlightIcon}
-                                            className="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm font-medium hover:bg-sky-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-medium text-ink transition-colors hover:border-line-strong hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
                                         >
                                             {isPickingSpotlightIcon
                                                 ? t("projectDetail.cover.picking")
@@ -744,7 +740,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                     setSpotlightSaved(false);
                                                     setSpotlightIconError("");
                                                 }}
-                                                className="px-3 py-2 rounded-lg bg-surface-2 text-ink text-sm font-medium hover:bg-surface-3"
+                                                className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-danger"
                                             >
                                                 {t("projectDetail.spotlight.iconRemove")}
                                             </button>
@@ -753,15 +749,15 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
 
                                 {spotlightIconError && (
-                                    <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">{spotlightIconError}</p>
+                                    <p className="mt-2 text-sm text-danger">{spotlightIconError}</p>
                                 )}
                             </div>
 
-                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-ink mb-3">{t("projectDetail.spotlight.featuresLabel", "Features")}</p>
-                                <div className="grid gap-2 md:grid-cols-2">
+                            <div className="rounded-xl border border-line p-4">
+                                <h3 className="mb-3 text-sm font-semibold text-ink">{t("view.spotlight.featuresTitle", "Features")}</h3>
+                                <div className="grid gap-2.5 md:grid-cols-2">
                                     {FEATURE_PRESETS.map((feature) => (
-                                        <div key={feature} className="flex items-center gap-2 text-sm text-ink">
+                                        <div key={feature} className="flex items-center gap-2.5 text-sm text-ink-2">
                                             <ToggleSwitch
                                                 checked={Boolean(featureEnabled[feature])}
                                                 onChange={(next) => {
@@ -777,8 +773,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-line bg-canvas/40 p-4 mb-4">
-                                <p className="text-sm font-semibold text-ink mb-3">{t("projectDetail.spotlight.detailsLabel", "Detalhes")}</p>
+                            <div className="rounded-xl border border-line p-4">
+                                <h3 className="mb-3 text-sm font-semibold text-ink">{t("view.spotlight.detailsTitle", "Detalhes")}</h3>
                                 <div className="grid gap-3">
                                     {DETAIL_PRESETS.map((preset) => {
                                         const state = detailState[preset.id] || { enabled: false, value: "" };
@@ -793,7 +789,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                             : [];
                                         return (
                                             <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                <div className="flex items-center gap-2 text-sm text-ink">
+                                                <div className="flex items-center gap-2.5 text-sm text-ink-2">
                                                     <ToggleSwitch
                                                         checked={state.enabled}
                                                         onChange={(checked) => {
@@ -813,7 +809,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 {quickPreset ? (
                                                     <div className="space-y-2">
                                                         <p className="text-xs text-muted">{quickPreset.hint}</p>
-                                                        <div className="flex flex-wrap gap-2">
+                                                        <div className="flex flex-wrap gap-1.5">
                                                             {quickOptions.map((option) => {
                                                                 const isSelected = hasValue(selectedPresetValues, option);
                                                                 return (
@@ -838,9 +834,9 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                             }));
                                                                             setSpotlightSaved(false);
                                                                         }}
-                                                                        className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
-                                                                            ? "border-sky-300 bg-sky-500/20 text-sky-900 dark:text-sky-100"
-                                                                            : "border-line-strong bg-canvas/70 text-ink hover:border-sky-400 hover:text-ink"
+                                                                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${isSelected
+                                                                            ? "border-accent/50 bg-accent-soft text-accent"
+                                                                            : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
                                                                             }`}
                                                                     >
                                                                         {option}
@@ -861,7 +857,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                 setSpotlightSaved(false);
                                                             }}
                                                             placeholder={preset.placeholder}
-                                                            className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className={SPOTLIGHT_INPUT}
                                                         />
                                                     </div>
                                                 ) : (
@@ -878,7 +874,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                             setSpotlightSaved(false);
                                                         }}
                                                         placeholder={preset.placeholder}
-                                                        className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className={SPOTLIGHT_INPUT}
                                                     />
                                                 )}
                                             </div>
@@ -887,13 +883,12 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-line bg-canvas/40 p-4">
-                                <p className="text-sm font-semibold text-ink mb-1">{t("projectDetail.spotlight.linksLabel", "Links e botões")}</p>
-                                <p className="text-xs text-muted mb-3">{t("projectDetail.spotlight.linksHelp", "Ative e preencha a URL completa para cada botão")}</p>
+                            <div className="rounded-xl border border-line p-4">
+                                <h3 className="mb-3 text-sm font-semibold text-ink">{t("view.spotlight.linksTitle", "Links oficiais")}</h3>
 
                                 {(Object.keys(groupedLinkPresets) as Array<keyof typeof groupedLinkPresets>).map((category) => (
                                     <div key={category} className="mb-4 last:mb-0">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300 mb-2">
+                                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-subtle">
                                             {LINK_CATEGORY_LABEL[category]}
                                         </p>
                                         <div className="grid gap-2">
@@ -901,7 +896,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                 const state = linkState[preset.id] || { enabled: false, url: "" };
                                                 return (
                                                     <div key={preset.id} className="grid gap-2 md:grid-cols-[220px_1fr] md:items-center">
-                                                        <div className="flex items-center gap-2 text-sm text-ink">
+                                                        <div className="flex items-center gap-2.5 text-sm text-ink-2">
                                                             <ToggleSwitch
                                                                 checked={state.enabled}
                                                                 onChange={(checked) => {
@@ -932,7 +927,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                                                 if (spotlightError) setSpotlightError("");
                                                             }}
                                                             placeholder={preset.placeholder}
-                                                            className="w-full rounded-lg border border-line-strong bg-canvas/80 text-ink px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            className={SPOTLIGHT_INPUT}
                                                         />
                                                     </div>
                                                 );
@@ -941,16 +936,17 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     </div>
                                 ))}
                             </div>
+                            </div>
 
                             {spotlightError && (
-                                <p className="mt-3 text-sm text-rose-700 dark:text-rose-300">{spotlightError}</p>
+                                <p className="mt-3 text-sm text-danger">{spotlightError}</p>
                             )}
                             {spotlightSaved && !spotlightError && (
                                 <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">{t("projectDetail.spotlight.saved")}</p>
                             )}
 
-                            <div className="mt-5 rounded-xl border border-line bg-canvas/60 p-4">
-                                <h3 className="text-sm uppercase tracking-wide text-ink-2 mb-3">
+                            <div className="mt-4 rounded-xl border border-dashed border-line-strong p-4">
+                                <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-subtle">
                                     {t("projectDetail.spotlight.previewTitle")}
                                 </h3>
 
@@ -960,8 +956,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
                                 {currentSpotlight?.features?.length ? (
                                     <div className="mb-3">
-                                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-1">{t("view.spotlight.featuresTitle")}</p>
-                                        <ul className="space-y-1 text-sm text-ink list-disc pl-5">
+                                        <p className="mb-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">{t("view.spotlight.featuresTitle")}</p>
+                                        <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
                                             {currentSpotlight.features.map((item) => (
                                                 <li key={item}>{item}</li>
                                             ))}
@@ -971,8 +967,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
                                 {currentSpotlight?.technicalDetails?.length ? (
                                     <div className="mb-3">
-                                        <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">{t("view.spotlight.detailsTitle")}</p>
-                                        <ul className="space-y-1 text-sm text-ink list-disc pl-5">
+                                        <p className="mb-1 text-xs font-semibold text-sky-700 dark:text-sky-300">{t("view.spotlight.detailsTitle")}</p>
+                                        <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
                                             {currentSpotlight.technicalDetails.map((item) => (
                                                 <li key={item}>{item}</li>
                                             ))}
@@ -981,14 +977,14 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 ) : null}
 
                                 {currentSpotlight?.storeLinks?.length ? (
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-1.5">
                                         {currentSpotlight.storeLinks.map((link) => (
                                             <a
                                                 key={`${link.label}-${link.url}`}
                                                 href={link.url}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="inline-flex items-center rounded-full border border-indigo-400/70 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-800 dark:text-indigo-200 hover:bg-indigo-500/20"
+                                                className="inline-flex items-center rounded-full border border-line bg-surface-2 px-3 py-1 text-xs font-medium text-ink transition-colors hover:border-line-strong"
                                             >
                                                 {link.label}
                                             </a>
@@ -1000,8 +996,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                     <p className="mt-3 text-xs text-muted">{t("projectDetail.spotlight.iconConfigured")}</p>
                                 ) : null}
                             </div>
-                                </>
-                            )}
                         </section>
                         )}
                     </div>
@@ -1021,6 +1015,10 @@ export default function ProjectDetailClient({ projectId }: Props) {
         </div>
     );
 }
+
+/** Campo da ficha técnica: tokens do tema e sem sombra, como nos cards novos. */
+const SPOTLIGHT_INPUT =
+    "h-9 w-full rounded-lg border border-line bg-canvas px-3 text-sm text-ink placeholder:text-subtle focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 // Componente auxiliar para renderizar árvore de seções (somente links)
 function SectionTree({ sections, projectId, reorderSections, sensors, searchTerm, selectedTagFilters, activeSectionId, expandedSections, setExpandedSections, labels }: { 

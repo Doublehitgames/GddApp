@@ -8,9 +8,6 @@ import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
 import { sectionPath, findSectionByRef, canonicalProjectPathname } from "@/lib/utils/slug";
-import { PublicShareButton } from "@/components/PublicShareButton";
-import { type ProjectView } from "@/components/project/ProjectViewTabs";
-import { ProjectTopBar, ALTURA_BARRA, IconeMapa, IconeEditor } from "@/components/project/ProjectTopBar";
 import { ProjectSidebar } from "@/components/project/ProjectSidebar";
 import { ProjectShellBar } from "@/components/project/ProjectShellBar";
 
@@ -55,10 +52,10 @@ function BreadcrumbsMindMapSearch() {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t("mindMap.searchPlaceholder", "Buscar seções...")}
-          className="w-full bg-white text-gray-800 placeholder:text-gray-400 border border-gray-300 rounded-md pl-8 pr-16 py-1.5 text-xs sm:text-sm focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="h-9 w-full rounded-lg border border-line bg-canvas pl-8 pr-16 text-sm text-ink placeholder:text-subtle focus:border-line-strong focus:outline-none"
         />
         <svg
-          className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400"
+          className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-subtle"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -68,7 +65,7 @@ function BreadcrumbsMindMapSearch() {
         </svg>
         {hasQuery && (
           <span
-            className="pointer-events-none absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-mono text-gray-400 tabular-nums"
+            className="pointer-events-none absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-mono text-subtle tabular-nums"
             aria-live="polite"
           >
             {resultCount > 0 ? `${activeIndex + 1}/${resultCount}` : t("view.noResults", "0/0")}
@@ -78,7 +75,7 @@ function BreadcrumbsMindMapSearch() {
           <button
             type="button"
             onClick={() => setSearchTerm("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 text-xs"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-subtle hover:text-ink text-xs"
             aria-label={t("common.clear", "Clear")}
           >
             ✕
@@ -89,7 +86,7 @@ function BreadcrumbsMindMapSearch() {
         type="button"
         onClick={() => navigate(-1)}
         disabled={resultCount === 0}
-        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-line text-muted hover:text-ink hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed"
         title={t("view.previousResult", "Previous result")}
         aria-label={t("view.previousResult", "Previous result")}
       >
@@ -101,7 +98,7 @@ function BreadcrumbsMindMapSearch() {
         type="button"
         onClick={() => navigate(1)}
         disabled={resultCount === 0}
-        className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-500 hover:text-gray-900 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-line text-muted hover:text-ink hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed"
         title={t("view.nextResult", "Next result")}
         aria-label={t("view.nextResult", "Next result")}
       >
@@ -158,21 +155,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
    */
   const trazPropriaBarra = isDocumentViewRoute || isDeckRoute;
 
-  // O tema da barra segue a tela que ela emoldura. So o mapa e claro hoje; o
-  // resto do app continua escuro, entao a barra continua escura la.
-  const barraClara = isMindMapRoute;
-
-  const abaAtiva: ProjectView | null = useMemo(() => {
-    if (!normalizedPathname) return null;
-    if (isMindMapRoute) return "graph";
-    if (isDeckRoute) return "deck";
-    if (isDocumentViewRoute) return "doc";
-    // /projects/<slug> e a home do projeto — o Editor. Qualquer coisa mais
-    // funda (settings, uma secao) nao e nenhuma das tres abas.
-    if (normalizedPathname.split("/").length === 3) return "editor";
-    return null;
-  }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute, isDeckRoute]);
-
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
     const rawRef = match?.[1] ?? null;
@@ -205,7 +187,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
         <span className="flex min-w-0 items-center gap-1.5">
           {breadcrumbSections.map((section: any, i: number) => (
             <span key={section.id} className="flex min-w-0 items-center gap-1.5">
-              {i > 0 && <span className="shrink-0 font-normal text-gray-400">/</span>}
+              {i > 0 && <span className="shrink-0 font-normal text-subtle">/</span>}
               {section.id === currentSectionId && !isSectionDiagramRoute ? (
                 <span className="truncate">{section.title}</span>
               ) : (
@@ -220,7 +202,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
           ))}
           {isSectionDiagramRoute && (
             <>
-              <span className="shrink-0 font-normal text-gray-400">/</span>
+              <span className="shrink-0 font-normal text-subtle">/</span>
               <span className="truncate">{t("sectionDetail.flowchart.breadcrumb")}</span>
             </>
           )}
@@ -230,9 +212,10 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return project?.title || "Projeto";
   }, [isMindMapRoute, breadcrumbSections, currentSectionId, isSectionDiagramRoute, project, t]);
 
-  // Mapa mental e o editor de diagramas do projeto são telas de tela cheia
-  // (`fixed inset-0`) que contam com a barra antiga por cima; ficam com ela.
-  const isCanvasRoute = isMindMapRoute || /^\/projects\/[^/]+\/diagramas$/.test(normalizedPathname);
+  // Mapa mental e fluxograma são telas de canvas: ocupam a área de conteúdo
+  // inteira, sem padding e sem rolagem, e se posicionam em `absolute inset-0`
+  // dentro dela. O rodapé de sync some nelas, então a altura é tela menos barra.
+  const isCanvasRoute = isMindMapRoute || isSectionDiagramRoute;
 
   // O documento é sempre claro, em qualquer tema do app: Doc, Deck, export e impressão.
   const isPaperRoute = /\/(export|roadmap\/print)$/.test(normalizedPathname);
@@ -245,36 +228,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
       <MindMapSearchProvider>
         <GlobalPagePicker projectId={realProjectId} />
         <div data-theme="paper">{children}</div>
-      </MindMapSearchProvider>
-    );
-  }
-
-  if (isCanvasRoute) {
-    return (
-      <MindMapSearchProvider>
-        <GlobalPagePicker projectId={realProjectId} />
-        <div className="min-h-screen bg-canvas pb-14">
-          <ProjectTopBar
-            icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
-            iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
-            titulo={tituloDaTela}
-            projectSlug={projectId}
-            active={abaAtiva}
-            theme={barraClara ? "light" : "dark"}
-            badge={
-              <PublicShareButton
-                shareToken={project?.mindMapSettings?.sharing?.shareToken}
-                isPublic={project?.mindMapSettings?.sharing?.isPublic}
-                variant="inline"
-                theme={barraClara ? "light" : "dark"}
-              />
-            }
-            busca={isMindMapRoute ? <BreadcrumbsMindMapSearch /> : null}
-          />
-          <div className="print:pt-0" style={{ paddingTop: ALTURA_BARRA }}>
-            {children}
-          </div>
-        </div>
       </MindMapSearchProvider>
     );
   }
@@ -301,16 +254,21 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
           </div>
         )}
 
-        <div className="flex min-w-0 flex-col pb-14">
+        <div className={`flex min-w-0 flex-col ${isCanvasRoute ? "" : "pb-14"}`}>
           <ProjectShellBar
             title={tituloDaTela}
             projectSlug={projectId}
             project={project}
             onOpenMenu={() => setDrawerOpen(true)}
+            busca={isMindMapRoute ? <BreadcrumbsMindMapSearch /> : undefined}
           />
-          <div className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8" data-theme={isPaperRoute ? "paper" : undefined}>
-            {children}
-          </div>
+          {isCanvasRoute ? (
+            <div className="relative h-[calc(100dvh-3.5rem)] min-w-0 overflow-hidden">{children}</div>
+          ) : (
+            <div className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8" data-theme={isPaperRoute ? "paper" : undefined}>
+              {children}
+            </div>
+          )}
         </div>
       </div>
     </MindMapSearchProvider>

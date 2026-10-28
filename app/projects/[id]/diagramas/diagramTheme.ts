@@ -1,6 +1,10 @@
+import type { ResolvedTheme } from "@/lib/theme/config";
 import { DiagramTheme, DiagramThemeKey } from "./diagramTypes";
 
-export const THEME_STORAGE_KEY = "gdd_diagram_theme_v1";
+// v2: a v1 gravava o padrão (neon) em toda abertura, então quase ninguém tinha
+// escolhido de fato. Trocar a chave devolve todo mundo ao Minimal, que segue o tema.
+export const THEME_STORAGE_KEY = "gdd_diagram_theme_v2";
+export const DEFAULT_DIAGRAM_THEME: DiagramThemeKey = "minimal";
 export const DIAGRAM_THEME_KEYS: DiagramThemeKey[] = ["neon", "minimal", "pastel"];
 
 export const DIAGRAM_THEMES: Record<DiagramThemeKey, DiagramTheme> = {
@@ -41,42 +45,45 @@ export const DIAGRAM_THEMES: Record<DiagramThemeKey, DiagramTheme> = {
     selectedNodeRing: "rgb(125 211 252 / 0.5)",
     selectedNodeGlow: "rgb(56 189 248 / 0.25)",
   },
+  // Minimal segue o tema do app: as classes saem dos tokens e só as cores que o
+  // React Flow pinta direto no SVG (fio, pontos, rótulo) mudam por tema — ver
+  // getDiagramTheme. Neon e Pastel são estilos escuros de propósito.
   minimal: {
     label: "Minimal",
-    appBgClass: "bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950",
-    toolbarShellClass: "rounded-2xl border border-zinc-700/70 bg-zinc-900/85 p-2 backdrop-blur-md shadow-lg shadow-black/25",
+    appBgClass: "bg-canvas",
+    toolbarShellClass: "rounded-2xl border border-line bg-surface/90 p-2 backdrop-blur-md shadow-sm",
     toolbarButtonClass:
-      "inline-flex items-center justify-center rounded-xl border border-zinc-600/70 bg-zinc-900 px-3.5 py-2 text-sm font-medium text-zinc-100 transition-all hover:border-zinc-400 hover:bg-zinc-800",
+      "inline-flex items-center justify-center rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-line-strong hover:bg-surface-2",
     primaryButtonClass:
-      "inline-flex items-center justify-center rounded-xl border border-zinc-400/60 bg-zinc-700/35 px-3.5 py-2 text-sm font-semibold text-zinc-100 transition-all hover:bg-zinc-700/50",
+      "inline-flex items-center justify-center rounded-xl border border-accent/40 bg-accent-soft px-3.5 py-2 text-sm font-semibold text-accent transition-colors hover:border-accent",
     dangerButtonClass:
-      "inline-flex items-center justify-center rounded-xl border border-red-400/45 bg-red-900/30 px-3.5 py-2 text-sm font-semibold text-red-100 transition-all hover:bg-red-800/35",
-    panelClass: "w-[340px] border-l border-zinc-700/80 bg-zinc-900/85 backdrop-blur-sm p-4 overflow-y-auto",
-    emptyCardClass: "rounded-2xl border border-zinc-700/80 bg-zinc-900/90 p-7 text-center max-w-sm shadow-xl shadow-black/30 backdrop-blur-md",
-    idleHintClass: "rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-3 py-3 text-sm text-zinc-400",
-    nodeSectionClass: "space-y-3 rounded-xl border border-zinc-500/35 bg-zinc-800/35 p-3",
-    edgeSectionClass: "space-y-3 rounded-xl border border-zinc-500/35 bg-zinc-800/35 p-3",
+      "inline-flex items-center justify-center rounded-xl border border-danger/40 bg-danger-soft px-3.5 py-2 text-sm font-semibold text-danger transition-colors hover:border-danger",
+    panelClass: "w-[340px] border-l border-line bg-surface p-4 overflow-y-auto",
+    emptyCardClass: "rounded-2xl border border-line bg-surface p-7 text-center max-w-sm shadow-sm",
+    idleHintClass: "rounded-xl border border-line bg-surface-2 px-3 py-3 text-sm text-muted",
+    nodeSectionClass: "space-y-3 rounded-xl border border-line bg-surface-2/60 p-3",
+    edgeSectionClass: "space-y-3 rounded-xl border border-line bg-surface-2/60 p-3",
     inputClass:
-      "mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950/85 px-3 py-2 text-sm text-zinc-100 focus:border-zinc-400/70 focus:outline-none",
+      "mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none",
     nodeCardClass:
-      "diagram-node-card group h-full w-full box-border rounded-2xl border border-zinc-400/30 bg-zinc-900/95 text-zinc-100 px-3 py-2 shadow-md shadow-black/25 transition-all duration-150 hover:border-zinc-300/50",
-    nodeTextClass: "text-zinc-100",
-    handleClass: "!border-zinc-900 !bg-zinc-300",
-    resizerColor: "#d4d4d8",
-    resizerHandleBg: "#f4f4f5",
-    resizerLineColor: "rgba(212, 212, 216, 0.85)",
+      "diagram-node-card group h-full w-full box-border rounded-2xl border border-line-strong bg-surface text-ink px-3 py-2 shadow-sm transition-all duration-150 hover:border-accent/60",
+    nodeTextClass: "text-ink",
+    handleClass: "!border-surface !bg-accent",
+    resizerColor: "#9d8bff",
+    resizerHandleBg: "#edebf5",
+    resizerLineColor: "rgba(157, 139, 255, 0.75)",
     resizerVisualMode: "minimal",
-    edgeStroke: "#71717a",
-    edgeSelectedStroke: "rgb(244 244 245)",
-    edgeGlow: "rgba(228, 228, 231, 0.55)",
-    edgeLabelFill: "#fafafa",
-    edgeLabelBg: "#18181b",
-    edgeLabelBorder: "#3f3f46",
-    dotColor: "#3f3f46",
-    controlsClass: "!bg-zinc-900/90 !border !border-zinc-700 !rounded-xl",
-    selectedNodeBorder: "rgb(244 244 245 / 0.9)",
-    selectedNodeRing: "rgb(244 244 245 / 0.42)",
-    selectedNodeGlow: "rgb(212 212 216 / 0.2)",
+    edgeStroke: "#7d7893",
+    edgeSelectedStroke: "#b6a8ff",
+    edgeGlow: "rgba(157, 139, 255, 0.5)",
+    edgeLabelFill: "#edebf5",
+    edgeLabelBg: "#1c1a25",
+    edgeLabelBorder: "#2f2c3c",
+    dotColor: "#2f2c3c",
+    controlsClass: "!bg-surface !border !border-line !rounded-xl",
+    selectedNodeBorder: "rgb(182 168 255 / 0.9)",
+    selectedNodeRing: "rgb(182 168 255 / 0.4)",
+    selectedNodeGlow: "rgb(157 139 255 / 0.2)",
   },
   pastel: {
     label: "Pastel",
@@ -123,4 +130,33 @@ export function isDiagramThemeKey(value: string): value is DiagramThemeKey {
 
 export function getThemeOptions() {
   return DIAGRAM_THEME_KEYS.map((key) => ({ key, label: DIAGRAM_THEMES[key].label }));
+}
+
+/** As cores do Minimal no tema claro; o resto do estilo já sai dos tokens. */
+const MINIMAL_LIGHT: Partial<DiagramTheme> = {
+  resizerColor: "#5b43d6",
+  resizerHandleBg: "#ffffff",
+  resizerLineColor: "rgba(91, 67, 214, 0.6)",
+  edgeStroke: "#8a8699",
+  edgeSelectedStroke: "#5b43d6",
+  edgeGlow: "rgba(91, 67, 214, 0.35)",
+  edgeLabelFill: "#1d1a2b",
+  edgeLabelBg: "#ffffff",
+  edgeLabelBorder: "#e2dfec",
+  dotColor: "#d6d2e3",
+  selectedNodeBorder: "rgb(91 67 214 / 0.9)",
+  selectedNodeRing: "rgb(91 67 214 / 0.3)",
+  selectedNodeGlow: "rgb(91 67 214 / 0.12)",
+};
+
+/** O estilo que vale agora: o Minimal muda com o tema do app, os outros não. */
+export function getDiagramTheme(key: DiagramThemeKey | undefined, appTheme: ResolvedTheme): DiagramTheme {
+  const resolvedKey = key ?? DEFAULT_DIAGRAM_THEME;
+  const base = DIAGRAM_THEMES[resolvedKey];
+  return resolvedKey === "minimal" && appTheme === "light" ? { ...base, ...MINIMAL_LIGHT } : base;
+}
+
+/** Neon e Pastel são escuros em qualquer tema: o editor força os tokens escuros neles. */
+export function diagramThemeIsAlwaysDark(key: DiagramThemeKey): boolean {
+  return key !== "minimal";
 }

@@ -44,6 +44,10 @@
   --warn-ink: #f3cf85;
   --danger: #f87171;
   --danger-soft: #3b1a1d;
+  /* Mapa mental: o fio das conexões e o cinza de quem está fora do foco. */
+  --map-line: #34303f;
+  --map-muted: #4a4659;
+  --map-muted-label: #6f6a82;
   color-scheme: dark;
 }
 
@@ -75,6 +79,9 @@
   --warn-ink: #7a4e00;
   --danger: #c53030;
   --danger-soft: #fde8e8;
+  --map-line: #e2dfec;
+  --map-muted: #c9ccd2;
+  --map-muted-label: #b6bac2;
   color-scheme: light;
 }
 

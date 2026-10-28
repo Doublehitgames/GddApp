@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Handle, NodeProps, NodeResizer, Position } from "reactflow";
-import { DIAGRAM_THEMES } from "../diagramTheme";
+import { useTheme } from "@/lib/theme/provider";
+import { DEFAULT_DIAGRAM_THEME, diagramThemeIsAlwaysDark, getDiagramTheme } from "../diagramTheme";
 import { DiagramNodeData } from "../diagramTypes";
 
 function hexToRgb(hex: string) {
@@ -19,8 +20,14 @@ function rgbaFromHex(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function getReadableTextColor(hex: string) {
-  const { r, g, b } = hexToRgb(hex);
+// O fundo do bloco é a cor translúcida sobre o palco: num palco claro ela clareia
+// junto, e o texto tem que ser escolhido pela mistura, não pela cor pura.
+function getReadableTextColor(hex: string, onLightStage = false) {
+  const pure = hexToRgb(hex);
+  const mix = (channel: number) => (onLightStage ? channel * 0.35 + 255 * 0.65 : channel);
+  const r = mix(pure.r);
+  const g = mix(pure.g);
+  const b = mix(pure.b);
   const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
   return luminance > 0.58 ? "#0f172a" : "#f8fafc";
 }
@@ -38,7 +45,9 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
   const [isNoteCardOpen, setIsNoteCardOpen] = useState(false);
   const noteCardRef = useRef<HTMLDivElement | null>(null);
   const noteButtonRef = useRef<HTMLButtonElement | null>(null);
-  const theme = DIAGRAM_THEMES[data?.theme || "neon"];
+  const { theme: appTheme } = useTheme();
+  const theme = getDiagramTheme(data?.theme, appTheme);
+  const onLightStage = appTheme === "light" && !diagramThemeIsAlwaysDark(data?.theme ?? DEFAULT_DIAGRAM_THEME);
   const blockType = data?.blockType || "retangulo";
   const customColor = data?.color;
   const customTextColor = data?.textColor;
@@ -116,7 +125,7 @@ export default function DiagramNodeComponent({ data, selected, readOnly = false 
     textAlign,
     fontSize,
     padding: textPadding,
-    color: customTextColor || (customColor ? getReadableTextColor(customColor) : undefined),
+    color: customTextColor || (customColor ? getReadableTextColor(customColor, onLightStage) : undefined),
   };
   const isMinimalResizer = theme.resizerVisualMode === "minimal";
   const resizerHandleVisualStyle = {
