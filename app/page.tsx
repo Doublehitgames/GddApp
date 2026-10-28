@@ -14,6 +14,7 @@ import { PublicShareButton } from "@/components/PublicShareButton";
 import { projectPath } from "@/lib/utils/slug";
 import { limitsForProject } from "@/store/slices/limits";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
+import { AppSidebar, type HomeFilter } from "@/components/AppSidebar";
 import { ProjectCover, ProjectGlyph } from "@/components/project/ProjectCover";
 import { IconDoc, IconLibrary, IconSystems, IconVision } from "@/components/project/ProjectSidebar";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
@@ -160,6 +161,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortMode>("recent");
   const [view, setView] = useState<ViewMode>("grid");
+  const [filter, setFilter] = useState<HomeFilter>("all");
   const searchRef = useRef<HTMLInputElement>(null);
 
   const userId = user?.id ?? null;
@@ -184,6 +186,17 @@ export default function Home() {
     }
     return { myProjects: mine, sharedProjects: shared };
   }, [projects, userId, query, sort]);
+
+  const sidebarLists = useMemo(() => {
+    const mine: Project[] = [];
+    const shared: Project[] = [];
+    for (const p of [...projects].sort((a, b) => a.title.localeCompare(b.title))) {
+      if (userId != null && (p.ownerId === userId || p.ownerId == null)) mine.push(p);
+      else shared.push(p);
+    }
+    return { mine, shared };
+  }, [projects, userId]);
+  const showMine = filter === "all";
 
   // Os donos são buscados no login, mas os projetos podem chegar depois (sync).
   // Uma tentativa por montagem: se o servidor não souber o dono, não insiste.
@@ -213,6 +226,7 @@ export default function Home() {
   // de cada um mostra quanto falta. Aqui só avisamos sobre projetos.
   const showLimitWarning = projectsLeft <= 1;
   const canCreate = projectsLeft > 0;
+  const cardCount = (showMine && canCreate && !query ? 1 : 0) + (showMine ? myProjects.length : 0) + sharedProjects.length;
 
   const areas = [
     { tone: "bg-area-vis-soft", tile: "bg-area-vis text-white", icon: <IconVision className="h-5 w-5" />, title: t("home.areas.visionTitle", "Organize suas ideias"), text: t("home.areas.visionText", "A ideia, os pilares e a sensação do jogo, num lugar só.") },
@@ -229,15 +243,19 @@ export default function Home() {
   ];
 
   return (
-    <main className="min-h-screen bg-canvas pb-16 text-ink">
+    <main className="min-h-screen bg-canvas pb-16 text-ink lg:grid lg:grid-cols-[256px_minmax(0,1fr)]">
+      <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:block lg:h-screen">
+        <AppSidebar myProjects={sidebarLists.mine} sharedProjects={sidebarLists.shared} filter={filter} onFilter={setFilter} />
+      </aside>
+      <div className="min-w-0">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur md:px-8">
-        <Link href="/" className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight text-ink">
+        <Link href="/" className="flex items-center gap-2.5 text-[15px] font-bold tracking-tight text-ink lg:hidden">
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-on-accent">
             <IconVision className="h-4 w-4" />
           </span>
           <span className="hidden sm:inline">{t("common.appName", "GDD Manager")}</span>
         </Link>
-        <label className="relative ml-2 hidden max-w-md flex-1 sm:block">
+        <label className="relative hidden max-w-md flex-1 sm:block">
           <span className="sr-only">{t("home.search", "Buscar em seus projetos")}</span>
           <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
             <circle cx="11" cy="11" r="7" />
@@ -253,21 +271,6 @@ export default function Home() {
           <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-line px-1.5 font-sans text-[11px] text-subtle">Ctrl K</kbd>
         </label>
         <div className="ml-auto flex items-center gap-1.5">
-          <Link href="/docs" className="hidden h-9 items-center rounded-lg px-3 text-sm text-muted hover:bg-surface-2 hover:text-ink sm:inline-flex">
-            {t("home.docs", "Ajuda")}
-          </Link>
-          <a
-            href="https://discord.gg/cqPsj7DhEr"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Discord"
-            title="Discord"
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[18px] w-[18px] fill-current">
-              <path d="M20.317 4.37A19.791 19.791 0 0 0 15.885 3c-.191.328-.403.768-.552 1.11a18.27 18.27 0 0 0-5.666 0A11.69 11.69 0 0 0 9.115 3a19.736 19.736 0 0 0-4.432 1.37C1.884 8.58 1.128 12.685 1.507 16.73a19.93 19.93 0 0 0 5.993 3.03c.486-.66.918-1.36 1.285-2.09-.708-.268-1.387-.598-2.028-.98.17-.124.336-.254.496-.388 3.91 1.84 8.16 1.84 12.023 0 .16.134.326.264.496.388a12.9 12.9 0 0 1-2.032.982c.367.73.8 1.43 1.286 2.09a19.88 19.88 0 0 0 5.995-3.03c.444-4.69-.759-8.757-3.704-12.36ZM8.02 14.12c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.41 2.15-2.41 1.21 0 2.17 1.09 2.15 2.41 0 1.33-.95 2.41-2.15 2.41Zm7.96 0c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.41 2.15-2.41 1.21 0 2.17 1.09 2.15 2.41 0 1.33-.94 2.41-2.15 2.41Z" />
-            </svg>
-          </a>
           <ThemeToggle />
           <UserMenu />
         </div>
@@ -312,7 +315,9 @@ export default function Home() {
 
           <section>
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <h2 className="text-lg font-semibold">{t("home.projects.yourProjects", "Seus projetos")}</h2>
+              <h2 className="text-lg font-semibold">
+                {showMine ? t("home.projects.yourProjects", "Seus projetos") : t("home.projects.sharedTitle", "Compartilhados comigo")}
+              </h2>
               <span className="text-sm tabular-nums text-subtle">
                 {ownedCount}/{FREE_MAX_PROJECTS}
                 {sharedProjects.length > 0 && ` · ${t("home.projects.sharedCount", "{n} compartilhado(s) com você").replace("{n}", String(sharedProjects.length))}`}
@@ -357,8 +362,8 @@ export default function Home() {
             </div>
 
             {view === "grid" ? (
-              <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(17rem,1fr))]">
-                {canCreate && !query && (
+              <div className={`grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(17rem,1fr))] ${cardCount === 1 ? "max-w-md" : ""}`}>
+                {showMine && canCreate && !query && (
                   <button
                     type="button"
                     onClick={() => setDialog("blank")}
@@ -370,7 +375,7 @@ export default function Home() {
                     <span className="mt-2 rounded-lg bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">{t("home.createProject", "Criar projeto")}</span>
                   </button>
                 )}
-                {myProjects.map((p) => (
+                {showMine && myProjects.map((p) => (
                   <ProjectCard key={p.id} project={p} />
                 ))}
                 {sharedProjects.map((p) => (
@@ -379,7 +384,7 @@ export default function Home() {
               </div>
             ) : (
               <ul className="flex flex-col gap-2">
-                {myProjects.map((p) => (
+                {showMine && myProjects.map((p) => (
                   <ProjectRow key={p.id} project={p} />
                 ))}
                 {sharedProjects.map((p) => (
@@ -454,6 +459,7 @@ export default function Home() {
         </aside>
       </div>
 
+      </div>
       <HomeSyncBar />
       <NewProjectDialog open={dialog !== null} then={dialog === "genre" ? "genre" : undefined} onClose={() => setDialog(null)} />
     </main>
