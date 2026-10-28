@@ -54,7 +54,8 @@ function projectLine(project: Project): string {
   return project.vision?.logline?.trim() || toPreviewText(project.description ?? "", 140);
 }
 
-function ProjectCard({ project, owner = null, showSettings = true }: { project: Project; owner?: ProjectOwner | null; showSettings?: boolean }) {
+function ProjectCard({ project, owner = null, shared = false }: { project: Project; owner?: ProjectOwner | null; shared?: boolean }) {
+  const showSettings = !shared;
   const { t } = useI18n();
   const timeAgo = useTimeAgo();
   const usage = usePagesUsage(project);
@@ -67,7 +68,12 @@ function ProjectCard({ project, owner = null, showSettings = true }: { project: 
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-surface transition-colors hover:border-line-strong">
       <Link href={projectPath(project)} prefetch={false} className="block" aria-label={project.title}>
         <ProjectCover project={project} className="h-36 rounded-none">
-          <div className="p-3">
+          <div className="flex flex-wrap gap-1.5 p-3">
+            {shared && (
+              <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-semibold text-on-accent">
+                {t("home.projects.sharedBadge", "Compartilhado")}
+              </span>
+            )}
             <span className={`inline-flex items-center rounded-full bg-white/90 px-2.5 py-0.5 text-[11px] font-semibold ${usageTone}`} title={t("home.projects.pagesLeft").replace("{count}", String(Math.max(0, usage.left)))}>
               {t("home.projects.pagesUsage").replace("{used}", String(usage.used)).replace("{max}", String(usage.max))}
             </span>
@@ -309,6 +315,7 @@ export default function Home() {
               <h2 className="text-lg font-semibold">{t("home.projects.yourProjects", "Seus projetos")}</h2>
               <span className="text-sm tabular-nums text-subtle">
                 {ownedCount}/{FREE_MAX_PROJECTS}
+                {sharedProjects.length > 0 && ` · ${t("home.projects.sharedCount", "{n} compartilhado(s) com você").replace("{n}", String(sharedProjects.length))}`}
               </span>
               <div className="ml-auto flex items-center gap-2">
                 <select
@@ -350,7 +357,7 @@ export default function Home() {
             </div>
 
             {view === "grid" ? (
-              <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(17rem,1fr))]">
                 {canCreate && !query && (
                   <button
                     type="button"
@@ -366,38 +373,26 @@ export default function Home() {
                 {myProjects.map((p) => (
                   <ProjectCard key={p.id} project={p} />
                 ))}
+                {sharedProjects.map((p) => (
+                  <ProjectCard key={p.id} project={p} shared owner={(p.ownerId && ownersById[p.ownerId]) || null} />
+                ))}
               </div>
             ) : (
               <ul className="flex flex-col gap-2">
                 {myProjects.map((p) => (
                   <ProjectRow key={p.id} project={p} />
                 ))}
+                {sharedProjects.map((p) => (
+                  <ProjectRow key={p.id} project={p} owner={(p.ownerId && ownersById[p.ownerId]) || null} />
+                ))}
               </ul>
             )}
 
-            {myProjects.length === 0 && query && (
+            {myProjects.length === 0 && sharedProjects.length === 0 && query && (
               <p className="mt-4 text-sm text-muted">{t("home.noMatch", "Nenhum projeto com esse nome.")}</p>
             )}
           </section>
 
-          {sharedProjects.length > 0 && (
-            <section>
-              <h2 className="mb-4 text-lg font-semibold">{t("home.projects.sharedTitle", "Compartilhados comigo")}</h2>
-              {view === "grid" ? (
-                <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                  {sharedProjects.map((p) => (
-                    <ProjectCard key={p.id} project={p} showSettings={false} owner={(p.ownerId && ownersById[p.ownerId]) || null} />
-                  ))}
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {sharedProjects.map((p) => (
-                    <ProjectRow key={p.id} project={p} owner={(p.ownerId && ownersById[p.ownerId]) || null} />
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
         </div>
 
         <aside className="flex flex-col gap-5">
