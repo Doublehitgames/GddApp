@@ -8,13 +8,15 @@ import { DomainIcon, domainVisual } from "@/components/project/domainVisual";
 import { IconDoc, IconLibrary, IconSystems, IconVision } from "@/components/project/ProjectSidebar";
 import { CoverImage } from "@/components/project/ProjectCover";
 import { useShellProject } from "@/components/project/useShellProject";
+import { useTimeAgo } from "@/hooks/useTimeAgo";
+import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import { useI18n } from "@/lib/i18n/provider";
 import { isValidDomainId } from "@/lib/gameDesignDomains";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import { sectionPath } from "@/lib/utils/slug";
 import { useProjectStore } from "@/store/projectStore";
 import type { Project, ProjectVision, Section } from "@/store/slices/types";
-import { validateReferences } from "@/utils/sectionReferences";
+import { extractSectionReferences, findSection, validateReferences } from "@/utils/sectionReferences";
 import { StarterDrawer, areaLabel, areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
 import { STARTER_AREAS, type StarterArea } from "@/lib/onboarding/starterQuestions";
 
@@ -114,68 +116,380 @@ export default function ProjectHomeClient({ projectId }: { projectId: string }) 
   );
 }
 
+function categoryOf(section: Section): GameDesignDomainId {
+  return section.domainTags?.find(isValidDomainId) ?? "other";
+}
+
+const byOrder = (a: Section, b: Section) => (a.order ?? 0) - (b.order ?? 0);
+const hasText = (s: Section) => !!(s.content ?? "").trim();
+
+const MECHANIC_DOMAINS: GameDesignDomainId[] = ["combat", "progression", "crafting", "economy", "ui", "technology"];
+
+/** As ligações entre páginas, tiradas das refs $[...] — o esboço do diagrama de sistemas. */
+function pageLinks(sections: Section[]) {
+  const pairs = new Map<string, { from: Section; to: Section }>();
+  const degree = new Map<string, number>();
+  for (const s of sections) {
+    for (const ref of extractSectionReferences(s.content ?? "")) {
+      const target = findSection(sections, ref) as Section | null;
+      if (!target || target.id === s.id) continue;
+      const key = `${s.id}>${target.id}`;
+      if (pairs.has(key)) continue;
+      pairs.set(key, { from: s, to: target });
+      degree.set(s.id, (degree.get(s.id) ?? 0) + 1);
+      degree.set(target.id, (degree.get(target.id) ?? 0) + 1);
+    }
+  }
+  return { links: [...pairs.values()], connected: degree.size };
+}
+
 function GameHome({ project, slug }: { project: Project; slug: string }) {
   const { t } = useI18n();
   const base = `/projects/${slug}`;
   const v = visionOf(project);
-  const sections = project.sections ?? [];
-  const roots = sections.filter((s) => !s.parentId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sections = useMemo(() => project.sections ?? [], [project.sections]);
   const logline = v.logline?.trim() || toPreviewText(project.description ?? "", 220);
+  const { links, connected } = useMemo(() => pageLinks(sections), [sections]);
+  const inDomain = (ids: GameDesignDomainId[]) => sections.filter((s) => ids.includes(categoryOf(s))).sort(byOrder);
+  const label = (id: GameDesignDomainId) => t(DOMAIN_I18N_KEYS[id], id);
+
+  const topDomains = useMemo(() => {
+    const counts = new Map<GameDesignDomainId, number>();
+    for (const s of sections) {
+      const c = categoryOf(s);
+      if (c !== "other") counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
+  }, [sections]);
+
+  const vision = areaProgress(project, "vision");
+  const written = sections.filter(hasText).length;
+  const docs = documentation(sections);
 
   return (
-    <div className="mx-auto grid max-w-7xl items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="grid w-full items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-w-0 flex-col gap-5">
-        <ProjectCover project={project} className="min-h-[210px]">
-          <div className="flex max-w-2xl flex-col gap-2.5 p-6 md:p-7">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">
-              {v.genre?.trim() || t("projectHome.eyebrow", "Game Design Document")}
-            </span>
-            <h1 className="text-3xl font-bold leading-tight md:text-4xl">{project.title}</h1>
-            {logline && <p className="max-w-[52ch] text-[15px] text-white/80">{logline}</p>}
-            <div className="mt-1">
-              <Link href={`${base}/visao`} className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium hover:bg-white/20">
-                {t("projectHome.editVision", "Editar a visão")}
-              </Link>
+        <ProjectCover project={project} className="min-h-[188px]">
+          <div className="flex w-full flex-wrap items-start gap-4 p-6 md:p-7">
+            <div className="flex max-w-2xl flex-col gap-2.5">
+              <h1 className="text-3xl font-bold leading-tight md:text-[2.5rem]">{project.title}</h1>
+              {logline && <p className="max-w-[60ch] text-[15px] text-white/85">{logline}</p>}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[v.genre?.trim(), ...topDomains.map(label)].filter(Boolean).map((tag) => (
+                  <span key={tag} className="rounded-full border border-white/25 bg-white/12 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
+            <Link href={`${base}/visao`} className="ml-auto rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#1d1a2b] hover:bg-white">
+              {t("projectHome.editVision", "Editar a visão")}
+            </Link>
           </div>
         </ProjectCover>
 
-        <Panel tone="vis" icon={<IconVision className="h-4 w-4" />} title={t("projectHome.pillars", "Pilares")} href={`${base}/visao`} linkLabel={t("projectHome.openVision", "Abrir Visão")}>
-          {v.pillars?.length ? (
-            <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-              {v.pillars.map((pillar, i) => (
-                <li key={`${pillar}-${i}`} className="flex items-start gap-2.5 text-sm text-ink">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PILLAR_DOTS[i % PILLAR_DOTS.length]}`} aria-hidden />
-                  {pillar}
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          <AreaStat href={`${base}/visao`} tone="vis" icon={<IconVision className="h-5 w-5" />} title={t("projectShell.vision", "Visão do jogo")} text={t("projectHome.statVision", "Conceito, pilares e sensação.")} value={vision.answered} total={vision.total} />
+          <AreaStat href={`${base}/documentacao`} tone="doc" icon={<IconDoc className="h-5 w-5" />} title={t("projectShell.docs", "Documentação")} text={t("projectHome.statDocs", "Documentos com texto escrito.")} value={written} total={sections.length} />
+          <AreaStat href={`${base}/biblioteca`} tone="lib" icon={<IconLibrary className="h-5 w-5" />} title={t("projectShell.library", "Biblioteca do jogo")} text={t("projectHome.statLibrary", "Itens, personagens e números.")} soon={t("projectShell.soon", "em breve")} />
+          <AreaStat href={`${base}/sistemas`} tone="sys" icon={<IconSystems className="h-5 w-5" />} title={t("projectShell.systems", "Sistemas e relações")} text={t("projectHome.statSystems", "Páginas ligadas umas às outras.")} value={connected} total={sections.length} />
+        </div>
+
+        <section className="rounded-2xl border border-line bg-surface p-5 md:p-6">
+          <div className="mb-5 flex flex-wrap items-start gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-on-accent">
+              <IconVision className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl font-bold text-ink">{t("projectHome.overview", "Visão geral")}</h2>
+              <p className="mt-0.5 max-w-2xl text-sm text-muted">{t("projectHome.overviewLead", "Como o jogo se monta: os pilares, as mecânicas, quem vive nele e onde tudo acontece.")}</p>
+            </div>
+            <Link href={`${base}/mindmap`} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2">
+              {t("projectHome.fullMap", "Ver mapa completo")} ›
+            </Link>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <OverviewCard title={t("projectHome.pillars", "Pilares de design")} lead={t("projectHome.pillarsLead", "As regras que decidem as brigas de design.")} icon={<IconVision className="h-4 w-4" />} tone="bg-area-vis-soft text-area-vis" footer={<Link href={`${base}/visao`} className="text-xs font-medium text-accent hover:underline">{t("projectHome.edit", "Editar")}</Link>}>
+              {v.pillars?.length ? (
+                <ul className="flex flex-col gap-2">
+                  {v.pillars.map((pillar, i) => (
+                    <li key={`${pillar}-${i}`} className="flex items-start gap-2.5 text-sm text-ink">
+                      <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PILLAR_DOTS[i % PILLAR_DOTS.length]}`} aria-hidden />
+                      {pillar}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyHint href={starterHref(slug, "vision")} text={t("projectHome.pillarsInvite", "Quais são as 3 ou 4 regras que decidem as brigas de design do seu jogo?")} action={t("projectHome.answer", "Responder")} />
+              )}
+            </OverviewCard>
+
+            <OverviewCard title={t("projectHome.mechanics", "Mecânicas principais")} lead={t("projectHome.mechanicsLead", "As regras que definem como o jogo funciona.")} icon={<DomainIcon id="combat" className="h-4 w-4" />} tone={domainVisual("combat").tile} footer={<SeeAll href={`${base}/documentacao`} />}>
+              <DocRows items={inDomain(MECHANIC_DOMAINS).slice(0, 5)} project={project} empty={t("projectHome.mechanicsEmpty", "Combate, progressão, economia… as páginas dessas categorias aparecem aqui.")} />
+            </OverviewCard>
+
+            <OverviewCard title={t("projectHome.characters", "Personagens")} lead={t("projectHome.charactersLead", "Protagonistas, aliados e quem fica no caminho.")} icon={<DomainIcon id="characters" className="h-4 w-4" />} tone={domainVisual("characters").tile} footer={<SeeAll href={`${base}/documentacao`} />}>
+              <Avatars items={inDomain(["characters"]).slice(0, 4)} project={project} empty={t("projectHome.charactersEmpty", "Marque uma página com a categoria Personagens e ela aparece aqui.")} />
+            </OverviewCard>
+
+            <OverviewCard title={t("projectHome.items", "Itens e recursos")} lead={t("projectHome.itemsLead", "O que o jogador coleta, usa e gasta.")} icon={<DomainIcon id="items" className="h-4 w-4" />} tone={domainVisual("items").tile} footer={<SeeAll href={`${base}/documentacao`} />}>
+              <Tiles items={inDomain(["items"]).slice(0, 4)} project={project} empty={t("projectHome.itemsEmpty", "Itens e recursos aparecem aqui — e viram coleção quando a Biblioteca chegar.")} />
+            </OverviewCard>
+
+            <OverviewCard title={t("projectHome.places", "Locais e fases")} lead={t("projectHome.placesLead", "Mundos, regiões e cenários do jogo.")} icon={<DomainIcon id="world" className="h-4 w-4" />} tone={domainVisual("world").tile} footer={<SeeAll href={`${base}/documentacao`} />}>
+              <Tiles items={inDomain(["world"]).slice(0, 3)} project={project} wide empty={t("projectHome.placesEmpty", "Marque uma página com a categoria Mundo e ela aparece aqui.")} />
+            </OverviewCard>
+
+            <OverviewCard title={t("projectHome.narrative", "Narrativa")} lead={t("projectHome.narrativeLead", "A história e quem a conta.")} icon={<DomainIcon id="narrative" className="h-4 w-4" />} tone={domainVisual("narrative").tile}>
+              <NarrativeTeaser section={inDomain(["narrative"])[0]} project={project} empty={t("projectHome.narrativeEmpty", "Escreva a história numa página com a categoria Narrativa.")} />
+            </OverviewCard>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="mb-4 flex items-center gap-2.5">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-area-sys-soft text-area-sys">
+              <IconSystems className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold text-ink">{t("projectHome.connections", "Conexões entre páginas")}</h2>
+              <p className="text-xs text-muted">{t("projectHome.connectionsLead", "Quem cita quem, pelas referências $[...] do texto.")}</p>
+            </div>
+            <Link href={`${base}/mindmap`} className="text-sm font-medium text-accent hover:underline">
+              {t("projectHome.fullMap", "Ver mapa completo")}
+            </Link>
+          </div>
+          {links.length ? (
+            <ul className="flex flex-wrap gap-x-6 gap-y-3">
+              {links.slice(0, 8).map(({ from, to }) => (
+                <li key={`${from.id}>${to.id}`} className="flex items-center gap-2 text-sm">
+                  <PageChip section={from} project={project} />
+                  <span className="text-subtle" aria-hidden>→</span>
+                  <PageChip section={to} project={project} />
                 </li>
               ))}
             </ul>
           ) : (
-            <Invite
-              href={starterHref(slug, "vision")}
-              text={t("projectHome.pillarsInvite", "Quais são as 3 ou 4 regras que decidem as brigas de design do seu jogo?")}
-              action={t("projectHome.answer", "Responder")}
-            />
+            <p className="text-sm text-muted">{t("projectHome.connectionsEmpty", "Cite uma página dentro de outra escrevendo $[Nome da página] e a ligação aparece aqui.")}</p>
           )}
-        </Panel>
-
-        <Panel tone="doc" icon={<IconDoc className="h-4 w-4" />} title={t("projectHome.mainDocs", "Documentos principais")} href={`${base}/documentacao`} linkLabel={t("projectHome.allDocs", "Ver todos")}>
-          {roots.length ? (
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {roots.slice(0, 9).map((s) => (
-                <RootDoc key={s.id} section={s} href={sectionPath(project, s)} childCount={sections.filter((c) => c.parentId === s.id).length} />
-              ))}
-            </ul>
-          ) : (
-            <Invite href={`${base}/documentacao`} text={t("projectHome.docsInvite", "Ainda não há documentos. Comece pelo que você mais tem vontade de escrever.")} action={t("projectHome.newDoc", "Novo documento")} />
-          )}
-        </Panel>
+        </section>
       </div>
 
       <aside className="flex flex-col gap-5">
-        <LooseEnds project={project} slug={slug} />
         <FirstStepsCard project={project} slug={slug} />
+        <LooseEnds project={project} slug={slug} />
+        <RecentDocs items={docs.recent} project={project} slug={slug} />
       </aside>
+    </div>
+  );
+}
+
+function documentation(sections: Section[]) {
+  const when = (s: Section) => s.content_updated_at || s.updated_at || s.created_at;
+  return { recent: [...sections].sort((a, b) => when(b).localeCompare(when(a))).slice(0, 5).map((s) => ({ section: s, at: when(s) })) };
+}
+
+function AreaStat({ href, tone, icon, title, text, value, total, soon }: { href: string; tone: "vis" | "doc" | "lib" | "sys"; icon: React.ReactNode; title: string; text: string; value?: number; total?: number; soon?: string }) {
+  const tile = { vis: "bg-area-vis text-white", doc: "bg-area-doc text-white", lib: "bg-area-lib text-white", sys: "bg-area-sys text-white" }[tone];
+  const bar = { vis: "bg-area-vis", doc: "bg-area-doc", lib: "bg-area-lib", sys: "bg-area-sys" }[tone];
+  const pct = total ? Math.round(((value ?? 0) / total) * 100) : 0;
+  return (
+    <Link href={href} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong">
+      <div className="flex items-start gap-3">
+        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${tile}`}>{icon}</span>
+        <span className="min-w-0">
+          <strong className="block text-sm text-ink">{title}</strong>
+          <span className="block text-xs text-muted">{text}</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        {soon ? (
+          <>
+            <span className="h-1.5 flex-1 rounded-full border border-dashed border-line-strong" />
+            <span className="text-[11px] text-subtle">{soon}</span>
+          </>
+        ) : (
+          <>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+              <span className={`block h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
+            </span>
+            <span className="text-xs tabular-nums text-muted">
+              {value}/{total}
+            </span>
+          </>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function OverviewCard({ title, lead, icon, tone, footer, children }: { title: string; lead: string; icon: React.ReactNode; tone: string; footer?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col rounded-2xl border border-line p-4">
+      <div className="mb-1 flex items-center gap-2.5">
+        <span className={`grid h-8 w-8 place-items-center rounded-lg ${tone}`}>{icon}</span>
+        <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+      </div>
+      <p className="mb-3 text-xs text-muted">{lead}</p>
+      <div className="flex-1">{children}</div>
+      {footer && <div className="mt-3 flex justify-end">{footer}</div>}
+    </div>
+  );
+}
+
+function SeeAll({ href }: { href: string }) {
+  const { t } = useI18n();
+  return (
+    <Link href={href} className="text-xs font-medium text-accent hover:underline">
+      {t("projectHome.seeAll", "Ver todos")} →
+    </Link>
+  );
+}
+
+function EmptyHint({ text, href, action }: { text: string; href?: string; action?: string }) {
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-line-strong p-3">
+      <p className="text-xs text-muted">{text}</p>
+      {href && action && (
+        <Link href={href} className="rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-on-accent hover:opacity-90">
+          {action}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function DocRows({ items, project, empty }: { items: Section[]; project: Project; empty: string }) {
+  const { t } = useI18n();
+  if (!items.length) return <EmptyHint text={empty} />;
+  return (
+    <ul className="flex flex-col divide-y divide-line">
+      {items.map((s) => {
+        const c = categoryOf(s);
+        return (
+          <li key={s.id}>
+            <Link href={sectionPath(project, s)} className="flex items-center gap-2.5 py-2 text-sm text-ink hover:text-accent">
+              <DomainIcon id={c} className="h-4 w-4 shrink-0 text-muted" />
+              <span className="min-w-0 flex-1 truncate">{s.title}</span>
+              <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium ${domainVisual(c).tile}`}>{t(DOMAIN_I18N_KEYS[c], c)}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+const AVATAR_TONES = ["bg-violet-500", "bg-amber-500", "bg-emerald-600", "bg-rose-600", "bg-sky-600", "bg-indigo-500"];
+
+function Avatars({ items, project, empty }: { items: Section[]; project: Project; empty: string }) {
+  if (!items.length) return <EmptyHint text={empty} />;
+  return (
+    <ul className="grid grid-cols-4 gap-2">
+      {items.map((s, i) => (
+        <li key={s.id}>
+          <Link href={sectionPath(project, s)} className="flex flex-col items-center gap-1.5 text-center">
+            {s.thumbImageUrl ? (
+              <span className="relative h-14 w-14 overflow-hidden rounded-full bg-surface-2">
+                <CoverImage src={s.thumbImageUrl} alt="" />
+              </span>
+            ) : (
+              <span className={`grid h-14 w-14 place-items-center rounded-full text-lg font-bold text-white ${AVATAR_TONES[i % AVATAR_TONES.length]}`}>{s.title.trim()[0]?.toUpperCase()}</span>
+            )}
+            <span className="line-clamp-2 text-xs font-medium leading-tight text-ink">{s.title}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Tiles({ items, project, empty, wide }: { items: Section[]; project: Project; empty: string; wide?: boolean }) {
+  if (!items.length) return <EmptyHint text={empty} />;
+  return (
+    <ul className={`grid gap-2 ${wide ? "grid-cols-3" : "grid-cols-4"}`}>
+      {items.map((s) => {
+        const c = categoryOf(s);
+        return (
+          <li key={s.id}>
+            <Link href={sectionPath(project, s)} className="flex flex-col gap-1.5">
+              <span className={`relative grid w-full place-items-center overflow-hidden rounded-xl ${wide ? "aspect-[4/3]" : "aspect-square"} ${s.thumbImageUrl ? "bg-surface-2" : domainVisual(c).tile}`}>
+                {s.thumbImageUrl ? <CoverImage src={s.thumbImageUrl} alt="" /> : <DomainIcon id={c} className="h-6 w-6" />}
+              </span>
+              <span className="line-clamp-2 text-[11px] font-medium leading-tight text-ink">{s.title}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function NarrativeTeaser({ section, project, empty }: { section?: Section; project: Project; empty: string }) {
+  const { t } = useI18n();
+  if (!section) return <EmptyHint text={empty} />;
+  return (
+    <div className="flex flex-col gap-2">
+      {section.thumbImageUrl && (
+        <span className="relative block aspect-[3/1] w-full overflow-hidden rounded-xl bg-surface-2">
+          <CoverImage src={section.thumbImageUrl} alt="" />
+        </span>
+      )}
+      <p className="line-clamp-4 text-sm text-ink-2">{toPreviewText(section.content ?? "", 260) || t("docsArea.noText", "Ainda sem texto.")}</p>
+      <Link href={sectionPath(project, section)} className="text-xs font-medium text-accent hover:underline">
+        {t("projectHome.readMore", "Ler mais")} →
+      </Link>
+    </div>
+  );
+}
+
+function PageChip({ section, project }: { section: Section; project: Project }) {
+  const c = categoryOf(section);
+  return (
+    <Link href={sectionPath(project, section)} className={`inline-flex max-w-[14rem] items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium ${domainVisual(c).tile}`}>
+      <DomainIcon id={c} className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{section.title}</span>
+    </Link>
+  );
+}
+
+function RecentDocs({ items, project, slug }: { items: { section: Section; at: string }[]; project: Project; slug: string }) {
+  const { t } = useI18n();
+  const timeAgo = useTimeAgo();
+  if (!items.length) return null;
+  return (
+    <div className="rounded-2xl border border-line bg-surface p-5">
+      <div className="mb-3 flex items-center">
+        <h2 className="text-base font-semibold text-ink">{t("projectHome.recent", "Atualizados recentemente")}</h2>
+      </div>
+      <ul className="flex flex-col gap-1">
+        {items.map(({ section, at }) => {
+          const c = categoryOf(section);
+          return (
+            <li key={section.id}>
+              <Link href={sectionPath(project, section)} className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface-2">
+                {section.thumbImageUrl ? (
+                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+                    <CoverImage src={section.thumbImageUrl} alt="" />
+                  </span>
+                ) : (
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${domainVisual(c).tile}`}>
+                    <DomainIcon id={c} className="h-5 w-5" />
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">{section.title}</span>
+                  <span className="block text-xs text-muted">{timeAgo(at)}</span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      <Link href={`/projects/${slug}/documentacao`} className="mt-2 inline-block text-xs font-medium text-accent hover:underline">
+        {t("projectHome.allDocsArrow", "Ver todos os documentos")} →
+      </Link>
     </div>
   );
 }
@@ -252,63 +566,6 @@ function LooseEnds({ project, slug }: { project: Project; slug: string }) {
   );
 }
 
-function RootDoc({ section, href, childCount }: { section: Section; href: string; childCount: number }) {
-  const { t } = useI18n();
-  const category = section.domainTags?.find(isValidDomainId) ?? "other";
-  return (
-    <li>
-      <Link href={href} className="flex items-center gap-3 rounded-xl border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface-2">
-        {section.thumbImageUrl ? (
-          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-surface-2">
-            <CoverImage src={section.thumbImageUrl} alt="" />
-          </span>
-        ) : (
-          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${domainVisual(category).tile}`}>
-            <DomainIcon id={category} className="h-5 w-5" />
-          </span>
-        )}
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-ink">{section.title}</span>
-          <span className="block text-xs text-muted">
-            {childCount > 0
-              ? (childCount === 1 ? t("projectHome.subpage", "1 subpágina") : t("projectHome.subpages", "{n} subpáginas").replace("{n}", String(childCount)))
-              : toPreviewText(section.content ?? "", 40) || t("docsArea.noText", "Ainda sem texto.")}
-          </span>
-        </span>
-      </Link>
-    </li>
-  );
-}
-
-function Panel({ tone, icon, title, href, linkLabel, children }: { tone: "vis" | "doc" | "lib" | "sys"; icon: React.ReactNode; title: string; href?: string; linkLabel?: string; children: React.ReactNode }) {
-  const toneClass = { vis: "bg-area-vis-soft text-area-vis", doc: "bg-area-doc-soft text-area-doc", lib: "bg-area-lib-soft text-area-lib", sys: "bg-area-sys-soft text-area-sys" }[tone];
-  return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
-      <div className="mb-4 flex items-center gap-2.5">
-        <span className={`grid h-8 w-8 place-items-center rounded-lg ${toneClass}`}>{icon}</span>
-        <h2 className="text-base font-semibold text-ink">{title}</h2>
-        {href && linkLabel && (
-          <Link href={href} className="ml-auto text-sm font-medium text-accent hover:underline">
-            {linkLabel}
-          </Link>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Invite({ href, text, action }: { href: string; text: string; action: string }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line-strong p-4">
-      <p className="min-w-0 flex-1 text-sm text-muted">{text}</p>
-      <Link href={href} className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:opacity-90">
-        {action}
-      </Link>
-    </div>
-  );
-}
-
 function NewProjectHome({ project, slug }: { project: Project; slug: string }) {
   const { t } = useI18n();
   const doors = [
@@ -324,7 +581,7 @@ function NewProjectHome({ project, slug }: { project: Project; slug: string }) {
   ];
 
   return (
-    <div className="mx-auto grid max-w-7xl items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="grid w-full items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-w-0 flex-col gap-6">
         <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div>
