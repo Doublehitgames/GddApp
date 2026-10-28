@@ -361,9 +361,25 @@ export type Project = {
   ownerId?: string | null;
   /** Instruções específicas do projeto para a IA (tom, convenções de escrita, etc). */
   aiInstructions?: string;
+  /** A "Visão" do jogo e o progresso do "Primeiros passos". Metadado: não cobra crédito de sync. */
+  vision?: ProjectVision;
   /** Planilhas do Google Sheets cadastradas para reutilização em vínculos de campos. */
   /** Índice de imagens da pasta do Drive, para escolher ícone sem abrir o picker. */
   imageLibrary?: ProjectImageLibrary;
+};
+
+/**
+ * O que o jogo é, em poucas frases — mostrado na home do projeto.
+ * `starter` guarda o progresso do onboarding "Primeiros passos": ids das
+ * perguntas respondidas e puladas, e quando terminou.
+ */
+export type ProjectVision = {
+  logline?: string;
+  playerVerb?: string;
+  feeling?: string;
+  pillars?: string[];
+  genre?: string;
+  starter?: { answered: string[]; skipped: string[]; doneAt?: string };
 };
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -468,6 +484,8 @@ export interface ProjectStore {
     description: string,
     opts?: { aiInstructions?: string; contentBlocks?: RichDocBlock[] }
   ) => void;
+  /** Mescla `patch` na visão atual chave a chave (`starter` e `pillars` são trocados inteiros). */
+  updateProjectVision: (projectId: UUID, patch: Partial<ProjectVision>) => void;
   setProjectCoverImage: (id: UUID, coverImageUrl?: string) => void;
   setProjectImageLibrary: (id: UUID, imageLibrary?: ProjectImageLibrary) => void;
   setSectionThumbImage: (projectId: UUID, sectionId: UUID, thumbImageUrl?: string) => void;

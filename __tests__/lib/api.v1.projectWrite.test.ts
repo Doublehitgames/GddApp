@@ -54,6 +54,27 @@ describe("buildProjectUpdates", () => {
     expect(buildProjectUpdates({ contentBlocks: [] }, CTX).content_blocks).toBeNull();
   });
 
+  it("merges a vision patch into the current vision", () => {
+    const updates = buildProjectUpdates(
+      { vision: { pillars: ["Colheita", "Troca"] } },
+      { ...CTX, currentVision: { logline: "Uma fazenda que conversa", pillars: ["Velho"] } },
+    );
+    expect(updates.vision).toEqual({ logline: "Uma fazenda que conversa", pillars: ["Colheita", "Troca"] });
+  });
+
+  it("writes a vision even when the project had none", () => {
+    expect(buildProjectUpdates({ vision: { genre: "Simulação" } }, CTX).vision).toEqual({ genre: "Simulação" });
+  });
+
+  it("clears the vision with null", () => {
+    const updates = buildProjectUpdates({ vision: null }, { ...CTX, currentVision: { genre: "Simulação" } });
+    expect(updates.vision).toBeNull();
+  });
+
+  it("leaves the vision alone when the caller does not send it", () => {
+    expect("vision" in buildProjectUpdates({ title: "P" }, { ...CTX, currentVision: { genre: "X" } })).toBe(false);
+  });
+
   it("leaves blocks alone when only unrelated fields change", () => {
     const updates = buildProjectUpdates({ title: "Outro nome" }, CTX);
     expect("content_blocks" in updates).toBe(false);

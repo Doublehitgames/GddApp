@@ -71,6 +71,22 @@ export const createProjectSchema = z.object({
   description: z.string().max(5000).optional().default(""),
 });
 
+/** A "Visão" do jogo. Toda chave é opcional: um PATCH mescla no que já existe. */
+export const projectVisionSchema = z.object({
+  logline: z.string().max(2000).optional(),
+  playerVerb: z.string().max(2000).optional(),
+  feeling: z.string().max(2000).optional(),
+  pillars: z.array(z.string().max(2000)).max(8).optional(),
+  genre: z.string().max(2000).optional(),
+  starter: z
+    .object({
+      answered: z.array(z.string().max(200)).max(100),
+      skipped: z.array(z.string().max(200)).max(100),
+      doneAt: z.string().max(100).optional(),
+    })
+    .optional(),
+});
+
 export const updateProjectSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional(),
@@ -78,6 +94,7 @@ export const updateProjectSchema = z.object({
   coverImageUrl: z.string().url().nullable().optional(),
   mindmapSettings: z.record(z.string(), z.unknown()).optional(),
   aiInstructions: z.string().max(20000).nullable().optional(),
+  vision: projectVisionSchema.nullable().optional(),
 });
 
 // ── Sections ──────────────────────────────────────────────────────────

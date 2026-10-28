@@ -347,6 +347,11 @@ function dbProjectToStore(
     mindMapSettings: (row.mindmap_settings as Project["mindMapSettings"]) || undefined,
     ownerId: (row.owner_id as string) || undefined,
     aiInstructions: (row.ai_instructions as string) || undefined,
+    // Coluna nova: ausente até rodar add_project_vision.sql (o select é "*").
+    vision:
+      row.vision && typeof row.vision === "object" && !Array.isArray(row.vision)
+        ? (row.vision as Project["vision"])
+        : undefined,
     // Coluna nova: ausente até rodar add_project_image_library.sql, e o select é
     // "*", então isso simplesmente vira undefined em vez de quebrar.
     imageLibrary:

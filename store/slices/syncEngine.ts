@@ -124,6 +124,7 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
       description: normalized.description || "",
       updatedAt: normalized.updatedAt,
       mindMapSettings: normalized.mindMapSettings || null,
+      vision: normalized.vision || null,
       sections: normalizedSections,
     };
 
@@ -139,6 +140,7 @@ export function createSyncEngine(set: StoreSet, get: StoreGet): SyncEngineAPI {
       description: normalized.description || "",
       coverImageUrl: normalized.coverImageUrl || null,
       mindMapSettings: normalized.mindMapSettings || null,
+      vision: normalized.vision || null,
     };
     return JSON.stringify(payload);
   };
