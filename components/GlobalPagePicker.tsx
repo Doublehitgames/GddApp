@@ -7,6 +7,13 @@ import { useProjectStore } from "@/store/projectStore";
 import { SectionPickerModal, type SectionLite } from "@/components/SectionPickerModal";
 import { sectionPathById } from "@/lib/utils/slug";
 
+const OPEN_EVENT = "gdd:open-page-picker";
+
+/** Abre o seletor de páginas de fora — o campo de busca da barra do projeto. */
+export function openPagePicker() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
 /**
  * Global keyboard shortcut (Ctrl+K / Cmd+K) that opens a page picker for the
  * current project. Select a page → navigates to it. Mounted once per project
@@ -37,8 +44,13 @@ export function GlobalPagePicker({ projectId }: { projectId: string }) {
       e.preventDefault();
       setOpen((prev) => !prev);
     };
+    const openFromButton = () => setOpen(true);
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener(OPEN_EVENT, openFromButton);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.removeEventListener(OPEN_EVENT, openFromButton);
+    };
   }, []);
 
   return (

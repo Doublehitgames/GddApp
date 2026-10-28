@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,9 +38,18 @@ import { CSS } from "@dnd-kit/utilities";
 interface Props {
   projectId: string;
   projectSlug: string;
+  /**
+   * `card`: o painel solto de antes. `embedded`: a árvore dentro da sidebar
+   * fixa do projeto — sem moldura, linhas planas como um menu de navegação.
+   */
+  variant?: "card" | "embedded";
 }
 
-export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props) {
+/** A árvore lê daqui se está embutida na sidebar, sem passar prop por todo nível. */
+const EmbeddedTreeContext = createContext(false);
+
+export default function ProjectSectionsSidebar({ projectId, projectSlug, variant = "card" }: Props) {
+  const embedded = variant === "embedded";
   const { t } = useI18n();
   const pathname = usePathname();
   const { user, profile } = useAuthStore();
@@ -249,12 +258,16 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
   const isAtProjectHome = pathname === `/projects/${projectId}`;
 
   return (
-    <aside className="relative overflow-hidden bg-surface/75 border border-line/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 h-full flex flex-col">
+    <EmbeddedTreeContext.Provider value={embedded}>
+    <aside className={embedded ? "relative flex h-full min-h-0 flex-col" : "relative overflow-hidden bg-surface/75 border border-line/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 h-full flex flex-col"}>
+      {!embedded && (
       <span
         className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none"
         aria-hidden
       />
+      )}
 
+      {!embedded && (
       <Link
         href={project ? projectPath(project) : "/"}
         aria-current={isAtProjectHome ? "page" : undefined}
@@ -270,16 +283,26 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         </svg>
         <span className="truncate">{t("projectDetail.projectHomeLabel", "Página inicial do projeto")}</span>
       </Link>
+      )}
 
-      <div className="relative mb-4" ref={tagFilterMenuRef}>
+      <div className={embedded ? "relative mb-2 flex items-center gap-2 px-2" : "relative mb-4"} ref={tagFilterMenuRef}>
+        {embedded ? (
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-subtle">
+            {t("projectShell.pages", "Páginas")}
+            <span className="ml-1.5 font-normal tabular-nums normal-case tracking-normal">{(project.sections || []).length}</span>
+          </span>
+        ) : (
         <div>
           <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.sectionsTitle")}</h2>
           <p className="text-sm text-muted mt-1">{t("projectDetail.sectionsSubtitle")}</p>
         </div>
-        <div className="mt-3 flex items-center justify-end gap-2">
+        )}
+        <div className={embedded ? "ml-auto flex items-center gap-1 [&_button]:h-6 [&_button]:w-6 [&_button]:border-transparent [&_button]:bg-transparent" : "mt-3 flex items-center justify-end gap-2"}>
+          {!embedded && (
           <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-indigo-400/45 bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/20 px-2 text-xs font-semibold text-indigo-900 dark:text-indigo-100 tabular-nums shadow-sm shadow-indigo-900/25">
             {(project.sections || []).length}
           </span>
+          )}
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -369,6 +392,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         )}
       </div>
 
+      {!embedded && (
       <div className="relative mb-4">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
@@ -388,11 +412,14 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
           className="ui-input-dark ui-focus-ring-indigo w-full pl-9 pr-3 py-2.5 text-sm"
         />
       </div>
+      )}
 
-      <div className="relative flex-1 min-h-0">
+      <div className={embedded ? "relative" : "relative flex-1 min-h-0"}>
+        {!embedded && <>
         <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b from-surface/90 to-transparent transition-opacity duration-300 ease-out ${showSectionTopFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-surface/90 to-transparent transition-opacity duration-300 ease-out ${showSectionBottomFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
-        <div ref={sectionListRef} onScroll={updateSectionFades} className="scrollbar-premium h-full max-h-[45vh] lg:max-h-none overflow-y-auto overflow-x-hidden overscroll-y-contain pr-1">
+        </>}
+        <div ref={sectionListRef} onScroll={updateSectionFades} className={embedded ? "" : "scrollbar-premium h-full overflow-y-auto overflow-x-hidden overscroll-y-contain pr-1 max-h-[45vh] lg:max-h-none"}>
           <SectionTree
             sections={project.sections || []}
             projectId={projectId}
@@ -415,8 +442,8 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         </div>
       </div>
 
-      <div className="relative z-20 mt-4 pt-4 border-t border-line/80">
-        <div className="relative flex gap-2 flex-wrap items-center">
+      <div className={embedded ? "relative z-20 mt-2 px-1" : "relative z-20 mt-4 pt-4 border-t border-line/80"}>
+        <div className={`relative flex gap-2 items-center ${embedded ? "" : "flex-wrap"}`}>
           <input
             value={newSectionTitle}
             onChange={(e) => {
@@ -434,20 +461,24 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
                 ? t("sectionDetail.subsections.addPlaceholder")
                 : t("projectDetail.newSectionPlaceholder")
             }
-            className={`ui-input-dark ui-focus-ring-indigo flex-1 min-w-[160px] px-3 py-2 text-sm ${nameError ? "border-red-500" : "border-line-strong"}`}
+            className={`ui-input-dark ui-focus-ring-indigo flex-1 text-sm ${embedded ? "min-w-0 rounded-lg px-2.5 py-1.5" : "min-w-[160px] px-3 py-2"} ${nameError ? "border-red-500" : "border-line-strong"}`}
           />
           <button
             onClick={handleAddByContext}
-            className="ui-btn-primary-gradient relative z-20 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-900/30 disabled:opacity-100 disabled:brightness-75 disabled:saturate-50 disabled:cursor-not-allowed"
+            className={embedded
+              ? "inline-flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-on-accent transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              : "ui-btn-primary-gradient relative z-20 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl transition-all shadow-md shadow-indigo-900/30 disabled:opacity-100 disabled:brightness-75 disabled:saturate-50 disabled:cursor-not-allowed"}
             disabled={!newSectionTitle.trim() || !!nameError}
+            aria-label={t("projectDetail.add")}
           >
             <span className="text-base leading-none">+</span>
-            {t("projectDetail.add")}
+            {!embedded && t("projectDetail.add")}
           </button>
         </div>
         {nameError && <span className="text-red-600 dark:text-red-400 text-sm mt-1 block">{nameError}</span>}
       </div>
     </aside>
+    </EmbeddedTreeContext.Provider>
   );
 }
 
@@ -768,6 +799,7 @@ function SortableRootItem({
     flowchart: string;
   };
 }) {
+  const embedded = useContext(EmbeddedTreeContext);
   const router = useRouter();
   const { t } = useI18n();
   const highlightText = (text: string, term?: string) => {
@@ -867,9 +899,11 @@ function SortableRootItem({
   };
 
   return (
-    <li ref={setNodeRef} style={style} className="mb-2">
+    <li ref={setNodeRef} style={style} className={embedded ? "mb-px" : "mb-2"}>
       <div
-        className={`group relative overflow-hidden flex items-center gap-2 border transition-all duration-150 cursor-grab active:cursor-grabbing ${
+        className={embedded
+          ? `group relative flex items-center gap-1.5 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${isActiveSection ? "bg-accent-soft" : "hover:bg-surface-2"} ${dragVisualClass}`
+          : `group relative overflow-hidden flex items-center gap-2 border transition-all duration-150 cursor-grab active:cursor-grabbing ${
           isRootLevel
             ? "p-2.5 rounded-xl"
             : "px-2.5 py-2 rounded-lg"
@@ -884,13 +918,17 @@ function SortableRootItem({
         onClickCapture={handleClickCapture}
         onClick={handleCardClick}
       >
+        {!embedded && (
         <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
-        {hasFlowchart && (
+        )}
+        {hasFlowchart && !embedded && (
           <span className="absolute inset-y-1 left-0 w-1 rounded-r bg-emerald-400/90 pointer-events-none" aria-hidden />
         )}
+        {!embedded && (
         <span className="relative text-muted pointer-events-none select-none" aria-hidden>
           ⋮⋮
         </span>
+        )}
         {hasChildren ? (
           <button
             onPointerDown={(event) => {
@@ -920,7 +958,7 @@ function SortableRootItem({
           />
         )}
         <span
-          className={`relative flex-1 min-w-0 truncate text-sm transition-colors rounded px-0.5 pointer-events-none ${isActiveSection ? "text-indigo-900 dark:text-indigo-100 font-semibold" : "text-blue-700 dark:text-blue-300 group-hover:text-blue-800 dark:group-hover:text-blue-200"}`}
+          className={`relative flex-1 min-w-0 truncate text-sm transition-colors rounded px-0.5 pointer-events-none ${embedded ? (isActiveSection ? "text-accent font-semibold" : "text-ink-2 group-hover:text-ink") : isActiveSection ? "text-indigo-900 dark:text-indigo-100 font-semibold" : "text-blue-700 dark:text-blue-300 group-hover:text-blue-800 dark:group-hover:text-blue-200"}`}
         >
           {highlightText(section.title, searchTerm)}
         </span>
@@ -1067,6 +1105,7 @@ function SectionChildren({
     flowchart: string;
   };
 }) {
+  const embedded = useContext(EmbeddedTreeContext);
   const matchesSearch = (section: any): boolean => {
     if (!searchTerm || !searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
@@ -1099,7 +1138,7 @@ function SectionChildren({
 
   return (
     <SortableContext items={kids.map((k) => k.id)} strategy={verticalListSortingStrategy}>
-      <ul className="ml-4 mt-2 pl-3 border-l border-line/70 space-y-2">
+      <ul className={embedded ? "ml-3 mt-px pl-2 border-l border-line" : "ml-4 mt-2 pl-3 border-l border-line/70 space-y-2"}>
         {kids.map((sec) => (
           <SortableRootItem
             key={sec.id}

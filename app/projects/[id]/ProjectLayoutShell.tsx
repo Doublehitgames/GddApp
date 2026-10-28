@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import ProjectSectionsSidebar from "@/components/ProjectSectionsSidebar";
 import { GlobalPagePicker } from "@/components/GlobalPagePicker";
 import { useI18n } from "@/lib/i18n/provider";
 import { useProjectStore } from "@/store/projectStore";
 import { MindMapSearchProvider, useMindMapSearch } from "@/lib/mindMapSearchContext";
 import { sectionPath, findSectionByRef, canonicalProjectPathname } from "@/lib/utils/slug";
 import { PublicShareButton } from "@/components/PublicShareButton";
-import { openShortcutsHelp } from "@/components/KeyboardShortcutsModal";
 import { type ProjectView } from "@/components/project/ProjectViewTabs";
 import { ProjectTopBar, ALTURA_BARRA, IconeMapa, IconeEditor } from "@/components/project/ProjectTopBar";
+import { ProjectSidebar } from "@/components/project/ProjectSidebar";
+import { ProjectShellBar } from "@/components/project/ProjectShellBar";
 
 interface Props {
   children: React.ReactNode;
@@ -119,8 +119,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
   const router = useRouter();
   const getProjectByRef = useProjectStore((s) => s.getProjectByRef);
   const projects = useProjectStore((s) => s.projects);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
 
   const project = useMemo(() => getProjectByRef(projectId), [getProjectByRef, projectId, projects]);
   const realProjectId = project?.id ?? "";
@@ -138,16 +136,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     if (!pathname) return "";
     return pathname.replace(/\/+$/, "");
   }, [pathname]);
-
-  const shouldShowSidebar = useMemo(() => {
-    if (!normalizedPathname) return true;
-    return (
-      !normalizedPathname.endsWith("/mindmap") &&
-      !normalizedPathname.endsWith("/view") &&
-      !normalizedPathname.endsWith("/deck") &&
-      !normalizedPathname.endsWith("/diagramas")
-    );
-  }, [normalizedPathname]);
 
   const isMindMapRoute = useMemo(() => {
     if (!normalizedPathname) return false;
@@ -184,10 +172,6 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     if (normalizedPathname.split("/").length === 3) return "editor";
     return null;
   }, [normalizedPathname, isMindMapRoute, isDocumentViewRoute, isDeckRoute]);
-
-  const clsIcone = barraClara
-    ? "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-100 hover:text-gray-900"
-    : "border-gray-600 bg-gray-900/75 text-gray-100 hover:border-indigo-400 hover:bg-gray-800/90";
 
   const currentSectionId = useMemo(() => {
     const match = pathname?.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
@@ -246,159 +230,84 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return project?.title || "Projeto";
   }, [isMindMapRoute, breadcrumbSections, currentSectionId, isSectionDiagramRoute, project, t]);
 
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsDesktop(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  // Mapa mental e o editor de diagramas do projeto são telas de tela cheia
+  // (`fixed inset-0`) que contam com a barra antiga por cima; ficam com ela.
+  const isCanvasRoute = isMindMapRoute || /^\/projects\/[^/]+\/diagramas$/.test(normalizedPathname);
 
-  useEffect(() => {
-    if (!shouldShowSidebar) return;
-    const persisted = window.localStorage.getItem("gdd_sidebar_open");
-    setSidebarOpen(persisted === "1");
-  }, [shouldShowSidebar]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => setDrawerOpen(false), [pathname]);
 
-  useEffect(() => {
-    if (!shouldShowSidebar) return;
-    window.localStorage.setItem("gdd_sidebar_open", sidebarOpen ? "1" : "0");
-  }, [sidebarOpen, shouldShowSidebar]);
+  if (trazPropriaBarra) {
+    return (
+      <MindMapSearchProvider>
+        <GlobalPagePicker projectId={realProjectId} />
+        {children}
+      </MindMapSearchProvider>
+    );
+  }
 
-  // Close the sections sidebar when a side drawer opens — both live on
-  // the right side, so we avoid visual conflict by yielding to the drawer.
-  useEffect(() => {
-    const handler = () => setSidebarOpen(false);
-    window.addEventListener("gdd:drawer-open", handler);
-    return () => window.removeEventListener("gdd:drawer-open", handler);
-  }, []);
+  if (isCanvasRoute) {
+    return (
+      <MindMapSearchProvider>
+        <GlobalPagePicker projectId={realProjectId} />
+        <div className="min-h-screen bg-canvas pb-14">
+          <ProjectTopBar
+            icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
+            iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
+            titulo={tituloDaTela}
+            projectSlug={projectId}
+            active={abaAtiva}
+            theme={barraClara ? "light" : "dark"}
+            badge={
+              <PublicShareButton
+                shareToken={project?.mindMapSettings?.sharing?.shareToken}
+                isPublic={project?.mindMapSettings?.sharing?.isPublic}
+                variant="inline"
+                theme={barraClara ? "light" : "dark"}
+              />
+            }
+            busca={isMindMapRoute ? <BreadcrumbsMindMapSearch /> : null}
+          />
+          <div className="print:pt-0" style={{ paddingTop: ALTURA_BARRA }}>
+            {children}
+          </div>
+        </div>
+      </MindMapSearchProvider>
+    );
+  }
 
   return (
     <MindMapSearchProvider>
-    <GlobalPagePicker projectId={realProjectId} />
-    <div className="min-h-screen bg-gray-900 pb-14">
-      {!trazPropriaBarra && (
-      <ProjectTopBar
-        icone={isMindMapRoute ? <IconeMapa /> : <IconeEditor />}
-        iconeProjetoUrl={project?.mindMapSettings?.documentView?.spotlight?.titleIconUrl}
-        titulo={tituloDaTela}
-        projectSlug={projectId}
-        active={abaAtiva}
-        theme={barraClara ? "light" : "dark"}
-        badge={
-          <PublicShareButton
-            shareToken={project?.mindMapSettings?.sharing?.shareToken}
-            isPublic={project?.mindMapSettings?.sharing?.isPublic}
-            variant="inline"
-            theme={barraClara ? "light" : "dark"}
-          />
-        }
-        busca={isMindMapRoute ? <BreadcrumbsMindMapSearch /> : null}
-        acoes={
-          <>
-          <button
-            type="button"
-            onClick={() => openShortcutsHelp()}
-            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
-            aria-label={t("shortcuts.modalTitle", "Atalhos de teclado")}
-            title={`${t("shortcuts.modalTitle", "Atalhos de teclado")} (?)`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093V15m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
+      <GlobalPagePicker projectId={realProjectId} />
+      <div className="min-h-screen bg-canvas text-ink lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
+        <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:block lg:h-screen">
+          {project && <ProjectSidebar project={project} projectSlug={projectId} />}
+        </aside>
 
-          <Link
-            href={`/projects/${projectId}/export`}
-            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
-            aria-label={t("projectDetail.exportLabel", "Exportar")}
-            title={t("projectDetail.exportLabel", "Exportar")}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-          </Link>
-
-          <Link
-            href={`/projects/${projectId}/settings`}
-            className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
-            aria-label={t("projectDetail.settingsLabel")}
-            title={t("projectDetail.settingsLabel")}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </Link>
-
-          {shouldShowSidebar && (
+        {drawerOpen && project && (
+          <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              className={`shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${clsIcone}`}
-              aria-expanded={sidebarOpen}
-              aria-controls="global-project-sections-sidebar"
-              aria-label={sidebarOpen ? t("projectDetail.hideSectionsMenu") : t("projectDetail.showSectionsMenu")}
-              title={sidebarOpen ? t("projectDetail.hideSectionsMenu") : t("projectDetail.showSectionsMenu")}
-            >
-              {sidebarOpen ? (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 6l12 12M18 6l-12 12" />
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16" />
-                </svg>
-              )}
-            </button>
-          )}
-          </>
-        }
-      />
-      )}
-
-      <div
-        className={trazPropriaBarra ? undefined : "print:pt-0"}
-        style={trazPropriaBarra ? undefined : { paddingTop: ALTURA_BARRA }}
-      >
-      {shouldShowSidebar ? (
-        <div className="mx-auto w-full max-w-[1600px] px-4 md:px-6 lg:px-8">
-          <div
-            className={`grid items-start ${sidebarOpen && isDesktop ? "gap-0 lg:grid-cols-[minmax(0,1fr)_340px]" : "gap-0 grid-cols-1"}`}
-          >
-            <div className="min-w-0">{children}</div>
-            {sidebarOpen && isDesktop && (
-              <div
-                id="global-project-sections-sidebar"
-                className="lg:-ml-4 xl:-ml-5 lg:sticky lg:top-6 lg:self-start lg:h-[calc(100vh-6.5rem)]"
-              >
-                <ProjectSectionsSidebar projectId={realProjectId} projectSlug={projectId} />
-              </div>
-            )}
-          </div>
-
-          {sidebarOpen && !isDesktop && (
-            <div className="fixed inset-0 z-50 lg:hidden">
-              <button
-                type="button"
-                className="absolute inset-0 bg-black/60"
-                aria-label={t("projectDetail.hideSectionsMenu")}
-                onClick={() => setSidebarOpen(false)}
-              />
-              <div
-                id="global-project-sections-sidebar"
-                className="absolute right-0 top-0 h-full w-full max-w-sm p-3"
-              >
-                <ProjectSectionsSidebar projectId={realProjectId} projectSlug={projectId} />
-              </div>
+              className="absolute inset-0 bg-black/50"
+              aria-label={t("common.close", "Fechar")}
+              onClick={() => setDrawerOpen(false)}
+            />
+            <div className="absolute inset-y-0 left-0 w-[86%] max-w-[300px] bg-surface shadow-2xl">
+              <ProjectSidebar project={project} projectSlug={projectId} onNavigate={() => setDrawerOpen(false)} />
             </div>
-          )}
+          </div>
+        )}
+
+        <div className="flex min-w-0 flex-col pb-14">
+          <ProjectShellBar
+            title={tituloDaTela}
+            projectSlug={projectId}
+            project={project}
+            onOpenMenu={() => setDrawerOpen(true)}
+          />
+          <div className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8">{children}</div>
         </div>
-      ) : (
-        children
-      )}
       </div>
-    </div>
     </MindMapSearchProvider>
   );
 }
