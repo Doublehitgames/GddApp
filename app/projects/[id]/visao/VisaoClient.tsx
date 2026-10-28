@@ -628,7 +628,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
 
     return (
         <div>
-            <div className="mx-auto w-full max-w-5xl">
+            <div className="w-full">
                 <div className="grid gap-6 items-start">
                     <div className="space-y-4">
                         <AreaHeader
@@ -638,6 +638,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             lead={t("visionPage.lead", "O que o jogo é, em poucas frases: a ideia, os pilares e a sensação. É o que aparece na capa e o que decide as brigas de design.")}
                         />
                         <VisionEditor project={project} slug={projectId} />
+                        <div className="grid items-start gap-4 xl:grid-cols-2">
                         <section className="ui-card-premium">
                             <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 <h2 className="text-xl font-semibold tracking-tight">{t("visionPage.coverTitle", "Capa e descrição")}</h2>
@@ -1037,6 +1038,7 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </>
                             )}
                         </section>
+                        </div>
 
 
 

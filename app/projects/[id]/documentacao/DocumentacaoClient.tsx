@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useShellProject } from "@/components/project/useShellProject";
 import { DomainIcon, domainVisual } from "@/components/project/domainVisual";
-import { CoverImage } from "@/components/project/ProjectCover";
+import { CoverImage, ProjectGlyph } from "@/components/project/ProjectCover";
+import { areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
 import { IconHome } from "@/components/project/ProjectSidebar";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { useI18n } from "@/lib/i18n/provider";
@@ -14,7 +15,7 @@ import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import { sectionPath } from "@/lib/utils/slug";
 import { useProjectStore } from "@/store/projectStore";
-import type { Section } from "@/store/slices/types";
+import type { Project, Section } from "@/store/slices/types";
 
 type SortMode = "recent" | "alpha" | "gdd";
 
@@ -81,8 +82,9 @@ export default function DocumentacaoClient({ projectId }: { projectId: string })
   const label = (id: GameDesignDomainId) => t(DOMAIN_I18N_KEYS[id], id);
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <nav className="mb-4 flex items-center gap-2 text-sm text-muted" aria-label="breadcrumb">
+    <div className="grid w-full items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="min-w-0">
+      <nav className="mb-3 flex items-center gap-2 text-sm text-muted" aria-label="breadcrumb">
         <Link href={base} className="hover:text-ink" aria-label={t("projectShell.home", "Início")}>
           <IconHome className="h-4 w-4" />
         </Link>
@@ -90,18 +92,20 @@ export default function DocumentacaoClient({ projectId }: { projectId: string })
         <span className="text-ink">{t("projectShell.docs", "Documentação")}</span>
       </nav>
 
-      <header className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-area-doc-soft via-surface to-area-vis-soft p-6 md:p-8">
-        <BookArt className="pointer-events-none absolute -right-6 -top-4 hidden h-56 w-80 md:block" />
-        <div className="relative max-w-xl">
+      <header className="mb-6 flex items-center gap-6">
+        <div className="min-w-0 max-w-2xl flex-1">
           <h1 className="text-3xl font-bold tracking-tight text-ink md:text-4xl">{t("projectShell.docs", "Documentação")}</h1>
           <p className="mt-2 text-sm text-muted md:text-base">
             {t("docsArea.lead", "Aqui moram as regras, os sistemas e as histórias que explicam como o jogo funciona. Organize as ideias, crie documentos novos e ligue um ao outro.")}
           </p>
           <NewDocumentButton projectId={project.id} projectTitle={project.title} sections={sections} />
         </div>
+        <div className="relative hidden h-40 w-72 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-area-doc-soft to-area-vis-soft lg:block" aria-hidden>
+          <BookArt className="absolute inset-0 h-full w-full" />
+        </div>
       </header>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-5 grid auto-cols-[minmax(6.75rem,1fr)] grid-flow-col gap-2.5 overflow-x-auto [scrollbar-width:none]">
         <CategoryCard
           active={category === "all"}
           onClick={() => setCategory("all")}
@@ -184,6 +188,8 @@ export default function DocumentacaoClient({ projectId }: { projectId: string })
         </ul>
       )}
     </div>
+    <DocsRail project={project} slug={projectId} written={sections.filter((s) => (s.content ?? "").trim()).length} />
+    </div>
   );
 }
 
@@ -193,13 +199,13 @@ function CategoryCard({ active, onClick, icon, tile, title, count }: { active: b
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+      className={`flex min-w-0 flex-col items-start gap-2 rounded-xl border p-3 text-left transition-colors ${
         active ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-line-strong"
       }`}
     >
       <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${tile}`}>{icon}</span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium leading-tight text-ink">{title}</span>
+        <span className="line-clamp-2 block text-sm font-medium leading-tight text-ink" title={title}>{title}</span>
         <span className="block text-xs tabular-nums text-muted">{count}</span>
       </span>
     </button>
@@ -407,5 +413,95 @@ function BookArt({ className }: { className?: string }) {
         <path d="M70 150 c-6 -20 4 -34 18 -40 M78 128 c10 -2 18 2 22 10" stroke="var(--area-doc)" strokeWidth="2.5" />
       </g>
     </svg>
+  );
+}
+
+/** O trilho da Documentação: o jogo em resumo, quanto do GDD já tem texto e por onde começar. */
+function DocsRail({ project, slug, written }: { project: Project; slug: string; written: number }) {
+  const { t } = useI18n();
+  const sections = project.sections ?? [];
+  const total = sections.length;
+  const pct = total ? Math.round((written / total) * 100) : 0;
+  const v = project.vision ?? {};
+  const featured = sections.filter((s) => !s.parentId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, 4);
+  const docsStarter = areaProgress(project, "docs");
+
+  return (
+    <aside className="flex flex-col gap-5">
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-3 text-sm font-semibold text-ink">{t("docsArea.about", "Sobre o projeto")}</h2>
+        <div className="flex items-center gap-3">
+          <ProjectGlyph project={project} className="h-14 w-14 shrink-0 rounded-xl" />
+          <div className="min-w-0">
+            <strong className="block truncate text-base text-ink">{project.title}</strong>
+            {v.genre && <span className="block text-xs text-muted">{v.genre}</span>}
+          </div>
+        </div>
+        {v.logline && <p className="mt-3 text-sm text-muted">{v.logline}</p>}
+        {!!v.pillars?.length && (
+          <>
+            <h3 className="mb-2 mt-4 border-t border-line pt-4 text-sm font-semibold text-ink">{t("projectHome.pillars", "Pilares de design")}</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {v.pillars.map((p, i) => (
+                <span key={`${p}-${i}`} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-ink-2">
+                  {p}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        <h3 className="mb-3 mt-4 border-t border-line pt-4 text-sm font-semibold text-ink">{t("docsArea.progress", "Documentos com texto")}</h3>
+        <div className="flex items-center gap-4">
+          <svg viewBox="0 0 44 44" className="h-14 w-14 shrink-0 -rotate-90" aria-hidden>
+            <circle cx="22" cy="22" r="18" fill="none" stroke="var(--surface-2)" strokeWidth="5" />
+            <circle cx="22" cy="22" r="18" fill="none" stroke="var(--area-doc)" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(pct / 100) * 113.1} 113.1`} />
+          </svg>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-semibold tabular-nums text-ink">
+              {written} <span className="text-sm font-normal text-muted">/ {total}</span>
+            </p>
+            <p className="text-xs text-muted">{t("docsArea.progressHint", "documentos já têm texto escrito")}</p>
+          </div>
+        </div>
+
+        {featured.length > 0 && (
+          <>
+            <h3 className="mb-2 mt-4 border-t border-line pt-4 text-sm font-semibold text-ink">{t("docsArea.featured", "Documentos principais")}</h3>
+            <ul className="flex flex-col">
+              {featured.map((s) => {
+                const c = categoryOf(s);
+                return (
+                  <li key={s.id}>
+                    <Link href={sectionPath(project, s)} className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface-2">
+                      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${domainVisual(c).tile}`}>
+                        <DomainIcon id={c} className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-ink">{s.title}</span>
+                        <span className="block text-xs text-muted">{c === "other" ? t("docsArea.uncategorized", "Sem categoria") : t(DOMAIN_I18N_KEYS[c], c)}</span>
+                      </span>
+                      <span className="text-subtle" aria-hidden>›</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </section>
+
+      {!docsStarter.done && (
+        <section className="rounded-2xl bg-accent-soft p-5">
+          <h2 className="text-sm font-semibold text-ink">{t("docsArea.startTitle", "Precisa de um ponto de partida?")}</h2>
+          <p className="mt-1 text-sm text-ink-2">
+            {t("docsArea.startText", "Responda algumas perguntas sobre o jogo — cada resposta vira um documento com o título e a categoria certos.")}
+          </p>
+          <Link href={starterHref(slug, "docs")} className="mt-3 inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-on-accent hover:opacity-90">
+            {t("docsArea.startCta", "Responder perguntas")}
+          </Link>
+        </section>
+      )}
+    </aside>
   );
 }

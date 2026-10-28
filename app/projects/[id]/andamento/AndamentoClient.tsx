@@ -16,7 +16,7 @@ export default function AndamentoClient({ projectId }: { projectId: string }) {
   if (!project) return null;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="w-full">
       <AreaHeader
         icon={<IconProgress className="h-5 w-5" />}
         tone="neutral"

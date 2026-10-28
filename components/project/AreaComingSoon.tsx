@@ -19,7 +19,7 @@ export function AreaComingSoon({ projectId, area }: { projectId: string; area: "
       { name: t("comingSoon.library.example3", "Escudo de Luz"), a: "25", b: "10 s" },
     ];
     return (
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full">
         <AreaHeader
           icon={<IconLibrary className="h-5 w-5" />}
           tone="lib"
@@ -57,7 +57,7 @@ export function AreaComingSoon({ projectId, area }: { projectId: string; area: "
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <AreaHeader
         icon={<IconSystems className="h-5 w-5" />}
         tone="sys"
