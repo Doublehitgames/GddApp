@@ -1519,7 +1519,13 @@
     "staleHint": "A referenced page changed after this one was stamped",
     "emptyContent": "This page has no description yet.",
     "emptyLevel": "This page has no subpages.",
-    "trailGo": "Go to {{title}}"
+    "trailGo": "Go to {{title}}",
+
+    "searchPlaceholder": "Search pages…",
+
+    "searchEmpty": "No pages found.",
+
+    "searchMore": "Showing {{shown}} of {{count}} — refine your search."
   },
   "pageLink": {
     "copyPublic": "Copy public link to this page",

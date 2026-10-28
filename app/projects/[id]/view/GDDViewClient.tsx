@@ -25,6 +25,7 @@ import {
   DEFAULT_DOCUMENT_HERO_THUMB_WIDTH,
 } from "@/lib/documentThemes";
 import { normalizeProjectDocumentSpotlight } from "@/lib/projectSpotlight";
+import { foldForSearch } from "@/lib/search/sectionSearch";
 
 interface Props {
   projectId: string;
@@ -743,13 +744,13 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
 
   const orderedSectionIds = flattenSectionIds(sectionsWithHierarchy);
 
-  const normalizedSearch = documentSearch.trim().toLowerCase();
+  const normalizedSearch = foldForSearch(documentSearch.trim());
   const matchedSectionIds = normalizedSearch
     ? orderedSectionIds.filter((id: string) => {
         const section = projectSections.find((s: any) => s.id === id);
         if (!section) return false;
-        const titleMatch = (section.title || "").toLowerCase().includes(normalizedSearch);
-        const contentMatch = (section.content || "").toLowerCase().includes(normalizedSearch);
+        const titleMatch = foldForSearch(section.title || "").includes(normalizedSearch);
+        const contentMatch = foldForSearch(section.content || "").includes(normalizedSearch);
         return titleMatch || contentMatch;
       })
     : [];

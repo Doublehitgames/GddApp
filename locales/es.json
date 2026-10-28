@@ -1519,7 +1519,13 @@
     "staleHint": "El texto de una página citada cambió después del sello",
     "emptyContent": "Esta página aún no tiene descripción.",
     "emptyLevel": "Esta página no tiene subpáginas.",
-    "trailGo": "Ir a {{title}}"
+    "trailGo": "Ir a {{title}}",
+
+    "searchPlaceholder": "Buscar página…",
+
+    "searchEmpty": "No se encontró ninguna página.",
+
+    "searchMore": "Mostrando {{shown}} de {{count}} — afina la búsqueda."
   },
   "pageLink": {
     "copyPublic": "Copiar enlace público de esta página",

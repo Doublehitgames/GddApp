@@ -1519,7 +1519,13 @@
     "staleHint": "O texto de uma página citada mudou depois do carimbo",
     "emptyContent": "Esta página ainda não tem descrição.",
     "emptyLevel": "Esta página não tem subpáginas.",
-    "trailGo": "Ir para {{title}}"
+    "trailGo": "Ir para {{title}}",
+
+    "searchPlaceholder": "Buscar página…",
+
+    "searchEmpty": "Nenhuma página encontrada.",
+
+    "searchMore": "Mostrando {{shown}} de {{count}} — refine a busca."
   },
   "pageLink": {
     "copyPublic": "Copiar link público desta página",

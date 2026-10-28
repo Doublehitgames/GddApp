@@ -4,13 +4,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useI18n } from "@/lib/i18n/provider";
-import { ProjectTopBar, IconeDeck } from "@/components/project/ProjectTopBar";
+import { ProjectTopBar, IconeDeck, ALTURA_BARRA } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import PageModeLinks from "@/components/project/PageModeLinks";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import DeckCard from "@/components/deck/DeckCard";
 import DeckDrawer from "@/components/deck/DeckDrawer";
+import DeckSearch from "@/components/deck/DeckSearch";
 import { listStaleSections } from "@/lib/pageStatus/stale";
 import { PAGE_STATUS_META, PAGE_STATUSES } from "@/lib/pageStatus/types";
 import {
@@ -199,6 +200,36 @@ export default function DeckClient({ projectId, publicToken }: Props) {
   );
 
   /*
+   * A busca pousa na carta, e não no topo do andar.
+   *
+   * `revealSection` sobe a tela, que é o certo para quem chega por link. Mas
+   * o resultado da busca pode morar na quarta fileira de um inventário, e
+   * subir deixaria a gaveta aberta fora da tela — parecendo que nada
+   * aconteceu. Por isso, depois do render, a carta aberta vem para baixo da
+   * barra.
+   */
+  const [landOnOpenCard, setLandOnOpenCard] = useState(false);
+  const revealFromSearch = useCallback(
+    (sectionId: string) => {
+      revealSection(sectionId);
+      setLandOnOpenCard(true);
+    },
+    [revealSection]
+  );
+
+  useEffect(() => {
+    if (!landOnOpenCard) return;
+    const frame = window.requestAnimationFrame(() => {
+      setLandOnOpenCard(false);
+      const card = gridRef.current?.querySelector<HTMLElement>('[aria-expanded="true"]');
+      if (!card) return;
+      const top = card.getBoundingClientRect().top + window.scrollY - ALTURA_BARRA - 16;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [landOnOpenCard, openId, floorId]);
+
+  /*
    * A trilha devolve a página ao jeito dela, e não a transforma em andar.
    *
    * Só inventário vira parede de cartas; um capítulo é carta com gaveta, venha
@@ -295,7 +326,7 @@ export default function DeckClient({ projectId, publicToken }: Props) {
   /* Esc fecha a gaveta; sem gaveta aberta, sobe um andar. */
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
       if (openId) return closeDrawer();
       if (floorId) {
         const parent = tree.parentOf.get(floorId) ?? null;
@@ -402,6 +433,7 @@ export default function DeckClient({ projectId, publicToken }: Props) {
         theme="light"
         posicao="sticky"
         larguraConteudo="max-w-[1180px]"
+        busca={<DeckSearch tree={tree} onPick={revealFromSearch} />}
         badge={
           isPublicMode ? undefined : (
             <PublicShareButton
