@@ -379,7 +379,11 @@ function Avatars({ items, project, empty }: { items: Section[]; project: Project
           <Link href={sectionPath(project, s)} className="flex flex-col items-center gap-1.5 text-center">
             {s.thumbImageUrl ? (
               <span className="relative h-14 w-14 overflow-hidden rounded-full bg-surface-2">
-                <CoverImage src={s.thumbImageUrl} alt="" />
+                <CoverImage
+                  src={s.thumbImageUrl}
+                  alt=""
+                  fallback={<span className={`absolute inset-0 grid place-items-center text-lg font-bold text-white ${AVATAR_TONES[i % AVATAR_TONES.length]}`}>{s.title.trim()[0]?.toUpperCase()}</span>}
+                />
               </span>
             ) : (
               <span className={`grid h-14 w-14 place-items-center rounded-full text-lg font-bold text-white ${AVATAR_TONES[i % AVATAR_TONES.length]}`}>{s.title.trim()[0]?.toUpperCase()}</span>
@@ -402,7 +406,15 @@ function Tiles({ items, project, empty, wide }: { items: Section[]; project: Pro
           <li key={s.id}>
             <Link href={sectionPath(project, s)} className="flex flex-col gap-1.5">
               <span className={`relative grid w-full place-items-center overflow-hidden rounded-xl ${wide ? "aspect-[4/3]" : "aspect-square"} ${s.thumbImageUrl ? "bg-surface-2" : domainVisual(c).tile}`}>
-                {s.thumbImageUrl ? <CoverImage src={s.thumbImageUrl} alt="" /> : <DomainIcon id={c} className="h-6 w-6" />}
+                {s.thumbImageUrl ? (
+                  <CoverImage
+                    src={s.thumbImageUrl}
+                    alt=""
+                    fallback={<span className={`absolute inset-0 grid place-items-center ${domainVisual(c).tile}`}><DomainIcon id={c} className="h-6 w-6" /></span>}
+                  />
+                ) : (
+                  <DomainIcon id={c} className="h-6 w-6" />
+                )}
               </span>
               <span className="line-clamp-2 text-[11px] font-medium leading-tight text-ink">{s.title}</span>
             </Link>
@@ -420,7 +432,11 @@ function NarrativeTeaser({ section, project, empty }: { section?: Section; proje
     <div className="flex flex-col gap-2">
       {section.thumbImageUrl && (
         <span className="relative block aspect-[3/1] w-full overflow-hidden rounded-xl bg-surface-2">
-          <CoverImage src={section.thumbImageUrl} alt="" />
+          <CoverImage
+            src={section.thumbImageUrl}
+            alt=""
+            fallback={<span className={`absolute inset-0 grid place-items-center ${domainVisual("narrative").tile}`}><DomainIcon id="narrative" className="h-7 w-7" /></span>}
+          />
         </span>
       )}
       <p className="line-clamp-4 text-sm text-ink-2">{toPreviewText(section.content ?? "", 260) || t("docsArea.noText", "Ainda sem texto.")}</p>
@@ -458,7 +474,11 @@ function RecentDocs({ items, project, slug }: { items: { section: Section; at: s
               <Link href={sectionPath(project, section)} className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-surface-2">
                 {section.thumbImageUrl ? (
                   <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-surface-2">
-                    <CoverImage src={section.thumbImageUrl} alt="" />
+                    <CoverImage
+                      src={section.thumbImageUrl}
+                      alt=""
+                      fallback={<span className={`absolute inset-0 grid place-items-center ${domainVisual(c).tile}`}><DomainIcon id={c} className="h-5 w-5" /></span>}
+                    />
                   </span>
                 ) : (
                   <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${domainVisual(c).tile}`}>

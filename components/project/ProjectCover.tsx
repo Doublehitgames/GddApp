@@ -86,10 +86,15 @@ function CoverArt({ seedSource, width, height }: { seedSource: string; width: nu
   );
 }
 
-export function CoverImage({ src, alt }: { src: string; alt: string }) {
+/**
+ * Imagem do Drive que tenta os endereços candidatos em ordem. Se todos
+ * falharem (arquivo não compartilhado, apagado), mostra `fallback` — um
+ * quadrado cinza vazio não diz nada a ninguém.
+ */
+export function CoverImage({ src, alt, fallback = null }: { src: string; alt: string; fallback?: React.ReactNode }) {
   const candidates = useMemo(() => getDriveImageDisplayCandidates(src), [src]);
   const [attempt, setAttempt] = useState(0);
-  if (attempt >= candidates.length) return null;
+  if (attempt >= candidates.length) return <>{fallback}</>;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -125,7 +130,7 @@ export function ProjectCover({
     >
       {image ? (
         <>
-          <CoverImage src={image} alt="" />
+          <CoverImage src={image} alt="" fallback={<CoverArt seedSource={seedSource} width={1200} height={300} />} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" aria-hidden />
         </>
       ) : (
@@ -140,16 +145,15 @@ export function ProjectCover({
 export function ProjectGlyph({ project, className = "" }: { project: Project; className?: string }) {
   const icon = project.mindMapSettings?.documentView?.spotlight?.titleIconUrl || project.coverImageUrl;
   const { from, to, glow } = coverPalette(project.id);
+  const mini = (
+    <svg viewBox="0 0 36 36" className="absolute inset-0 h-full w-full" aria-hidden>
+      <circle cx="20" cy="18" r="11" fill="none" stroke={glow} strokeWidth="1.5" />
+      <path d="M4 16 L12 19 L18 14 L26 20 L34 17" stroke="#fbf6ea" strokeWidth="1.5" fill="none" />
+    </svg>
+  );
   return (
     <span className={`relative block overflow-hidden ${className}`} style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
-      {icon ? (
-        <CoverImage src={icon} alt="" />
-      ) : (
-        <svg viewBox="0 0 36 36" className="absolute inset-0 h-full w-full" aria-hidden>
-          <circle cx="20" cy="18" r="11" fill="none" stroke={glow} strokeWidth="1.5" />
-          <path d="M4 16 L12 19 L18 14 L26 20 L34 17" stroke="#fbf6ea" strokeWidth="1.5" fill="none" />
-        </svg>
-      )}
+      {icon ? <CoverImage src={icon} alt="" fallback={mini} /> : mini}
     </span>
   );
 }

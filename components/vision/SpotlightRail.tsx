@@ -81,7 +81,7 @@ export function SpotlightRail({ spotlight, editing, onEdit }: { spotlight?: Proj
         <div className="mb-4 flex items-center gap-3">
           {spotlight?.titleIconUrl ? (
             <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-surface-2">
-              <CoverImage src={spotlight.titleIconUrl} alt="" />
+              <CoverImage src={spotlight.titleIconUrl} alt="" fallback={<span className="absolute inset-0 bg-area-vis-soft" />} />
             </span>
           ) : (
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-area-vis-soft text-area-vis">

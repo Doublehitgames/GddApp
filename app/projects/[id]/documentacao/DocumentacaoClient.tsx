@@ -257,7 +257,11 @@ function DocumentCard({
         </div>
         {section.thumbImageUrl && (
           <span className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface-2">
-            <CoverImage src={section.thumbImageUrl} alt="" />
+            <CoverImage
+              src={section.thumbImageUrl}
+              alt=""
+              fallback={<span className={`absolute inset-0 grid place-items-center ${visual.tile}`}><DomainIcon id={category} className="h-7 w-7" /></span>}
+            />
           </span>
         )}
       </div>
