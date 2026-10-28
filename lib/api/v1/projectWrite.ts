@@ -15,12 +15,19 @@ export type ProjectUpdate = {
   coverImageUrl?: string | null;
   mindmapSettings?: Record<string, unknown>;
   aiInstructions?: string | null;
+  vision?: Record<string, unknown> | null;
 };
 
-/** Map the API's camelCase fields onto `projects` column names. */
+/**
+ * Map the API's camelCase fields onto `projects` column names.
+ *
+ * `vision` is a patch, like the store's `updateProjectVision`: its keys merge
+ * into `ctx.currentVision`, so sending only `pillars` keeps the logline. `null`
+ * clears it.
+ */
 export function buildProjectUpdates(
   fields: ProjectUpdate,
-  ctx: { now: string },
+  ctx: { now: string; currentVision?: Record<string, unknown> | null },
 ): Record<string, unknown> {
   const updates: Record<string, unknown> = { updated_at: ctx.now };
 
@@ -39,6 +46,9 @@ export function buildProjectUpdates(
   if (fields.coverImageUrl !== undefined) updates.cover_image_url = fields.coverImageUrl;
   if (fields.mindmapSettings !== undefined) updates.mindmap_settings = fields.mindmapSettings;
   if (fields.aiInstructions !== undefined) updates.ai_instructions = fields.aiInstructions;
+  if (fields.vision !== undefined) {
+    updates.vision = fields.vision === null ? null : { ...(ctx.currentVision || {}), ...fields.vision };
+  }
 
   return updates;
 }

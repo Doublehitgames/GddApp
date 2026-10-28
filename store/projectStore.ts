@@ -25,6 +25,7 @@ export type {
   SectionAuditBy,
   Section,
   Project,
+  ProjectVision,
   ProjectOwner,
   OwnersById,
   SyncStatus,

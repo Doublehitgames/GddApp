@@ -192,7 +192,23 @@ function isMissingContentBlocksColumn(error: unknown) {
 const OPTIONAL_PROJECT_COLUMNS: ReadonlyArray<[string, (e: unknown) => boolean]> = [
   ["content_blocks", isMissingContentBlocksColumn],
   ["cover_image_url", isMissingProjectCoverImageColumn],
+  ["vision", isMissingProjectVisionColumn],
 ];
+
+/** Até rodar add_project_vision.sql. Casa "projects.vision" e "'vision' column". */
+function isMissingProjectVisionColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  if (!combined.includes("column")) return false;
+  return /projects\.vision\b/.test(combined) || /'vision'/.test(combined);
+}
 
 function omitKey(payload: Record<string, unknown>, key: string): Record<string, unknown> {
   const { [key]: _dropped, ...rest } = payload;
@@ -746,6 +762,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: mergedMindmapSettings,
         ai_instructions: project.aiInstructions || "",
+        vision: project.vision ?? null,
         updated_at: project.updatedAt,
       };
       let payload: Record<string, unknown> = updatePayload;
@@ -773,6 +790,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: project.coverImageUrl || null,
         mindmap_settings: project.mindMapSettings || {},
         ai_instructions: project.aiInstructions || "",
+        vision: project.vision ?? null,
         created_at: project.createdAt,
         updated_at: project.updatedAt,
       };

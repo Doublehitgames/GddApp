@@ -64,7 +64,10 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     return apiError("No fields to update", 400, "empty_update");
   }
 
-  const updates = buildProjectUpdates(parsed.data, { now: new Date().toISOString() });
+  const updates = buildProjectUpdates(parsed.data, {
+    now: new Date().toISOString(),
+    currentVision: pResult.project.vision,
+  });
 
   const { error } = await auth.supabase
     .from("projects")

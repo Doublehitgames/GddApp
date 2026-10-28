@@ -1,4 +1,4 @@
-import type { ProjectStore, UUID, ProjectImageLibrary } from "./types";
+import type { ProjectStore, UUID, ProjectImageLibrary, ProjectVision } from "./types";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { deleteProjectFromSupabase } from "@/lib/supabase/projectSync";
 import { toSlug, findProjectByRef } from "@/lib/utils/slug";
@@ -129,6 +129,18 @@ export function createProjectCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
         )
       );
       try { persist(get().projects); } catch {}
+    },
+
+    updateProjectVision: (projectId: UUID, patch: Partial<ProjectVision>) => {
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? { ...p, vision: { ...(p.vision || {}), ...patch }, updatedAt: new Date().toISOString() }
+              : p
+          ),
+        projectId
+      );
     },
 
     setProjectCoverImage: (id: UUID, coverImageUrl?: string) => {

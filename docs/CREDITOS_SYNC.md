@@ -66,6 +66,8 @@ O sync também envia metadados do projeto (ex.: título, descrição e `cover_im
 
 Em outras palavras, alterar só metadados visuais do projeto não entra na contagem “1 crédito por seção” descrita acima.
 
+A **Visão** do jogo (`projects.vision`: logline, pilares, gênero e o progresso do "Primeiros passos") também é metadado do projeto e é grátis.
+
 ## Retrocompatibilidade de schema (`cover_image_url`)
 
 Se o banco ainda não tiver a coluna `projects.cover_image_url`, a API de sync tenta novamente sem esse campo para não bloquear sincronização do restante.
