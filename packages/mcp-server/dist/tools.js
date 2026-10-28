@@ -60,12 +60,19 @@ export function registerTools(server, client) {
             return err(e);
         }
     });
-    server.tool("update_project", "Update project metadata: title, description, cover image or aiInstructions.", {
+    server.tool("update_project", "Update project metadata: title, description, cover image, aiInstructions or vision.", {
         projectId: z.string(),
         title: z.string().optional().describe("New title"),
         description: z.string().optional().describe("New description"),
         coverImageUrl: z.string().optional().describe("Cover image URL"),
         aiInstructions: z.string().optional().describe("AI instructions — conventions for how AI should structure data in this project"),
+        vision: z.object({
+            logline: z.string().optional(),
+            playerVerb: z.string().optional(),
+            feeling: z.string().optional(),
+            pillars: z.array(z.string()).optional(),
+            genre: z.string().optional(),
+        }).optional().describe("The game's vision. Merges into the current one key by key; pillars is replaced whole."),
         returning,
     }, async ({ projectId, returning: returnMode, ...fields }) => {
         try {

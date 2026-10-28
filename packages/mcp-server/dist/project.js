@@ -14,6 +14,7 @@
  * NOTE: twin of lib/mcp/project.ts (the remote /api/mcp server). The two MCP
  * servers are independent copies — keep both in sync.
  */
+import { openStarterQuestions } from "./starterQuestions.js";
 /** A plain-text tool result, for reference material that is not data. */
 export function text(content) {
     return { content: [{ type: "text", text: content }] };
@@ -149,11 +150,49 @@ export function projectIndex(project) {
         // Settable through update_project, so it should be readable here too.
         ...(p.coverImageUrl ? { coverImageUrl: p.coverImageUrl } : {}),
         ...(p.aiInstructions ? { aiInstructions: p.aiInstructions } : {}),
+        // Settable through update_project too. The questions are the "first steps"
+        // still open on a young project — gone once answered, skipped, or the
+        // project has grown past them.
+        ...(p.vision ? { vision: visionView(p.vision) } : {}),
+        ...starterView(p, sections),
         // Just the count — the library itself lives in list_project_images.
         ...(p.imageCount ? { imageCount: p.imageCount } : {}),
         updatedAt: p.updatedAt,
         sectionCount: sections.length,
         sections: sections.map(sectionRow),
+    };
+}
+/** The vision minus the app's own onboarding bookkeeping. */
+function visionView(vision) {
+    const { starter: _starter, ...rest } = asRec(vision);
+    return rest;
+}
+/** Past this many pages the project is no longer starting; the questions would be noise. */
+const STARTER_MAX_SECTIONS = 15;
+function starterView(p, sections) {
+    const vision = asRec(p.vision);
+    if (vision?.starter?.doneAt || sections.length > STARTER_MAX_SECTIONS)
+        return {};
+    const rootPageTitles = sections
+        .map(asRec)
+        .filter((s) => !s.parentId)
+        .map((s) => String(s.title ?? ""));
+    const open = openStarterQuestions({ vision, rootPageTitles }).filter((q) => q.target.kind !== "vision" || q.target.field !== "title");
+    if (!open.length)
+        return {};
+    return {
+        // Said here and not in the server instructions: it only costs tokens on the
+        // projects that actually have open questions.
+        starterHelp: "This project is just starting; these are first questions its author has not answered. If you know the game (its repository, design notes, this conversation), answer them where answerIn says — only what you actually know, in the project's language.",
+        starterQuestions: open.map((q) => ({
+            id: q.id,
+            area: q.area,
+            question: q.question.en,
+            hint: q.hint.en,
+            answerIn: q.target.kind === "vision"
+                ? `update_project vision.${q.target.field}`
+                : { createPage: q.target.title, domainTags: [q.target.domain] },
+        })),
     };
 }
 export function projectReceipt(project, updated) {
