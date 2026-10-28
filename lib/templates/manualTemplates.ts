@@ -4125,7 +4125,9 @@ function composeSections(scope: WizardScope, genre: WizardGenre): TemplateSectio
     findByIdEnd(commonRest, "-kpis"),
     findByIdEnd(commonRest, "-monetizacao"),
     findByIdEnd(commonRest, "-qa"),
-  ].filter((s): s is TemplateSection => Boolean(s));
+  ]
+    // "-riscos" também casa com "-roadmap-riscos" (escopo médio): sem isso a página entra duas vezes.
+    .filter((s, i, all): s is TemplateSection => Boolean(s) && all.indexOf(s) === i);
 
   // ─── Assemble in GDD-canonical order ───
   const result: TemplateSection[] = [];

@@ -274,7 +274,7 @@ export default function ImportProjectPage() {
 
         {/* Verificar configuração de IA */}
         {!hasValidConfig && !deterministicImportMode && (
-          <AIConfigWarning className="mb-8" />
+          <AIConfigWarning className="mb-8" tone="light" />
         )}
 
         {!previewData ? (
