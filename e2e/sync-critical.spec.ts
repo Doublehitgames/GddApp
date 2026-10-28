@@ -1,4 +1,14 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** Cria um projeto pelo diálogo da home (só o nome) e espera a home do projeto abrir. */
+async function createProject(page: Page, name: string) {
+  await page.goto('/');
+  await page.getByRole('button', { name: /Novo projeto/i }).first().click();
+  await page.getByRole('button', { name: /Novo projeto em branco/i }).click();
+  await page.getByPlaceholder('Nome do jogo').fill(name);
+  await page.getByRole('button', { name: 'Criar projeto', exact: true }).click();
+  await page.waitForURL(/\/projects\/[^/?]+/, { timeout: 15000 });
+}
 
 test.describe('@critical GDD Manager - Sync crítico', () => {
   test.beforeEach(async ({ page, context }) => {
@@ -46,21 +56,14 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
       });
     });
 
-    await page.goto('/projects');
+    await createProject(page, 'Projeto Sync E2E');
 
-    // Wizard: o card "Criar sem template" revela o formulário rápido no passo 1
-    await page.getByRole('button', { name: /Criar sem template/i }).first().click();
-    await page.getByPlaceholder('Nome do projeto').fill('Projeto Sync E2E');
-    await page.getByPlaceholder('Descrição do projeto (opcional)').fill('Teste de sincronização sem refresh');
-    await page.getByRole('button', { name: 'Criar sem template', exact: true }).click();
-
-    await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
-    await expect(page).toHaveURL(/\/projects\/.+/);
-
-    // O input de nova seção fica no sidebar de seções (fechado por padrão)
-    await page.getByRole('button', { name: 'Mostrar menu de seções' }).click();
-    await page.getByPlaceholder('Nova seção').fill('Seção E2E');
-    await page.getByRole('button', { name: 'Adicionar' }).first().click();
+    // Documento novo pela área de Documentação
+    await page.goto(page.url().replace(/\?.*$/, '') + '/documentacao');
+    await page.getByRole('button', { name: /Novo documento/i }).click();
+    await page.getByPlaceholder('Nome do documento').fill('Seção E2E');
+    await page.getByRole('button', { name: 'Criar', exact: true }).click();
+    await page.waitForURL(/\/sections\//, { timeout: 15000 });
 
     await expect.poll(() => syncPayloads.length, { timeout: 10000 }).toBeGreaterThan(0);
 
@@ -71,17 +74,9 @@ test.describe('@critical GDD Manager - Sync crítico', () => {
   });
 
   test('deve manter dados locais após reload', async ({ page }) => {
-    await page.goto('/projects');
-
-    await page.getByRole('button', { name: /Criar sem template/i }).first().click();
-    await page.getByPlaceholder('Nome do projeto').fill('Projeto Reload E2E');
-    await page.getByPlaceholder('Descrição do projeto (opcional)').fill('Persistência após reload');
-    await page.getByRole('button', { name: 'Criar sem template', exact: true }).click();
-
-    await page.waitForURL(/\/projects\/[^/]+/, { timeout: 15000 });
-    await expect(page).toHaveURL(/\/projects\/.+/);
+    await createProject(page, 'Projeto Reload E2E');
     await page.reload();
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Projeto Reload E2E' })).toBeVisible();
+    await expect(page.getByText('Projeto Reload E2E').first()).toBeVisible();
   });
 });

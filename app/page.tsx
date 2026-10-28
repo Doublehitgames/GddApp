@@ -13,6 +13,7 @@ import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import { projectPath } from "@/lib/utils/slug";
 import { limitsForProject } from "@/store/slices/limits";
+import { NewProjectDialog } from "@/components/NewProjectDialog";
 
 function timeAgo(dateStr: string): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -205,6 +206,7 @@ export default function Home() {
   const { user } = useAuthStore();
   const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const userId = user?.id ?? null;
@@ -341,7 +343,27 @@ export default function Home() {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface border border-line rounded-xl shadow-2xl z-20 overflow-hidden py-1">
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-line rounded-xl shadow-2xl z-20 overflow-hidden py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setNewProjectOpen(true);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-ink hover:bg-surface-2/70 transition-colors"
+                  >
+                    <span aria-hidden="true">✦</span>
+                    <span>{t("home.quickActions.createBlank", "Novo projeto em branco")}</span>
+                  </button>
+                  <Link
+                    href="/import"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-ink hover:bg-surface-2/70 transition-colors"
+                  >
+                    <span aria-hidden="true">📄</span>
+                    <span>{t("home.quickActions.importDocs", "Trazer o que já tenho")}</span>
+                  </Link>
+                  <div className="my-1 border-t border-line/80" />
                   <Link
                     href="/ai-create-simple"
                     onClick={() => setMenuOpen(false)}
@@ -349,23 +371,6 @@ export default function Home() {
                   >
                     <span aria-hidden="true">🤖</span>
                     <span>{t("home.quickActions.createAi")}</span>
-                  </Link>
-                  <Link
-                    href="/import"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-ink hover:bg-surface-2/70 transition-colors"
-                  >
-                    <span aria-hidden="true">✨</span>
-                    <span>{t("home.quickActions.importAi")}</span>
-                  </Link>
-                  <div className="my-1 border-t border-line/80" />
-                  <Link
-                    href="/projects"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-muted hover:bg-surface-2/70 hover:text-ink transition-colors"
-                  >
-                    <span aria-hidden="true">📝</span>
-                    <span>{t("home.quickActions.createManual")}</span>
                   </Link>
                 </div>
               )}
@@ -379,13 +384,13 @@ export default function Home() {
             {myProjects.length === 0 && (
               <div className="sm:col-span-2 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line p-10 text-center text-sm text-subtle">
                 <p>{t("home.projects.empty")}</p>
-                <Link
-                  href="/ai-create-simple"
-                  className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                <button
+                  type="button"
+                  onClick={() => setNewProjectOpen(true)}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-accent px-4 font-semibold text-on-accent hover:opacity-90"
                 >
-                  <span aria-hidden="true">🤖</span>
-                  <span>{t("home.quickActions.createAi")}</span>
-                </Link>
+                  {t("home.projects.createFirst", "Criar meu primeiro projeto")}
+                </button>
               </div>
             )}
           </div>
@@ -439,6 +444,7 @@ export default function Home() {
 
       </div>
       <HomeSyncBar />
+      <NewProjectDialog open={newProjectOpen} onClose={() => setNewProjectOpen(false)} />
     </main>
   );
 }

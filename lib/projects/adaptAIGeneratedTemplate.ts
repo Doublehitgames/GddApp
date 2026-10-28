@@ -2,7 +2,7 @@ import type { GDDTemplate, GDDTemplateSection } from "@/types/ai";
 import type {
   ResolvedTemplate,
   TemplateSection,
-} from "@/lib/templates/manualTemplates";
+} from "@/lib/projects/templateTypes";
 
 /**
  * Deterministic-ish slug with a random suffix so sibling titles don't collide.

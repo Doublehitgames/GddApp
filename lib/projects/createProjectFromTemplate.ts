@@ -1,4 +1,4 @@
-import type { ResolvedTemplate, TemplateSection } from "@/lib/templates/manualTemplates";
+import type { ResolvedTemplate, TemplateSection } from "@/lib/projects/templateTypes";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { SectionAuditBy } from "@/store/slices/types";
 

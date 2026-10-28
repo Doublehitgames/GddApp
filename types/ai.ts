@@ -32,7 +32,7 @@ export interface GDDTemplateRequest {
 
 /**
  * Section produced by the AI generator. Mirrors the shape of
- * `TemplateSection` in `lib/templates/manualTemplates.ts` (minus the
+ * `TemplateSection` in `lib/projects/templateTypes.ts` (minus the
  * `id` — IDs are generated when adapting to the manual-template format
  * for `createProjectFromTemplate`).
  */

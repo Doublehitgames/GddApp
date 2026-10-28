@@ -285,108 +285,6 @@
     "projects": "Límite del plan Free: puedes tener como máximo 2 proyectos.",
     "sectionsPerProject": "Límite del plan: este proyecto alcanzó el máximo de páginas."
   },
-  "projectsPage": {
-    "title": "Crear proyecto",
-    "errors": {
-      "required": "El nombre del proyecto es obligatorio.",
-      "minLength": "El nombre del proyecto debe tener al menos 3 caracteres."
-    },
-    "form": {
-      "namePlaceholder": "Nombre del proyecto",
-      "descriptionPlaceholder": "Descripción",
-      "save": "Guardar proyecto"
-    },
-    "wizard": {
-      "title": "Wizard de creación manual",
-      "backHome": "Volver al inicio",
-      "stepOf": "Paso {{step}} de {{total}}",
-      "notDefined": "No definido",
-      "next": "Avanzar",
-      "creating": "Creando...",
-      "createProject": "Crear proyecto",
-      "createWithoutTemplate": "Crear sin plantilla",
-      "projectNameLabel": "Nombre del proyecto",
-      "projectNamePlaceholder": "Nombre del proyecto",
-      "generateAnotherName": "Generar otro nombre",
-      "subsectionsCount": "{{count}} subsecciones",
-      "selectedStructure": "Estructura seleccionada: {{root}} secciones raíz y {{sub}} subsecciones.",
-      "stepMeta": {
-        "1": {
-          "label": "Paso 1",
-          "title": "Tipo de proyecto",
-          "description": "Define el formato principal del proyecto."
-        },
-        "2": {
-          "label": "Paso 2",
-          "title": "Género",
-          "description": "Elige el género principal de tu juego."
-        },
-        "3": {
-          "label": "Paso 3",
-          "title": "Plataforma",
-          "description": "Selecciona dónde se publicará el juego."
-        },
-        "4": {
-          "label": "Paso 4",
-          "title": "Alcance",
-          "description": "Ajusta la profundidad inicial del GDD."
-        },
-        "5": {
-          "label": "Paso 5",
-          "title": "Estilo",
-          "description": "Define el nivel de detalle de la plantilla."
-        },
-        "6": {
-          "label": "Paso 6",
-          "title": "Vista previa",
-          "description": "Revisa la estructura y crea el proyecto."
-        }
-      },
-      "step1": {
-        "heading": "1. Tipo de proyecto",
-        "description": "En este MVP, el wizard está enfocado en juego digital.",
-        "modeHeading": "¿Cómo quieres empezar?",
-        "cardTitle": "Juego digital",
-        "cardDescription": "Estructura de GDD con secciones de gameplay, producción y UX.",
-        "templateOptionTitle": "Empezar con plantilla",
-        "templateOptionDescription": "Sigue los pasos para generar una estructura completa automáticamente.",
-        "blankOptionTitle": "Crear sin plantilla",
-        "blankOptionDescription": "Omite los pasos y crea solo con nombre y descripción.",
-        "blankFormTitle": "Creación rápida sin plantilla",
-        "blankDescriptionPlaceholder": "Descripción del proyecto (opcional)"
-      },
-      "step2": {
-        "heading": "2. Elige el género principal",
-        "optimizedFor": "Plantilla optimizada para {{genre}}."
-      },
-      "step3": {
-        "heading": "3. Plataforma objetivo",
-        "description": "Selecciona una o más plataformas."
-      },
-      "step4": {
-        "heading": "4. Alcance inicial"
-      },
-      "step5": {
-        "heading": "5. Estilo de plantilla"
-      },
-      "step6": {
-        "heading": "6. Vista previa y confirmación",
-        "description": "Ajusta el nombre y marca qué secciones raíz entran en el proyecto."
-      },
-      "summary": {
-        "genre": "Género",
-        "platforms": "Plataformas",
-        "scope": "Alcance",
-        "style": "Estilo"
-      },
-      "errors": {
-        "nameRequired": "Define un nombre para el proyecto.",
-        "sectionRequired": "Selecciona al menos una sección para crear el proyecto.",
-        "createFailed": "No fue posible crear el proyecto. Inténtalo de nuevo.",
-        "duplicateName": "Ya existe un proyecto con ese nombre. Elige un nombre diferente."
-      }
-    }
-  },
   "projectDetail": {
     "exportLabel": "Exportar",
     "backHome": "Volver al inicio",
@@ -1520,11 +1418,8 @@
     "emptyContent": "Esta página aún no tiene descripción.",
     "emptyLevel": "Esta página no tiene subpáginas.",
     "trailGo": "Ir a {{title}}",
-
     "searchPlaceholder": "Buscar página…",
-
     "searchEmpty": "No se encontró ninguna página.",
-
     "searchMore": "Mostrando {{shown}} de {{count}} — afina la búsqueda."
   },
   "pageLink": {
