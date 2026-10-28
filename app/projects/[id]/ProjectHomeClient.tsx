@@ -9,6 +9,7 @@ import { IconDoc, IconLibrary, IconSystems, IconVision } from "@/components/proj
 import { CoverImage } from "@/components/project/ProjectCover";
 import { useShellProject } from "@/components/project/useShellProject";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
+import { normalizeProjectDocumentSpotlight, spotlightTags } from "@/lib/projectSpotlight";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import { useI18n } from "@/lib/i18n/provider";
 import { isValidDomainId } from "@/lib/gameDesignDomains";
@@ -159,17 +160,10 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
   const logline = v.logline?.trim() || toPreviewText(project.description ?? "", 220);
   const { links, connected } = useMemo(() => pageLinks(sections), [sections]);
   const inDomain = (ids: GameDesignDomainId[]) => sections.filter((s) => ids.includes(categoryOf(s))).sort(byOrder);
-  const label = (id: GameDesignDomainId) => t(DOMAIN_I18N_KEYS[id], id);
 
-  const topDomains = useMemo(() => {
-    const counts = new Map<GameDesignDomainId, number>();
-    for (const s of sections) {
-      const c = categoryOf(s);
-      if (c !== "other") counts.set(c, (counts.get(c) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => id);
-  }, [sections]);
-
+  // Na capa, as tags que a pessoa deu ao jogo na ficha técnica; sem elas, o gênero.
+  const sheetTags = spotlightTags(normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight));
+  const coverTags = sheetTags.length ? sheetTags : ([v.genre?.trim()].filter(Boolean) as string[]);
   const vision = areaProgress(project, "vision");
   const written = sections.filter(hasText).length;
   const docs = documentation(sections);
@@ -183,7 +177,7 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
               <h1 className="text-3xl font-bold leading-tight md:text-[2.5rem]">{project.title}</h1>
               {logline && <p className="max-w-[60ch] text-[15px] text-white/85">{logline}</p>}
               <div className="flex flex-wrap gap-2 pt-1">
-                {[v.genre?.trim(), ...topDomains.map(label)].filter(Boolean).map((tag) => (
+                {coverTags.map((tag) => (
                   <span key={tag} className="rounded-full border border-white/25 bg-white/12 px-3 py-1 text-xs font-medium backdrop-blur-sm">
                     {tag}
                   </span>

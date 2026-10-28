@@ -102,3 +102,17 @@ export function normalizeProjectDocumentSpotlight(value: unknown): ProjectDocume
     titleIconUrl,
   };
 }
+
+/**
+ * As tags com que a pessoa caracterizou o jogo — a linha "Tags: Casual, 2D…"
+ * dos detalhes da ficha técnica. É o que a capa mostra.
+ */
+export function spotlightTags(spotlight: ProjectDocumentSpotlight | undefined): string[] {
+  const line = spotlight?.technicalDetails.find((d) => /^\s*(tags|etiquetas)\s*:/i.test(d));
+  if (!line) return [];
+  return line
+    .slice(line.indexOf(":") + 1)
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}

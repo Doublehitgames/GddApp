@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { ProjectCover } from "@/components/project/ProjectCover";
 import { useI18n } from "@/lib/i18n/provider";
-import { DOMAIN_I18N_KEYS, isValidDomainId, type GameDesignDomainId } from "@/lib/gameDesignDomains";
+import { normalizeProjectDocumentSpotlight, spotlightTags } from "@/lib/projectSpotlight";
 import type { Project } from "@/store/slices/types";
 
 /** A capa abre a Visão: é a primeira coisa que alguém vê do jogo. */
@@ -23,15 +23,11 @@ export function VisionHero({
   const { t } = useI18n();
   const v = project.vision ?? {};
 
+  // As tags que a pessoa deu ao jogo na ficha técnica; sem elas, o gênero.
   const tags = useMemo(() => {
-    const counts = new Map<GameDesignDomainId, number>();
-    for (const s of project.sections ?? []) {
-      const c = s.domainTags?.find(isValidDomainId);
-      if (c && c !== "other") counts.set(c, (counts.get(c) ?? 0) + 1);
-    }
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => t(DOMAIN_I18N_KEYS[id], id));
-    return [v.genre?.trim(), ...top].filter(Boolean) as string[];
-  }, [project.sections, v.genre, t]);
+    const fromSheet = spotlightTags(normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight));
+    return fromSheet.length ? fromSheet : ([v.genre?.trim()].filter(Boolean) as string[]);
+  }, [project.mindMapSettings?.documentView?.spotlight, v.genre]);
 
   const btn = "rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#1d1a2b] transition-colors hover:bg-white disabled:opacity-60";
 
@@ -52,7 +48,6 @@ export function VisionHero({
             </button>
           </div>
           <div className="mt-auto flex max-w-3xl flex-col gap-3 pt-10">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-300">{t("projectShell.vision", "Visão do jogo")}</span>
             <h1 className="text-4xl font-bold leading-tight md:text-5xl">{project.title}</h1>
             {v.logline?.trim() ? (
               <p className="max-w-[62ch] text-base text-white/85 md:text-lg">{v.logline}</p>
