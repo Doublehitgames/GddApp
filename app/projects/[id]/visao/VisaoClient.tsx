@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VisionEditor } from "@/components/vision/VisionEditor";
 import { VisionHero } from "@/components/vision/VisionHero";
+import { SpotlightRail } from "@/components/vision/SpotlightRail";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
@@ -628,8 +629,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
     return (
         <div>
             <div className="w-full">
-                <div className="grid gap-6 items-start">
-                    <div className="space-y-4">
+                <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                    <div className="min-w-0 space-y-4">
                         <VisionHero
                             project={project}
                             onPickCover={handlePickCoverImage}
@@ -638,7 +639,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             onEdit={() => router.push(`/projects/${projectId}/edit`)}
                         />
                         <VisionEditor project={project} slug={projectId} />
-                        <div className="grid items-start gap-4 xl:grid-cols-2">
                         <section className="ui-card-premium">
                             <div className="flex items-center gap-3 mb-3 flex-wrap">
                                 <h2 className="text-lg font-semibold tracking-tight">{t("visionPage.aboutTitle", "Sobre o jogo")}</h2>
@@ -663,7 +663,8 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             </div>
                         </section>
 
-                        <section className="ui-card-premium">
+                        {showSpotlightEditor && (
+                        <section className="ui-card-premium" id="ficha-editor">
                             <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
                                 <div>
                                     <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.spotlight.title")}</h2>
@@ -994,11 +995,17 @@ export default function ProjectDetailClient({ projectId }: Props) {
                                 </>
                             )}
                         </section>
-                        </div>
-
-
-
+                        )}
                     </div>
+
+                    <SpotlightRail
+                        spotlight={normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight)}
+                        editing={showSpotlightEditor}
+                        onEdit={() => {
+                            setShowSpotlightEditor(true);
+                            requestAnimationFrame(() => document.getElementById("ficha-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                        }}
+                    />
 
                 </div>
             </div>
