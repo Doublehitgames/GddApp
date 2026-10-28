@@ -42,7 +42,7 @@ export function SectionLink({ sectionName, projectId, sectionId, children }: Sec
   return (
     <button
       onClick={handleClick}
-      className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-medium inline"
+      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline cursor-pointer font-medium inline"
       title={`Ir para: ${sectionName}`}
     >
       {children}

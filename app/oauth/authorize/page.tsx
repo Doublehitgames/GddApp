@@ -23,20 +23,20 @@ function param(sp: SearchParams, key: string): string | undefined {
 function ErrorCard({ title, detail }: { title: string; detail: string }) {
   return (
     <Shell>
-      <h1 className="text-xl font-bold text-white mb-2">{title}</h1>
-      <p className="text-gray-400 text-sm">{detail}</p>
+      <h1 className="text-xl font-bold text-ink mb-2">{title}</h1>
+      <p className="text-muted text-sm">{detail}</p>
     </Shell>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white">🎮 GDD Manager</h1>
+          <h1 className="text-3xl font-bold text-ink">🎮 GDD Manager</h1>
         </div>
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-canvas border border-line rounded-2xl p-8 shadow-2xl">
           {children}
         </div>
       </div>
@@ -116,12 +116,12 @@ export default async function AuthorizePage({
     ).toString()}`;
     return (
       <Shell>
-        <h1 className="text-xl font-bold text-white mb-2">
+        <h1 className="text-xl font-bold text-ink mb-2">
           {t("auth.oauthConsent.connectTitle")}
         </h1>
-        <p className="text-gray-400 text-sm mb-6">
+        <p className="text-muted text-sm mb-6">
           {introBefore}
-          <span className="text-white font-medium">{clientName}</span>
+          <span className="text-ink font-medium">{clientName}</span>
           {introAfter}
         </p>
         <Link
@@ -136,19 +136,19 @@ export default async function AuthorizePage({
 
   return (
     <Shell>
-      <h1 className="text-xl font-bold text-white mb-1">
+      <h1 className="text-xl font-bold text-ink mb-1">
         {t("auth.oauthConsent.authorizeTitle")}
       </h1>
-      <p className="text-gray-500 text-xs mb-5">
-        {t("auth.oauthConsent.signedInAs")} <span className="text-gray-300">{user.email}</span>
+      <p className="text-subtle text-xs mb-5">
+        {t("auth.oauthConsent.signedInAs")} <span className="text-ink-2">{user.email}</span>
       </p>
 
-      <p className="text-gray-300 text-sm mb-4">
+      <p className="text-ink-2 text-sm mb-4">
         {wantsBefore}
-        <span className="text-white font-medium">{clientName}</span>
+        <span className="text-ink font-medium">{clientName}</span>
         {wantsAfter}
       </p>
-      <ul className="text-sm text-gray-400 space-y-2 mb-6">
+      <ul className="text-sm text-muted space-y-2 mb-6">
         <li className="flex gap-2">
           <span aria-hidden="true">📖</span> {t("auth.oauthConsent.permRead")}
         </li>
@@ -167,7 +167,7 @@ export default async function AuthorizePage({
           {state && <input type="hidden" name="state" value={state} />}
           <button
             type="submit"
-            className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 font-semibold py-3 rounded-xl transition-colors"
+            className="w-full bg-surface hover:bg-surface-2 border border-line text-ink font-semibold py-3 rounded-xl transition-colors"
           >
             {t("auth.oauthConsent.deny")}
           </button>
@@ -187,7 +187,7 @@ export default async function AuthorizePage({
         </form>
       </div>
 
-      <p className="text-gray-600 text-xs mt-5">{t("auth.oauthConsent.revokeNote")}</p>
+      <p className="text-subtle text-xs mt-5">{t("auth.oauthConsent.revokeNote")}</p>
     </Shell>
   );
 }

@@ -75,13 +75,13 @@ export function SectionAnchorLink({
   };
 
   const isLight = theme === "light";
-  const linkColor = isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-300 hover:text-sky-200";
+  const linkColor = isLight ? "text-blue-600 hover:text-blue-800" : "text-sky-700 dark:text-sky-300 hover:text-sky-800 dark:hover:text-sky-200";
   const baseClass =
     variant === "chip"
       ? `gdd-inline-anchor inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs cursor-pointer ${
           isLight
             ? "border-sky-300 bg-sky-100 text-sky-800 hover:bg-sky-200"
-            : "border-sky-500/40 bg-sky-600/15 text-sky-200 hover:bg-sky-600/25"
+            : "border-sky-500/40 bg-sky-600/15 text-sky-800 dark:text-sky-200 hover:bg-sky-600/25"
         }`
       : `gdd-inline-anchor underline cursor-pointer ${linkColor}`;
 

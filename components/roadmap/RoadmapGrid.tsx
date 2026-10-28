@@ -27,21 +27,21 @@ const THEME_LABEL_W = "w-36";
 const PHASE_COL_W   = "w-52";
 
 const THEME_COLOR_STYLES: Record<ThemeColor, { border: string; dot: string; label: string; text: string; row: string }> = {
-  sky:     { border: "border-l-sky-400",     dot: "bg-sky-400",     label: "bg-sky-900/50 border-sky-600/60",         text: "text-sky-200",     row: "bg-sky-950/30" },
-  emerald: { border: "border-l-emerald-400", dot: "bg-emerald-400", label: "bg-emerald-900/50 border-emerald-600/60", text: "text-emerald-200", row: "bg-emerald-950/30" },
-  amber:   { border: "border-l-amber-400",   dot: "bg-amber-400",   label: "bg-amber-900/50 border-amber-600/60",     text: "text-amber-200",   row: "bg-amber-950/30" },
-  violet:  { border: "border-l-violet-400",  dot: "bg-violet-400",  label: "bg-violet-900/50 border-violet-600/60",   text: "text-violet-200",  row: "bg-violet-950/30" },
-  rose:    { border: "border-l-rose-400",    dot: "bg-rose-400",    label: "bg-rose-900/50 border-rose-600/60",       text: "text-rose-200",    row: "bg-rose-950/30" },
-  pink:    { border: "border-l-pink-400",    dot: "bg-pink-400",    label: "bg-pink-900/50 border-pink-600/60",       text: "text-pink-200",    row: "bg-pink-950/30" },
-  indigo:  { border: "border-l-indigo-400",  dot: "bg-indigo-400",  label: "bg-indigo-900/50 border-indigo-600/60",   text: "text-indigo-200",  row: "bg-indigo-950/30" },
-  slate:   { border: "border-l-slate-400",   dot: "bg-slate-400",   label: "bg-slate-700/50 border-slate-500/60",     text: "text-slate-200",   row: "bg-slate-800/30" },
+  sky:     { border: "border-l-sky-400",     dot: "bg-sky-400",     label: "bg-sky-100 dark:bg-sky-900/50 border-sky-600/60",         text: "text-sky-800 dark:text-sky-200",     row: "bg-sky-50 dark:bg-sky-950/30" },
+  emerald: { border: "border-l-emerald-400", dot: "bg-emerald-400", label: "bg-emerald-100 dark:bg-emerald-900/50 border-emerald-600/60", text: "text-emerald-800 dark:text-emerald-200", row: "bg-emerald-50 dark:bg-emerald-950/30" },
+  amber:   { border: "border-l-amber-400",   dot: "bg-amber-400",   label: "bg-amber-100 dark:bg-amber-900/50 border-amber-600/60",     text: "text-amber-800 dark:text-amber-200",   row: "bg-amber-50 dark:bg-amber-950/30" },
+  violet:  { border: "border-l-violet-400",  dot: "bg-violet-400",  label: "bg-violet-100 dark:bg-violet-900/50 border-violet-600/60",   text: "text-violet-800 dark:text-violet-200",  row: "bg-violet-50 dark:bg-violet-950/30" },
+  rose:    { border: "border-l-rose-400",    dot: "bg-rose-400",    label: "bg-rose-100 dark:bg-rose-900/50 border-rose-600/60",       text: "text-rose-800 dark:text-rose-200",    row: "bg-rose-50 dark:bg-rose-950/30" },
+  pink:    { border: "border-l-pink-400",    dot: "bg-pink-400",    label: "bg-pink-100 dark:bg-pink-900/50 border-pink-600/60",       text: "text-pink-800 dark:text-pink-200",    row: "bg-pink-50 dark:bg-pink-950/30" },
+  indigo:  { border: "border-l-indigo-400",  dot: "bg-indigo-400",  label: "bg-indigo-100 dark:bg-indigo-900/50 border-indigo-600/60",   text: "text-indigo-800 dark:text-indigo-200",  row: "bg-indigo-50 dark:bg-indigo-950/30" },
+  slate:   { border: "border-l-line-strong",   dot: "bg-slate-400",   label: "bg-surface-2/50 border-line-strong/60",     text: "text-ink",   row: "bg-surface/30" },
 };
 
 const PHASE_STATUS_STYLES: Record<PhaseStatus, { dot: string; badge: string; text: string }> = {
-  planned:   { dot: "bg-slate-500",                badge: "border-slate-700/50 bg-slate-800/50",          text: "text-slate-400" },
-  active:    { dot: "bg-emerald-400 animate-pulse", badge: "border-emerald-700/50 bg-emerald-950/50",     text: "text-emerald-300" },
-  completed: { dot: "bg-gray-600",                 badge: "border-gray-700/40 bg-gray-800/40",            text: "text-gray-500" },
-  cancelled: { dot: "bg-rose-500",                 badge: "border-rose-700/40 bg-rose-950/30",            text: "text-rose-400" },
+  planned:   { dot: "bg-slate-500",                badge: "border-line/50 bg-surface/50",          text: "text-muted" },
+  active:    { dot: "bg-emerald-400 animate-pulse", badge: "border-emerald-300/50 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/50",     text: "text-emerald-700 dark:text-emerald-300" },
+  completed: { dot: "bg-surface-3",                 badge: "border-line/40 bg-surface/40",            text: "text-subtle" },
+  cancelled: { dot: "bg-rose-500",                 badge: "border-rose-300/40 dark:border-rose-700/40 bg-rose-50 dark:bg-rose-950/30",            text: "text-rose-600 dark:text-rose-400" },
 };
 
 const HEADER_TYPE_OPTIONS: PhaseHeaderType[] = ["title", "month", "quarter", "semester", "year"];
@@ -113,24 +113,24 @@ function PhaseHeaderCell({
       <button
         type="button"
         onClick={() => { if (!readOnly) setOpen((v) => !v); }}
-        className={`w-full h-full flex flex-col items-start justify-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-gray-700/60 bg-gray-900/80 transition-colors text-left ${readOnly ? "cursor-default" : "hover:bg-gray-800/80"}`}
+        className={`w-full h-full flex flex-col items-start justify-start gap-1 px-3 py-3 pr-8 rounded-t-xl border border-b-0 border-line/60 bg-canvas/80 transition-colors text-left ${readOnly ? "cursor-default" : "hover:bg-surface/80"}`}
       >
         <div className="flex items-center gap-2 w-full">
           <span className={`h-2 w-2 shrink-0 rounded-full ${st.dot}`} />
-          <span className="flex-1 min-w-0 text-sm font-semibold text-white truncate">
+          <span className="flex-1 min-w-0 text-sm font-semibold text-ink truncate">
             {formatPhaseHeader(phase, locale)}
           </span>
           {!readOnly && (
-            <svg className="h-3 w-3 text-gray-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-3 w-3 text-subtle shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           )}
         </div>
         {phase.headerType !== "title" && phase.name && (
-          <span className="text-[11px] text-gray-500 pl-4 truncate w-full">{phase.name}</span>
+          <span className="text-[11px] text-subtle pl-4 truncate w-full">{phase.name}</span>
         )}
         <div className="flex items-center gap-1.5 w-full pl-4 mt-0.5">
-          <div className="flex-1 h-1 rounded-full bg-gray-700/40 overflow-hidden">
+          <div className="flex-1 h-1 rounded-full bg-surface-2/40 overflow-hidden">
             {progress && progress.total > 0 && (
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
@@ -141,7 +141,7 @@ function PhaseHeaderCell({
             )}
           </div>
           {progress && progress.total > 0 && (
-            <span className="text-[10px] text-gray-500 shrink-0 tabular-nums">
+            <span className="text-[10px] text-subtle shrink-0 tabular-nums">
               {progress.done}/{progress.total}
             </span>
           )}
@@ -155,7 +155,7 @@ function PhaseHeaderCell({
           {...(dragListeners as React.HTMLAttributes<HTMLButtonElement>)}
           {...(dragAttributes as React.HTMLAttributes<HTMLButtonElement>)}
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-2 right-1.5 p-1 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
+          className="absolute top-2 right-1.5 p-1 cursor-grab active:cursor-grabbing text-gray-700 hover:text-muted touch-none transition-colors"
           tabIndex={-1}
         >
           <GripIcon className="h-3 w-3 rotate-90" />
@@ -163,34 +163,34 @@ function PhaseHeaderCell({
       )}
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-[576px] rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5">
+        <div className="absolute left-0 top-full mt-1 z-50 w-[576px] rounded-xl border border-line bg-canvas shadow-2xl p-3 flex flex-col gap-2.5">
           {/* Name */}
           <CommitTextInput
             value={phase.name}
             onCommit={(v) => onUpdate({ name: v })}
             autoFocus
             placeholder={t("roadmap.phase.namePlaceholder")}
-            className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
+            className="w-full bg-surface rounded-lg border border-line px-2.5 py-1.5 text-sm text-ink outline-none focus:border-line-strong placeholder-subtle"
           />
 
           {/* Description */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                 {t("roadmap.phase.descriptionLabel")}
               </label>
-              <div className="flex rounded-md overflow-hidden border border-gray-700 text-[10px]">
+              <div className="flex rounded-md overflow-hidden border border-line text-[10px]">
                 <button
                   type="button"
                   onClick={() => setDescTab("write")}
-                  className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink-2"}`}
                 >
                   {t("common.tabWrite")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDescTab("preview")}
-                  className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                  className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink-2"}`}
                 >
                   {t("common.tabPreview")}
                 </button>
@@ -202,14 +202,14 @@ function PhaseHeaderCell({
                 onCommit={(v) => onUpdate({ description: v || undefined })}
                 rows={5}
                 placeholder={t("roadmap.phase.descriptionPlaceholder")}
-                className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
+                className="w-full bg-surface rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-2 outline-none focus:border-line-strong placeholder-subtle resize-y leading-relaxed min-h-[80px]"
               />
             ) : (
-              <div className="min-h-[80px] rounded-lg border border-gray-700 bg-gray-800/50 px-2.5 py-1.5">
+              <div className="min-h-[80px] rounded-lg border border-line bg-surface/50 px-2.5 py-1.5">
                 {phase.description ? (
-                  <MarkdownContent theme="dark">{phase.description}</MarkdownContent>
+                  <MarkdownContent>{phase.description}</MarkdownContent>
                 ) : (
-                  <p className="text-xs text-gray-600 italic">{t("roadmap.phase.descriptionPlaceholder")}</p>
+                  <p className="text-xs text-subtle italic">{t("roadmap.phase.descriptionPlaceholder")}</p>
                 )}
               </div>
             )}
@@ -217,7 +217,7 @@ function PhaseHeaderCell({
 
           {/* Header type */}
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-gray-500 uppercase tracking-wider">{t("roadmap.phase.headerType")}</label>
+            <label className="text-[11px] text-subtle uppercase tracking-wider">{t("roadmap.phase.headerType")}</label>
             <div className="flex flex-wrap gap-1">
               {HEADER_TYPE_OPTIONS.map((ht) => (
                 <button
@@ -226,8 +226,8 @@ function PhaseHeaderCell({
                   onClick={() => onUpdate({ headerType: ht })}
                   className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
                     phase.headerType === ht
-                      ? "border-emerald-700 bg-emerald-950/50 text-emerald-300"
-                      : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                      ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                      : "border-line text-subtle hover:border-line-strong hover:text-ink-2"
                   }`}
                 >
                   {t("roadmap.headerType." + ht)}
@@ -238,12 +238,12 @@ function PhaseHeaderCell({
 
           {/* Target date */}
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] text-gray-500 uppercase tracking-wider">{t("roadmap.phase.targetDate")}</label>
+            <label className="text-[11px] text-subtle uppercase tracking-wider">{t("roadmap.phase.targetDate")}</label>
             <input
               type="month"
               value={phase.targetDate ?? ""}
               onChange={(e) => onUpdate({ targetDate: e.target.value || undefined })}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-2 py-1 text-xs text-gray-300 outline-none focus:border-gray-500 [color-scheme:dark]"
+              className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink-2 outline-none focus:border-line-strong [color-scheme:dark]"
             />
           </div>
 
@@ -257,7 +257,7 @@ function PhaseHeaderCell({
                   type="button"
                   onClick={() => onUpdate({ status: s })}
                   className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                    phase.status === s ? ss.badge + " " + ss.text : "border-gray-700 text-gray-500 hover:text-gray-300"
+                    phase.status === s ? ss.badge + " " + ss.text : "border-line text-subtle hover:text-ink-2"
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${ss.dot}`} />
@@ -268,11 +268,11 @@ function PhaseHeaderCell({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-0.5 border-t border-gray-800">
+          <div className="flex items-center justify-between pt-0.5 border-t border-line">
             <button
               type="button"
               onClick={() => onUpdate({ isPublic: !phase.isPublic })}
-              className={`flex items-center gap-1.5 text-xs transition-colors ${phase.isPublic ? "text-emerald-400" : "text-gray-600"}`}
+              className={`flex items-center gap-1.5 text-xs transition-colors ${phase.isPublic ? "text-emerald-600 dark:text-emerald-400" : "text-subtle"}`}
             >
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
@@ -282,7 +282,7 @@ function PhaseHeaderCell({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1 text-xs text-gray-600 hover:text-rose-400 transition-colors"
+              className="flex items-center gap-1 text-xs text-subtle hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
             >
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -301,27 +301,27 @@ function PhaseHeaderCell({
             onClick={() => setConfirmDelete(false)}
           />
           <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[280px] max-w-xs"
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-300/60 dark:border-rose-700/60 bg-canvas p-5 shadow-2xl min-w-[280px] max-w-xs"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm text-gray-200 mb-1">
+            <p className="text-sm text-ink mb-1">
               {t("roadmap.phase.deleteConfirmQuestion")}{" "}
-              <strong className="text-white">{phase.name}</strong>?
+              <strong className="text-ink">{phase.name}</strong>?
             </p>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-subtle mb-4">
               {t("roadmap.phase.deleteWarning")}
             </p>
             <div className="flex items-center gap-2 justify-end">
               <button
                 type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                className="rounded-lg border border-line-strong bg-surface px-4 py-1.5 text-xs text-ink-2 hover:bg-surface-2 transition-colors"
                 onClick={() => setConfirmDelete(false)}
               >
                 {t("common.cancel")}
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60 transition-colors"
+                className="rounded-lg border border-rose-300/60 dark:border-rose-700/60 bg-rose-100 dark:bg-rose-900/40 px-4 py-1.5 text-xs text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
                 onClick={() => { setConfirmDelete(false); onDelete(); setOpen(false); }}
               >
                 {t("roadmap.phase.delete")}
@@ -354,7 +354,7 @@ function SortablePhaseHeader({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`${PHASE_COL_W} shrink-0 border-b border-r border-gray-800/60 ${isDragging ? "opacity-40 z-50" : ""}`}
+      className={`${PHASE_COL_W} shrink-0 border-b border-r border-line/60 ${isDragging ? "opacity-40 z-50" : ""}`}
     >
       <PhaseHeaderCell
         phase={phase}
@@ -419,7 +419,7 @@ function DroppableCell({
     <div
       ref={setNodeRef}
       className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/30 px-2 py-2 flex flex-col gap-1.5 min-h-[72px] transition-colors duration-150 ${
-        isOver ? "bg-violet-950/25 ring-1 ring-inset ring-violet-700/40 rounded-sm" : ""
+        isOver ? "bg-violet-50 dark:bg-violet-950/25 ring-1 ring-inset ring-violet-300/40 dark:ring-violet-700/40 rounded-sm" : ""
       }`}
     >
       {children}
@@ -467,10 +467,10 @@ function SortableThemeRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex border-b border-gray-800/40 ${cs.row} ${isDragging ? "opacity-40" : ""}`}
+      className={`flex border-b border-line/40 ${cs.row} ${isDragging ? "opacity-40" : ""}`}
     >
       {/* Theme label — sticky left */}
-      <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 border-r border-l-[6px] border-gray-800/60 ${cs.border} bg-gray-950/95 px-2 py-3 flex flex-col gap-1 justify-center`}>
+      <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 border-r border-l-[6px] border-line/60 ${cs.border} bg-canvas/95 px-2 py-3 flex flex-col gap-1 justify-center`}>
         {/* Drag handle + name row */}
         <div className="flex items-center gap-1">
           {/* Drag handle — hidden for read-only members */}
@@ -479,7 +479,7 @@ function SortableThemeRow({
               type="button"
               {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
               {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
-              className="shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-400 touch-none transition-colors"
+              className="shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-muted touch-none transition-colors"
               tabIndex={-1}
             >
               <GripIcon className="h-2.5 w-2.5" />
@@ -496,7 +496,7 @@ function SortableThemeRow({
               value={theme.name}
               onCommit={(v) => { onUpdateTheme(theme.id, { name: v }); setEditingThemeId(null); }}
               autoFocus
-              className="flex-1 bg-gray-800 rounded border border-gray-700 px-1.5 py-0.5 text-xs text-white outline-none"
+              className="flex-1 bg-surface rounded border border-line px-1.5 py-0.5 text-xs text-ink outline-none"
             />
           ) : (
             <button
@@ -524,7 +524,7 @@ function SortableThemeRow({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="ml-auto text-gray-700 hover:text-rose-400 transition-colors"
+              className="ml-auto text-gray-700 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
               title={t("roadmap.theme.delete")}
             >
               <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -556,7 +556,7 @@ function SortableThemeRow({
 
             {/* Add item — hidden for read-only members */}
             {!readOnly && (isAddingHere ? (
-              <div className="flex items-center gap-1 rounded-lg border border-emerald-700/50 bg-emerald-950/20 px-2 py-1">
+              <div className="flex items-center gap-1 rounded-lg border border-emerald-300/50 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1">
                 <input
                   autoFocus
                   value={itemDraft}
@@ -567,7 +567,7 @@ function SortableThemeRow({
                   }}
                   onBlur={handleAddItem}
                   placeholder={t("roadmap.item.newPlaceholder")}
-                  className="flex-1 min-w-0 bg-transparent text-xs text-white placeholder-gray-500 outline-none"
+                  className="flex-1 min-w-0 bg-transparent text-xs text-ink placeholder-subtle outline-none"
                 />
               </div>
             ) : (
@@ -576,7 +576,7 @@ function SortableThemeRow({
                 tabIndex={0}
                 onClick={() => { setAddingItem({ phaseId: phase.id, themeId: theme.id }); setItemDraft(""); }}
                 onKeyDown={(e) => e.key === "Enter" && (setAddingItem({ phaseId: phase.id, themeId: theme.id }), setItemDraft(""))}
-                className="flex-1 min-h-[28px] w-full rounded border border-dashed border-gray-700/40 flex items-center justify-center cursor-pointer hover:border-violet-700/50 hover:bg-violet-950/10 transition-all group/add"
+                className="flex-1 min-h-[28px] w-full rounded border border-dashed border-line/40 flex items-center justify-center cursor-pointer hover:border-violet-300/50 dark:hover:border-violet-700/50 hover:bg-violet-50 dark:hover:bg-violet-950/10 transition-all group/add"
               >
                 <svg className="h-3 w-3 text-gray-700 group-hover/add:text-violet-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -595,27 +595,27 @@ function SortableThemeRow({
             onClick={() => setConfirmDelete(false)}
           />
           <div
-            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-700/60 bg-gray-900 p-5 shadow-2xl min-w-[280px] max-w-xs"
+            className="fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-rose-300/60 dark:border-rose-700/60 bg-canvas p-5 shadow-2xl min-w-[280px] max-w-xs"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm text-gray-200 mb-1">
+            <p className="text-sm text-ink mb-1">
               {t("roadmap.theme.deleteConfirmQuestion")}{" "}
-              <strong className="text-white">{theme.name}</strong>?
+              <strong className="text-ink">{theme.name}</strong>?
             </p>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-subtle mb-4">
               {t("roadmap.theme.deleteWarning")}
             </p>
             <div className="flex items-center gap-2 justify-end">
               <button
                 type="button"
-                className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-1.5 text-xs text-gray-300 hover:bg-gray-700 transition-colors"
+                className="rounded-lg border border-line-strong bg-surface px-4 py-1.5 text-xs text-ink-2 hover:bg-surface-2 transition-colors"
                 onClick={() => setConfirmDelete(false)}
               >
                 {t("common.cancel")}
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-rose-700/60 bg-rose-900/40 px-4 py-1.5 text-xs text-rose-200 hover:bg-rose-900/60 transition-colors"
+                className="rounded-lg border border-rose-300/60 dark:border-rose-700/60 bg-rose-100 dark:bg-rose-900/40 px-4 py-1.5 text-xs text-rose-800 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors"
                 onClick={() => { setConfirmDelete(false); onDeleteTheme(theme.id); }}
               >
                 {t("roadmap.theme.delete")}
@@ -752,22 +752,22 @@ export default function RoadmapGrid({
   // ── Empty state ────────────────────────────────────────────────────────────
   if (phases.length === 0 && themes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-gray-700 py-20 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-400">
+      <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border border-dashed border-line py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
           <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-sm font-semibold text-gray-300">{t("roadmap.empty.title")}</p>
-          <p className="text-xs text-gray-600 max-w-xs leading-relaxed">{t("roadmap.empty.subtitle")}</p>
+          <p className="text-sm font-semibold text-ink-2">{t("roadmap.empty.title")}</p>
+          <p className="text-xs text-subtle max-w-xs leading-relaxed">{t("roadmap.empty.subtitle")}</p>
         </div>
         {!readOnly && (
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => setAddingPhase(true)}
-              className="flex items-center gap-2 rounded-xl border border-violet-700/50 bg-violet-950/30 px-4 py-2 text-sm text-violet-300 hover:bg-violet-950/50 transition-colors"
+              className="flex items-center gap-2 rounded-xl border border-violet-300/50 dark:border-violet-700/50 bg-violet-50 dark:bg-violet-950/30 px-4 py-2 text-sm text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/50 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -777,7 +777,7 @@ export default function RoadmapGrid({
           </div>
         )}
         {addingPhase && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/20 px-4 py-2 mt-2">
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/20 px-4 py-2 mt-2">
             <input
               autoFocus
               value={phaseDraft}
@@ -785,7 +785,7 @@ export default function RoadmapGrid({
               onKeyDown={(e) => { if (e.key === "Enter") handleAddPhase(); if (e.key === "Escape") setAddingPhase(false); }}
               onBlur={handleAddPhase}
               placeholder={t("roadmap.timeline.phaseName")}
-              className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-40"
+              className="bg-transparent text-sm text-ink placeholder-subtle outline-none w-40"
             />
           </div>
         )}
@@ -796,14 +796,14 @@ export default function RoadmapGrid({
   // ── Grid ───────────────────────────────────────────────────────────────────
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="h-full overflow-auto rounded-xl border border-gray-800/60">
+      <div className="h-full overflow-auto rounded-xl border border-line/60">
         <div className="min-w-max">
 
           {/* ── Header row ────────────────────────────────────────────────── */}
           <div className="flex">
             {/* Corner cell */}
-            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-20 bg-gray-950 border-b border-r border-gray-800/60 px-3 py-3 flex items-end`}>
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">{t("roadmap.grid.themes")}</span>
+            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-20 bg-canvas border-b border-r border-line/60 px-3 py-3 flex items-end`}>
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-subtle">{t("roadmap.grid.themes")}</span>
             </div>
 
             {/* Sortable phase headers */}
@@ -822,9 +822,9 @@ export default function RoadmapGrid({
             </SortableContext>
 
             {/* Add phase — hidden for read-only members */}
-            {!readOnly && <div className="shrink-0 border-b border-gray-800/60 px-2 py-3 flex items-end">
+            {!readOnly && <div className="shrink-0 border-b border-line/60 px-2 py-3 flex items-end">
               {addingPhase ? (
-                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-700/60 bg-emerald-950/20 px-2 py-1.5">
+                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1.5">
                   <input
                     autoFocus
                     value={phaseDraft}
@@ -832,9 +832,9 @@ export default function RoadmapGrid({
                     onKeyDown={(e) => { if (e.key === "Enter") handleAddPhase(); if (e.key === "Escape") { setPhaseDraft(""); setAddingPhase(false); } }}
                     onBlur={handleAddPhase}
                     placeholder={t("roadmap.timeline.phaseName")}
-                    className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-32"
+                    className="bg-transparent text-sm text-ink placeholder-subtle outline-none w-32"
                   />
-                  <button type="button" onClick={handleAddPhase} className="text-emerald-400 hover:text-emerald-200">
+                  <button type="button" onClick={handleAddPhase} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200">
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
@@ -844,7 +844,7 @@ export default function RoadmapGrid({
                 <button
                   type="button"
                   onClick={() => setAddingPhase(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-gray-700 px-3 py-1.5 text-xs text-gray-500 hover:border-violet-700/50 hover:text-violet-400 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-line px-3 py-1.5 text-xs text-subtle hover:border-violet-300/50 dark:hover:border-violet-700/50 hover:text-violet-600 dark:hover:text-violet-400 transition-colors whitespace-nowrap"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -883,9 +883,9 @@ export default function RoadmapGrid({
 
           {/* ── Add theme row — hidden for read-only members ──────────────── */}
           {!readOnly && <div className="flex">
-            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 bg-gray-950/95 border-r border-gray-800/60 px-3 py-3`}>
+            <div className={`${THEME_LABEL_W} shrink-0 sticky left-0 z-10 bg-canvas/95 border-r border-line/60 px-3 py-3`}>
               {addingTheme ? (
-                <div className="flex items-center gap-1.5 rounded-lg border border-violet-700/60 bg-violet-950/20 px-2 py-1.5">
+                <div className="flex items-center gap-1.5 rounded-lg border border-violet-300/60 dark:border-violet-700/60 bg-violet-50 dark:bg-violet-950/20 px-2 py-1.5">
                   <input
                     autoFocus
                     value={themeDraft}
@@ -893,14 +893,14 @@ export default function RoadmapGrid({
                     onKeyDown={(e) => { if (e.key === "Enter") handleAddTheme(); if (e.key === "Escape") { setThemeDraft(""); setAddingTheme(false); } }}
                     onBlur={handleAddTheme}
                     placeholder={t("roadmap.theme.namePlaceholder")}
-                    className="bg-transparent text-xs text-white placeholder-gray-500 outline-none w-full"
+                    className="bg-transparent text-xs text-ink placeholder-subtle outline-none w-full"
                   />
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setAddingTheme(true)}
-                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-violet-400 transition-colors whitespace-nowrap"
+                  className="flex items-center gap-1.5 text-xs text-subtle hover:text-violet-600 dark:hover:text-violet-400 transition-colors whitespace-nowrap"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -910,7 +910,7 @@ export default function RoadmapGrid({
               )}
             </div>
             {phases.map((phase) => (
-              <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-r border-gray-800/20 px-2 py-3`} />
+              <div key={phase.id} className={`${PHASE_COL_W} shrink-0 border-r border-line/20 px-2 py-3`} />
             ))}
           </div>}
 

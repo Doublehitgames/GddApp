@@ -13,17 +13,17 @@ interface Props {
 
 function Segment({ segment }: { segment: DiffSegment }) {
   if (segment.type === "eq") {
-    return <span className="text-gray-400">{segment.text}</span>;
+    return <span className="text-muted">{segment.text}</span>;
   }
   if (segment.type === "add") {
     return (
-      <span className="rounded-[3px] bg-emerald-500/15 text-emerald-300 decoration-emerald-500/40">
+      <span className="rounded-[3px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 decoration-emerald-500/40">
         {segment.text}
       </span>
     );
   }
   return (
-    <span className="rounded-[3px] bg-rose-500/10 text-rose-400/80 line-through decoration-rose-500/50">
+    <span className="rounded-[3px] bg-rose-500/10 text-rose-600/80 dark:text-rose-400/80 line-through decoration-rose-500/50">
       {segment.text}
     </span>
   );

@@ -1088,34 +1088,34 @@ function DiagramasFlow({
   const selectedNodeNote = selectedNode?.data.note || "";
 
   return (
-    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-20"} text-white flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
+    <div className={`fixed inset-x-0 bottom-0 ${isReadOnly ? "top-0" : "top-20"} text-ink flex overflow-hidden overscroll-none ${activeTheme.appBgClass}`}>
       {isReadOnly && publicToken && (
-        <div className="absolute top-0 left-0 right-0 z-50 bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+        <div className="absolute top-0 left-0 right-0 z-50 bg-surface border-b border-line px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => router.push(`/s/${encodeURIComponent(publicToken)}?mode=view&focus=${encodeURIComponent(sectionId)}#section-${sectionId}`)}
-              className="text-gray-400 hover:text-white transition-colors shrink-0"
+              className="text-muted hover:text-ink transition-colors shrink-0"
             >
               ← {t("sectionDetail.actions.goToDocument")}
             </button>
-            <span className="text-gray-500 shrink-0">/</span>
+            <span className="text-subtle shrink-0">/</span>
             <span
-              className="min-w-0 truncate text-emerald-200 font-medium"
+              className="min-w-0 truncate text-emerald-800 dark:text-emerald-200 font-medium"
               title={publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}
             >
               {publicSectionTitle || t("sectionDetail.flowchart.breadcrumb")}
             </span>
             {publicProjectTitle ? (
               <>
-                <span className="text-gray-500 shrink-0">|</span>
-                <span className="min-w-0 truncate text-gray-300" title={publicProjectTitle}>
+                <span className="text-subtle shrink-0">|</span>
+                <span className="min-w-0 truncate text-ink-2" title={publicProjectTitle}>
                   {publicProjectTitle}
                 </span>
               </>
             ) : null}
           </div>
-          <span className="text-green-300 text-sm shrink-0">🔓 {t("projectDetail.visibility.public", "Public")}</span>
+          <span className="text-green-700 dark:text-green-300 text-sm shrink-0">🔓 {t("projectDetail.visibility.public", "Public")}</span>
         </div>
       )}
       <div

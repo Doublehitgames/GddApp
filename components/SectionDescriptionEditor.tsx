@@ -14,7 +14,7 @@ import type { RichDocBlock } from "@/lib/richDoc/types";
 const RichDocEditor = dynamic(() => import("@/components/RichDocEditor"), {
   ssr: false,
   loading: () => (
-    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-gray-700 bg-gray-950/40 text-xs text-gray-500">
+    <div className="flex min-h-[200px] items-center justify-center rounded-xl border border-dashed border-line bg-canvas/40 text-xs text-subtle">
       …
     </div>
   ),
@@ -124,10 +124,10 @@ function SectionRefOverlay({ query, sections, selectedIdx, position, onSelect, o
     return (
       <div
         style={{ position: "fixed", top, left, zIndex: 9999 }}
-        className="w-72 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs text-gray-400 shadow-xl"
+        className="w-72 rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-muted shadow-xl"
       >
         Nenhuma seção encontrada para &ldquo;{query}&rdquo;
-        <button type="button" onClick={onClose} className="ml-2 text-gray-500 hover:text-gray-300">[esc]</button>
+        <button type="button" onClick={onClose} className="ml-2 text-subtle hover:text-ink-2">[esc]</button>
       </div>
     );
   }
@@ -135,9 +135,9 @@ function SectionRefOverlay({ query, sections, selectedIdx, position, onSelect, o
   return (
     <div
       style={{ position: "fixed", top, left, zIndex: 9999 }}
-      className="w-72 rounded-lg border border-gray-700 bg-gray-900 shadow-xl"
+      className="w-72 rounded-lg border border-line bg-canvas shadow-xl"
     >
-      <div className="border-b border-gray-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+      <div className="border-b border-line px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-subtle">
         Lincar seção — Enter para inserir
       </div>
       <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
@@ -152,7 +152,7 @@ function SectionRefOverlay({ query, sections, selectedIdx, position, onSelect, o
               className={`w-full px-3 py-2 text-left text-sm transition-colors ${
                 idx === selectedIdx
                   ? "bg-indigo-600/30 text-white"
-                  : "text-gray-300 hover:bg-gray-800"
+                  : "text-ink-2 hover:bg-surface"
               }`}
             >
               {section.title}
@@ -363,7 +363,7 @@ export default function SectionDescriptionEditor({
       onKeyUp={checkForRefTrigger}
       onKeyDown={handleHostKeyDown}
     >
-      <RichDocEditor blocks={[]} editable theme="dark" onReady={handleReady} onChange={handleEditorChange} />
+      <RichDocEditor blocks={[]} editable onReady={handleReady} onChange={handleEditorChange} />
       {refSuggest && (
         <SectionRefOverlay
           query={refSuggest.query}

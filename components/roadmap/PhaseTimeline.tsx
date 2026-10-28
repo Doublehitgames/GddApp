@@ -14,10 +14,10 @@ interface Props {
 }
 
 const PHASE_STATUS_STYLES = {
-  planned:   { dot: "bg-slate-400",                      tab: "border-slate-600/50",  active: "border-slate-400 bg-slate-800/60" },
-  active:    { dot: "bg-emerald-400 animate-pulse",       tab: "border-emerald-700/50", active: "border-emerald-400 bg-emerald-950/60" },
-  completed: { dot: "bg-gray-500",                        tab: "border-gray-700/40",   active: "border-gray-500 bg-gray-800/60" },
-  cancelled: { dot: "bg-rose-400",                        tab: "border-rose-700/40",   active: "border-rose-400 bg-rose-950/40" },
+  planned:   { dot: "bg-slate-400",                      tab: "border-line-strong/50",  active: "border-line-strong bg-surface/60" },
+  active:    { dot: "bg-emerald-400 animate-pulse",       tab: "border-emerald-300/50 dark:border-emerald-700/50", active: "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/60" },
+  completed: { dot: "bg-gray-500",                        tab: "border-line/40",   active: "border-line-strong bg-surface/60" },
+  cancelled: { dot: "bg-rose-400",                        tab: "border-rose-300/40 dark:border-rose-700/40",   active: "border-rose-400 bg-rose-50 dark:bg-rose-950/40" },
 };
 
 function formatTargetDate(raw: string, locale: string): string {
@@ -69,27 +69,27 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
             className={`group shrink-0 flex flex-col gap-1.5 rounded-xl border px-4 py-3 text-left transition-all duration-200 min-w-[148px] ${
               isSelected
                 ? style.active + " shadow-md"
-                : "border-gray-700/60 bg-gray-900/50 hover:border-gray-600 hover:bg-gray-800/50"
+                : "border-line/60 bg-canvas/50 hover:border-line-strong hover:bg-surface/50"
             }`}
           >
             {/* Status dot + name */}
             <div className="flex items-center gap-2">
               <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
-              <span className={`text-sm font-semibold truncate max-w-[110px] ${isSelected ? "text-white" : "text-gray-300 group-hover:text-white"}`}>
+              <span className={`text-sm font-semibold truncate max-w-[110px] ${isSelected ? "text-ink" : "text-ink-2 group-hover:text-ink"}`}>
                 {phase.name}
               </span>
             </div>
 
             {/* Target date */}
             {phase.targetDate && (
-              <span className="text-[11px] text-gray-500 pl-4">
+              <span className="text-[11px] text-subtle pl-4">
                 {formatTargetDate(phase.targetDate, locale)}
               </span>
             )}
 
             {/* Progress */}
             <div className="pl-4 flex flex-col gap-1">
-              <span className="text-[11px] text-gray-600 tabular-nums">
+              <span className="text-[11px] text-subtle tabular-nums">
                 {total === 0
                   ? t("roadmap.timeline.noItems")
                   : t("roadmap.timeline.itemsProgress")
@@ -97,7 +97,7 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
                       .replace("{total}", String(total))}
               </span>
               {total > 0 && (
-                <div className="h-1 w-full rounded-full bg-gray-700/60 overflow-hidden">
+                <div className="h-1 w-full rounded-full bg-surface-2/60 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       phase.status === "completed" ? "bg-gray-500" :
@@ -115,7 +115,7 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
 
       {/* Add phase — hidden for read-only members */}
       {!readOnly && (adding ? (
-        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 min-w-[180px]">
+        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 min-w-[180px]">
           <input
             ref={inputRef}
             value={draft}
@@ -123,9 +123,9 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
             onKeyDown={handleKeyDown}
             onBlur={handleConfirm}
             placeholder={t("roadmap.timeline.phaseName")}
-            className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder-gray-500 outline-none"
+            className="flex-1 min-w-0 bg-transparent text-sm text-ink placeholder-subtle outline-none"
           />
-          <button type="button" onClick={handleConfirm} className="text-emerald-400 hover:text-emerald-200 transition-colors">
+          <button type="button" onClick={handleConfirm} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
@@ -135,7 +135,7 @@ export default function PhaseTimeline({ phases, items, selectedPhaseId, onSelect
         <button
           type="button"
           onClick={handleAddPhase}
-          className="shrink-0 flex items-center gap-2 rounded-xl border border-dashed border-gray-700 px-4 py-3 text-sm text-gray-500 hover:border-emerald-700/60 hover:text-emerald-400 transition-colors"
+          className="shrink-0 flex items-center gap-2 rounded-xl border border-dashed border-line px-4 py-3 text-sm text-subtle hover:border-emerald-300/60 dark:hover:border-emerald-700/60 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -21,10 +21,10 @@ interface Props {
 const STATUS_CYCLE: ItemStatus[] = ["planned", "in_progress", "done", "cut"];
 
 export const STATUS_STYLES: Record<ItemStatus, { dot: string; chip: string; text: string }> = {
-  planned:     { dot: "bg-slate-500",   chip: "border-slate-700/60 bg-slate-800/60",       text: "text-slate-300" },
-  in_progress: { dot: "bg-sky-400",     chip: "border-sky-700/50 bg-sky-950/60",            text: "text-sky-200" },
-  done:        { dot: "bg-emerald-400", chip: "border-emerald-800/50 bg-emerald-950/50",    text: "text-emerald-300 line-through opacity-60" },
-  cut:         { dot: "bg-rose-500",    chip: "border-rose-800/40 bg-rose-950/30",          text: "text-rose-400 line-through opacity-50" },
+  planned:     { dot: "bg-slate-500",   chip: "border-line/60 bg-surface/60",       text: "text-ink-2" },
+  in_progress: { dot: "bg-sky-400",     chip: "border-sky-300/50 dark:border-sky-700/50 bg-sky-50 dark:bg-sky-950/60",            text: "text-sky-800 dark:text-sky-200" },
+  done:        { dot: "bg-emerald-400", chip: "border-emerald-200/50 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/50",    text: "text-emerald-700 dark:text-emerald-300 line-through opacity-60" },
+  cut:         { dot: "bg-rose-500",    chip: "border-rose-200/40 dark:border-rose-800/40 bg-rose-50 dark:bg-rose-950/30",          text: "text-rose-600 dark:text-rose-400 line-through opacity-50" },
 };
 
 export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners, dragHandleAttributes, readOnly }: Props) {
@@ -59,7 +59,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
             {...(dragHandleListeners as React.HTMLAttributes<HTMLButtonElement>)}
             {...(dragHandleAttributes as React.HTMLAttributes<HTMLButtonElement>)}
             onClick={(e) => e.stopPropagation()}
-            className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-500 touch-none"
+            className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-gray-700 hover:text-subtle touch-none"
             tabIndex={-1}
           >
             <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
@@ -82,7 +82,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
 
         {/* Private icon */}
         {!item.isPublic && (
-          <svg className="mt-0.5 h-2.5 w-2.5 shrink-0 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="mt-0.5 h-2.5 w-2.5 shrink-0 text-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
           </svg>
         )}
@@ -94,7 +94,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
         >
-        <div className="w-full max-w-xl rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 flex flex-col gap-2.5 max-h-[90vh] overflow-y-auto">
+        <div className="w-full max-w-xl rounded-xl border border-line bg-canvas shadow-2xl p-3 flex flex-col gap-2.5 max-h-[90vh] overflow-y-auto">
 
           {/* Top row: thumb (left) + title/status/tags (right) */}
           <div className="flex gap-3">
@@ -103,7 +103,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
             {readOnly ? (
               /* Read-only: just show the image (or nothing) */
               item.thumbUrl ? (
-                <div className="relative shrink-0 w-28 h-28 rounded-lg border border-gray-700 bg-gray-800/50 overflow-hidden">
+                <div className="relative shrink-0 w-28 h-28 rounded-lg border border-line bg-surface/50 overflow-hidden">
                   <img src={item.thumbUrl} alt="" className="w-full h-full object-cover" />
                 </div>
               ) : null
@@ -114,7 +114,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                 onClick={handlePickThumb}
                 onKeyDown={(e) => e.key === "Enter" && handlePickThumb()}
                 title={item.thumbUrl ? t("roadmap.item.changeThumb") : t("roadmap.item.addThumb")}
-                className="relative shrink-0 w-28 h-28 rounded-lg border border-gray-700 bg-gray-800/50 overflow-hidden flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-gray-500 hover:bg-gray-800 transition-colors group/thumb"
+                className="relative shrink-0 w-28 h-28 rounded-lg border border-line bg-surface/50 overflow-hidden flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-line-strong hover:bg-surface transition-colors group/thumb"
               >
                 {item.thumbUrl ? (
                   <>
@@ -122,7 +122,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); onUpdate({ thumbUrl: undefined }); }}
-                      className="absolute top-1 right-1 rounded-full bg-gray-900/80 p-0.5 text-gray-400 hover:text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 rounded-full bg-canvas/80 p-0.5 text-muted hover:text-ink opacity-0 group-hover/thumb:opacity-100 transition-opacity"
                       title={t("roadmap.item.removeThumb")}
                     >
                       <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,10 +132,10 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                   </>
                 ) : (
                   <>
-                    <svg className="h-6 w-6 text-gray-600 group-hover/thumb:text-gray-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-6 w-6 text-subtle group-hover/thumb:text-gray-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-[10px] text-gray-600 group-hover/thumb:text-gray-400 text-center leading-tight px-2 transition-colors">
+                    <span className="text-[10px] text-subtle group-hover/thumb:text-gray-400 text-center leading-tight px-2 transition-colors">
                       {t("roadmap.item.addThumb")}
                     </span>
                   </>
@@ -147,13 +147,13 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
             <div className="flex-1 min-w-0 flex flex-col gap-2">
               {readOnly ? (
                 /* Read-only: static title */
-                <p className="w-full px-2.5 py-1.5 text-sm text-white leading-snug">{item.title}</p>
+                <p className="w-full px-2.5 py-1.5 text-sm text-ink leading-snug">{item.title}</p>
               ) : (
                 <CommitTextInput
                   value={item.title}
                   onCommit={(v) => onUpdate({ title: v })}
                   autoFocus
-                  className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
+                  className="w-full bg-surface rounded-lg border border-line px-2.5 py-1.5 text-sm text-ink outline-none focus:border-line-strong placeholder-subtle"
                   placeholder={t("roadmap.item.titlePlaceholder")}
                 />
               )}
@@ -183,7 +183,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                           type="button"
                           onClick={() => onUpdate({ status: s })}
                           className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                            item.status === s ? ss.chip + " " + ss.text.split(" ")[0] : "border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                            item.status === s ? ss.chip + " " + ss.text.split(" ")[0] : "border-line text-subtle hover:border-line-strong hover:text-ink-2"
                           }`}
                         >
                           <span className={`h-1.5 w-1.5 rounded-full ${ss.dot}`} />
@@ -195,7 +195,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
 
                   {/* Tag picker */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                       {t("roadmap.item.tagLabel")}
                     </label>
                     <div className="flex flex-wrap gap-1">
@@ -204,8 +204,8 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                         onClick={() => onUpdate({ tag: undefined })}
                         className={`rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
                           !item.tag
-                            ? "border-gray-500 bg-gray-700 text-gray-200"
-                            : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                            ? "border-line-strong bg-surface-2 text-ink"
+                            : "border-line text-subtle hover:border-line-strong hover:text-muted"
                         }`}
                       >
                         —
@@ -218,7 +218,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                             type="button"
                             onClick={() => onUpdate({ tag: item.tag === tag ? undefined : tag })}
                             className={`rounded border px-1.5 py-0.5 text-[10px] font-bold transition-colors ${
-                              item.tag === tag ? cfg.style : "border-gray-700 text-gray-600 hover:border-gray-600 hover:text-gray-400"
+                              item.tag === tag ? cfg.style : "border-line text-subtle hover:border-line-strong hover:text-muted"
                             }`}
                           >
                             {cfg.label}
@@ -234,34 +234,34 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
 
           {/* Description */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
               {t("roadmap.item.descriptionLabel")}
             </label>
             {readOnly ? (
               /* Read-only: preview only */
-              <div className="min-h-[80px] rounded-lg border border-gray-700 bg-gray-800/50 px-2.5 py-1.5">
+              <div className="min-h-[80px] rounded-lg border border-line bg-surface/50 px-2.5 py-1.5">
                 {item.description ? (
-                  <MarkdownContent theme="dark">{item.description}</MarkdownContent>
+                  <MarkdownContent>{item.description}</MarkdownContent>
                 ) : (
-                  <p className="text-xs text-gray-600 italic">{t("roadmap.item.descriptionPlaceholder")}</p>
+                  <p className="text-xs text-subtle italic">{t("roadmap.item.descriptionPlaceholder")}</p>
                 )}
               </div>
             ) : (
               <>
                 <div className="flex items-center justify-between">
                   <span />
-                  <div className="flex rounded-md overflow-hidden border border-gray-700 text-[10px]">
+                  <div className="flex rounded-md overflow-hidden border border-line text-[10px]">
                     <button
                       type="button"
                       onClick={() => setDescTab("write")}
-                      className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                      className={`px-2 py-0.5 transition-colors ${descTab === "write" ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink-2"}`}
                     >
                       {t("common.tabWrite")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDescTab("preview")}
-                      className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-gray-700 text-gray-200" : "text-gray-500 hover:text-gray-300"}`}
+                      className={`px-2 py-0.5 transition-colors ${descTab === "preview" ? "bg-surface-2 text-ink" : "text-subtle hover:text-ink-2"}`}
                     >
                       {t("common.tabPreview")}
                     </button>
@@ -273,14 +273,14 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
                     onCommit={(v) => onUpdate({ description: v || undefined })}
                     rows={5}
                     placeholder={t("roadmap.item.descriptionPlaceholder")}
-                    className="w-full bg-gray-800 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs text-gray-300 outline-none focus:border-gray-500 placeholder-gray-600 resize-y leading-relaxed min-h-[80px]"
+                    className="w-full bg-surface rounded-lg border border-line px-2.5 py-1.5 text-xs text-ink-2 outline-none focus:border-line-strong placeholder-subtle resize-y leading-relaxed min-h-[80px]"
                   />
                 ) : (
-                  <div className="min-h-[80px] rounded-lg border border-gray-700 bg-gray-800/50 px-2.5 py-1.5">
+                  <div className="min-h-[80px] rounded-lg border border-line bg-surface/50 px-2.5 py-1.5">
                     {item.description ? (
-                      <MarkdownContent theme="dark">{item.description}</MarkdownContent>
+                      <MarkdownContent>{item.description}</MarkdownContent>
                     ) : (
-                      <p className="text-xs text-gray-600 italic">{t("roadmap.item.descriptionPlaceholder")}</p>
+                      <p className="text-xs text-subtle italic">{t("roadmap.item.descriptionPlaceholder")}</p>
                     )}
                   </div>
                 )}
@@ -294,7 +294,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
               <button
                 type="button"
                 onClick={() => onUpdate({ isPublic: !item.isPublic })}
-                className={`flex items-center gap-1.5 text-xs transition-colors ${item.isPublic ? "text-emerald-400 hover:text-emerald-200" : "text-gray-600 hover:text-gray-400"}`}
+                className={`flex items-center gap-1.5 text-xs transition-colors ${item.isPublic ? "text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200" : "text-subtle hover:text-muted"}`}
               >
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   {item.isPublic
@@ -307,7 +307,7 @@ export default function ItemChip({ item, onUpdate, onDelete, dragHandleListeners
               <button
                 type="button"
                 onClick={() => { onDelete(); setOpen(false); }}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-rose-400 transition-colors"
+                className="flex items-center gap-1 text-xs text-subtle hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
               >
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

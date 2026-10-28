@@ -159,15 +159,15 @@ export function QuickNewPageModal() {
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900/95 shadow-2xl shadow-black/50"
+        className="w-full max-w-md rounded-2xl border border-line bg-canvas/95 shadow-2xl shadow-black/50"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-800">
+        <header className="flex items-center justify-between gap-3 px-5 py-4 border-b border-line">
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">
+            <h2 className="text-lg font-semibold text-ink">
               {t("quickNewPage.modalTitle", "Nova página")}
             </h2>
-            <p className="mt-0.5 text-xs text-gray-400">
+            <p className="mt-0.5 text-xs text-muted">
               {t("quickNewPage.modalHint", "Atalho: N · Enter para criar · Esc para fechar")}
             </p>
           </div>
@@ -175,7 +175,7 @@ export function QuickNewPageModal() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label={t("quickNewPage.close", "Fechar")}
-            className="shrink-0 h-8 w-8 rounded-lg border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            className="shrink-0 h-8 w-8 rounded-lg border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink transition-colors"
           >
             ✕
           </button>
@@ -183,7 +183,7 @@ export function QuickNewPageModal() {
 
         <div className="px-5 py-4 space-y-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-300">
+            <span className="mb-1 block text-xs font-medium text-ink-2">
               {t("quickNewPage.titleLabel", "Nome da página")}
             </span>
             <input
@@ -195,19 +195,19 @@ export function QuickNewPageModal() {
                 if (error) setError(null);
               }}
               placeholder={t("quickNewPage.titlePlaceholder", "Ex.: Armas de fogo")}
-              className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
+              className="w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-indigo-400"
               autoComplete="off"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-300">
+            <span className="mb-1 block text-xs font-medium text-ink-2">
               {t("quickNewPage.parentLabel", "Criar dentro de (opcional)")}
             </span>
             <select
               value={parentId}
               onChange={(e) => setParentId(e.target.value)}
-              className="w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-400"
+              className="w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-indigo-400"
             >
               <option value="">{t("quickNewPage.parentRoot", "— Raiz do projeto —")}</option>
               {sectionOptions.map((s) => (
@@ -219,17 +219,17 @@ export function QuickNewPageModal() {
           </label>
 
           {error && (
-            <p className="text-xs text-red-400" role="alert">
+            <p className="text-xs text-red-600 dark:text-red-400" role="alert">
               {error}
             </p>
           )}
         </div>
 
-        <footer className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-800 bg-gray-900/60 rounded-b-2xl">
+        <footer className="flex items-center justify-end gap-2 px-5 py-3 border-t border-line bg-canvas/60 rounded-b-2xl">
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-sm text-gray-200 hover:bg-gray-700"
+            className="rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink hover:bg-surface-2"
           >
             {t("quickNewPage.cancel", "Cancelar")}
           </button>

@@ -12,7 +12,7 @@ import {
 } from "react";
 
 const DEFAULT_INPUT_CLASS =
-  "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500";
+  "w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-line-strong";
 
 type SharedInputProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,

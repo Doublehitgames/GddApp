@@ -22,8 +22,8 @@ export default function SectionEditRedirectPage() {
   }, [router, projectId, sectionId]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-      <p className="text-gray-400">Redirecionando…</p>
+    <div className="min-h-screen bg-canvas text-ink flex items-center justify-center">
+      <p className="text-muted">Redirecionando…</p>
     </div>
   );
 }

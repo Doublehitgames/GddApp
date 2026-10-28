@@ -16,10 +16,10 @@ interface Props {
 }
 
 const KIND_STYLES: Record<ChangeKind, string> = {
-  created: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-  edited: "border-blue-500/30 bg-blue-500/10 text-blue-400",
-  renamed: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  deleted: "border-rose-500/30 bg-rose-500/10 text-rose-400",
+  created: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  edited: "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  renamed: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  deleted: "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400",
 };
 
 /** Hora no idioma do app: 24h em português, AM/PM em inglês. */
@@ -50,7 +50,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
   const hasDiff = entry.before !== entry.after && (entry.before !== "" || entry.after !== "");
 
   const title = (
-    <span className={entry.kind === "deleted" ? "text-gray-500 line-through" : "text-gray-100"}>
+    <span className={entry.kind === "deleted" ? "text-subtle line-through" : "text-ink"}>
       {entry.sectionTitle}
     </span>
   );
@@ -58,7 +58,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
   return (
     <article
       className={`rounded-xl border bg-gray-900/50 transition-colors ${
-        isNew ? "border-l-2 border-l-emerald-500/70 border-y-gray-800 border-r-gray-800" : "border-gray-800"
+        isNew ? "border-l-2 border-l-emerald-500/70 border-y-line border-r-line" : "border-line"
       }`}
     >
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-3.5 py-3">
@@ -73,7 +73,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
             <Link
               href={`/projects/${projectSlug}/sections/${toSlug(entry.sectionTitle)}`}
               prefetch={false}
-              className="transition-colors hover:text-white hover:underline"
+              className="transition-colors hover:text-ink hover:underline"
             >
               {title}
             </Link>
@@ -83,7 +83,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
         </h3>
 
         {entry.previousTitle && (
-          <span className="truncate text-[11px] text-gray-500">
+          <span className="truncate text-[11px] text-subtle">
             {t("changelog.renamedFrom", "antes: {title}").replace("{title}", entry.previousTitle)}
           </span>
         )}
@@ -91,7 +91,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           {delta !== 0 && (
             <span
-              className={`text-[11px] tabular-nums ${delta > 0 ? "text-emerald-400/80" : "text-rose-400/80"}`}
+              className={`text-[11px] tabular-nums ${delta > 0 ? "text-emerald-600/80 dark:text-emerald-400/80" : "text-rose-600/80 dark:text-rose-400/80"}`}
               title={t("changelog.wordDelta", "saldo de palavras")}
             >
               {delta > 0 ? "+" : "−"}
@@ -99,20 +99,20 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
             </span>
           )}
           {entry.origin === "mcp" && (
-            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold leading-none text-violet-300">
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold leading-none text-violet-700 dark:text-violet-300">
               {t("changelog.originMcp", "agente")}
             </span>
           )}
           {entry.authorName && (
-            <span className="max-w-[10rem] truncate text-xs text-gray-400">{entry.authorName}</span>
+            <span className="max-w-[10rem] truncate text-xs text-muted">{entry.authorName}</span>
           )}
-          <span className="text-xs tabular-nums text-gray-500">{formatTime(entry.at, locale)}</span>
+          <span className="text-xs tabular-nums text-subtle">{formatTime(entry.at, locale)}</span>
           {hasDiff && (
             <button
               type="button"
               onClick={() => setExpanded((value) => !value)}
               aria-expanded={expanded}
-              className="rounded-md px-1.5 py-0.5 text-xs text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-100"
+              className="rounded-md px-1.5 py-0.5 text-xs text-muted transition-colors hover:bg-surface hover:text-ink"
             >
               {expanded
                 ? t("changelog.hideDiff", "ocultar")
@@ -123,7 +123,7 @@ export default function ChangeCard({ entry, projectSlug, isNew = false }: Props)
       </div>
 
       {expanded && hasDiff && (
-        <div className="border-t border-gray-800 bg-gray-950/60 px-3.5 py-3">
+        <div className="border-t border-line bg-canvas/60 px-3.5 py-3">
           <DiffView before={entry.before} after={entry.after} />
         </div>
       )}

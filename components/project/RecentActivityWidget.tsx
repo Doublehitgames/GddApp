@@ -19,10 +19,10 @@ const ACTION_STYLES: Record<
   ActivityLogEvent["action"],
   { badge: string; dot: string }
 > = {
-  created:  { badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400", dot: "bg-emerald-500/60" },
-  deleted:  { badge: "border-red-500/30    bg-red-500/10    text-red-400",       dot: "bg-red-500/60"    },
-  renamed:  { badge: "border-amber-500/30  bg-amber-500/10  text-amber-400",     dot: "bg-amber-500/60"  },
-  modified: { badge: "border-blue-500/30   bg-blue-500/10   text-blue-400",      dot: "bg-blue-500/60"   },
+  created:  { badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500/60" },
+  deleted:  { badge: "border-red-500/30    bg-red-500/10    text-red-600 dark:text-red-400",       dot: "bg-red-500/60"    },
+  renamed:  { badge: "border-amber-500/30  bg-amber-500/10  text-amber-600 dark:text-amber-400",     dot: "bg-amber-500/60"  },
+  modified: { badge: "border-blue-500/30   bg-blue-500/10   text-blue-600 dark:text-blue-400",      dot: "bg-blue-500/60"   },
 };
 
 /**
@@ -103,20 +103,20 @@ function ActivityCard({
           {actionLabels[event.action]}
         </span>
         {isAgent && (
-          <span className="w-fit rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold leading-none text-violet-300">
+          <span className="w-fit rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold leading-none text-violet-700 dark:text-violet-300">
             {t("activityLog.originMcp", "via MCP")}
           </span>
         )}
       </div>
 
       <p className={`line-clamp-2 text-sm font-medium leading-snug transition-colors ${
-        isDeleted ? "text-gray-500 line-through" : "text-gray-100 group-hover:text-white"
+        isDeleted ? "text-subtle line-through" : "text-ink group-hover:text-ink"
       }`}>
         {event.section_title}
       </p>
 
       {event.action === "renamed" && event.old_title && (
-        <p className="text-[11px] text-gray-600 truncate -mt-1">
+        <p className="text-[11px] text-subtle truncate -mt-1">
           {t("activityLog.renamedFrom").replace("{title}", event.old_title)}
         </p>
       )}
@@ -126,16 +126,16 @@ function ActivityCard({
 
       <div className="mt-auto flex flex-col gap-0.5 pt-0.5">
         {event.user_name && (
-          <span className="truncate text-xs text-gray-400">{event.user_name}</span>
+          <span className="truncate text-xs text-muted">{event.user_name}</span>
         )}
-        <span className="text-xs text-gray-500">{timeAgo(event.created_at)}</span>
+        <span className="text-xs text-subtle">{timeAgo(event.created_at)}</span>
       </div>
     </>
   );
 
   if (isDeleted) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-gray-800/60 bg-gray-900/30 p-3 opacity-60 cursor-default">
+      <div className="flex flex-col gap-2 rounded-xl border border-line/60 bg-canvas/30 p-3 opacity-60 cursor-default">
         {inner}
       </div>
     );
@@ -146,7 +146,7 @@ function ActivityCard({
       href={`/projects/${projectId}/sections/${toSlug(event.section_title)}`}
       prefetch={false}
       onClick={onNavigate}
-      className="group flex flex-col gap-2 rounded-xl border border-gray-700/80 bg-gray-900/50 p-3 transition-all duration-150 hover:border-indigo-500/50 hover:bg-gray-800/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+      className="group flex flex-col gap-2 rounded-xl border border-line/80 bg-canvas/50 p-3 transition-all duration-150 hover:border-indigo-500/50 hover:bg-surface/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
     >
       {inner}
     </Link>
@@ -177,26 +177,26 @@ function HistoryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl border border-gray-700 shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]"
+        className="bg-canvas rounded-2xl border border-line shadow-2xl w-full max-w-2xl flex flex-col max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800/60 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line/60 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-600 dark:text-violet-400">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-white">{t("activityLog.modalTitle")}</span>
-            <span className="rounded-full bg-gray-700/60 px-2 py-0.5 text-[11px] text-gray-400">
+            <span className="text-sm font-semibold text-ink">{t("activityLog.modalTitle")}</span>
+            <span className="rounded-full bg-surface-2/60 px-2 py-0.5 text-[11px] text-muted">
               {countLabel}
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-ink transition-colors"
             aria-label={t("activityLog.modalClose")}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,25 +275,25 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
   return (
     <>
       <section className="ui-card-premium p-0 overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-gray-800/60">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400">
+        <div className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b border-line/60">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-600 dark:text-violet-400">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-white">{t("activityLog.widgetTitle")}</span>
+          <span className="text-sm font-semibold text-ink">{t("activityLog.widgetTitle")}</span>
 
           {/* O widget mostra o que aconteceu; o changelog mostra o que mudou no
               texto. Quem quer o diff sai por aqui. */}
           <Link
             href={`/projects/${projectId}/changelog`}
             prefetch={false}
-            className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-200"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/10 hover:text-violet-800 dark:hover:text-violet-200"
           >
             {t("activityLog.openChangelog", "o que mudou")}
             {unreadCount > 0 && (
-              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-emerald-300">
+              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-emerald-700 dark:text-emerald-300">
                 {unreadCount}
               </span>
             )}
@@ -301,7 +301,7 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
 
           <div className="ml-auto flex items-center gap-3">
             {showOriginFilter && (
-              <div className="flex items-center gap-0.5 rounded-lg bg-gray-800/60 p-0.5">
+              <div className="flex items-center gap-0.5 rounded-lg bg-surface/60 p-0.5">
                 {([
                   ["all", t("activityLog.originAll",   "Tudo")],
                   ["app", t("activityLog.originApp",   "Você")],
@@ -313,8 +313,8 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
                     onClick={() => setOriginFilter(value)}
                     className={`rounded-md px-2 py-0.5 text-[11px] transition-colors ${
                       originFilter === value
-                        ? "bg-gray-700 text-white"
-                        : "text-gray-400 hover:text-gray-200"
+                        ? "bg-surface-2 text-ink"
+                        : "text-muted hover:text-ink"
                     }`}
                   >
                     {label}
@@ -330,7 +330,7 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
               {(["created", "modified", "renamed", "deleted"] as const)
                 .filter((action) => filtered.some((e) => e.action === action))
                 .map((action) => (
-                  <span key={action} className="flex items-center gap-1 text-[11px] text-gray-500">
+                  <span key={action} className="flex items-center gap-1 text-[11px] text-subtle">
                     <span className={`inline-block h-2 w-2 rounded-full ${ACTION_STYLES[action].dot}`} />
                     {actionLabels[action]}
                   </span>
@@ -350,7 +350,7 @@ export default function RecentActivityWidget({ projectId, realProjectId }: Props
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="mt-3 text-xs text-violet-400 hover:text-violet-200 transition-colors"
+              className="mt-3 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
             >
               {t("activityLog.seeMore")
                 .replace("{count}", String(extra))

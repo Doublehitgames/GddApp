@@ -88,16 +88,16 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
     <section className="ui-card-premium p-0 overflow-hidden">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-800/60">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-line/60">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-600 dark:text-violet-400">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-white">{t("roadmap.widget.title")}</span>
+          <span className="text-sm font-semibold text-ink">{t("roadmap.widget.title")}</span>
           {activePhase?.status === "active" && (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-700/50 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+            <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-300/50 dark:border-emerald-700/50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               {t("roadmap.widget.activeBadge")}
             </span>
@@ -105,7 +105,7 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
         </div>
         <Link
           href={href}
-          className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-200 transition-colors"
+          className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
         >
           {t("roadmap.widget.open")}
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +121,7 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
         {phases.length === 0 && (
           <Link
             href={href}
-            className="flex items-center gap-3 rounded-xl border border-dashed border-gray-700 px-3 py-4 text-gray-500 hover:border-violet-700/50 hover:text-violet-400 transition-colors"
+            className="flex items-center gap-3 rounded-xl border border-dashed border-line px-3 py-4 text-subtle hover:border-violet-300/50 dark:hover:border-violet-700/50 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
           >
             <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -136,34 +136,34 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
                 <span className={`h-2 w-2 shrink-0 rounded-full ${PHASE_STATUS_DOT[activePhase.status]}`} />
-                <span className="text-sm font-semibold text-white truncate">{activePhase.name}</span>
+                <span className="text-sm font-semibold text-ink truncate">{activePhase.name}</span>
                 {activePhase.targetDate && (
-                  <span className="ml-auto shrink-0 text-[11px] text-gray-500">
+                  <span className="ml-auto shrink-0 text-[11px] text-subtle">
                     {new Date(activePhase.targetDate + "-01").toLocaleDateString(locale, { month: "short", year: "numeric" })}
                   </span>
                 )}
               </div>
               {activePhase.description && (
-                <p className="text-xs text-gray-500 leading-relaxed pl-4 line-clamp-2">{activePhase.description}</p>
+                <p className="text-xs text-subtle leading-relaxed pl-4 line-clamp-2">{activePhase.description}</p>
               )}
             </div>
 
             {/* ── Phase progress bar ────────────────────────────────────── */}
             {total > 0 && (
               <div className="flex flex-col gap-1.5">
-                <div className="h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-surface overflow-hidden">
                   <div
                     className="h-full rounded-full bg-violet-500 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-gray-500">
+                  <span className="text-[11px] text-subtle">
                     {t("roadmap.widget.progress")
                       .replace("{done}", String(doneCount))
                       .replace("{total}", String(total))}
                   </span>
-                  <span className="text-[11px] font-semibold text-gray-400 tabular-nums">{progress}%</span>
+                  <span className="text-[11px] font-semibold text-muted tabular-nums">{progress}%</span>
                 </div>
               </div>
             )}
@@ -172,25 +172,25 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
             {total > 0 && (
               <div className="flex items-center gap-3 flex-wrap">
                 {plannedCount > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] text-gray-500">
+                  <span className="flex items-center gap-1 text-[11px] text-subtle">
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0" />
                     {plannedCount} {t("roadmap.widget.statusPlanned")}
                   </span>
                 )}
                 {inProgressCount > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] text-sky-400">
+                  <span className="flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400">
                     <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
                     {inProgressCount} {t("roadmap.widget.statusInProgress")}
                   </span>
                 )}
                 {doneCount > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-400">
+                  <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
                     {doneCount} {t("roadmap.widget.statusDone")}
                   </span>
                 )}
                 {cutCount > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] text-rose-400/70">
+                  <span className="flex items-center gap-1 text-[11px] text-rose-600/70 dark:text-rose-400/70">
                     <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
                     {cutCount} {t("roadmap.widget.statusCut")}
                   </span>
@@ -200,24 +200,24 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
 
             {/* ── [1] In-progress items ─────────────────────────────────── */}
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                 {t("roadmap.widget.inProgressTitle")}
               </span>
               {inProgressItems.length === 0 ? (
-                <p className="text-[11px] text-gray-600 italic">{t("roadmap.widget.noInProgress")}</p>
+                <p className="text-[11px] text-subtle italic">{t("roadmap.widget.noInProgress")}</p>
               ) : (
                 <div className="flex flex-col gap-1">
                   {inProgressItems.map((item) => {
                     const tagCfg = item.tag ? ITEM_TAG_CONFIG[item.tag] : null;
                     return (
-                      <div key={item.id} className="flex items-center gap-1.5 rounded-lg border border-sky-800/40 bg-sky-950/20 px-2 py-1">
+                      <div key={item.id} className="flex items-center gap-1.5 rounded-lg border border-sky-200/40 dark:border-sky-800/40 bg-sky-50 dark:bg-sky-950/20 px-2 py-1">
                         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
                         {tagCfg && (
                           <span className={`shrink-0 rounded px-1 text-[9px] font-bold leading-4 ${tagCfg.chipStyle}`}>
                             {tagCfg.label}
                           </span>
                         )}
-                        <span className="flex-1 min-w-0 text-xs text-sky-200 truncate">{item.title || "—"}</span>
+                        <span className="flex-1 min-w-0 text-xs text-sky-800 dark:text-sky-200 truncate">{item.title || "—"}</span>
                       </div>
                     );
                   })}
@@ -226,32 +226,32 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
             </div>
 
             {/* ── Divider ───────────────────────────────────────────────── */}
-            <div className="border-t border-gray-800/60" />
+            <div className="border-t border-line/60" />
 
             {/* ── [4] Overall roadmap progress ──────────────────────────── */}
             {totalItems > 0 && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                     {t("roadmap.widget.overallTitle")}
                   </span>
-                  <span className="text-[11px] text-gray-500 tabular-nums">
+                  <span className="text-[11px] text-subtle tabular-nums">
                     {totalDone}/{totalItems} · {overallProgress}%
                   </span>
                 </div>
-                <div className="h-1 w-full rounded-full bg-gray-800 overflow-hidden">
+                <div className="h-1 w-full rounded-full bg-surface overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gray-500 transition-all duration-500"
                     style={{ width: `${overallProgress}%` }}
                   />
                 </div>
                 {completedPhases > 0 && (
-                  <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                  <div className="flex items-center gap-1 text-[11px] text-subtle">
                     <svg className="h-2.5 w-2.5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                     {t("roadmap.widget.completedPhases").replace("{count}", String(completedPhases))}
-                    <span className="text-gray-600">·</span>
+                    <span className="text-subtle">·</span>
                     {t("roadmap.widget.phases").replace("{count}", String(phases.length))}
                   </div>
                 )}
@@ -260,14 +260,14 @@ export default function RoadmapWidget({ projectId, realProjectId }: Props) {
 
             {/* ── [3] Next phase ────────────────────────────────────────── */}
             {nextPhase && (
-              <div className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/60 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas/60 px-3 py-2">
                 <div className="flex flex-col flex-1 min-w-0 gap-0.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
                     {t("roadmap.widget.nextPhaseTitle")}
                   </span>
-                  <span className="text-xs text-gray-300 truncate">{nextPhase.name}</span>
+                  <span className="text-xs text-ink-2 truncate">{nextPhase.name}</span>
                 </div>
-                <span className="shrink-0 text-[11px] text-gray-600 tabular-nums">
+                <span className="shrink-0 text-[11px] text-subtle tabular-nums">
                   {t("roadmap.widget.nextPhaseItems").replace("{count}", String(nextPhaseItems))}
                 </span>
                 <svg className="h-3.5 w-3.5 shrink-0 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -144,31 +144,31 @@ export default function GlobalBackupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-canvas text-ink p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">💾 {tr('Backup e Restauração', 'Backup and Restore', 'Backup y restauración')}</h1>
           <button
             onClick={() => router.push('/')}
-            className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition"
+            className="px-4 py-2 bg-surface-2 rounded hover:bg-surface-3 transition"
           >
             ← {tr('Voltar', 'Back', 'Volver')}
           </button>
         </div>
 
         {/* Stats */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="bg-surface rounded-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-2">📊 {tr('Status do Sistema', 'System Status', 'Estado del sistema')}</h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted text-sm">
             {tr(`${allProjects.length} projeto(s) no sistema`, `${allProjects.length} project(s) in the system`, `${allProjects.length} proyecto(s) en el sistema`)}
           </p>
         </div>
 
         {/* Restore Section - FIRST */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="bg-surface rounded-lg p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">📥 {tr('Restaurar Backup', 'Restore Backup', 'Restaurar backup')}</h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted mb-6">
             {tr(
               'Importe um arquivo de backup JSON para restaurar projetos deletados. O sistema detecta automaticamente se é um projeto único ou backup completo.',
               'Import a JSON backup file to restore deleted projects. The system automatically detects whether it is a single project or a full backup.',
@@ -196,7 +196,7 @@ export default function GlobalBackupPage() {
                 ? tr('Restaurando...', 'Restoring...', 'Restaurando...')
                 : tr('Selecionar Arquivo de Backup', 'Select Backup File', 'Seleccionar archivo de backup')}
             </h3>
-            <p className="text-green-200">
+            <p className="text-green-800 dark:text-green-200">
               {tr('Clique para escolher um arquivo .json', 'Click to choose a .json file', 'Haz clic para elegir un archivo .json')}
             </p>
           </div>
@@ -205,8 +205,8 @@ export default function GlobalBackupPage() {
           {restoreMessage && (
             <div className={`mt-4 p-4 rounded-lg ${
               restoreMessage.startsWith('✅') 
-                ? 'bg-green-900/50 text-green-200 border border-green-700' 
-                : 'bg-red-900/50 text-red-200 border border-red-700'
+                ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700' 
+                : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700'
             }`}>
               {restoreMessage}
             </div>
@@ -214,9 +214,9 @@ export default function GlobalBackupPage() {
         </div>
 
         {/* Export Section */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="bg-surface rounded-lg p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">📤 {tr('Criar Backup', 'Create Backup', 'Crear backup')}</h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted mb-6">
             {tr(
               'Exporte todos os seus projetos em formato JSON para backup seguro. Todos os dados serão preservados: IDs, ordem, hierarquia e conteúdo.',
               'Export all your projects in JSON format for a safe backup. All data is preserved: IDs, order, hierarchy, and content.',
@@ -227,14 +227,14 @@ export default function GlobalBackupPage() {
           <button
             onClick={exportAllProjectsAsJSON}
             disabled={isExporting || allProjects.length === 0}
-            className="w-full p-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-800 transition disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            className="w-full p-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg hover:from-purple-700 hover:to-purple-200 dark:hover:to-purple-800 transition disabled:opacity-50 disabled:cursor-not-allowed text-left"
           >
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold mb-1">
                   {tr('Fazer Backup de TODOS os Projetos', 'Backup ALL Projects', 'Hacer backup de TODOS los proyectos')}
                 </h3>
-                <p className="text-purple-200 text-sm">
+                <p className="text-purple-800 dark:text-purple-200 text-sm">
                   {allProjects.length === 0 
                     ? tr('Nenhum projeto para fazer backup', 'No projects to back up', 'No hay proyectos para hacer backup')
                     : tr(`Salva todos os ${allProjects.length} projeto(s) do sistema`, `Saves all ${allProjects.length} project(s) in the system`, `Guarda todos los ${allProjects.length} proyecto(s) del sistema`)
@@ -247,9 +247,9 @@ export default function GlobalBackupPage() {
         </div>
 
         {/* Info Box */}
-        <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-200 mb-2">ℹ️ {tr('Sobre o Sistema de Backup', 'About the Backup System', 'Sobre el sistema de backup')}</h3>
-          <ul className="text-sm text-blue-300 space-y-1">
+        <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">ℹ️ {tr('Sobre o Sistema de Backup', 'About the Backup System', 'Sobre el sistema de backup')}</h3>
+          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
             <li>• <strong>{tr('Projeto único', 'Single project', 'Proyecto único')}:</strong> {tr('Backup individual feito na página do projeto', 'Individual backup created on the project page', 'Backup individual creado en la página del proyecto')}</li>
             <li>• <strong>{tr('Todos os projetos', 'All projects', 'Todos los proyectos')}:</strong> {tr('Backup completo feito aqui', 'Full backup created here', 'Backup completo creado aquí')}</li>
             <li>• {tr('Backups são arquivos JSON com 100% de fidelidade', 'Backups are JSON files with 100% fidelity', 'Los backups son archivos JSON con 100% de fidelidad')}</li>

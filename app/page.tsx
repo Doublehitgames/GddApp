@@ -76,7 +76,7 @@ function ProjectCard({
   const ownerName = ownerLabel(owner);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-gray-700/80 bg-gray-800/70 hover:border-indigo-500/50 hover:bg-gray-800 transition-all group min-h-[90px] flex flex-col">
+    <div className="relative overflow-hidden rounded-xl border border-line/80 bg-surface/70 hover:border-indigo-500/50 hover:bg-surface transition-all group min-h-[90px] flex flex-col">
       {coverUrl && (
         <>
           <div
@@ -85,7 +85,7 @@ function ProjectCard({
             aria-hidden="true"
           />
           <div
-            className="absolute inset-0 bg-gradient-to-r from-gray-900/80 via-gray-900/50 to-gray-900/70"
+            className="absolute inset-0 bg-gradient-to-r from-canvas/80 via-canvas/50 to-canvas/70"
             aria-hidden="true"
           />
         </>
@@ -112,30 +112,30 @@ function ProjectCard({
           </h3>
           {ownerName && (
             <p
-              className="mt-1 flex items-center gap-1.5 text-xs text-gray-300 min-w-0 pr-14"
+              className="mt-1 flex items-center gap-1.5 text-xs text-ink-2 min-w-0 pr-14"
               title={owner?.email || ownerName}
             >
               <span
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-500/25 text-[9px] font-semibold uppercase text-indigo-200"
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-indigo-500/25 text-[9px] font-semibold uppercase text-indigo-800 dark:text-indigo-200"
                 aria-hidden="true"
               >
                 {ownerName.charAt(0)}
               </span>
               <span className="truncate">
-                <span className="text-gray-500">
+                <span className="text-subtle">
                   {t("home.projects.ownerPrefix", "de")}{" "}
                 </span>
                 {ownerName}
               </span>
             </p>
           )}
-          <p className="mt-1.5 text-xs text-gray-400">
+          <p className="mt-1.5 text-xs text-muted">
             <span
               className={
                 pagesLeft <= 0
-                  ? "text-red-400"
+                  ? "text-red-600 dark:text-red-400"
                   : pagesLeft <= 10
-                    ? "text-amber-400"
+                    ? "text-amber-600 dark:text-amber-400"
                     : undefined
               }
               title={t("home.projects.pagesLeft").replace(
@@ -164,7 +164,7 @@ function ProjectCard({
           />
           <Link
             href={`${projectPath(project)}/settings`}
-            className="p-1.5 rounded-lg bg-gray-800/90 border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+            className="p-1.5 rounded-lg bg-surface/90 border border-line text-muted hover:text-ink hover:border-line-strong transition-colors"
             title={t("home.projects.settings")}
             aria-label={t("home.projects.settings")}
             onClick={(e) => e.stopPropagation()}
@@ -252,13 +252,13 @@ export default function Home() {
   }, [menuOpen]);
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10 lg:px-10 pb-16">
+    <main className="min-h-screen bg-canvas text-ink px-4 py-8 md:px-8 md:py-10 lg:px-10 pb-16">
       <div className="mx-auto w-full max-w-5xl space-y-8">
 
         {/* ── Header ── */}
         <header className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.22em] text-indigo-300/90 font-medium">
+            <p className="text-xs uppercase tracking-[0.22em] text-indigo-700/90 dark:text-indigo-300/90 font-medium">
               {t("home.workspaceTag")}
             </p>
             <h1 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight">
@@ -271,7 +271,7 @@ export default function Home() {
               href="/docs"
               aria-label="Documentação"
               title="Documentação"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/70 px-3 text-sm text-gray-300 hover:border-indigo-500 hover:text-white transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-canvas/70 px-3 text-sm text-ink-2 hover:border-indigo-500 hover:text-ink transition-colors"
             >
               <span aria-hidden="true">📚</span>
               <span className="hidden sm:inline">Docs</span>
@@ -287,7 +287,7 @@ export default function Home() {
               <svg
                 viewBox="0 0 24 24"
                 aria-hidden="true"
-                className="w-4 h-4 fill-current text-white"
+                className="w-4 h-4 fill-current text-ink"
               >
                 <path d="M20.317 4.37A19.791 19.791 0 0 0 15.885 3c-.191.328-.403.768-.552 1.11a18.27 18.27 0 0 0-5.666 0A11.69 11.69 0 0 0 9.115 3a19.736 19.736 0 0 0-4.432 1.37C1.884 8.58 1.128 12.685 1.507 16.73a19.93 19.93 0 0 0 5.993 3.03c.486-.66.918-1.36 1.285-2.09-.708-.268-1.387-.598-2.028-.98.17-.124.336-.254.496-.388 3.91 1.84 8.16 1.84 12.023 0 .16.134.326.264.496.388a12.9 12.9 0 0 1-2.032.982c.367.73.8 1.43 1.286 2.09a19.88 19.88 0 0 0 5.995-3.03c.444-4.69-.759-8.757-3.704-12.36ZM8.02 14.12c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.41 2.15-2.41 1.21 0 2.17 1.09 2.15 2.41 0 1.33-.95 2.41-2.15 2.41Zm7.96 0c-1.18 0-2.15-1.08-2.15-2.41 0-1.33.95-2.41 2.15-2.41 1.21 0 2.17 1.09 2.15 2.41 0 1.33-.94 2.41-2.15 2.41Z" />
               </svg>
@@ -298,7 +298,7 @@ export default function Home() {
 
         {/* ── Limit warning ── */}
         {showLimitWarning && (
-          <div className="p-3 rounded-lg bg-amber-900/30 border border-amber-600/60 text-amber-200 text-sm">
+          <div className="p-3 rounded-lg bg-amber-100 dark:bg-amber-900/30 border border-amber-600/60 text-amber-800 dark:text-amber-200 text-sm">
             {t("home.projects.limitWarning")
               .replace("{{projectsLeft}}", String(Math.max(0, projectsLeft)))}
           </div>
@@ -311,7 +311,7 @@ export default function Home() {
               <h2 className="text-lg font-semibold">
                 {t("home.projects.myProjectsTitle")}
               </h2>
-              <span className="text-sm text-gray-500 tabular-nums">
+              <span className="text-sm text-subtle tabular-nums">
                 {myProjects.length}/{FREE_MAX_PROJECTS}
               </span>
             </div>
@@ -320,12 +320,12 @@ export default function Home() {
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-600 bg-gray-800 text-sm text-gray-200 hover:border-indigo-500 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line-strong bg-surface text-sm text-ink hover:border-indigo-500 hover:text-ink transition-colors"
               >
                 <span aria-hidden="true">+</span>
                 <span>{t("projects.newProject")}</span>
                 <svg
-                  className={`w-3 h-3 text-gray-400 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+                  className={`w-3 h-3 text-muted transition-transform ${menuOpen ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -341,11 +341,11 @@ export default function Home() {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-20 overflow-hidden py-1">
+                <div className="absolute right-0 top-full mt-1.5 w-56 bg-surface border border-line rounded-xl shadow-2xl z-20 overflow-hidden py-1">
                   <Link
                     href="/ai-create-simple"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700/70 transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-ink hover:bg-surface-2/70 transition-colors"
                   >
                     <span aria-hidden="true">🤖</span>
                     <span>{t("home.quickActions.createAi")}</span>
@@ -353,16 +353,16 @@ export default function Home() {
                   <Link
                     href="/import"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-200 hover:bg-gray-700/70 transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-ink hover:bg-surface-2/70 transition-colors"
                   >
                     <span aria-hidden="true">✨</span>
                     <span>{t("home.quickActions.importAi")}</span>
                   </Link>
-                  <div className="my-1 border-t border-gray-700/80" />
+                  <div className="my-1 border-t border-line/80" />
                   <Link
                     href="/projects"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-700/70 hover:text-gray-200 transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-muted hover:bg-surface-2/70 hover:text-ink transition-colors"
                   >
                     <span aria-hidden="true">📝</span>
                     <span>{t("home.quickActions.createManual")}</span>
@@ -377,11 +377,11 @@ export default function Home() {
               <ProjectCard key={p.id} project={p} />
             ))}
             {myProjects.length === 0 && (
-              <div className="sm:col-span-2 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-700 p-10 text-center text-sm text-gray-500">
+              <div className="sm:col-span-2 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line p-10 text-center text-sm text-subtle">
                 <p>{t("home.projects.empty")}</p>
                 <Link
                   href="/ai-create-simple"
-                  className="inline-flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
                 >
                   <span aria-hidden="true">🤖</span>
                   <span>{t("home.quickActions.createAi")}</span>
@@ -394,7 +394,7 @@ export default function Home() {
         {/* ── Shared projects ── */}
         {sharedProjects.length > 0 && (
           <section>
-            <h2 className="text-base font-medium text-gray-500 mb-3">
+            <h2 className="text-base font-medium text-subtle mb-3">
               {t("home.projects.sharedTitle")}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -411,10 +411,10 @@ export default function Home() {
         )}
 
         {/* ── Secondary actions bar ── */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-5 border-t border-gray-800 text-sm text-gray-500">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-5 border-t border-line text-sm text-subtle">
           <Link
             href="/ai-create-simple"
-            className="inline-flex items-center gap-1.5 hover:text-gray-300 transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-ink-2 transition-colors"
           >
             <span aria-hidden="true">🤖</span>
             <span>{t("home.quickActions.createAi")}</span>
@@ -422,7 +422,7 @@ export default function Home() {
           <span className="text-gray-700" aria-hidden="true">·</span>
           <Link
             href="/import"
-            className="inline-flex items-center gap-1.5 hover:text-gray-300 transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-ink-2 transition-colors"
           >
             <span aria-hidden="true">✨</span>
             <span>{t("home.quickActions.importAi")}</span>
@@ -430,7 +430,7 @@ export default function Home() {
           <span className="text-gray-700" aria-hidden="true">·</span>
           <Link
             href="/backup"
-            className="inline-flex items-center gap-1.5 hover:text-gray-300 transition-colors"
+            className="inline-flex items-center gap-1.5 hover:text-ink-2 transition-colors"
           >
             <span aria-hidden="true">💾</span>
             <span>{t("home.quickActions.backup")}</span>

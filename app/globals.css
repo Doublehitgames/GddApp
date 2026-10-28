@@ -1,16 +1,117 @@
 @import "tailwindcss";
 
-/* Base fixa no escuro. O chrome do app e escuro, e as telas claras (view,
-   export, import, roadmap/print) ja definem a propria cor de texto. Antes
-   disso o body herdava preto em quem usa o sistema em tema claro. */
+/* `dark:` segue o tema do app (data-theme), não o do sistema operacional, e
+   não vale dentro de uma ilha clara (`light` ou `paper`, como o documento). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *, [data-theme="paper"], [data-theme="paper"] *)));
+
+/*
+ * Temas.
+ *
+ * `data-theme` no <html> escolhe o tema (o script de lib/theme aplica antes do
+ * primeiro paint). Toda cor de interface sai destes tokens — `bg-canvas`,
+ * `bg-surface`, `text-ink`, `border-line`… — e não de um cinza fixo. Um tema
+ * novo é só mais um bloco `[data-theme="…"]` redefinindo os mesmos tokens.
+ *
+ * `paper` é o tema das telas que são o documento (modo Doc, deck, impressão):
+ * sempre claras, em qualquer tema do app. Cor do Tailwind que só funciona num
+ * dos temas vai em par: `text-blue-700 dark:text-blue-300`.
+ */
+:root,
+[data-theme="dark"] {
+  --canvas: #13121a;
+  --surface: #1c1a25;
+  --surface-2: #26232f;
+  --surface-3: #312d3d;
+  --line: #2f2c3c;
+  --line-strong: #464159;
+  --ink: #edebf5;
+  --ink-2: #cfcbe0;
+  --muted: #a29eb5;
+  --subtle: #7d7893;
+  --accent: #9d8bff;
+  --accent-strong: #b6a8ff;
+  --accent-soft: #2c2547;
+  --on-accent: #17112f;
+  --area-vis: #a592ff;
+  --area-vis-soft: #2b2448;
+  --area-doc: #4cc9a8;
+  --area-doc-soft: #17332c;
+  --area-lib: #f0a845;
+  --area-lib-soft: #3a2b16;
+  --area-sys: #7fa4ff;
+  --area-sys-soft: #1d2a48;
+  --warn-soft: #3a2f16;
+  --warn-ink: #f3cf85;
+  --danger: #f87171;
+  --danger-soft: #3b1a1d;
+  color-scheme: dark;
+}
+
+[data-theme="light"],
+[data-theme="paper"] {
+  --canvas: #f5f4f9;
+  --surface: #ffffff;
+  --surface-2: #efedf6;
+  --surface-3: #e4e1ee;
+  --line: #e2dfec;
+  --line-strong: #c9c4da;
+  --ink: #1d1a2b;
+  --ink-2: #3a3650;
+  --muted: #646077;
+  --subtle: #8a8699;
+  --accent: #5b43d6;
+  --accent-strong: #4a33c4;
+  --accent-soft: #ebe6ff;
+  --on-accent: #ffffff;
+  --area-vis: #6a4fe0;
+  --area-vis-soft: #eee9ff;
+  --area-doc: #13896f;
+  --area-doc-soft: #e1f4ee;
+  --area-lib: #c27410;
+  --area-lib-soft: #fbeedb;
+  --area-sys: #2f63d8;
+  --area-sys-soft: #e3ecff;
+  --warn-soft: #fff4dc;
+  --warn-ink: #7a4e00;
+  --danger: #c53030;
+  --danger-soft: #fde8e8;
+  color-scheme: light;
+}
+
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: var(--canvas);
+  --foreground: var(--ink);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-area-vis: var(--area-vis);
+  --color-area-vis-soft: var(--area-vis-soft);
+  --color-area-doc: var(--area-doc);
+  --color-area-doc-soft: var(--area-doc-soft);
+  --color-area-lib: var(--area-lib);
+  --color-area-lib-soft: var(--area-lib-soft);
+  --color-area-sys: var(--area-sys);
+  --color-area-sys-soft: var(--area-sys-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -78,7 +179,7 @@ body {
 
 .markdown-with-refs th,
 .markdown-with-refs td {
-  border: 1px solid #4b5563;
+  border: 1px solid var(--line-strong);
   padding: 0.5rem 0.75rem;
   vertical-align: top;
   white-space: normal;
@@ -87,13 +188,13 @@ body {
 }
 
 .markdown-with-refs th {
-  background-color: #1f2937;
-  color: #f9fafb;
+  background-color: var(--surface-2);
+  color: var(--ink);
   font-weight: 600;
 }
 
 .markdown-with-refs td {
-  color: #e5e7eb;
+  color: var(--ink-2);
 }
 
 @media (max-width: 640px) {
@@ -180,8 +281,8 @@ body {
 
 /* Card visivel no editor para embeds de YouTube */
 .gdd-youtube-placeholder {
-  border: 1px solid #374151;
-  background: #111827;
+  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 0.75rem;
   padding: 0.75rem;
   margin: 0.75rem 0;
@@ -192,11 +293,11 @@ body {
 }
 
 .gdd-youtube-placeholder strong {
-  color: #f3f4f6;
+  color: var(--ink);
 }
 
 .gdd-youtube-placeholder a {
-  color: #93c5fd;
+  color: var(--accent);
   text-decoration: underline;
 }
 
@@ -205,7 +306,7 @@ body {
   max-width: 420px;
   height: auto;
   border-radius: 0.5rem;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--line-strong);
 }
 
 /* Citações Markdown no modo visualização (seção/projeto/documento) */
@@ -225,15 +326,15 @@ body {
 
 /* Scrollbar premium (global) */
 :root {
-  --scrollbar-track: rgba(17, 24, 39, 0.35);
-  --scrollbar-thumb: linear-gradient(180deg, rgba(100, 116, 139, 0.85) 0%, rgba(71, 85, 105, 0.82) 100%);
-  --scrollbar-thumb-hover: linear-gradient(180deg, rgba(148, 163, 184, 0.88) 0%, rgba(100, 116, 139, 0.86) 100%);
-  --scrollbar-border: rgba(17, 24, 39, 0.55);
+  --scrollbar-track: color-mix(in srgb, var(--canvas) 60%, transparent);
+  --scrollbar-thumb: var(--line-strong);
+  --scrollbar-thumb-hover: var(--subtle);
+  --scrollbar-border: var(--canvas);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.88) var(--scrollbar-track);
+  scrollbar-color: var(--line-strong) var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar {
@@ -263,7 +364,7 @@ body {
 /* Classe opcional para áreas premium específicas */
 .scrollbar-premium {
   scrollbar-width: thin;
-  scrollbar-color: rgba(129, 140, 248, 0.95) rgba(17, 24, 39, 0.55);
+  scrollbar-color: var(--accent) var(--scrollbar-track);
 }
 
 .scrollbar-premium::-webkit-scrollbar {
@@ -272,13 +373,13 @@ body {
 }
 
 .scrollbar-premium::-webkit-scrollbar-track {
-  background: rgba(17, 24, 39, 0.55);
+  background: var(--scrollbar-track);
   border-radius: 999px;
 }
 
 .scrollbar-premium::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, rgba(129, 140, 248, 0.95) 0%, rgba(217, 70, 239, 0.92) 100%);
-  border: 2px solid rgba(17, 24, 39, 0.7);
+  border: 2px solid var(--scrollbar-border);
   border-radius: 999px;
 }
 
@@ -294,8 +395,8 @@ body {
 /* UI primitives (padrao visual reutilizavel) */
 .ui-card-premium {
   border-radius: 1rem;
-  border: 1px solid rgb(55 65 81 / 0.8);
-  background: rgb(31 41 55 / 0.7);
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 1.25rem;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
@@ -308,13 +409,13 @@ body {
 
 .ui-input-dark {
   border-radius: 0.75rem;
-  border: 1px solid rgb(75 85 99);
-  background: rgb(17 24 39 / 0.8);
-  color: rgb(255 255 255);
+  border: 1px solid var(--line-strong);
+  background: var(--canvas);
+  color: var(--ink);
 }
 
 .ui-input-dark::placeholder {
-  color: rgb(156 163 175);
+  color: var(--subtle);
 }
 
 .ui-focus-ring-indigo {

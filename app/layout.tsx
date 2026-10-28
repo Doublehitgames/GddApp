@@ -4,6 +4,8 @@ import ClientInit from "./client-init";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { cookies, headers } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from "@/lib/i18n/config";
+import { ThemeProvider } from "@/lib/theme/provider";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme/config";
 
 function resolveLocaleFromAcceptLanguage(acceptLanguage: string | null): AppLocale {
   if (!acceptLanguage) return DEFAULT_LOCALE;
@@ -30,12 +32,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     : resolveLocaleFromAcceptLanguage(headerStore.get("accept-language"));
 
   return (
-    <html lang={initialLocale}>
+    <html lang={initialLocale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>
-        <I18nProvider initialLocale={initialLocale}>
-          <ClientInit />
-          {children}
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider initialLocale={initialLocale}>
+            <ClientInit />
+            {children}
+          </I18nProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

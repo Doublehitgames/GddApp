@@ -185,49 +185,49 @@ export default function RoadmapClient({ projectId }: Props) {
     setRenameDraft("");
   }
 
-  if (!mounted) return <div className="min-h-screen bg-gray-950" />;
+  if (!mounted) return <div className="min-h-screen bg-canvas" />;
 
   return (
-    <div className="flex h-screen flex-col bg-gray-950">
+    <div className="flex h-screen flex-col bg-canvas">
       {/* Top bar */}
-      <div className="shrink-0 border-b border-gray-800 bg-gray-950/90 backdrop-blur-sm px-4 py-3 sm:px-6 relative z-30">
+      <div className="shrink-0 border-b border-line bg-canvas/90 backdrop-blur-sm px-4 py-3 sm:px-6 relative z-30">
         <div className="flex items-center gap-3 min-w-0">
           {/* Icon */}
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-violet-600 dark:text-violet-400">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
           </div>
 
-          <h1 className="text-base font-semibold text-white shrink-0">{t("roadmap.pageTitle")}</h1>
+          <h1 className="text-base font-semibold text-ink shrink-0">{t("roadmap.pageTitle")}</h1>
 
           {/* Roadmap selector */}
           <div ref={dropdownRef} className="relative ml-1">
             <button
               type="button"
               onClick={() => setShowDropdown((v) => !v)}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-700/60 bg-gray-800/60 px-3 py-1.5 text-sm text-white hover:bg-gray-700/60 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-line/60 bg-surface/60 px-3 py-1.5 text-sm text-ink hover:bg-surface-2/60 transition-colors"
             >
               {currentRoadmap ? (
                 <>
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isReadOnly ? "bg-gray-500" : "bg-emerald-400"}`} />
                   <span className="max-w-[140px] truncate">{currentRoadmap.name}</span>
                   {isReadOnly && (
-                    <span className="shrink-0 rounded border border-gray-700 px-1 text-[10px] text-gray-500">
+                    <span className="shrink-0 rounded border border-line px-1 text-[10px] text-subtle">
                       {t("roadmap.multiRoadmap.statusArchived")}
                     </span>
                   )}
                 </>
               ) : (
-                <span className="text-gray-500">...</span>
+                <span className="text-subtle">...</span>
               )}
-              <svg className="h-3 w-3 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-3 w-3 shrink-0 text-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             {showDropdown && (
-              <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-1.5 flex flex-col gap-0.5">
+              <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-line bg-canvas shadow-2xl p-1.5 flex flex-col gap-0.5">
                 {/* Roadmap list */}
                 {roadmaps.map((r) => (
                   <div key={r.id} className="flex items-center gap-1 group/item">
@@ -241,27 +241,27 @@ export default function RoadmapClient({ projectId }: Props) {
                           if (e.key === "Escape") { setIsRenamingId(null); }
                         }}
                         onBlur={commitRename}
-                        className="flex-1 rounded-lg bg-gray-800 border border-gray-600 px-2 py-1.5 text-sm text-white outline-none"
+                        className="flex-1 rounded-lg bg-surface border border-line-strong px-2 py-1.5 text-sm text-ink outline-none"
                       />
                     ) : (
                       <>
                         <button
                           type="button"
                           onClick={() => { setViewingRoadmapId(r.id); setShowDropdown(false); }}
-                          className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors hover:bg-gray-800 ${r.id === currentRoadmapId ? "bg-gray-800/60" : ""}`}
+                          className={`flex flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm text-left transition-colors hover:bg-surface ${r.id === currentRoadmapId ? "bg-surface/60" : ""}`}
                         >
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.status === "active" ? "bg-emerald-400" : "bg-gray-600"}`} />
-                          <span className={`flex-1 truncate ${r.id === currentRoadmapId ? "font-semibold text-white" : "text-gray-400"}`}>
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.status === "active" ? "bg-emerald-400" : "bg-surface-3"}`} />
+                          <span className={`flex-1 truncate ${r.id === currentRoadmapId ? "font-semibold text-ink" : "text-muted"}`}>
                             {r.name}
                           </span>
                           {r.status === "archived" && (
-                            <span className="shrink-0 text-[10px] text-gray-600">{t("roadmap.multiRoadmap.statusArchived")}</span>
+                            <span className="shrink-0 text-[10px] text-subtle">{t("roadmap.multiRoadmap.statusArchived")}</span>
                           )}
                         </button>
                         <button
                           type="button"
                           onClick={() => { setIsRenamingId(r.id); setRenameDraft(r.name); }}
-                          className="shrink-0 p-1.5 text-gray-700 opacity-0 group-hover/item:opacity-100 hover:text-gray-300 transition-all"
+                          className="shrink-0 p-1.5 text-gray-700 opacity-0 group-hover/item:opacity-100 hover:text-ink-2 transition-all"
                           title={t("roadmap.multiRoadmap.rename")}
                         >
                           <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,13 +274,13 @@ export default function RoadmapClient({ projectId }: Props) {
                 ))}
 
                 {/* Divider + actions */}
-                <div className="border-t border-gray-800 pt-1 mt-0.5 flex flex-col gap-0.5">
+                <div className="border-t border-line pt-1 mt-0.5 flex flex-col gap-0.5">
                   {/* End active + create new — only for owner */}
                   {!isReadOnly && !isMember && currentRoadmapId && (
                     <button
                       type="button"
                       onClick={() => { setShowDropdown(false); setShowEndModal(true); setNewRoadmapNameDraft(`Roadmap v${roadmaps.length + 1}`); }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-amber-400 hover:bg-amber-950/20 transition-colors text-left"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors text-left"
                     >
                       <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -294,7 +294,7 @@ export default function RoadmapClient({ projectId }: Props) {
                     <button
                       type="button"
                       onClick={() => { handleReactivate(); setShowDropdown(false); }}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-950/20 transition-colors text-left"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors text-left"
                     >
                       <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -309,7 +309,7 @@ export default function RoadmapClient({ projectId }: Props) {
 
           {/* Phase / theme count */}
           {phases.length > 0 && (
-            <span className="text-xs text-gray-600 hidden sm:block">
+            <span className="text-xs text-subtle hidden sm:block">
               {phases.length} {t("roadmap.grid.phasesCount")} · {themes.length} {t("roadmap.grid.themesCount")}
             </span>
           )}
@@ -323,8 +323,8 @@ export default function RoadmapClient({ projectId }: Props) {
             onClick={() => setShowFilters((v) => !v)}
             className={`relative flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors shrink-0 ${
               showFilters || activeFilterCount > 0
-                ? "border-violet-600/60 bg-violet-950/40 text-violet-300"
-                : "border-gray-700/60 text-gray-400 hover:text-gray-300 hover:border-gray-600"
+                ? "border-violet-600/60 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                : "border-line/60 text-muted hover:text-ink-2 hover:border-line-strong"
             }`}
           >
             <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,7 +341,7 @@ export default function RoadmapClient({ projectId }: Props) {
           {/* View document link */}
           <a
             href={`/projects/${projectId}/view#roadmap-section`}
-            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-gray-700/60 px-3 py-1.5 text-xs text-gray-400 hover:text-violet-300 hover:border-violet-700/50 transition-colors shrink-0"
+            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-line/60 px-3 py-1.5 text-xs text-muted hover:text-violet-700 dark:hover:text-violet-300 hover:border-violet-300/50 dark:hover:border-violet-700/50 transition-colors shrink-0"
           >
             <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -354,7 +354,7 @@ export default function RoadmapClient({ projectId }: Props) {
             href={`/projects/${projectId}/roadmap/print`}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-gray-700/60 px-3 py-1.5 text-xs text-gray-400 hover:text-violet-300 hover:border-violet-700/50 transition-colors shrink-0"
+            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-line/60 px-3 py-1.5 text-xs text-muted hover:text-violet-700 dark:hover:text-violet-300 hover:border-violet-300/50 dark:hover:border-violet-700/50 transition-colors shrink-0"
           >
             <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -364,8 +364,8 @@ export default function RoadmapClient({ projectId }: Props) {
 
           {/* Member read-only badge */}
           {isMember && (
-            <span className="ml-auto flex items-center gap-1.5 rounded-full border border-gray-700 bg-gray-800/60 px-3 py-1 text-xs text-gray-400 shrink-0">
-              <svg className="h-3 w-3 shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span className="ml-auto flex items-center gap-1.5 rounded-full border border-line bg-surface/60 px-3 py-1 text-xs text-muted shrink-0">
+              <svg className="h-3 w-3 shrink-0 text-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               {t("roadmap.readOnly.badge")}
@@ -376,20 +376,20 @@ export default function RoadmapClient({ projectId }: Props) {
 
       {/* Filter bar */}
       {showFilters && (
-        <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-800 bg-gray-900/60 px-4 py-2.5">
+        <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-canvas/60 px-4 py-2.5">
           {/* Status filters */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider text-gray-600 mr-0.5">{t("roadmap.filter.byStatus")}</span>
+            <span className="text-[10px] uppercase tracking-wider text-subtle mr-0.5">{t("roadmap.filter.byStatus")}</span>
             {(["planned", "in_progress", "done", "cut"] as ItemStatus[]).map((s) => {
               const active = filterStatuses.includes(s);
               const dotCls = { planned: "bg-slate-500", in_progress: "bg-sky-400", done: "bg-emerald-400", cut: "bg-rose-500" }[s];
-              const activeCls = { planned: "border-slate-600 bg-slate-800/60 text-slate-300", in_progress: "border-sky-700/60 bg-sky-950/50 text-sky-300", done: "border-emerald-700/60 bg-emerald-950/50 text-emerald-300", cut: "border-rose-700/40 bg-rose-950/30 text-rose-400" }[s];
+              const activeCls = { planned: "border-line-strong bg-surface/60 text-ink-2", in_progress: "border-sky-300/60 dark:border-sky-700/60 bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300", done: "border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300", cut: "border-rose-300/40 dark:border-rose-700/40 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400" }[s];
               return (
                 <button
                   key={s}
                   type="button"
                   onClick={() => toggleStatus(s)}
-                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${active ? activeCls : "border-gray-700/60 text-gray-600 hover:border-gray-600 hover:text-gray-400"}`}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${active ? activeCls : "border-line/60 text-subtle hover:border-line-strong hover:text-muted"}`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotCls}`} />
                   {t("roadmap.status." + s)}
@@ -399,11 +399,11 @@ export default function RoadmapClient({ projectId }: Props) {
           </div>
 
           {/* Separator */}
-          <div className="hidden sm:block h-4 w-px bg-gray-800" />
+          <div className="hidden sm:block h-4 w-px bg-surface" />
 
           {/* Tag filters */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wider text-gray-600 mr-0.5">{t("roadmap.filter.byTag")}</span>
+            <span className="text-[10px] uppercase tracking-wider text-subtle mr-0.5">{t("roadmap.filter.byTag")}</span>
             {ITEM_TAGS.map((tag) => {
               const cfg = ITEM_TAG_CONFIG[tag];
               const active = filterTags.includes(tag);
@@ -412,7 +412,7 @@ export default function RoadmapClient({ projectId }: Props) {
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={`rounded border px-2 py-0.5 text-[11px] font-bold transition-colors ${active ? cfg.style : "border-gray-700/60 text-gray-600 hover:border-gray-600 hover:text-gray-400"}`}
+                  className={`rounded border px-2 py-0.5 text-[11px] font-bold transition-colors ${active ? cfg.style : "border-line/60 text-subtle hover:border-line-strong hover:text-muted"}`}
                 >
                   {cfg.label}
                 </button>
@@ -425,7 +425,7 @@ export default function RoadmapClient({ projectId }: Props) {
             <button
               type="button"
               onClick={clearFilters}
-              className="ml-auto text-xs text-gray-600 hover:text-rose-400 transition-colors"
+              className="ml-auto text-xs text-subtle hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
             >
               {t("roadmap.filter.clear")}
             </button>
@@ -435,7 +435,7 @@ export default function RoadmapClient({ projectId }: Props) {
 
       {/* Archived banner */}
       {isReadOnly && (
-        <div className="shrink-0 flex items-center gap-2 bg-amber-950/30 border-b border-amber-800/40 px-4 py-2 text-xs text-amber-300">
+        <div className="shrink-0 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/40 dark:border-amber-800/40 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
           <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -445,7 +445,7 @@ export default function RoadmapClient({ projectId }: Props) {
 
       {/* Member read-only banner */}
       {isMember && (
-        <div className="shrink-0 flex items-center gap-2 bg-gray-900/80 border-b border-gray-800 px-4 py-2 text-xs text-gray-400">
+        <div className="shrink-0 flex items-center gap-2 bg-canvas/80 border-b border-line px-4 py-2 text-xs text-muted">
           <svg className="h-3.5 w-3.5 shrink-0 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -483,22 +483,22 @@ export default function RoadmapClient({ projectId }: Props) {
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setShowEndModal(false); }}
         >
-          <div className="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 shadow-2xl p-5 flex flex-col gap-4">
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-canvas shadow-2xl p-5 flex flex-col gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-sm font-semibold text-white">{t("roadmap.multiRoadmap.endTitle")}</h3>
+              <h3 className="text-sm font-semibold text-ink">{t("roadmap.multiRoadmap.endTitle")}</h3>
             </div>
 
-            <p className="text-xs text-gray-400 leading-relaxed">
+            <p className="text-xs text-muted leading-relaxed">
               {t("roadmap.multiRoadmap.endDescription")}
             </p>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] text-gray-500 uppercase tracking-wider">
+              <label className="text-[11px] text-subtle uppercase tracking-wider">
                 {t("roadmap.multiRoadmap.newPlaceholder")}
               </label>
               <input
@@ -506,7 +506,7 @@ export default function RoadmapClient({ projectId }: Props) {
                 value={newRoadmapNameDraft}
                 onChange={(e) => setNewRoadmapNameDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleEndRoadmap(); if (e.key === "Escape") setShowEndModal(false); }}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-600"
+                className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-line-strong placeholder-subtle"
                 placeholder={`Roadmap v${roadmaps.length + 1}`}
               />
             </div>
@@ -522,7 +522,7 @@ export default function RoadmapClient({ projectId }: Props) {
               <button
                 type="button"
                 onClick={() => setShowEndModal(false)}
-                className="flex-1 rounded-xl border border-gray-700 px-4 py-2 text-sm text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                className="flex-1 rounded-xl border border-line px-4 py-2 text-sm text-muted hover:text-ink hover:border-line-strong transition-colors"
               >
                 {t("roadmap.multiRoadmap.endCancel")}
               </button>

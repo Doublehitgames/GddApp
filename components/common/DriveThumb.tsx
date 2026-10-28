@@ -33,7 +33,7 @@ export function DriveThumb({ fileId, alt, size = 200, className }: DriveThumbPro
   if (attempt >= candidates.length) {
     return (
       <div
-        className={`flex items-center justify-center bg-gray-950 p-1 text-center text-[8px] leading-tight text-gray-500 ${className ?? ""}`}
+        className={`flex items-center justify-center bg-canvas p-1 text-center text-[8px] leading-tight text-subtle ${className ?? ""}`}
         title={t("imageLibrary.thumbNoAccessTooltip").replace("{name}", alt)}
       >
         {t("imageLibrary.thumbNoAccess")}

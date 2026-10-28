@@ -361,16 +361,16 @@ export function SectionPickerModal({
       }}
     >
       <div
-        className="bg-gray-900 border border-gray-700/80 text-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col"
+        className="bg-canvas border border-line/80 text-ink rounded-xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-700/80">
+        <div className="px-5 py-4 border-b border-line/80">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-ink flex items-center gap-2">
                 {title}
-                <span className="text-xs text-gray-500 font-normal">
+                <span className="text-xs text-subtle font-normal">
                   {t("sectionDetail.picker.pageCount", "{count} páginas").replace(
                     "{count}",
                     String(totalPages)
@@ -378,13 +378,13 @@ export function SectionPickerModal({
                 </span>
               </h2>
               {description && (
-                <p className="text-sm text-gray-400 mt-1">{description}</p>
+                <p className="text-sm text-muted mt-1">{description}</p>
               )}
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-200 transition-colors shrink-0"
+              className="text-muted hover:text-ink transition-colors shrink-0"
               aria-label={t("common.cancel", "Cancelar")}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -395,7 +395,7 @@ export function SectionPickerModal({
 
           {/* Search */}
           <div className="mt-3 relative">
-            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-subtle pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
             </svg>
             <input
@@ -404,13 +404,13 @@ export function SectionPickerModal({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t("sectionDetail.picker.search", "Buscar página...")}
-              className="w-full bg-gray-800/80 border border-gray-700 rounded-lg pl-9 pr-8 py-2 text-sm text-gray-100 placeholder-gray-500 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
+              className="w-full bg-surface/80 border border-line rounded-lg pl-9 pr-8 py-2 text-sm text-ink placeholder-subtle outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-200"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-subtle hover:text-ink"
                 aria-label={t("sectionDetail.picker.clearSearch", "Limpar busca")}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -423,8 +423,8 @@ export function SectionPickerModal({
 
         {/* Selection toolbar — fixo, fora da área de rolagem */}
         {multiSelect && (
-          <div className="flex items-center justify-between px-5 py-2 border-b border-gray-700/80 shrink-0">
-            <span className="text-xs text-gray-400">
+          <div className="flex items-center justify-between px-5 py-2 border-b border-line/80 shrink-0">
+            <span className="text-xs text-muted">
               {multiSelection.size > 0
                 ? t(
                     multiSelection.size === 1
@@ -439,7 +439,7 @@ export function SectionPickerModal({
                 <button
                   type="button"
                   onClick={() => setMultiSelection(new Set())}
-                  className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                  className="text-xs text-muted hover:text-ink transition-colors"
                 >
                   {t("sectionDetail.picker.clear", "Limpar")}
                 </button>
@@ -448,7 +448,7 @@ export function SectionPickerModal({
                 <button
                   type="button"
                   onClick={selectChildrenOfSelectedParents}
-                  className="text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium"
+                  className="text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors font-medium"
                 >
                   {t("sectionDetail.picker.selectChildren", "Selecionar filhos")}
                 </button>
@@ -456,7 +456,7 @@ export function SectionPickerModal({
               <button
                 type="button"
                 onClick={toggleAllVisible}
-                className="text-xs text-sky-400 hover:text-sky-300 transition-colors font-medium"
+                className="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 transition-colors font-medium"
               >
                 {allVisibleSelected
                   ? t("sectionDetail.picker.deselectVisible", "Desmarcar visíveis")
@@ -479,7 +479,7 @@ export function SectionPickerModal({
               />
             )}
             {flatVisibleSelectable.length === 0 && hasSearch && (
-              <div className="px-3 py-6 text-center text-sm text-gray-500">
+              <div className="px-3 py-6 text-center text-sm text-subtle">
                 {t(
                   "sectionDetail.picker.noMatch",
                   "Nenhuma página encontrada para \"{term}\""
@@ -514,11 +514,11 @@ export function SectionPickerModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-gray-700/80 flex items-center gap-3">
-          <div className="flex-1 min-w-0 text-xs text-gray-400">
+        <div className="px-5 py-3 border-t border-line/80 flex items-center gap-3">
+          <div className="flex-1 min-w-0 text-xs text-muted">
             {multiSelect ? (
               multiSelection.size > 0 ? (
-                <span className="text-gray-200 font-medium">
+                <span className="text-ink font-medium">
                   {t(
                     multiSelection.size === 1
                       ? "sectionDetail.picker.selectedPagesOne"
@@ -527,31 +527,31 @@ export function SectionPickerModal({
                   ).replace("{count}", String(multiSelection.size))}
                 </span>
               ) : (
-                <span className="text-gray-600 italic">{t("sectionDetail.picker.selectAtLeastOne", "Selecione pelo menos uma página")}</span>
+                <span className="text-subtle italic">{t("sectionDetail.picker.selectAtLeastOne", "Selecione pelo menos uma página")}</span>
               )
             ) : selection === SECTION_PICKER_ROOT && allowRoot ? (
               <span>
-                <span className="text-gray-500">
+                <span className="text-subtle">
                   {t("sectionDetail.picker.destination", "Destino:")}
                 </span>{" "}
-                <span className="text-gray-200 font-medium">
+                <span className="text-ink font-medium">
                   {rootLabel || t("sectionDetail.picker.rootDefault", "📁 Raiz do Projeto")}
                 </span>
               </span>
             ) : selectedBreadcrumb ? (
               <span className="flex items-center gap-1 truncate">
-                <span className="text-gray-500 shrink-0">
+                <span className="text-subtle shrink-0">
                   {t("sectionDetail.picker.destination", "Destino:")}
                 </span>
                 <span className="truncate">
                   {selectedBreadcrumb.map((seg, idx) => (
                     <span key={seg.id}>
-                      {idx > 0 && <span className="text-gray-600 mx-1">›</span>}
+                      {idx > 0 && <span className="text-subtle mx-1">›</span>}
                       <span
                         className={
                           idx === selectedBreadcrumb.length - 1
-                            ? "text-gray-100 font-medium"
-                            : "text-gray-400"
+                            ? "text-ink font-medium"
+                            : "text-muted"
                         }
                       >
                         {seg.title}
@@ -561,7 +561,7 @@ export function SectionPickerModal({
                 </span>
               </span>
             ) : (
-              <span className="text-gray-600 italic">
+              <span className="text-subtle italic">
                 {t(
                   "sectionDetail.picker.selectDestination",
                   "Selecione um destino"
@@ -572,7 +572,7 @@ export function SectionPickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-sm border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors"
+            className="px-4 py-1.5 text-sm border border-line-strong text-ink rounded-lg hover:bg-surface transition-colors"
           >
             {t("common.cancel", "Cancelar")}
           </button>
@@ -588,7 +588,7 @@ export function SectionPickerModal({
               }
             }}
             disabled={multiSelect ? multiSelection.size === 0 : confirmDisabled}
-            className={`px-4 py-1.5 text-sm text-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${CONFIRM_CLASSES[confirmVariant]}`}
+            className={`px-4 py-1.5 text-sm text-ink rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${CONFIRM_CLASSES[confirmVariant]}`}
           >
             {multiSelect && multiSelection.size > 0
               ? `${confirmLabel} (${multiSelection.size})`
@@ -618,21 +618,21 @@ function RootRow({
       onClick={onSelect}
       className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
         selected
-          ? "bg-blue-900/30 ring-1 ring-blue-500/60"
-          : "hover:bg-gray-800/80"
+          ? "bg-blue-100 dark:bg-blue-900/30 ring-1 ring-blue-500/60"
+          : "hover:bg-surface/80"
       }`}
     >
       <div
         className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-          selected ? "border-blue-400" : "border-gray-600"
+          selected ? "border-blue-400" : "border-line-strong"
         }`}
       >
         {selected && <div className="w-2 h-2 rounded-full bg-blue-400" />}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-gray-100">{label}</div>
+        <div className="text-sm font-medium text-ink">{label}</div>
         {description && (
-          <div className="text-xs text-gray-500">{description}</div>
+          <div className="text-xs text-subtle">{description}</div>
         )}
       </div>
     </button>
@@ -695,11 +695,11 @@ function PickerRow({
         className={`group flex items-stretch rounded-lg transition-colors ${
           isSelected
             ? multiSelect
-              ? "bg-sky-900/30 ring-1 ring-sky-500/60"
-              : "bg-blue-900/30 ring-1 ring-blue-500/60"
+              ? "bg-sky-100 dark:bg-sky-900/30 ring-1 ring-sky-500/60"
+              : "bg-blue-100 dark:bg-blue-900/30 ring-1 ring-blue-500/60"
             : isDisabled
               ? "opacity-50"
-              : "hover:bg-gray-800/70"
+              : "hover:bg-surface/70"
         }`}
         style={{ paddingLeft: `${indent}px` }}
       >
@@ -719,7 +719,7 @@ function PickerRow({
             if (hasChildren) onToggleCollapse(section.id);
           }}
           className={`w-6 flex items-center justify-center text-gray-500 ${
-            hasChildren ? "hover:text-gray-200 cursor-pointer" : "cursor-default"
+            hasChildren ? "hover:text-ink cursor-pointer" : "cursor-default"
           }`}
           tabIndex={-1}
           aria-hidden={!hasChildren}
@@ -756,11 +756,11 @@ function PickerRow({
               className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
                 isMultiSelected
                   ? "bg-sky-500 border-sky-500"
-                  : "bg-transparent border-gray-500 group-hover:border-gray-300"
+                  : "bg-transparent border-line-strong group-hover:border-gray-300"
               }`}
             >
               {isMultiSelected && (
-                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="w-2.5 h-2.5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -772,16 +772,16 @@ function PickerRow({
           <span
             className={`text-sm truncate ${
               isDisabled
-                ? "text-gray-500"
+                ? "text-subtle"
                 : isSelected
-                  ? "text-white font-medium"
-                  : "text-gray-200"
+                  ? "text-ink font-medium"
+                  : "text-ink"
             }`}
           >
             {renderHighlight(section.title, searchTerm, normTerm)}
           </span>
           {reason && (
-            <span className="ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 bg-amber-500/15 text-amber-300 rounded shrink-0">
+            <span className="ml-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 rounded shrink-0">
               {reason}
             </span>
           )}
@@ -827,7 +827,7 @@ function renderHighlight(text: string, searchTerm: string, normTerm: string): Re
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-amber-400/30 text-amber-100 rounded px-0.5">
+      <mark className="bg-amber-400/30 text-amber-900 dark:text-amber-100 rounded px-0.5">
         {text.slice(idx, end)}
       </mark>
       {text.slice(end)}

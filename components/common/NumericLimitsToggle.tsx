@@ -58,17 +58,17 @@ export function NumericLimitsToggle({
     <div className="mt-2">
       {/* Divider row */}
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
           {label}
         </span>
-        <div className="flex-1 border-t border-gray-700" />
+        <div className="flex-1 border-t border-line" />
         <button
           type="button"
           onClick={handleToggle}
           className={`inline-flex h-5 items-center rounded px-1.5 text-[10px] font-semibold transition-colors ${
             effectivelyOpen
-              ? "bg-sky-800 text-sky-200 hover:bg-sky-700"
-              : "bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-gray-200"
+              ? "bg-sky-200 dark:bg-sky-800 text-sky-800 dark:text-sky-200 hover:bg-sky-700"
+              : "bg-surface-2 text-muted hover:bg-surface-3 hover:text-ink"
           }`}
         >
           {effectivelyOpen ? "ON" : "OFF"}

@@ -1,6 +1,7 @@
 "use client";
 
 import "@blocknote/core/fonts/inter.css";
+import { useTheme } from "@/lib/theme/provider";
 import "@blocknote/mantine/style.css";
 
 import { useEffect, useMemo, useRef } from "react";
@@ -94,11 +95,13 @@ function insertAfterGroup<T, U>(list: T[], group: string, items: U[]): (T | U)[]
 export default function RichDocEditor({
   blocks,
   editable,
-  theme = "dark",
+  theme: themeProp,
   onChange,
   debounceMs = 300,
   onReady,
 }: RichDocEditorProps) {
+  const appTheme = useTheme().theme;
+  const theme = themeProp ?? appTheme;
   const { locale, t } = useI18n();
   const dictionary = useMemo(() => {
     const { base, columns } = pickDictionaries(locale);

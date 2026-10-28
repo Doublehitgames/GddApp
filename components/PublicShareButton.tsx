@@ -57,8 +57,8 @@ export function PublicShareButton({
         aria-label={baseLabel}
         className={`relative z-10 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors shrink-0 ${
           copied
-            ? "border-emerald-400/60 bg-emerald-600/25 text-emerald-100"
-            : "border-sky-400/40 bg-sky-600/20 text-sky-100 hover:border-sky-300/70 hover:bg-sky-600/30"
+            ? "border-emerald-400/60 bg-emerald-600/25 text-emerald-900 dark:text-emerald-100"
+            : "border-sky-400/40 bg-sky-600/20 text-sky-900 dark:text-sky-100 hover:border-sky-300/70 hover:bg-sky-600/30"
         } ${className}`}
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -90,10 +90,10 @@ export function PublicShareButton({
         copied
           ? theme === "light"
             ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-            : "border-emerald-400/60 bg-emerald-600/25 text-emerald-100"
+            : "border-emerald-400/60 bg-emerald-600/25 text-emerald-900 dark:text-emerald-100"
           : theme === "light"
             ? "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-300 hover:bg-sky-100 hover:text-sky-900"
-            : "border-sky-500/40 bg-sky-600/15 text-sky-200 hover:border-sky-400/70 hover:bg-sky-600/25 hover:text-white"
+            : "border-sky-500/40 bg-sky-600/15 text-sky-800 dark:text-sky-200 hover:border-sky-400/70 hover:bg-sky-600/25 hover:text-white"
       } ${className}`}
     >
       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

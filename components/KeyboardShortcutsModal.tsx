@@ -132,7 +132,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 
 function Kbd({ label }: { label: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1.5 rounded-md border border-gray-600/80 bg-gray-800/80 text-[11px] font-mono text-gray-100 shadow-sm shadow-black/30">
+    <kbd className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1.5 rounded-md border border-line-strong/80 bg-surface/80 text-[11px] font-mono text-ink shadow-sm shadow-black/30">
       {label}
     </kbd>
   );
@@ -187,15 +187,15 @@ export function KeyboardShortcutsModal() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-700 bg-gray-900/95 shadow-2xl shadow-black/50"
+        className="w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-line bg-canvas/95 shadow-2xl shadow-black/50"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-800 bg-gray-900/95 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 border-b border-line bg-canvas/95 backdrop-blur">
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">
+            <h2 className="text-lg font-semibold text-ink">
               {t("shortcuts.modalTitle", "Atalhos de teclado")}
             </h2>
-            <p className="mt-0.5 text-xs text-gray-400">
+            <p className="mt-0.5 text-xs text-muted">
               {t("shortcuts.modalHint", "Pressione ? a qualquer momento para abrir esta lista.")}
             </p>
           </div>
@@ -203,7 +203,7 @@ export function KeyboardShortcutsModal() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label={t("shortcuts.close", "Fechar")}
-            className="shrink-0 h-8 w-8 rounded-lg border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            className="shrink-0 h-8 w-8 rounded-lg border border-line bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink transition-colors"
           >
             ✕
           </button>
@@ -214,7 +214,7 @@ export function KeyboardShortcutsModal() {
             href="/docs"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 w-full rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200 hover:bg-indigo-500/20 hover:border-indigo-400/60 transition-colors"
+            className="flex items-center gap-2 w-full rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-800 dark:text-indigo-200 hover:bg-indigo-500/20 hover:border-indigo-400/60 transition-colors"
           >
             <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -229,22 +229,22 @@ export function KeyboardShortcutsModal() {
         <div className="px-5 py-4 space-y-5">
           {groups.map((group) => (
             <section key={group.titleKey}>
-              <h3 className="mb-2 text-[11px] uppercase tracking-wide font-semibold text-indigo-300">
+              <h3 className="mb-2 text-[11px] uppercase tracking-wide font-semibold text-indigo-700 dark:text-indigo-300">
                 {t(group.titleKey, group.titleFallback)}
               </h3>
               <ul className="space-y-1.5">
                 {group.shortcuts.map((shortcut, idx) => (
                   <li
                     key={`${group.titleKey}-${idx}`}
-                    className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-gray-800/60"
+                    className="flex items-start justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-surface/60"
                   >
-                    <span className="text-sm text-gray-200">
+                    <span className="text-sm text-ink">
                       {t(shortcut.descriptionKey, shortcut.descriptionFallback)}
                     </span>
                     <span className="shrink-0 inline-flex items-center gap-1">
                       {shortcut.keys.map((k, i) => (
                         <span key={i} className="inline-flex items-center gap-1">
-                          {i > 0 && <span className="text-gray-500 text-xs">+</span>}
+                          {i > 0 && <span className="text-subtle text-xs">+</span>}
                           <Kbd label={k} />
                         </span>
                       ))}

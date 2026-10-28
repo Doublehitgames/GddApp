@@ -105,7 +105,7 @@ export default function ProjectEditClient({ projectId }: Props) {
     return (
       <div className="p-6">
         {t("projectDetail.notFound")}{" "}
-        <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded" onClick={() => router.push("/")}>
+        <button className="ml-2 px-3 py-1 bg-surface-2 text-ink rounded" onClick={() => router.push("/")}>
           {t("projectDetail.backHome")}
         </button>
       </div>
@@ -115,7 +115,7 @@ export default function ProjectEditClient({ projectId }: Props) {
     <div
       className={
         isFullscreen
-          ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6"
+          ? "fixed inset-0 z-50 bg-canvas text-ink overflow-auto p-6"
           : "p-6 max-w-4xl mx-auto"
       }
     >
@@ -144,15 +144,15 @@ export default function ProjectEditClient({ projectId }: Props) {
                     onClick={() =>
                       setEditorHeight((prev) => `${Math.max(200, parseInt(prev) - 100)}px`)
                     }
-                    className="text-gray-600 hover:text-gray-900 font-bold"
+                    className="text-subtle hover:text-gray-900 font-bold"
                     title={t("projectEdit.decreaseHeight")}
                   >
                     −
                   </button>
-                  <span className="text-sm text-gray-600 min-w-[60px] text-center">{editorHeight}</span>
+                  <span className="text-sm text-subtle min-w-[60px] text-center">{editorHeight}</span>
                   <button
                     onClick={() => setEditorHeight((prev) => `${parseInt(prev) + 100}px`)}
-                    className="text-gray-600 hover:text-gray-900 font-bold"
+                    className="text-subtle hover:text-gray-900 font-bold"
                     title={t("projectEdit.increaseHeight")}
                   >
                     +
@@ -198,9 +198,9 @@ export default function ProjectEditClient({ projectId }: Props) {
         <div>
           <label className="block text-sm font-semibold mb-1">
             Instruções para IA
-            <span className="text-xs text-gray-400 font-normal ml-2">(opcional)</span>
+            <span className="text-xs text-muted font-normal ml-2">(opcional)</span>
           </label>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-subtle mb-2">
             Ensine o Claude como escrever neste projeto. Ex: tom das descrições, convenções de nomes de página, o que sempre citar por referência cruzada.
           </p>
           <textarea
@@ -226,7 +226,7 @@ export default function ProjectEditClient({ projectId }: Props) {
             {t("common.save")}
           </button>
           <button
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            className="bg-gray-500 text-ink px-4 py-2 rounded hover:bg-surface-3"
             onClick={() => (project ? router.push(projectPath(project)) : router.push("/"))}
           >
             {t("common.cancel")}

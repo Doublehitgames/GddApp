@@ -45,7 +45,7 @@ export default function StaleNotice({
   return (
     <div className="mb-4 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <p className="text-sm text-amber-300">
+        <p className="text-sm text-amber-700 dark:text-amber-300">
           {t(
             "pageStatus.staleTitle",
             "Marcada como {status}, mas algo que ela cita mudou depois."
@@ -55,7 +55,7 @@ export default function StaleNotice({
           <button
             type="button"
             onClick={() => setSectionStatus(projectId, section.id, status)}
-            className="ml-auto rounded-lg border border-amber-500/30 px-2.5 py-1 text-xs text-amber-300 transition-colors hover:bg-amber-500/10"
+            className="ml-auto rounded-lg border border-amber-500/30 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-300 transition-colors hover:bg-amber-500/10"
           >
             {t("pageStatus.confirmStillValid", "reli, continua valendo")}
           </button>
@@ -68,7 +68,7 @@ export default function StaleNotice({
             <Link
               href={`/projects/${projectSlug}/sections/${toSlug(ref.title)}`}
               prefetch={false}
-              className="inline-block rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 text-[11px] text-amber-200/90 transition-colors hover:border-amber-500/40 hover:text-amber-100"
+              className="inline-block rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-0.5 text-[11px] text-amber-800/90 dark:text-amber-200/90 transition-colors hover:border-amber-500/40 hover:text-amber-900 dark:hover:text-amber-100"
             >
               {ref.title}
             </Link>

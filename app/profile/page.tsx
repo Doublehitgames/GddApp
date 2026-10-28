@@ -62,33 +62,33 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-canvas text-ink">
       <div className="max-w-2xl mx-auto p-6">
         <button
           onClick={() => router.push("/")}
-          className="text-blue-400 hover:text-blue-300 mb-6 flex items-center gap-2"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-6 flex items-center gap-2"
         >
           ← {t("common.back")}
         </button>
 
         <h1 className="text-3xl font-bold mb-2">{t("profile.title")}</h1>
-        <p className="text-gray-400 mb-8">{t("profile.subtitle")}</p>
+        <p className="text-muted mb-8">{t("profile.subtitle")}</p>
 
         {/* Dados do usuário */}
-        <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-4 mb-6">
-          <p className="text-sm text-gray-400 mb-1">{t("profile.account")}</p>
-          <p className="text-xl font-semibold text-white">
+        <div className="bg-surface/70 border border-line rounded-xl p-4 mb-6">
+          <p className="text-sm text-muted mb-1">{t("profile.account")}</p>
+          <p className="text-xl font-semibold text-ink">
             {profile?.display_name || user?.email?.split("@")[0] || "—"}
           </p>
           {user?.email && (
-            <p className="text-sm text-gray-500 mt-1">{user.email}</p>
+            <p className="text-sm text-subtle mt-1">{user.email}</p>
           )}
 
           {user && (
-            <div className="mt-4 pt-4 border-t border-gray-700/80">
+            <div className="mt-4 pt-4 border-t border-line/80">
               <label
                 htmlFor="display-name"
-                className="block text-sm text-gray-400 mb-1.5"
+                className="block text-sm text-muted mb-1.5"
               >
                 {t("profile.nameLabel")}
               </label>
@@ -108,7 +108,7 @@ export default function ProfilePage() {
                     if (e.key === "Enter") void handleSaveName();
                   }}
                   placeholder={user.email?.split("@")[0] || ""}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-600 focus:border-indigo-500 focus:outline-none"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-canvas border border-line text-ink placeholder-subtle focus:border-indigo-500 focus:outline-none"
                 />
                 <button
                   onClick={() => void handleSaveName()}
@@ -118,16 +118,16 @@ export default function ProfilePage() {
                   {nameSaving ? t("profile.nameSaving") : t("profile.nameSave")}
                 </button>
               </div>
-              <p className="mt-1.5 text-xs text-gray-500">
+              <p className="mt-1.5 text-xs text-subtle">
                 {t("profile.nameHint")}
               </p>
               {nameSaved && (
-                <p className="mt-1.5 text-xs text-emerald-400">
+                <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400">
                   {t("profile.nameSaved")}
                 </p>
               )}
               {nameError && (
-                <p className="mt-1.5 text-xs text-red-400">
+                <p className="mt-1.5 text-xs text-red-600 dark:text-red-400">
                   {t("profile.nameError")}
                 </p>
               )}
@@ -136,45 +136,45 @@ export default function ProfilePage() {
         </div>
 
         {/* Plano atual */}
-        <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-4 mb-6">
-          <p className="text-sm text-gray-400 mb-2">{t("profile.plan")}</p>
-          <p className="text-2xl font-bold text-indigo-300">{t("profile.planFree")}</p>
+        <div className="bg-surface/70 border border-line rounded-xl p-4 mb-6">
+          <p className="text-sm text-muted mb-2">{t("profile.plan")}</p>
+          <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{t("profile.planFree")}</p>
         </div>
 
         {/* Limites do plano */}
-        <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-300 mb-3">
+        <div className="bg-surface/70 border border-line rounded-xl p-4 mb-6">
+          <h2 className="text-sm font-semibold text-ink-2 mb-3">
             {t("profile.limitsTitle")}
           </h2>
           <ul className="space-y-2 text-sm">
             <li className="flex justify-between items-center">
-              <span className="text-gray-400">{t("profile.projectsLimit")}</span>
-              <span className="font-mono text-white">{FREE_MAX_PROJECTS}</span>
+              <span className="text-muted">{t("profile.projectsLimit")}</span>
+              <span className="font-mono text-ink">{FREE_MAX_PROJECTS}</span>
             </li>
             <li className="flex justify-between items-center">
-              <span className="text-gray-400">{t("profile.sectionsPerProjectLimit")}</span>
-              <span className="font-mono text-white">{FREE_MAX_SECTIONS_PER_PROJECT}</span>
+              <span className="text-muted">{t("profile.sectionsPerProjectLimit")}</span>
+              <span className="font-mono text-ink">{FREE_MAX_SECTIONS_PER_PROJECT}</span>
             </li>
             <li className="flex justify-between items-center">
-              <span className="text-gray-400">{t("profile.creditsPerHour")}</span>
-              <span className="font-mono text-white">30</span>
+              <span className="text-muted">{t("profile.creditsPerHour")}</span>
+              <span className="font-mono text-ink">30</span>
             </li>
           </ul>
         </div>
 
         {/* Seu uso atual */}
-        <div className="bg-gray-800/70 border border-indigo-900/50 rounded-xl p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-300 mb-3">
+        <div className="bg-surface/70 border border-indigo-200/50 dark:border-indigo-900/50 rounded-xl p-4 mb-6">
+          <h2 className="text-sm font-semibold text-ink-2 mb-3">
             {t("profile.usageTitle")}
           </h2>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-gray-400">{t("profile.projectsUsage")}</span>
-              <span className="font-mono font-semibold text-white">
+              <span className="text-muted">{t("profile.projectsUsage")}</span>
+              <span className="font-mono font-semibold text-ink">
                 {projectsCount}/{FREE_MAX_PROJECTS}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-gray-700 overflow-hidden">
+            <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
               <div
                 className="h-full bg-indigo-500 transition-all"
                 style={{
@@ -186,27 +186,27 @@ export default function ProfilePage() {
             {/* Cada projeto tem o próprio teto de páginas — não há cota somada. */}
             {myProjects.length > 0 && (
               <div className="pt-3 space-y-3">
-                <p className="text-gray-400">{t("profile.sectionsUsage")}</p>
+                <p className="text-muted">{t("profile.sectionsUsage")}</p>
                 {myProjects.map((p) => {
                   const used = (p.sections || []).length;
                   const left = FREE_MAX_SECTIONS_PER_PROJECT - used;
                   return (
                     <div key={p.id}>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-400 truncate pr-3">{p.title}</span>
+                        <span className="text-muted truncate pr-3">{p.title}</span>
                         <span
                           className={`font-mono font-semibold shrink-0 ${
                             left <= 0
-                              ? "text-red-400"
+                              ? "text-red-600 dark:text-red-400"
                               : left <= 10
-                                ? "text-amber-400"
-                                : "text-white"
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-ink"
                           }`}
                         >
                           {used}/{FREE_MAX_SECTIONS_PER_PROJECT}
                         </span>
                       </div>
-                      <div className="h-2 mt-1 rounded-full bg-gray-700 overflow-hidden">
+                      <div className="h-2 mt-1 rounded-full bg-surface-2 overflow-hidden">
                         <div
                           className={`h-full transition-all ${
                             left <= 0
@@ -230,19 +230,19 @@ export default function ProfilePage() {
 
         {/* Créditos de sync (se disponível) */}
         {lastQuotaStatus && (
-          <div className="bg-gray-800/70 border border-gray-700 rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-gray-300 mb-2">
+          <div className="bg-surface/70 border border-line rounded-xl p-4">
+            <h2 className="text-sm font-semibold text-ink-2 mb-2">
               {t("profile.creditsPerHour")}
             </h2>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-400">
+              <span className="text-muted">
                 {lastQuotaStatus.usedInWindow}/{lastQuotaStatus.limitPerHour} usados
               </span>
-              <span className="text-gray-400">
+              <span className="text-muted">
                 {lastQuotaStatus.remainingInWindow} restantes
               </span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-gray-700 overflow-hidden">
+            <div className="mt-2 h-2 rounded-full bg-surface-2 overflow-hidden">
               <div
                 className={`h-full transition-all ${
                   (lastQuotaStatus.usedInWindow / lastQuotaStatus.limitPerHour) * 100 >= 75
@@ -259,10 +259,10 @@ export default function ProfilePage() {
                 }}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-subtle mt-1">
               Reinicia às {new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString()}
             </p>
-            <p className="text-xs text-gray-500 mt-2 border-t border-gray-700 pt-2">
+            <p className="text-xs text-subtle mt-2 border-t border-line pt-2">
               {t("settings.persistencePage.credits.howItWorks")}
             </p>
           </div>

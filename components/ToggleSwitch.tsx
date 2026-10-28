@@ -21,7 +21,7 @@ export function ToggleSwitch({ checked, onChange, disabled = false, ariaLabel }:
       className={`relative inline-flex h-7 w-12 items-center rounded-full border transition-colors duration-200 ${
         checked
           ? "border-lime-500/80 bg-lime-500"
-          : "border-gray-500/80 bg-gray-500/40"
+          : "border-line-strong/80 bg-gray-500/40"
       } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
     >
       <span

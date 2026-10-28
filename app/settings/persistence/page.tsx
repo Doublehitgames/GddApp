@@ -86,62 +86,62 @@ export default function PersistenceSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-canvas text-ink">
       <div className="max-w-4xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
           <div>
             <button
               onClick={() => router.push("/")}
-              className="text-blue-400 hover:text-blue-300 mb-2 flex items-center gap-2"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 mb-2 flex items-center gap-2"
             >
               ← {t("common.back")}
             </button>
             <h1 className="text-2xl sm:text-3xl font-bold">{t("settings.persistencePage.title")}</h1>
-            <p className="text-gray-400 mt-2">
+            <p className="text-muted mt-2">
               {t("settings.persistencePage.subtitle")}
             </p>
           </div>
         </div>
 
-        <div className="p-4 rounded-lg mb-6 bg-gray-800 border border-gray-700">
+        <div className="p-4 rounded-lg mb-6 bg-surface border border-line">
           <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
-            <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
+            <span className="px-2 py-1 rounded-md bg-canvas border border-line">
               {t("settings.persistencePage.statusLabel")}: {syncStatus === "syncing" ? t("settings.persistencePage.status.syncing") : syncStatus === "synced" ? t("settings.persistencePage.status.synced") : syncStatus === "error" ? t("settings.persistencePage.status.error") : t("settings.persistencePage.status.idle")}
             </span>
-            <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
+            <span className="px-2 py-1 rounded-md bg-canvas border border-line">
               {t("settings.persistencePage.pendingLabel")}: {pendingSyncCount}
             </span>
             {lastSyncedAt && (
-              <span className="px-2 py-1 rounded-md bg-gray-900 border border-gray-700">
+              <span className="px-2 py-1 rounded-md bg-canvas border border-line">
                 {t("settings.persistencePage.lastSyncLabel")}: {new Date(lastSyncedAt).toLocaleString()}
               </span>
             )}
           </div>
           {lastSyncError && (
             <>
-              <p className="text-red-300 text-sm mt-2">{t("settings.persistencePage.lastErrorLabel")}: {lastSyncError}</p>
+              <p className="text-red-700 dark:text-red-300 text-sm mt-2">{t("settings.persistencePage.lastErrorLabel")}: {lastSyncError}</p>
               {lastSyncError.includes("supabase_non_json_response") && (
-                <p className="text-amber-200/90 text-xs mt-2">{t("settings.persistencePage.errorSupabaseNonJson")}</p>
+                <p className="text-amber-800/90 dark:text-amber-200/90 text-xs mt-2">{t("settings.persistencePage.errorSupabaseNonJson")}</p>
               )}
-              <p className="text-gray-500 text-xs mt-1">{t("settings.persistencePage.errorHintNetwork")}</p>
+              <p className="text-subtle text-xs mt-1">{t("settings.persistencePage.errorHintNetwork")}</p>
             </>
           )}
           {lastSyncFailureReason && lastSyncFailureReason !== lastSyncError && (
-            <p className="text-amber-300/90 text-xs mt-1">
+            <p className="text-amber-700/90 dark:text-amber-300/90 text-xs mt-1">
               {t("settings.persistencePage.lastFailureReasonLabel")}: {lastSyncFailureReason}
             </p>
           )}
         </div>
 
         {lastQuotaStatus && (
-          <div className="p-4 rounded-lg mb-6 bg-gray-800 border border-gray-700">
+          <div className="p-4 rounded-lg mb-6 bg-surface border border-line">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-gray-200">{t("settings.persistencePage.credits.title")}</h2>
-              <span className="text-sm font-semibold text-white">
+              <h2 className="text-sm font-semibold text-ink">{t("settings.persistencePage.credits.title")}</h2>
+              <span className="text-sm font-semibold text-ink">
                 {lastQuotaStatus.remainingInWindow}/{lastQuotaStatus.limitPerHour}
               </span>
             </div>
-            <div className="mt-2 h-2 rounded bg-gray-700 overflow-hidden">
+            <div className="mt-2 h-2 rounded bg-surface-2 overflow-hidden">
               <div
                 className={`h-full transition-all ${
                   quotaPercent >= 75 ? "bg-red-500" : quotaPercent >= 50 ? "bg-amber-500" : "bg-blue-500"
@@ -149,19 +149,19 @@ export default function PersistenceSettingsPage() {
                 style={{ width: `${quotaPercent}%` }}
               />
             </div>
-            <p className="text-xs text-gray-300 mt-2">
+            <p className="text-xs text-ink-2 mt-2">
               {t("settings.persistencePage.credits.used")}: {lastQuotaStatus.usedInWindow} · {t("settings.persistencePage.credits.remaining")}: {lastQuotaStatus.remainingInWindow}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted mt-1">
               {t("settings.persistencePage.credits.resetAt")}: {new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString()}
             </p>
-            <p className="text-xs text-gray-400 mt-2 border-t border-gray-700 pt-2">
+            <p className="text-xs text-muted mt-2 border-t border-line pt-2">
               {t("settings.persistencePage.credits.howItWorks")}
             </p>
           </div>
         )}
 
-        <div className="bg-gray-800 rounded-lg p-4 sm:p-5 md:p-6 space-y-6 border border-gray-700">
+        <div className="bg-surface rounded-lg p-4 sm:p-5 md:p-6 space-y-6 border border-line">
           <div className="flex items-start gap-3">
             <label className="flex items-center gap-3 cursor-pointer">
               <ToggleSwitch
@@ -172,7 +172,7 @@ export default function PersistenceSettingsPage() {
               <span className="font-medium">{t("settings.persistencePage.form.syncAutomatic")}</span>
             </label>
           </div>
-          <p className="text-xs text-gray-400 -mt-2">{t("settings.persistencePage.form.syncAutomaticHint")}</p>
+          <p className="text-xs text-muted -mt-2">{t("settings.persistencePage.form.syncAutomaticHint")}</p>
 
           {persistenceConfig.syncAutomatic && (
             <>
@@ -184,9 +184,9 @@ export default function PersistenceSettingsPage() {
                   step={1000}
                   value={persistenceConfig.autosaveIntervalMs}
                   onChange={(e) => updatePersistenceConfig({ autosaveIntervalMs: Number(e.target.value) || 30000 })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-surface-2 border border-line-strong rounded px-4 py-2 focus:outline-none focus:border-blue-500"
                 />
-                <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.autosaveHint")}</p>
+                <p className="text-xs text-muted mt-1">{t("settings.persistencePage.form.autosaveHint")}</p>
               </div>
 
               <div>
@@ -197,9 +197,9 @@ export default function PersistenceSettingsPage() {
                   step={100}
                   value={persistenceConfig.debounceMs}
                   onChange={(e) => updatePersistenceConfig({ debounceMs: Number(e.target.value) || 1500 })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-surface-2 border border-line-strong rounded px-4 py-2 focus:outline-none focus:border-blue-500"
                 />
-                <p className="text-xs text-gray-400 mt-1">{t("settings.persistencePage.form.debounceHint")}</p>
+                <p className="text-xs text-muted mt-1">{t("settings.persistencePage.form.debounceHint")}</p>
               </div>
             </>
           )}
@@ -223,7 +223,7 @@ export default function PersistenceSettingsPage() {
               }
               className={`w-full sm:w-auto px-5 py-2.5 rounded-lg font-semibold transition-colors ${
                 syncDisabled
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed opacity-90"
+                  ? "bg-surface-3 text-muted cursor-not-allowed opacity-90"
                   : "bg-green-600 hover:bg-green-700 text-white"
               }`}
             >
@@ -231,21 +231,21 @@ export default function PersistenceSettingsPage() {
             </button>
           </div>
 
-          <div className="pt-2 border-t border-gray-700/80">
+          <div className="pt-2 border-t border-line/80">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h2 className="text-sm font-semibold text-gray-200">{t("settings.persistencePage.history.title")}</h2>
+              <h2 className="text-sm font-semibold text-ink">{t("settings.persistencePage.history.title")}</h2>
               {lastSyncStatsHistory.length > 0 && (
                 <button
                   type="button"
                   onClick={() => clearSyncHistory()}
-                  className="text-xs text-gray-400 hover:text-gray-200 underline"
+                  className="text-xs text-muted hover:text-ink underline"
                 >
                   {t("settings.persistencePage.history.clearButton")}
                 </button>
               )}
             </div>
             {lastSyncStatsHistory.length === 0 ? (
-              <p className="text-xs text-gray-400">{t("settings.persistencePage.history.empty")}</p>
+              <p className="text-xs text-muted">{t("settings.persistencePage.history.empty")}</p>
             ) : (
               <div className="space-y-1.5 max-h-56 overflow-auto pr-1">
                 {lastSyncStatsHistory.map((entry) => {
@@ -254,24 +254,24 @@ export default function PersistenceSettingsPage() {
                   return (
                     <div
                       key={`${entry.projectId}-${entry.syncedAt}`}
-                      className="text-xs bg-gray-900/70 border border-gray-700 rounded-md px-2 py-1.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2"
+                      className="text-xs bg-canvas/70 border border-line rounded-md px-2 py-1.5 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2"
                     >
-                      <span className="w-full sm:w-auto text-gray-300 truncate">
+                      <span className="w-full sm:w-auto text-ink-2 truncate">
                         {new Date(entry.syncedAt).toLocaleTimeString()} · {entry.projectId.slice(0, 8)}
                         {(entry.syncedByUserId ?? entry.syncedByDisplayName) && (
-                          <span className="text-gray-500 ml-1">
+                          <span className="text-subtle ml-1">
                             {t("settings.persistencePage.history.syncedBy").replace("{{name}}", who)}
                           </span>
                         )}
                       </span>
-                      <span className="w-full sm:w-auto text-gray-400">
+                      <span className="w-full sm:w-auto text-muted">
                         {t("settings.persistencePage.syncBadge.lastSyncCreated")}: {entry.sectionsUpserted} · {t("settings.persistencePage.syncBadge.lastSyncDeleted")}: {entry.sectionsDeleted} · {t("settings.persistencePage.syncBadge.lastSyncUnchanged")}: {entry.sectionsUnchanged}
                       </span>
-                      <span className="w-full sm:w-auto text-gray-500">
+                      <span className="w-full sm:w-auto text-subtle">
                         {t("settings.persistencePage.history.credits")}: {entry.creditsConsumed ?? 0}
                       </span>
                       {changeSummaryText && (
-                        <span className="w-full text-gray-300 truncate" title={changeSummaryText}>
+                        <span className="w-full text-ink-2 truncate" title={changeSummaryText}>
                           {changeSummaryText}
                         </span>
                       )}

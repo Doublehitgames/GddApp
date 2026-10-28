@@ -58,7 +58,7 @@ describe('SectionLink', () => {
 
       const button = screen.getByRole('button', { name: /game mechanics/i })
       expect(button).toBeInTheDocument()
-      expect(button).toHaveClass('text-blue-400')
+      expect(button).toHaveClass('text-blue-600', 'dark:text-blue-400')
       expect(button).toHaveClass('underline')
     })
 
@@ -277,7 +277,7 @@ describe('SectionLink', () => {
       )
 
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('hover:text-blue-300')
+      expect(button).toHaveClass('hover:text-blue-700', 'dark:hover:text-blue-300')
     })
   })
 })

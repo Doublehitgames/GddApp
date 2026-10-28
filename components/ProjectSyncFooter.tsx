@@ -174,18 +174,18 @@ export default function ProjectSyncFooter() {
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-40 w-screen border-t border-gray-700 bg-gray-900/95 px-3 sm:px-4 py-2 backdrop-blur"
+      className="fixed bottom-0 left-0 right-0 z-40 w-screen border-t border-line bg-canvas/95 px-3 sm:px-4 py-2 backdrop-blur"
     >
       <div className="max-w-6xl mx-auto flex flex-col items-stretch gap-2 text-[11px] sm:text-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="text-gray-400">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
-            <span className="font-medium text-gray-200">
+            <span className="text-muted">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
+            <span className="font-medium text-ink">
               {lastQuotaStatus ? `${lastQuotaStatus.usedInWindow}/${lastQuotaStatus.limitPerHour}` : "—"}
             </span>
           </div>
           {lastQuotaStatus && (
-            <div className="w-16 sm:w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
+            <div className="w-16 sm:w-24 h-1.5 rounded bg-surface-2 overflow-hidden">
               <div
                 className={`h-full transition-colors ${
                   quotaPercent !== null && quotaPercent >= 75
@@ -198,16 +198,16 @@ export default function ProjectSyncFooter() {
               />
             </div>
           )}
-          <span className="text-gray-500">
+          <span className="text-subtle">
             {t("settings.persistencePage.syncBadge.resetsAt")} {lastQuotaStatus ? new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString() : "—"}
           </span>
-          <span className="text-gray-500">
+          <span className="text-subtle">
             {lastSyncedAt
               ? `${tr("Último sync", "Last sync", "Último sync")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`
               : tr("Ainda sem sync", "No sync yet", "Sin sincronización aún")}
           </span>
           {lastSyncError && (
-            <span className="text-amber-400 font-medium" title={lastSyncError}>
+            <span className="text-amber-600 dark:text-amber-400 font-medium" title={lastSyncError}>
               {lastSyncError}
             </span>
           )}
@@ -215,7 +215,7 @@ export default function ProjectSyncFooter() {
 
         <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
           {discardFeedback && (
-            <span className={`w-full sm:w-auto ${discardFeedback.type === "error" ? "text-red-300" : "text-emerald-300"}`}>
+            <span className={`w-full sm:w-auto ${discardFeedback.type === "error" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
               {discardFeedback.message}
             </span>
           )}
@@ -225,7 +225,7 @@ export default function ProjectSyncFooter() {
                 type="button"
                 onClick={() => setShowPreviewPopover((v) => !v)}
                 title={t("settings.persistencePage.syncBadge.previewClickHint")}
-                className="text-gray-300 hover:text-white underline"
+                className="text-ink-2 hover:text-ink underline"
               >
                 {estimatedCreditsToSync !== null
                   ? estimatedCreditsToSync === 0
@@ -234,8 +234,8 @@ export default function ProjectSyncFooter() {
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
-                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
-                  <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-line-strong bg-canvas shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
+                  <div className="p-2 border-b border-line text-[10px] font-semibold text-ink-2 sticky top-0 bg-canvas">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>
                   {syncPreviewItems === null ? (
@@ -244,15 +244,15 @@ export default function ProjectSyncFooter() {
                     <ul className="p-2 space-y-2 text-[10px]">
                       {syncPreviewItems.map((item) => (
                         <li key={item.projectId} className="space-y-1">
-                          <div className="font-medium text-gray-200 truncate">{item.projectTitle}</div>
+                          <div className="font-medium text-ink truncate">{item.projectTitle}</div>
                           {item.sectionsNew.length > 0 && (
-                            <div><span className="text-green-400">{t("settings.persistencePage.syncBadge.previewNew")}:</span> {item.sectionsNew.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-green-600 dark:text-green-400">{t("settings.persistencePage.syncBadge.previewNew")}:</span> {item.sectionsNew.map((s) => s.title).join(", ")}</div>
                           )}
                           {item.sectionsUpdated.length > 0 && (
-                            <div><span className="text-amber-400">{t("settings.persistencePage.syncBadge.previewUpdated")}:</span> {item.sectionsUpdated.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-amber-600 dark:text-amber-400">{t("settings.persistencePage.syncBadge.previewUpdated")}:</span> {item.sectionsUpdated.map((s) => s.title).join(", ")}</div>
                           )}
                           {item.sectionsDeleted.length > 0 && (
-                            <div><span className="text-red-400">{t("settings.persistencePage.syncBadge.previewDeleted")}:</span> {item.sectionsDeleted.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-red-600 dark:text-red-400">{t("settings.persistencePage.syncBadge.previewDeleted")}:</span> {item.sectionsDeleted.map((s) => s.title).join(", ")}</div>
                           )}
                         </li>
                       ))}
@@ -272,7 +272,7 @@ export default function ProjectSyncFooter() {
               title={t("settings.persistencePage.syncBadge.discardButtonHint")}
               className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
                 discardingChanges || isSyncing
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  ? "bg-surface-3 text-muted cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-600 text-white"
               }`}
             >
@@ -295,7 +295,7 @@ export default function ProjectSyncFooter() {
             }
             className={`px-2.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors ${
               syncDisabled
-                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                ? "bg-surface-3 text-muted cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-500 text-white"
             }`}
           >
@@ -303,7 +303,7 @@ export default function ProjectSyncFooter() {
               ? tr("Sincronizando…", "Syncing…", "Sincronizando…")
               : tr("Sincronizar este projeto", "Sync this project", "Sincronizar este proyecto")}
           </button>
-          <Link href="/settings/persistence" className="text-gray-400 hover:text-gray-200 underline">
+          <Link href="/settings/persistence" className="text-muted hover:text-ink underline">
             {tr("Ajustes", "Settings", "Ajustes")}
           </Link>
         </div>

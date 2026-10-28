@@ -27,9 +27,9 @@ export default function BackupPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="min-h-screen bg-canvas text-ink p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-red-400">{tr('Projeto não encontrado', 'Project not found')}</h1>
+          <h1 className="text-2xl font-bold text-red-600 dark:text-red-400">{tr('Projeto não encontrado', 'Project not found')}</h1>
           <button
             onClick={() => router.push('/')}
             className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
@@ -141,23 +141,23 @@ export default function BackupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-canvas text-ink p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">{tr('💾 Backup e Restauração', '💾 Backup and Restore')}</h1>
           <button
             onClick={() => router.push(`/projects/${projectId}`)}
-            className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 transition"
+            className="px-4 py-2 bg-surface-2 rounded hover:bg-surface-3 transition"
           >
             {tr('← Voltar', '← Back')}
           </button>
         </div>
 
         {/* Project Info */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="bg-surface rounded-lg p-6 mb-8">
           <h2 className="text-xl font-semibold mb-2">{project.title}</h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted text-sm">
             {tr(
               `${sections.length} seção/seções • ID: ${project.id}`,
               `${sections.length} section(s) • ID: ${project.id}`,
@@ -167,9 +167,9 @@ export default function BackupPage() {
         </div>
 
         {/* Export Section */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="bg-surface rounded-lg p-6 mb-8">
           <h2 className="text-2xl font-semibold mb-4">{tr('📤 Criar Backup', '📤 Create Backup')}</h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted mb-6">
             {tr(
               'Faça backup deste projeto em formato JSON. Todos os dados serão preservados: IDs, ordem, hierarquia e conteúdo.',
               'Back up this project in JSON format. All data will be preserved: IDs, order, hierarchy, and content.'
@@ -179,14 +179,14 @@ export default function BackupPage() {
           <button
             onClick={exportProjectAsJSON}
             disabled={isExporting}
-            className="w-full p-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full p-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg hover:from-blue-700 hover:to-blue-200 dark:hover:to-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-center justify-between">
               <div className="text-left">
                 <h3 className="text-xl font-semibold mb-2">
                   {tr('💾 Fazer Backup', '💾 Create Backup')}
                 </h3>
-                <p className="text-blue-200">
+                <p className="text-blue-800 dark:text-blue-200">
                   {tr(
                     `Salva "${project.title}" e todas as suas seções`,
                     `Save "${project.title}" and all its sections`
@@ -199,9 +199,9 @@ export default function BackupPage() {
         </div>
 
         {/* Restore Section */}
-        <div className="bg-gray-800 rounded-lg p-6">
+        <div className="bg-surface rounded-lg p-6">
           <h2 className="text-2xl font-semibold mb-4">{tr('📥 Restaurar Backup', '📥 Restore Backup')}</h2>
-          <p className="text-gray-400 mb-6">
+          <p className="text-muted mb-6">
             {tr(
               'Importe o arquivo de backup JSON deste projeto para restaurá-lo. Apenas backups deste projeto específico serão aceitos.',
               'Import this project backup JSON file to restore it. Only backups from this specific project are accepted.'
@@ -226,7 +226,7 @@ export default function BackupPage() {
             <h3 className="text-lg font-semibold mb-1">
               {isRestoring ? tr('Restaurando...', 'Restoring...') : tr('Selecionar Arquivo de Backup', 'Select Backup File')}
             </h3>
-            <p className="text-green-200 text-sm">
+            <p className="text-green-800 dark:text-green-200 text-sm">
               {tr('Clique para escolher um arquivo .json', 'Click to choose a .json file')}
             </p>
           </div>
@@ -235,8 +235,8 @@ export default function BackupPage() {
           {restoreMessage && (
             <div className={`mt-4 p-4 rounded-lg ${
               restoreMessage.startsWith('✅') 
-                ? 'bg-green-900/50 text-green-200 border border-green-700' 
-                : 'bg-red-900/50 text-red-200 border border-red-700'
+                ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700' 
+                : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700'
             }`}>
               {restoreMessage}
             </div>
@@ -244,9 +244,9 @@ export default function BackupPage() {
         </div>
 
         {/* Info Box */}
-        <div className="mt-8 bg-blue-900/30 border border-blue-700 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-200 mb-2">{tr('ℹ️ Sobre Backup Deste Projeto', 'ℹ️ About This Project Backup')}</h3>
-          <ul className="text-sm text-blue-300 space-y-1">
+        <div className="mt-8 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">{tr('ℹ️ Sobre Backup Deste Projeto', 'ℹ️ About This Project Backup')}</h3>
+          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
             <li>{tr('• Backup salva apenas este projeto em formato JSON', '• Backup saves only this project in JSON format')}</li>
             <li>{tr('• Restaurar substitui o projeto atual pelo backup', '• Restoring replaces the current project with the backup')}</li>
             <li>{tr('• Todos os IDs, ordem e hierarquia são preservados', '• All IDs, order, and hierarchy are preserved')}</li>

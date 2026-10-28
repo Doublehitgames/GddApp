@@ -202,14 +202,14 @@ export default function ChangelogClient({ projectId }: Props) {
 
   const chipClass = (active: boolean) =>
     `rounded-md px-2.5 py-1 text-xs transition-colors ${
-      active ? "bg-gray-700 text-white" : "text-gray-400 hover:text-gray-200"
+      active ? "bg-surface-2 text-ink" : "text-muted hover:text-ink"
     }`;
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <header className="sticky top-0 z-20 border-b border-gray-800 bg-gray-950/90 px-4 py-3 backdrop-blur-sm sm:px-6">
+    <div className="min-h-screen bg-canvas">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 px-4 py-3 backdrop-blur-sm sm:px-6">
         <div className="mx-auto flex max-w-4xl items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-400">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/20 text-violet-600 dark:text-violet-400">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -219,12 +219,12 @@ export default function ChangelogClient({ projectId }: Props) {
               />
             </svg>
           </div>
-          <h1 className="text-base font-semibold text-white">
+          <h1 className="text-base font-semibold text-ink">
             {t("changelog.pageTitle", "O que mudou")}
           </h1>
           <Link
             href={`/projects/${projectId}`}
-            className="ml-auto text-xs text-gray-400 transition-colors hover:text-gray-100"
+            className="ml-auto text-xs text-muted transition-colors hover:text-ink"
           >
             {t("changelog.backToProject", "voltar ao projeto")}
           </Link>
@@ -234,7 +234,7 @@ export default function ChangelogClient({ projectId }: Props) {
       <main className="mx-auto max-w-4xl px-4 py-5 sm:px-6">
         {newCount > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">
               {(newCount === 1
                 ? t("changelog.newSinceOne", "1 mudança desde a sua última visita")
                 : t("changelog.newSince", "{n} mudanças desde a sua última visita")
@@ -246,7 +246,7 @@ export default function ChangelogClient({ projectId }: Props) {
                 writeChangelogSeen(realProjectId);
                 setMarkedRead(true);
               }}
-              className="ml-auto rounded-lg border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-300 transition-colors hover:bg-emerald-500/10"
+              className="ml-auto rounded-lg border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-500/10"
             >
               {t("changelog.markRead", "marcar como lido")}
             </button>
@@ -254,7 +254,7 @@ export default function ChangelogClient({ projectId }: Props) {
         )}
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-0.5 rounded-lg bg-gray-900 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg bg-canvas p-0.5">
             {periods.map((period) => (
               <button
                 key={String(period.value)}
@@ -267,7 +267,7 @@ export default function ChangelogClient({ projectId }: Props) {
             ))}
           </div>
 
-          <div className="flex items-center gap-0.5 rounded-lg bg-gray-900 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg bg-canvas p-0.5">
             {origins.map((origin) => (
               <button
                 key={origin.value}
@@ -286,7 +286,7 @@ export default function ChangelogClient({ projectId }: Props) {
               onChange={(event) =>
                 setFilters((f) => ({ ...f, author: event.target.value || null }))
               }
-              className="rounded-lg border border-gray-800 bg-gray-900 px-2.5 py-1.5 text-xs text-gray-300 focus:border-gray-700 focus:outline-none"
+              className="rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-xs text-ink-2 focus:border-line focus:outline-none"
             >
               <option value="">{t("changelog.everyone", "Todo mundo")}</option>
               {authors.map((author) => (
@@ -297,7 +297,7 @@ export default function ChangelogClient({ projectId }: Props) {
             </select>
           )}
 
-          <span className="ml-auto text-xs text-gray-500">
+          <span className="ml-auto text-xs text-subtle">
             {(visible.length === 1
               ? t("changelog.countOne", "1 mudança")
               : t("changelog.count", "{n} mudanças")
@@ -306,20 +306,20 @@ export default function ChangelogClient({ projectId }: Props) {
         </div>
 
         {!isCloudProject ? (
-          <p className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-6 text-sm text-gray-400">
+          <p className="rounded-xl border border-line bg-canvas/40 px-4 py-6 text-sm text-muted">
             {t(
               "changelog.localOnly",
               "Este projeto ainda não está na nuvem — o histórico começa a ser guardado no primeiro sync."
             )}
           </p>
         ) : loading ? (
-          <p className="px-1 py-6 text-sm text-gray-500">{t("changelog.loading", "Carregando…")}</p>
+          <p className="px-1 py-6 text-sm text-subtle">{t("changelog.loading", "Carregando…")}</p>
         ) : error ? (
-          <p className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-4 text-sm text-rose-300">
+          <p className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-4 text-sm text-rose-700 dark:text-rose-300">
             {error}
           </p>
         ) : days.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-gray-800 px-4 py-8 text-center text-sm text-gray-500">
+          <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-subtle">
             {entries.length === 0
               ? t("changelog.empty", "Nenhuma mudança registrada ainda.")
               : t("changelog.emptyFiltered", "Nada mudou nesse período.")}
@@ -328,10 +328,10 @@ export default function ChangelogClient({ projectId }: Props) {
           <div className="space-y-6">
             {days.map((day) => (
               <section key={day.date}>
-                <h2 className="mb-2 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <h2 className="mb-2 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-subtle">
                   <span className="first-letter:uppercase">{dayLabel(day.date)}</span>
-                  <span className="h-px flex-1 bg-gray-800" />
-                  <span className="font-normal normal-case tabular-nums text-gray-600">
+                  <span className="h-px flex-1 bg-surface" />
+                  <span className="font-normal normal-case tabular-nums text-subtle">
                     {day.entries.length}
                   </span>
                 </h2>
@@ -353,7 +353,7 @@ export default function ChangelogClient({ projectId }: Props) {
                 type="button"
                 onClick={loadOlder}
                 disabled={loadingMore}
-                className="w-full rounded-xl border border-gray-800 py-2.5 text-xs text-gray-400 transition-colors hover:border-gray-700 hover:text-gray-200 disabled:opacity-50"
+                className="w-full rounded-xl border border-line py-2.5 text-xs text-muted transition-colors hover:border-line hover:text-ink disabled:opacity-50"
               >
                 {loadingMore
                   ? t("changelog.loading", "Carregando…")

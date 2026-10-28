@@ -460,21 +460,21 @@ ${mechanicsText}
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-canvas via-purple-100 dark:via-purple-900 to-canvas">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-4xl font-bold text-ink mb-2">
             🎮 {tr("Criar Novo GDD", "Create New GDD", "Crear nuevo GDD")}
           </h1>
-          <p className="text-gray-300">
+          <p className="text-ink-2">
             {tr("Preencha as informações e gere seu Game Design Document completo!", "Fill in the information and generate your complete Game Design Document!", "¡Completa la información y genera tu Game Design Document completo!")}
           </p>
           {!template && (
             <button
               onClick={fillExample}
-              className="mt-4 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-all inline-flex items-center gap-2"
+              className="mt-4 bg-surface-2 hover:bg-surface-3 text-ink px-6 py-2 rounded-lg transition-all inline-flex items-center gap-2"
             >
               💡 {tr("Preencher Exemplo", "Fill Example", "Completar ejemplo")}
             </button>
@@ -490,11 +490,11 @@ ${mechanicsText}
 
         {!template ? (
           /* Form */
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
+          <div className="bg-surface/50 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
             
             {/* Game Name */}
             <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-ink font-semibold mb-2">
                 {tr("Nome do Jogo", "Game Name", "Nombre del juego")} *
               </label>
               <input
@@ -502,19 +502,19 @@ ${mechanicsText}
                 value={gameName}
                 onChange={(e) => setGameName(e.target.value)}
                 placeholder="Ex: Cavernas de Valhalla"
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none"
               />
             </div>
 
             {/* Genre */}
             <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-ink font-semibold mb-2">
                 {tr("Gênero", "Genre", "Género")} *
               </label>
               <select
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none"
               >
                 <option value="">{tr("Selecione um gênero", "Select a genre", "Selecciona un género")}</option>
                 {genres.map(g => (
@@ -525,7 +525,7 @@ ${mechanicsText}
 
             {/* Platforms */}
             <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-ink font-semibold mb-2">
                 {tr("Plataformas", "Platforms", "Plataformas")}
               </label>
               <div className="flex flex-wrap gap-3">
@@ -536,7 +536,7 @@ ${mechanicsText}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                       platforms.includes(platform)
                         ? "bg-purple-600 text-white"
-                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        : "bg-surface-2 text-ink-2 hover:bg-surface-3"
                     }`}
                   >
                     {platform}
@@ -547,13 +547,13 @@ ${mechanicsText}
 
             {/* Visual Style */}
             <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-ink font-semibold mb-2">
                 {tr("Estilo Visual", "Visual Style", "Estilo visual")}
               </label>
               <select
                 value={visualStyle}
                 onChange={(e) => setVisualStyle(e.target.value)}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none"
               >
                 <option value="">{tr("Selecione um estilo", "Select a style", "Selecciona un estilo")}</option>
                 {visualStyles.map(style => (
@@ -565,15 +565,15 @@ ${mechanicsText}
             {/* Description */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-white font-semibold">
+                <label className="block text-ink font-semibold">
                   {tr("Descrição do Jogo", "Game Description", "Descripción del juego")} *
                 </label>
                 <span className={`text-sm ${
                   description.length > MAX_DESCRIPTION 
-                    ? 'text-red-400 font-bold' 
+                    ? 'text-red-600 dark:text-red-400 font-bold' 
                     : description.length > MAX_DESCRIPTION * 0.8 
-                    ? 'text-yellow-400' 
-                    : 'text-gray-400'
+                    ? 'text-yellow-600 dark:text-yellow-400' 
+                    : 'text-muted'
                 }`}>
                   {description.length}/{MAX_DESCRIPTION}
                 </span>
@@ -591,16 +591,16 @@ ${mechanicsText}
                   "Ej: juego de granja pixel art donde plantas cultivos y cuidas animales"
                 )}
                 rows={4}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none resize-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none resize-none"
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted text-sm">
                   {tr("Pode ser simples! Use o botão ao lado para melhorar →", "It can be simple! Use the button to improve it →", "¡Puede ser simple! Usa el botón de al lado para mejorarla →")}
                 </p>
                 <button
                   onClick={handleEnhanceDescription}
                   disabled={isEnhancing || !description.trim() || !hasValidConfig}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-surface-3 disabled:to-surface-2 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isEnhancing ? (
                     <>
@@ -622,15 +622,15 @@ ${mechanicsText}
             {/* Mechanics */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-white font-semibold">
-                  {tr("Mecânicas Principais", "Core Mechanics", "Mecánicas principales")} <span className="text-gray-400 font-normal">({tr("opcional", "optional", "opcional")})</span>
+                <label className="block text-ink font-semibold">
+                  {tr("Mecânicas Principais", "Core Mechanics", "Mecánicas principales")} <span className="text-muted font-normal">({tr("opcional", "optional", "opcional")})</span>
                 </label>
                 <span className={`text-sm ${
                   mechanics.length > MAX_MECHANICS 
-                    ? 'text-red-400 font-bold' 
+                    ? 'text-red-600 dark:text-red-400 font-bold' 
                     : mechanics.length > MAX_MECHANICS * 0.8 
-                    ? 'text-yellow-400' 
-                    : 'text-gray-400'
+                    ? 'text-yellow-600 dark:text-yellow-400' 
+                    : 'text-muted'
                 }`}>
                   {mechanics.length}/{MAX_MECHANICS}
                 </span>
@@ -644,16 +644,16 @@ ${mechanicsText}
                 }}
                 placeholder="Ex: • Combate por turnos&#10;• Sistema de loot procedural&#10;• Upgrades permanentes"
                 rows={5}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none resize-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none resize-none"
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted text-sm">
                   {tr("Deixe a IA sugerir mecânicas baseadas na descrição →", "Let AI suggest mechanics based on the description →", "Deja que la IA sugiera mecánicas basadas en la descripción →")}
                 </p>
                 <button
                   onClick={handleGenerateMechanics}
                   disabled={isGeneratingMechanics || !description.trim() || !hasValidConfig}
-                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-surface-3 disabled:to-surface-2 text-white font-medium px-4 py-2 rounded-lg transition-all disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isGeneratingMechanics ? (
                     <>
@@ -674,26 +674,26 @@ ${mechanicsText}
 
             {/* Model Selection */}
             <div className="mb-6">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-ink font-semibold mb-2">
                 {tr("Modelo de IA", "AI Model", "Modelo de IA")}
               </label>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full bg-gray-700/50 text-white rounded-lg px-4 py-3 border border-gray-600 focus:border-purple-500 focus:outline-none"
+                className="w-full bg-surface-2/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none"
               >
                 <option value="llama-3.3-70b-versatile">{tr("⚡ 70B - Potente (melhor qualidade)", "⚡ 70B - Powerful (best quality)", "⚡ 70B - Potente (mejor calidad)")}</option>
                 <option value="llama-3.1-8b-instant">{tr("💨 8B - Econômico (mais rápido)", "💨 8B - Budget (faster)", "💨 8B - Económico (más rápido)")}</option>
               </select>
-              <p className="text-gray-400 text-sm mt-1">
+              <p className="text-muted text-sm mt-1">
                 {tr("O modelo potente gera GDDs mais detalhados, mas tem limite de uso diário", "The powerful model generates more detailed GDDs, but has a daily usage limit", "El modelo potente genera GDDs más detallados, pero tiene límite de uso diario")}
               </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
-                <p className="text-red-300">{error}</p>
+              <div className="mb-6 bg-red-100 dark:bg-red-900/30 border border-red-500/50 rounded-lg p-4">
+                <p className="text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
 
@@ -701,7 +701,7 @@ ${mechanicsText}
             <button
               onClick={() => handleGenerate()}
               disabled={isGenerating || !hasValidConfig}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-surface-3 disabled:to-surface-2 text-white font-bold py-4 rounded-lg transition-all transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
                 <span className="flex items-center justify-center gap-2">
@@ -716,37 +716,37 @@ ${mechanicsText}
               )}
             </button>
 
-            <p className="text-gray-400 text-sm text-center mt-4">
+            <p className="text-muted text-sm text-center mt-4">
               * {tr("Campos obrigatórios", "Required fields", "Campos obligatorios")}
             </p>
           </div>
         ) : (
           /* Preview */
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-green-500/30">
+          <div className="bg-surface/50 backdrop-blur-sm rounded-2xl p-8 border border-green-500/30">
             <div className="text-center mb-6">
               <div className="text-6xl mb-4">✨</div>
-              <h2 className="text-3xl font-bold text-white mb-2">
+              <h2 className="text-3xl font-bold text-ink mb-2">
                 {tr("GDD Criado com Sucesso!", "GDD Created Successfully!", "¡GDD creado con éxito!")}
               </h2>
-              <p className="text-gray-300">
+              <p className="text-ink-2">
                 {template.projectTitle}
               </p>
             </div>
 
-            <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
-              <h3 className="text-xl font-bold text-white mb-3">📋 {tr("Seções Criadas:", "Created Sections:", "Secciones creadas:")}</h3>
+            <div className="bg-surface-2/50 rounded-lg p-6 mb-6">
+              <h3 className="text-xl font-bold text-ink mb-3">📋 {tr("Seções Criadas:", "Created Sections:", "Secciones creadas:")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {template.sections.map((section, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-gray-300">
-                    <span className="text-green-400">✓</span>
+                  <div key={idx} className="flex items-center gap-2 text-ink-2">
+                    <span className="text-green-600 dark:text-green-400">✓</span>
                     <span>{section.title}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
-              <p className="text-blue-200 text-sm">
+            <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-500/50 rounded-lg p-4 mb-6">
+              <p className="text-blue-800 dark:text-blue-200 text-sm">
                 <span>
                   💡 <strong>{tr("Dica", "Tip", "Consejo")}:</strong>{" "}
                   {tr(
@@ -759,8 +759,8 @@ ${mechanicsText}
             </div>
 
             {/* Adjustments Field */}
-            <div className="bg-gray-700/50 rounded-lg p-6 mb-6">
-              <label className="block text-white font-semibold mb-2">
+            <div className="bg-surface-2/50 rounded-lg p-6 mb-6">
+              <label className="block text-ink font-semibold mb-2">
                 ✏️ {tr("Quer ajustar algo?", "Want to tweak something?", "¿Quieres ajustar algo?")} ({tr("opcional", "optional", "opcional")})
               </label>
               <textarea
@@ -772,17 +772,17 @@ ${mechanicsText}
                   "Ej: Agregar sección sobre economía del juego&#10;Incluir más detalles sobre multijugador&#10;Falta hablar sobre el tutorial"
                 )}
                 rows={3}
-                className="w-full bg-gray-600/50 text-white rounded-lg px-4 py-3 border border-gray-500 focus:border-purple-500 focus:outline-none resize-none"
+                className="w-full bg-surface-3/50 text-ink rounded-lg px-4 py-3 border border-line-strong focus:border-purple-500 focus:outline-none resize-none"
               />
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-muted text-sm mt-2">
                 {tr("Descreva o que gostaria de adicionar, remover ou modificar no GDD", "Describe what you want to add, remove, or modify in the GDD", "Describe lo que quieres añadir, eliminar o modificar en el GDD")}
               </p>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="mb-6 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
-                <p className="text-red-300">{error}</p>
+              <div className="mb-6 bg-red-100 dark:bg-red-900/30 border border-red-500/50 rounded-lg p-4">
+                <p className="text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
 
@@ -793,7 +793,7 @@ ${mechanicsText}
               >
                 📄 {tr("Ver GDD Completo", "View Full GDD", "Ver GDD completo")}
               </button>
-              <p className="text-center text-gray-400 text-sm -mt-2">
+              <p className="text-center text-muted text-sm -mt-2">
                 {tr("Veja seu documento formatado antes de editar", "See your formatted document before editing", "Mira tu documento formateado antes de editar")}
               </p>
               
@@ -801,7 +801,7 @@ ${mechanicsText}
                 <button
                   onClick={() => handleGenerate(true)}
                   disabled={isGenerating || !adjustments.trim() || !hasValidConfig}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-700 text-white font-bold py-4 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-surface-3 disabled:to-surface-2 text-white font-bold py-4 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <span className="flex items-center justify-center gap-2">
@@ -821,7 +821,7 @@ ${mechanicsText}
                     setError("");
                     setAdjustments("");
                   }}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-lg transition-all"
+                  className="flex-1 bg-surface-2 hover:bg-surface-3 text-ink font-bold py-4 rounded-lg transition-all"
                 >
                   ↩️ {tr("Voltar ao Formulário", "Back to Form", "Volver al formulario")}
                 </button>
@@ -834,7 +834,7 @@ ${mechanicsText}
         <div className="text-center mt-6">
           <button
             onClick={() => router.push("/")}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-muted hover:text-ink transition-colors"
           >
             ← {tr("Voltar para Home", "Back to Home", "Volver al inicio")}
           </button>

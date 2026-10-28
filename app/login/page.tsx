@@ -62,12 +62,12 @@ function LoginPageInner() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-canvas px-4">
       {/* Persistent docs link — visible from the very first paint so visitors
           can read about the product before/without creating an account. */}
       <Link
         href="/docs"
-        className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/80 px-3 py-1.5 text-xs text-gray-200 hover:border-indigo-500 hover:text-white transition-colors"
+        className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-lg border border-line bg-canvas/80 px-3 py-1.5 text-xs text-ink hover:border-indigo-500 hover:text-ink transition-colors"
       >
         <span aria-hidden="true">📚</span>
         <span>Documentação</span>
@@ -75,7 +75,7 @@ function LoginPageInner() {
       <div className="w-full max-w-md">
         {/* Logo / Título */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">🎮 GDD Manager</h1>
+          <h1 className="text-4xl font-bold text-ink mb-2">🎮 GDD Manager</h1>
           <div className="flex justify-center gap-2 mb-3">
             {supportedLocales.map((option) => (
               <button
@@ -84,28 +84,28 @@ function LoginPageInner() {
                 className={`px-3 py-1 rounded-lg text-xs border transition-colors ${
                   locale === option
                     ? "bg-indigo-600 border-indigo-500 text-white"
-                    : "bg-gray-900 border-gray-700 text-gray-300 hover:text-white"
+                    : "bg-canvas border-line text-ink-2 hover:text-ink"
                 }`}
               >
                 {getLocaleLabel(option)}
               </button>
             ))}
           </div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-muted text-sm">
             {mode === "login" ? t("auth.login.subtitleLogin") : t("auth.login.subtitleSignup")}
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-canvas border border-line rounded-2xl p-8 shadow-2xl">
           {/* Tabs */}
-          <div className="flex mb-6 bg-gray-800 rounded-xl p-1">
+          <div className="flex mb-6 bg-surface rounded-xl p-1">
             <button
               onClick={() => { setMode("login"); setError(null); setInfo(null); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 mode === "login"
                   ? "bg-indigo-600 text-white shadow"
-                  : "text-gray-400 hover:text-white"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {t("auth.login.tabLogin")}
@@ -115,7 +115,7 @@ function LoginPageInner() {
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                 mode === "signup"
                   ? "bg-indigo-600 text-white shadow"
-                  : "text-gray-400 hover:text-white"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {t("auth.login.tabSignup")}
@@ -126,33 +126,33 @@ function LoginPageInner() {
             {/* Nome (só no signup) */}
             {mode === "signup" && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">{t("auth.login.name")}</label>
+                <label className="block text-sm text-muted mb-1">{t("auth.login.name")}</label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t("auth.login.namePlaceholder")}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink placeholder-subtle focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
             )}
 
             {/* Email */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t("auth.login.email")}</label>
+              <label className="block text-sm text-muted mb-1">{t("auth.login.email")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("auth.login.emailPlaceholder")}
                 required
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink placeholder-subtle focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
             {/* Senha */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">{t("auth.login.password")}</label>
+              <label className="block text-sm text-muted mb-1">{t("auth.login.password")}</label>
               <input
                 type="password"
                 value={password}
@@ -160,20 +160,20 @@ function LoginPageInner() {
                 placeholder={t("auth.login.passwordPlaceholder")}
                 required
                 minLength={6}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-surface border border-line rounded-xl px-4 py-3 text-ink placeholder-subtle focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
 
             {/* Erro */}
             {error && (
-              <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm">
+              <div className="bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 rounded-xl px-4 py-3 text-red-700 dark:text-red-300 text-sm">
                 {error}
               </div>
             )}
 
             {/* Info */}
             {info && (
-              <div className="bg-green-900/40 border border-green-700 rounded-xl px-4 py-3 text-green-300 text-sm">
+              <div className="bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700 rounded-xl px-4 py-3 text-green-700 dark:text-green-300 text-sm">
                 {info}
               </div>
             )}
@@ -182,7 +182,7 @@ function LoginPageInner() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-100 dark:disabled:bg-indigo-900 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
             >
               {loading
                 ? t("auth.login.loading")
@@ -194,15 +194,15 @@ function LoginPageInner() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
-            <div className="flex-1 h-px bg-gray-700" />
-            <span className="text-gray-500 text-xs">{t("auth.login.or")}</span>
-            <div className="flex-1 h-px bg-gray-700" />
+            <div className="flex-1 h-px bg-surface-2" />
+            <span className="text-subtle text-xs">{t("auth.login.or")}</span>
+            <div className="flex-1 h-px bg-surface-2" />
           </div>
 
           {/* Google */}
           <button
             onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white py-3 rounded-xl transition-colors"
+            className="w-full flex items-center justify-center gap-3 bg-surface hover:bg-surface-2 border border-line text-ink py-3 rounded-xl transition-colors"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -214,7 +214,7 @@ function LoginPageInner() {
           </button>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">
+        <p className="text-center text-subtle text-xs mt-6">
           {t("auth.login.footer")} · {t("common.appName")}
         </p>
       </div>

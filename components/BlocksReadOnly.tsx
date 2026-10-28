@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { useTheme } from "@/lib/theme/provider";
 import { toEmbedUrl } from "@/lib/richDoc/embedBlock";
 import { CALLOUT_VARIANTS, type CalloutVariantId } from "@/lib/richDoc/calloutBlock";
 import { spoilerLabelOf } from "@/lib/richDoc/spoilerBlock";
@@ -435,7 +436,9 @@ interface BlocksReadOnlyProps {
   theme?: "dark" | "light";
 }
 
-export default function BlocksReadOnly({ blocks, theme = "dark" }: BlocksReadOnlyProps) {
+export default function BlocksReadOnly({ blocks, theme: themeProp }: BlocksReadOnlyProps) {
+  const appTheme = useTheme().theme;
+  const theme = themeProp ?? appTheme;
   if (!Array.isArray(blocks) || blocks.length === 0) return null;
   return (
     <div className="blocks-readonly">

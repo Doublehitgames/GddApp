@@ -249,7 +249,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
   const isAtProjectHome = pathname === `/projects/${projectId}`;
 
   return (
-    <aside className="relative overflow-hidden bg-gray-800/75 border border-gray-700/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 h-full flex flex-col">
+    <aside className="relative overflow-hidden bg-surface/75 border border-line/80 rounded-2xl p-5 md:p-6 shadow-xl shadow-black/10 h-full flex flex-col">
       <span
         className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none"
         aria-hidden
@@ -260,8 +260,8 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         aria-current={isAtProjectHome ? "page" : undefined}
         className={`relative mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-150 ${
           isAtProjectHome
-            ? "border-indigo-300/70 bg-indigo-600/25 text-indigo-50 shadow-md shadow-indigo-900/25"
-            : "border-gray-700/70 bg-gray-900/60 text-gray-200 hover:border-indigo-400/50 hover:bg-gray-800/80 hover:text-white"
+            ? "border-indigo-300/70 bg-indigo-600/25 text-indigo-900 dark:text-indigo-50 shadow-md shadow-indigo-900/25"
+            : "border-line/70 bg-canvas/60 text-ink hover:border-indigo-400/50 hover:bg-surface/80 hover:text-ink"
         }`}
         title={t("projectDetail.projectHomeLabel", "Página inicial do projeto")}
       >
@@ -274,10 +274,10 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
       <div className="relative mb-4" ref={tagFilterMenuRef}>
         <div>
           <h2 className="text-xl font-semibold tracking-tight">{t("projectDetail.sectionsTitle")}</h2>
-          <p className="text-sm text-gray-400 mt-1">{t("projectDetail.sectionsSubtitle")}</p>
+          <p className="text-sm text-muted mt-1">{t("projectDetail.sectionsSubtitle")}</p>
         </div>
         <div className="mt-3 flex items-center justify-end gap-2">
-          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-indigo-400/45 bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/20 px-2 text-xs font-semibold text-indigo-100 tabular-nums shadow-sm shadow-indigo-900/25">
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-indigo-400/45 bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/20 px-2 text-xs font-semibold text-indigo-900 dark:text-indigo-100 tabular-nums shadow-sm shadow-indigo-900/25">
             {(project.sections || []).length}
           </span>
           <div className="flex items-center gap-1">
@@ -287,7 +287,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
               disabled={!canExpandAll || sectionIds.length === 0}
               title={t("projectDetail.expandAllSections")}
               aria-label={t("projectDetail.expandAllSections")}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-200 transition-all duration-150 hover:border-indigo-400 hover:text-white hover:bg-gray-800/90 hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line-strong bg-canvas/75 text-ink transition-all duration-150 hover:border-indigo-400 hover:text-ink hover:bg-surface/90 hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7l5 5 5-5M7 13l5 5 5-5" />
@@ -299,7 +299,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
               disabled={!canCollapseAll}
               title={t("projectDetail.collapseAllSections")}
               aria-label={t("projectDetail.collapseAllSections")}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-600 bg-gray-900/75 text-gray-200 transition-all duration-150 hover:border-indigo-400 hover:text-white hover:bg-gray-800/90 hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line-strong bg-canvas/75 text-ink transition-all duration-150 hover:border-indigo-400 hover:text-ink hover:bg-surface/90 hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 11l-5-5-5 5M17 17l-5-5-5 5" />
@@ -314,8 +314,8 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
               aria-haspopup="true"
               className={`relative inline-flex h-8 w-8 items-center justify-center rounded-lg border text-gray-200 transition-all duration-150 hover:-translate-y-px ${
                 tagFilterMenuOpen || selectedTagFilters.length > 0
-                  ? "border-indigo-400 bg-indigo-600/20 text-indigo-100 shadow-md shadow-indigo-900/30"
-                  : "border-gray-600 bg-gray-900/75 hover:border-indigo-400 hover:text-white hover:bg-gray-800/90"
+                  ? "border-indigo-400 bg-indigo-600/20 text-indigo-900 dark:text-indigo-100 shadow-md shadow-indigo-900/30"
+                  : "border-line-strong bg-canvas/75 hover:border-indigo-400 hover:text-ink hover:bg-surface/90"
               }`}
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -331,30 +331,30 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         </div>
 
         {tagFilterMenuOpen && (
-          <div className="ui-menu-pop absolute z-30 right-0 mt-2 w-80 rounded-xl border border-gray-600/90 bg-gray-900/95 backdrop-blur-sm shadow-2xl shadow-black/35 p-3">
-            <div className="flex items-center justify-between gap-2 px-1 pb-3 border-b border-gray-700/70 mb-3">
-              <span className="text-xs font-medium text-gray-300">{t("projectDetail.tagFilterLabel")}</span>
+          <div className="ui-menu-pop absolute z-30 right-0 mt-2 w-80 rounded-xl border border-line-strong/90 bg-canvas/95 backdrop-blur-sm shadow-2xl shadow-black/35 p-3">
+            <div className="flex items-center justify-between gap-2 px-1 pb-3 border-b border-line/70 mb-3">
+              <span className="text-xs font-medium text-ink-2">{t("projectDetail.tagFilterLabel")}</span>
               <button
                 type="button"
                 onClick={() => setSelectedTagFilters([])}
                 disabled={selectedTagFilters.length === 0}
-                className="text-xs text-indigo-300 hover:text-indigo-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-xs text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t("projectDetail.tagFilterClear")}
               </button>
             </div>
             {availableDomainTags.length === 0 ? (
-              <p className="text-xs text-gray-400 px-1 py-3">{t("projectDetail.tagFilterNoTags")}</p>
+              <p className="text-xs text-muted px-1 py-3">{t("projectDetail.tagFilterNoTags")}</p>
             ) : (
               <div className="max-h-56 overflow-y-auto scrollbar-premium pr-1 space-y-1.5">
                 {availableDomainTags.map((tag) => {
                   const checked = selectedTagFilters.includes(tag);
                   return (
-                    <label key={tag} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm cursor-pointer transition-all ${checked ? "border-indigo-400/60 bg-gradient-to-r from-indigo-600/25 to-fuchsia-600/20 text-indigo-100" : "border-gray-700/80 text-gray-200 hover:bg-gray-800/80 hover:border-gray-600"}`}>
+                    <label key={tag} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm cursor-pointer transition-all ${checked ? "border-indigo-400/60 bg-gradient-to-r from-indigo-600/25 to-fuchsia-600/20 text-indigo-900 dark:text-indigo-100" : "border-line/80 text-ink hover:bg-surface/80 hover:border-line-strong"}`}>
                       <input type="checkbox" checked={checked} onChange={() => toggleTagFilter(tag)} className="sr-only" />
-                      <span aria-hidden="true" className={`inline-flex h-4 w-4 items-center justify-center rounded border transition-all duration-150 ${checked ? "border-indigo-300/80 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-sm shadow-indigo-900/30" : "border-gray-500 bg-gray-900/70"}`}>
+                      <span aria-hidden="true" className={`inline-flex h-4 w-4 items-center justify-center rounded border transition-all duration-150 ${checked ? "border-indigo-300/80 bg-gradient-to-br from-indigo-500 to-fuchsia-500 shadow-sm shadow-indigo-900/30" : "border-line-strong bg-canvas/70"}`}>
                         {checked && (
-                          <svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-3 w-3 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
@@ -370,7 +370,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
       </div>
 
       <div className="relative mb-4">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
         </svg>
         <input
@@ -390,8 +390,8 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
       </div>
 
       <div className="relative flex-1 min-h-0">
-        <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b from-gray-800/90 to-transparent transition-opacity duration-300 ease-out ${showSectionTopFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
-        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-gray-800/90 to-transparent transition-opacity duration-300 ease-out ${showSectionBottomFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
+        <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-5 bg-gradient-to-b from-surface/90 to-transparent transition-opacity duration-300 ease-out ${showSectionTopFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
+        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-5 bg-gradient-to-t from-surface/90 to-transparent transition-opacity duration-300 ease-out ${showSectionBottomFade ? "opacity-90" : "opacity-0"}`} aria-hidden />
         <div ref={sectionListRef} onScroll={updateSectionFades} className="scrollbar-premium h-full max-h-[45vh] lg:max-h-none overflow-y-auto overflow-x-hidden overscroll-y-contain pr-1">
           <SectionTree
             sections={project.sections || []}
@@ -415,7 +415,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
         </div>
       </div>
 
-      <div className="relative z-20 mt-4 pt-4 border-t border-gray-700/80">
+      <div className="relative z-20 mt-4 pt-4 border-t border-line/80">
         <div className="relative flex gap-2 flex-wrap items-center">
           <input
             value={newSectionTitle}
@@ -434,7 +434,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
                 ? t("sectionDetail.subsections.addPlaceholder")
                 : t("projectDetail.newSectionPlaceholder")
             }
-            className={`ui-input-dark ui-focus-ring-indigo flex-1 min-w-[160px] px-3 py-2 text-sm ${nameError ? "border-red-500" : "border-gray-600"}`}
+            className={`ui-input-dark ui-focus-ring-indigo flex-1 min-w-[160px] px-3 py-2 text-sm ${nameError ? "border-red-500" : "border-line-strong"}`}
           />
           <button
             onClick={handleAddByContext}
@@ -445,7 +445,7 @@ export default function ProjectSectionsSidebar({ projectId, projectSlug }: Props
             {t("projectDetail.add")}
           </button>
         </div>
-        {nameError && <span className="text-red-400 text-sm mt-1 block">{nameError}</span>}
+        {nameError && <span className="text-red-600 dark:text-red-400 text-sm mt-1 block">{nameError}</span>}
       </div>
     </aside>
   );
@@ -683,7 +683,7 @@ function SectionTree({
     <>
       {(searchTerm.trim() || selectedTagFilters.length > 0) &&
         totalMatches > 0 && (
-          <p className="text-sm text-gray-400 mb-2 ml-1">
+          <p className="text-sm text-muted mb-2 ml-1">
             {totalMatches} {totalMatches === 1 ? labels.resultsFoundOne : labels.resultsFoundMany}
           </p>
         )}
@@ -873,7 +873,7 @@ function SortableRootItem({
           isRootLevel
             ? "p-2.5 rounded-xl"
             : "px-2.5 py-2 rounded-lg"
-        } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : hasFlowchart ? `border-emerald-500/45 bg-emerald-900/15 hover:border-emerald-400/70 ${isTreeDragging ? "" : "hover:-translate-y-px"}` : `border-gray-700 bg-gray-900/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`} ${dragVisualClass}`}
+        } ${isActiveSection ? "border-indigo-300/70 bg-indigo-600/20 shadow-md shadow-indigo-900/25" : hasFlowchart ? `border-emerald-500/45 bg-emerald-100 dark:bg-emerald-900/15 hover:border-emerald-400/70 ${isTreeDragging ? "" : "hover:-translate-y-px"}` : `border-line bg-canvas/70 hover:border-indigo-500/60 ${isTreeDragging ? "" : "hover:-translate-y-px"}`} ${dragVisualClass}`}
         {...attributes}
         {...listeners}
         aria-label={labels.reorder}
@@ -888,7 +888,7 @@ function SortableRootItem({
         {hasFlowchart && (
           <span className="absolute inset-y-1 left-0 w-1 rounded-r bg-emerald-400/90 pointer-events-none" aria-hidden />
         )}
-        <span className="relative text-gray-400 pointer-events-none select-none" aria-hidden>
+        <span className="relative text-muted pointer-events-none select-none" aria-hidden>
           ⋮⋮
         </span>
         {hasChildren ? (
@@ -903,7 +903,7 @@ function SortableRootItem({
               else next.add(section.id);
               setExpandedSections(next);
             }}
-            className={`relative inline-flex items-center justify-center h-5 w-5 rounded-md border text-sm transition-colors ${isActiveSection ? "border-indigo-300/60 text-indigo-100 bg-indigo-500/20" : "border-gray-600 text-gray-300 hover:text-white hover:border-indigo-400"}`}
+            className={`relative inline-flex items-center justify-center h-5 w-5 rounded-md border text-sm transition-colors ${isActiveSection ? "border-indigo-300/60 text-indigo-900 dark:text-indigo-100 bg-indigo-500/20" : "border-line-strong text-ink-2 hover:text-ink hover:border-indigo-400"}`}
           >
             {isExpanded ? "−" : "+"}
           </button>
@@ -913,14 +913,14 @@ function SortableRootItem({
             src={section.thumbImageUrl}
             alt=""
             loading="lazy"
-            className={`${isRootLevel ? "h-7 w-7" : "h-6 w-6"} shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover`}
+            className={`${isRootLevel ? "h-7 w-7" : "h-6 w-6"} shrink-0 overflow-hidden rounded-md border border-line-strong/80 object-cover`}
             onError={(event) => {
               event.currentTarget.style.display = "none";
             }}
           />
         )}
         <span
-          className={`relative flex-1 min-w-0 truncate text-sm transition-colors rounded px-0.5 pointer-events-none ${isActiveSection ? "text-indigo-100 font-semibold" : "text-blue-300 group-hover:text-blue-200"}`}
+          className={`relative flex-1 min-w-0 truncate text-sm transition-colors rounded px-0.5 pointer-events-none ${isActiveSection ? "text-indigo-900 dark:text-indigo-100 font-semibold" : "text-blue-700 dark:text-blue-300 group-hover:text-blue-800 dark:group-hover:text-blue-200"}`}
         >
           {highlightText(section.title, searchTerm)}
         </span>
@@ -939,8 +939,8 @@ function SortableRootItem({
           <span
             className={`relative inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full border px-1.5 text-[10px] font-semibold pointer-events-none shrink-0 ${
               isActiveSection
-                ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-300"
-                : "border-gray-600/60 bg-gray-800/70 text-gray-400"
+                ? "border-indigo-400/50 bg-indigo-500/20 text-indigo-700 dark:text-indigo-300"
+                : "border-line-strong/60 bg-surface/70 text-muted"
             }`}
             title={`${childCount} subseção${childCount !== 1 ? "ões" : ""}`}
           >
@@ -949,7 +949,7 @@ function SortableRootItem({
         )}
         {hasFlowchart && (
           <span
-            className="relative inline-flex items-center gap-1 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-200 pointer-events-none"
+            className="relative inline-flex items-center gap-1 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:text-emerald-200 pointer-events-none"
             title={labels.flowchart}
             aria-label={labels.flowchart}
           >
@@ -962,13 +962,13 @@ function SortableRootItem({
           </span>
         )}
         {directMatch && searchTerm.trim() && (
-          <span className="relative text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">
+          <span className="relative text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">
             ✓ {labels.match}
           </span>
         )}
       </div>
       {contentSnippet && isRootLevel && (
-        <div className="ml-8 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded-lg">
+        <div className="ml-8 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded-lg">
           {highlightText(contentSnippet, searchTerm)}
         </div>
       )}
@@ -1017,7 +1017,7 @@ function DragPreviewCard({
       style={width ? { width: `${width}px`, maxWidth: "min(420px, 80vw)" } : { width: "min(420px, 80vw)" }}
     >
       <span className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" aria-hidden />
-      <span className="relative text-gray-300 pointer-events-none select-none" aria-hidden>
+      <span className="relative text-ink-2 pointer-events-none select-none" aria-hidden>
         ⋮⋮
       </span>
       {section?.thumbImageUrl && (
@@ -1025,13 +1025,13 @@ function DragPreviewCard({
           src={section.thumbImageUrl}
           alt=""
           loading="lazy"
-          className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-gray-600/80 object-cover"
+          className="h-7 w-7 shrink-0 overflow-hidden rounded-md border border-line-strong/80 object-cover"
           onError={(event) => {
             event.currentTarget.style.display = "none";
           }}
         />
       )}
-      <span className="relative flex-1 min-w-0 truncate text-sm text-indigo-100 font-semibold">
+      <span className="relative flex-1 min-w-0 truncate text-sm text-indigo-900 dark:text-indigo-100 font-semibold">
         {section.title}
       </span>
     </div>
@@ -1099,7 +1099,7 @@ function SectionChildren({
 
   return (
     <SortableContext items={kids.map((k) => k.id)} strategy={verticalListSortingStrategy}>
-      <ul className="ml-4 mt-2 pl-3 border-l border-gray-700/70 space-y-2">
+      <ul className="ml-4 mt-2 pl-3 border-l border-line/70 space-y-2">
         {kids.map((sec) => (
           <SortableRootItem
             key={sec.id}

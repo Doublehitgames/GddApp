@@ -78,13 +78,13 @@ export function SearchablePageSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-left text-sm outline-none focus:border-gray-500"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-line-strong bg-canvas px-3 py-2 text-left text-sm outline-none focus:border-line-strong"
       >
-        <span className={displayLabel ? "text-white" : "text-gray-500"}>
+        <span className={displayLabel ? "text-ink" : "text-subtle"}>
           {displayLabel ?? placeholder}
         </span>
         <svg
-          className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-3.5 w-3.5 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -94,7 +94,7 @@ export function SearchablePageSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-gray-600 bg-gray-900 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full min-w-[200px] rounded-lg border border-line-strong bg-canvas shadow-xl">
           <div className="p-2">
             <input
               ref={inputRef}
@@ -102,7 +102,7 @@ export function SearchablePageSelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar..."
-              className="w-full rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1.5 text-xs text-white outline-none focus:border-gray-500 placeholder:text-gray-600"
+              className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs text-ink outline-none focus:border-line-strong placeholder:text-subtle"
             />
           </div>
 
@@ -115,8 +115,8 @@ export function SearchablePageSelect({
                   onClick={() => select(undefined)}
                   className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                     !value
-                      ? "bg-gray-700 text-white"
-                      : "text-gray-400 hover:bg-gray-800"
+                      ? "bg-surface-2 text-ink"
+                      : "text-muted hover:bg-surface"
                   }`}
                 >
                   {placeholder}
@@ -133,8 +133,8 @@ export function SearchablePageSelect({
                     onClick={() => select(o.id)}
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       value === o.id
-                        ? "bg-green-800/70 text-white"
-                        : "text-gray-200 hover:bg-gray-800"
+                        ? "bg-green-200 dark:bg-green-800/70 text-white"
+                        : "text-ink hover:bg-surface"
                     }`}
                   >
                     {o.label}
@@ -143,12 +143,12 @@ export function SearchablePageSelect({
               ))}
 
             {!search && prefixOptions.length > 0 && options.length > 0 && (
-              <li className="my-0.5 border-t border-gray-700/70" />
+              <li className="my-0.5 border-t border-line/70" />
             )}
 
             {/* Filtered regular options */}
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-gray-500">Nenhum resultado</li>
+              <li className="px-3 py-2 text-xs text-subtle">Nenhum resultado</li>
             ) : (
               filtered.map((o) => (
                 <li key={o.id}>
@@ -157,8 +157,8 @@ export function SearchablePageSelect({
                     onClick={() => select(o.id)}
                     className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
                       value === o.id
-                        ? "bg-green-800/70 text-white"
-                        : "text-gray-200 hover:bg-gray-800"
+                        ? "bg-green-200 dark:bg-green-800/70 text-white"
+                        : "text-ink hover:bg-surface"
                     }`}
                   >
                     {o.label}

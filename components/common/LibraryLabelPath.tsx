@@ -39,13 +39,13 @@ export function LibraryLabelPath({
       {segments.map((segment, index) => {
         const isLast = index === segments.length - 1;
         const chipClass = isLast && emphasizeLast
-          ? "rounded-md border border-sky-400/60 bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-sky-100"
-          : "rounded-md border border-gray-500/40 bg-gray-700/40 px-1.5 py-0.5 text-[10px] text-gray-300";
+          ? "rounded-md border border-sky-400/60 bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-sky-900 dark:text-sky-100"
+          : "rounded-md border border-line-strong/40 bg-surface-2/40 px-1.5 py-0.5 text-[10px] text-ink-2";
         return (
           <Fragment key={`${segment}-${index}`}>
             <span className={chipClass}>{segment}</span>
             {!isLast && (
-              <span aria-hidden className="text-[10px] text-gray-500">
+              <span aria-hidden className="text-[10px] text-subtle">
                 ▸
               </span>
             )}

@@ -108,17 +108,17 @@ export default function HomeSyncBar() {
   if (!user) return null;
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-700 bg-gray-900/95 backdrop-blur py-2 px-3 sm:px-4">
+    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-canvas/95 backdrop-blur py-2 px-3 sm:px-4">
       <div className="max-w-6xl mx-auto flex flex-col items-stretch gap-2 text-[11px] sm:text-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <span className="text-gray-400">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
+            <span className="text-muted">{t("settings.persistencePage.syncBadge.creditsUsed")}</span>
             {lastQuotaStatus ? (
               <>
-                <span className="font-medium text-gray-200">
+                <span className="font-medium text-ink">
                   {lastQuotaStatus.usedInWindow}/{lastQuotaStatus.limitPerHour}
                 </span>
-                <div className="w-16 sm:w-24 h-1.5 rounded bg-gray-700 overflow-hidden">
+                <div className="w-16 sm:w-24 h-1.5 rounded bg-surface-2 overflow-hidden">
                   <div
                     className={`h-full transition-colors ${
                       quotaPercent !== null && quotaPercent >= 75
@@ -130,17 +130,17 @@ export default function HomeSyncBar() {
                     style={{ width: `${quotaPercent || 0}%` }}
                   />
                 </div>
-                <span className="text-gray-500">
+                <span className="text-subtle">
                   {t("settings.persistencePage.syncBadge.resetsAt")} {new Date(lastQuotaStatus.windowEndsAt).toLocaleTimeString()}
                 </span>
               </>
             ) : (
-              <span className="text-gray-500" title={t("home.syncBar.creditsPerProjectHint")}>
+              <span className="text-subtle" title={t("home.syncBar.creditsPerProjectHint")}>
                 {t("home.syncBar.creditsPerProjectHint")}
               </span>
             )}
           </div>
-          <span className="text-gray-500 truncate">
+          <span className="text-subtle truncate">
             {lastSyncedAt
               ? `${tr("Último sync", "Last sync", "Último sync")}: ${new Date(lastSyncedAt).toLocaleTimeString()}`
               : tr("Ainda sem sync", "No sync yet", "Sin sincronización aún")}
@@ -154,7 +154,7 @@ export default function HomeSyncBar() {
                 type="button"
                 onClick={() => setShowPreviewPopover((v) => !v)}
                 title={t("settings.persistencePage.syncBadge.previewClickHint")}
-                className="text-gray-300 hover:text-white underline"
+                className="text-ink-2 hover:text-ink underline"
               >
                 {estimatedCreditsToSync !== null
                   ? estimatedCreditsToSync === 0
@@ -163,8 +163,8 @@ export default function HomeSyncBar() {
                   : tr("Calculando…", "Loading…", "Calculando…")}
               </button>
               {showPreviewPopover && (
-                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-gray-600 bg-gray-900 shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
-                  <div className="p-2 border-b border-gray-700 text-[10px] font-semibold text-gray-300 sticky top-0 bg-gray-900">
+                <div className="absolute bottom-full left-0 sm:left-auto sm:right-0 mb-1 rounded-lg border border-line-strong bg-canvas shadow-xl max-h-48 overflow-y-auto min-w-[220px]">
+                  <div className="p-2 border-b border-line text-[10px] font-semibold text-ink-2 sticky top-0 bg-canvas">
                     {t("settings.persistencePage.syncBadge.previewTitle")}
                   </div>
                   {syncPreviewItems === null ? (
@@ -173,15 +173,15 @@ export default function HomeSyncBar() {
                     <ul className="p-2 space-y-2 text-[10px]">
                       {syncPreviewItems.map((item) => (
                         <li key={item.projectId} className="space-y-1">
-                          <div className="font-medium text-gray-200 truncate">{item.projectTitle}</div>
+                          <div className="font-medium text-ink truncate">{item.projectTitle}</div>
                           {item.sectionsNew.length > 0 && (
-                            <div><span className="text-green-400">{t("settings.persistencePage.syncBadge.previewNew")}:</span> {item.sectionsNew.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-green-600 dark:text-green-400">{t("settings.persistencePage.syncBadge.previewNew")}:</span> {item.sectionsNew.map((s) => s.title).join(", ")}</div>
                           )}
                           {item.sectionsUpdated.length > 0 && (
-                            <div><span className="text-amber-400">{t("settings.persistencePage.syncBadge.previewUpdated")}:</span> {item.sectionsUpdated.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-amber-600 dark:text-amber-400">{t("settings.persistencePage.syncBadge.previewUpdated")}:</span> {item.sectionsUpdated.map((s) => s.title).join(", ")}</div>
                           )}
                           {item.sectionsDeleted.length > 0 && (
-                            <div><span className="text-red-400">{t("settings.persistencePage.syncBadge.previewDeleted")}:</span> {item.sectionsDeleted.map((s) => s.title).join(", ")}</div>
+                            <div><span className="text-red-600 dark:text-red-400">{t("settings.persistencePage.syncBadge.previewDeleted")}:</span> {item.sectionsDeleted.map((s) => s.title).join(", ")}</div>
                           )}
                         </li>
                       ))}
@@ -193,7 +193,7 @@ export default function HomeSyncBar() {
               )}
             </div>
           )}
-          <Link href="/settings/persistence" className="text-gray-400 hover:text-gray-200 underline">
+          <Link href="/settings/persistence" className="text-muted hover:text-ink underline">
             {tr("Ajustes de sync", "Sync settings", "Ajustes de sync")}
           </Link>
         </div>

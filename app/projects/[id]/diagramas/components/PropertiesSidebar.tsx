@@ -151,7 +151,7 @@ function ColorPaletteControl({
           <button
             type="button"
             onClick={() => onChange("")}
-            className={`h-6 px-2 rounded-md border text-xs transition ${!activeColor ? "border-white/70 text-white bg-white/10" : "border-white/25 text-white/80 hover:border-white/45"}`}
+            className={`h-6 px-2 rounded-md border text-xs transition ${!activeColor ? "border-white/70 text-ink bg-white/10" : "border-white/25 text-ink/80 hover:border-white/45"}`}
           >
             Tema
           </button>
@@ -266,10 +266,10 @@ export default function PropertiesSidebar({
 
   return (
     <aside className={panelClass}>
-      <h2 className="text-lg font-semibold mb-3 text-slate-100">Propriedades</h2>
+      <h2 className="text-lg font-semibold mb-3 text-ink">Propriedades</h2>
       {!showNode && !showEdge && (
         <div className={`${idleHintClass} space-y-3`}>
-          <p className="text-sm font-semibold text-slate-100 text-center">Biblioteca de blocos</p>
+          <p className="text-sm font-semibold text-ink text-center">Biblioteca de blocos</p>
           <div className="grid grid-cols-2 gap-2">
             {blockLibrary.map((item) => (
               <div
@@ -287,14 +287,14 @@ export default function PropertiesSidebar({
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 text-center">Arraste um tipo e solte no palco.</p>
+          <p className="text-xs text-muted text-center">Arraste um tipo e solte no palco.</p>
         </div>
       )}
 
       {showNode && (
         <div className={nodeSectionClass}>
-          <p className="text-xs uppercase tracking-wide text-cyan-200">Bloco</p>
-          <label className="block text-sm text-slate-300">
+          <p className="text-xs uppercase tracking-wide text-cyan-800 dark:text-cyan-200">Bloco</p>
+          <label className="block text-sm text-ink-2">
             Tipo do bloco
             <select
               className={inputClass}
@@ -311,13 +311,13 @@ export default function PropertiesSidebar({
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "text" ? null : "text"))}
-              className="w-full text-left text-sm font-semibold text-slate-100"
+              className="w-full text-left text-sm font-semibold text-ink"
             >
               Texto
             </button>
             {openSection === "text" && (
               <div className="mt-3 space-y-3">
-                <label className="block text-sm text-slate-300">
+                <label className="block text-sm text-ink-2">
                   Texto do bloco
                   <textarea
                     className={`${inputClass} min-h-[110px]`}
@@ -325,7 +325,7 @@ export default function PropertiesSidebar({
                     onChange={(e) => onNodeLabelChange(e.target.value)}
                   />
                 </label>
-                <label className="text-sm text-slate-300">
+                <label className="text-sm text-ink-2">
                   Tamanho da fonte
                   <NumberInputField
                     min={10}
@@ -335,7 +335,7 @@ export default function PropertiesSidebar({
                     onCommit={onNodeFontSizeChange}
                   />
                 </label>
-                <label className="text-sm text-slate-300">
+                <label className="text-sm text-ink-2">
                   Alinhamento horizontal
                   <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
                     {alignOptions.map((option) => (
@@ -344,7 +344,7 @@ export default function PropertiesSidebar({
                         type="button"
                         onClick={() => onNodeTextAlignChange(option.value)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeTextAlign === option.value ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                          nodeTextAlign === option.value ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                         }`}
                       >
                         {option.label}
@@ -352,7 +352,7 @@ export default function PropertiesSidebar({
                     ))}
                   </div>
                 </label>
-                <label className="text-sm text-slate-300">
+                <label className="text-sm text-ink-2">
                   Alinhamento vertical
                   <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
                     {verticalAlignOptions.map((option) => (
@@ -361,7 +361,7 @@ export default function PropertiesSidebar({
                         type="button"
                         onClick={() => onNodeTextVerticalAlignChange(option.value)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeTextVerticalAlign === option.value ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                          nodeTextVerticalAlign === option.value ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                         }`}
                       >
                         {option.label}
@@ -369,7 +369,7 @@ export default function PropertiesSidebar({
                     ))}
                   </div>
                 </label>
-                <div className="block text-sm text-slate-300">
+                <div className="block text-sm text-ink-2">
                   <p className="mb-1">Cor da fonte</p>
                   <ColorPaletteControl activeColor={nodeTextColor} onChange={onNodeTextColorChange} inputClass={inputClass} />
                 </div>
@@ -381,20 +381,20 @@ export default function PropertiesSidebar({
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "note" ? null : "note"))}
-              className="w-full text-left text-sm font-semibold text-slate-100"
+              className="w-full text-left text-sm font-semibold text-ink"
             >
               Note
             </button>
             {openSection === "note" && (
               <div className="mt-3 space-y-3">
-                <label className="block text-sm text-slate-300">
+                <label className="block text-sm text-ink-2">
                   Nota do bloco (opcional)
                   <textarea
                     className={`${inputClass} min-h-[120px]`}
                     value={nodeNote}
                     onChange={(e) => onNodeNoteChange(e.target.value)}
                   />
-                  <span className="mt-1 block text-xs text-slate-400">Nao aparece dentro do bloco.</span>
+                  <span className="mt-1 block text-xs text-muted">Nao aparece dentro do bloco.</span>
                 </label>
               </div>
             )}
@@ -404,17 +404,17 @@ export default function PropertiesSidebar({
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "border" ? null : "border"))}
-              className="w-full text-left text-sm font-semibold text-slate-100"
+              className="w-full text-left text-sm font-semibold text-ink"
             >
               Borda
             </button>
             {openSection === "border" && (
               <div className="mt-3 space-y-3">
-                <div className="block text-sm text-slate-300">
+                <div className="block text-sm text-ink-2">
                   <p className="mb-1">Cor da borda</p>
                   <ColorPaletteControl activeColor={nodeBorderColor} onChange={onNodeBorderColorChange} inputClass={inputClass} />
                 </div>
-                <label className="text-sm text-slate-300 block">
+                <label className="text-sm text-ink-2 block">
                   Espessura da borda
                   <NumberInputField
                     min={0}
@@ -432,13 +432,13 @@ export default function PropertiesSidebar({
             <button
               type="button"
               onClick={() => setOpenSection((prev) => (prev === "layout" ? null : "layout"))}
-              className="w-full text-left text-sm font-semibold text-slate-100"
+              className="w-full text-left text-sm font-semibold text-ink"
             >
               Layout
             </button>
             {openSection === "layout" && (
               <div className="mt-3 space-y-3">
-                <div className="text-sm text-slate-300">
+                <div className="text-sm text-ink-2">
                   <p className="mb-1">Cor de fundo</p>
                   <ColorPaletteControl
                     activeColor={nodeColor}
@@ -448,14 +448,14 @@ export default function PropertiesSidebar({
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="text-sm text-slate-300">
+                  <label className="text-sm text-ink-2">
                     Gradiente
                     <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
                       <button
                         type="button"
                         onClick={() => onNodeGradientEnabledChange(true)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          nodeGradientEnabled ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                          nodeGradientEnabled ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                         }`}
                       >
                         Ligado
@@ -464,7 +464,7 @@ export default function PropertiesSidebar({
                         type="button"
                         onClick={() => onNodeGradientEnabledChange(false)}
                         className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                          !nodeGradientEnabled ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                          !nodeGradientEnabled ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                         }`}
                       >
                         Desligado
@@ -472,7 +472,7 @@ export default function PropertiesSidebar({
                     </div>
                   </label>
                   <div />
-                  <label className="text-sm text-slate-300">
+                  <label className="text-sm text-ink-2">
                     Chanfro da borda
                     <NumberInputField
                       min={0}
@@ -483,7 +483,7 @@ export default function PropertiesSidebar({
                     />
                   </label>
                   <div />
-                  <label className="text-sm text-slate-300">
+                  <label className="text-sm text-ink-2">
                     Largura
                     <NumberInputField
                       min={120}
@@ -492,7 +492,7 @@ export default function PropertiesSidebar({
                       onCommit={onNodeWidthChange}
                     />
                   </label>
-                  <label className="text-sm text-slate-300">
+                  <label className="text-sm text-ink-2">
                     Altura
                     <NumberInputField
                       min={40}
@@ -510,8 +510,8 @@ export default function PropertiesSidebar({
 
       {showEdge && (
         <div className={edgeSectionClass}>
-          <p className="text-xs uppercase tracking-wide text-violet-200">Conexao</p>
-          <label className="block text-sm text-slate-300">
+          <p className="text-xs uppercase tracking-wide text-violet-800 dark:text-violet-200">Conexao</p>
+          <label className="block text-sm text-ink-2">
             Tipo da conexao
             <select
               className={inputClass}
@@ -524,7 +524,7 @@ export default function PropertiesSidebar({
               <option value="bezier">Bezier</option>
             </select>
           </label>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Espessura da linha
             <NumberInputField
               min={1}
@@ -534,14 +534,14 @@ export default function PropertiesSidebar({
               onCommit={onEdgeStrokeWidthChange}
             />
           </label>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Tracejado
             <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
               <button
                 type="button"
                 onClick={() => onEdgeDashedChange(true)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  edgeDashed ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                  edgeDashed ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                 }`}
               >
                 Ligado
@@ -550,7 +550,7 @@ export default function PropertiesSidebar({
                 type="button"
                 onClick={() => onEdgeDashedChange(false)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  !edgeDashed ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                  !edgeDashed ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                 }`}
               >
                 Desligado
@@ -558,7 +558,7 @@ export default function PropertiesSidebar({
             </div>
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-sm text-slate-300">
+            <label className="text-sm text-ink-2">
               Tamanho do traço
               <NumberInputField
                 min={1}
@@ -569,7 +569,7 @@ export default function PropertiesSidebar({
                 disabled={!edgeDashed}
               />
             </label>
-            <label className="text-sm text-slate-300">
+            <label className="text-sm text-ink-2">
               Distância do traço
               <NumberInputField
                 min={1}
@@ -581,14 +581,14 @@ export default function PropertiesSidebar({
               />
             </label>
           </div>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Tracejado animado
             <div className="mt-1 flex items-center gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
               <button
                 type="button"
                 onClick={() => onEdgeAnimatedChange(true)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  edgeAnimated ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                  edgeAnimated ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                 }`}
                 disabled={!edgeDashed}
               >
@@ -598,18 +598,18 @@ export default function PropertiesSidebar({
                 type="button"
                 onClick={() => onEdgeAnimatedChange(false)}
                 className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
-                  !edgeAnimated ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10"
+                  !edgeAnimated ? "bg-white/15 text-ink" : "text-ink/70 hover:bg-white/10"
                 }`}
               >
                 Desligado
               </button>
             </div>
           </label>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Label da conexao
             <input className={inputClass} value={edgeLabel} onChange={(e) => onEdgeLabelChange(e.target.value)} />
           </label>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Marcador de entrada
             <select
               className={inputClass}
@@ -621,7 +621,7 @@ export default function PropertiesSidebar({
               <option value="circle">Bolinha</option>
             </select>
           </label>
-          <label className="block text-sm text-slate-300">
+          <label className="block text-sm text-ink-2">
             Marcador de saida
             <select
               className={inputClass}

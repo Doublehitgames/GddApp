@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useTheme } from "@/lib/theme/provider";
 import { useRouter } from "next/navigation";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { useProjectStore } from "@/store/projectStore";
@@ -104,7 +105,7 @@ export default function SectionDescriptionReadOnly({
   projectTokenSource,
   currentSectionId,
   referenceLinkMode = "manager",
-  theme = "dark",
+  theme: themeProp,
   heroThumbUrl,
   heroThumbWidth,
   documentAnchorOffset = 180,
@@ -112,6 +113,8 @@ export default function SectionDescriptionReadOnly({
   onReferenceNavigate,
   onReferenceClick,
 }: SectionDescriptionReadOnlyProps) {
+  const appTheme = useTheme().theme;
+  const theme = themeProp ?? appTheme;
   const router = useRouter();
   const { t } = useI18n();
   const projects = useProjectStore((s) => s.projects);

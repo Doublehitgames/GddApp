@@ -49,14 +49,14 @@ export default function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface hover:bg-surface-2 border border-line transition-colors"
         title={email}
       >
         <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white">
           {initials}
         </div>
-        <span className="text-sm text-gray-300 hidden sm:block max-w-[120px] truncate">{name}</span>
-        <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <span className="text-sm text-ink-2 hidden sm:block max-w-[120px] truncate">{name}</span>
+        <svg className="w-3 h-3 text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -67,18 +67,18 @@ export default function UserMenu() {
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
 
           {/* Dropdown */}
-          <div className="absolute right-0 mt-2 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl z-20 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-800">
-              <p className="text-sm font-medium text-white truncate">{name}</p>
-              <p className="text-xs text-gray-500 truncate">{email}</p>
+          <div className="absolute right-0 mt-2 w-56 bg-canvas border border-line rounded-xl shadow-2xl z-20 overflow-hidden">
+            <div className="px-4 py-3 border-b border-line">
+              <p className="text-sm font-medium text-ink truncate">{name}</p>
+              <p className="text-xs text-subtle truncate">{email}</p>
             </div>
 
             <div className="p-1">
-              <div className="px-1 pb-1 mb-1 border-b border-gray-800">
+              <div className="px-1 pb-1 mb-1 border-b border-line">
                 <Link
                   href="/profile"
                   onClick={() => setOpen(false)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center gap-2"
                 >
                   <span>👤</span>
                   <span>{tr("Perfil e plano", "Profile and plan", "Perfil y plan")}</span>
@@ -86,7 +86,7 @@ export default function UserMenu() {
                 <Link
                   href="/settings/ai"
                   onClick={() => setOpen(false)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center gap-2"
                 >
                   <span>⚙️</span>
                   <span>{tr("Configurações de IA", "AI settings", "Configuración de IA")}</span>
@@ -94,7 +94,7 @@ export default function UserMenu() {
                 <Link
                   href="/settings/persistence"
                   onClick={() => setOpen(false)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center gap-2"
                 >
                   <span>💾</span>
                   <span>{tr("Persistência", "Persistence", "Persistencia")}</span>
@@ -102,7 +102,7 @@ export default function UserMenu() {
                 <Link
                   href="/settings/api-keys"
                   onClick={() => setOpen(false)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center gap-2"
                 >
                   <span>🔑</span>
                   <span>{tr("Chaves de API", "API Keys", "Claves de API")}</span>
@@ -113,24 +113,24 @@ export default function UserMenu() {
                     setOpen(false);
                     openShortcutsHelp();
                   }}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-between gap-2"
+                  className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center justify-between gap-2"
                 >
                   <span className="flex items-center gap-2">
                     <span>⌨️</span>
                     <span>{tr("Atalhos de teclado", "Keyboard shortcuts", "Atajos de teclado")}</span>
                   </span>
-                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 text-gray-400">?</kbd>
+                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-line bg-surface text-muted">?</kbd>
                 </button>
               </div>
 
               <div className="px-3 py-2">
-                <label className="text-xs text-gray-400 block mb-1">
+                <label className="text-xs text-muted block mb-1">
                   {tr("Idioma", "Language", "Idioma")}
                 </label>
                 <select
                   value={locale}
                   onChange={(event) => setLocale(event.target.value as typeof locale)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-gray-200"
+                  className="w-full bg-surface border border-line rounded-lg px-2 py-1.5 text-sm text-ink"
                 >
                   {supportedLocales.map((item) => (
                     <option key={item} value={item}>
@@ -142,7 +142,7 @@ export default function UserMenu() {
 
               <button
                 onClick={handleSignOut}
-                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

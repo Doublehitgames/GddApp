@@ -1,6 +1,7 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
+import { useTheme } from "@/lib/theme/provider";
 import remarkGfm from "remark-gfm";
 
 interface Props {
@@ -50,7 +51,9 @@ const LIGHT_PROSE =
   "[&_th]:text-gray-700 [&_th]:font-semibold [&_th]:border [&_th]:border-gray-200 [&_th]:px-2 [&_th]:py-1 [&_th]:bg-gray-50 " +
   "[&_td]:text-gray-600 [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1";
 
-export function MarkdownContent({ children, theme = "dark", className = "" }: Props) {
+export function MarkdownContent({ children, theme: themeProp, className = "" }: Props) {
+  const appTheme = useTheme().theme;
+  const theme = themeProp ?? appTheme;
   return (
     <div className={`${theme === "dark" ? DARK_PROSE : LIGHT_PROSE} ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>

@@ -87,7 +87,7 @@ export default function StatusPicker({
       {label(status)}
     </span>
   ) : (
-    <span className="text-[11px] text-gray-600 transition-colors group-hover:text-gray-400">
+    <span className="text-[11px] text-subtle transition-colors group-hover:text-muted">
       {t("pageStatus.setStatus", "+ estado")}
     </span>
   );
@@ -112,7 +112,7 @@ export default function StatusPicker({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-30 mt-1.5 w-52 overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-xl shadow-black/40"
+          className="absolute left-0 top-full z-30 mt-1.5 w-52 overflow-hidden rounded-xl border border-line bg-canvas shadow-xl shadow-black/40"
         >
           {PAGE_STATUSES.map((value) => (
             <button
@@ -122,12 +122,12 @@ export default function StatusPicker({
               aria-checked={status === value}
               onClick={() => choose(value)}
               className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-gray-800 ${
-                status === value ? "text-white" : "text-gray-300"
+                status === value ? "text-ink" : "text-ink-2"
               }`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${PAGE_STATUS_META[value].dotClass}`} />
               {label(value)}
-              {status === value && <span className="ml-auto text-[10px] text-gray-500">✓</span>}
+              {status === value && <span className="ml-auto text-[10px] text-subtle">✓</span>}
             </button>
           ))}
 
@@ -136,7 +136,7 @@ export default function StatusPicker({
               type="button"
               role="menuitem"
               onClick={() => choose(undefined)}
-              className="w-full border-t border-gray-800 px-3 py-2 text-left text-xs text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
+              className="w-full border-t border-line px-3 py-2 text-left text-xs text-subtle transition-colors hover:bg-surface hover:text-ink-2"
             >
               {t("pageStatus.clear", "sem estado")}
             </button>
@@ -146,7 +146,7 @@ export default function StatusPicker({
               embaixo dela nascem e entram no jogo juntas. Só aparece onde
               existe ramo — numa folha seria um controle sem nada para pegar. */}
           {descendantIds.length > 0 && (
-            <label className="flex cursor-pointer items-start gap-2 border-t border-gray-800 bg-gray-950/60 px-3 py-2.5 text-[11px] text-gray-400 transition-colors hover:text-gray-200">
+            <label className="flex cursor-pointer items-start gap-2 border-t border-line bg-canvas/60 px-3 py-2.5 text-[11px] text-muted transition-colors hover:text-ink">
               <input
                 type="checkbox"
                 checked={includeSubtree}

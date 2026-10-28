@@ -66,9 +66,9 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
 
   return (
     <section className="ui-card-premium overflow-hidden p-0">
-      <div className="flex items-center justify-between border-b border-gray-800/60 px-4 pb-3 pt-4">
+      <div className="flex items-center justify-between border-b border-line/60 px-4 pb-3 pt-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -78,11 +78,11 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
               />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-ink">
             {t("pageStatus.widgetTitle", "Maturidade do GDD")}
           </span>
           {stale.length > 0 && (
-            <span className="flex items-center gap-1 rounded-full border border-amber-700/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+            <span className="flex items-center gap-1 rounded-full border border-amber-300/50 dark:border-amber-700/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
               {(stale.length === 1
                 ? t("pageStatus.staleBadgeOne", "1 pede releitura")
@@ -91,7 +91,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-subtle">
           {t("pageStatus.classified", "{done} de {total} classificadas")
             .replace("{done}", String(classified))
             .replace("{total}", String(total))}
@@ -100,7 +100,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
 
       <div className="flex flex-col gap-3 px-4 py-3">
         {classified === 0 ? (
-          <p className="rounded-xl border border-dashed border-gray-700 px-3 py-4 text-sm text-gray-500">
+          <p className="rounded-xl border border-dashed border-line px-3 py-4 text-sm text-subtle">
             {t(
               "pageStatus.widgetEmpty",
               "Nenhuma página classificada ainda. Abra uma página e marque em que pé ela está — rascunho, aprovado, no jogo."
@@ -108,7 +108,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
           </p>
         ) : (
           <>
-            <div className="flex h-2 overflow-hidden rounded-full bg-gray-800">
+            <div className="flex h-2 overflow-hidden rounded-full bg-surface">
               {PAGE_STATUSES.map((status) => {
                 const count = counts.byStatus[status];
                 if (count === 0) return null;
@@ -125,15 +125,15 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
 
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               {PAGE_STATUSES.filter((status) => counts.byStatus[status] > 0).map((status) => (
-                <span key={status} className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                <span key={status} className="flex items-center gap-1.5 text-[11px] text-muted">
                   <span className={`h-2 w-2 rounded-full ${PAGE_STATUS_META[status].dotClass}`} />
                   {label(status)}
-                  <span className="tabular-nums text-gray-500">{counts.byStatus[status]}</span>
+                  <span className="tabular-nums text-subtle">{counts.byStatus[status]}</span>
                 </span>
               ))}
               {counts.unset > 0 && (
-                <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
-                  <span className="h-2 w-2 rounded-full border border-gray-700" />
+                <span className="flex items-center gap-1.5 text-[11px] text-subtle">
+                  <span className="h-2 w-2 rounded-full border border-line" />
                   {t("pageStatus.unset", "sem estado")}
                   <span className="tabular-nums">{counts.unset}</span>
                 </span>
@@ -145,7 +145,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
         {stale.length > 0 && (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
             <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
-              <p className="text-[11px] text-amber-300/90">
+              <p className="text-[11px] text-amber-700/90 dark:text-amber-300/90">
                 {t(
                   "pageStatus.staleExplain",
                   "Páginas firmes que citam algo reescrito depois da última confirmação:"
@@ -162,7 +162,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
                 <button
                   type="button"
                   onClick={() => setConfirmando(true)}
-                  className="shrink-0 rounded-lg border border-amber-500/30 px-2.5 py-1 text-[11px] text-amber-300 transition-colors hover:bg-amber-500/10"
+                  className="shrink-0 rounded-lg border border-amber-500/30 px-2.5 py-1 text-[11px] text-amber-700 dark:text-amber-300 transition-colors hover:bg-amber-500/10"
                 >
                   {t("pageStatus.confirmAll", "reli todas ({n})").replace("{n}", String(stale.length))}
                 </button>
@@ -177,14 +177,14 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
                       );
                       setConfirmando(false);
                     }}
-                    className="rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200 transition-colors hover:bg-amber-500/25"
+                    className="rounded-lg border border-amber-500/50 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:text-amber-200 transition-colors hover:bg-amber-500/25"
                   >
                     {t("pageStatus.confirmAllYes", "confirmar as {n}").replace("{n}", String(stale.length))}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmando(false)}
-                    className="rounded-lg px-2 py-1 text-[11px] text-amber-300/70 transition-colors hover:text-amber-200"
+                    className="rounded-lg px-2 py-1 text-[11px] text-amber-700/70 dark:text-amber-300/70 transition-colors hover:text-amber-800 dark:hover:text-amber-200"
                   >
                     {t("common.cancel", "Cancelar")}
                   </button>
@@ -192,7 +192,7 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
               )}
             </div>
             {confirmando && (
-              <p className="mt-1.5 text-[11px] leading-snug text-amber-300/70">
+              <p className="mt-1.5 text-[11px] leading-snug text-amber-700/70 dark:text-amber-300/70">
                 {t(
                   "pageStatus.confirmAllAsk",
                   "Recarimba a data das {n} de uma vez, sem abrir nenhuma. O estado de cada página continua o que é — só o selo de releitura sai."
@@ -205,14 +205,14 @@ export default function StatusCoverageWidget({ projectId, realProjectId }: Props
                   <Link
                     href={`/projects/${projectId}/sections/${toSlug(section.title)}`}
                     prefetch={false}
-                    className="inline-block rounded-md border border-amber-500/20 px-2 py-0.5 text-[11px] text-amber-200/90 transition-colors hover:border-amber-500/40 hover:text-amber-100"
+                    className="inline-block rounded-md border border-amber-500/20 px-2 py-0.5 text-[11px] text-amber-800/90 dark:text-amber-200/90 transition-colors hover:border-amber-500/40 hover:text-amber-900 dark:hover:text-amber-100"
                   >
                     {section.title}
                   </Link>
                 </li>
               ))}
               {stale.length > STALE_PREVIEW && (
-                <li className="self-center text-[11px] text-amber-300/60">
+                <li className="self-center text-[11px] text-amber-700/60 dark:text-amber-300/60">
                   {t("pageStatus.staleMore", "e mais {n}").replace(
                     "{n}",
                     String(stale.length - STALE_PREVIEW)

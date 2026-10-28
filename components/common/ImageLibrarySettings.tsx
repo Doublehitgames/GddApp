@@ -23,7 +23,7 @@ interface ImageLibrarySettingsProps {
 }
 
 const INPUT_CLASS =
-  "w-full rounded-lg border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white outline-none focus:border-gray-500 placeholder-gray-500";
+  "w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm text-ink outline-none focus:border-line-strong placeholder-subtle";
 
 const PREVIEW_COUNT = 12;
 
@@ -151,9 +151,9 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
    * pastas na fila, imagens) em vez de uma porcentagem inventada.
    */
   const progressPanel = progress && (
-    <div className="rounded-lg border border-gray-700/60 bg-gray-900/60 p-3">
+    <div className="rounded-lg border border-line/60 bg-canvas/60 p-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-white">
+        <div className="flex items-center gap-2 text-sm text-ink">
           <span
             className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent"
             aria-hidden
@@ -171,16 +171,16 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
         <button
           type="button"
           onClick={cancelSync}
-          className="rounded-lg border border-gray-600 px-3 py-1 text-xs text-gray-300 hover:bg-gray-700/40"
+          className="rounded-lg border border-line-strong px-3 py-1 text-xs text-ink-2 hover:bg-surface-2/40"
         >
           {t("imageLibrary.cancelButton")}
         </button>
       </div>
-      <div className="mt-2 truncate text-xs text-gray-500">
+      <div className="mt-2 truncate text-xs text-subtle">
         📁 {progress.current || t("imageLibrary.rootFolder")}
       </div>
       {/* Barra indeterminada: a fila encolhe e cresce, então isso é sinal de vida, não medida. */}
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-gray-800">
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface">
         <div
           className="h-full bg-emerald-500 transition-all duration-300"
           style={{
@@ -194,13 +194,13 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
   return (
     <div className="space-y-4">
       {library && (
-        <div className="rounded-lg border border-gray-700/60 bg-gray-900/40 p-4">
+        <div className="rounded-lg border border-line/60 bg-canvas/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm">
-              <div className="font-semibold text-white">
+              <div className="font-semibold text-ink">
                 {countLabel("imageLibrary.indexedOne", "imageLibrary.indexedMany", library.files.length)}
               </div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-muted">
                 {t("imageLibrary.updatedAt").replace(
                   "{date}",
                   new Date(library.syncedAt).toLocaleString(locale),
@@ -210,7 +210,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
                   href={library.folderUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sky-400 hover:underline"
+                  className="text-sky-600 dark:text-sky-400 hover:underline"
                 >
                   {t("imageLibrary.openInDrive")}
                 </a>
@@ -229,7 +229,7 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
                 type="button"
                 disabled={busy}
                 onClick={disconnect}
-                className="rounded-lg border border-gray-600 px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/40 disabled:opacity-50"
+                className="rounded-lg border border-line-strong px-3 py-2 text-sm text-ink-2 hover:bg-surface-2/40 disabled:opacity-50"
               >
                 {t("imageLibrary.disconnectButton")}
               </button>
@@ -244,13 +244,13 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
                     fileId={file.fileId}
                     alt={file.name}
                     size={200}
-                    className="h-16 w-16 rounded-lg border border-gray-700 bg-gray-950 object-contain"
+                    className="h-16 w-16 rounded-lg border border-line bg-canvas object-contain"
                   />
-                  <div className="mt-1 truncate text-[10px] text-gray-500">{file.name}</div>
+                  <div className="mt-1 truncate text-[10px] text-subtle">{file.name}</div>
                 </div>
               ))}
               {library.files.length > preview.length && (
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-700 text-xs text-gray-500">
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-line text-xs text-subtle">
                   +{library.files.length - preview.length}
                 </div>
               )}
@@ -280,10 +280,10 @@ export function ImageLibrarySettings({ library, onChange }: ImageLibrarySettings
         </div>
       )}
 
-      {error && <div className="text-sm text-rose-400">{error}</div>}
-      {notice && <div className="text-sm text-emerald-400">{notice}</div>}
+      {error && <div className="text-sm text-rose-600 dark:text-rose-400">{error}</div>}
+      {notice && <div className="text-sm text-emerald-600 dark:text-emerald-400">{notice}</div>}
 
-      <p className="text-xs text-gray-500">{t("imageLibrary.hint")}</p>
+      <p className="text-xs text-subtle">{t("imageLibrary.hint")}</p>
     </div>
   );
 }

@@ -236,7 +236,7 @@ export default function DiagramToolbar({
               </button>
               <label
                 className={`flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/20 px-1.5 py-1 text-xs md:gap-2 md:px-2 ${
-                  snapToGrid ? "text-white/80" : "text-white/45"
+                  snapToGrid ? "text-ink/80" : "text-ink/45"
                 }`}
               >
                 <span className="hidden md:inline">Grade</span>
@@ -273,8 +273,8 @@ export default function DiagramToolbar({
                 onClick={() => onThemeChange(theme.key)}
                 className={`inline-flex h-8 w-8 items-center justify-center rounded-lg p-1 text-xs font-semibold transition md:h-9 md:w-9 ${
                   currentTheme === theme.key
-                    ? "bg-white/20 text-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                    ? "bg-white/20 text-ink"
+                    : "text-ink/70 hover:bg-white/10 hover:text-ink"
                 }`}
                 aria-label={`Tema ${theme.label}`}
                 title={theme.label}

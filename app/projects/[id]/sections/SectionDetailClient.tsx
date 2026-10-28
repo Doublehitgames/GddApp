@@ -623,7 +623,7 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
 
     // Para níveis mais profundos, renderizar sem DnD mas com busca e highlighting
     return (
-      <ul className="mt-2 space-y-2 pl-3 border-l border-gray-700/60">
+      <ul className="mt-2 space-y-2 pl-3 border-l border-line/60">
         {filtered.map((sub: any) => {
           const hasChildren = (project?.sections || []).some((s: any) => s.parentId === sub.id);
           const isExpanded = expandedSections.has(sub.id) || searchTerm.trim();
@@ -639,7 +639,7 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
 
           return (
             <li key={sub.id} className="mb-2">
-              <div className="flex items-center gap-2 bg-gray-900/60 border border-gray-700 p-2.5 rounded-lg">
+              <div className="flex items-center gap-2 bg-canvas/60 border border-line p-2.5 rounded-lg">
                 {hasChildren && (
                   <button
                     onClick={() => {
@@ -651,24 +651,24 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
                       }
                       setExpandedSections(newExpanded);
                     }}
-                    className="text-gray-300 hover:text-white font-bold w-4 text-sm"
+                    className="text-ink-2 hover:text-ink font-bold w-4 text-sm"
                   >
                     {isExpanded ? '−' : '+'}
                   </button>
                 )}
                 {!hasChildren && <span className="w-4"></span>}
                 <button
-                  className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
+                  className="min-w-0 flex-1 text-left text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 break-words"
                   onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
                 >
                   {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
                 </button>
                 {matchesDirectly && searchTerm.trim() && (
-                  <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
+                  <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ Match</span>
                 )}
               </div>
               {contentSnippet && (
-                <div className="ml-3 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
+                <div className="ml-3 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded">
                   {highlightText(contentSnippet, searchTerm)}
                 </div>
               )}
@@ -680,8 +680,8 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
     );
   }
 
-  if (!loaded) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('common.loading')}</div>;
-  if (!section) return <div className="min-h-screen bg-gray-900 text-white p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors" onClick={() => project ? router.push(projectPath(project)) : router.push("/")}>{t('common.back')}</button></div>;
+  if (!loaded) return <div className="min-h-screen bg-canvas text-ink p-6">{t('common.loading')}</div>;
+  if (!section) return <div className="min-h-screen bg-canvas text-ink p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-surface-2 text-ink rounded-lg hover:bg-surface-3 transition-colors" onClick={() => project ? router.push(projectPath(project)) : router.push("/")}>{t('common.back')}</button></div>;
 
   return (
     <>
@@ -977,22 +977,22 @@ function UnresolvedRefsPanel({
   };
 
   return (
-    <div className="max-w-6xl mx-auto mb-4 bg-amber-900/20 border border-amber-700/50 rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-amber-200 mb-3 flex items-center gap-2">
+    <div className="max-w-6xl mx-auto mb-4 bg-amber-100 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-700/50 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
         </svg>
         {t("sectionDetail.ai.unresolvedRefsTitle")}
       </h3>
-      <p className="text-xs text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
+      <p className="text-xs text-amber-800/80 dark:text-amber-200/80 mb-3">{t("sectionDetail.ai.createSectionHint")}</p>
       <div className="space-y-2">
         {unresolvedNames.map((name) => {
           const existsHere = hasDuplicateName(projectId, name, sectionId);
           const existsAtRoot = hasDuplicateName(projectId, name);
           const anyExists = existsHere || existsAtRoot;
           return (
-            <div key={name} className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
-              <span className="text-sm text-amber-100 truncate">$[{name}]</span>
+            <div key={name} className="flex items-center justify-between gap-3 bg-canvas/50 border border-amber-300/30 dark:border-amber-700/30 rounded-lg px-3 py-2">
+              <span className="text-sm text-amber-900 dark:text-amber-100 truncate">$[{name}]</span>
               <div className="shrink-0 relative">
                 <button
                   type="button"
@@ -1006,24 +1006,24 @@ function UnresolvedRefsPanel({
                 {openMenuFor === name && !anyExists && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpenMenuFor(null)} aria-hidden />
-                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl">
+                    <div className="absolute right-0 top-full mt-1 z-50 min-w-[12rem] py-1 bg-surface border border-line-strong rounded-lg shadow-xl">
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2"
                         onClick={() => runWithLimitCheck(() => addSubsection(projectId, sectionId, name, ""))}
                       >
                         {t("sectionDetail.ai.createHere")}
                       </button>
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2"
                         onClick={() => runWithLimitCheck(() => addSection(projectId, name, ""))}
                       >
                         {t("sectionDetail.ai.createAtRoot")}
                       </button>
                       <button
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"
+                        className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-2"
                         onClick={() => {
                           setOpenMenuFor(null);
                           setChooseParentFor(name);
@@ -1034,7 +1034,7 @@ function UnresolvedRefsPanel({
                       {getAIHeaders && (
                         <button
                           type="button"
-                          className="w-full text-left px-3 py-2 text-sm text-amber-200 hover:bg-amber-900/50 border-t border-gray-600 mt-1"
+                          className="w-full text-left px-3 py-2 text-sm text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 border-t border-line-strong mt-1"
                           onClick={() => applyPathAndNavigate(name)}
                           disabled={useAILoadingFor !== null}
                         >
@@ -1058,8 +1058,8 @@ function UnresolvedRefsPanel({
           );
         })}
         {hasProjectTitleRef && (
-          <div className="flex items-center justify-between gap-3 bg-gray-900/50 border border-amber-700/30 rounded-lg px-3 py-2">
-            <span className="text-sm text-amber-100">
+          <div className="flex items-center justify-between gap-3 bg-canvas/50 border border-amber-300/30 dark:border-amber-700/30 rounded-lg px-3 py-2">
+            <span className="text-sm text-amber-900 dark:text-amber-100">
               $[{projectTitle}] — {t("sectionDetail.ai.projectNotSection")}
             </span>
             <button
@@ -1076,14 +1076,14 @@ function UnresolvedRefsPanel({
       {/* Modal: escolher seção pai para criar a nova seção */}
       {chooseParentFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setChooseParentFor(null)}>
-          <div className="bg-gray-800 border border-gray-600 rounded-xl shadow-xl max-w-md w-full max-h-[70vh] flex flex-col text-white" onClick={(e) => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-600">
+          <div className="bg-surface border border-line-strong rounded-xl shadow-xl max-w-md w-full max-h-[70vh] flex flex-col text-ink" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-line-strong">
               <h4 className="font-semibold">{t("sectionDetail.ai.chooseParentModalTitle").replace("{name}", chooseParentFor)}</h4>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               <button
                 type="button"
-                className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm bg-surface-2/50 hover:bg-surface-2"
                 onClick={() => runWithLimitCheck(() => addSection(projectId, chooseParentFor, ""))}
               >
                 📁 {t("sectionDetail.ai.createAtRoot")}
@@ -1095,7 +1095,7 @@ function UnresolvedRefsPanel({
                   <button
                     key={s.id}
                     type="button"
-                    className="w-full text-left px-3 py-2 rounded-lg text-sm bg-gray-700/50 hover:bg-gray-700 truncate"
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm bg-surface-2/50 hover:bg-surface-2 truncate"
                     title={pathStr}
                     onClick={() => runWithLimitCheck(() => addSubsection(projectId, s.id, chooseParentFor, ""))}
                   >
@@ -1104,8 +1104,8 @@ function UnresolvedRefsPanel({
                 );
               })}
             </div>
-            <div className="px-4 py-2 border-t border-gray-600">
-              <button type="button" className="text-sm text-gray-400 hover:text-white" onClick={() => setChooseParentFor(null)}>
+            <div className="px-4 py-2 border-t border-line-strong">
+              <button type="button" className="text-sm text-muted hover:text-ink" onClick={() => setChooseParentFor(null)}>
                 {t("common.cancel")}
               </button>
             </div>
@@ -1151,9 +1151,9 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
 
   return (
     <li ref={setNodeRef} style={style} className="mb-2">
-      <div className="flex items-center gap-2 bg-gray-900/60 border border-gray-700 p-2.5 rounded-lg">
+      <div className="flex items-center gap-2 bg-canvas/60 border border-line p-2.5 rounded-lg">
         <span
-          className="text-gray-400 cursor-grab active:cursor-grabbing text-sm"
+          className="text-muted cursor-grab active:cursor-grabbing text-sm"
           {...attributes}
           {...listeners}
           aria-label="Reordenar"
@@ -1171,24 +1171,24 @@ function SortableSubsectionItem({ sub, projectId, project, router, renderSubsect
               }
               setExpandedSections(newExpanded);
             }}
-            className="text-gray-300 hover:text-white font-bold w-4 text-sm"
+            className="text-ink-2 hover:text-ink font-bold w-4 text-sm"
           >
             {isExpanded ? '−' : '+'}
           </button>
         )}
         {!hasChildren && <span className="w-4"></span>}
         <button
-          className="min-w-0 flex-1 text-left text-blue-300 hover:text-blue-200 break-words"
+          className="min-w-0 flex-1 text-left text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 break-words"
           onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
         >
           {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
         </button>
         {matchesDirectly && searchTerm.trim() && (
-          <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-700/60">✓ Match</span>
+          <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ Match</span>
         )}
       </div>
       {contentSnippet && (
-        <div className="ml-3 text-xs text-gray-300 italic mt-1 bg-yellow-950/30 border border-yellow-700/60 p-2 rounded">
+        <div className="ml-3 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded">
           {highlightText(contentSnippet, searchTerm)}
         </div>
       )}
@@ -1287,7 +1287,7 @@ function SectionDetailContent({
   );
   const showPageRefsPanel = !showPreview && (unresolvedFromPage.unresolvedNames.length > 0 || unresolvedFromPage.hasProjectTitleRef);
   const subsectionsPanel = (
-    <div className="bg-gray-800/70 border border-gray-700/80 rounded-2xl p-4 md:p-5 overflow-x-hidden">
+    <div className="bg-surface/70 border border-line/80 rounded-2xl p-4 md:p-5 overflow-x-hidden">
       <h2 className="font-semibold text-lg">{t('sectionDetail.subsections.title')}</h2>
 
       {/* Campo de busca */}
@@ -1313,13 +1313,13 @@ function SectionDetailContent({
               setExpandedSections(allIds);
             }
           }}
-          className="w-full bg-gray-900/70 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-canvas/70 border border-line-strong rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden pr-1">
         {renderSubsectionTree(sectionId) || (
-          <p className="text-gray-400 text-sm">{t('sectionDetail.subsections.empty')}</p>
+          <p className="text-muted text-sm">{t('sectionDetail.subsections.empty')}</p>
         )}
       </div>
 
@@ -1337,7 +1337,7 @@ function SectionDetailContent({
               }
             }}
             placeholder={t('sectionDetail.subsections.addPlaceholder')}
-            className={`flex-1 min-w-0 bg-gray-900/70 border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 ${nameError ? "border-red-500" : "border-gray-600"}`}
+            className={`flex-1 min-w-0 bg-canvas/70 border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted ${nameError ? "border-red-500" : "border-line-strong"}`}
           />
           <button
             className="shrink-0 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
@@ -1360,17 +1360,17 @@ function SectionDetailContent({
           >{t('projectDetail.add')}</button>
         </div>
         {nameError && (
-          <span className="text-red-400 text-sm mt-1 block">{nameError}</span>
+          <span className="text-red-600 dark:text-red-400 text-sm mt-1 block">{nameError}</span>
         )}
       </div>
     </div>
   );
 
   return (
-    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-gray-900 text-white overflow-auto p-6" : "min-h-screen bg-gray-900 text-white px-4 py-8 md:px-8 md:py-10"}>
+    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-canvas text-ink overflow-auto p-6" : "min-h-screen bg-canvas text-ink px-4 py-8 md:px-8 md:py-10"}>
       {/* Fullscreen header */}
       {inlineEdit && isFullscreen && (
-        <div className="mb-4 flex items-center justify-between border-b border-gray-700 pb-4">
+        <div className="mb-4 flex items-center justify-between border-b border-line pb-4">
           <h2 className="text-xl font-bold">Editando: {section.title}</h2>
           <button
             onClick={() => {
@@ -1397,7 +1397,7 @@ function SectionDetailContent({
               className={`h-24 w-24 md:h-28 md:w-28 rounded-xl overflow-hidden flex items-center justify-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
                 section?.thumbImageUrl && sectionThumbCandidateIndex < sectionThumbCandidates.length
                   ? "hover:ring-2 hover:ring-indigo-400/70"
-                  : "border-2 border-dashed border-gray-600 bg-gray-900/40 hover:border-indigo-400"
+                  : "border-2 border-dashed border-line-strong bg-canvas/40 hover:border-indigo-400"
               }`}
               title={t("sectionDetail.thumbnail.pickTooltip")}
               aria-label={t("sectionDetail.thumbnail.pickTooltip")}
@@ -1413,7 +1413,7 @@ function SectionDetailContent({
                   }}
                 />
               ) : (
-                <span className="text-[11px] text-gray-400 px-1 text-center leading-tight">
+                <span className="text-[11px] text-muted px-1 text-center leading-tight">
                   {isPickingSectionThumb ? t("sectionDetail.thumbnail.picking") : t("sectionDetail.thumbnail.empty")}
                 </span>
               )}
@@ -1491,7 +1491,7 @@ function SectionDetailContent({
                     setEditedTitle(section.title);
                     setIsEditingTitle(false);
                   }}
-                  className="inline-flex items-center rounded-lg border border-gray-500/50 bg-gray-700 text-white px-3 py-1 text-sm hover:bg-gray-600 transition-colors"
+                  className="inline-flex items-center rounded-lg border border-line-strong/50 bg-surface-2 text-ink px-3 py-1 text-sm hover:bg-surface-3 transition-colors"
                 >
                   ✕ {t('common.cancel')}
                 </button>
@@ -1507,7 +1507,7 @@ function SectionDetailContent({
                       setSectionColor(newColor);
                       editSection(realProjectId, realSectionId,section.title, section.content, undefined, newColor);
                     }}
-                    className="h-8 w-8 border border-gray-600 rounded cursor-pointer bg-gray-900/90"
+                    className="h-8 w-8 border border-line-strong rounded cursor-pointer bg-canvas/90"
                     title={t("sectionDetail.actions.mapColor")}
                   />
                   {section?.color && (
@@ -1516,7 +1516,7 @@ function SectionDetailContent({
                         setSectionColor("#3b82f6");
                         editSection(realProjectId, realSectionId,section.title, section.content, undefined, undefined);
                       }}
-                      className="h-8 px-2 text-xs bg-gray-700/90 hover:bg-gray-600 text-white rounded border border-gray-500/40 transition-colors"
+                      className="h-8 px-2 text-xs bg-surface-2/90 hover:bg-surface-3 text-ink rounded border border-line-strong/40 transition-colors"
                       title={t("sectionDetail.actions.resetLevelColor")}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1527,7 +1527,7 @@ function SectionDetailContent({
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">{section.title}</h1>
                 {section?.flowchartEnabled && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-200 shrink-0">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/55 bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200 shrink-0">
                     <span className="relative flex h-2 w-2">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
                       <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
@@ -1537,7 +1537,7 @@ function SectionDetailContent({
                 )}
                 <button
                   onClick={() => setIsEditingTitle(true)}
-                  className="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-indigo-300 transition-opacity text-xl shrink-0"
+                  className="opacity-60 group-hover:opacity-100 text-muted hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity text-xl shrink-0"
                   title={t("sectionDetail.actions.editSectionName")}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1564,7 +1564,7 @@ function SectionDetailContent({
                     <button
                       type="button"
                       onClick={() => { setDataIdDraft(section.dataId ?? ""); setIsEditingDataId(true); }}
-                      className="text-[10px] font-mono text-gray-500 hover:text-gray-300 bg-gray-800/50 rounded px-2 py-0.5 border border-gray-700/50 transition-colors"
+                      className="text-[10px] font-mono text-subtle hover:text-ink-2 bg-surface/50 rounded px-2 py-0.5 border border-line/50 transition-colors"
                       title="Editar DataID"
                     >
                       ID: {section.dataId}
@@ -1578,7 +1578,7 @@ function SectionDetailContent({
                         setDataIdDraft(suggested);
                         setIsEditingDataId(true);
                       }}
-                      className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+                      className="text-[10px] text-subtle hover:text-muted transition-colors"
                       title="Adicionar DataID"
                     >
                       + DataID
@@ -1587,7 +1587,7 @@ function SectionDetailContent({
                   {isEditingDataId && (
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase tracking-wide text-gray-500">DataID</span>
+                        <span className="text-[10px] uppercase tracking-wide text-subtle">DataID</span>
                         <input
                           autoFocus
                           type="text"
@@ -1626,13 +1626,13 @@ function SectionDetailContent({
                             setDataIdError(null);
                             setIsEditingDataId(false);
                           }}
-                          className="text-gray-500 hover:text-gray-300 text-xs"
+                          className="text-subtle hover:text-ink-2 text-xs"
                         >
                           ✕
                         </button>
                       </div>
                       {dataIdError && (
-                        <span className="text-[10px] text-red-400 font-medium">{dataIdError}</span>
+                        <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">{dataIdError}</span>
                       )}
                     </div>
                   )}
@@ -1675,7 +1675,7 @@ function SectionDetailContent({
                   className="gap-2"
                   iconClassName="w-4 h-4"
                   buttonClassName={(mode) =>
-                    "w-8 h-8 flex items-center justify-center text-white rounded-lg border transition-colors " +
+                    "w-8 h-8 flex items-center justify-center text-ink rounded-lg border transition-colors " +
                     (mode === "graph"
                       ? "bg-blue-600 border-blue-400/40 hover:bg-blue-700"
                       : mode === "doc"
@@ -1746,7 +1746,7 @@ function SectionDetailContent({
       )}
 
       {sectionThumbError && (
-        <div className="max-w-6xl mx-auto mb-2 text-xs text-red-300">
+        <div className="max-w-6xl mx-auto mb-2 text-xs text-red-700 dark:text-red-300">
           {sectionThumbError}
         </div>
       )}
@@ -1766,7 +1766,7 @@ function SectionDetailContent({
       {/* Domínio / Sistemas (modelo de game design para IA e relações) */}
       {section && !inlineEdit && (
         <div className="max-w-6xl mx-auto mb-3 ui-card-premium flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-400">{t("sectionDetail.domain.label")}:</span>
+          <span className="text-sm text-muted">{t("sectionDetail.domain.label")}:</span>
           {GAME_DESIGN_DOMAIN_IDS.map((id) => {
             const current = section?.domainTags ?? [];
             const isSelected = current.includes(id);
@@ -1784,7 +1784,7 @@ function SectionDetailContent({
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
                   isSelected
                     ? "border-indigo-400/60 bg-indigo-600/85 text-white hover:bg-indigo-500"
-                    : "border-gray-600 bg-gray-800/90 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
+                    : "border-line-strong bg-surface/90 text-ink-2 hover:bg-surface-2 hover:text-ink"
                 }`}
               >
                 {t(`sectionDetail.domain.${id}`)}
@@ -1821,7 +1821,7 @@ function SectionDetailContent({
                 setSuggestDomainLoading(false);
               }
             }}
-            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-600 bg-gray-800/90 text-gray-200 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium border border-line-strong bg-surface/90 text-ink hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
           </button>
@@ -1830,7 +1830,7 @@ function SectionDetailContent({
 
       {/* Mensagem de erro/aviso da IA */}
       {improveError && (
-        <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-xl text-amber-200 text-sm">
+        <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-600 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
           {improveError}
         </div>
       )}
@@ -1848,7 +1848,7 @@ function SectionDetailContent({
                 onDoubleClick={(event) => event.stopPropagation()}
                 aria-label={t('sectionDetail.descriptionEditAria', 'Editar descrição')}
                 title={t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição')}
-                className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 rounded-lg border border-indigo-400/40 bg-gray-900/85 px-2.5 py-1.5 text-xs text-indigo-100 opacity-0 shadow-sm backdrop-blur transition-opacity duration-150 hover:border-indigo-300/70 hover:bg-indigo-600/25 hover:text-white focus-visible:opacity-100 group-hover/description:opacity-100"
+                className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 rounded-lg border border-indigo-400/40 bg-canvas/85 px-2.5 py-1.5 text-xs text-indigo-900 dark:text-indigo-100 opacity-0 shadow-sm backdrop-blur transition-opacity duration-150 hover:border-indigo-300/70 hover:bg-indigo-600/25 hover:text-white focus-visible:opacity-100 group-hover/description:opacity-100"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
@@ -1864,7 +1864,7 @@ function SectionDetailContent({
                   projectTokenSource={project}
                   currentSectionId={realSectionId}
                   referenceLinkMode="manager"
-                  theme="dark"
+                 
                 />
               </div>
             </>
@@ -1872,9 +1872,9 @@ function SectionDetailContent({
             <button
               type="button"
               onClick={() => setInlineEdit(true)}
-              className="w-full flex items-center gap-3 rounded-lg border border-dashed border-gray-600 bg-gray-900/40 px-4 py-6 text-left text-sm text-gray-300 transition-colors hover:border-indigo-400/60 hover:bg-indigo-600/10 hover:text-indigo-100"
+              className="w-full flex items-center gap-3 rounded-lg border border-dashed border-line-strong bg-canvas/40 px-4 py-6 text-left text-sm text-ink-2 transition-colors hover:border-indigo-400/60 hover:bg-indigo-600/10 hover:text-indigo-900 dark:hover:text-indigo-100"
             >
-              <svg className="h-5 w-5 shrink-0 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="h-5 w-5 shrink-0 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
               </svg>
               <span className="flex-1">
@@ -1884,7 +1884,7 @@ function SectionDetailContent({
           )}
 
           {(section?.created_by_name != null || section?.created_at != null || section?.updated_by_name != null || section?.updated_at != null) && (
-            <div className="mt-4 pt-3 border-t border-gray-700/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+            <div className="mt-4 pt-3 border-t border-line/80 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
               {section?.created_by_name != null && section?.created_at != null && (
                 <span>{t("sectionDetail.audit.createdBy").replace("{{name}}", section.created_by_name).replace("{{date}}", new Date(section.created_at).toLocaleString())}</span>
               )}
@@ -1904,7 +1904,7 @@ function SectionDetailContent({
       {section && !inlineEdit && (
         <div
           className={`max-w-6xl mx-auto mb-4 ui-card-premium border ${
-            section?.flowchartEnabled ? "border-emerald-500/35 bg-emerald-900/10" : "border-gray-700/80"
+            section?.flowchartEnabled ? "border-emerald-500/35 bg-emerald-100 dark:bg-emerald-900/10" : "border-line/80"
           }`}
         >
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1912,8 +1912,8 @@ function SectionDetailContent({
               <span
                 className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
                   section?.flowchartEnabled
-                    ? "border-emerald-400/50 bg-emerald-600/25 text-emerald-200"
-                    : "border-gray-600/80 bg-gray-800/70 text-gray-300"
+                    ? "border-emerald-400/50 bg-emerald-600/25 text-emerald-800 dark:text-emerald-200"
+                    : "border-line-strong/80 bg-surface/70 text-ink-2"
                 }`}
                 aria-hidden="true"
               >
@@ -1925,12 +1925,12 @@ function SectionDetailContent({
                 </svg>
               </span>
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-gray-100">{t("sectionDetail.flowchart.title")}</h3>
-                <p className="text-xs text-gray-400 mt-1">{t("sectionDetail.flowchart.description")}</p>
+                <h3 className="text-sm font-semibold text-ink">{t("sectionDetail.flowchart.title")}</h3>
+                <p className="text-xs text-muted mt-1">{t("sectionDetail.flowchart.description")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium ${section?.flowchartEnabled ? "text-emerald-300" : "text-gray-400"}`}>
+              <span className={`text-xs font-medium ${section?.flowchartEnabled ? "text-emerald-700 dark:text-emerald-300" : "text-muted"}`}>
                 {section?.flowchartEnabled ? t("sectionDetail.flowchart.statusOn") : t("sectionDetail.flowchart.statusOff")}
               </span>
               <ToggleSwitch
@@ -1982,27 +1982,27 @@ function SectionDetailContent({
         <button
           type="button"
           onClick={() => setHistoryExpanded((e) => !e)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-gray-800/80 transition-colors"
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface/80 transition-colors"
           aria-expanded={historyExpanded}
         >
-          <span className="text-sm font-semibold text-gray-200">
+          <span className="text-sm font-semibold text-ink">
             {t("sectionDetail.history.title")}
             {!sectionVersionsLoading && sectionVersions.length > 0 && (
-              <span className="text-gray-500 font-normal ml-1">
+              <span className="text-subtle font-normal ml-1">
                 ({sectionVersions.length} {sectionVersions.length === 1 ? t("sectionDetail.history.versionOne") : t("sectionDetail.history.versionMany")})
               </span>
             )}
           </span>
-          <span className="text-gray-400 shrink-0 transition-transform duration-200" style={{ transform: historyExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+          <span className="text-muted shrink-0 transition-transform duration-200" style={{ transform: historyExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
             ▼
           </span>
         </button>
         {historyExpanded && (
-          <div className="px-4 pb-4 pt-0 border-t border-gray-700/80 bg-gray-900/25">
+          <div className="px-4 pb-4 pt-0 border-t border-line/80 bg-canvas/25">
         {sectionVersionsLoading ? (
-          <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.loading")}</p>
+          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.loading")}</p>
         ) : sectionVersions.length === 0 ? (
-          <p className="text-xs text-gray-500 pt-2">{t("sectionDetail.history.empty")}</p>
+          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.empty")}</p>
         ) : (
           <ul className="space-y-2 max-h-64 overflow-auto pt-2">
             {sectionVersions.map((v: SectionVersionEntry, index: number) => {
@@ -2011,26 +2011,26 @@ function SectionDetailContent({
               return (
               <li
                 key={v.id}
-                className="flex flex-wrap items-start justify-between gap-2 text-xs bg-gray-900/60 border border-gray-700 rounded-lg px-2 py-1.5"
+                className="flex flex-wrap items-start justify-between gap-2 text-xs bg-canvas/60 border border-line rounded-lg px-2 py-1.5"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-gray-300 truncate">
+                  <div className="text-ink-2 truncate">
                     {new Date(v.created_at).toLocaleString()}
                     {(v.updated_by_name != null && v.updated_by_name !== "") && (
-                      <span className="text-gray-500 ml-1">
+                      <span className="text-subtle ml-1">
                         {t("sectionDetail.history.by").replace("{{name}}", v.updated_by_name)}
                       </span>
                     )}
                   </div>
-                  <div className="text-gray-400 font-medium truncate mt-0.5" title={v.title}>
+                  <div className="text-muted font-medium truncate mt-0.5" title={v.title}>
                     {(v.title && v.title.trim()) || t("sectionDetail.history.untitled")}
                   </div>
                   {versionSummary ? (
-                    <div className="text-gray-400 truncate mt-0.5" title={versionSummary}>
+                    <div className="text-muted truncate mt-0.5" title={versionSummary}>
                       {versionSummary}
                     </div>
                   ) : contentPreview ? (
-                    <div className="text-gray-500 truncate mt-0.5" title={v.content}>
+                    <div className="text-subtle truncate mt-0.5" title={v.content}>
                       {contentPreview}{v.content.length > 80 ? "…" : ""}
                     </div>
                   ) : null}
@@ -2060,7 +2060,7 @@ function SectionDetailContent({
                       setRestoreVersionId(null);
                     }
                   }}
-                  className="text-blue-300 hover:text-blue-200 disabled:opacity-50 rounded px-1.5 py-0.5 hover:bg-blue-500/10 transition-colors"
+                  className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 disabled:opacity-50 rounded px-1.5 py-0.5 hover:bg-blue-500/10 transition-colors"
                 >
                   {restoreVersionId === v.id ? t("sectionDetail.history.restoring") : t("sectionDetail.history.restore")}
                 </button>
@@ -2105,18 +2105,18 @@ function SectionDetailContent({
         <div className="max-w-6xl mx-auto mb-3 ui-card-premium">
           {!isFullscreen && (
             <div className="flex items-center gap-2 mb-2 justify-end">
-              <div className="flex items-center gap-2 bg-gray-800/90 rounded-lg px-3 py-1 border border-gray-700">
+              <div className="flex items-center gap-2 bg-surface/90 rounded-lg px-3 py-1 border border-line">
                 <button
                   onClick={() => setEditorHeight((prev: string) => {
                     const current = parseInt(prev);
                     return `${Math.max(200, current - 100)}px`;
                   })}
-                  className="text-gray-300 hover:text-white font-bold"
+                  className="text-ink-2 hover:text-ink font-bold"
                   title={t("sectionDetail.actions.decreaseHeight")}
                 >
                   −
                 </button>
-                <span className="text-sm text-gray-300 min-w-[60px] text-center">
+                <span className="text-sm text-ink-2 min-w-[60px] text-center">
                   {editorHeight}
                 </span>
                 <button
@@ -2124,7 +2124,7 @@ function SectionDetailContent({
                     const current = parseInt(prev);
                     return `${current + 100}px`;
                   })}
-                  className="text-gray-300 hover:text-white font-bold"
+                  className="text-ink-2 hover:text-ink font-bold"
                   title={t("sectionDetail.actions.increaseHeight")}
                 >
                   +
@@ -2195,7 +2195,7 @@ function SectionDetailContent({
                 setInlineEdit(false);
               }}
             >✓ {t("sectionDetail.descriptionDone", "Concluir")}</button>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-muted">
               {t("sectionDetail.descriptionAutosaveHint", "Salvo automaticamente")}
             </span>
           </div>
@@ -2205,7 +2205,7 @@ function SectionDetailContent({
       {/* Modal de Preview da IA */}
       {showPreview && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col text-white">
+          <div className="bg-canvas border border-line rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col text-ink">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4">
               <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -2214,7 +2214,7 @@ function SectionDetailContent({
                 </svg>
                 {t("sectionDetail.ai.previewTitle")}
               </h2>
-              <p className="text-purple-100 text-sm mt-1">
+              <p className="text-purple-900 dark:text-purple-100 text-sm mt-1">
                 {t("sectionDetail.ai.previewSubtitle")}
               </p>
             </div>
@@ -2222,12 +2222,12 @@ function SectionDetailContent({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               {improveError && (
-                <div className="mb-4 p-3 bg-amber-900/30 border border-amber-600 rounded-lg text-amber-200 text-sm">
+                <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-600 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
                   {improveError}
                 </div>
               )}
 
-              <div className="prose max-w-none bg-gray-800/70 rounded-lg p-6 border border-gray-700 text-gray-100">
+              <div className="prose max-w-none bg-surface/70 rounded-lg p-6 border border-line text-ink">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewContent}</ReactMarkdown>
               </div>
 
@@ -2255,9 +2255,9 @@ function SectionDetailContent({
             </div>
 
             {/* Footer com ações */}
-            <div className="border-t border-gray-700 p-6 bg-gray-900/90">
+            <div className="border-t border-line p-6 bg-canvas/90">
               <div className="mb-4">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-200 mb-2">
+                <label className="flex items-center gap-2 text-sm font-semibold text-ink mb-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h-5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 113 3L12 14l-4 1 1-4 7.5-7.5z" />
                   </svg>
@@ -2267,7 +2267,7 @@ function SectionDetailContent({
                   value={modificationRequest}
                   onChange={(e) => setModificationRequest(e.target.value)}
                   placeholder={t("sectionDetail.ai.modificationRequestPlaceholder")}
-                  className="w-full bg-gray-800 border border-gray-600 text-white placeholder:text-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
+                  className="w-full bg-surface border border-line-strong text-ink placeholder:text-muted rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-20"
                   rows={2}
                 />
               </div>
@@ -2276,7 +2276,7 @@ function SectionDetailContent({
                 <button
                   onClick={handleCancelImprovement}
                   disabled={isImproving}
-                  className="px-6 py-3 border border-gray-600 text-gray-200 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                  className="px-6 py-3 border border-line-strong text-ink rounded-lg hover:bg-surface transition-colors disabled:opacity-50 inline-flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2329,7 +2329,7 @@ function SectionDetailContent({
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleMoveSection}
         title={t('sectionDetail.move.title', 'Mover pagina')}
-        description={section ? (<>Mover <strong className="text-gray-100">{section.title}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
+        description={section ? (<>Mover <strong className="text-ink">{section.title}</strong> {t('sectionDetail.copy.descriptionTo', 'para outra pagina')}</>) : null}
         confirmLabel={t('sectionDetail.move.move')}
         confirmVariant="blue"
         sections={sections}
@@ -2355,8 +2355,8 @@ function SectionDetailContent({
             title={t("sectionDetail.moveChildren.title", "Mover filhos para...")}
             description={section ? (
               <>
-                Mover <strong className="text-gray-100">{directChildren.length} {directChildren.length === 1 ? 'filho' : 'filhos'}</strong> de{" "}
-                <strong className="text-gray-100">{section.title}</strong> para outra página
+                Mover <strong className="text-ink">{directChildren.length} {directChildren.length === 1 ? 'filho' : 'filhos'}</strong> de{" "}
+                <strong className="text-ink">{section.title}</strong> para outra página
               </>
             ) : null}
             confirmLabel={t("sectionDetail.moveChildren.confirm", "Mover filhos")}
@@ -2399,8 +2399,8 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
 
   return (
     <>
-      <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-900/20 rounded-xl border border-blue-700/50">
-        <h3 className="text-sm font-semibold text-blue-200 mb-2 flex items-center gap-2">
+      <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-100 dark:bg-blue-900/20 rounded-xl border border-blue-300/50 dark:border-blue-700/50">
+        <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
           </svg>
@@ -2411,7 +2411,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
             <span key={link.id} className="inline-flex items-center">
               <button
                 onClick={() => handleClick(link)}
-                className="text-blue-300 hover:text-blue-200 hover:underline text-sm font-medium"
+                className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 hover:underline text-sm font-medium"
               >
                 {link.title}
               </button>
@@ -2430,7 +2430,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
                 {t('view.anchorPreview.title', 'Section Preview')}
               </p>
               <h3 className="mt-1 text-lg font-semibold text-gray-900">{pending.title}</h3>
@@ -2439,7 +2439,7 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
               {pending.shortDescription ? (
                 <p className="text-sm leading-6 text-gray-700">{pending.shortDescription}</p>
               ) : (
-                <p className="text-sm leading-6 text-gray-500">{t('view.anchorPreview.noDescription', 'No description.')}</p>
+                <p className="text-sm leading-6 text-subtle">{t('view.anchorPreview.noDescription', 'No description.')}</p>
               )}
             </div>
             <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">

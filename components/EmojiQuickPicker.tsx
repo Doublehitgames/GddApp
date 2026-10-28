@@ -36,12 +36,12 @@ export default function EmojiQuickPicker({
         title={title}
         aria-label={title}
         onClick={() => setOpen((prev) => !prev)}
-        className="px-2 py-1 rounded-md bg-gray-700 text-white hover:bg-gray-600 transition-colors"
+        className="px-2 py-1 rounded-md bg-surface-2 text-ink hover:bg-surface-3 transition-colors"
       >
         😊
       </button>
       {open && (
-        <div className="absolute top-full right-0 mt-1 z-50 rounded-lg border border-gray-600 bg-gray-800 p-2 shadow-xl w-[380px]">
+        <div className="absolute top-full right-0 mt-1 z-50 rounded-lg border border-line-strong bg-surface p-2 shadow-xl w-[380px]">
           <div className="mb-2 flex flex-wrap gap-1 pb-1">
             {categories.map((category) => (
               <button
@@ -51,7 +51,7 @@ export default function EmojiQuickPicker({
                 className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-colors ${
                   activeCategory === category.id
                     ? "bg-indigo-600 text-white"
-                    : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                    : "bg-surface-2 text-ink hover:bg-surface-3"
                 }`}
               >
                 {category.label}
@@ -67,7 +67,7 @@ export default function EmojiQuickPicker({
                   onSelect(emoji);
                   setOpen(false);
                 }}
-                className="h-8 w-8 rounded hover:bg-gray-700 text-lg leading-none"
+                className="h-8 w-8 rounded hover:bg-surface-2 text-lg leading-none"
                 title={`Inserir ${emoji}`}
                 aria-label={`Inserir ${emoji}`}
               >
