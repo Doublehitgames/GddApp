@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AreaHeader } from "@/components/project/AreaHeader";
+import { IconVision } from "@/components/project/ProjectSidebar";
+import { VisionEditor } from "@/components/vision/VisionEditor";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useProjectStore, type Project } from "@/store/projectStore";
@@ -25,9 +28,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
-import RoadmapWidget from "@/components/roadmap/RoadmapWidget";
-import RecentActivityWidget from "@/components/project/RecentActivityWidget";
-import StatusCoverageWidget from "@/components/pageStatus/StatusCoverageWidget";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import {
@@ -543,69 +543,6 @@ export default function ProjectDetailClient({ projectId }: Props) {
         setSpotlightSaved(true);
     }
 
-    const navigationActions = [
-        {
-            href: `/projects/${projectId}/changelog`,
-            label: t("changelog.navLabel", "Mudanças"),
-            accentClass: "from-violet-400/25 to-fuchsia-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/roadmap`,
-            label: t("roadmap.navLabel"),
-            accentClass: "from-violet-400/25 to-purple-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/mindmap`,
-            label: t("projectDetail.actions.mindMap"),
-            accentClass: "from-sky-500/25 to-cyan-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/view`,
-            label: t("projectDetail.actions.viewDocument"),
-            accentClass: "from-indigo-500/25 to-violet-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/settings`,
-            label: t("projectDetail.actions.settings"),
-            accentClass: "from-slate-400/20 to-gray-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            ),
-        },
-        {
-            href: `/projects/${projectId}/backup`,
-            label: t("projectDetail.actions.backup"),
-            accentClass: "from-emerald-500/25 to-green-500/10",
-            icon: (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-            ),
-        },
-    ];
 
     const activeSectionId = useMemo(() => {
         const match = pathname.match(/\/projects\/[^/]+\/sections\/([^/?#]+)/);
@@ -690,15 +627,22 @@ export default function ProjectDetailClient({ projectId }: Props) {
     }
 
     return (
-        <main className="min-h-screen bg-canvas text-ink px-4 py-8 md:px-8 md:py-10 lg:px-10">
-            <div className="mx-auto w-full max-w-7xl">
+        <div>
+            <div className="mx-auto w-full max-w-5xl">
                 <div className="grid gap-6 items-start">
                     <div className="space-y-4">
+                        <AreaHeader
+                            icon={<IconVision className="h-5 w-5" />}
+                            tone="vis"
+                            title={t("projectShell.vision", "Visão do jogo")}
+                            lead={t("visionPage.lead", "O que o jogo é, em poucas frases: a ideia, os pilares e a sensação. É o que aparece na capa e o que decide as brigas de design.")}
+                        />
+                        <VisionEditor project={project} slug={projectId} />
                         <section className="ui-card-premium">
-                            <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{project.title}</h1>
+                            <div className="flex items-center gap-3 mb-4 flex-wrap">
+                                <h2 className="text-xl font-semibold tracking-tight">{t("visionPage.coverTitle", "Capa e descrição")}</h2>
                                 <button
-                                    className="bg-yellow-500 text-black px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-yellow-400 transition-colors"
+                                    className="ml-auto rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface-2 transition-colors"
                                     onClick={() => router.push(`/projects/${projectId}/edit`)}
                                 >
                                     {t("projectDetail.edit")}
@@ -1094,40 +1038,14 @@ export default function ProjectDetailClient({ projectId }: Props) {
                             )}
                         </section>
 
-                        <section className="ui-card-premium">
-                            <h2 className="text-xl font-semibold tracking-tight mb-4">{t("projectDetail.actions.navMenuLabel")}</h2>
-                            <div className="scrollbar-premium scrollbar-premium-subtle flex gap-3 overflow-x-auto overflow-y-visible pt-1 pb-2 snap-x snap-mandatory scroll-px-1 sm:snap-none">
-                                {navigationActions.map((action) => {
-                                    const isActive = pathname === action.href;
-                                    return (
-                                        <Link
-                                            key={action.href}
-                                            href={action.href}
-                                            prefetch={false}
-                                            className={`group relative overflow-hidden shrink-0 snap-start w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-xl border flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset ${isActive
-                                                ? "border-indigo-300 bg-indigo-600/20 text-indigo-900 dark:text-indigo-100 shadow-lg shadow-indigo-900/40 -translate-y-0.5"
-                                                : "border-line-strong bg-canvas/60 text-ink-2 hover:border-indigo-500 hover:text-ink hover:bg-surface/90 hover:-translate-y-px hover:shadow-sm hover:shadow-black/25"
-                                                }`}
-                                        >
-                                            <span className={`absolute inset-0 bg-gradient-to-br ${action.accentClass} opacity-80`} aria-hidden />
-                                            <span className="relative text-inherit group-hover:scale-105 transition-transform">{action.icon}</span>
-                                            <span className="relative text-[11px] sm:text-xs font-medium leading-tight">{action.label}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </section>
 
-                        <StatusCoverageWidget projectId={projectId} realProjectId={realProjectId} />
-                        <RoadmapWidget projectId={projectId} realProjectId={realProjectId} />
-                        <RecentActivityWidget projectId={projectId} realProjectId={realProjectId} />
 
                     </div>
 
                 </div>
             </div>
 
-        </main>
+        </div>
     );
 }
 
