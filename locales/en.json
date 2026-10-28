@@ -1521,6 +1521,14 @@
     "emptyLevel": "This page has no subpages.",
     "trailGo": "Go to {{title}}"
   },
+  "pageLink": {
+    "copyPublic": "Copy public link to this page",
+    "copyInternal": "Copy link to this page",
+    "copiedPublic": "Public link copied",
+    "copiedInternal": "Internal link copied",
+    "publicHint": "Anyone with the link can open it",
+    "internalHint": "Only opens for people with access to the project"
+  },
   "pageModes": {
     "doc": "See in the Doc",
     "deck": "See in the Deck",

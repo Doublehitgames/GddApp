@@ -37,6 +37,7 @@ import { MINDMAP_CONFIG, getNodeConfig, getEdgeConfig } from "@/lib/mindMapConfi
 import { useI18n } from "@/lib/i18n/provider";
 import { ProjectTopBar, IconeMapa } from "@/components/project/ProjectTopBar";
 import PageModeLinks from "@/components/project/PageModeLinks";
+import CopyPageLinkButton from "@/components/project/CopyPageLinkButton";
 import { DOMAIN_I18N_KEYS, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import * as d3 from "d3-force";
 
@@ -2742,6 +2743,16 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
                     publicToken={publicToken}
                     iconClassName="h-[18px] w-[18px]"
                     buttonClassName="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  />
+                )}
+                {selectedNode.id !== "project" && (
+                  <CopyPageLinkButton
+                    mode="graph"
+                    project={project}
+                    sectionId={selectedNode.id}
+                    publicToken={publicToken}
+                    iconClassName="h-[18px] w-[18px]"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                   />
                 )}
                 {selectedNode.id !== "project" && Boolean((selectedNode as Section).flowchartEnabled) && (

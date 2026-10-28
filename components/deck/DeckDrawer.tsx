@@ -2,7 +2,8 @@
 
 import type React from "react";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
-import PageModeLinks from "@/components/project/PageModeLinks";
+import PageModeLinks, { BOTAO_PADRAO } from "@/components/project/PageModeLinks";
+import CopyPageLinkButton from "@/components/project/CopyPageLinkButton";
 import DeckThumb from "@/components/deck/DeckThumb";
 import { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import { useI18n } from "@/lib/i18n/provider";
@@ -148,6 +149,13 @@ export default function DeckDrawer<S extends DeckSection>({
             project={projectTokenSource}
             sectionId={content.section.id}
             publicToken={publicToken}
+          />
+          <CopyPageLinkButton
+            mode="deck"
+            project={projectTokenSource as never}
+            sectionId={content.section.id}
+            publicToken={publicToken}
+            className={BOTAO_PADRAO}
           />
           <span aria-hidden className="mx-0.5 h-5 w-px bg-gray-200" />
           <button

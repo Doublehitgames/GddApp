@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
-import { sectionPathById } from "@/lib/utils/slug";
+import { sectionPathById, toSlug } from "@/lib/utils/slug";
 import { IconeDeck, IconeDocumento, IconeLapis, IconeMapa } from "@/components/project/ProjectTopBar";
 
 /** Os modos que sabem receber uma página específica. */
@@ -49,6 +49,35 @@ export function pageModeUrl(mode: PageMode, target: PageModeTarget): string {
   return `/projects/${target.projectId}/${rota}?focus=${foco}`;
 }
 
+/** Qual link uma página compartilhada leva: o público abre para qualquer um, o interno só para quem tem acesso ao projeto. */
+export type PageShareKind = "public" | "internal";
+
+/**
+ * O link para mandar a alguém: este modo, já nesta página.
+ *
+ * Público quando há como ser — quem já chegou pelo token reaproveita o token,
+ * e o dono usa o do projeto se o link público estiver ligado. Sem isso, a rota
+ * interna em slug, que só abre para quem tem acesso.
+ */
+export function pageShareUrl(
+  mode: Exclude<PageMode, "editor">,
+  target: {
+    project: { title?: string; mindMapSettings?: { sharing?: { isPublic?: boolean; shareToken?: string } } } | null | undefined;
+    sectionId: string;
+    publicToken?: string;
+  }
+): { kind: PageShareKind; path: string } {
+  const sharing = target.project?.mindMapSettings?.sharing;
+  const token = target.publicToken || (sharing?.isPublic && sharing.shareToken ? sharing.shareToken : "");
+  if (token) {
+    return { kind: "public", path: pageModeUrl(mode, { projectId: "", sectionId: target.sectionId, publicToken: token }) };
+  }
+  return {
+    kind: "internal",
+    path: pageModeUrl(mode, { projectId: toSlug(target.project?.title || ""), sectionId: target.sectionId }),
+  };
+}
+
 interface Props extends PageModeTarget {
   /** O modo em que a pessoa já está — ele não se oferece. */
   current: PageMode;
@@ -71,7 +100,7 @@ export function listPageModes(current: PageMode, publicToken?: string): PageMode
   );
 }
 
-const BOTAO_PADRAO =
+export const BOTAO_PADRAO =
   "grid h-[30px] w-[30px] place-items-center rounded-lg border border-transparent text-gray-400 transition-colors hover:border-gray-200 hover:bg-white hover:text-gray-900";
 
 /**

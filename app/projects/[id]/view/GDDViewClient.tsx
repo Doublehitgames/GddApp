@@ -12,6 +12,7 @@ import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { useI18n } from "@/lib/i18n/provider";
 import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { PAGE_MODE_META, listPageModes, pageModeUrl } from "@/components/project/PageModeLinks";
+import CopyPageLinkButton from "@/components/project/CopyPageLinkButton";
 import { ProjectTopBar, IconeDocumento } from "@/components/project/ProjectTopBar";
 import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
@@ -1106,6 +1107,15 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
                         </button>
                       );
                     })}
+                    <CopyPageLinkButton
+                      variant="menu"
+                      mode="doc"
+                      project={project}
+                      sectionId={node.id}
+                      publicToken={publicToken}
+                      className="border-t border-gray-100"
+                      onDone={() => setOpenSectionMenuId(null)}
+                    />
                     {Boolean((node as any).flowchartEnabled) && (
                       <button
                         type="button"
