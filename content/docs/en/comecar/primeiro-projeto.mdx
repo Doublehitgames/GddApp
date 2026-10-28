@@ -1,130 +1,99 @@
 ---
 title: "Your first project"
-description: "From an empty project to a navigable GDD — in ~15 minutes."
+description: "From your game's name to a GDD you can show someone."
 emoji: "🌱"
 order: 2
 ---
 
 # Your first project
 
-Let's put together a small GDD (about a dozen pages) so you get a feel for the flow. The example is a **fantasy RPG**, but the script works for any genre.
+You don't need to know what a GDD is to start one. The app asks a few questions about your game, and the answers become the beginning of the document. From there on, it's yours.
 
 <Callout type="info" title="No rush">
-  You don't have to create everything in one go. The app saves on every change
-  and you can come back to any step whenever you want.
+  Everything saves on its own. You can skip any question, close the tab and
+  come back another day — the app remembers where you stopped.
 </Callout>
-
-## Before you start
-
-Prerequisites:
-
-- A GDD Manager account (free signup at <a href="/login">/login</a>)
-- 15 minutes
-- The urge to invent cool names (you'll need it)
 
 ## Step 1 — Create the project
 
-On the home page (`/`), click **"+ New project"**.
+On the home page, click **"+ New project"** and then **"New blank project"**. The app only asks for the game's name — and if it doesn't have one yet, leave it blank.
 
-Give it a name (e.g. `Tutorial Adventure`) and a short description. The project starts with the default **five-group** structure:
+You land on the project's home, with three ways to start:
 
-| Group | What goes inside |
+| Door | When to use it |
 |---|---|
-| 📖 Overview | Pitch, target audience, what makes the game different |
-| 🎮 Game Design | Core loop, central mechanics, progression |
-| 📦 Game Content | Characters, items, enemies, world, narrative |
-| 🎨 Presentation | Art, audio, UX/UI, controls |
-| 🏭 Production | Technology, roadmap, risks, monetization |
+| **Start from scratch** | The idea is in your head and nothing is written yet. |
+| **Bring what I have** | There's already a document, some `.md` files, or a Claude that writes the game with you. |
+| **Start from a genre** | You want questions for your kind of game: an RPG asks about progression, a puzzle about its core rule. |
 
-Those five are the skeleton. Everything you write from here finds its place inside one of them.
+## Step 2 — Answer the game's Vision
 
-## Step 2 — Write the Overview
+The first round is five questions about the idea: the name, the one sentence that sums it up, what the player does most of the time, the feeling the game should leave, and the pillars.
 
-Start with the page that gives every other page its context.
+While you answer, the project cover builds itself beside you. Don't know yet? **Skip** is a valid answer — the question stays saved and you come back whenever you like.
 
-1. Click **📖 Overview** in the sidebar.
-2. Click the description area and start writing.
+<Callout type="tip" title="Pillars settle the arguments">
+  Three or four short sentences, like "combat with impact" or "nothing
+  generic". When two good ideas fight for space, the pillar decides which stays.
+</Callout>
 
-The editor works like a modern document: type `/` to open the block menu (heading, list, table, image, callout, spoiler). Write the pitch in two or three sentences, who it's for, and what makes the game different.
+After the Vision come questions about **Documentation**, **Library** and **Systems**. Each answer becomes a page with the right title (Core loop, Story, Enemies, Economy…), already in the right category. The **First steps** card on the project home shows what's left — and goes away when you're done.
 
-<Callout type="tip" title="Use callouts to change register">
+## Step 3 — Write the documents
+
+**Documentation** (in the left bar) is where the GDD's pages live. There you filter by category (Combat, Narrative, Progression…), search, and create a new document.
+
+When you open a page, the editor works like a modern document: type `/` to open the block menu (heading, list, table, image, callout, spoiler).
+
+<Callout type="tip" title="Use callouts to set the tone">
   Type <code>/callout</code> and pick a variant. <strong>Note</strong> for
-  context, <strong>Warning</strong> for a gotcha, <strong>Design decision</strong>
-  to record why you chose one path over another. Six months later, the "why" is
-  what you'll be most glad you wrote down.
+  context, <strong>Warning</strong> for a gotcha, <strong>Design
+  decision</strong> to record why you chose one path over another. Six months
+  later, the "why" is what you'll most want to have written down.
 </Callout>
 
 <Callout type="tip" title="Keeping a puzzle's answer">
-  When a page explains how to solve something — a safe combination, a boss's
-  weakness, a plot twist — type <code>/spoiler</code>. The block starts closed:
-  readers see only the label you give it ("Safe combination") and click if they
-  want the rest. The walkthrough and the answer live on the same page, and
-  whoever only wanted the walkthrough keeps the surprise.
-</Callout>
-
-## Step 3 — Lay out the tree before writing everything
-
-Resist the urge to finish every page now. First create the **titles** of the pages you know will exist.
-
-1. Hover a group in the sidebar and click the `+`.
-2. Type the name and hit Enter.
-3. Repeat.
-
-For `📦 Game Content`, say: `Characters`, `Enemies`, `Items`, `Economy`, `World`. Inside `Characters`, create `Warrior` and `Mage`.
-
-In five minutes you have the map of the document. Writing gets far easier once you already know where everything lives.
-
-<Callout type="tip" title="Shortcut">
-  Press <code>N</code> anywhere in the project to open the quick new-page modal —
-  you can pick the name and where it goes without leaving the keyboard.
+  When the page explains how to solve something — a safe's code, a boss's
+  weakness, the story's twist — type <code>/spoiler</code>. The block starts
+  closed: readers see only the label you give it and click if they want the rest.
 </Callout>
 
 ## Step 4 — Connect the pages
 
 This is where the GDD stops being a pile of files.
 
-Inside any page's text, type `$[` and the name of another page. The app autocompletes it and turns it into a clickable link.
+Inside any page's text, type `$[` and another page's name. The app autocompletes it into a clickable link.
 
-Example, on the `Warrior` page:
+> The Warrior relies on melee damage. He is the direct counterpoint to the $[Mage], who trades toughness for range.
 
-> The Warrior leans on melee damage and sustain. He's the direct counterpoint to the $[Mage], who trades resilience for range. His gear comes out of the $[Economy] priced above average.
-
-Now, when someone reads the Warrior page, they reach the Mage in one click — and the Mage knows it's referenced.
+And if you mention something that has no page yet? That's fine: the project home lists it under **Loose ends** ("Mage is mentioned in 2 pages and has no page of its own yet"), and one click creates the page.
 
 ## Step 5 — Give a DataID to the pages that matter
 
-On pages that stand for concrete things in the game (an item, an enemy, a currency), it's worth setting a stable nickname.
+For pages that stand for concrete things in the game (an item, an enemy, a currency), set a stable nickname. Right under the title there's a quiet field: **"+ DataID"**. The app suggests something like `DATA_WARRIOR` — accept it or edit it.
 
-1. **Right below the title** there's a discreet field: click **"+ DataID"**.
-2. The app suggests one based on the title — e.g. `DATA_WARRIOR`.
-3. Accept or edit it (worth keeping a convention across the project).
+Lore and process pages don't need one. It's for the pages you cite a lot and the ones that will become game data.
 
-You don't need this on lore or process pages. It's for the ones you reference a lot and the ones the AI will need to find later.
+## Step 6 — Show it to someone
 
-## Step 6 — Look at the document from another angle
+In the left bar, under **Present**:
 
-With the tree laid out and a few pages written, it's worth stepping back:
+- **Document** — the whole GDD as one continuous read, always on a light page, like a real document.
+- **Deck** — the GDD as cards, to walk through level by level in a conversation.
+- **Export** — Markdown, PDF or Word.
 
-- **Mind map** (`/mindmap`) — the tree becomes a graph. Empty branches jump out, and you can see which parts of the game are still just a title.
-- **Document mode** (`/view`) — the whole GDD as one continuous read, in tree order. That's the view you send to someone outside the team.
-- **Export** (`/export`) — the same document as Markdown, PDF or Word.
+And the theme button at the top switches between light, dark and whatever your system is using.
 
 ## What now?
 
-You've done:
-
-✅ Project created · ✅ Overview written · ✅ Tree laid out · ✅ Pages connected · ✅ Document reviewed
-
-Where to go next:
-
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
-  <FeatureCard emoji="🤖" title="Let the AI help" href="/docs/referencia/ai">
-    Generate a starter GDD, improve a page's prose, or talk through the project.
+  <FeatureCard emoji="🤖" title="Let AI help" href="/docs/referencia/ai">
+    Improve a page's text, suggest categories — or connect the Claude that already writes your game.
   </FeatureCard>
   <FeatureCard emoji="⌨️" title="Keyboard shortcuts" href="/docs/referencia/atalhos">
-    The whole app is keyboard-navigable. Press `?` at any time.
+    Ctrl+K finds any page. Press `?` anytime to see the rest.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="Key concepts" href="/docs/comecar/conceitos-chave">
-    Go back to the vocabulary if any term felt fuzzy.
+    Go back to the vocabulary if a term got confusing.
   </FeatureCard>
 </div>

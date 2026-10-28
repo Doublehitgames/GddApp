@@ -47,6 +47,12 @@ melhor. A IA que sobrou é a que ajuda a escrever — gerar o GDD inicial
 
 | O quê | Onde |
 |---|---|
+| Casca do projeto (sidebar com as 4 áreas, top bar) | `app/projects/[id]/ProjectLayoutShell.tsx`, `components/project/` |
+| Home do projeto (capa, pilares, pontas soltas) | `app/projects/[id]/ProjectHomeClient.tsx` |
+| Áreas: Visão, Documentação, Biblioteca, Sistemas, Andamento | `app/projects/[id]/{visao,documentacao,biblioteca,sistemas,andamento}/` |
+| Visão do jogo (`project.vision`) | `store/slices/types.ts` (`ProjectVision`), `components/vision/` |
+| Primeiros passos (perguntas por área/gênero) | `lib/onboarding/starterQuestions.ts` (+ gêmeo no pacote MCP), `components/onboarding/StarterDrawer.tsx` |
+| Temas (claro/escuro/sistema) | `app/globals.css` (tokens), `lib/theme/`, `components/ThemeToggle.tsx` |
 | Árvore de páginas / CRUD de seção | `store/slices/sectionCrudSlice.ts`, `app/projects/[id]/sections/` |
 | Descrição em blocos | `lib/richDoc/` (`types.ts`, `serialize.ts`, `transformRefs.ts`) |
 | Referências cruzadas `$[...]` | `utils/sectionReferences.ts`, `lib/api/v1/renameRefs.ts` |
@@ -176,8 +182,11 @@ crítico (`e2e/sync-critical.spec.ts`).
   número "só soma".
 - **`.prose`**: a classe é **do projeto**, não do plugin de typography do Tailwind
   — o plugin não está instalado e não deve ser.
-- **Tema**: as vars do `:root` são fixas no escuro, mas o app **não** é dark-only —
-  existem telas claras de verdade. Não presuma fundo escuro.
+- **Tema**: cor de interface sai dos tokens (`bg-canvas`, `bg-surface`, `text-ink`,
+  `text-muted`, `border-line`, `bg-accent`…), nunca de um cinza fixo. Cor do Tailwind
+  que só funciona num tema vai em par: `text-blue-700 dark:text-blue-300` — o `dark:`
+  segue o `data-theme` do app. Modo Doc, Deck e impressão são `data-theme="paper"`:
+  sempre claros. Mapa mental e diagramas ainda são só claros.
 - **i18n**: chave nova entra nos **3** arquivos (`pt-BR`, `en`, `es`).
 - **E2E**: cookie `gdd_locale=pt-BR` para placeholders em pt-BR; após clique que
   navega, `waitForURL` antes de asserção; sync pode sair em payloads separados

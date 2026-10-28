@@ -234,6 +234,9 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
   // (`fixed inset-0`) que contam com a barra antiga por cima; ficam com ela.
   const isCanvasRoute = isMindMapRoute || /^\/projects\/[^/]+\/diagramas$/.test(normalizedPathname);
 
+  // O documento é sempre claro, em qualquer tema do app: Doc, Deck, export e impressão.
+  const isPaperRoute = /\/(export|roadmap\/print)$/.test(normalizedPathname);
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   useEffect(() => setDrawerOpen(false), [pathname]);
 
@@ -241,7 +244,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     return (
       <MindMapSearchProvider>
         <GlobalPagePicker projectId={realProjectId} />
-        {children}
+        <div data-theme="paper">{children}</div>
       </MindMapSearchProvider>
     );
   }
@@ -280,7 +283,7 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
     <MindMapSearchProvider>
       <GlobalPagePicker projectId={realProjectId} />
       <div className="min-h-screen bg-canvas text-ink lg:grid lg:grid-cols-[272px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:block lg:h-screen">
+        <aside className="hidden border-r border-line bg-surface lg:sticky lg:top-0 lg:block lg:h-screen print:hidden">
           {project && <ProjectSidebar project={project} projectSlug={projectId} />}
         </aside>
 
@@ -305,7 +308,9 @@ export default function ProjectLayoutShell({ children, projectId }: Props) {
             project={project}
             onOpenMenu={() => setDrawerOpen(true)}
           />
-          <div className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8">{children}</div>
+          <div className="min-w-0 flex-1 px-4 py-5 md:px-6 lg:px-8" data-theme={isPaperRoute ? "paper" : undefined}>
+            {children}
+          </div>
         </div>
       </div>
     </MindMapSearchProvider>

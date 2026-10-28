@@ -1,129 +1,98 @@
 ---
 title: "Tu primer proyecto"
-description: "Del proyecto vacío a un GDD navegable — en ~15 minutos."
+description: "Del nombre de tu juego a un GDD que puedes mostrarle a alguien."
 emoji: "🌱"
 order: 2
 ---
 
 # Tu primer proyecto
 
-Vamos a montar un GDD pequeño (una docena de páginas) para que le tomes el ritmo. El ejemplo es un **RPG de fantasía**, pero el guion sirve para cualquier género.
+No necesitas saber qué es un GDD para empezar uno. La app te hace algunas preguntas sobre tu juego, y las respuestas se convierten en el comienzo del documento. A partir de ahí, es tuyo.
 
 <Callout type="info" title="Sin prisa">
-  No hace falta crear todo de una vez. La app guarda sola en cada cambio y
-  puedes volver a los pasos cuando quieras.
+  Todo se guarda solo. Puedes saltar cualquier pregunta, cerrar la pestaña y
+  volver otro día — la app recuerda dónde te quedaste.
 </Callout>
-
-## Antes de empezar
-
-Requisitos:
-
-- Cuenta en GDD Manager (registro gratis en <a href="/login">/login</a>)
-- 15 minutos
-- Ganas de inventar nombres chulos (los vas a necesitar)
 
 ## Paso 1 — Crea el proyecto
 
-En la página de inicio (`/`), haz clic en **"+ Nuevo proyecto"**.
+En la página de inicio, haz clic en **"+ Nuevo proyecto"** y luego en **"Nuevo proyecto en blanco"**. La app solo pide el nombre del juego — y si todavía no tiene nombre, déjalo en blanco.
 
-Dale un nombre (ej.: `Tutorial Aventura`) y una descripción corta. El proyecto nace con la estructura por defecto de **cinco grupos**:
+Llegas a la casa del proyecto, con tres maneras de empezar:
 
-| Grupo | Qué va dentro |
+| Puerta | Cuándo usarla |
 |---|---|
-| 📖 Visión General | Pitch, público objetivo, el diferencial del juego |
-| 🎮 Diseño de Juego | Core loop, mecánicas centrales, progresión |
-| 📦 Contenido del Juego | Personajes, ítems, enemigos, mundo, narrativa |
-| 🎨 Presentación | Arte, audio, UX/UI, controles |
-| 🏭 Producción | Tecnología, roadmap, riesgos, monetización |
+| **Empezar de cero** | Tienes la idea en la cabeza y nada escrito. |
+| **Traer lo que ya tengo** | Ya existe un documento, archivos `.md`, o un Claude que escribe el juego contigo. |
+| **Partir de un género** | Quieres preguntas de tu tipo de juego: un RPG pregunta por la progresión, un puzle por su regla central. |
 
-Esos cinco son el esqueleto. Todo lo que escribas de aquí en adelante encuentra su lugar dentro de alguno.
+## Paso 2 — Responde la Visión del juego
 
-## Paso 2 — Escribe la Visión General
+La primera tanda son cinco preguntas sobre la idea: el nombre, la frase que lo resume todo, qué hace el jugador la mayor parte del tiempo, la sensación que debe dejar el juego y los pilares.
 
-Empieza por la página que da contexto a todas las demás.
+Mientras respondes, la portada del proyecto se va armando al lado. ¿Todavía no lo sabes? **Saltar** es una respuesta válida — la pregunta queda guardada y vuelves cuando quieras.
 
-1. Haz clic en **📖 Visión General** en la barra lateral.
-2. Haz clic en el área de descripción y empieza a escribir.
+<Callout type="tip" title="Los pilares deciden las discusiones">
+  Tres o cuatro frases cortas, como "combate con impacto" o "nada genérico".
+  Cuando dos buenas ideas pelean por espacio, el pilar decide cuál se queda.
+</Callout>
 
-El editor funciona como un documento moderno: escribe `/` para abrir el menú de bloques (título, lista, tabla, imagen, callout, spoiler). Escribe el pitch en dos o tres frases, para quién es, y qué hace diferente al juego.
+Después de la Visión vienen preguntas de **Documentación**, **Biblioteca** y **Sistemas**. Cada respuesta se vuelve una página con el título correcto (Bucle principal, Historia, Enemigos, Economía…), ya en la categoría correcta. La tarjeta **Primeros pasos**, en la casa del proyecto, muestra lo que falta — y desaparece cuando terminas.
 
-<Callout type="tip" title="Usa callouts para cambiar de tono">
+## Paso 3 — Escribe los documentos
+
+La **Documentación** (en la barra de la izquierda) es donde viven las páginas del GDD. Ahí filtras por categoría (Combate, Narrativa, Progresión…), buscas y creas un documento nuevo.
+
+Al abrir una página, el editor funciona como un documento moderno: escribe `/` para abrir el menú de bloques (título, lista, tabla, imagen, callout, spoiler).
+
+<Callout type="tip" title="Usa callouts para marcar el tono">
   Escribe <code>/callout</code> y elige la variante. <strong>Nota</strong> para
   contexto, <strong>Atención</strong> para una trampa, <strong>Decisión de
-  diseño</strong> para dejar registrado por qué elegiste un camino y no otro.
-  Seis meses después, el "por qué" es lo que más vas a agradecer haber escrito.
+  diseño</strong> para registrar por qué elegiste un camino y no otro. Seis
+  meses después, el "por qué" es lo que más vas a querer tener escrito.
 </Callout>
 
-<Callout type="tip" title="Guardar la respuesta de un puzle">
-  Cuando la página cuenta cómo resolver algo — la clave de una caja fuerte, el
-  punto débil de un jefe, el giro de la historia — escribe{" "}
+<Callout type="tip" title="Guardando la respuesta de un puzle">
+  Cuando la página cuenta cómo resolver algo — la clave de una caja fuerte, la
+  debilidad de un jefe, el giro de la historia — escribe{" "}
   <code>/spoiler</code>. El bloque nace cerrado: quien lee ve solo la etiqueta
-  que le pongas ("Clave de la caja fuerte") y hace clic si quiere ver el resto.
-  Así la guía del puzle y la respuesta viven en la misma página, y quien solo
-  quería la guía no se arruina la sorpresa.
-</Callout>
-
-## Paso 3 — Monta el árbol antes de escribirlo todo
-
-Resiste las ganas de terminar cada página ahora. Primero crea los **títulos** de las páginas que sabes que van a existir.
-
-1. Pasa el ratón sobre un grupo en la barra lateral y haz clic en el `+`.
-2. Escribe el nombre y pulsa Enter.
-3. Repite.
-
-Para `📦 Contenido del Juego`, por ejemplo: `Personajes`, `Enemigos`, `Ítems`, `Economía`, `Mundo`. Dentro de `Personajes`, crea `Guerrero` y `Maga`.
-
-En cinco minutos tienes el mapa del documento. Escribir se vuelve mucho más fácil cuando ya sabes dónde vive cada cosa.
-
-<Callout type="tip" title="Atajo">
-  Pulsa <code>N</code> en cualquier parte del proyecto para abrir el modal rápido
-  de nueva página — puedes elegir el nombre y dónde encaja sin soltar el teclado.
+  que le pongas y hace clic si quiere ver el resto.
 </Callout>
 
 ## Paso 4 — Conecta las páginas
 
 Aquí el GDD deja de ser una pila de archivos.
 
-Dentro del texto de cualquier página, escribe `$[` y el nombre de otra página. La app autocompleta y lo convierte en un enlace clicable.
+Dentro del texto de cualquier página, escribe `$[` y el nombre de otra página. La app lo autocompleta y se vuelve un enlace.
 
-Ejemplo, en la página `Guerrero`:
+> El Guerrero depende del daño cuerpo a cuerpo. Es el contrapunto directo de la $[Maga], que cambia resistencia por alcance.
 
-> El Guerrero depende del daño cuerpo a cuerpo y del aguante. Es el contrapunto directo de la $[Maga], que cambia resistencia por alcance. Su equipo sale de la $[Economía] con un precio por encima de la media.
-
-Ahora, cuando alguien lee la página del Guerrero, llega a la Maga con un clic — y la Maga sabe que la referencian.
+¿Y si mencionas algo que todavía no tiene página? No pasa nada: la casa del proyecto lo muestra en **Cabos sueltos** ("Maga se cita en 2 páginas y todavía no tiene página propia"), y un clic crea la página.
 
 ## Paso 5 — Dale un DataID a las páginas que importan
 
-En las páginas que representan cosas concretas del juego (un ítem, un enemigo, una moneda), vale la pena definir un apodo estable.
+En las páginas que representan cosas concretas del juego (un objeto, un enemigo, una moneda), conviene definir un apodo estable. Justo debajo del título hay un campo discreto: **"+ DataID"**. La app sugiere algo como `DATA_GUERRERO` — acéptalo o edítalo.
 
-1. **Justo debajo del título** hay un campo discreto: haz clic en **"+ DataID"**.
-2. La app sugiere algo según el título — ej.: `DATA_GUERRERO`.
-3. Acéptalo o edítalo (vale la pena estandarizar todo en inglés: `DATA_WARRIOR`).
+Las páginas de lore o de proceso no lo necesitan. Sirve para las que citas mucho y para las que se van a volver datos del juego.
 
-No hace falta en páginas de lore o de proceso. Sirve para las que citas mucho y para las que la IA va a necesitar encontrar después.
+## Paso 6 — Muéstraselo a alguien
 
-## Paso 6 — Mira el documento desde otro ángulo
+En la barra de la izquierda, en **Presentar**:
 
-Con el árbol montado y algunas páginas escritas, vale la pena mirar lo que hiciste desde lejos:
+- **Documento** — el GDD entero en una lectura continua, siempre en fondo claro, como un documento de verdad.
+- **Deck** — el GDD en cartas, para recorrerlo nivel por nivel en una conversación.
+- **Exportar** — Markdown, PDF o Word.
 
-- **Mapa mental** (`/mindmap`) — el árbol se vuelve grafo. Las ramas vacías saltan a la vista, y ves qué partes del juego siguen siendo solo un título.
-- **Modo documento** (`/view`) — el GDD entero en una lectura continua, en el orden del árbol. Esa es la vista que mandas a alguien de fuera.
-- **Exportar** (`/export`) — el mismo documento como Markdown, PDF o Word.
+Y el botón de tema, arriba, alterna entre claro, oscuro y lo que esté usando tu sistema.
 
 ## ¿Y ahora?
 
-Hiciste:
-
-✅ Proyecto creado · ✅ Visión General escrita · ✅ Árbol montado · ✅ Páginas conectadas · ✅ Documento revisado
-
-Próximas direcciones:
-
 <div className="grid gap-3 md:grid-cols-2 my-6 not-prose">
   <FeatureCard emoji="🤖" title="Deja que la IA ayude" href="/docs/referencia/ai">
-    Generar un GDD inicial, mejorar la prosa de una página, o conversar sobre el proyecto.
+    Mejorar el texto de una página, sugerir categorías — o conectar el Claude que ya escribe tu juego.
   </FeatureCard>
   <FeatureCard emoji="⌨️" title="Atajos de teclado" href="/docs/referencia/atalhos">
-    La app entera se navega con el teclado. Pulsa `?` en cualquier momento.
+    Ctrl+K encuentra cualquier página. Pulsa `?` en cualquier momento para ver el resto.
   </FeatureCard>
   <FeatureCard emoji="🧩" title="Conceptos clave" href="/docs/comecar/conceitos-chave">
     Vuelve al vocabulario si algún término quedó confuso.
