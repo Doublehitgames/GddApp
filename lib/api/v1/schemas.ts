@@ -55,6 +55,7 @@ export const tableRuleSchema = z.object({
       z.object({
         name: z.string().trim().min(1).max(120),
         columns: z.array(tableRuleColumnSchema).min(1).max(40).superRefine(withoutRepeatedNames("column")),
+        multiRow: z.boolean().optional(),
       }),
     )
     .min(1)

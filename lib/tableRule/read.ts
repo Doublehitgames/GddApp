@@ -12,6 +12,7 @@ import {
   type TableColumnType,
   type TableRule,
   type TableRuleColumn,
+  type TableRuleTable,
 } from "./tableRule";
 
 /** Uma tabela como está escrita numa página: o `##` acima dela e as linhas. */
@@ -142,12 +143,13 @@ function splitHeader(header: string): { name: string; unit?: string } {
  *
  * É ponto de partida, não verdade: o designer revisa antes de salvar. Mas é o
  * que tira o typo da jogada — as colunas vêm do texto, não da memória.
- * Uma coluna sai exigida quando está preenchida em toda página que tem a
- * tabela; tabela que só algumas filhas têm continua opcional, porque ausência
- * de tabela quer dizer "não se aplica".
+ * Uma coluna sai exigida quando está preenchida em toda linha de toda página
+ * que tem a tabela; tabela que só algumas filhas têm continua opcional,
+ * porque ausência de tabela quer dizer "não se aplica". Tabela que tem mais
+ * de uma linha em alguma filha sai marcada como de várias linhas.
  */
 export function inferTableRule(children: PageLike[]): TableRule | undefined {
-  type Draft = { name: string; headers: string[]; columnValues: string[][]; pages: number };
+  type Draft = { name: string; headers: string[]; columnValues: string[][]; multiRow: boolean };
   const drafts: Draft[] = [];
 
   for (const child of children) {
@@ -159,14 +161,14 @@ export function inferTableRule(children: PageLike[]): TableRule | undefined {
       seen.add(key);
       let draft = drafts.find((d) => sameTableName(d.name, table.name));
       if (!draft) {
-        draft = { name: table.name, headers: table.headers, columnValues: table.headers.map(() => []), pages: 0 };
+        draft = { name: table.name, headers: table.headers, columnValues: table.headers.map(() => []), multiRow: false };
         drafts.push(draft);
       }
-      draft.pages += 1;
+      if (table.rows.length > 1) draft.multiRow = true;
+      const rows = table.rows.length > 0 ? table.rows : [[]];
       draft.headers.forEach((header, index) => {
         const at = table.headers.findIndex((h) => sameTableName(h, header));
-        const cell = at >= 0 ? table.rows[0]?.[at] ?? "" : "";
-        draft!.columnValues[index].push(cell);
+        for (const row of rows) draft!.columnValues[index].push(at >= 0 ? row[at] ?? "" : "");
       });
     }
   }
@@ -176,9 +178,10 @@ export function inferTableRule(children: PageLike[]): TableRule | undefined {
     columns: draft.headers.map((header, index): TableRuleColumn => {
       const { name, unit } = splitHeader(header);
       const values = draft.columnValues[index];
-      const required = values.length === draft.pages && values.every((v) => v.trim() !== "");
+      const required = values.length > 0 && values.every((v) => v.trim() !== "");
       return { name, type: guessType(values), ...(unit ? { unit } : {}), ...(required ? { required: true } : {}) };
     }),
+    ...(draft.multiRow ? { multiRow: true } : {}),
   }));
   return tables.length > 0 ? { tables } : undefined;
 }
@@ -187,34 +190,120 @@ export function inferTableRule(children: PageLike[]): TableRule | undefined {
 
 /**
  * O valor de uma célula para a tela.
- * - `absent`: a página não tem essa tabela — "não se aplica", não acusa nada.
- * - `empty`: a tabela está lá e a célula não — falta, se a coluna é exigida.
+ * - `absent`: a página não tem essa tabela (ou, numa tabela de várias linhas,
+ *   não tem aquela linha) — "não se aplica", não acusa nada.
+ * - `empty`: a célula existe e está vazia — falta, se a coluna é exigida.
  */
 export type CellValue =
   | { kind: "absent" }
   | { kind: "empty" }
   | { kind: "value"; raw: string; number: number | null };
 
-export type RuleColumnRef = { tableIndex: number; columnIndex: number; table: string; column: TableRuleColumn };
+/**
+ * Uma coluna comparável. Numa tabela de várias linhas ela vale numa linha
+ * escolhida pelo nome (`rowKey`): "Velocidade" no nível "50".
+ */
+export type RuleColumnRef = {
+  tableIndex: number;
+  columnIndex: number;
+  table: string;
+  column: TableRuleColumn;
+  rowKey?: string;
+};
 
-/** As colunas da regra, achatadas na ordem em que a tela as mostra. */
+/** As colunas das tabelas de uma linha, achatadas na ordem em que a tela as mostra. */
 export function ruleColumns(rule: TableRule): RuleColumnRef[] {
   return rule.tables.flatMap((table, tableIndex) =>
-    table.columns.map((column, columnIndex) => ({ tableIndex, columnIndex, table: table.name, column })),
+    table.multiRow ? [] : table.columns.map((column, columnIndex) => ({ tableIndex, columnIndex, table: table.name, column })),
   );
 }
 
-/** Os valores de uma página, um por coluna da regra, na ordem de `ruleColumns`. */
-export function readRow(rule: TableRule, page: PageLike): CellValue[] {
+/** Os índices das tabelas de várias linhas da regra. */
+export function multiRowTables(rule: TableRule): number[] {
+  return rule.tables.flatMap((table, index) => (table.multiRow ? [index] : []));
+}
+
+/** Como o nome de uma linha aparece na tela: `$[Trigo]` vira "Trigo". */
+export function rowKeyLabel(raw: string): string {
+  return raw.trim().replace(/^\$\[(.*)\]$/, "$1").trim();
+}
+
+/** O nome de uma linha comparado como as refs: sem caixa, e `$[Trigo]` vale "Trigo". */
+const rowKeyNorm = (raw: string) => rowKeyLabel(raw).toLocaleLowerCase();
+
+function findTable(tables: PageTable[], name: string) {
+  return tables.find((t) => sameTableName(t.name, name));
+}
+
+/** A coluna que dá nome às linhas é a primeira da regra; se o cabeçalho não casar, a primeira da página. */
+function keyIndex(found: PageTable, table: TableRuleTable): number {
+  const at = found.headers.findIndex((h) => matchesColumnHeader(table.columns[0], h));
+  return at >= 0 ? at : 0;
+}
+
+/**
+ * Os nomes de linha de uma tabela de várias linhas, somando todas as páginas,
+ * na ordem em que aparecem primeiro. São as opções de "comparar em".
+ */
+export function multiRowKeys(rule: TableRule, tableIndex: number, pages: PageLike[]): string[] {
+  const table = rule.tables[tableIndex];
+  const seen = new Map<string, string>();
+  for (const page of pages) {
+    const found = findTable(readPageTables(page), table.name);
+    if (!found) continue;
+    const at = keyIndex(found, table);
+    for (const row of found.rows) {
+      const raw = (row[at] ?? "").trim();
+      if (raw && !seen.has(rowKeyNorm(raw))) seen.set(rowKeyNorm(raw), rowKeyLabel(raw));
+    }
+  }
+  return [...seen.values()];
+}
+
+/** As colunas de valor de uma tabela de várias linhas (todas menos a do nome), numa linha. */
+export function multiRowColumns(rule: TableRule, tableIndex: number, rowKey: string): RuleColumnRef[] {
+  const table = rule.tables[tableIndex];
+  return table.columns.slice(1).map((column, i) => ({ tableIndex, columnIndex: i + 1, table: table.name, column, rowKey }));
+}
+
+function cellOf(raw: string, column: TableRuleColumn): CellValue {
+  const value = raw.trim();
+  if (!value) return { kind: "empty" };
+  return { kind: "value", raw: value, number: column.type === "number" ? parseCellNumber(value) : null };
+}
+
+/** Uma célula de uma página, com as tabelas dela já lidas. */
+export function readCell(rule: TableRule, tables: PageTable[], ref: RuleColumnRef): CellValue {
+  const table = rule.tables[ref.tableIndex];
+  const found = findTable(tables, table.name);
+  if (!found) return { kind: "absent" };
+  const at = found.headers.findIndex((h) => matchesColumnHeader(ref.column, h));
+  if (ref.rowKey === undefined) return at >= 0 ? cellOf(found.rows[0]?.[at] ?? "", ref.column) : { kind: "empty" };
+  // Página sem aquela linha: a receita que não leva Trigo não está "faltando" Trigo.
+  const k = keyIndex(found, table);
+  const row = found.rows.find((r) => rowKeyNorm(r[k] ?? "") === rowKeyNorm(ref.rowKey!));
+  if (!row) return { kind: "absent" };
+  return at >= 0 ? cellOf(row[at] ?? "", ref.column) : { kind: "empty" };
+}
+
+/** Os valores de uma página nas colunas pedidas (por padrão, as das tabelas de uma linha). */
+export function readRow(rule: TableRule, page: PageLike, refs: RuleColumnRef[] = ruleColumns(rule)): CellValue[] {
   const tables = readPageTables(page);
-  return ruleColumns(rule).map(({ table, column }) => {
-    const found = tables.find((t) => sameTableName(t.name, table));
-    if (!found) return { kind: "absent" };
-    const at = found.headers.findIndex((h) => matchesColumnHeader(column, h));
-    const raw = at >= 0 ? (found.rows[0]?.[at] ?? "").trim() : "";
-    if (!raw) return { kind: "empty" };
-    return { kind: "value", raw, number: column.type === "number" ? parseCellNumber(raw) : null };
-  });
+  return refs.map((ref) => readCell(rule, tables, ref));
+}
+
+/**
+ * Uma tabela de várias linhas inteira, coluna por coluna da regra — para o
+ * painel da página. `null` quando a página não tem a tabela.
+ */
+export function readMultiTable(rule: TableRule, tableIndex: number, page: PageLike): CellValue[][] | null {
+  const table = rule.tables[tableIndex];
+  const found = findTable(readPageTables(page), table.name);
+  if (!found) return null;
+  const at = table.columns.map((c) => found.headers.findIndex((h) => matchesColumnHeader(c, h)));
+  return found.rows.map((row) =>
+    table.columns.map((c, i): CellValue => (at[i] >= 0 ? cellOf(row[at[i]] ?? "", c) : { kind: "empty" })),
+  );
 }
 
 /**
@@ -231,4 +320,3 @@ export function compareCells(a: CellValue, b: CellValue, type: TableColumnType, 
   if (type === "number" && (a.number === null) !== (b.number === null)) return a.number === null ? 1 : -1;
   return a.raw.localeCompare(b.raw, undefined, { numeric: true, sensitivity: "base" }) * direction;
 }
-

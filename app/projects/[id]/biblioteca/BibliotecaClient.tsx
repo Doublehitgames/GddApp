@@ -11,12 +11,23 @@ import { libraryCollections, type LibraryCollection } from "@/lib/library/collec
 import { backlinkIndex, groupRelations, proseExcerpt, type Backlink } from "@/lib/library/relations";
 import { PAGE_STATUS_META } from "@/lib/pageStatus/types";
 import { parseTableRule, type TableRule } from "@/lib/tableRule/tableRule";
-import { compareCells, readRow, ruleColumns, type CellValue, type RuleColumnRef } from "@/lib/tableRule/read";
+import {
+  compareCells,
+  multiRowColumns,
+  multiRowKeys,
+  multiRowTables,
+  readMultiTable,
+  readRow,
+  ruleColumns,
+  type CellValue,
+  type RuleColumnRef,
+} from "@/lib/tableRule/read";
 import { toSlug } from "@/lib/utils/slug";
 import type { Section } from "@/store/slices/types";
 
 type SortKey = number | "title";
-type Row = { item: Section; cells: CellValue[] };
+/** Uma página da coleção: os valores nas colunas comparáveis e se alguma tabela de várias linhas tem falta. */
+type Row = { item: Section; cells: CellValue[]; multiIssue: boolean };
 
 /**
  * A Biblioteca: uma lente de balanceamento sobre as páginas que já existem.
@@ -118,12 +129,34 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
   const { t } = useI18n();
   // A regra existe: só entra na lista quem tem uma (libraryCollections).
   const rule = useMemo(() => parseTableRule(parent.tableRule)!, [parent.tableRule]);
-  const columns = useMemo(() => ruleColumns(rule), [rule]);
   const items = useMemo(
     () => sections.filter((s) => s.parentId === parent.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [sections, parent.id],
   );
-  const rows = useMemo<Row[]>(() => items.map((item) => ({ item, cells: readRow(rule, item) })), [items, rule]);
+  // Tabela de várias linhas compara numa linha escolhida — "Velocidade no nível
+  // 50", "Quantidade de Trigo". Começa na primeira linha que aparece.
+  const multiTables = useMemo(() => multiRowTables(rule), [rule]);
+  const rowKeys = useMemo(
+    () => new Map(multiTables.map((ti) => [ti, multiRowKeys(rule, ti, items)])),
+    [multiTables, rule, items],
+  );
+  const [keyByTable, setKeyByTable] = useState<Record<number, string>>({});
+  const keyOf = (ti: number) => keyByTable[ti] ?? rowKeys.get(ti)?.[0];
+  const columns = useMemo(
+    () => [
+      ...ruleColumns(rule),
+      ...multiTables.flatMap((ti) => {
+        const key = keyByTable[ti] ?? rowKeys.get(ti)?.[0];
+        return key ? multiRowColumns(rule, ti, key) : [];
+      }),
+    ],
+    [rule, multiTables, keyByTable, rowKeys],
+  );
+  const rows = useMemo<Row[]>(
+    () => items.map((item) => ({ item, cells: readRow(rule, item, columns), multiIssue: hasMultiIssue(rule, multiTables, item) })),
+    [items, rule, columns, multiTables],
+  );
+  const setKey = (ti: number, key: string) => setKeyByTable((k) => ({ ...k, [ti]: key }));
   const backlinks = useMemo(() => backlinkIndex(sections), [sections]);
 
   const [query, setQuery] = useState("");
@@ -148,9 +181,10 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
 
   const selected = visible.find((r) => r.item.id === selectedId) ?? visible[0] ?? null;
 
-  const problems = (cells: CellValue[]) =>
-    cells.some((c, i) => isMissing(columns[i], c) || isNotNumber(columns[i], c));
-  const incomplete = rows.filter(({ cells }) => problems(cells)).length;
+  const problems = (row: Row) =>
+    row.multiIssue || row.cells.some((c, i) => columns[i].rowKey === undefined && (isMissing(columns[i], c) || isNotNumber(columns[i], c)));
+  const incomplete = rows.filter(problems).length;
+  const sortedRef = typeof sortKey === "number" ? columns[sortKey] : null;
 
   const sortBy = (key: SortKey) => {
     if (key === sortKey) setDirection((d) => (d === 1 ? -1 : 1));
@@ -191,7 +225,7 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
           >
             <option value="title">{t("libraryPage.sortName", "Nome")}</option>
             {rule.tables.map((table, ti) => (
-              <optgroup key={table.name} label={table.name}>
+              <optgroup key={table.name} label={table.multiRow && keyOf(ti) ? `${table.name} · ${keyOf(ti)}` : table.name}>
                 {columns.map((ref, index) =>
                   ref.tableIndex === ti ? (
                     <option key={index} value={index}>
@@ -203,6 +237,22 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
             ))}
           </select>
         </label>
+        {sortedRef?.rowKey !== undefined && (
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm text-muted">
+            <span>{t("libraryPage.compareAt", "em")}</span>
+            <select
+              value={sortedRef.rowKey}
+              onChange={(e) => setKey(sortedRef.tableIndex, e.target.value)}
+              className="max-w-[12rem] bg-transparent text-ink focus:outline-none"
+            >
+              {(rowKeys.get(sortedRef.tableIndex) ?? []).map((key) => (
+                <option key={key} value={key}>
+                  {key}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           type="button"
           onClick={() => setDirection((d) => (d === 1 ? -1 : 1))}
@@ -263,7 +313,7 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
                     sortedBy={typeof sortKey === "number" ? columns[sortKey] : null}
                     sortedCell={typeof sortKey === "number" ? row.cells[sortKey] : null}
                     citedBy={backlinks.get(row.item.id)?.length ?? 0}
-                    hasProblem={problems(row.cells)}
+                    hasProblem={problems(row)}
                     selected={row.item.id === selected?.item.id}
                     onSelect={() => setSelectedId(row.item.id)}
                   />
@@ -281,6 +331,8 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
               selectedId={selected?.item.id ?? null}
               onSelect={setSelectedId}
               pageHref={pageHref}
+              rowKeys={rowKeys}
+              onKey={setKey}
             />
           )}
         </section>
@@ -311,6 +363,71 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
 const isMissing = (ref: RuleColumnRef, cell: CellValue) => cell.kind === "empty" && !!ref.column.required;
 const isNotNumber = (ref: RuleColumnRef, cell: CellValue) =>
   cell.kind === "value" && ref.column.type === "number" && cell.number === null;
+
+/** Alguma linha de alguma tabela de várias linhas com célula exigida vazia ou número que não é número. */
+function hasMultiIssue(rule: TableRule, multiTables: number[], page: Section): boolean {
+  return multiTables.some((ti) =>
+    (readMultiTable(rule, ti, page) ?? []).some((cells) =>
+      cells.some((cell, ci) => {
+        const ref = { tableIndex: ti, columnIndex: ci, table: rule.tables[ti].name, column: rule.tables[ti].columns[ci] };
+        return isMissing(ref, cell) || isNotNumber(ref, cell);
+      }),
+    ),
+  );
+}
+
+/** Uma tabela de várias linhas inteira, no painel da página. */
+function MultiRowBox({
+  rule,
+  tableIndex,
+  page,
+  pageHref,
+}: {
+  rule: TableRule;
+  tableIndex: number;
+  page: Section;
+  pageHref: (title: string) => string;
+}) {
+  const { t } = useI18n();
+  const table = rule.tables[tableIndex];
+  const rows = readMultiTable(rule, tableIndex, page);
+  const refs = table.columns.map((column, columnIndex) => ({ tableIndex, columnIndex, table: table.name, column }));
+  return (
+    <section className="rounded-xl border border-line">
+      <h4 className="flex items-center justify-between px-3 pt-2.5 text-xs font-semibold uppercase tracking-wide text-subtle">
+        {table.name}
+        {!rows && <span className="font-normal normal-case tracking-normal">{t("libraryPage.notApplicable", "não se aplica")}</span>}
+      </h4>
+      {rows && (
+        <div className="overflow-x-auto px-3 pb-2 pt-1">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] text-muted">
+                {refs.map((ref) => (
+                  <th key={ref.columnIndex} className={`py-1 pr-2 font-medium ${ref.column.type === "number" ? "text-right" : ""}`}>
+                    {ref.column.name}
+                    {ref.column.unit && <span className="text-subtle"> ({ref.column.unit})</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((cells, r) => (
+                <tr key={r} className="border-t border-line/60">
+                  {cells.map((cell, ci) => (
+                    <td key={ci} className={`py-1 pr-2 ${refs[ci].column.type === "number" ? "text-right tabular-nums" : ""}`}>
+                      <Cell cell={cell} ref_={refs[ci]} pageHref={pageHref} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 
 // ── Card ─────────────────────────────────────────────────────────────
 
@@ -358,7 +475,10 @@ function ItemCard({
       {/* Ordenado por uma coluna: o valor dela vem para o card, senão ordenar não se vê */}
       {sortedBy && sortedCell && (
         <span className="mt-2 inline-flex items-baseline gap-1.5 self-start rounded-lg bg-area-lib-soft px-2 py-1 text-xs">
-          <span className="text-muted">{sortedBy.column.name}</span>
+          <span className="text-muted">
+            {sortedBy.column.name}
+            {sortedBy.rowKey !== undefined && ` · ${sortedBy.rowKey}`}
+          </span>
           <span className="font-semibold tabular-nums text-ink">
             <CellText cell={sortedCell} unit={sortedBy.column.unit} />
           </span>
@@ -397,6 +517,8 @@ function CompareTable({
   selectedId,
   onSelect,
   pageHref,
+  rowKeys,
+  onKey,
 }: {
   rule: TableRule;
   columns: RuleColumnRef[];
@@ -407,8 +529,18 @@ function CompareTable({
   selectedId: string | null;
   onSelect: (id: string) => void;
   pageHref: (title: string) => string;
+  rowKeys: Map<number, string[]>;
+  onKey: (tableIndex: number, key: string) => void;
 }) {
   const { t } = useI18n();
+  // Grupos de colunas seguidas da mesma tabela, para o cabeçalho de cima.
+  const groups = columns.reduce<Array<{ tableIndex: number; span: number; rowKey?: string }>>((acc, ref) => {
+    const last = acc[acc.length - 1];
+    if (last && last.tableIndex === ref.tableIndex) last.span++;
+    else acc.push({ tableIndex: ref.tableIndex, span: 1, rowKey: ref.rowKey });
+    return acc;
+  }, []);
+  const startsGroup = (index: number) => index === 0 || columns[index - 1].tableIndex !== columns[index].tableIndex;
   const arrow = (key: SortKey) => (sortKey === key ? (direction === 1 ? " ↑" : " ↓") : "");
   const ariaSort = (key: SortKey) => (sortKey === key ? (direction === 1 ? "ascending" : "descending") : "none");
   return (
@@ -417,9 +549,23 @@ function CompareTable({
         <thead>
           <tr className="text-[11px] uppercase tracking-wide text-subtle">
             <th className="sticky left-0 z-10 bg-surface" />
-            {rule.tables.map((table) => (
-              <th key={table.name} colSpan={table.columns.length} className="border-l border-line px-3 pt-2 text-left font-semibold">
-                {table.name}
+            {groups.map((group) => (
+              <th key={group.tableIndex} colSpan={group.span} className="border-l border-line px-3 pt-2 text-left font-semibold">
+                {rule.tables[group.tableIndex].name}
+                {group.rowKey !== undefined && (
+                  <select
+                    value={group.rowKey}
+                    onChange={(e) => onKey(group.tableIndex, e.target.value)}
+                    aria-label={t("libraryPage.compareAt", "em")}
+                    className="ml-1.5 max-w-[10rem] rounded border border-line bg-surface px-1 text-[11px] font-normal normal-case tracking-normal text-ink"
+                  >
+                    {(rowKeys.get(group.tableIndex) ?? []).map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </th>
             ))}
           </tr>
@@ -434,7 +580,7 @@ function CompareTable({
               <th
                 key={index}
                 aria-sort={ariaSort(index)}
-                className={`whitespace-nowrap px-3 py-2 font-medium ${ref.columnIndex === 0 ? "border-l border-line" : ""} ${
+                className={`whitespace-nowrap px-3 py-2 font-medium ${startsGroup(index) ? "border-l border-line" : ""} ${
                   ref.column.type === "number" ? "text-right" : "text-left"
                 }`}
               >
@@ -467,7 +613,7 @@ function CompareTable({
                   return (
                     <td
                       key={index}
-                      className={`whitespace-nowrap px-3 py-1.5 ${ref.columnIndex === 0 ? "border-l border-line" : ""} ${
+                      className={`whitespace-nowrap px-3 py-1.5 ${startsGroup(index) ? "border-l border-line" : ""} ${
                         ref.column.type === "number" ? "text-right tabular-nums" : ""
                       }`}
                     >
@@ -549,6 +695,7 @@ function DetailPanel({
       {/* Os valores: uma caixa por tabela da regra */}
       <div className="mt-4 flex flex-col gap-3">
         {rule.tables.map((table, ti) => {
+          if (table.multiRow) return <MultiRowBox key={table.name} rule={rule} tableIndex={ti} page={item} pageHref={pageHref} />;
           const refs = columns.map((ref, index) => ({ ref, index })).filter(({ ref }) => ref.tableIndex === ti);
           const absent = refs.every(({ index }) => cells[index].kind === "absent");
           return (

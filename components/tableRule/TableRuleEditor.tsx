@@ -18,12 +18,13 @@ import { inferTableRule } from "@/lib/tableRule/read";
 const NO_SECTIONS: Array<{ id: string; parentId?: string; content?: string; contentBlocks?: unknown }> = [];
 
 type DraftColumn = { name: string; type: TableColumnType; unit: string; required: boolean };
-type DraftTable = { name: string; columns: DraftColumn[] };
+type DraftTable = { name: string; columns: DraftColumn[]; multiRow: boolean };
 
 const toDraft = (rule: TableRule | null | undefined): DraftTable[] =>
   (rule?.tables ?? []).map((t) => ({
     name: t.name,
     columns: t.columns.map((c) => ({ name: c.name, type: c.type, unit: c.unit ?? "", required: !!c.required })),
+    multiRow: !!t.multiRow,
   }));
 
 const fromDraft = (tables: DraftTable[]): TableRule | undefined =>
@@ -31,6 +32,7 @@ const fromDraft = (tables: DraftTable[]): TableRule | undefined =>
     tables: tables.map((t) => ({
       name: t.name,
       columns: t.columns.map((c) => ({ name: c.name, type: c.type, unit: c.unit, required: c.required })),
+      multiRow: t.multiRow,
     })),
   });
 
@@ -221,6 +223,19 @@ export default function TableRuleEditor({
                     {tableProblem === "repeated" && (
                       <p className="mt-1 pl-7 text-xs text-danger">{t("tableRule.repeatedTable", "Já existe uma tabela com esse título.")}</p>
                     )}
+                    <label className="mt-2 flex items-start gap-2 pl-7 text-xs text-muted">
+                      <input
+                        type="checkbox"
+                        checked={table.multiRow}
+                        onChange={(e) => updateTable(ti, { multiRow: e.target.checked })}
+                        className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+                      />
+                      <span>
+                        <span className="font-medium text-ink-2">{t("tableRule.multiRow", "Várias linhas")}</span>
+                        {" — "}
+                        {t("tableRule.multiRowHint", "uma linha por entrada (nível, ingrediente, atributo); a primeira coluna dá nome à linha.")}
+                      </span>
+                    </label>
 
                     <div className="mt-3 flex flex-col gap-1.5 pl-7">
                       <div className="hidden grid-cols-[1fr_8rem_5rem_4.5rem_5.5rem] gap-2 px-0.5 text-[11px] font-medium uppercase tracking-wide text-subtle sm:grid">
@@ -296,7 +311,7 @@ export default function TableRuleEditor({
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setDraft((d) => [...d, { name: "", columns: [emptyColumn()] }])}
+                  onClick={() => setDraft((d) => [...d, { name: "", columns: [emptyColumn()], multiRow: false }])}
                   className="rounded-lg border border-dashed border-line-strong px-3 py-1.5 text-sm text-ink hover:bg-surface-2"
                 >
                   {t("tableRule.addTable", "+ tabela")}

@@ -41,6 +41,13 @@ export type TableRuleTable = {
   /** O que vai no `##` acima da tabela, em cada filha. */
   name: string;
   columns: TableRuleColumn[];
+  /**
+   * Uma linha por entrada — o nível de uma progressão, o ingrediente de uma
+   * receita, o atributo de uma ferramenta. A primeira coluna dá nome à linha, e
+   * é por esse nome que a Biblioteca compara as filhas: "Velocidade no nível
+   * 50", "Quantidade de Trigo". Ausente é a tabela de uma linha só.
+   */
+  multiRow?: boolean;
 };
 
 /**
@@ -89,7 +96,8 @@ export function parseTableRule(value: unknown): TableRule | undefined {
         ...(c.required === true ? { required: true } : {}),
       });
     }
-    if (columns.length > 0) tables.push({ name, columns });
+    const multiRow = (rawTable as { multiRow?: unknown }).multiRow === true;
+    if (columns.length > 0) tables.push({ name, columns, ...(multiRow ? { multiRow: true } : {}) });
   }
 
   return tables.length > 0 ? { tables } : undefined;

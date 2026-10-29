@@ -1761,7 +1761,9 @@
     "removeConfirm": "As tabelas das subpáginas ficam. Tirar a regra?",
     "removeYes": "Tirar",
     "openLibrary": "Ver na Biblioteca",
-    "save": "Salvar regra"
+    "save": "Salvar regra",
+    "multiRow": "Várias linhas",
+    "multiRowHint": "uma linha por entrada (nível, ingrediente, atributo); a primeira coluna dá nome à linha."
   },
   "libraryPage": {
     "title": "Biblioteca do jogo",
@@ -1795,6 +1797,7 @@
     "citedIn": "Citada em {group}",
     "citedAtRoot": "Citada em páginas soltas",
     "longDescription": "Descrição completa",
-    "openPage": "Abrir a página completa"
+    "openPage": "Abrir a página completa",
+    "compareAt": "em"
   }
 }

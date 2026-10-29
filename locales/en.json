@@ -1761,7 +1761,9 @@
     "removeConfirm": "The subpages keep their tables. Remove the rule?",
     "removeYes": "Remove",
     "openLibrary": "See in the Library",
-    "save": "Save rule"
+    "save": "Save rule",
+    "multiRow": "Several rows",
+    "multiRowHint": "one row per entry (level, ingredient, attribute); the first column names the row."
   },
   "libraryPage": {
     "title": "Game library",
@@ -1795,6 +1797,7 @@
     "citedIn": "Cited in {group}",
     "citedAtRoot": "Cited on top-level pages",
     "longDescription": "Full description",
-    "openPage": "Open the full page"
+    "openPage": "Open the full page",
+    "compareAt": "at"
   }
 }

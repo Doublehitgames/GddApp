@@ -112,6 +112,7 @@ const TABLE_RULE_FIELD = z
         unit: z.string().optional(),
         required: z.boolean().optional(),
       })),
+      multiRow: z.boolean().optional(),
     })),
   })
   .nullable()
@@ -120,7 +121,8 @@ const TABLE_RULE_FIELD = z
     "Only on a parent page whose children all carry the same data tables: the canonical list of those tables. " +
       "Each table has the `name` written as `## name` above it in every child, and its columns in order — `name`, " +
       "`type` (number, text, boolean, or page: a cell holding a $[Page Title]), an optional `unit` (the header then " +
-      "reads 'name (unit)'), and `required` when an empty cell means missing data. It only describes: the values stay " +
+      "reads 'name (unit)'), and `required` when an empty cell means missing data. Set `multiRow` on a table that lists " +
+      "one row per entry (a level, an ingredient): its first column names the row. It only describes: the values stay " +
       "in the children's tables. Writing replaces the whole rule; null removes it."
   );
 
