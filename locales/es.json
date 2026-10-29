@@ -775,6 +775,20 @@
     "descriptionAutosaveHint": "Guardado automáticamente",
     "copy": {
       "descriptionTo": "a otra página"
+    },
+    "children": {
+      "title": "Páginas dentro de esta",
+      "empty": "Aquí dentro todavía no hay nada. Una página hija es un detalle que merece su propio espacio.",
+      "add": "Nueva página hija",
+      "addPlaceholder": "Nombre de la página",
+      "duplicate": "Ya existe una página hija con ese nombre.",
+      "search": "Filtrar…",
+      "noMatch": "Ninguna página con ese filtro.",
+      "inside": "{count} dentro",
+      "viewLabel": "Cómo mostrar",
+      "viewCards": "Tarjetas",
+      "viewList": "Lista (arrastra para ordenar)",
+      "dragAria": "Arrastra para reordenar"
     }
   },
   "settings": {

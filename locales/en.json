@@ -775,6 +775,20 @@
     "descriptionAutosaveHint": "Saved automatically",
     "copy": {
       "descriptionTo": "to another page"
+    },
+    "children": {
+      "title": "Pages inside this one",
+      "empty": "Nothing in here yet. A child page is a detail that deserves a space of its own.",
+      "add": "New child page",
+      "addPlaceholder": "Page name",
+      "duplicate": "A child page with that name already exists.",
+      "search": "Filter…",
+      "noMatch": "No page matches that filter.",
+      "inside": "{count} inside",
+      "viewLabel": "How to show",
+      "viewCards": "Cards",
+      "viewList": "List (drag to reorder)",
+      "dragAria": "Drag to reorder"
     }
   },
   "settings": {

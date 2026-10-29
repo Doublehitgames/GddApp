@@ -4,11 +4,12 @@ import { useProjectStore } from "@/store/projectStore";
 import { toSlug, projectPath, sectionPath, sectionPathById, findSectionByRef, stableProjectSegment, stableSectionSegment } from "@/lib/utils/slug";
 import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import PageModeLinks from "@/components/project/PageModeLinks";
+import { SectionChildren } from "@/components/project/SectionChildren";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
@@ -26,24 +27,6 @@ import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import { toPreviewText } from "@/lib/richDoc/previewText";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  horizontalListSortingStrategy,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useI18n } from "@/lib/i18n/provider";
 import { ImageLibraryPicker } from "@/components/common/ImageLibraryPicker";
 import type { ProjectImage } from "@/store/slices/types";
@@ -81,7 +64,6 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
   const duplicateSection = useProjectStore((s) => s.duplicateSection);
   const countDescendants = useProjectStore((s) => s.countDescendants);
   const hasDuplicateName = useProjectStore((s) => s.hasDuplicateName);
-  const reorderSections = useProjectStore((s) => s.reorderSections);
   const editSection = useProjectStore((s) => s.editSection);
   const updateSectionDescription = useProjectStore((s) => s.updateSectionDescription);
   const setSectionThumbImage = useProjectStore((s) => s.setSectionThumbImage);
@@ -106,15 +88,11 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
   // tela só renderiza depois de achar a seção.
   const sectionId = realSectionId;
   const [breadcrumbs, setBreadcrumbs] = useState<any[]>([]);
-  const [newSubTitle, setNewSubTitle] = useState("");
-  const [nameError, setNameError] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
   const [inlineEdit, setInlineEdit] = useState(false);
   const editorRef = useRef<any>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [editorHeight, setEditorHeight] = useState("320px");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isImproving, setIsImproving] = useState(false);
@@ -185,14 +163,6 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
     if (openEdit) setInlineEdit(true);
   }, [openEdit]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   async function handleImproveWithAI(additionalRequest?: string) {
     if (!section || !project) return;
@@ -519,166 +489,6 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
     };
   }, [isFullscreen]);
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    // Pegar os filhos diretos do sectionId atual
-    const directChildren = (project?.sections || [])
-      .filter((s: any) => s.parentId === sectionId)
-      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-
-    const oldIndex = directChildren.findIndex((c: any) => c.id === active.id);
-    const newIndex = directChildren.findIndex((c: any) => c.id === over.id);
-
-    const reordered = arrayMove(directChildren, oldIndex, newIndex);
-    const newOrder = reordered.map((c: any) => c.id);
-    reorderSections(realProjectId, newOrder);
-  }
-
-  // Verifica recursivamente se uma seção ou QUALQUER descendente corresponde à busca
-  function matchesSearchRecursive(sectionToCheck: any, term: string): boolean {
-    if (!term.trim()) return true;
-    
-    const lowerTerm = term.toLowerCase();
-    
-    // Verifica título e conteúdo da seção atual
-    if (sectionToCheck.title.toLowerCase().includes(lowerTerm) || 
-        sectionToCheck.content?.toLowerCase().includes(lowerTerm)) {
-      return true;
-    }
-    
-    // Verifica recursivamente em TODOS os descendentes (filhos, netos, bisnetos...)
-    const allDescendants = (project?.sections || []).filter((s: any) => s.parentId === sectionToCheck.id);
-    for (const descendant of allDescendants) {
-      if (matchesSearchRecursive(descendant, term)) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  function highlightText(text: string, term: string) {
-    if (!term || !term.trim()) return text;
-    const regex = new RegExp(`(${term})`, 'gi');
-    const parts = text.split(regex);
-    return parts.map((part, i) => 
-      regex.test(part) ? <mark key={i} className="bg-yellow-200">{part}</mark> : part
-    );
-  }
-
-  function getContentSnippet(content: string, term: string): string {
-    if (!content || !term) return '';
-    const lowerContent = content.toLowerCase();
-    const lowerTerm = term.toLowerCase();
-    const index = lowerContent.indexOf(lowerTerm);
-    if (index === -1) return '';
-    const start = Math.max(0, index - 40);
-    const end = Math.min(content.length, index + term.length + 40);
-    let snippet = content.substring(start, end);
-    if (start > 0) snippet = '...' + snippet;
-    if (end < content.length) snippet = snippet + '...';
-    return snippet;
-  }
-
-  // Função recursiva para renderizar a árvore de subseções (sempre expandida)
-  function renderSubsectionTree(parentId: string, level: number = 0): ReactNode {
-    const subs = (project?.sections || [])
-      .filter((s: any) => s.parentId === parentId)
-      .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-
-    if (subs.length === 0) return null;
-
-    // Filtrar por busca
-    const filtered = subs.filter((s: any) => matchesSearchRecursive(s, searchTerm));
-    if (filtered.length === 0) return null;
-
-    // Se é o nível 0 (filhos diretos da seção atual), usar DnD
-    if (level === 0) {
-      return (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={filtered.map((s: any) => s.id)} strategy={verticalListSortingStrategy}>
-            <ul className="mt-2 space-y-2">
-              {filtered.map((sub: any) => (
-                <SortableSubsectionItem 
-                  key={sub.id} 
-                  sub={sub} 
-                  projectId={projectId} 
-                  project={project}
-                  router={router}
-                  renderSubsectionTree={renderSubsectionTree}
-                  searchTerm={searchTerm}
-                  highlightText={highlightText}
-                  expandedSections={expandedSections}
-                  setExpandedSections={setExpandedSections}
-                  getContentSnippet={getContentSnippet}
-                />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
-      );
-    }
-
-    // Para níveis mais profundos, renderizar sem DnD mas com busca e highlighting
-    return (
-      <ul className="mt-2 space-y-2 pl-3 border-l border-line/60">
-        {filtered.map((sub: any) => {
-          const hasChildren = (project?.sections || []).some((s: any) => s.parentId === sub.id);
-          const isExpanded = expandedSections.has(sub.id) || searchTerm.trim();
-          
-          // Verifica se o termo está diretamente nesta seção
-          const lowerTerm = searchTerm.toLowerCase();
-          const matchesDirectly = searchTerm.trim() && (
-            sub.title.toLowerCase().includes(lowerTerm) || 
-            sub.content?.toLowerCase().includes(lowerTerm)
-          );
-
-          const contentSnippet = matchesDirectly && sub.content && searchTerm ? getContentSnippet(sub.content, searchTerm) : '';
-
-          return (
-            <li key={sub.id} className="mb-2">
-              <div className="flex items-center gap-2 bg-canvas/60 border border-line p-2.5 rounded-lg">
-                {hasChildren && (
-                  <button
-                    onClick={() => {
-                      const newExpanded = new Set(expandedSections);
-                      if (expandedSections.has(sub.id)) {
-                        newExpanded.delete(sub.id);
-                      } else {
-                        newExpanded.add(sub.id);
-                      }
-                      setExpandedSections(newExpanded);
-                    }}
-                    className="text-ink-2 hover:text-ink font-bold w-4 text-sm"
-                  >
-                    {isExpanded ? '−' : '+'}
-                  </button>
-                )}
-                {!hasChildren && <span className="w-4"></span>}
-                <button
-                  className="min-w-0 flex-1 text-left text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 break-words"
-                  onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
-                >
-                  {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
-                </button>
-                {matchesDirectly && searchTerm.trim() && (
-                  <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ Match</span>
-                )}
-              </div>
-              {contentSnippet && (
-                <div className="ml-3 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded">
-                  {highlightText(contentSnippet, searchTerm)}
-                </div>
-              )}
-              {hasChildren && isExpanded && renderSubsectionTree(sub.id, level + 1)}
-            </li>
-          );
-        })}
-      </ul>
-    );
-  }
 
   if (!loaded) return <div className="min-h-screen bg-canvas text-ink p-6">{t('common.loading')}</div>;
   if (!section) return <div className="min-h-screen bg-canvas text-ink p-6">{t('sectionDetail.notFound')} <button className="ml-2 px-3 py-1 bg-surface-2 text-ink rounded-lg hover:bg-surface-3 transition-colors" onClick={() => project ? router.push(projectPath(project)) : router.push("/")}>{t('common.back')}</button></div>;
@@ -702,19 +512,10 @@ export default function SectionDetailClient({ projectId, sectionId: sectionRef, 
     editorRef={editorRef}
     removeSection={removeSection}
     countDescendants={countDescendants}
-    renderSubsectionTree={renderSubsectionTree}
-    newSubTitle={newSubTitle}
-    setNewSubTitle={setNewSubTitle}
-    nameError={nameError}
-    setNameError={setNameError}
     addSection={(pid: string, title: string, content?: string) => addSection(pid, title, content, sectionAuditBy)}
     addSubsection={(pid: string, parentId: string, title: string, content?: string) => addSubsection(pid, parentId, title, content, sectionAuditBy)}
     hasDuplicateName={hasDuplicateName}
     router={router}
-    searchTerm={searchTerm}
-    setSearchTerm={setSearchTerm}
-    expandedSections={expandedSections}
-    setExpandedSections={setExpandedSections}
     editorHeight={editorHeight}
     setEditorHeight={setEditorHeight}
     isFullscreen={isFullscreen}
@@ -977,7 +778,7 @@ function UnresolvedRefsPanel({
   };
 
   return (
-    <div className="max-w-6xl mx-auto mb-4 bg-amber-100 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-700/50 rounded-xl p-4">
+    <div className="mb-4 bg-amber-100 dark:bg-amber-900/20 border border-amber-300/50 dark:border-amber-700/50 rounded-xl p-4">
       <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-3 flex items-center gap-2">
         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
@@ -1120,91 +921,15 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Componente sortable para subseções
-function SortableSubsectionItem({ sub, projectId, project, router, renderSubsectionTree, searchTerm, highlightText, expandedSections, setExpandedSections, getContentSnippet }: any) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: sub.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const hasChildren = (project?.sections || []).some((s: any) => s.parentId === sub.id);
-  const isExpanded = expandedSections.has(sub.id) || searchTerm.trim();
-  
-  // Verifica se o termo está diretamente nesta seção
-  const lowerTerm = searchTerm.toLowerCase();
-  const matchesDirectly = searchTerm.trim() && (
-    sub.title.toLowerCase().includes(lowerTerm) || 
-    sub.content?.toLowerCase().includes(lowerTerm)
-  );
-
-  const contentSnippet = matchesDirectly && sub.content && searchTerm ? getContentSnippet(sub.content, searchTerm) : '';
-
-  return (
-    <li ref={setNodeRef} style={style} className="mb-2">
-      <div className="flex items-center gap-2 bg-canvas/60 border border-line p-2.5 rounded-lg">
-        <span
-          className="text-muted cursor-grab active:cursor-grabbing text-sm"
-          {...attributes}
-          {...listeners}
-          aria-label="Reordenar"
-        >
-          ⋮⋮
-        </span>
-        {hasChildren && (
-          <button
-            onClick={() => {
-              const newExpanded = new Set(expandedSections);
-              if (expandedSections.has(sub.id)) {
-                newExpanded.delete(sub.id);
-              } else {
-                newExpanded.add(sub.id);
-              }
-              setExpandedSections(newExpanded);
-            }}
-            className="text-ink-2 hover:text-ink font-bold w-4 text-sm"
-          >
-            {isExpanded ? '−' : '+'}
-          </button>
-        )}
-        {!hasChildren && <span className="w-4"></span>}
-        <button
-          className="min-w-0 flex-1 text-left text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 break-words"
-          onClick={() => router.push(sectionPathById(project ?? { title: "", sections: [] }, sub.id))}
-        >
-          {searchTerm.trim() ? highlightText(sub.title, searchTerm) : sub.title}
-        </button>
-        {matchesDirectly && searchTerm.trim() && (
-          <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-300/60 dark:border-emerald-700/60">✓ Match</span>
-        )}
-      </div>
-      {contentSnippet && (
-        <div className="ml-3 text-xs text-ink-2 italic mt-1 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-300/60 dark:border-yellow-700/60 p-2 rounded">
-          {highlightText(contentSnippet, searchTerm)}
-        </div>
-      )}
-      {hasChildren && isExpanded && renderSubsectionTree(sub.id, 1)}
-    </li>
-  );
-}
 
 // Componente principal de conteúdo
 function SectionDetailContent({ 
   project, projectId, section, sectionId, breadcrumbs, 
   isEditingTitle, setIsEditingTitle, editedTitle, setEditedTitle, editSection, updateSectionDescription,
   inlineEdit, setInlineEdit, editorRef,
-  removeSection, countDescendants, renderSubsectionTree,
-  newSubTitle, setNewSubTitle, nameError, setNameError, addSection, addSubsection, hasDuplicateName,
-  router, searchTerm, setSearchTerm, expandedSections, setExpandedSections,
+  removeSection, countDescendants,
+  addSection, addSubsection, hasDuplicateName,
+  router,
   editorHeight, setEditorHeight, isFullscreen, setIsFullscreen,
   isImproving, improveError, setImproveError, getAIHeaders, handleImproveWithAI,
   showPreview, previewContent, setPreviewContent, modificationRequest, setModificationRequest,
@@ -1286,88 +1011,9 @@ function SectionDetailContent({
     project?.title || ""
   );
   const showPageRefsPanel = !showPreview && (unresolvedFromPage.unresolvedNames.length > 0 || unresolvedFromPage.hasProjectTitleRef);
-  const subsectionsPanel = (
-    <div className="bg-surface/70 border border-line/80 rounded-2xl p-4 md:p-5 overflow-x-hidden">
-      <h2 className="font-semibold text-lg">{t('sectionDetail.subsections.title')}</h2>
-
-      {/* Campo de busca */}
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder={t('sectionDetail.subsections.searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => {
-            const term = e.target.value;
-            setSearchTerm(term);
-            // Se houver busca, expandir automaticamente todas as seções
-            if (term.trim()) {
-              const allIds = new Set<string>();
-              function collectIds(parentId: string) {
-                const subs = (project?.sections || []).filter((s: any) => s.parentId === parentId);
-                subs.forEach((s: any) => {
-                  allIds.add(s.id);
-                  collectIds(s.id);
-                });
-              }
-              collectIds(sectionId);
-              setExpandedSections(allIds);
-            }
-          }}
-          className="w-full bg-canvas/70 border border-line-strong rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div className="max-h-[46vh] overflow-y-auto overflow-x-hidden pr-1">
-        {renderSubsectionTree(sectionId) || (
-          <p className="text-muted text-sm">{t('sectionDetail.subsections.empty')}</p>
-        )}
-      </div>
-
-      <div className="mt-2">
-        <div className="flex gap-2">
-          <input
-            value={newSubTitle}
-            onChange={(e) => {
-              const val = e.target.value;
-              setNewSubTitle(val);
-              if (val.trim() && hasDuplicateName(realProjectId, val.trim(), realSectionId)) {
-                setNameError(t('sectionDetail.subsections.duplicate'));
-              } else {
-                setNameError("");
-              }
-            }}
-            placeholder={t('sectionDetail.subsections.addPlaceholder')}
-            className={`flex-1 min-w-0 bg-canvas/70 border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted ${nameError ? "border-red-500" : "border-line-strong"}`}
-          />
-          <button
-            className="shrink-0 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-            disabled={!newSubTitle.trim() || !!nameError}
-            onClick={() => {
-              const trimmed = newSubTitle.trim();
-              if (!trimmed || nameError) return;
-              try {
-                addSubsection(realProjectId, realSectionId, trimmed, "");
-                setNewSubTitle("");
-                setNameError("");
-              } catch (e) {
-                if (e instanceof Error && e.message.startsWith("structural_limit")) {
-                  setNameError(t("limits.sectionsPerProject"));
-                } else {
-                  throw e;
-                }
-              }
-            }}
-          >{t('projectDetail.add')}</button>
-        </div>
-        {nameError && (
-          <span className="text-red-600 dark:text-red-400 text-sm mt-1 block">{nameError}</span>
-        )}
-      </div>
-    </div>
-  );
 
   return (
-    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-canvas text-ink overflow-auto p-6" : "min-h-screen bg-canvas text-ink px-4 py-8 md:px-8 md:py-10"}>
+    <div className={inlineEdit && isFullscreen ? "fixed inset-0 z-50 bg-canvas text-ink overflow-auto p-6" : "text-ink"}>
       {/* Fullscreen header */}
       {inlineEdit && isFullscreen && (
         <div className="mb-4 flex items-center justify-between border-b border-line pb-4">
@@ -1386,8 +1032,13 @@ function SectionDetailContent({
       )}
       
 
+      {/* Duas colunas: a página à esquerda, o trilho de apoio à direita — o que
+          não é o texto da página (fluxograma, quem cita, histórico) sai da frente
+          das filhas, que entram logo abaixo da descrição. */}
+      <div className={inlineEdit && isFullscreen ? "" : "grid w-full items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"}>
+        <div className="min-w-0">
       {!(inlineEdit && isFullscreen) && (
-        <div className="max-w-6xl mx-auto flex items-center gap-4 mb-3">
+        <div className="flex items-center gap-4 mb-3">
           {/* Thumbnail fora do card, lateral esquerda */}
           <div className="relative shrink-0">
             <button
@@ -1708,14 +1359,14 @@ function SectionDetailContent({
       )}
 
       {sectionThumbError && (
-        <div className="max-w-6xl mx-auto mb-2 text-xs text-red-700 dark:text-red-300">
+        <div className="mb-2 text-xs text-red-700 dark:text-red-300">
           {sectionThumbError}
         </div>
       )}
 
       {/* Aviso de página firme cujas referências mudaram depois da confirmação */}
       {section && !inlineEdit && (
-        <div className="max-w-6xl mx-auto">
+        <div className="">
           <StaleNotice
             projectId={realProjectId}
             projectSlug={projectId}
@@ -1725,80 +1376,15 @@ function SectionDetailContent({
         </div>
       )}
 
-      {/* Domínio / Sistemas (modelo de game design para IA e relações) */}
-      {section && !inlineEdit && (
-        <div className="max-w-6xl mx-auto mb-3 ui-card-premium flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted">{t("sectionDetail.domain.label")}:</span>
-          {GAME_DESIGN_DOMAIN_IDS.map((id) => {
-            const current = section?.domainTags ?? [];
-            const isSelected = current.includes(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  const next = isSelected
-                    ? current.filter((t: string) => t !== id)
-                    : normalizeDomainTags([...current, id]);
-                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
-                  setSection({ ...section, domainTags: next.length ? next : undefined });
-                }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-                  isSelected
-                    ? "border-indigo-400/60 bg-indigo-600/85 text-white hover:bg-indigo-500"
-                    : "border-line-strong bg-surface/90 text-ink-2 hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                {t(`sectionDetail.domain.${id}`)}
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            disabled={suggestDomainLoading || !hasValidConfig}
-            onClick={async () => {
-              if (!section || !hasValidConfig) return;
-              setSuggestDomainLoading(true);
-              try {
-                const res = await fetch("/api/ai/suggest-domain-tags", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", ...getAIHeaders() },
-                  body: JSON.stringify({
-                    projectTitle: project?.title,
-                    projectDescription: project?.description,
-                    sectionTitle: section.title,
-                    sectionContent: getSectionAiContent(section).slice(0, 2000),
-                    existingTags: section.domainTags,
-                  }),
-                });
-                const data = await res.json();
-                if (res.ok && Array.isArray(data.suggestedTags) && data.suggestedTags.length > 0) {
-                  const next = normalizeDomainTags(data.suggestedTags);
-                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
-                  setSection({ ...section, domainTags: next });
-                }
-              } catch (e) {
-                console.error("Suggest domain tags:", e);
-              } finally {
-                setSuggestDomainLoading(false);
-              }
-            }}
-            className="ml-2 px-2.5 py-1 rounded-lg text-xs font-medium border border-line-strong bg-surface/90 text-ink hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
-          </button>
-        </div>
-      )}
-
       {/* Mensagem de erro/aviso da IA */}
       {improveError && (
-        <div className="max-w-6xl mx-auto mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-600 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
+        <div className="mb-4 p-3 bg-amber-100 dark:bg-amber-900/30 border border-amber-600 rounded-xl text-amber-800 dark:text-amber-200 text-sm">
           {improveError}
         </div>
       )}
       {!inlineEdit && !(inlineEdit && isFullscreen) && (
         <div
-          className="group/description relative max-w-6xl mx-auto mb-4 ui-card-premium transition-colors hover:ring-1 hover:ring-indigo-500/40"
+          className="group/description relative mb-4 ui-card-premium transition-colors hover:ring-1 hover:ring-indigo-500/40"
           onDoubleClick={() => setInlineEdit(true)}
           title={(!isRichDocEmpty(section.contentBlocks) || (section.content && section.content.trim())) ? t('sectionDetail.descriptionEditHint', 'Duplo clique para editar a descrição') : undefined}
         >
@@ -1863,177 +1449,12 @@ function SectionDetailContent({
           )}
         </div>
       )}
-      {section && !inlineEdit && (
-        <div
-          className={`max-w-6xl mx-auto mb-4 ui-card-premium border ${
-            section?.flowchartEnabled ? "border-emerald-500/35 bg-emerald-100 dark:bg-emerald-900/10" : "border-line/80"
-          }`}
-        >
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="min-w-0 flex items-start gap-3">
-              <span
-                className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
-                  section?.flowchartEnabled
-                    ? "border-emerald-400/50 bg-emerald-600/25 text-emerald-800 dark:text-emerald-200"
-                    : "border-line-strong/80 bg-surface/70 text-ink-2"
-                }`}
-                aria-hidden="true"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={1.8} />
-                  <rect x="14" y="3" width="7" height="6" rx="1.2" strokeWidth={1.8} />
-                  <rect x="8" y="15" width="8" height="6" rx="1.2" strokeWidth={1.8} />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6.5h4m3.5 2.5v2.5M8.5 15v-2.5m6.5 2.5v-2.5" />
-                </svg>
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-ink">{t("sectionDetail.flowchart.title")}</h3>
-                <p className="text-xs text-muted mt-1">{t("sectionDetail.flowchart.description")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-medium ${section?.flowchartEnabled ? "text-emerald-700 dark:text-emerald-300" : "text-muted"}`}>
-                {section?.flowchartEnabled ? t("sectionDetail.flowchart.statusOn") : t("sectionDetail.flowchart.statusOff")}
-              </span>
-              <ToggleSwitch
-                checked={Boolean(section?.flowchartEnabled)}
-                ariaLabel={t("sectionDetail.flowchart.switchAria")}
-                onChange={(nextEnabled) => {
-                  if (nextEnabled) {
-                    setSectionFlowchartEnabled(realProjectId, realSectionId, true);
-                    setSection({ ...section, flowchartEnabled: true });
-                    return;
-                  }
-                  const confirmed = window.confirm(t("sectionDetail.flowchart.disableConfirm"));
-                  if (!confirmed) return;
-                  disableSectionFlowchartAndClearDiagram(realProjectId, realSectionId);
-                  setSection({ ...section, flowchartEnabled: false });
-                }}
-              />
-            </div>
-          </div>
-          {section?.flowchartEnabled && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => router.push(`${sectionPath(project, section)}/diagramas`)}
-                className="h-9 px-3.5 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-teal-600 transition-all text-xs font-semibold"
-                title={t("sectionDetail.flowchart.open")}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
-                </svg>
-                {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", section.title)}
-              </button>
-            </div>
-          )}
+
+      {section && !inlineEdit && project && (
+        <div className="mb-4">
+          <SectionChildren project={project} section={section} />
         </div>
       )}
-      {/* Backlinks Section */}
-      {!(inlineEdit && isFullscreen) && (
-        <BacklinksSection
-          projectId={projectId}
-          sectionId={realSectionId}
-          sections={project?.sections || []}
-          router={router}
-        />
-      )}
-
-      {/* Histórico de versões (colapsável) */}
-      <div className="max-w-6xl mx-auto mb-4 ui-card-premium overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setHistoryExpanded((e) => !e)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface/80 transition-colors"
-          aria-expanded={historyExpanded}
-        >
-          <span className="text-sm font-semibold text-ink">
-            {t("sectionDetail.history.title")}
-            {!sectionVersionsLoading && sectionVersions.length > 0 && (
-              <span className="text-subtle font-normal ml-1">
-                ({sectionVersions.length} {sectionVersions.length === 1 ? t("sectionDetail.history.versionOne") : t("sectionDetail.history.versionMany")})
-              </span>
-            )}
-          </span>
-          <span className="text-muted shrink-0 transition-transform duration-200" style={{ transform: historyExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
-            ▼
-          </span>
-        </button>
-        {historyExpanded && (
-          <div className="px-4 pb-4 pt-0 border-t border-line/80 bg-canvas/25">
-        {sectionVersionsLoading ? (
-          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.loading")}</p>
-        ) : sectionVersions.length === 0 ? (
-          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.empty")}</p>
-        ) : (
-          <ul className="space-y-2 max-h-64 overflow-auto pt-2">
-            {sectionVersions.map((v: SectionVersionEntry, index: number) => {
-              const contentPreview = (v.content || "").replace(/\s+/g, " ").trim().slice(0, 80);
-              const versionSummary = buildVersionChangeSummary(v, sectionVersions[index + 1]);
-              return (
-              <li
-                key={v.id}
-                className="flex flex-wrap items-start justify-between gap-2 text-xs bg-canvas/60 border border-line rounded-lg px-2 py-1.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-ink-2 truncate">
-                    {new Date(v.created_at).toLocaleString()}
-                    {(v.updated_by_name != null && v.updated_by_name !== "") && (
-                      <span className="text-subtle ml-1">
-                        {t("sectionDetail.history.by").replace("{{name}}", v.updated_by_name)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-muted font-medium truncate mt-0.5" title={v.title}>
-                    {(v.title && v.title.trim()) || t("sectionDetail.history.untitled")}
-                  </div>
-                  {versionSummary ? (
-                    <div className="text-muted truncate mt-0.5" title={versionSummary}>
-                      {versionSummary}
-                    </div>
-                  ) : contentPreview ? (
-                    <div className="text-subtle truncate mt-0.5" title={v.content}>
-                      {contentPreview}{v.content.length > 80 ? "…" : ""}
-                    </div>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  disabled={restoreVersionId !== null}
-                  onClick={async () => {
-                    if (!v.id) return;
-                    setRestoreVersionId(v.id);
-                    try {
-                      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/restore`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ versionId: v.id }),
-                        credentials: "include",
-                      });
-                      if (res.ok) {
-                        editSection(realProjectId, realSectionId, v.title, v.content, undefined, v.color ?? undefined);
-                        // Versões guardam só markdown — limpa contentBlocks (store + local)
-                        // pra leitura renderizar o markdown restaurado, não os blocks atuais.
-                        setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, contentBlocks: undefined, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
-                        const data = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
-                        if (Array.isArray(data?.versions)) setSectionVersions(data.versions);
-                      }
-                    } finally {
-                      setRestoreVersionId(null);
-                    }
-                  }}
-                  className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 disabled:opacity-50 rounded px-1.5 py-0.5 hover:bg-blue-500/10 transition-colors"
-                >
-                  {restoreVersionId === v.id ? t("sectionDetail.history.restoring") : t("sectionDetail.history.restore")}
-                </button>
-              </li>
-            );
-            })}
-          </ul>
-        )}
-          </div>
-        )}
-      </div>
 
       {showPageRefsPanel && (
         <UnresolvedRefsPanel
@@ -2057,14 +1478,14 @@ function SectionDetailContent({
           addSubsection={addSubsection}
           getAIHeaders={getAIHeaders}
           router={router}
-          onLimitError={(msg) => setNameError(msg)}
+          onLimitError={setImproveError}
           onAiError={setImproveError}
           hasDuplicateName={hasDuplicateName}
         />
       )}
 
       {inlineEdit && (
-        <div className="max-w-6xl mx-auto mb-3 ui-card-premium">
+        <div className="mb-3 ui-card-premium">
           {!isFullscreen && (
             <div className="flex items-center gap-2 mb-2 justify-end">
               <div className="flex items-center gap-2 bg-surface/90 rounded-lg px-3 py-1 border border-line">
@@ -2163,6 +1584,250 @@ function SectionDetailContent({
           </div>
         </div>
       )}
+        </div>
+
+        {!(inlineEdit && isFullscreen) && (
+          <aside className="flex flex-col gap-5">
+      {/* Domínio / Sistemas (modelo de game design para IA e relações) */}
+      {section && !inlineEdit && (
+        <div className="ui-card-premium">
+          <h3 className="mb-2.5 text-sm font-semibold text-ink">{t("sectionDetail.domain.label")}</h3>
+          <div className="flex flex-wrap gap-1.5">
+          {GAME_DESIGN_DOMAIN_IDS.map((id) => {
+            const current = section?.domainTags ?? [];
+            const isSelected = current.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  const next = isSelected
+                    ? current.filter((t: string) => t !== id)
+                    : normalizeDomainTags([...current, id]);
+                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
+                  setSection({ ...section, domainTags: next.length ? next : undefined });
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                  isSelected
+                    ? "border-indigo-400/60 bg-indigo-600/85 text-white hover:bg-indigo-500"
+                    : "border-line-strong bg-surface/90 text-ink-2 hover:bg-surface-2 hover:text-ink"
+                }`}
+              >
+                {t(`sectionDetail.domain.${id}`)}
+              </button>
+            );
+          })}
+          </div>
+          <button
+            type="button"
+            disabled={suggestDomainLoading || !hasValidConfig}
+            onClick={async () => {
+              if (!section || !hasValidConfig) return;
+              setSuggestDomainLoading(true);
+              try {
+                const res = await fetch("/api/ai/suggest-domain-tags", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...getAIHeaders() },
+                  body: JSON.stringify({
+                    projectTitle: project?.title,
+                    projectDescription: project?.description,
+                    sectionTitle: section.title,
+                    sectionContent: getSectionAiContent(section).slice(0, 2000),
+                    existingTags: section.domainTags,
+                  }),
+                });
+                const data = await res.json();
+                if (res.ok && Array.isArray(data.suggestedTags) && data.suggestedTags.length > 0) {
+                  const next = normalizeDomainTags(data.suggestedTags);
+                  editSection(realProjectId, realSectionId,section.title, section.content ?? "", undefined, undefined, next);
+                  setSection({ ...section, domainTags: next });
+                }
+              } catch (e) {
+                console.error("Suggest domain tags:", e);
+              } finally {
+                setSuggestDomainLoading(false);
+              }
+            }}
+            className="mt-3 w-full px-2.5 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface/90 text-ink hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {suggestDomainLoading ? t("sectionDetail.domain.suggesting") : t("sectionDetail.domain.suggestWithAI")}
+          </button>
+        </div>
+      )}
+      {section && !inlineEdit && (
+        <div
+          className={`ui-card-premium border ${
+            section?.flowchartEnabled ? "border-emerald-500/35 bg-emerald-100 dark:bg-emerald-900/10" : "border-line/80"
+          }`}
+        >
+          <div className="flex flex-col gap-3">
+            <div className="min-w-0 flex items-start gap-3">
+              <span
+                className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-lg border ${
+                  section?.flowchartEnabled
+                    ? "border-emerald-400/50 bg-emerald-600/25 text-emerald-800 dark:text-emerald-200"
+                    : "border-line-strong/80 bg-surface/70 text-ink-2"
+                }`}
+                aria-hidden="true"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="7" height="5" rx="1.2" strokeWidth={1.8} />
+                  <rect x="14" y="3" width="7" height="6" rx="1.2" strokeWidth={1.8} />
+                  <rect x="8" y="15" width="8" height="6" rx="1.2" strokeWidth={1.8} />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6.5h4m3.5 2.5v2.5M8.5 15v-2.5m6.5 2.5v-2.5" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-ink">{t("sectionDetail.flowchart.title")}</h3>
+                <p className="text-xs text-muted mt-1">{t("sectionDetail.flowchart.description")}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-line/70 pt-3">
+              <span className={`text-xs font-medium ${section?.flowchartEnabled ? "text-emerald-700 dark:text-emerald-300" : "text-muted"}`}>
+                {section?.flowchartEnabled ? t("sectionDetail.flowchart.statusOn") : t("sectionDetail.flowchart.statusOff")}
+              </span>
+              <ToggleSwitch
+                checked={Boolean(section?.flowchartEnabled)}
+                ariaLabel={t("sectionDetail.flowchart.switchAria")}
+                onChange={(nextEnabled) => {
+                  if (nextEnabled) {
+                    setSectionFlowchartEnabled(realProjectId, realSectionId, true);
+                    setSection({ ...section, flowchartEnabled: true });
+                    return;
+                  }
+                  const confirmed = window.confirm(t("sectionDetail.flowchart.disableConfirm"));
+                  if (!confirmed) return;
+                  disableSectionFlowchartAndClearDiagram(realProjectId, realSectionId);
+                  setSection({ ...section, flowchartEnabled: false });
+                }}
+              />
+            </div>
+          </div>
+          {section?.flowchartEnabled && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => router.push(`${sectionPath(project, section)}/diagramas`)}
+                className="h-9 px-3.5 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg border border-emerald-300/50 shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-teal-600 transition-all text-xs font-semibold"
+                title={t("sectionDetail.flowchart.open")}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h6m0 0v6m0-6l-8 8m-4 0h4v4" />
+                </svg>
+                {t("sectionDetail.flowchart.openWithTitle").replace("{{title}}", section.title)}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Backlinks Section */}
+      {!(inlineEdit && isFullscreen) && (
+        <BacklinksSection
+          projectId={projectId}
+          sectionId={realSectionId}
+          sections={project?.sections || []}
+          router={router}
+        />
+      )}
+
+      {/* Histórico de versões (colapsável) */}
+      <div className="ui-card-premium overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setHistoryExpanded((e) => !e)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-surface/80 transition-colors"
+          aria-expanded={historyExpanded}
+        >
+          <span className="text-sm font-semibold text-ink">
+            {t("sectionDetail.history.title")}
+            {!sectionVersionsLoading && sectionVersions.length > 0 && (
+              <span className="text-subtle font-normal ml-1">
+                ({sectionVersions.length} {sectionVersions.length === 1 ? t("sectionDetail.history.versionOne") : t("sectionDetail.history.versionMany")})
+              </span>
+            )}
+          </span>
+          <span className="text-muted shrink-0 transition-transform duration-200" style={{ transform: historyExpanded ? "rotate(180deg)" : "rotate(0deg)" }}>
+            ▼
+          </span>
+        </button>
+        {historyExpanded && (
+          <div className="px-4 pb-4 pt-0 border-t border-line/80 bg-canvas/25">
+        {sectionVersionsLoading ? (
+          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.loading")}</p>
+        ) : sectionVersions.length === 0 ? (
+          <p className="text-xs text-subtle pt-2">{t("sectionDetail.history.empty")}</p>
+        ) : (
+          <ul className="space-y-2 max-h-64 overflow-auto pt-2">
+            {sectionVersions.map((v: SectionVersionEntry, index: number) => {
+              const contentPreview = (v.content || "").replace(/\s+/g, " ").trim().slice(0, 80);
+              const versionSummary = buildVersionChangeSummary(v, sectionVersions[index + 1]);
+              return (
+              <li
+                key={v.id}
+                className="flex flex-wrap items-start justify-between gap-2 text-xs bg-canvas/60 border border-line rounded-lg px-2 py-1.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-ink-2 truncate">
+                    {new Date(v.created_at).toLocaleString()}
+                    {(v.updated_by_name != null && v.updated_by_name !== "") && (
+                      <span className="text-subtle ml-1">
+                        {t("sectionDetail.history.by").replace("{{name}}", v.updated_by_name)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-muted font-medium truncate mt-0.5" title={v.title}>
+                    {(v.title && v.title.trim()) || t("sectionDetail.history.untitled")}
+                  </div>
+                  {versionSummary ? (
+                    <div className="text-muted truncate mt-0.5" title={versionSummary}>
+                      {versionSummary}
+                    </div>
+                  ) : contentPreview ? (
+                    <div className="text-subtle truncate mt-0.5" title={v.content}>
+                      {contentPreview}{v.content.length > 80 ? "…" : ""}
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  disabled={restoreVersionId !== null}
+                  onClick={async () => {
+                    if (!v.id) return;
+                    setRestoreVersionId(v.id);
+                    try {
+                      const res = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/restore`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ versionId: v.id }),
+                        credentials: "include",
+                      });
+                      if (res.ok) {
+                        editSection(realProjectId, realSectionId, v.title, v.content, undefined, v.color ?? undefined);
+                        // Versões guardam só markdown — limpa contentBlocks (store + local)
+                        // pra leitura renderizar o markdown restaurado, não os blocks atuais.
+                        setSection((prev: any) => (prev ? { ...prev, title: v.title, content: v.content, contentBlocks: undefined, color: v.color ?? prev.color, updated_at: new Date().toISOString(), updated_by_name: profile?.display_name ?? user?.email ?? null } : null));
+                        const data = await fetch(`/api/projects/${encodeURIComponent(realProjectId)}/sections/${encodeURIComponent(realSectionId)}/versions`, { credentials: "include" }).then((r) => r.ok ? r.json() : { versions: [] });
+                        if (Array.isArray(data?.versions)) setSectionVersions(data.versions);
+                      }
+                    } finally {
+                      setRestoreVersionId(null);
+                    }
+                  }}
+                  className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 disabled:opacity-50 rounded px-1.5 py-0.5 hover:bg-blue-500/10 transition-colors"
+                >
+                  {restoreVersionId === v.id ? t("sectionDetail.history.restoring") : t("sectionDetail.history.restore")}
+                </button>
+              </li>
+            );
+            })}
+          </ul>
+        )}
+          </div>
+        )}
+      </div>
+          </aside>
+        )}
+      </div>
 
       {/* Modal de Preview da IA */}
       {showPreview && (
@@ -2209,7 +1874,7 @@ function SectionDetailContent({
                   addSubsection={addSubsection}
                   getAIHeaders={getAIHeaders}
                   router={router}
-                  onLimitError={(msg) => setNameError(msg)}
+                  onLimitError={setImproveError}
                   onAiError={setImproveError}
                   hasDuplicateName={hasDuplicateName}
                 />
@@ -2361,24 +2026,22 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
 
   return (
     <>
-      <div className="max-w-6xl mx-auto mt-6 mb-4 p-4 bg-blue-100 dark:bg-blue-900/20 rounded-xl border border-blue-300/50 dark:border-blue-700/50">
-        <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <div className="ui-card-premium">
+        <h3 className="text-sm font-semibold text-ink mb-2.5 flex items-center gap-2">
+          <svg className="w-4 h-4 shrink-0 text-blue-700 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14L21 3m-6 0h6v6M14 10L3 21m0-6v6h6" />
           </svg>
           <span>{t('sectionDetail.backlinks')}</span>
         </h3>
-        <div className="flex flex-wrap gap-2">
-          {backlinks.map((link: any, index: number) => (
-            <span key={link.id} className="inline-flex items-center">
-              <button
-                onClick={() => handleClick(link)}
-                className="text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 hover:underline text-sm font-medium"
-              >
-                {link.title}
-              </button>
-              {index < backlinks.length - 1 && <span className="text-blue-500 ml-1">,</span>}
-            </span>
+        <div className="flex flex-wrap gap-1.5">
+          {backlinks.map((link: any) => (
+            <button
+              key={link.id}
+              onClick={() => handleClick(link)}
+              className="max-w-full truncate rounded-lg border border-line bg-canvas/50 px-2 py-1 text-xs text-ink transition-colors hover:border-line-strong hover:text-accent"
+            >
+              {link.title}
+            </button>
           ))}
         </div>
       </div>
