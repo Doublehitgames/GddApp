@@ -1507,22 +1507,6 @@
   },
   "comingSoon": {
     "badge": "Em construção — este é um exemplo do que vem",
-    "library": {
-      "colA": "Mana",
-      "colB": "Recarga",
-      "colName": "Magia",
-      "example1": "Lâmina do Ponteiro",
-      "example2": "Explosão de Areia",
-      "example3": "Escudo de Luz",
-      "lead": "Tudo o que existe dentro do jogo — personagens, inimigos, itens, magias — com os números de cada um num lugar só.",
-      "meanwhile": "Enquanto isso, crie uma página para cada coisa do jogo na árvore de páginas: elas viram coleção quando a Biblioteca chegar.",
-      "p1": "Coleções suas",
-      "p1Text": "Você cria a coleção e escolhe as propriedades: mana, recarga, vida, preço…",
-      "p2": "Números num lugar só",
-      "p2Text": "O texto de cada página fala do papel da coisa; o balanceamento mora na tabela.",
-      "p3": "Direto para o jogo",
-      "p3Text": "Exporte a coleção para a engine, ligada pelo ID de dado de cada página."
-    },
     "systems": {
       "lead": "Como as partes do jogo se ligam: o ciclo de progressão, a economia, o que libera o quê — montado das próprias páginas, sem ninguém desenhar setas.",
       "meanwhile": "Enquanto isso, o mapa mental já mostra as páginas e as referências entre elas.",
@@ -1664,12 +1648,6 @@
   "projectShell": {
     "areasLabel": "Áreas",
     "backup": "Backup",
-    "collections": {
-      "characters": "Personagens",
-      "enemies": "Inimigos",
-      "items": "Itens",
-      "places": "Locais"
-    },
     "collectionsLabel": "Coleções",
     "docs": "Documentação",
     "home": "Início",
@@ -1688,7 +1666,8 @@
     "search": "Buscar páginas…",
     "soon": "em breve",
     "systems": "Sistemas e relações",
-    "vision": "Visão do jogo"
+    "vision": "Visão do jogo",
+    "collectionsEmpty": "As páginas-mãe com regra de tabelas aparecem aqui."
   },
   "starter": {
     "allDone": "Os primeiros passos acabaram. Daqui em diante, o GDD é seu.",
@@ -1747,5 +1726,55 @@
     "sheetFill": "Preencher a ficha",
     "sheetHint": "Aparece em destaque no modo Documento.",
     "sheetTitle": "Ficha técnica"
+  },
+  "tableRule": {
+    "type": {
+      "number": "Número",
+      "text": "Texto",
+      "boolean": "Sim/não",
+      "page": "Página"
+    },
+    "pill": "{n} tabelas",
+    "set": "+ regra de tabelas",
+    "pickerTitle": "Quais tabelas as subpáginas carregam",
+    "title": "Regra de tabelas",
+    "lead": "As tabelas que cada subpágina carrega na descrição, com o título que vai em cima delas. A Biblioteca confere as {n} subpáginas contra esta lista — a regra não muda o texto de nenhuma.",
+    "empty": "As subpáginas ainda não têm tabela. Comece com uma.",
+    "tableName": "Título da tabela",
+    "up": "Subir",
+    "down": "Descer",
+    "removeTable": "Tirar a tabela",
+    "repeatedTable": "Já existe uma tabela com esse título.",
+    "colName": "Coluna",
+    "colType": "Tipo",
+    "colUnit": "Unidade",
+    "colRequired": "Exigida",
+    "repeatedColumn": "Já existe uma coluna com esse nome nesta tabela.",
+    "unitPlaceholder": "s, %…",
+    "removeColumn": "Tirar a coluna",
+    "addColumn": "+ coluna",
+    "noColumns": "Uma tabela precisa de pelo menos uma coluna.",
+    "addTable": "+ tabela",
+    "inferHint": "Lê os títulos e cabeçalhos que as subpáginas já escrevem",
+    "infer": "Montar a partir das subpáginas",
+    "remove": "Tirar a regra",
+    "removeConfirm": "As tabelas das subpáginas ficam. Tirar a regra?",
+    "removeYes": "Tirar",
+    "openLibrary": "Ver na Biblioteca",
+    "save": "Salvar regra"
+  },
+  "libraryPage": {
+    "title": "Biblioteca do jogo",
+    "lead": "Os números das coleções, lidos das tabelas de cada página. A prosa guarda a relação; a tabela guarda o valor.",
+    "emptyTitle": "Nenhuma coleção ainda",
+    "emptyText": "Abra a página-mãe das coisas que têm números — as sementes, as armas, os inimigos — e use “+ regra de tabelas” no cabeçalho. A regra diz quais tabelas as subpáginas carregam, e a coleção aparece aqui.",
+    "summary": "{n} páginas · {tables} tabelas",
+    "allComplete": "todas completas",
+    "incomplete": "{n} com falta",
+    "openParent": "Abrir a página e a regra",
+    "page": "Página",
+    "absent": "Esta página não tem a tabela — não se aplica.",
+    "missing": "falta",
+    "notNumber": "A coluna é de número e isto não é."
   }
 }

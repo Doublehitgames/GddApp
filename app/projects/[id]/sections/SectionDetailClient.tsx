@@ -27,6 +27,7 @@ import {
 import { useAIConfig } from "@/hooks/useAIConfig";
 import StatusPicker from "@/components/pageStatus/StatusPicker";
 import DeckLayoutPicker from "@/components/deck/DeckLayoutPicker";
+import TableRuleEditor from "@/components/tableRule/TableRuleEditor";
 import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
@@ -1203,6 +1204,12 @@ function SectionDetailContent({
                     projectId={realProjectId}
                     sectionId={realSectionId}
                     deckLayout={section?.deckLayout}
+                  />
+                  <TableRuleEditor
+                    projectId={realProjectId}
+                    projectSlug={projectId}
+                    sectionId={realSectionId}
+                    tableRule={section?.tableRule}
                   />
                   {!isEditingDataId && section?.dataId && (
                     <button

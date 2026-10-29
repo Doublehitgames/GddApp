@@ -1,75 +1,51 @@
 /**
- * Coleções e grupos — lidos da árvore, nunca declarados.
+ * As coleções da Biblioteca: as páginas-mãe que têm regra de tabelas.
  *
- * - **coleção**: página cujas filhas são todas folhas (Sementes → 36 sementes).
- * - **grupo**: página cujas filhas são todas coleções (Insumos → Sementes,
- *   Frutos, Madeira…). É o grupo que vira botão de navegação.
+ * A Biblioteca é conteúdo de balanceamento, e a forma da árvore não diz isso.
+ * Medido no Granjita, das 33 páginas cujas filhas são todas folhas, 31 não têm
+ * uma tabela sequer — são capítulos de documentação com cara de catálogo. O
+ * sinal honesto é a regra (lib/tableRule/tableRule.ts): alguém decidiu que
+ * aquelas filhas carregam números, e disse quais.
  *
- * Página com filhas mistas (umas folhas, outras com filhas) não é nenhum dos
- * dois: é capítulo de documentação, e fica de fora da Biblioteca. Esse padrão
- * separa sozinho balanceamento de texto, sem o app saber do que o jogo é — o
- * app não sabe que um grupo é "itens" ou "inimigos", e não deve saber.
+ * A regra guarda nomes de coluna, não categoria: o app continua sem saber se a
+ * coleção é "itens" ou "inimigos", e não deve saber.
  */
+
+import { parseTableRule } from "@/lib/tableRule/tableRule";
 
 type TreeSection = {
   id: string;
   title: string;
   parentId?: string;
   order?: number;
+  tableRule?: unknown;
 };
 
-export type DetectedGroup<S extends TreeSection = TreeSection> = {
+export type LibraryCollection<S extends TreeSection = TreeSection> = {
   section: S;
-  collections: S[];
-  /** Quantas coisas o grupo tem, somando as folhas de todas as coleções. */
+  /** Quantas páginas a coleção tem — as filhas diretas da página-mãe. */
   itemCount: number;
 };
 
-function childrenIndex<S extends TreeSection>(sections: S[]): Map<string, S[]> {
+/** As coleções com regra, na ordem da árvore (pré-ordem, a mesma da Documentação). */
+export function libraryCollections<S extends TreeSection>(sections: S[]): LibraryCollection<S>[] {
   const ids = new Set(sections.map((s) => s.id));
-  const byParent = new Map<string, S[]>();
+  const byParent = new Map<string | null, S[]>();
   for (const section of sections) {
-    // Filha de um pai que não existe mais conta como raiz, não como filha.
-    if (!section.parentId || !ids.has(section.parentId)) continue;
-    const list = byParent.get(section.parentId);
+    // Filha de um pai que não existe mais conta como raiz, não some.
+    const parent = section.parentId && ids.has(section.parentId) ? section.parentId : null;
+    const list = byParent.get(parent);
     if (list) list.push(section);
-    else byParent.set(section.parentId, [section]);
+    else byParent.set(parent, [section]);
   }
   for (const list of byParent.values()) list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  return byParent;
-}
 
-/**
- * Os grupos do projeto, na ordem em que aparecem na árvore (pré-ordem, a
- * mesma da Documentação).
- */
-export function detectGroups<S extends TreeSection>(sections: S[]): DetectedGroup<S>[] {
-  const byParent = childrenIndex(sections);
-  const isLeaf = (s: S) => !byParent.has(s.id);
-  const isCollection = (s: S) => {
-    const children = byParent.get(s.id);
-    return !!children && children.every(isLeaf);
-  };
-
-  const ids = new Set(sections.map((s) => s.id));
-  const roots = sections
-    .filter((s) => !s.parentId || !ids.has(s.parentId))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-  const groups: DetectedGroup<S>[] = [];
+  const out: LibraryCollection<S>[] = [];
   const visit = (section: S) => {
-    const children = byParent.get(section.id);
-    if (!children) return;
-    if (children.every(isCollection)) {
-      groups.push({
-        section,
-        collections: children,
-        itemCount: children.reduce((sum, c) => sum + (byParent.get(c.id)?.length ?? 0), 0),
-      });
-      return;
-    }
+    const children = byParent.get(section.id) ?? [];
+    if (parseTableRule(section.tableRule)) out.push({ section, itemCount: children.length });
     children.forEach(visit);
   };
-  roots.forEach(visit);
-  return groups;
+  (byParent.get(null) ?? []).forEach(visit);
+  return out;
 }

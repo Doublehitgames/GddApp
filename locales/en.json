@@ -1507,22 +1507,6 @@
   },
   "comingSoon": {
     "badge": "Under construction — this is a preview of what's coming",
-    "library": {
-      "colA": "Mana",
-      "colB": "Cooldown",
-      "colName": "Spell",
-      "example1": "Clockhand Blade",
-      "example2": "Sand Burst",
-      "example3": "Light Shield",
-      "lead": "Everything that exists inside the game — characters, enemies, items, spells — with each one's numbers in one place.",
-      "meanwhile": "In the meantime, create a page for each thing in the game in the page tree: they become a collection when the Library arrives.",
-      "p1": "Your own collections",
-      "p1Text": "You create the collection and pick its properties: mana, cooldown, health, price…",
-      "p2": "Numbers in one place",
-      "p2Text": "Each page's text covers the thing's role; the balancing lives in the table.",
-      "p3": "Straight into the game",
-      "p3Text": "Export the collection to your engine, linked by each page's data ID."
-    },
     "systems": {
       "lead": "How the parts of the game connect: the progression loop, the economy, what unlocks what — built from the pages themselves, with nobody drawing arrows.",
       "meanwhile": "In the meantime, the mind map already shows the pages and the references between them.",
@@ -1664,12 +1648,6 @@
   "projectShell": {
     "areasLabel": "Areas",
     "backup": "Backup",
-    "collections": {
-      "characters": "Characters",
-      "enemies": "Enemies",
-      "items": "Items",
-      "places": "Places"
-    },
     "collectionsLabel": "Collections",
     "docs": "Documentation",
     "home": "Home",
@@ -1688,7 +1666,8 @@
     "search": "Search pages…",
     "soon": "soon",
     "systems": "Systems and relations",
-    "vision": "Game vision"
+    "vision": "Game vision",
+    "collectionsEmpty": "Parent pages with a table rule show up here."
   },
   "starter": {
     "allDone": "The first steps are done. From here on, the GDD is yours.",
@@ -1747,5 +1726,55 @@
     "sheetFill": "Fill in the sheet",
     "sheetHint": "Highlighted in Document mode.",
     "sheetTitle": "Fact sheet"
+  },
+  "tableRule": {
+    "type": {
+      "number": "Number",
+      "text": "Text",
+      "boolean": "Yes/no",
+      "page": "Page"
+    },
+    "pill": "{n} tables",
+    "set": "+ table rule",
+    "pickerTitle": "Which tables the subpages carry",
+    "title": "Table rule",
+    "lead": "The tables each subpage carries in its description, with the heading that goes above them. The Library checks the {n} subpages against this list — the rule never changes their text.",
+    "empty": "The subpages have no tables yet. Start with one.",
+    "tableName": "Table heading",
+    "up": "Move up",
+    "down": "Move down",
+    "removeTable": "Remove the table",
+    "repeatedTable": "There is already a table with this heading.",
+    "colName": "Column",
+    "colType": "Type",
+    "colUnit": "Unit",
+    "colRequired": "Required",
+    "repeatedColumn": "This table already has a column with this name.",
+    "unitPlaceholder": "s, %…",
+    "removeColumn": "Remove the column",
+    "addColumn": "+ column",
+    "noColumns": "A table needs at least one column.",
+    "addTable": "+ table",
+    "inferHint": "Reads the headings and table headers the subpages already have",
+    "infer": "Build from the subpages",
+    "remove": "Remove the rule",
+    "removeConfirm": "The subpages keep their tables. Remove the rule?",
+    "removeYes": "Remove",
+    "openLibrary": "See in the Library",
+    "save": "Save rule"
+  },
+  "libraryPage": {
+    "title": "Game library",
+    "lead": "Your collections' numbers, read from the tables on each page. The prose holds the relation; the table holds the value.",
+    "emptyTitle": "No collections yet",
+    "emptyText": "Open the parent page of the things that have numbers — the seeds, the weapons, the enemies — and use “+ table rule” in its header. The rule says which tables the subpages carry, and the collection shows up here.",
+    "summary": "{n} pages · {tables} tables",
+    "allComplete": "all complete",
+    "incomplete": "{n} with gaps",
+    "openParent": "Open the page and its rule",
+    "page": "Page",
+    "absent": "This page doesn't have the table — it doesn't apply.",
+    "missing": "missing",
+    "notNumber": "This is a number column and this isn't a number."
   }
 }

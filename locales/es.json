@@ -1507,22 +1507,6 @@
   },
   "comingSoon": {
     "badge": "En construcción — esto es un ejemplo de lo que viene",
-    "library": {
-      "colA": "Maná",
-      "colB": "Recarga",
-      "colName": "Hechizo",
-      "example1": "Hoja de la Manecilla",
-      "example2": "Explosión de Arena",
-      "example3": "Escudo de Luz",
-      "lead": "Todo lo que existe dentro del juego — personajes, enemigos, objetos, hechizos — con los números de cada uno en un solo lugar.",
-      "meanwhile": "Mientras tanto, crea una página para cada cosa del juego en el árbol de páginas: se convierten en colección cuando llegue la Biblioteca.",
-      "p1": "Tus propias colecciones",
-      "p1Text": "Tú creas la colección y eliges las propiedades: maná, recarga, vida, precio…",
-      "p2": "Números en un solo lugar",
-      "p2Text": "El texto de cada página habla del papel de la cosa; el balance vive en la tabla.",
-      "p3": "Directo al juego",
-      "p3Text": "Exporta la colección al motor, vinculada por el ID de dato de cada página."
-    },
     "systems": {
       "lead": "Cómo se conectan las partes del juego: el ciclo de progresión, la economía, qué desbloquea qué — armado con las propias páginas, sin que nadie dibuje flechas.",
       "meanwhile": "Mientras tanto, el mapa mental ya muestra las páginas y las referencias entre ellas.",
@@ -1664,12 +1648,6 @@
   "projectShell": {
     "areasLabel": "Áreas",
     "backup": "Copia de seguridad",
-    "collections": {
-      "characters": "Personajes",
-      "enemies": "Enemigos",
-      "items": "Objetos",
-      "places": "Lugares"
-    },
     "collectionsLabel": "Colecciones",
     "docs": "Documentación",
     "home": "Inicio",
@@ -1688,7 +1666,8 @@
     "search": "Buscar páginas…",
     "soon": "pronto",
     "systems": "Sistemas y relaciones",
-    "vision": "Visión del juego"
+    "vision": "Visión del juego",
+    "collectionsEmpty": "Las páginas madre con regla de tablas aparecen aquí."
   },
   "starter": {
     "allDone": "Los primeros pasos terminaron. De aquí en adelante, el GDD es tuyo.",
@@ -1747,5 +1726,55 @@
     "sheetFill": "Completar la ficha",
     "sheetHint": "Aparece destacada en el modo Documento.",
     "sheetTitle": "Ficha técnica"
+  },
+  "tableRule": {
+    "type": {
+      "number": "Número",
+      "text": "Texto",
+      "boolean": "Sí/no",
+      "page": "Página"
+    },
+    "pill": "{n} tablas",
+    "set": "+ regla de tablas",
+    "pickerTitle": "Qué tablas llevan las subpáginas",
+    "title": "Regla de tablas",
+    "lead": "Las tablas que cada subpágina lleva en su descripción, con el título que va encima. La Biblioteca revisa las {n} subpáginas contra esta lista — la regla no cambia el texto de ninguna.",
+    "empty": "Las subpáginas aún no tienen tablas. Empieza con una.",
+    "tableName": "Título de la tabla",
+    "up": "Subir",
+    "down": "Bajar",
+    "removeTable": "Quitar la tabla",
+    "repeatedTable": "Ya hay una tabla con este título.",
+    "colName": "Columna",
+    "colType": "Tipo",
+    "colUnit": "Unidad",
+    "colRequired": "Obligatoria",
+    "repeatedColumn": "Esta tabla ya tiene una columna con ese nombre.",
+    "unitPlaceholder": "s, %…",
+    "removeColumn": "Quitar la columna",
+    "addColumn": "+ columna",
+    "noColumns": "Una tabla necesita al menos una columna.",
+    "addTable": "+ tabla",
+    "inferHint": "Lee los títulos y encabezados que las subpáginas ya tienen",
+    "infer": "Armar a partir de las subpáginas",
+    "remove": "Quitar la regla",
+    "removeConfirm": "Las subpáginas conservan sus tablas. ¿Quitar la regla?",
+    "removeYes": "Quitar",
+    "openLibrary": "Ver en la Biblioteca",
+    "save": "Guardar regla"
+  },
+  "libraryPage": {
+    "title": "Biblioteca del juego",
+    "lead": "Los números de las colecciones, leídos de las tablas de cada página. La prosa guarda la relación; la tabla guarda el valor.",
+    "emptyTitle": "Aún no hay colecciones",
+    "emptyText": "Abre la página madre de las cosas que tienen números — las semillas, las armas, los enemigos — y usa “+ regla de tablas” en el encabezado. La regla dice qué tablas llevan las subpáginas, y la colección aparece aquí.",
+    "summary": "{n} páginas · {tables} tablas",
+    "allComplete": "todas completas",
+    "incomplete": "{n} con faltantes",
+    "openParent": "Abrir la página y su regla",
+    "page": "Página",
+    "absent": "Esta página no tiene la tabla — no aplica.",
+    "missing": "falta",
+    "notNumber": "La columna es de número y esto no lo es."
   }
 }

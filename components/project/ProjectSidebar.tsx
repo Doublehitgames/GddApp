@@ -6,17 +6,16 @@ import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Project } from "@/store/slices/types";
 import { ProjectGlyph } from "@/components/project/ProjectCover";
-import { detectGroups } from "@/lib/library/collections";
-import { toSlug } from "@/lib/utils/slug";
+import { libraryCollections } from "@/lib/library/collections";
 
 /**
  * A navegação fixa do projeto: as quatro áreas do GDD (as páginas se acham
  * pela Documentação e pela busca), as coleções, o andamento e os modos de
  * apresentar.
  *
- * As coleções saem da árvore (lib/library/collections.ts): cada grupo — página
- * cujas filhas são todas coleções — vira um item. Nenhum nome é sugerido pelo
- * app; um projeto sem grupo ainda mostra só como chegar lá.
+ * As coleções são as páginas-mãe com regra de tabelas
+ * (lib/library/collections.ts): a Biblioteca é balanceamento, e é a regra que
+ * diz que aquelas filhas carregam números. Nenhum nome é sugerido pelo app.
  */
 export function ProjectSidebar({
   project,
@@ -40,7 +39,7 @@ export function ProjectSidebar({
     { href: `${base}/biblioteca`, label: t("projectShell.library", "Biblioteca do jogo"), icon: <IconLibrary />, tone: "text-area-lib" },
     { href: `${base}/sistemas`, label: t("projectShell.systems", "Sistemas e relações"), icon: <IconSystems />, tone: "text-area-sys" },
   ];
-  const groups = useMemo(() => detectGroups(project.sections ?? []), [project.sections]);
+  const collections = useMemo(() => libraryCollections(project.sections ?? []), [project.sections]);
   const present = [
     { href: `${base}/view`, label: t("projectShell.present.document", "Documento"), icon: <IconDoc /> },
     { href: `${base}/deck`, label: t("projectShell.present.deck", "Deck"), icon: <IconPlay /> },
@@ -90,14 +89,12 @@ export function ProjectSidebar({
 
       <nav aria-label={t("projectShell.collectionsLabel", "Coleções")}>
         <SectionLabel>{t("projectShell.collectionsLabel", "Coleções")}</SectionLabel>
-        {groups.length > 0 ? (
+        {collections.length > 0 ? (
           <ul className="flex flex-col gap-px">
-            {groups.map(({ section, itemCount }) => {
-              const href = `${base}/sections/${toSlug(section.title)}`;
-              const active = pathname === href;
+            {collections.map(({ section, itemCount }) => {
               return (
                 <li key={section.id}>
-                  <Link href={href} className={navItem(active)} aria-current={active ? "page" : undefined} title={section.title}>
+                  <Link href={`${base}/biblioteca?c=${section.id}`} className={navItem(false)} title={section.title}>
                     <span
                       className="h-2 w-2 shrink-0 rounded-full bg-area-lib"
                       style={section.color ? { backgroundColor: section.color } : undefined}
@@ -114,7 +111,7 @@ export function ProjectSidebar({
           <p className="px-2.5 text-xs leading-relaxed text-subtle">
             {t(
               "projectShell.collectionsEmpty",
-              "Junte as páginas de cada coisa do jogo sob uma página-mãe, e as mães sob um grupo: o grupo aparece aqui.",
+              "As páginas-mãe com regra de tabelas aparecem aqui.",
             )}
           </p>
         )}
