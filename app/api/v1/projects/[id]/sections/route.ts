@@ -20,6 +20,7 @@ import {
 import { sweepRenamedRefs } from "@/lib/api/v1/renameRefs";
 import { buildFlowchartState, FlowchartInputError, type FlowchartInput } from "@/lib/flowchart/flowchart";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
+import { parseTableRule } from "@/lib/tableRule/tableRule";
 import { getRemoteConfig } from "@/lib/remoteConfig";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -124,6 +125,8 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     }
   }
 
+  const tableRule = parseTableRule(parsed.data.tableRule);
+
   const { data: section, error } = await auth.supabase
     .from("sections")
     .insert({
@@ -141,6 +144,9 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       // deck_layout entrava no schema e não chegava à tabela: uma página criada
       // por agente com deckLayout nascia no automático.
       deck_layout: parsed.data.deckLayout,
+      // Só entra quando há regra: página nova quase nunca tem, e assim criar
+      // página não depende de add_sections_table_rule.sql ter rodado.
+      ...(tableRule ? { table_rule: tableRule } : {}),
       thumb_image_url: parsed.data.thumbImageUrl,
       flowchart_state: flowchartState,
       created_at: now,

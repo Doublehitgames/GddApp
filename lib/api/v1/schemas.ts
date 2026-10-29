@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
+import { TABLE_COLUMN_TYPES, sameTableName } from "@/lib/tableRule/tableRule";
 import {
   FLOWCHART_DIRECTIONS,
   MAX_FLOWCHART_EDGES,
@@ -23,6 +24,43 @@ export const pageStatusSchema = z.enum(
 export const deckLayoutSchema = z.enum(
   DECK_LAYOUTS as unknown as [string, ...string[]]
 );
+
+/**
+ * A regra de tabelas de uma página-mãe (lib/tableRule/tableRule.ts). Enviar
+ * null tira a regra — e só a regra: as tabelas das filhas não são tocadas.
+ *
+ * O nome é a identidade da tabela e da coluna, então nome repetido é recusado
+ * aqui em vez de virar duas leituras do mesmo cabeçalho mais adiante.
+ */
+const tableRuleColumnSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: z.enum(TABLE_COLUMN_TYPES as unknown as [string, ...string[]]),
+  unit: z.string().trim().max(40).optional(),
+  required: z.boolean().optional(),
+});
+
+const withoutRepeatedNames =
+  (what: string) =>
+  (items: Array<{ name: string }>, ctx: z.RefinementCtx) => {
+    items.forEach((item, index) => {
+      if (items.findIndex((other) => sameTableName(other.name, item.name)) !== index) {
+        ctx.addIssue({ code: "custom", path: [index, "name"], message: `Repeated ${what} name: ${item.name}` });
+      }
+    });
+  };
+
+export const tableRuleSchema = z.object({
+  tables: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        columns: z.array(tableRuleColumnSchema).min(1).max(40).superRefine(withoutRepeatedNames("column")),
+      }),
+    )
+    .min(1)
+    .max(20)
+    .superRefine(withoutRepeatedNames("table")),
+});
 
 /**
  * O fluxograma da página, na forma que se descreve por escrito: os nós e quem
@@ -115,6 +153,7 @@ export const createSectionSchema = z.object({
   dataId: z.string().max(200).nullable().optional().default(null),
   status: pageStatusSchema.nullable().optional().default(null),
   deckLayout: deckLayoutSchema.nullable().optional().default(null),
+  tableRule: tableRuleSchema.nullable().optional().default(null),
   thumbImageUrl: z.string().url().nullable().optional().default(null),
   flowchart: flowchartSchema.nullable().optional(),
 });
@@ -134,6 +173,7 @@ export const updateSectionSchema = z.object({
   dataId: z.string().max(200).nullable().optional(),
   status: pageStatusSchema.nullable().optional(),
   deckLayout: deckLayoutSchema.nullable().optional(),
+  tableRule: tableRuleSchema.nullable().optional(),
   thumbImageUrl: z.string().url().nullable().optional(),
   flowchart: flowchartSchema.nullable().optional(),
 });

@@ -50,6 +50,9 @@ export function sectionRow(section) {
         order: s.order,
         ...(s.dataId ? { dataId: s.dataId } : {}),
         ...(s.status ? { status: s.status } : {}),
+        // The page that says which tables its children carry. One bit, so an agent
+        // about to fill a collection finds the rule without opening every parent.
+        ...(s.tableRule ? { hasTableRule: true } : {}),
         ...(s.content || blocks.length ? { hasDescription: true } : {}),
         // Um bit, não o diagrama: sem ele, achar as páginas que já têm fluxograma
         // custaria um get_section por página do documento.
@@ -105,6 +108,9 @@ export function sectionFull(section, opts = {}) {
         delete s[k];
     if (!opts.withFlowchart || !s.flowchart)
         delete s.flowchart;
+    // Almost no page has a table rule; a line of `null` on every read says nothing.
+    if (s.tableRule == null)
+        delete s.tableRule;
     return s;
 }
 export function sectionReceipt(section, updated) {

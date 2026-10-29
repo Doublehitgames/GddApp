@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureUserProfile } from "@/lib/supabase/ensureUserProfile";
 import { getRemoteConfig } from "@/lib/remoteConfig";
 import type { Section } from "@/store/slices/types";
+import { parseTableRule, tableRuleAfterSync } from "@/lib/tableRule/tableRule";
 
 /** Plano Free: 30 créditos/hora por projeto. Ajuste via env CLOUD_SYNC_CREDITS_PER_HOUR para Pro/outros. */
 const DEFAULT_CLOUD_SYNC_CREDITS_PER_HOUR = 30;
@@ -33,6 +34,7 @@ type LinhaDeSecao = {
   status: string | null;
   status_at: string | null;
   deck_layout: string | null;
+  table_rule: unknown;
   flowchart_state: unknown;
   content_blocks: unknown;
 };
@@ -85,7 +87,7 @@ type CloudSyncQuotaStatus = {
 type SyncSectionChangeSummary = {
   sectionId: string;
   sectionTitle: string;
-  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId" | "status" | "deckLayout">;
+  facets: Array<"created" | "title" | "content" | "domainTags" | "parent" | "order" | "color" | "thumbnail" | "flowchart" | "dataId" | "status" | "deckLayout" | "tableRule">;
 };
 
 function getHourlyCreditLimit(): number {
@@ -248,7 +250,36 @@ function isMissingSectionDeckLayoutColumn(error: unknown) {
       : "";
   const combined = `${message} ${details}`.toLowerCase();
   if (!combined.includes("column")) return false;
-  return /sections.deck_layout/.test(combined) || /.deck_layout./.test(combined);
+  return /sections.deck_layout\b/.test(combined) || /.deck_layout./.test(combined);
+}
+
+/** O mesmo, para a regra de tabelas (add_sections_table_rule.sql). */
+function isMissingSectionTableRuleColumn(error: unknown) {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const details =
+    typeof error === "object" && error && "details" in error
+      ? String((error as { details?: unknown }).details || "")
+      : "";
+  const combined = `${message} ${details}`.toLowerCase();
+  if (!combined.includes("column")) return false;
+  return /sections.table_rule\b/.test(combined) || /.table_rule./.test(combined);
+}
+
+/**
+ * A regra comparada pela forma que o store grava: chave fora de ordem,
+ * `required: false` ou unidade vazia não são mudança, e não podem custar
+ * crédito a cada sync.
+ */
+function tableRuleKey(value: unknown): string {
+  return stableSerialize(parseTableRule(value) ?? null);
+}
+
+/** A regra que este sync deixa no banco — ausente no payload preserva a atual. */
+function nextTableRule(section: Section, existing: LinhaDeSecao | undefined): unknown {
+  return tableRuleAfterSync(section, existing?.table_rule);
 }
 
 function stableSerialize(value: unknown): string {
@@ -448,12 +479,13 @@ export async function POST(request: NextRequest) {
     let includeContentBlocksColumn = true;
     let includeStatusColumn = true;
     let includeDeckLayoutColumn = true;
+    let includeTableRuleColumn = true;
     let existingSections: LinhaDeSecao[] | null = null;
     let existingErr: unknown = null;
 
     // Uma tentativa por coluna que a migração pode não ter aplicado ainda,
     // mais a boa.
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    for (let attempt = 0; attempt < 7; attempt += 1) {
       const selectedColumns = [
         "id",
         "parent_id",
@@ -469,6 +501,7 @@ export async function POST(request: NextRequest) {
         includeStatusColumn ? "status" : null,
         includeStatusColumn ? "status_at" : null,
         includeDeckLayoutColumn ? "deck_layout" : null,
+        includeTableRuleColumn ? "table_rule" : null,
       ]
         .filter(Boolean)
         .join(",");
@@ -488,6 +521,7 @@ export async function POST(request: NextRequest) {
           status: includeStatusColumn ? section.status ?? null : null,
           status_at: includeStatusColumn ? section.status_at ?? null : null,
           deck_layout: includeDeckLayoutColumn ? section.deck_layout ?? null : null,
+          table_rule: includeTableRuleColumn ? section.table_rule ?? null : null,
         }));
         break;
       }
@@ -511,6 +545,10 @@ export async function POST(request: NextRequest) {
       }
       if (includeDeckLayoutColumn && isMissingSectionDeckLayoutColumn(existingErr)) {
         includeDeckLayoutColumn = false;
+        retried = true;
+      }
+      if (includeTableRuleColumn && isMissingSectionTableRuleColumn(existingErr)) {
+        includeTableRuleColumn = false;
         retried = true;
       }
       if (!retried) break;
@@ -550,6 +588,7 @@ export async function POST(request: NextRequest) {
         // banco, em snake_case. Ler section.deck_layout comparava a coluna com
         // undefined e a escolha de exibição no Deck nunca subia sozinha.
         if ((existing.deck_layout || null) !== (section.deckLayout || null)) facets.push("deckLayout");
+        if (tableRuleKey(existing.table_rule) !== tableRuleKey(nextTableRule(section, existing))) facets.push("tableRule");
         if (!flowchartStateEqual(existing.flowchart_state, section.flowchartState || null)) facets.push("flowchart");
       }
 
@@ -575,6 +614,7 @@ export async function POST(request: NextRequest) {
         (existing.data_id || null) !== (section.dataId || null) ||
         (existing.status || null) !== (section.status || null) ||
         (existing.deck_layout || null) !== (section.deckLayout || null) ||
+        tableRuleKey(existing.table_rule) !== tableRuleKey(nextTableRule(section, existing)) ||
         !domainTagsEqual(existing.domain_tags, section.domainTags) ||
         !flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null) ||
         stableSerialize((existing as { content_blocks?: unknown }).content_blocks ?? null) !==
@@ -612,7 +652,9 @@ export async function POST(request: NextRequest) {
         continue;
       }
       // Ordem e estado ficam de fora da comparação de propósito: são exatamente
-      // os dois campos que podem mudar de graça.
+      // os dois campos que podem mudar de graça. A regra de tabelas fica DENTRO:
+      // mudar o que as filhas devem carregar é decisão de design, e paga como
+      // conteúdo.
       const onlyMetadataChanged =
         (existing.parent_id || null) === (section.parentId || null) &&
         (existing.title || "") === (section.title || "") &&
@@ -623,6 +665,7 @@ export async function POST(request: NextRequest) {
         (existing.thumb_image_url || null) === (section.thumbImageUrl || null) &&
         (existing.data_id || null) === (section.dataId || null) &&
         domainTagsEqual(existing.domain_tags, section.domainTags) &&
+        tableRuleKey(existing.table_rule) === tableRuleKey(nextTableRule(section, existing)) &&
         flowchartStateEqual((existing as { flowchart_state?: unknown }).flowchart_state, section.flowchartState || null);
       if (onlyMetadataChanged) {
         metadataOnlyList.push(section);
@@ -855,6 +898,9 @@ export async function POST(request: NextRequest) {
         status: s.status != null ? String(s.status) : null,
         status_at: s.statusAt != null ? String(s.statusAt) : null,
         deck_layout: s.deckLayout != null ? String(s.deckLayout) : null,
+        // Linha a linha: um upsert em lote grava NULL em toda coluna que falta
+        // num objeto, então "não mexer" tem que ir como o valor do banco.
+        table_rule: nextTableRule(s, existingById.get(s.id)),
         domain_tags: Array.isArray(s.domainTags) && s.domainTags.length > 0 ? s.domainTags : [],
         flowchart_state: s.flowchartState ?? null,
         content_blocks: Array.isArray(s.contentBlocks) && s.contentBlocks.length > 0 ? s.contentBlocks : null,
@@ -864,6 +910,7 @@ export async function POST(request: NextRequest) {
       const hasAnyContentBlocksPayload = rows.some((row) => row.content_blocks != null);
       const hasAnyStatusPayload = rows.some((row) => row.status != null);
       const hasAnyDeckLayoutPayload = rows.some((row) => row.deck_layout != null);
+      const hasAnyTableRulePayload = rows.some((row) => row.table_rule != null);
 
       // Garante que parent_id só aponta para seções que sobreviverão ao sync.
       // Evita FK violation quando o store tem seções órfãs (pai deletado sem cascade no store).
@@ -885,8 +932,9 @@ export async function POST(request: NextRequest) {
       let droppedContentBlocksColumn = false;
       let droppedStatusColumn = false;
       let droppedDeckLayoutColumn = false;
+      let droppedTableRuleColumn = false;
       let sErr: unknown = null;
-      for (let attempt = 0; attempt < 6; attempt += 1) {
+      for (let attempt = 0; attempt < 7; attempt += 1) {
         const upsertResult = await supabase
           .from("sections")
           .upsert(rowsForUpsert as unknown as object[], { onConflict: "id" });
@@ -914,6 +962,11 @@ export async function POST(request: NextRequest) {
           droppedDeckLayoutColumn = true;
           retried = true;
         }
+        if (!droppedTableRuleColumn && isMissingSectionTableRuleColumn(sErr)) {
+          rowsForUpsert = rowsForUpsert.map(({ table_rule: _tableRule, ...rest }) => rest);
+          droppedTableRuleColumn = true;
+          retried = true;
+        }
         if (!droppedStatusColumn && isMissingSectionStatusColumn(sErr)) {
           rowsForUpsert = rowsForUpsert.map(
             ({ status: _status, status_at: _statusAt, ...rest }) => rest
@@ -928,6 +981,9 @@ export async function POST(request: NextRequest) {
       }
       if (!sErr && droppedDeckLayoutColumn && hasAnyDeckLayoutPayload) {
         console.warn("[api/projects/sync] sections.deck_layout ausente; sincronizando sem a exibição no Deck. Aplique add_sections_deck_layout.sql.");
+      }
+      if (!sErr && droppedTableRuleColumn && hasAnyTableRulePayload) {
+        console.warn("[api/projects/sync] sections.table_rule ausente; sincronizando sem a regra de tabelas. Aplique add_sections_table_rule.sql.");
       }
       if (!sErr && droppedStatusColumn && hasAnyStatusPayload) {
         console.warn("[api/projects/sync] sections.status ausente; sincronizando sem o estado das páginas. Aplique add_sections_status.sql.");

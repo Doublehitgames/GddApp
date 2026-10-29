@@ -7,6 +7,7 @@ import type { RichDocBlock } from "@/lib/richDoc/types";
 import type { ProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 import type { PageStatus } from "@/lib/pageStatus/types";
 import type { DeckLayout } from "@/lib/deck/deck";
+import type { TableRule } from "@/lib/tableRule/tableRule";
 
 export type UUID = string;
 
@@ -293,6 +294,16 @@ export type Section = {
    * como andar próprio. Ausente = automático (decide pela quantidade).
    */
   deckLayout?: DeckLayout;
+  /**
+   * Só em página-mãe: as tabelas que as filhas carregam na descrição e as
+   * colunas de cada uma. É dica de leitura — o dado continua nas tabelas das
+   * filhas, e apagar a regra não apaga número nenhum.
+   *
+   * Ausente e `null` não são a mesma coisa para o sync: ausente é "este app
+   * não sabe" (localStorage de antes da regra) e preserva o que está no banco;
+   * `null` é "tirei a regra" e apaga.
+   */
+  tableRule?: TableRule | null;
   /** ID da planilha cadastrada no projeto usada como fonte de dados desta seção. */
   /** Arquétipo da página (page type) usado na criação. Opcional; undefined = legado/blank. */
   pageTypeId?: string;
@@ -516,6 +527,8 @@ export interface ProjectStore {
   /** Carimba a maturidade da página. `undefined` volta a página para "sem estado". */
   setSectionStatus: (projectId: UUID, sectionId: UUID, status: PageStatus | undefined) => void;
   setSectionDeckLayout: (projectId: UUID, sectionId: UUID, deckLayout: DeckLayout | undefined) => void;
+  /** Grava a regra de tabelas da página-mãe. `undefined` tira a regra. */
+  setSectionTableRule: (projectId: UUID, sectionId: UUID, tableRule: TableRule | undefined) => void;
   /** O mesmo para um lote de páginas — um ramo inteiro da árvore, tipicamente. */
   setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => void;
   /**

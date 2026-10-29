@@ -100,7 +100,12 @@ describe("server instructions", () => {
     // writing every description as one column of prose — correctly, since the
     // only thing said about form was "markdown", and the tools claimed a table
     // needed hand-built blocks when markdown gives one for free.
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(3700);
+    //
+    // Raised from 3700 for TABLE RULES. The rule on a collection's parent page
+    // is the canonical list of its tables; an agent that never reads it types
+    // the headings by hand, and one typo there is the phantom table the rule
+    // exists to prevent.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(4100);
   });
 
   it("say that a page can carry a flowchart, and how to read it first", () => {

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Project } from "@/store/projectStore";
 import { parseDeckLayout } from "@/lib/deck/deck";
+import { parseTableRule } from "@/lib/tableRule/tableRule";
 import { parsePageStatus } from "@/lib/pageStatus/types";
 
 function isMissingColumnError(error: unknown, column: string): boolean {
@@ -22,7 +23,7 @@ function isMissingCoverImageColumn(error: unknown): boolean {
 // aconteceu com `status` e `deck_layout`: no mapa público toda página aparecia
 // como "sem estado" e o Deck ignorava a escolha da página, sem erro nenhum.
 const SECTION_COLUMNS =
-  "id,title,content,content_blocks,thumb_image_url,created_at,parent_id,sort_order,color,domain_tags,data_id,status,status_at,deck_layout,flowchart_state";
+  "id,title,content,content_blocks,thumb_image_url,created_at,parent_id,sort_order,color,domain_tags,data_id,status,status_at,deck_layout,table_rule,flowchart_state";
 const SECTION_COLUMNS_LEGACY =
   "id,title,content,created_at,parent_id,sort_order,color,domain_tags,flowchart_state";
 
@@ -76,6 +77,7 @@ function mapRowToProject(projectRow: any, sectionRows: any[]): Project {
       color: row.color || undefined,
       dataId: row.data_id || undefined,
       deckLayout: parseDeckLayout(row.deck_layout),
+      tableRule: parseTableRule(row.table_rule),
       status: parsePageStatus(row.status),
       statusAt: row.status_at || null,
       domainTags: Array.isArray(row.domain_tags) && row.domain_tags.length > 0 ? row.domain_tags : undefined,

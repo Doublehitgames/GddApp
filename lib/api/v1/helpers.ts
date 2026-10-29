@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser, AuthResult } from "@/lib/auth/getApiUser";
 import { flowchartDigest } from "@/lib/flowchart/flowchart";
+import { parseTableRule } from "@/lib/tableRule/tableRule";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // ── Response helpers ──────────────────────────────────────────────────
@@ -233,6 +234,7 @@ export type SectionRow = {
   status: string | null;
   status_at: string | null;
   deck_layout: string | null;
+  table_rule?: unknown | null;
   content_updated_at: string | null;
   flowchart_state: unknown | null;
   created_at: string;
@@ -246,7 +248,7 @@ export type SectionRow = {
 
 // Full column set — optional columns that may not exist in older DBs are at the end.
 const SECTION_COLUMNS_FULL =
-  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks, deck_layout";
+  "id, project_id, parent_id, title, content, sort_order, color, thumb_image_url, domain_tags, data_id, status, status_at, content_updated_at, flowchart_state, created_at, updated_at, created_by, created_by_name, updated_by, updated_by_name, content_blocks, deck_layout, table_rule";
 
 // Progressive fallback: drop the newest/most optional columns first.
 // Level 1: drop flowchart_state, data_id, audit columns
@@ -290,6 +292,7 @@ export async function selectSections(
         status: null,
         status_at: null,
         deck_layout: null,
+        table_rule: null,
         content_updated_at: null,
         flowchart_state: null,
         content_blocks: null,
@@ -313,6 +316,7 @@ export async function selectSections(
       status: null,
       status_at: null,
       deck_layout: null,
+      table_rule: null,
       content_updated_at: null,
       flowchart_state: null,
       content_blocks: null,
@@ -392,6 +396,8 @@ export function sectionToApi(s: SectionRow, opts: { flowchart?: boolean } = {}) 
     statusAt: s.status_at,
     // Como a pagina mostra as filhas no Deck. `null` = automatico.
     deckLayout: s.deck_layout,
+    // Só na página-mãe: as tabelas que as filhas carregam. `null` = sem regra.
+    tableRule: parseTableRule(s.table_rule) ?? null,
     // Quando o TEXTO mudou, separado de updated_at (que sobe tambem por cor,
     // ordem ou pai). E por esta data que um agente descobre o que foi
     // reescrito desde a ultima vez que passou por aqui.

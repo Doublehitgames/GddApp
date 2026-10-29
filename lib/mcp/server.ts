@@ -8,6 +8,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type ApiFetcher, McpApiError } from "./api";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
+import { TABLE_COLUMN_TYPES } from "@/lib/tableRule/tableRule";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   activityRows,
@@ -95,6 +96,32 @@ const DECK_LAYOUT_FIELD = z
     "How this page shows its children in Deck mode: 'grid' opens them as a wall of cards on their own floor, " +
       "'list' keeps them in the drawer's side list. null (the normal case) lets the app decide by how many " +
       "children there are — set it only when a page is a catalogue of items and the count alone would not say so."
+  );
+
+/**
+ * The table rule of a collection's parent page (lib/tableRule/tableRule.ts).
+ * Shape only here; repeated names are refused by the REST API.
+ */
+const TABLE_RULE_FIELD = z
+  .object({
+    tables: z.array(z.object({
+      name: z.string(),
+      columns: z.array(z.object({
+        name: z.string(),
+        type: z.enum(TABLE_COLUMN_TYPES as unknown as [string, ...string[]]),
+        unit: z.string().optional(),
+        required: z.boolean().optional(),
+      })),
+    })),
+  })
+  .nullable()
+  .optional()
+  .describe(
+    "Only on a parent page whose children all carry the same data tables: the canonical list of those tables. " +
+      "Each table has the `name` written as `## name` above it in every child, and its columns in order — `name`, " +
+      "`type` (number, text, boolean, or page: a cell holding a $[Page Title]), an optional `unit` (the header then " +
+      "reads 'name (unit)'), and `required` when an empty cell means missing data. It only describes: the values stay " +
+      "in the children's tables. Writing replaces the whole rule; null removes it."
   );
 
 const PAGE_STATUS_FIELD = z
@@ -270,7 +297,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step, and markdown already covers headings, tables, callouts, lists and images. Build `contentBlocks` yourself for what markdown cannot say — an embed, side-by-side columns, a coloured block; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -279,7 +306,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it, and markdown already covers headings, tables, callouts, lists and images; pass `contentBlocks` for what markdown cannot say — an embed, side-by-side columns, a coloured block. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -303,6 +330,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
         dataId: z.string().optional(),
         status: PAGE_STATUS_FIELD,
         deckLayout: DECK_LAYOUT_FIELD,
+        tableRule: TABLE_RULE_FIELD,
         thumbImageUrl: THUMB_FIELD,
         flowchart: FLOWCHART_FIELD,
       })).describe("One entry per section to update (max 50)"),

@@ -1,6 +1,7 @@
 import type { ProjectStore, UUID, Section, SectionAuditBy } from "./types";
 import type { PageStatus } from "@/lib/pageStatus/types";
 import type { DeckLayout } from "@/lib/deck/deck";
+import { parseTableRule, type TableRule } from "@/lib/tableRule/tableRule";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import { toSlug, findSectionByRef } from "@/lib/utils/slug";
 import type { SyncEngineAPI } from "./syncEngine";
@@ -512,7 +513,36 @@ export function createSectionCrudSlice(set: StoreSet, get: StoreGet, engine: Syn
       );
     },
 
-    setSectionsStatus: (projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => {
+    /**
+     * A regra de tabelas das filhas. Passa pelo parser antes de gravar, então
+     * o que chega ao localStorage tem sempre a forma que o sync espera.
+     *
+     * Ao contrário do Deck logo acima, tirar a regra grava `null` em vez de
+     * sumir com o campo: para o sync, campo ausente é "este app não sabe" e
+     * preserva o banco (nextTableRule em app/api/projects/sync/route.ts).
+     */
+    setSectionTableRule: (projectId: UUID, sectionId: UUID, tableRule: TableRule | undefined) => {
+      const now = new Date().toISOString();
+      const regra = parseTableRule(tableRule);
+      engine.wrappedSetWithSync(
+        (prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  updatedAt: now,
+                  sections: (p.sections || []).map((s) => {
+                    if (s.id !== sectionId) return s;
+                    return { ...s, tableRule: regra ?? null, updated_at: now };
+                  }),
+                }
+              : p
+          ),
+        projectId
+      );
+    },
+
+    setSectionsStatus:(projectId: UUID, sectionIds: UUID[], status: PageStatus | undefined) => {
       if (sectionIds.length === 0) return;
       // Um set só para o lote inteiro: marcar um ramo de 30 páginas é uma
       // decisão, não trinta — e trinta chamadas seriam trinta re-renders da

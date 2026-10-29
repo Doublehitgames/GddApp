@@ -288,6 +288,28 @@ export function registerTools(server: McpServer, client: GddApiClient) {
         "children there are — set it only when a page is a catalogue of items and the count alone would not say so."
     );
 
+  const TABLE_RULE_FIELD = z
+    .object({
+      tables: z.array(z.object({
+        name: z.string(),
+        columns: z.array(z.object({
+          name: z.string(),
+          type: z.enum(["number", "text", "boolean", "page"]),
+          unit: z.string().optional(),
+          required: z.boolean().optional(),
+        })),
+      })),
+    })
+    .nullable()
+    .optional()
+    .describe(
+      "Only on a parent page whose children all carry the same data tables: the canonical list of those tables. " +
+        "Each table has the `name` written as `## name` above it in every child, and its columns in order — `name`, " +
+        "`type` (number, text, boolean, or page: a cell holding a $[Page Title]), an optional `unit` (the header then " +
+        "reads 'name (unit)'), and `required` when an empty cell means missing data. It only describes: the values stay " +
+        "in the children's tables. Writing replaces the whole rule; null removes it."
+    );
+
   /**
    * The page's flowchart. The one field where the agent describes a shape and
    * the server draws it: coordinates are optional because nobody lays out
@@ -375,6 +397,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       dataId: z.string().optional().describe("User-defined data identifier (e.g. FARM_ANIMAL_CHICKEN)"),
       status: PAGE_STATUS_FIELD,
       deckLayout: DECK_LAYOUT_FIELD,
+      tableRule: TABLE_RULE_FIELD,
       thumbImageUrl: THUMB_FIELD,
       flowchart: FLOWCHART_FIELD,
       returning,
@@ -404,6 +427,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
       dataId: z.string().optional().describe("New data identifier"),
       status: PAGE_STATUS_FIELD,
       deckLayout: DECK_LAYOUT_FIELD,
+      tableRule: TABLE_RULE_FIELD,
       thumbImageUrl: THUMB_FIELD,
       flowchart: FLOWCHART_FIELD,
       returning,
@@ -436,6 +460,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
             dataId: z.string().optional(),
             status: PAGE_STATUS_FIELD,
             deckLayout: DECK_LAYOUT_FIELD,
+            tableRule: TABLE_RULE_FIELD,
             thumbImageUrl: THUMB_FIELD,
             flowchart: FLOWCHART_FIELD,
           }),

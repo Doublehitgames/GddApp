@@ -23,6 +23,9 @@ A description is prose with design value — context, role, flavour, how the thi
 FLOWCHARTS:
 A page can also carry a flowchart, separate from its description — write it with the \`flowchart\` field: the nodes and which one leads to which, positions left to the server. Reach for it when the subject is a branching sequence (a puzzle flow, an onboarding, a state machine): prose and tables cannot show a loop. Writing replaces the whole diagram, so read the current one first with get_section({ includeFlowchart: true }).
 
+TABLE RULES:
+A parent page may hold a \`tableRule\` (hasTableRule in list_sections): the tables its children carry, where their balance values belong. Before writing a child's tables, read it and copy its names — \`## <table>\`, columns in its order, "name (unit)" when there is a unit. Leave out a table that does not apply; never fill one with dashes.
+
 PAGE STATUS:
 A page may carry a \`status\`: draft, review, approved, implemented or obsolete. It is the team's own signal of what can be trusted, so read it before rewriting and leave it alone unless you were asked to change it — a page marked approved or implemented was a decision someone made.
 

@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 import { buildFlowchartState, type FlowchartInput } from "@/lib/flowchart/flowchart";
+import { parseTableRule } from "@/lib/tableRule/tableRule";
 import { updateSectionSchema } from "./schemas";
 
 export type SectionUpdate = z.infer<typeof updateSectionSchema>;
@@ -87,6 +88,10 @@ export function buildSectionUpdates(
     updates.status_at = fields.status ? ctx.now : null;
   }
   if (fields.deckLayout !== undefined) updates.deck_layout = fields.deckLayout;
+  // Gravada na forma que o app lê de volta (sem `required: false`, sem unidade
+  // vazia): é a mesma forma que o sync compara, então a escrita do agente não
+  // parece mudança para o app na sincronização seguinte.
+  if (fields.tableRule !== undefined) updates.table_rule = parseTableRule(fields.tableRule) ?? null;
   if (fields.thumbImageUrl !== undefined) updates.thumb_image_url = fields.thumbImageUrl;
   if (fields.flowchart !== undefined) {
     // null apaga: é assim que o app entende "esta página não tem fluxograma"
