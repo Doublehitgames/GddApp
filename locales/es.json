@@ -1775,6 +1775,26 @@
     "page": "Página",
     "absent": "Esta página no tiene la tabla — no aplica.",
     "missing": "falta",
-    "notNumber": "La columna es de número y esto no lo es."
+    "notNumber": "La columna es de número y esto no lo es.",
+    "search": "Buscar en la colección",
+    "sortBy": "Ordenar por",
+    "sortName": "Nombre",
+    "ascending": "Ascendente",
+    "descending": "Descendente",
+    "view": "Modo de ver",
+    "viewGrid": "Tarjetas",
+    "viewList": "Comparar en tabla",
+    "noMatch": "No hay ninguna página con ese nombre en esta colección.",
+    "citedOne": "citada en 1 página",
+    "citedMany": "citada en {n} páginas",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "notApplicable": "no aplica",
+    "relations": "Relaciones",
+    "noRelations": "Ninguna página cita esta todavía.",
+    "citedIn": "Citada en {group}",
+    "citedAtRoot": "Citada en páginas sueltas",
+    "longDescription": "Descripción completa",
+    "openPage": "Abrir la página completa"
   }
 }

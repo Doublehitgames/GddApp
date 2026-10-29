@@ -1775,6 +1775,26 @@
     "page": "Page",
     "absent": "This page doesn't have the table — it doesn't apply.",
     "missing": "missing",
-    "notNumber": "This is a number column and this isn't a number."
+    "notNumber": "This is a number column and this isn't a number.",
+    "search": "Search the collection",
+    "sortBy": "Sort by",
+    "sortName": "Name",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "view": "View",
+    "viewGrid": "Cards",
+    "viewList": "Compare in a table",
+    "noMatch": "No page with that name in this collection.",
+    "citedOne": "cited on 1 page",
+    "citedMany": "cited on {n} pages",
+    "previous": "Previous",
+    "next": "Next",
+    "notApplicable": "doesn't apply",
+    "relations": "Relations",
+    "noRelations": "No page cites this one yet.",
+    "citedIn": "Cited in {group}",
+    "citedAtRoot": "Cited on top-level pages",
+    "longDescription": "Full description",
+    "openPage": "Open the full page"
   }
 }
