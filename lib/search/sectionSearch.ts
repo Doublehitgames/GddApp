@@ -70,7 +70,7 @@ export function buildSectionSearchIndex(
   return sections.map((section) => ({
     id: section.id,
     title: fold(section.title || ""),
-    body: fold(toPreviewText(section.content || "", Number.POSITIVE_INFINITY)),
+    body: fold(toPreviewText(section.content || "", Number.POSITIVE_INFINITY, sections)),
   }));
 }
 

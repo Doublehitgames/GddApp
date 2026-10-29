@@ -180,6 +180,7 @@ export default function DocumentacaoClient({ projectId }: { projectId: string })
             <DocumentCard
               key={section.id}
               section={section}
+              sections={sections}
               href={sectionPath(project, section)}
               docHref={`${base}/view#section-${section.id}`}
               parent={section.parentId ? byId.get(section.parentId) : undefined}
@@ -215,12 +216,14 @@ function CategoryCard({ active, onClick, icon, tile, title, count }: { active: b
 
 function DocumentCard({
   section,
+  sections,
   href,
   docHref,
   parent,
   updatedLabel,
 }: {
   section: Section;
+  sections: Section[];
   href: string;
   docHref: string;
   parent?: Section;
@@ -229,7 +232,7 @@ function DocumentCard({
   const { t } = useI18n();
   const category = categoryOf(section);
   const visual = domainVisual(category);
-  const preview = toPreviewText(section.content ?? "", 140);
+  const preview = toPreviewText(section.content ?? "", 140, sections);
   const tags = (section.domainTags ?? []).filter(isValidDomainId).slice(0, 3);
   const status = section.status ? PAGE_STATUS_META[section.status] : null;
 

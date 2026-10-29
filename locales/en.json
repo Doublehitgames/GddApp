@@ -507,7 +507,7 @@
     },
     "anchorPreview": {
       "title": "Section preview",
-      "goButton": "Go to section",
+      "goButton": "Go to {{title}}",
       "noDescription": "No description available for this section."
     }
   },
@@ -527,8 +527,7 @@
       "goToDocument": "Go to Document",
       "viewDetails": "View Details",
       "editProject": "Edit Project",
-      "backTo": "Back to {{title}}",
-      "goToTarget": "Go to {{title}}"
+      "backTo": "Back to {{title}}"
     },
     "references": {
       "show": "Show references",

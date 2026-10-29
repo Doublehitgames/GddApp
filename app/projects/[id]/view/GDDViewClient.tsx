@@ -1,5 +1,7 @@
 "use client";
 
+import type { ThumbSection } from "@/components/common/SectionThumb";
+import { sectionBreadcrumb } from "@/lib/sections/breadcrumb";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
@@ -18,7 +20,7 @@ import { PublicShareButton } from "@/components/PublicShareButton";
 import RoadmapDocView from "@/components/roadmap/RoadmapDocView";
 import { getDriveImageDisplayCandidates } from "@/lib/googleDrivePicker";
 import { resolveProjectSpecialTokensForProject } from "@/lib/sections/specialTokens";
-import { toPreviewText } from "@/lib/richDoc/previewText";
+import { toPreviewText, PREVIEW_DIALOG_MAX_LENGTH } from "@/lib/richDoc/previewText";
 import {
   normalizeDocumentTheme,
   normalizeDocumentHeroThumbWidth,
@@ -35,9 +37,11 @@ interface Props {
 interface DocumentAnchorPreview {
   title: string;
   shortDescription: string;
+  thumb?: ThumbSection;
+  path?: string[];
+  status?: PageStatus;
 }
 
-const DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH = 420;
 
 function SectionThumb({
   src,
@@ -84,43 +88,6 @@ function SectionThumb({
 }
 
 
-function normalizeReferenceText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-function replaceReferenceTokens(text: string, sections: any[]): string {
-  if (!text || !text.includes("$[")) return text;
-
-  const sectionById = new Map<string, any>();
-  const sectionByNormalizedName = new Map<string, any>();
-
-  for (const section of sections) {
-    if (section?.id) {
-      sectionById.set(section.id, section);
-    }
-    const normalizedTitle = normalizeReferenceText(section?.title || "");
-    if (normalizedTitle && !sectionByNormalizedName.has(normalizedTitle)) {
-      sectionByNormalizedName.set(normalizedTitle, section);
-    }
-  }
-
-  return text.replace(/\$\[([^\]]+)\]/g, (_fullMatch, rawRef: string) => {
-    const ref = String(rawRef || "").trim();
-    if (!ref) return "";
-
-    if (ref.startsWith("#")) {
-      const targetId = ref.slice(1).trim();
-      return sectionById.get(targetId)?.title || targetId;
-    }
-
-    const normalizedRef = normalizeReferenceText(ref);
-    return sectionByNormalizedName.get(normalizedRef)?.title || ref;
-  });
-}
 
 function parseSpotlightDetails(lines: string[]): Array<{ label: string; value: string }> {
   return lines.map((line) => {
@@ -709,11 +676,13 @@ export default function GDDViewClient({ projectId, publicToken }: Props) {
           ? section.description
           : section?.content || "";
       const descriptionWithResolvedTokens = resolveProjectSpecialTokensForProject(descriptionSource, project, section.id);
-      const descriptionWithResolvedReferences = replaceReferenceTokens(descriptionWithResolvedTokens, projectSections);
 
       map.set(section.id, {
         title,
-        shortDescription: toPreviewText(descriptionWithResolvedReferences, DOCUMENT_ANCHOR_PREVIEW_MAX_LENGTH),
+        shortDescription: toPreviewText(descriptionWithResolvedTokens, PREVIEW_DIALOG_MAX_LENGTH, projectSections),
+        thumb: section,
+        path: sectionBreadcrumb(section.id, projectSections),
+        status: section?.status,
       });
     }
 

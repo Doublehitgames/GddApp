@@ -61,3 +61,28 @@ describe("toPreviewText — o resto da marcação", () => {
     expect(toPreviewText(undefined as never)).toBe("");
   });
 });
+
+describe("toPreviewText — referências", () => {
+  const sections = [
+    { id: "f36e6617-413b-4530-84a7-d996bf87d213", title: "Cacau" },
+    { id: "b3b99be0-6048-4d34-a4ad-9a4f8c7d1e22", title: "🥛Leite" },
+  ];
+
+  it("resolve a forma legada $[#uuid] para o nome da página", () => {
+    const md = "Junta $[#f36e6617-413b-4530-84a7-d996bf87d213] ou $[#b3b99be0-6048-4d34-a4ad-9a4f8c7d1e22].";
+    expect(toPreviewText(md, undefined, sections)).toBe("Junta Cacau ou 🥛Leite.");
+  });
+
+  it("deixa o uuid de fora quando a página não existe mais", () => {
+    const md = "Junta $[#00000000-0000-4000-8000-000000000000] na batedeira.";
+    expect(toPreviewText(md, undefined, sections)).toBe("Junta na batedeira.");
+  });
+
+  it("casa por título sem diferenciar maiúscula", () => {
+    expect(toPreviewText("Mói o $[cacau] no moinho.", undefined, sections)).toBe("Mói o Cacau no moinho.");
+  });
+
+  it("sem sections, a ref por nome continua virando o nome", () => {
+    expect(toPreviewText("Mói o $[Cacau] no moinho.")).toBe("Mói o Cacau no moinho.");
+  });
+});

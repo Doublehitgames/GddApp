@@ -507,7 +507,7 @@
     },
     "anchorPreview": {
       "title": "Prévia da seção",
-      "goButton": "Ir para seção",
+      "goButton": "Ir para {{title}}",
       "noDescription": "Sem descrição disponível para esta seção."
     }
   },
@@ -527,8 +527,7 @@
       "goToDocument": "Ir para Documento",
       "viewDetails": "Ver Detalhes",
       "editProject": "Editar Projeto",
-      "backTo": "Voltar para {{title}}",
-      "goToTarget": "Ir para {{title}}"
+      "backTo": "Voltar para {{title}}"
     },
     "references": {
       "show": "Mostrar referências",

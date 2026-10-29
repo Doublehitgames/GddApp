@@ -24,7 +24,9 @@ import { sectionPathById, projectPath } from "@/lib/utils/slug";
 import { extractSectionReferences, findSection, getBacklinks } from "@/utils/sectionReferences";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
-import { toPreviewText } from "@/lib/richDoc/previewText";
+import type { ThumbSection } from "@/components/common/SectionThumb";
+import { sectionBreadcrumb } from "@/lib/sections/breadcrumb";
+import { toPreviewText, PREVIEW_DIALOG_MAX_LENGTH } from "@/lib/richDoc/previewText";
 import type { RichDocBlock } from "@/lib/richDoc/types";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
 import { PAGE_STATUSES, PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
@@ -1211,7 +1213,7 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
   // ("quanto do GDD ja esta no jogo?"), nao o jeito de ler o mapa todo dia.
   const [colorirPorEstado, setColorirPorEstado] = useState(false);
   // Previa pendente: clicar numa referencia abre o modal em vez de saltar.
-  const [pendingReference, setPendingReference] = useState<{ sectionId: string; title: string; description: string } | null>(null);
+  const [pendingReference, setPendingReference] = useState<{ sectionId: string; title: string; description: string; thumb?: ThumbSection; path?: string[]; status?: PageStatus } | null>(null);
   // Trilha de saltos por referencia, pra oferecer a volta. Zera quando o usuario
   // clica direto numa bolinha do mapa — ali ele escolheu o lugar, nao foi levado.
   const [navigationStack, setNavigationStack] = useState<string[]>([]);
@@ -2399,7 +2401,10 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
     setPendingReference({
       sectionId,
       title: section.title || sectionId,
-      description: toPreviewText(section.content || ""),
+      description: toPreviewText(section.content || "", PREVIEW_DIALOG_MAX_LENGTH, project?.sections),
+      thumb: section,
+      path: sectionBreadcrumb(sectionId, project?.sections ?? []),
+      status: section.status,
     });
   }, [project]);
 
@@ -3011,8 +3016,11 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
       {pendingReference && (
         <SectionPreviewDialog
           title={pendingReference.title}
+          thumb={pendingReference.thumb}
+          path={pendingReference.path}
+          status={pendingReference.status}
           description={pendingReference.description}
-          confirmLabel={t("mindMap.panel.goToTarget").replace("{{title}}", pendingReference.title)}
+          confirmLabel={t("view.anchorPreview.goButton").replace("{{title}}", pendingReference.title)}
           onCancel={() => setPendingReference(null)}
           onConfirm={() => {
             // A origem do salto e a bolinha aberta agora — e ela que a trilha guarda.

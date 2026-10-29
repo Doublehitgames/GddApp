@@ -14,7 +14,10 @@ import {
 } from "@/lib/richDoc/transformRefs";
 import { resolveTokensInBlocks } from "@/lib/richDoc/resolveTokens";
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
-import { toPreviewText } from "@/lib/richDoc/previewText";
+import { toPreviewText, PREVIEW_DIALOG_MAX_LENGTH, type PreviewSection } from "@/lib/richDoc/previewText";
+import type { ThumbSection } from "@/components/common/SectionThumb";
+import { sectionBreadcrumb, type BreadcrumbSection } from "@/lib/sections/breadcrumb";
+import type { PageStatus } from "@/lib/pageStatus/types";
 import type { ProjectTokenSource } from "@/lib/sections/specialTokens";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
 import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
@@ -44,12 +47,18 @@ function normalizeDriveImages(blocks: RichDocBlock[]): RichDocBlock[] {
 interface AnchorPreview {
   title: string;
   shortDescription: string;
+  thumb?: ThumbSection;
+  path?: string[];
+  status?: PageStatus;
 }
 
 interface PendingAnchor {
   sectionId: string;
   title: string;
   shortDescription: string;
+  thumb?: ThumbSection;
+  path?: string[];
+  status?: PageStatus;
 }
 
 interface SectionDescriptionReadOnlyProps {
@@ -155,6 +164,24 @@ export default function SectionDescriptionReadOnly({
     window.history.replaceState(null, "", `#section-${sectionId}`);
   };
 
+  /**
+   * Ctrl/⌘/shift/meio numa referência abre a página citada em outra aba, como
+   * qualquer link faria. Ler a referência sem perder o lugar é gesto de todo
+   * dia num GDD, e até aqui o `preventDefault` engolia esses cliques: o modal
+   * abria do mesmo jeito e não havia como ir pra aba nova.
+   *
+   * O destino é sempre a página em si, em qualquer modo — "abrir em outra aba"
+   * só quer dizer uma coisa, e a página é alcançável de todos eles. O `href`
+   * que o renderizador escreve é um sentinela (`gddapp.local`), não serve.
+   */
+  const openReferenceInNewTab = (sectionId: string): boolean => {
+    if (!project) return false;
+    const url = sectionPathById(project, sectionId);
+    if (!url) return false;
+    window.open(url, "_blank", "noopener");
+    return true;
+  };
+
   const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null;
     const anchor = target?.closest("a") as HTMLAnchorElement | null;
@@ -166,6 +193,9 @@ export default function SectionDescriptionReadOnly({
     const sectionId = href.slice(SECTION_REF_HREF_PREFIX.length);
     if (!sectionId) return;
 
+    const wantsNewTab = event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1;
+    if (wantsNewTab && openReferenceInNewTab(sectionId)) return;
+
     if (onReferenceClick) {
       onReferenceClick(sectionId);
       return;
@@ -174,7 +204,7 @@ export default function SectionDescriptionReadOnly({
     if (isDocumentMode) {
       const preview = resolveDocumentAnchorPreview?.(sectionId) || null;
       if (preview) {
-        setPendingAnchor({ sectionId, title: preview.title, shortDescription: preview.shortDescription });
+        setPendingAnchor({ sectionId, title: preview.title, shortDescription: preview.shortDescription, thumb: preview.thumb, path: preview.path, status: preview.status });
         return;
       }
       scrollToAnchor(sectionId);
@@ -186,11 +216,27 @@ export default function SectionDescriptionReadOnly({
     const targetSection = (fullProject?.sections as any[])?.find((s: any) => s.id === sectionId);
     const title = targetSection?.title || sections.find((s) => s.id === sectionId)?.title || "";
     const rawContent = typeof targetSection?.content === "string" ? targetSection.content : "";
-    setPendingAnchor({ sectionId, title, shortDescription: toPreviewText(rawContent, 150) });
+    setPendingAnchor({
+      sectionId,
+      title,
+      shortDescription: toPreviewText(rawContent, PREVIEW_DIALOG_MAX_LENGTH, (fullProject?.sections as PreviewSection[]) ?? sections),
+      thumb: targetSection as ThumbSection | undefined,
+      path: sectionBreadcrumb(sectionId, ((fullProject?.sections as BreadcrumbSection[]) ?? sections) as BreadcrumbSection[]),
+      status: (targetSection as { status?: PageStatus } | undefined)?.status,
+    });
   };
 
   return (
-    <div ref={hostRef} className="rich-doc-readonly-host section-description-readonly" data-theme={theme} onClick={handleClick}>
+    <div
+      ref={hostRef}
+      className="rich-doc-readonly-host section-description-readonly"
+      data-theme={theme}
+      onClick={handleClick}
+      // O clique do meio não dispara `click`, e é justamente ele que as pessoas usam pra abrir em outra aba.
+      onAuxClick={(event) => {
+        if (event.button === 1) handleClick(event);
+      }}
+    >
       {heroThumbUrl && heroThumbWidth ? (
         <SectionHeroThumb src={heroThumbUrl} alt="" width={heroThumbWidth} />
       ) : null}
@@ -201,8 +247,11 @@ export default function SectionDescriptionReadOnly({
       {pendingAnchor && (
         <SectionPreviewDialog
           title={pendingAnchor.title}
+          thumb={pendingAnchor.thumb}
+          path={pendingAnchor.path}
+          status={pendingAnchor.status}
           description={pendingAnchor.shortDescription}
-          confirmLabel={t("view.anchorPreview.goButton")}
+          confirmLabel={t("view.anchorPreview.goButton").replace("{{title}}", pendingAnchor.title)}
           onCancel={() => setPendingAnchor(null)}
           onConfirm={() => {
             const sid = pendingAnchor.sectionId;

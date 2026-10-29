@@ -19,11 +19,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CoverImage } from "@/components/project/ProjectCover";
-import { DomainIcon, domainVisual } from "@/components/project/domainVisual";
+import { SectionThumb } from "@/components/common/SectionThumb";
 import { useI18n } from "@/lib/i18n/provider";
 import { parseDeckLayout } from "@/lib/deck/deck";
-import { isValidDomainId } from "@/lib/gameDesignDomains";
 import { PAGE_STATUS_META } from "@/lib/pageStatus/types";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import { sectionPath } from "@/lib/utils/slug";
@@ -49,10 +47,6 @@ function childrenOf(sections: Section[], parentId: string): Section[] {
   return sections
     .filter((s) => s.parentId === parentId)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-}
-
-function categoryOf(section: Section): string {
-  return section.domainTags?.find(isValidDomainId) ?? "other";
 }
 
 /**
@@ -292,39 +286,9 @@ function StatusDot({ section, className = "" }: { section: Section; className?: 
   return <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dotClass} ${className}`} title={label} aria-label={label} />;
 }
 
-/**
- * A cara da página: a thumb que ela escolheu na biblioteca e, sem thumb, o
- * ícone do domínio. É a mesma imagem que o cabeçalho da página mostra.
- */
-function SectionThumb({
-  section,
-  className,
-  iconClassName,
-}: {
-  section: Section;
-  className: string;
-  iconClassName: string;
-}) {
-  const visual = domainVisual(categoryOf(section));
-  const icon = (
-    <span className={`absolute inset-0 grid place-items-center ${visual.tile}`}>
-      <DomainIcon id={categoryOf(section)} className={iconClassName} />
-    </span>
-  );
-  return (
-    <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-2 ${className}`}>
-      {section.thumbImageUrl ? (
-        <CoverImage src={section.thumbImageUrl} alt={section.title} fallback={icon} />
-      ) : (
-        icon
-      )}
-    </span>
-  );
-}
-
 function ChildCard({ project, section, sections }: { project: Project; section: Section; sections: Section[] }) {
   const { t } = useI18n();
-  const preview = toPreviewText(section.content ?? "", 110);
+  const preview = toPreviewText(section.content ?? "", 110, sections);
   const inside = insideCount(sections, section.id);
 
   return (

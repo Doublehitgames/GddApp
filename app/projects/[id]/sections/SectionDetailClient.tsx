@@ -11,6 +11,9 @@ import { ToggleSwitch } from "@/components/ToggleSwitch";
 import PageModeLinks from "@/components/project/PageModeLinks";
 import { SectionChildren } from "@/components/project/SectionChildren";
 import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
+import type { ThumbSection } from "@/components/common/SectionThumb";
+import { sectionBreadcrumb } from "@/lib/sections/breadcrumb";
+import type { PageStatus } from "@/lib/pageStatus/types";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
@@ -27,7 +30,7 @@ import DeckLayoutPicker from "@/components/deck/DeckLayoutPicker";
 import StaleNotice from "@/components/pageStatus/StaleNotice";
 import SectionDescriptionEditor, { isRichDocEmpty } from "@/components/SectionDescriptionEditor";
 import SectionDescriptionReadOnly from "@/components/SectionDescriptionReadOnly";
-import { toPreviewText } from "@/lib/richDoc/previewText";
+import { toPreviewText, PREVIEW_DIALOG_MAX_LENGTH } from "@/lib/richDoc/previewText";
 import { useI18n } from "@/lib/i18n/provider";
 import { ImageLibraryPicker } from "@/components/common/ImageLibraryPicker";
 import type { ProjectImage } from "@/store/slices/types";
@@ -627,17 +630,6 @@ function getUnresolvedRefsFromContent(
   return { unresolvedNames, hasProjectTitleRef };
 }
 
-function getBreadcrumb(sectionId: string, sections: Array<{ id: string; title?: string; parentId?: string }>): string[] {
-  const byId = new Map(sections.map((s) => [s.id, s]));
-  const path: string[] = [];
-  let curr = byId.get(sectionId);
-  while (curr) {
-    path.unshift(String(curr.title || ""));
-    curr = curr.parentId ? byId.get(curr.parentId) : undefined;
-  }
-  return path;
-}
-
 function UnresolvedRefsPanel({
   unresolvedNames,
   hasProjectTitleRef,
@@ -891,7 +883,7 @@ function UnresolvedRefsPanel({
                 📁 {t("sectionDetail.ai.createAtRoot")}
               </button>
               {possibleParents.map((s) => {
-                const path = getBreadcrumb(s.id, sections);
+                const path = sectionBreadcrumb(s.id, sections);
                 const pathStr = path.length > 0 ? path.join(" › ") : String(s.title || "");
                 return (
                   <button
@@ -1474,7 +1466,7 @@ function SectionDetailContent({
           projectId={realProjectId}
           sectionId={sectionId}
           sections={sections || []}
-          currentContextPath={getBreadcrumb(sectionId, sections || [])}
+          currentContextPath={sectionBreadcrumb(sectionId, sections || [])}
           addSection={addSection}
           addSubsection={addSubsection}
           getAIHeaders={getAIHeaders}
@@ -1870,7 +1862,7 @@ function SectionDetailContent({
                   projectId={realProjectId}
                   sectionId={sectionId}
                   sections={sections || []}
-                  currentContextPath={getBreadcrumb(sectionId, sections || [])}
+                  currentContextPath={sectionBreadcrumb(sectionId, sections || [])}
                   addSection={addSection}
                   addSubsection={addSubsection}
                   getAIHeaders={getAIHeaders}
@@ -2010,14 +2002,14 @@ function SectionDetailContent({
 function BacklinksSection({ projectId, sectionId, sections, router }: any) {
   const { t } = useI18n();
   const backlinks = getBacklinks(sectionId, sections);
-  const [pending, setPending] = useState<{ id: string; title: string; shortDescription: string } | null>(null);
+  const [pending, setPending] = useState<{ id: string; title: string; shortDescription: string; thumb?: ThumbSection; path?: string[]; status?: PageStatus } | null>(null);
 
   if (backlinks.length === 0) return null;
 
   const handleClick = (link: { id: string; title: string }) => {
     const sec = sections.find((s: any) => s.id === link.id);
     const rawContent = typeof sec?.content === "string" ? sec.content : "";
-    setPending({ id: link.id, title: link.title, shortDescription: toPreviewText(rawContent, 150) });
+    setPending({ id: link.id, title: link.title, shortDescription: toPreviewText(rawContent, PREVIEW_DIALOG_MAX_LENGTH, sections), thumb: sec, path: sectionBreadcrumb(link.id, sections), status: sec?.status });
   };
 
   const navigate = (id: string) => {
@@ -2050,8 +2042,11 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
       {pending && (
         <SectionPreviewDialog
           title={pending.title}
+          thumb={pending.thumb}
+          path={pending.path}
+          status={pending.status}
           description={pending.shortDescription}
-          confirmLabel={t('view.anchorPreview.goButton', 'Ir para a página')}
+          confirmLabel={t('view.anchorPreview.goButton', 'Ir para {{title}}').replace('{{title}}', pending.title)}
           onCancel={() => setPending(null)}
           onConfirm={() => { const id = pending.id; setPending(null); navigate(id); }}
         />

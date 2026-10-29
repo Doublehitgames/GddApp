@@ -439,7 +439,7 @@ function NarrativeTeaser({ section, project, empty }: { section?: Section; proje
           />
         </span>
       )}
-      <p className="line-clamp-4 text-sm text-ink-2">{toPreviewText(section.content ?? "", 260) || t("docsArea.noText", "Ainda sem texto.")}</p>
+      <p className="line-clamp-4 text-sm text-ink-2">{toPreviewText(section.content ?? "", 260, project.sections) || t("docsArea.noText", "Ainda sem texto.")}</p>
       <Link href={sectionPath(project, section)} className="text-xs font-medium text-accent hover:underline">
         {t("projectHome.readMore", "Ler mais")} →
       </Link>

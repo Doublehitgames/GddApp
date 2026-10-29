@@ -14,8 +14,17 @@
  * Sem DOM e sem React — roda no servidor também.
  */
 
-/** Teto padrão de caracteres da prévia. */
+import { extractSectionReferences, findSection } from "@/utils/sectionReferences";
+
+/** Teto padrão de caracteres da prévia. Serve a carta e a linha de lista, onde o texto divide espaço com o resto. */
 export const PREVIEW_MAX_LENGTH = 160;
+
+/**
+ * Teto da prévia no modal, que é bem mais generoso: ali o texto é o conteúdo
+ * da tela, e a pessoa está decidindo se vale sair de onde está. Três linhas
+ * não respondem isso. O corpo do modal rola quando passa da altura da janela.
+ */
+export const PREVIEW_DIALOG_MAX_LENGTH = 600;
 
 /** Rótulo de um spoiler sem rótulo. Repete o literal de
  *  `lib/richDoc/spoilerBlock.tsx`, que é módulo de cliente. */
@@ -44,13 +53,51 @@ function redactSpoilerBlocks(markdown: string): string {
   });
 }
 
+/** O mínimo que a prévia precisa saber de uma página para resolver uma referência a ela. */
+export type PreviewSection = { id: string; title?: string | null };
+
+/**
+ * Troca cada `$[...]` pelo título da página apontada, usando o mesmo casamento
+ * do renderizador (`findSection`): por id na forma legada `$[#uuid]`, por
+ * título case-insensitive na forma normal.
+ *
+ * Referência que não resolve sai da frase. Na página, o renderizador pinta uma
+ * ref quebrada de vermelho para a pessoa notar; uma prévia não tem cor nem
+ * clique, e um uuid de 36 caracteres não é prosa — mostrá-lo só gasta o card
+ * com um dado que não diz nada a ninguém.
+ */
+function resolveReferences(markdown: string, sections: PreviewSection[]): string {
+  if (!markdown.includes("$[")) return markdown;
+  const refs = extractSectionReferences(markdown);
+  if (refs.length === 0) return markdown;
+
+  let out = "";
+  let cursor = 0;
+  for (const ref of refs) {
+    out += markdown.slice(cursor, ref.startIndex);
+    const resolved = findSection(sections as never[], ref);
+    if (resolved) out += resolved.title;
+    else if (ref.refType === "name") out += ref.refValue;
+    cursor = ref.endIndex;
+  }
+  return out + markdown.slice(cursor);
+}
+
 /**
  * Uma linha de prosa legível, pronta para caber num card: spoiler reduzido ao
  * cadeado, sem marcação e sem quebra de linha. `$[Moinho]` e `@[token]` viram
  * só o nome — numa prévia o que interessa é ler a frase, não a sintaxe.
+ *
+ * Passe `sections` sempre que elas estiverem à mão: é o que faz a forma legada
+ * `$[#uuid]` virar o nome da página em vez de despejar o uuid no card.
  */
-export function toPreviewText(markdown: string, maxLength: number = PREVIEW_MAX_LENGTH): string {
-  const plain = redactSpoilerBlocks(markdown || "")
+export function toPreviewText(
+  markdown: string,
+  maxLength: number = PREVIEW_MAX_LENGTH,
+  sections?: PreviewSection[]
+): string {
+  const source = sections?.length ? resolveReferences(markdown || "", sections) : markdown || "";
+  const plain = redactSpoilerBlocks(source)
     .replace(/\r\n/g, "\n")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
