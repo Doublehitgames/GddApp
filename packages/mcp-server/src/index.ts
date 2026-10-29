@@ -19,6 +19,12 @@ import { GddApiClient } from "./client.js";
 import { registerTools } from "./tools.js";
 import { registerPrompts } from "./prompts.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
+import { createRequire } from "node:module";
+
+// Lida do package.json publicado (fica um nível acima de dist/). Escrita à mão
+// aqui, ficou em 0.7.0 por quatro versões: o cliente via um número que não
+// dizia qual servidor estava rodando.
+const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 async function main() {
   if (!process.env.GDD_API_KEY) {
@@ -30,7 +36,7 @@ async function main() {
   const client = new GddApiClient();
 
   const server = new McpServer(
-    { name: "gdd-manager", version: "0.7.0" },
+    { name: "gdd-manager", version },
     // Sent once in the initialize response: conventions that apply to every
     // write but belong in no single tool's schema.
     { instructions: SERVER_INSTRUCTIONS },
