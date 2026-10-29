@@ -1,15 +1,22 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n/provider";
 import type { Project } from "@/store/slices/types";
 import { ProjectGlyph } from "@/components/project/ProjectCover";
+import { detectGroups } from "@/lib/library/collections";
+import { toSlug } from "@/lib/utils/slug";
 
 /**
  * A navegação fixa do projeto: as quatro áreas do GDD (as páginas se acham
- * pela Documentação e pela busca), as coleções (por enquanto uma promessa — chegam com a Biblioteca), o
- * andamento e os modos de apresentar.
+ * pela Documentação e pela busca), as coleções, o andamento e os modos de
+ * apresentar.
+ *
+ * As coleções saem da árvore (lib/library/collections.ts): cada grupo — página
+ * cujas filhas são todas coleções — vira um item. Nenhum nome é sugerido pelo
+ * app; um projeto sem grupo ainda mostra só como chegar lá.
  */
 export function ProjectSidebar({
   project,
@@ -33,12 +40,7 @@ export function ProjectSidebar({
     { href: `${base}/biblioteca`, label: t("projectShell.library", "Biblioteca do jogo"), icon: <IconLibrary />, tone: "text-area-lib" },
     { href: `${base}/sistemas`, label: t("projectShell.systems", "Sistemas e relações"), icon: <IconSystems />, tone: "text-area-sys" },
   ];
-  const suggestedCollections = [
-    t("projectShell.collections.characters", "Personagens"),
-    t("projectShell.collections.enemies", "Inimigos"),
-    t("projectShell.collections.items", "Itens"),
-    t("projectShell.collections.places", "Locais"),
-  ];
+  const groups = useMemo(() => detectGroups(project.sections ?? []), [project.sections]);
   const present = [
     { href: `${base}/view`, label: t("projectShell.present.document", "Documento"), icon: <IconDoc /> },
     { href: `${base}/deck`, label: t("projectShell.present.deck", "Deck"), icon: <IconPlay /> },
@@ -88,19 +90,34 @@ export function ProjectSidebar({
 
       <nav aria-label={t("projectShell.collectionsLabel", "Coleções")}>
         <SectionLabel>{t("projectShell.collectionsLabel", "Coleções")}</SectionLabel>
-        <ul className="flex flex-col gap-px">
-          {suggestedCollections.map((name) => (
-            <li key={name}>
-              <Link href={`${base}/biblioteca`} className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted hover:bg-surface-2">
-                <span className="h-2 w-2 rounded-full bg-line-strong" aria-hidden />
-                {name}
-                <span className="ml-auto rounded-md border border-dashed border-line-strong px-1.5 text-[10px] text-subtle">
-                  {t("projectShell.soon", "em breve")}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {groups.length > 0 ? (
+          <ul className="flex flex-col gap-px">
+            {groups.map(({ section, itemCount }) => {
+              const href = `${base}/sections/${toSlug(section.title)}`;
+              const active = pathname === href;
+              return (
+                <li key={section.id}>
+                  <Link href={href} className={navItem(active)} aria-current={active ? "page" : undefined} title={section.title}>
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full bg-area-lib"
+                      style={section.color ? { backgroundColor: section.color } : undefined}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate">{section.title}</span>
+                    <span className="ml-auto text-xs tabular-nums text-subtle">{itemCount}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="px-2.5 text-xs leading-relaxed text-subtle">
+            {t(
+              "projectShell.collectionsEmpty",
+              "Junte as páginas de cada coisa do jogo sob uma página-mãe, e as mães sob um grupo: o grupo aparece aqui.",
+            )}
+          </p>
+        )}
       </nav>
 
       <nav aria-label={t("projectShell.more", "Mais")}>
