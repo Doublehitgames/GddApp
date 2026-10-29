@@ -17,6 +17,7 @@ import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import type { ProjectTokenSource } from "@/lib/sections/specialTokens";
 import { SectionHeroThumb } from "@/components/SectionHeroThumb";
+import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
 import { getDriveImageDisplayUrl } from "@/lib/googleDrivePicker";
 import BlocksReadOnly from "@/components/BlocksReadOnly";
 
@@ -122,7 +123,6 @@ export default function SectionDescriptionReadOnly({
   const isDocumentMode = referenceLinkMode === "document";
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [pendingAnchor, setPendingAnchor] = useState<PendingAnchor | null>(null);
-  const anchorCardRef = useRef<HTMLDivElement>(null);
 
   // Bloco é a fonte da verdade; página que só tem o espelho markdown (legado,
   // ou escrita pela API antes de passar pelo editor) é convertida aqui, pelo
@@ -142,24 +142,6 @@ export default function SectionDescriptionReadOnly({
     return transformRichDocRefs(withImages, sections);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, markdown, sections, currentSectionId, projectTokenSource?.updatedAt]);
-
-  // Dismiss the anchor-preview popup on outside click / Escape.
-  useEffect(() => {
-    if (!pendingAnchor) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (anchorCardRef.current?.contains(e.target as Node)) return;
-      setPendingAnchor(null);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPendingAnchor(null);
-    };
-    window.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [pendingAnchor]);
 
   const scrollToAnchor = (sectionId: string) => {
     const el =
@@ -217,56 +199,23 @@ export default function SectionDescriptionReadOnly({
           imagem deixa o float vazar e o próximo título/thumb sai indentado. */}
       {heroThumbUrl && heroThumbWidth ? <div style={{ clear: "both" }} /> : null}
       {pendingAnchor && (
-        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
-          <div
-            ref={anchorCardRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("view.anchorPreview.title")}
-            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
-          >
-            <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t("view.anchorPreview.title")}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-gray-900">{pendingAnchor.title}</h3>
-            </div>
-            <div className="px-5 py-4">
-              {pendingAnchor.shortDescription ? (
-                <p className="text-sm leading-6 text-gray-700">{pendingAnchor.shortDescription}</p>
-              ) : (
-                <p className="text-sm leading-6 text-gray-700">{t("view.anchorPreview.noDescription")}</p>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingAnchor(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => {
-                  const sid = pendingAnchor.sectionId;
-                  setPendingAnchor(null);
-                  if (onReferenceNavigate) {
-                    onReferenceNavigate(sid);
-                  } else if (referenceLinkMode === "manager" && project) {
-                    router.push(sectionPathById(project, sid));
-                  } else {
-                    scrollToAnchor(sid);
-                  }
-                }}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                {t("view.anchorPreview.goButton")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SectionPreviewDialog
+          title={pendingAnchor.title}
+          description={pendingAnchor.shortDescription}
+          confirmLabel={t("view.anchorPreview.goButton")}
+          onCancel={() => setPendingAnchor(null)}
+          onConfirm={() => {
+            const sid = pendingAnchor.sectionId;
+            setPendingAnchor(null);
+            if (onReferenceNavigate) {
+              onReferenceNavigate(sid);
+            } else if (referenceLinkMode === "manager" && project) {
+              router.push(sectionPathById(project, sid));
+            } else {
+              scrollToAnchor(sid);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -11,21 +11,24 @@ import { useI18n } from "@/lib/i18n/provider";
 interface SectionPreviewDialogProps {
   title: string;
   description: string;
-  /** Texto do CTA. Cada tela define o seu: no documento e "ir para a secao", no mapa e "ir para a bolinha". */
+  /** Texto do CTA. Cada tela define o seu: no documento é "ir para a seção", no mapa é "ir para a bolinha". */
   confirmLabel: string;
   onConfirm: () => void;
   onCancel: () => void;
-  /** `light` para telas de fundo claro (documento), `dark` para o mapa mental. */
-  theme?: "dark" | "light";
 }
 
 /**
- * Modal de confirmacao com previa do conteudo, usado antes de saltar para uma
- * secao referenciada. O ponto e nunca navegar direto no clique: o usuario ve
+ * Modal de confirmação com prévia do conteúdo, usado antes de saltar para uma
+ * seção referenciada. O ponto é nunca navegar direto no clique: o usuário vê
  * pra onde vai antes de perder o lugar onde estava.
  *
- * So a apresentacao mora aqui — o que "ir" significa e responsabilidade de quem
- * usa: rolar ate a ancora no documento, selecionar a bolinha no mapa mental.
+ * Só a apresentação mora aqui — o que "ir" significa é responsabilidade de quem
+ * usa: rolar até a âncora no documento, selecionar a bolinha no mapa mental.
+ *
+ * A cor sai dos tokens, então o modal segue o `data-theme` de onde ele é
+ * montado: claro dentro do Modo Doc e do Deck (que são `paper`), escuro dentro
+ * do app no tema escuro. Antes cada tela carregava a própria cópia com cinza
+ * fixo, e no escuro abria um retângulo branco no meio da tela.
  */
 export function SectionPreviewDialog({
   title,
@@ -33,7 +36,6 @@ export function SectionPreviewDialog({
   confirmLabel,
   onConfirm,
   onCancel,
-  theme = "light",
 }: SectionPreviewDialogProps) {
   const { t } = useI18n();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -54,43 +56,31 @@ export function SectionPreviewDialog({
     };
   }, [onCancel]);
 
-  const isDark = theme === "dark";
-  const card = isDark
-    ? "border-gray-700 bg-gray-800"
-    : "border-gray-200 bg-white";
-  const divider = isDark ? "border-gray-700" : "border-gray-200";
-  const eyebrow = isDark ? "text-gray-400" : "text-gray-500";
-  const heading = isDark ? "text-white" : "text-gray-900";
-  const body = isDark ? "text-gray-300" : "text-gray-700";
-  const cancelButton = isDark
-    ? "border-gray-600 text-gray-300 hover:bg-gray-700"
-    : "border-gray-300 text-gray-700 hover:bg-gray-100";
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
         ref={cardRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("view.anchorPreview.title", "Pré-visualização")}
-        className={`w-full max-w-lg rounded-xl border shadow-2xl ${card}`}
+        className="w-full max-w-lg rounded-2xl border border-line bg-surface shadow-2xl"
       >
-        <div className={`px-5 py-4 border-b ${divider}`}>
-          <p className={`text-xs font-semibold uppercase tracking-wide ${eyebrow}`}>
+        <div className="border-b border-line px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
             {t("view.anchorPreview.title", "Pré-visualização")}
           </p>
-          <h3 className={`mt-1 text-lg font-semibold ${heading}`}>{title}</h3>
+          <h3 className="mt-1 text-lg font-semibold text-ink">{title}</h3>
         </div>
         <div className="px-5 py-4">
-          <p className={`text-sm leading-6 ${body}`}>
+          <p className={`text-sm leading-6 ${description ? "text-ink-2" : "italic text-subtle"}`}>
             {description || t("view.anchorPreview.noDescription", "Sem descrição.")}
           </p>
         </div>
-        <div className={`px-5 py-4 border-t ${divider} flex justify-end gap-2`}>
+        <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
           <button
             type="button"
             onClick={onCancel}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium ${cancelButton}`}
+            className="rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2 hover:text-ink"
           >
             {t("common.cancel", "Cancelar")}
           </button>
@@ -98,7 +88,7 @@ export function SectionPreviewDialog({
             type="button"
             autoFocus
             onClick={onConfirm}
-            className="max-w-[20rem] truncate rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="max-w-[20rem] truncate rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:opacity-90"
           >
             {confirmLabel}
           </button>

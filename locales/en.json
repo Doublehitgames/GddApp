@@ -508,7 +508,6 @@
     "anchorPreview": {
       "title": "Section preview",
       "goButton": "Go to section",
-      "goToSection": "Open section preview",
       "noDescription": "No description available for this section."
     }
   },
@@ -673,13 +672,6 @@
       "ui": "UI",
       "technology": "Technology",
       "other": "Other"
-    },
-    "subsections": {
-      "title": "Subsections",
-      "searchPlaceholder": "🔍 Search subsections...",
-      "empty": "No subsections yet.",
-      "duplicate": "A subsection with this name already exists.",
-      "addPlaceholder": "Add subsection"
     },
     "suggestions": {
       "title": "AI suggestions to create subsections",

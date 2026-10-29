@@ -508,7 +508,6 @@
     "anchorPreview": {
       "title": "Vista previa de la sección",
       "goButton": "Ir a la sección",
-      "goToSection": "Abrir vista previa de la sección",
       "noDescription": "No hay descripción disponible para esta sección."
     }
   },
@@ -673,13 +672,6 @@
       "ui": "UI",
       "technology": "Tecnología",
       "other": "Otro"
-    },
-    "subsections": {
-      "title": "Subsecciones",
-      "searchPlaceholder": "🔍 Buscar subsecciones...",
-      "empty": "Aún no hay subsecciones.",
-      "duplicate": "Ya existe una subsección con este nombre.",
-      "addPlaceholder": "Agregar subsección"
     },
     "suggestions": {
       "title": "Sugerencias de IA para crear subsecciones",

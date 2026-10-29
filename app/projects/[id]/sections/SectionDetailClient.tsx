@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 import PageModeLinks from "@/components/project/PageModeLinks";
 import { SectionChildren } from "@/components/project/SectionChildren";
+import { SectionPreviewDialog } from "@/components/common/SectionPreviewDialog";
 import { SectionPickerModal, SECTION_PICKER_ROOT } from "@/components/SectionPickerModal";
 import { getBacklinks, convertReferencesToIds, convertReferencesToNames, convertBlockRefsToNames, extractSectionReferences, findSection } from "@/utils/sectionReferences";
 import { getSectionAiContent } from "@/utils/sectionAiContent";
@@ -2047,45 +2048,13 @@ function BacklinksSection({ projectId, sectionId, sections, router }: any) {
       </div>
 
       {pending && (
-        <div className="fixed inset-0 z-50 bg-black/30 p-4 flex items-center justify-center" onClick={() => setPending(null)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-lg rounded-xl border border-gray-200 bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 border-b border-gray-200">
-              <p className="text-xs font-semibold uppercase tracking-wide text-subtle">
-                {t('view.anchorPreview.title', 'Section Preview')}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-gray-900">{pending.title}</h3>
-            </div>
-            <div className="px-5 py-4">
-              {pending.shortDescription ? (
-                <p className="text-sm leading-6 text-gray-700">{pending.shortDescription}</p>
-              ) : (
-                <p className="text-sm leading-6 text-subtle">{t('view.anchorPreview.noDescription', 'No description.')}</p>
-              )}
-            </div>
-            <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPending(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-              >
-                {t('common.cancel', 'Cancel')}
-              </button>
-              <button
-                type="button"
-                autoFocus
-                onClick={() => { const id = pending.id; setPending(null); navigate(id); }}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                {t('view.anchorPreview.goButton', 'Go to section')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <SectionPreviewDialog
+          title={pending.title}
+          description={pending.shortDescription}
+          confirmLabel={t('view.anchorPreview.goButton', 'Ir para a página')}
+          onCancel={() => setPending(null)}
+          onConfirm={() => { const id = pending.id; setPending(null); navigate(id); }}
+        />
       )}
     </>
   );

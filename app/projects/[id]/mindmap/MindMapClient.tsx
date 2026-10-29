@@ -3010,7 +3010,6 @@ function FlowContent({ projectId, publicToken }: MindMapClientProps) {
 
       {pendingReference && (
         <SectionPreviewDialog
-          theme="light"
           title={pendingReference.title}
           description={pendingReference.description}
           confirmLabel={t("mindMap.panel.goToTarget").replace("{{title}}", pendingReference.title)}
