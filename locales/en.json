@@ -1771,8 +1771,6 @@
     "emptyTitle": "No collections yet",
     "emptyText": "Open the parent page of the things that have numbers — the seeds, the weapons, the enemies — and use “+ table rule” in its header. The rule says which tables the subpages carry, and the collection shows up here.",
     "summary": "{n} pages · {tables} tables",
-    "allComplete": "all complete",
-    "incomplete": "{n} with gaps",
     "openParent": "Open the page and its rule",
     "page": "Page",
     "absent": "This page doesn't have the table — it doesn't apply.",
@@ -1798,6 +1796,33 @@
     "citedAtRoot": "Cited on top-level pages",
     "longDescription": "Full description",
     "openPage": "Open the full page",
-    "compareAt": "at"
+    "compareAt": "at",
+    "check": "check",
+    "newItem": "New page",
+    "newItemName": "Page name",
+    "newItemCreate": "Create",
+    "newItemTaken": "There is already a page with this name.",
+    "audit": {
+      "title": "Check",
+      "complete": "{n} of {total} complete",
+      "issuesOne": "1 warning",
+      "issuesMany": "{n} warnings",
+      "shiftsOne": "1 top value changed",
+      "shiftsMany": "{n} top values changed",
+      "allGood": "nothing to check",
+      "shiftsTitle": "Who's at the top changed",
+      "acknowledge": "Checked",
+      "shiftsHint": "Text that talks about the highest or the lowest may no longer be true. The pages that cite the old record holder are the first to check.",
+      "shiftMax": "the highest value was {before}'s, now it's {now}'s",
+      "shiftMin": "the lowest value was {before}'s, now it's {now}'s",
+      "citingOne": "1 page cites {page}",
+      "citingMany": "{n} pages cite {page}",
+      "missing": "missing",
+      "notNumber": "not a number",
+      "brokenRef": "reference with no page",
+      "unknownColumn": "column the rule doesn't know",
+      "pagesOne": "1 page",
+      "pagesMany": "{n} pages"
+    }
   }
 }

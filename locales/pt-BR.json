@@ -1771,8 +1771,6 @@
     "emptyTitle": "Nenhuma coleção ainda",
     "emptyText": "Abra a página-mãe das coisas que têm números — as sementes, as armas, os inimigos — e use “+ regra de tabelas” no cabeçalho. A regra diz quais tabelas as subpáginas carregam, e a coleção aparece aqui.",
     "summary": "{n} páginas · {tables} tabelas",
-    "allComplete": "todas completas",
-    "incomplete": "{n} com falta",
     "openParent": "Abrir a página e a regra",
     "page": "Página",
     "absent": "Esta página não tem a tabela — não se aplica.",
@@ -1798,6 +1796,33 @@
     "citedAtRoot": "Citada em páginas soltas",
     "longDescription": "Descrição completa",
     "openPage": "Abrir a página completa",
-    "compareAt": "em"
+    "compareAt": "em",
+    "check": "conferir",
+    "newItem": "Nova página",
+    "newItemName": "Nome da página",
+    "newItemCreate": "Criar",
+    "newItemTaken": "Já existe uma página com esse nome.",
+    "audit": {
+      "title": "Conferência",
+      "complete": "{n} de {total} completas",
+      "issuesOne": "1 aviso",
+      "issuesMany": "{n} avisos",
+      "shiftsOne": "1 ponta mudou",
+      "shiftsMany": "{n} pontas mudaram",
+      "allGood": "nada a conferir",
+      "shiftsTitle": "Quem está na ponta mudou",
+      "acknowledge": "Já conferi",
+      "shiftsHint": "Texto que fala da maior ou da menor pode ter deixado de ser verdade. As páginas que citam a antiga ponta são as primeiras a conferir.",
+      "shiftMax": "o maior valor era de {before}, agora é de {now}",
+      "shiftMin": "o menor valor era de {before}, agora é de {now}",
+      "citingOne": "1 página cita {page}",
+      "citingMany": "{n} páginas citam {page}",
+      "missing": "falta",
+      "notNumber": "não é número",
+      "brokenRef": "referência que não acha página",
+      "unknownColumn": "coluna que a regra não conhece",
+      "pagesOne": "1 página",
+      "pagesMany": "{n} páginas"
+    }
   }
 }

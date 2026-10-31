@@ -1,0 +1,81 @@
+---
+title: "Biblioteca y tablas de balance"
+description: "Dónde viven los números del juego, cómo la Biblioteca compara las páginas y qué señala la revisión."
+emoji: "📚"
+order: 4
+---
+
+# Biblioteca y tablas de balance
+
+La Documentación lee el **texto** de tus páginas. La Biblioteca lee los **números** de esas mismas páginas — precio, tiempo, daño, probabilidad de drop — y los pone lado a lado para que compares.
+
+No guarda nada aparte. Cada número sigue en una tabla dentro de la página donde lo escribiste. Si algún día ya no quieres la Biblioteca, las tablas se quedan donde están: en el texto, en el modo documento, en el PDF, en lo que lee Claude.
+
+<Callout type="tip" title="La regla de oro">
+  El texto guarda la **relación**, la tabla guarda el **valor**. Escribe "la
+  semilla que crece más rápido" en la prosa y "60 s" en la tabla. Cuando
+  rebalancees, solo cambia la tabla — la frase sigue siendo verdad (y si deja de
+  serlo, la Biblioteca te avisa; más abajo).
+</Callout>
+
+## 1. Una colección es una página madre con regla
+
+Piensa en una página **Semillas** con una hija por semilla: Trigo, Nabo, Maíz… Esa es la forma de una colección.
+
+Para que aparezca en la Biblioteca, la página madre necesita una **regla de tablas**: la lista de tablas que lleva cada hija, con sus columnas.
+
+1. Abre la página madre (la que tiene las hijas)
+2. En el encabezado, haz clic en **"+ regla de tablas"**
+3. Si las hijas ya tienen tablas, la app **arma la regla sola** a partir de ellas — solo tienes que revisarla
+4. Para cada columna, elige el tipo (**Número**, **Texto**, **Sí/no** o **Página**), la unidad si la hay (`s`, `%`) y si es **obligatoria**
+5. Guarda — la colección aparece en la Biblioteca
+
+<Callout type="info" title="Varias tablas por página">
+  Una página puede tener tantas tablas como tenga sentido, cada una con un
+  título (`## Economía`, `## Cultivo`, `## Drop`). La tabla que no aplica a una
+  página, simplemente no la pones — no hace falta llenarla con guiones. La
+  Biblioteca entiende la ausencia como "no aplica".
+</Callout>
+
+### Tablas de varias filas
+
+Algunas tablas tienen una fila por entrada: los ingredientes de una receta, los niveles de una progresión. Marca la tabla como **varias filas** en la regla. La primera columna da nombre a la fila, y la Biblioteca compara las páginas en una fila que eliges — "Cantidad de Trigo", "Daño en el nivel 50".
+
+## 2. Comparar y ordenar
+
+En la Biblioteca, cada página de la colección se vuelve una tarjeta. Puedes:
+
+- **Ordenar por cualquier columna** — su valor aparece en la tarjeta, y las páginas sin valor van al final
+- **Comparar en tabla** — el botón junto a las tarjetas muestra toda la colección como una hoja de cálculo
+- **Hacer clic en una tarjeta** para ver, en el panel derecho, todas las tablas de esa página, quién la cita y la descripción completa
+
+El botón **"+ Nueva página"**, arriba de la colección, crea una hija que ya trae las tablas de la regla, vacías y con los títulos correctos. Solo las llenas — y borras la tabla que no aplica.
+
+## 3. La revisión
+
+Justo debajo del encabezado de la colección está la **Revisión**: cuántas páginas están completas y qué necesita atención. Haz clic para abrir la lista. Señala:
+
+| Aviso | Qué significa |
+|---|---|
+| **falta** | Una columna obligatoria está vacía |
+| **no es un número** | La columna es de número y la celda tiene otra cosa ("rápido", "10s") |
+| **referencia sin página** | Un `$[...]` en la tabla apunta a una página que no existe — normalmente un nombre escrito distinto |
+| **columna que la regla no conoce** | El encabezado de una columna no coincide con la regla — casi siempre un error de tipeo |
+
+Al hacer clic en el nombre de una página de la lista, se abre en el panel derecho.
+
+### "Cambió quién está en la punta"
+
+La Biblioteca recuerda quién tenía el valor más alto y el más bajo de cada columna de número la última vez que revisaste. Si cambió — el Trigo era la semilla más lenta y ahora es el Nabo —, te avisa, y cuenta cuántas páginas citan a la antigua punta.
+
+Esas son las primeras que hay que releer: ahí suele estar una frase como "la semilla más lenta de la granja", que puede haber dejado de ser verdad. Cuando termines de revisar, haz clic en **"Ya lo revisé"**.
+
+<Callout type="warning" title="El aviso es de este dispositivo">
+  La Biblioteca recuerda la punta en el navegador que estás usando. En otra
+  computadora, o después de borrar los datos del navegador, vuelve a contar
+  desde ese momento.
+</Callout>
+
+## 4. Con Claude
+
+Si usas Claude conectado a tu GDD, lee la regla de la página madre antes de escribir y usa los mismos títulos y columnas. Es una forma rápida de llenar una colección grande: pide las tablas y revisa el resultado en la Biblioteca.

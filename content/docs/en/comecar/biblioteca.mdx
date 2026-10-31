@@ -1,0 +1,81 @@
+---
+title: "Library and balance tables"
+description: "Where your game's numbers live, how the Library compares pages and what the check points out."
+emoji: "📚"
+order: 4
+---
+
+# Library and balance tables
+
+Documentation reads the **text** of your pages. The Library reads the **numbers** on those same pages — price, time, damage, drop chance — and lines them up so you can compare.
+
+It keeps nothing on the side. Every number stays in a table inside the page where you wrote it. If one day you don't want the Library anymore, the tables stay where they are: in the text, in document mode, in the PDF, in what Claude reads.
+
+<Callout type="tip" title="The golden rule">
+  The text holds the **relation**, the table holds the **value**. Write "the
+  fastest-growing seed" in the prose and "60 s" in the table. When you rebalance,
+  only the table changes — the sentence stays true (and if it stops being true,
+  the Library tells you; more on that below).
+</Callout>
+
+## 1. A collection is a parent page with a rule
+
+Think of a **Seeds** page with one child per seed: Wheat, Turnip, Corn… That's what a collection looks like.
+
+For it to show up in the Library, the parent page needs a **table rule**: the list of tables each child carries, with their columns.
+
+1. Open the parent page (the one with the children)
+2. In the header, click **"+ table rule"**
+3. If the children already have tables, the app **builds the rule from them** — you just review it
+4. For each column, pick the type (**Number**, **Text**, **Yes/no** or **Page**), the unit if there is one (`s`, `%`) and whether it's **required**
+5. Save — the collection appears in the Library
+
+<Callout type="info" title="Several tables per page">
+  A page can hold as many tables as make sense, each with a heading
+  (`## Economy`, `## Growth`, `## Drop`). A table that doesn't apply to a page,
+  you just leave out — no need to fill it with dashes. The Library reads the
+  absence as "doesn't apply".
+</Callout>
+
+### Multi-row tables
+
+Some tables have one row per entry: the ingredients of a recipe, the levels of a progression. Mark the table as **multi-row** in the rule. The first column names the row, and the Library compares pages on a row you pick — "Wheat quantity", "Damage at level 50".
+
+## 2. Compare and sort
+
+In the Library, each page of the collection becomes a card. You can:
+
+- **Sort by any column** — its value shows on the card, and pages without a value go to the end
+- **Compare in a table** — the button next to the cards shows the whole collection as a spreadsheet
+- **Click a card** to see, in the right panel, every table on that page, who cites it and the full description
+
+The **"+ New page"** button at the top of the collection creates a child that already has the rule's tables, empty and with the right headings. You just fill them in — and delete the table that doesn't apply.
+
+## 3. The check
+
+Right below the top of the collection sits the **Check**: how many pages are complete and what needs attention. Click it to open the list. It points out:
+
+| Warning | What it means |
+|---|---|
+| **missing** | A required column is empty |
+| **not a number** | The column is a number column and the cell holds something else ("fast", "10s") |
+| **reference with no page** | A `$[...]` in the table points to a page that doesn't exist — usually a name typed differently |
+| **column the rule doesn't know** | A column heading doesn't match the rule — almost always a typo |
+
+Clicking a page name in the list opens it in the right panel.
+
+### "Who's at the top changed"
+
+The Library remembers who had the highest and the lowest value in each number column the last time you checked. If that changed — Wheat was the slowest seed and now it's Turnip —, it tells you, and counts how many pages cite the old record holder.
+
+Those are the first to reread: that's where a sentence like "the slowest seed on the farm" usually lives, and it may no longer be true. Once you've checked, click **"Checked"**.
+
+<Callout type="warning" title="This warning is per device">
+  The Library remembers the top values in the browser you're using. On another
+  computer, or after clearing your browser data, it starts counting again from
+  that moment.
+</Callout>
+
+## 4. With Claude
+
+If you use Claude connected to your GDD, it reads the parent page's rule before writing and uses the same headings and columns. It's a quick way to fill a large collection: ask for the tables and check the result in the Library.

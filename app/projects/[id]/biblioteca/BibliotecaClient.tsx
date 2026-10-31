@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AreaHeader } from "@/components/project/AreaHeader";
 import { SectionThumb } from "@/components/common/SectionThumb";
 import { IconLibrary } from "@/components/project/ProjectSidebar";
 import { useShellProject } from "@/components/project/useShellProject";
 import { useI18n } from "@/lib/i18n/provider";
+import { auditPage, refIndex, ruleScaffoldMarkdown, type PageAudit } from "@/lib/library/audit";
 import { libraryCollections, type LibraryCollection } from "@/lib/library/collections";
 import { backlinkIndex, groupRelations, proseExcerpt, type Backlink } from "@/lib/library/relations";
 import { PAGE_STATUS_META } from "@/lib/pageStatus/types";
@@ -23,11 +25,14 @@ import {
   type RuleColumnRef,
 } from "@/lib/tableRule/read";
 import { toSlug } from "@/lib/utils/slug";
+import { useAuthStore } from "@/store/authStore";
+import { useProjectStore } from "@/store/projectStore";
 import type { Section } from "@/store/slices/types";
+import { ConformityPanel } from "./ConformityPanel";
 
 type SortKey = number | "title";
-/** Uma página da coleção: os valores nas colunas comparáveis e se alguma tabela de várias linhas tem falta. */
-type Row = { item: Section; cells: CellValue[]; multiIssue: boolean };
+/** Uma página da coleção: os valores nas colunas comparáveis e o que a conferência achou nela. */
+type Row = { item: Section; cells: CellValue[]; audit: PageAudit<Section> };
 
 /**
  * A Biblioteca: uma lente de balanceamento sobre as páginas que já existem.
@@ -63,7 +68,13 @@ export default function BibliotecaClient({ projectId, collection }: { projectId:
       ) : (
         <>
           <CollectionTiles projectSlug={projectId} collections={collections} currentId={current.section.id} />
-          <CollectionView key={current.section.id} projectSlug={projectId} parent={current.section} sections={sections} />
+          <CollectionView
+            key={current.section.id}
+            projectSlug={projectId}
+            projectId={project.id}
+            parent={current.section}
+            sections={sections}
+          />
         </>
       )}
     </div>
@@ -125,7 +136,17 @@ function CollectionTiles({
 
 // ── A coleção aberta ─────────────────────────────────────────────────
 
-function CollectionView({ projectSlug, parent, sections }: { projectSlug: string; parent: Section; sections: Section[] }) {
+function CollectionView({
+  projectSlug,
+  projectId,
+  parent,
+  sections,
+}: {
+  projectSlug: string;
+  projectId: string;
+  parent: Section;
+  sections: Section[];
+}) {
   const { t } = useI18n();
   // A regra existe: só entra na lista quem tem uma (libraryCollections).
   const rule = useMemo(() => parseTableRule(parent.tableRule)!, [parent.tableRule]);
@@ -152,9 +173,11 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
     ],
     [rule, multiTables, keyByTable, rowKeys],
   );
+  const refs = useMemo(() => refIndex(sections), [sections]);
+  const audits = useMemo(() => items.map((item) => auditPage(rule, item, refs)), [items, rule, refs]);
   const rows = useMemo<Row[]>(
-    () => items.map((item) => ({ item, cells: readRow(rule, item, columns), multiIssue: hasMultiIssue(rule, multiTables, item) })),
-    [items, rule, columns, multiTables],
+    () => items.map((item, i) => ({ item, cells: readRow(rule, item, columns), audit: audits[i] })),
+    [items, rule, columns, audits],
   );
   const setKey = (ti: number, key: string) => setKeyByTable((k) => ({ ...k, [ti]: key }));
   const backlinks = useMemo(() => backlinkIndex(sections), [sections]);
@@ -181,9 +204,6 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
 
   const selected = visible.find((r) => r.item.id === selectedId) ?? visible[0] ?? null;
 
-  const problems = (row: Row) =>
-    row.multiIssue || row.cells.some((c, i) => columns[i].rowKey === undefined && (isMissing(columns[i], c) || isNotNumber(columns[i], c)));
-  const incomplete = rows.filter(problems).length;
   const sortedRef = typeof sortKey === "number" ? columns[sortKey] : null;
 
   const sortBy = (key: SortKey) => {
@@ -195,9 +215,31 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
   };
 
   const pageHref = (title: string) => `/projects/${projectSlug}/sections/${toSlug(title)}`;
+  // Vindo da conferência, a página tem que aparecer mesmo se a busca a escondia.
+  const focusPage = (id: string) => {
+    setQuery("");
+    setSelectedId(id);
+  };
 
   return (
     <>
+      <CollectionHero
+        projectId={projectId}
+        parent={parent}
+        rule={rule}
+        sections={sections}
+        itemCount={items.length}
+        pageHref={pageHref}
+      />
+      <ConformityPanel
+        collectionId={parent.id}
+        rule={rule}
+        items={items}
+        audits={audits}
+        backlinks={backlinks}
+        onSelect={focusPage}
+      />
+
       {/* Barra: busca, ordenação e modo de ver */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <label className="relative min-w-[200px] flex-1">
@@ -280,26 +322,6 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="min-w-0">
-          <header className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="text-lg font-semibold text-ink">{parent.title}</h2>
-            <span className="text-sm text-muted">
-              {t("libraryPage.summary", "{n} páginas · {tables} tabelas")
-                .replace("{n}", String(items.length))
-                .replace("{tables}", String(rule.tables.length))}
-              {" · "}
-              {incomplete === 0 ? (
-                t("libraryPage.allComplete", "todas completas")
-              ) : (
-                <span className="font-medium text-warn-ink">
-                  {t("libraryPage.incomplete", "{n} com falta").replace("{n}", String(incomplete))}
-                </span>
-              )}
-            </span>
-            <Link href={pageHref(parent.title)} className="ml-auto text-sm text-muted hover:text-ink">
-              {t("libraryPage.openParent", "Abrir a página e a regra")} →
-            </Link>
-          </header>
-
           {visible.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line-strong p-8 text-center text-sm text-muted">
               {t("libraryPage.noMatch", "Nenhuma página com esse nome nesta coleção.")}
@@ -313,7 +335,6 @@ function CollectionView({ projectSlug, parent, sections }: { projectSlug: string
                     sortedBy={typeof sortKey === "number" ? columns[sortKey] : null}
                     sortedCell={typeof sortKey === "number" ? row.cells[sortKey] : null}
                     citedBy={backlinks.get(row.item.id)?.length ?? 0}
-                    hasProblem={problems(row)}
                     selected={row.item.id === selected?.item.id}
                     onSelect={() => setSelectedId(row.item.id)}
                   />
@@ -364,15 +385,141 @@ const isMissing = (ref: RuleColumnRef, cell: CellValue) => cell.kind === "empty"
 const isNotNumber = (ref: RuleColumnRef, cell: CellValue) =>
   cell.kind === "value" && ref.column.type === "number" && cell.number === null;
 
-/** Alguma linha de alguma tabela de várias linhas com célula exigida vazia ou número que não é número. */
-function hasMultiIssue(rule: TableRule, multiTables: number[], page: Section): boolean {
-  return multiTables.some((ti) =>
-    (readMultiTable(rule, ti, page) ?? []).some((cells) =>
-      cells.some((cell, ci) => {
-        const ref = { tableIndex: ti, columnIndex: ci, table: rule.tables[ti].name, column: rule.tables[ti].columns[ci] };
-        return isMissing(ref, cell) || isNotNumber(ref, cell);
-      }),
-    ),
+// ── Topo da coleção ──────────────────────────────────────────────────
+
+/**
+ * A cara da coleção, como o topo do mock: a imagem e o texto da própria
+ * página-mãe — nada que a coleção não tenha escrito — e o botão de criar uma
+ * página nova já com as tabelas da regra.
+ */
+function CollectionHero({
+  projectId,
+  parent,
+  rule,
+  sections,
+  itemCount,
+  pageHref,
+}: {
+  projectId: string;
+  parent: Section;
+  rule: TableRule;
+  sections: Section[];
+  itemCount: number;
+  pageHref: (title: string) => string;
+}) {
+  const { t } = useI18n();
+  const excerpt = useMemo(() => proseExcerpt(parent.content ?? "", 240, sections), [parent.content, sections]);
+  return (
+    <header className="mb-4 flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
+      <div className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl bg-area-lib-soft">
+        <Thumb section={parent} className="h-20 w-20 rounded-xl" iconClassName="h-9 w-9" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-xl font-semibold text-ink">{parent.title}</h2>
+        <p className="mt-0.5 text-sm text-muted">
+          {t("libraryPage.summary", "{n} páginas · {tables} tabelas")
+            .replace("{n}", String(itemCount))
+            .replace("{tables}", String(rule.tables.length))}
+        </p>
+        {excerpt && <p className="mt-1.5 line-clamp-2 max-w-3xl text-sm leading-relaxed text-ink-2">{excerpt}</p>}
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+        <NewItemButton projectId={projectId} parent={parent} rule={rule} sections={sections} pageHref={pageHref} />
+        <Link href={pageHref(parent.title)} className="text-sm text-muted hover:text-ink">
+          {t("libraryPage.openParent", "Abrir a página e a regra")} →
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+/** "+ Nova página": pede o nome e cria a filha com uma tabela vazia por tabela da regra. */
+function NewItemButton({
+  projectId,
+  parent,
+  rule,
+  sections,
+  pageHref,
+}: {
+  projectId: string;
+  parent: Section;
+  rule: TableRule;
+  sections: Section[];
+  pageHref: (title: string) => string;
+}) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const addSubsection = useProjectStore((s) => s.addSubsection);
+  const { user, profile } = useAuthStore();
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const title = name.trim();
+  // Título repetido quebraria as refs $[...], que casam por nome.
+  const taken = !!title && sections.some((s) => s.title.trim().toLowerCase() === title.toLowerCase());
+
+  const create = () => {
+    if (!title || taken) return;
+    try {
+      const by = user ? { userId: user.id, displayName: profile?.display_name ?? user.email ?? null } : undefined;
+      addSubsection(projectId, parent.id, title, ruleScaffoldMarkdown(rule), by);
+      // Fecha antes de navegar: a página recém-criada já faria o nome aparecer como "já existe".
+      setNaming(false);
+      setName("");
+      router.push(pageHref(title));
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("structural_limit")) setError(t("limits.sectionsPerProject"));
+      else throw e;
+    }
+  };
+
+  if (!naming) {
+    return (
+      <button
+        type="button"
+        onClick={() => setNaming(true)}
+        className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-on-accent hover:bg-accent-strong"
+      >
+        + {t("libraryPage.newItem", "Nova página")}
+      </button>
+    );
+  }
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        create();
+      }}
+      className="flex flex-col items-stretch gap-1 sm:items-end"
+    >
+      <div className="flex gap-1.5">
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setNaming(false);
+          }}
+          placeholder={t("libraryPage.newItemName", "Nome da página")}
+          aria-label={t("libraryPage.newItemName", "Nome da página")}
+          className="h-9 w-48 rounded-lg border border-line bg-surface px-3 text-sm text-ink placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40"
+        />
+        <button
+          type="submit"
+          disabled={!title || taken}
+          className="h-9 rounded-lg bg-accent px-3 text-sm font-semibold text-on-accent hover:bg-accent-strong disabled:opacity-50"
+        >
+          {t("libraryPage.newItemCreate", "Criar")}
+        </button>
+      </div>
+      {(taken || error) && (
+        <span className="text-xs text-danger">{error ?? t("libraryPage.newItemTaken", "Já existe uma página com esse nome.")}</span>
+      )}
+    </form>
   );
 }
 
@@ -436,7 +583,6 @@ function ItemCard({
   sortedBy,
   sortedCell,
   citedBy,
-  hasProblem,
   selected,
   onSelect,
 }: {
@@ -444,12 +590,12 @@ function ItemCard({
   sortedBy: RuleColumnRef | null;
   sortedCell: CellValue | null;
   citedBy: number;
-  hasProblem: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
   const { t } = useI18n();
   const { item } = row;
+  const { issues } = row.audit;
   const excerpt = useMemo(() => proseExcerpt(item.content ?? "", 110), [item.content]);
   return (
     <button
@@ -462,9 +608,14 @@ function ItemCard({
     >
       <div className="relative mb-2 grid h-24 place-items-center rounded-xl bg-surface-2">
         <Thumb section={item} className="h-20 w-20 rounded-lg" iconClassName="h-8 w-8" />
-        {hasProblem && (
-          <span className="absolute right-2 top-2 rounded-md bg-warn-soft px-1.5 py-0.5 text-[10px] font-semibold text-warn-ink">
-            {t("libraryPage.missing", "falta")}
+        {/* Falta é amarelo; escrito torto (não é número, ref quebrada, coluna fora da regra) é vermelho */}
+        {issues.length > 0 && (
+          <span
+            className={`absolute right-2 top-2 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+              issues.every((i) => i.kind === "missing") ? "bg-warn-soft text-warn-ink" : "bg-danger-soft text-danger"
+            }`}
+          >
+            {issues.every((i) => i.kind === "missing") ? t("libraryPage.missing", "falta") : t("libraryPage.check", "conferir")}
           </span>
         )}
       </div>

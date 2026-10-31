@@ -1,0 +1,81 @@
+---
+title: "Biblioteca e tabelas de balanceamento"
+description: "Onde moram os números do jogo, como a Biblioteca compara as páginas e o que a conferência aponta."
+emoji: "📚"
+order: 4
+---
+
+# Biblioteca e tabelas de balanceamento
+
+A Documentação lê o **texto** das suas páginas. A Biblioteca lê os **números** das mesmas páginas — preço, tempo, dano, chance de drop — e põe tudo lado a lado pra você comparar.
+
+Ela não guarda nada à parte. Cada número continua numa tabela dentro da página onde você escreveu. Se um dia você não quiser mais a Biblioteca, as tabelas ficam onde estão: no texto, no modo documento, no PDF, no que o Claude lê.
+
+<Callout type="tip" title="A regra de ouro">
+  O texto guarda a **relação**, a tabela guarda o **valor**. Escreva "a semente
+  que cresce mais rápido" na prosa e o "60 s" na tabela. Quando você rebalancear,
+  só a tabela muda — a frase continua verdadeira (e, se deixar de ser, a
+  Biblioteca avisa; veja mais abaixo).
+</Callout>
+
+## 1. Uma coleção é uma página-mãe com regra
+
+Pense numa página **Sementes** com uma filha por semente: Trigo, Nabo, Milho… Essa é a forma de uma coleção.
+
+Pra ela aparecer na Biblioteca, a página-mãe precisa de uma **regra de tabelas**: a lista das tabelas que cada filha carrega, com as colunas de cada uma.
+
+1. Abra a página-mãe (a que tem as filhas)
+2. No cabeçalho, clique em **"+ regra de tabelas"**
+3. Se as filhas já têm tabelas, o app **monta a regra sozinho** a partir delas — é só revisar
+4. Pra cada coluna, escolha o tipo (**Número**, **Texto**, **Sim/não** ou **Página**), a unidade se tiver (`s`, `%`) e se ela é **exigida**
+5. Salve — a coleção aparece na Biblioteca
+
+<Callout type="info" title="Várias tabelas por página">
+  Uma página pode ter quantas tabelas fizer sentido, cada uma com um título
+  (`## Economia`, `## Cultivo`, `## Drop`). Tabela que não se aplica a uma
+  página, você simplesmente não põe — não precisa preencher com traços. A
+  Biblioteca entende a ausência como "não se aplica".
+</Callout>
+
+### Tabela de várias linhas
+
+Algumas tabelas têm uma linha por entrada: os ingredientes de uma receita, os níveis de uma progressão. Marque a tabela como **várias linhas** na regra. A primeira coluna dá nome à linha, e a Biblioteca compara as páginas numa linha escolhida — "Quantidade de Trigo", "Dano no nível 50".
+
+## 2. Comparar e ordenar
+
+Na Biblioteca, cada página da coleção vira um card. Dá pra:
+
+- **Ordenar por qualquer coluna** — o valor dela aparece no card, e as páginas sem valor vão pro fim
+- **Comparar em tabela** — o botão ao lado dos cards mostra a coleção inteira como uma planilha
+- **Clicar num card** pra ver, no painel da direita, todas as tabelas daquela página, quem cita ela e a descrição completa
+
+O botão **"+ Nova página"**, no topo da coleção, cria uma filha já com as tabelas da regra, vazias e com os títulos certos. Você só preenche — e apaga a tabela que não se aplica.
+
+## 3. A conferência
+
+Logo abaixo do topo da coleção fica a **Conferência**: quantas páginas estão completas e o que precisa de atenção. Clique nela pra abrir a lista. Ela aponta:
+
+| Aviso | O que quer dizer |
+|---|---|
+| **falta** | Uma coluna exigida está vazia |
+| **não é número** | A coluna é de número e a célula tem outra coisa ("rápido", "10s") |
+| **referência que não acha página** | Um `$[...]` na tabela aponta pra uma página que não existe — geralmente um nome digitado diferente |
+| **coluna que a regra não conhece** | O cabeçalho de uma coluna não bate com a regra — quase sempre um erro de digitação |
+
+Clicar no nome de uma página na lista abre ela no painel da direita.
+
+### "Quem está na ponta mudou"
+
+A Biblioteca lembra quem tinha o maior e o menor valor de cada coluna de número da última vez que você conferiu. Se mudou — o Trigo era a semente mais lenta e agora é o Nabo —, ela avisa, e conta quantas páginas citam a antiga ponta.
+
+Essas são as primeiras a reler: é ali que costuma estar uma frase como "a semente mais lenta da fazenda", que pode ter deixado de ser verdade. Depois de conferir, clique em **"Já conferi"**.
+
+<Callout type="warning" title="O aviso é deste aparelho">
+  A Biblioteca lembra a ponta no navegador em que você está. Em outro
+  computador, ou depois de limpar os dados do navegador, ela começa a contar de
+  novo a partir daquele momento.
+</Callout>
+
+## 4. Com o Claude
+
+Se você usa o Claude conectado ao GDD, ele lê a regra da página-mãe antes de escrever e usa os mesmos títulos e colunas. É um jeito rápido de encher uma coleção grande: peça as tabelas e confira o resultado na Biblioteca.

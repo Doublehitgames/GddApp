@@ -56,6 +56,7 @@ melhor. A IA que sobrou é a que ajuda a escrever — gerar o GDD inicial
 | Árvore de páginas / CRUD de seção | `store/slices/sectionCrudSlice.ts`, `app/projects/[id]/sections/` |
 | Descrição em blocos | `lib/richDoc/` (`types.ts`, `serialize.ts`, `transformRefs.ts`) |
 | Referências cruzadas `$[...]` | `utils/sectionReferences.ts`, `lib/api/v1/renameRefs.ts` |
+| Regra de tabelas e Biblioteca (balanceamento) | `lib/tableRule/`, `lib/library/`, `components/tableRule/`, `app/projects/[id]/biblioteca/` |
 | Status de maturidade da página | `lib/pageStatus/` |
 | "O que mudou" (changelog) | `lib/changelog/`, `app/projects/[id]/changelog/` |
 | Mapa mental (ReactFlow) | `app/projects/[id]/mindmap/`, `lib/mindMapConfig.ts` |
@@ -82,6 +83,28 @@ bloco; o renderizador read-only converte em link.
 
 Detalhe completo do sistema (funções, varredura de rename, backlinks) em
 [`GUIA_REFERENCIAS.md`](GUIA_REFERENCIAS.md).
+
+### Números de balanceamento — onde moram
+
+A prosa guarda a relação; **o valor mora numa tabela dentro da descrição da
+própria página**, debaixo de um `## Título`. A página-mãe de uma coleção guarda
+a `tableRule` (coluna JSONB `sections.table_rule`): quais tabelas as filhas
+carregam, com colunas `{ name, type, unit?, required? }` e `multiRow?`. A
+Biblioteca só lê — nada de dado de balanceamento fora do texto.
+
+- **Coleção da Biblioteca = página-mãe com `tableRule`.** A forma da árvore não
+  separa balanceamento de documentação; a regra, sim.
+- **Tabela ausente = "não se aplica"; célula vazia = "falta".** Não encher
+  tabela que não se aplica com traços.
+- **Unidade fica fora do nome** e volta no cabeçalho como `Nome (unidade)`;
+  `matchesColumnHeader` aceita com e sem o sufixo.
+- **No sync, ausente ≠ `null`** (`tableRuleAfterSync`): campo ausente é app
+  velho e preserva o banco; `null` explícito apaga. Mudar a regra custa crédito.
+- **Campo novo na regra exige deploy antes de gravar dado** (foi assim com
+  `multiRow`): app velho descarta o campo e o próximo sync sobrescreve a regra.
+- Antes de propor qualquer coisa nova aqui, os 3 testes que separam isto dos
+  addons: o dado sobrevive se a tela morrer? o jogo passa a depender de nós?
+  entrou palavra do jogo do usuário no código? Falhou em um, é addon voltando.
 
 ---
 
