@@ -68,6 +68,15 @@ describe("server instructions", () => {
     expect(SERVER_INSTRUCTIONS).toMatch(/not a spec sheet/i);
   });
 
+  it("welcome balance values, in a table and not in the prose", () => {
+    // The old rule only said where numbers must NOT go, and agents read it as
+    // "no numbers in the GDD": pages like Galinha came out with the relation
+    // and no value to balance against. The value has a place now — the table.
+    expect(SERVER_INSTRUCTIONS).toMatch(/Numbers belong in this GDD/);
+    expect(SERVER_INSTRUCTIONS).toMatch(/value goes in a table/i);
+    expect(SERVER_INSTRUCTIONS).not.toMatch(/leave the values out/i);
+  });
+
   it("point at the project's own aiInstructions as the higher authority", () => {
     expect(SERVER_INSTRUCTIONS).toContain("aiInstructions");
     expect(SERVER_INSTRUCTIONS).toMatch(/follow them over these defaults/i);
@@ -120,6 +129,11 @@ describe("the content field carries the hint on its own", () => {
   it.each(WRITE_TOOLS)("%s describes $[...] on its content field", (tool) => {
     const text = describeOf(registered().get(tool) ?? {}, "content");
     expect(text).toContain("$[Exact Page Title]");
+  });
+
+  it.each(WRITE_TOOLS)("%s says on its content field where balance values go", (tool) => {
+    const text = describeOf(registered().get(tool) ?? {}, "content");
+    expect(text).toMatch(/balance values are welcome/i);
   });
 
   it("explains why sending content alone is safe", () => {

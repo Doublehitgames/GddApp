@@ -252,6 +252,7 @@ export function registerTools(server: McpServer, client: GddApiClient) {
     .optional()
     .describe(
       "Markdown. Mention another page as $[Exact Page Title] — plain text here, rendered as a link. " +
+        "Balance values are welcome — in a table under a `## heading`, not inside sentences. " +
         "Used for search, and the server derives contentBlocks from it, so the two cannot disagree.",
     );
 
