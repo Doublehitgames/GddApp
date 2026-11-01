@@ -5,11 +5,13 @@ import { supabaseSafeFetch } from "@/lib/supabase/safeFetch";
 
 // Rotas que NÃO precisam de autenticação. /docs/* é totalmente público —
 // a documentação fica acessível pra visitantes anônimos avaliarem o
-// produto antes de criar conta.
+// produto antes de criar conta. /legal/* (termos, privacidade, apagar a conta,
+// exportar, garantias) também: o Google exige a política aberta, e quem ainda
+// não tem conta precisa ler antes de criar uma.
 // /.well-known/* e /oauth/authorize fazem parte do fluxo OAuth do MCP remoto:
 // discovery é anônimo por definição, e a página de consent trata sessão sozinha
 // (mostra "faça login" com retorno preservado em vez do redirect seco do proxy).
-const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/", "/docs", "/.well-known/", "/oauth/authorize"];
+const PUBLIC_ROUTES = ["/login", "/auth/callback", "/s/", "/public/", "/docs", "/legal", "/.well-known/", "/oauth/authorize"];
 const AUTH_TIMEOUT_MS = 4000;
 
 async function getUserWithTimeout(

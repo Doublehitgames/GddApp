@@ -14,6 +14,8 @@ import { PublicShareButton } from "@/components/PublicShareButton";
 import { projectPath } from "@/lib/utils/slug";
 import { limitsForProject } from "@/store/slices/limits";
 import { NewProjectDialog } from "@/components/NewProjectDialog";
+import { LegalCards } from "@/components/legal/LegalCards";
+import { LEGAL_UI, pick } from "@/lib/legal/pages";
 import { AppSidebar, type HomeFilter } from "@/components/AppSidebar";
 import { ProjectCover, ProjectGlyph } from "@/components/project/ProjectCover";
 import { IconDoc, IconLibrary, IconSystems, IconVision } from "@/components/project/ProjectSidebar";
@@ -156,7 +158,7 @@ export default function Home() {
   // Dono de cada projeto compartilhado: sem isso o card não diz de quem é.
   const ownersById = useProjectStore((s) => s.ownersById);
   const { user } = useAuthStore();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [dialog, setDialog] = useState<null | "blank" | "genre">(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortMode>("recent");
@@ -457,6 +459,14 @@ export default function Home() {
             <p className="mt-2 text-sm text-muted">— Alan Kay</p>
           </section>
         </aside>
+
+        <section className="xl:col-span-2" aria-labelledby="home-legal-title">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 id="home-legal-title" className="text-base font-semibold text-ink">{pick(LEGAL_UI.navLabel, locale)}</h2>
+            <p className="text-sm text-muted">{pick(LEGAL_UI.homeLead, locale)}</p>
+          </div>
+          <LegalCards />
+        </section>
       </div>
 
       </div>

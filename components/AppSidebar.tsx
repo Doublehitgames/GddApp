@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
+import { LEGAL_UI, pick } from "@/lib/legal/pages";
 import { projectPath } from "@/lib/utils/slug";
 import type { Project } from "@/store/slices/types";
 import { ProjectGlyph } from "@/components/project/ProjectCover";
@@ -21,6 +22,7 @@ const ICONS = {
   sync: svg(<path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5" />),
   key: svg(<><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l3 3M15 8l2 2" /></>),
   backup: svg(<path d="M12 3v12M7 10l5 5 5-5M5 19h14" />),
+  shield: svg(<path d="M12 3l7 3v5.5c0 4.3-2.9 8-7 9.5-4.1-1.5-7-5.2-7-9.5V6zM9 12l2 2 4-4" />),
   help: svg(<><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01" /></>),
 };
 
@@ -39,7 +41,7 @@ export function AppSidebar({
   filter: HomeFilter;
   onFilter: (f: HomeFilter) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const item = (active: boolean) =>
     `flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors ${
       active ? "bg-accent-soft font-semibold text-accent" : "text-ink hover:bg-surface-2"
@@ -118,6 +120,12 @@ export function AppSidebar({
             <Link href="/backup" className={item(false)}>
               {ICONS.backup}
               {t("home.quickActions.backup", "Backup & Restaurar")}
+            </Link>
+          </li>
+          <li>
+            <Link href="/legal" className={item(false)}>
+              {ICONS.shield}
+              {pick(LEGAL_UI.navLabel, locale)}
             </Link>
           </li>
           <li>
