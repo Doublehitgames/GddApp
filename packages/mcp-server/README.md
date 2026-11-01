@@ -1,15 +1,15 @@
 # @doublehitgames/gdd-mcp
 
-MCP server for [GDD Manager](https://gdd-app.vercel.app) — lets Claude (and other MCP-compatible AI assistants) read and write your game design documents.
+MCP server for [GDD Manager](https://gdd.ggmid.app) — lets Claude (and other MCP-compatible AI assistants) read and write your game design documents.
 
 This is the **stdio** transport, meant for local clients like **Claude Desktop** and **Claude Code**. It runs on your machine and talks to the GDD Manager REST API using a personal API key.
 
-> **Prefer zero-setup?** If you use **claude.ai** or **Claude Desktop**, you can connect via the remote server with OAuth instead — no install, no key. Add a custom connector pointing to `https://gdd-app.vercel.app/api/mcp` and authorize with your account. Use this npm package only when you specifically want the local/stdio route (e.g. Claude Code, scripts, or working without a browser login).
+> **Prefer zero-setup?** If you use **claude.ai** or **Claude Desktop**, you can connect via the remote server with OAuth instead — no install, no key. Add a custom connector pointing to `https://gdd.ggmid.app/api/mcp` and authorize with your account. Use this npm package only when you specifically want the local/stdio route (e.g. Claude Code, scripts, or working without a browser login).
 
 ## Requirements
 
 - Node.js 18+
-- A GDD Manager API key (`gdd_sk_...`) — generate one at <https://gdd-app.vercel.app/settings/api-keys>
+- A GDD Manager API key (`gdd_sk_...`) — generate one at <https://gdd.ggmid.app/settings/api-keys>
 
 ## Claude Desktop
 
@@ -45,7 +45,7 @@ claude mcp add gdd-manager -e GDD_API_KEY=gdd_sk_your_key_here -- npx -y @double
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `GDD_API_KEY` | yes | — | Your personal API key (`gdd_sk_...`). |
-| `GDD_API_URL` | no | `https://gdd-app.vercel.app` | Base URL of the GDD Manager API (override for self-hosting). |
+| `GDD_API_URL` | no | `https://gdd.ggmid.app` | Base URL of the GDD Manager API (override for self-hosting). |
 
 ## What it exposes
 
@@ -63,8 +63,8 @@ The key carries your own access and nothing more: the assistant sees exactly wha
 
 ## Links
 
-- GDD Manager: <https://gdd-app.vercel.app>
-- Manage API keys: <https://gdd-app.vercel.app/settings/api-keys>
+- GDD Manager: <https://gdd.ggmid.app>
+- Manage API keys: <https://gdd.ggmid.app/settings/api-keys>
 
 ## License
 

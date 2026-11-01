@@ -4,7 +4,7 @@
  *
  * Configuração: defina NEXT_PUBLIC_GOOGLE_CLIENT_ID no .env.local (e no Vercel).
  * No Google Cloud: ative "Google Picker API" e crie credenciais OAuth 2.0 (Web).
- * Origens autorizadas: localhost e o domínio do app (ex.: gdd-app.vercel.app).
+ * Origens autorizadas: localhost e o domínio do app (ex.: gdd.ggmid.app).
  */
 
 const SCRIPT_API = "https://apis.google.com/js/api.js";

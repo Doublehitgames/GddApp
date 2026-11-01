@@ -8,7 +8,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-auth%20%2B%20db-3ECF8E?logo=supabase)](https://supabase.com/)
 [![CI](https://github.com/Doublehitgames/GddApp/actions/workflows/ci.yml/badge.svg)](https://github.com/Doublehitgames/GddApp/actions/workflows/ci.yml)
 
-App em produção: **[gdd-app.vercel.app](https://gdd-app.vercel.app)**
+App em produção: **[gdd.ggmid.app](https://gdd.ggmid.app)**
 
 ---
 

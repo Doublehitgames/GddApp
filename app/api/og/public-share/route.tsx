@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const rawTitle = (searchParams.get("title") || "GDD App").trim();
   const rawDescription = (searchParams.get("description") || "Game Design Document").trim();
-  const rawShareUrl = (searchParams.get("url") || "https://gdd-app.vercel.app").trim();
+  const rawShareUrl = (searchParams.get("url") || "https://gdd.ggmid.app").trim();
   const rawIconUrl = (searchParams.get("icon") || "").trim();
 
   const title = truncate(rawTitle || "GDD App", 64);

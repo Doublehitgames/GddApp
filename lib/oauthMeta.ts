@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 /** Origin público visto pelo cliente (atrás do proxy da Vercel). */
 export function requestOrigin(request: NextRequest): string {
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  const host = request.headers.get("host") ?? "gdd-app.vercel.app";
+  const host = request.headers.get("host") ?? "gdd.ggmid.app";
   return `${proto}://${host}`;
 }
 

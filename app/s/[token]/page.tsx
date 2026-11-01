@@ -5,18 +5,22 @@ import DiagramasClient from "@/app/projects/[id]/diagramas/DiagramasClient";
 import { getPublicProjectByToken } from "@/lib/supabase/publicShare";
 import { cache } from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 const getPublicProjectByTokenCached = cache(async (token: string) => getPublicProjectByToken(token));
 
-const FALLBACK_SITE_URL = "https://gdd-app.vercel.app";
+const FALLBACK_SITE_URL = "https://gdd.ggmid.app";
 
-function getSiteUrl(): string {
-  const fromEnv =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
-
-  return fromEnv || FALLBACK_SITE_URL;
+/**
+ * Endereço de quem abriu o link: a prévia (og:url, imagem) aponta para o mesmo
+ * domínio do link compartilhado — gdd.ggmid.app ou o vercel.app antigo.
+ */
+async function getSiteUrl(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return FALLBACK_SITE_URL;
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
 }
 
 function truncate(input: string, max: number): string {
@@ -41,7 +45,7 @@ export async function generateMetadata({
   const { token } = await params;
   const { v } = await searchParams;
   const project = await getPublicProjectByTokenCached(token);
-  const siteUrl = getSiteUrl();
+  const siteUrl = await getSiteUrl();
   const baseShareUrl = `${siteUrl}/s/${encodeURIComponent(token)}`;
   const cacheBuster = typeof v === "string" && v.trim() ? v.trim() : "";
   const shareUrl = cacheBuster

@@ -24,7 +24,7 @@ export class GddApiClient {
     const key = process.env.GDD_API_KEY;
     if (!key) throw new Error("GDD_API_KEY environment variable is required");
     this.apiKey = key;
-    this.baseUrl = (process.env.GDD_API_URL || "https://gdd-app.vercel.app").replace(/\/$/, "");
+    this.baseUrl = (process.env.GDD_API_URL || "https://gdd.ggmid.app").replace(/\/$/, "");
   }
 
   private async request(method: string, path: string, body?: unknown): Promise<unknown> {

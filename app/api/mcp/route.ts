@@ -74,7 +74,7 @@ export async function GET() {
     name: "gdd-manager",
     version: "0.1.0",
     protocol: "MCP Streamable HTTP",
-    docs: "https://gdd-app.vercel.app/settings/api-keys",
+    docs: "https://gdd.ggmid.app/settings/api-keys",
   });
 }
 

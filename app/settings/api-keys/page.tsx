@@ -130,13 +130,13 @@ export default function ApiKeysSettingsPage() {
 
   const keyPlaceholder = createdKey ?? "gdd_sk_...";
 
-  const MCP_URL = "https://gdd-app.vercel.app/api/mcp";
+  const MCP_URL = "https://gdd.ggmid.app/api/mcp";
 
   // Claude Code entra pelo mesmo login do conector: sem header, ele abre o
   // navegador no /mcp. A chave só é preciso onde não há navegador.
   const claudeCodeCommand = `claude mcp add --transport http gdd-manager ${MCP_URL}`;
   const localServerCommand = `claude mcp add gdd-manager -e GDD_API_KEY=${keyPlaceholder} -- npx -y @doublehitgames/gdd-mcp`;
-  const curlExample = `curl -H "Authorization: Bearer ${keyPlaceholder}" https://gdd-app.vercel.app/api/v1/projects`;
+  const curlExample = `curl -H "Authorization: Bearer ${keyPlaceholder}" https://gdd.ggmid.app/api/v1/projects`;
 
   const prompts = [tk("prompt1"), tk("prompt2"), tk("prompt3"), tk("prompt4")];
 
@@ -415,7 +415,7 @@ export default function ApiKeysSettingsPage() {
               <li>{tk("trouble2")}</li>
               <li>
                 {tk("trouble3")}{" "}
-                <code className="text-muted">curl -H &quot;Authorization: Bearer gdd_sk_...&quot; https://gdd-app.vercel.app/api/v1/me</code>
+                <code className="text-muted">curl -H &quot;Authorization: Bearer gdd_sk_...&quot; https://gdd.ggmid.app/api/v1/me</code>
               </li>
             </ul>
           </div>
