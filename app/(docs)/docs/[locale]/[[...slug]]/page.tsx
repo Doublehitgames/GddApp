@@ -1,5 +1,6 @@
 import fs from "node:fs";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getServerLocale } from "@/lib/i18n/server";
 import type { Metadata } from "next";
 import matter from "gray-matter";
 import { evaluate } from "@mdx-js/mdx";
@@ -46,7 +47,11 @@ export default async function DocPage({
 }) {
   const { locale, slug = [] } = await params;
 
-  if (!SUPPORTED_LOCALES.includes(locale as AppLocale)) notFound();
+  // /docs/comecar/primeiro-projeto: o primeiro pedaço não é idioma, é o
+  // começo do caminho. Vai para o mesmo caminho no idioma de quem lê.
+  if (!SUPPORTED_LOCALES.includes(locale as AppLocale)) {
+    redirect(`/docs/${await getServerLocale()}/${[locale, ...slug].join("/")}`);
+  }
 
   const doc = findDocBySlug(slug, locale);
   if (!doc) notFound();

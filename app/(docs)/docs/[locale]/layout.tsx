@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
 import { DocsHeader } from "@/components/docs/DocsHeader";
 import { DocsSidebar } from "@/components/docs/DocsSidebar";
 import { DocsTOC } from "@/components/docs/DocsTOC";
@@ -15,8 +14,10 @@ type Props = {
 export default async function DocsLocaleLayout({ children, params }: Props) {
   const { locale } = await params;
 
+  // Link sem idioma (/docs/comecar/...) cai aqui com "comecar" no lugar do
+  // idioma. A página redireciona para o idioma de quem lê; a casca não monta.
   if (!SUPPORTED_LOCALES.includes(locale as AppLocale)) {
-    notFound();
+    return <>{children}</>;
   }
 
   const tree = buildSidebarTree(locale);
