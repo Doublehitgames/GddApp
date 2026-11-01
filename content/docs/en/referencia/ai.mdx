@@ -106,23 +106,42 @@ Each page comes with rich prose, callouts explaining jargon, and cross-reference
 
 In any richDoc, the **"Improve with AI"** button sends the current content plus a refinement request (more concise, more technical, more visual, etc.) and returns a revised version. You compare side by side and accept or discard.
 
-## Connecting to other AI assistants
+## Connecting Claude to your GDD
 
-GDD Manager can be **connected to other AI assistants** that you (or your programming team) already use — Claude Code, Cursor, and similar tools. When connected, those assistants can:
+GDD Manager can be **connected to Claude** — in claude.ai, Claude Desktop or Claude Code. Once connected, it can:
 
 - List and read the content of your pages
 - Create new pages and reorganize the tree
-- Update specific values
-- Generate the export JSON on demand
+- Rewrite or complete descriptions, with `$[...]` references and tables in the right place
+- Search by topic across all your projects
 - Build a page's flowchart from a description of the flow
 
-A common scenario: your game's programmer opens their assistant, asks it to read the balancing table you built here, and generates the code that consumes those values in the engine. You don't even need to export manually.
+A common scenario: your game's programmer opens Claude, asks it to read the page where you described the core loop, and implements from there. You don't even need to send the document.
 
-<Callout type="info" title="Integration still evolving">
-  This connection is being expanded feature by feature. When your team uses it
-  for the first time, it's worth checking with your programmers what's
-  already available.
+### In claude.ai or Claude Desktop
+
+No key and nothing to install — you sign in with your own GDD Manager account.
+
+1. In GDD Manager, open your account menu → **Connect to Claude** and copy the **connector URL**
+2. In claude.ai (or Claude Desktop), go to **Settings → Connectors → Add custom connector**
+3. Give it a name (e.g. GDD Manager), paste the URL and click **Connect**
+4. A GDD Manager page opens: sign in with your account if it asks, then click **Authorize**
+
+Done. In a new chat, try: "list my GDD projects".
+
+### In Claude Code
+
+Same path, from the terminal, also with no key. The **Connect to Claude** page shows the command to copy; after running it, type `/mcp` inside Claude Code, pick **gdd-manager** and **Authenticate** — the browser opens GDD Manager so you can sign in and authorize.
+
+<Callout type="tip" title="What about API keys?">
+  You don't need them for any of this. They only exist for places with no
+  browser to sign in: the local server installed from npm, scripts and
+  integrations. They're at the bottom of the same page, under **API keys**.
 </Callout>
+
+### Disconnecting
+
+On the same page, **Connected apps** lists everything you've authorized. **Disconnect** cuts access right away — to come back, just connect and authorize again.
 
 ## Privacy
 

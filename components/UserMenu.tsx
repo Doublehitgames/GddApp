@@ -104,8 +104,8 @@ export default function UserMenu() {
                   onClick={() => setOpen(false)}
                   className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface rounded-lg transition-colors flex items-center gap-2"
                 >
-                  <span>🔑</span>
-                  <span>{tr("Chaves de API", "API Keys", "Claves de API")}</span>
+                  <span>🔌</span>
+                  <span>{tr("Conectar ao Claude", "Connect to Claude", "Conectar con Claude")}</span>
                 </Link>
                 <button
                   type="button"

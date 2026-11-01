@@ -107,23 +107,42 @@ Cada página vem com prosa rica, callouts explicando jargão, e referências cru
 
 Na descrição de qualquer página, o botão **"Melhorar com IA"** envia o conteúdo atual + um pedido de refinamento (mais conciso, mais técnico, mais visual, etc.) e devolve uma versão revisada. Você compara lado a lado e aceita ou descarta.
 
-## Conexão com outros assistentes de IA
+## Conectar o Claude ao seu GDD
 
-O GDD Manager pode ser **conectado a outros assistentes de IA** que você (ou seu time de programação) já usem — Claude Code, Cursor, e similares. Quando conectado, esses assistentes conseguem:
+O GDD Manager pode ser **conectado ao Claude** — no claude.ai, no Claude Desktop ou no Claude Code. Conectado, ele consegue:
 
 - Listar e ler o conteúdo das suas páginas
 - Criar páginas novas e reorganizar a árvore
-- Reescrever ou completar descrições
+- Reescrever ou completar descrições, com as referências `$[...]` e as tabelas no lugar certo
 - Buscar por assunto em todos os seus projetos
 - Montar o fluxograma de uma página a partir de uma descrição do fluxo
 
-Cenário comum: o programador do seu jogo abre o assistente dele, pede pra ler a página onde você descreveu o core loop, e já implementa a partir dali. Você nem precisa mandar o documento.
+Cenário comum: o programador do seu jogo abre o Claude, pede pra ler a página onde você descreveu o core loop, e já implementa a partir dali. Você nem precisa mandar o documento.
 
-<Callout type="info" title="Integração ainda evoluindo">
-  Essa conexão está sendo expandida feature por feature. Quando o seu time
-  for usar pela primeira vez, vale conferir com a programação o que já está
-  disponível.
+### No claude.ai ou no Claude Desktop
+
+Não precisa de chave nem de instalar nada — você entra com a sua própria conta do GDD Manager.
+
+1. No GDD Manager, abra o menu da sua conta → **Conectar ao Claude** e copie a **URL do conector**
+2. No claude.ai (ou no Claude Desktop), vá em **Settings → Connectors → Add custom connector**
+3. Dê um nome (ex.: GDD Manager), cole a URL e clique em **Connect**
+4. Abre uma página do GDD Manager: entre com a sua conta, se ela pedir, e clique em **Autorizar**
+
+Pronto. Num chat novo, experimente: "lista meus projetos do GDD".
+
+### No Claude Code
+
+O mesmo caminho, pelo terminal, também sem chave. A tela **Conectar ao Claude** mostra o comando pra copiar; depois de rodar, digite `/mcp` dentro do Claude Code, escolha **gdd-manager** e **Authenticate** — o navegador abre o GDD Manager pra você entrar e autorizar.
+
+<Callout type="tip" title="E as chaves de API?">
+  Você não precisa delas pra nada disso. Elas existem só pra quando não há
+  navegador pra fazer o login: o servidor local instalado pelo npm, scripts e
+  integrações. Ficam no fim da mesma tela, em **Chaves de API**.
 </Callout>
+
+### Desconectar
+
+Na mesma tela, **Aplicativos conectados** lista tudo que você autorizou. **Desconectar** corta o acesso na hora — pra voltar, é só conectar e autorizar de novo.
 
 ## Privacidade
 
