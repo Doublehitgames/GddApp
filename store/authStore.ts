@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
-import { getPublicSiteUrl } from "@/lib/supabase/env";
 import type { User, Session } from "@supabase/supabase-js";
 
 const AUTH_INIT_TIMEOUT_MS = 4000;
@@ -141,9 +140,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signInWithGoogle: async (nextPath?: string) => {
     const supabase = createClient();
-    const siteUrl = getPublicSiteUrl();
-    const shouldUseConfiguredSiteUrl = Boolean(siteUrl && !siteUrl.includes("localhost"));
-    const baseUrl = shouldUseConfiguredSiteUrl ? siteUrl! : window.location.origin;
+    // Volta para o domínio onde a pessoa está: o localStorage é por origem, então
+    // trocar de domínio no login esconde os projetos que só existem localmente.
+    const baseUrl = window.location.origin;
     const nextQuery = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
 
     const { error } = await supabase.auth.signInWithOAuth({

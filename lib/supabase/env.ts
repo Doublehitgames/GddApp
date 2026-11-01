@@ -25,9 +25,3 @@ export function getSupabasePublishableKey(): string {
 
   return key;
 }
-
-export function getPublicSiteUrl(): string | null {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!siteUrl) return null;
-  return siteUrl.replace(/\/$/, "");
-}
