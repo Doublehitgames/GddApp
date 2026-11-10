@@ -11,6 +11,7 @@ import { PillarList } from "@/components/vision/PillarList";
 import { IconHome } from "@/components/project/ProjectSidebar";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { useI18n } from "@/lib/i18n/provider";
+import { genreLabel } from "@/lib/onboarding/starterQuestions";
 import { DOMAIN_I18N_KEYS, isValidDomainId, type GameDesignDomainId } from "@/lib/gameDesignDomains";
 import { PAGE_STATUS_META, type PageStatus } from "@/lib/pageStatus/types";
 import { toPreviewText } from "@/lib/richDoc/previewText";
@@ -426,7 +427,7 @@ function BookArt({ className }: { className?: string }) {
 
 /** O trilho da Documentação: o jogo em resumo, quanto do GDD já tem texto e por onde começar. */
 function DocsRail({ project, slug, written }: { project: Project; slug: string; written: number }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const sections = project.sections ?? [];
   const total = sections.length;
   const pct = total ? Math.round((written / total) * 100) : 0;
@@ -442,7 +443,7 @@ function DocsRail({ project, slug, written }: { project: Project; slug: string; 
           <ProjectGlyph project={project} className="h-14 w-14 shrink-0 rounded-xl" />
           <div className="min-w-0">
             <strong className="block truncate text-base text-ink">{project.title}</strong>
-            {v.genre && <span className="block text-xs text-muted">{v.genre}</span>}
+            {v.genre && <span className="block text-xs text-muted">{genreLabel(v.genre, locale)}</span>}
           </div>
         </div>
         {v.logline && <p className="mt-3 text-sm text-muted">{v.logline}</p>}

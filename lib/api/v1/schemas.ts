@@ -12,6 +12,7 @@ import {
   MAX_FLOWCHART_NODES,
 } from "@/lib/flowchart/flowchart";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
+import { starterGenreOf } from "@/lib/onboarding/starterQuestions";
 import { IMAGE_LIBRARY_LIMIT } from "@/lib/googleDriveFolder";
 
 /**
@@ -125,13 +126,40 @@ export const createProjectSchema = z.object({
   description: z.string().max(5000).optional().default(""),
 });
 
+/**
+ * A Ficha técnica (mindmap_settings.documentView.spotlight). Um PATCH mescla
+ * chave por chave, como a Visão; cada lista é trocada inteira. O servidor
+ * grava só dentro da ficha: mapa mental, tema e compartilhamento ficam como
+ * estavam. Os tetos são os de normalizeProjectDocumentSpotlight.
+ */
+export const projectSheetSchema = z.object({
+  features: z.array(z.string().max(160)).max(20).optional(),
+  technicalDetails: z.array(z.string().max(160)).max(30).optional(),
+  storeLinks: z
+    .array(z.object({ label: z.string().min(1).max(160), url: z.string().url().max(1024) }))
+    .max(12)
+    .optional(),
+  titleIconUrl: z.string().url().max(1024).nullable().optional(),
+});
+
+/**
+ * Gênero: um dos ids de STARTER_GENRES é gravado como id. O rótulo em
+ * qualquer idioma ("RPG de ação") também é aceito e vira o id; é o id que muda
+ * as perguntas dos Primeiros passos. Outro texto passa como veio, e a tela o
+ * mostra como opção avulsa.
+ */
+const genreSchema = z
+  .string()
+  .max(2000)
+  .transform((g) => starterGenreOf(g) ?? g.trim());
+
 /** A "Visão" do jogo. Toda chave é opcional: um PATCH mescla no que já existe. */
 export const projectVisionSchema = z.object({
   logline: z.string().max(2000).optional(),
   playerVerb: z.string().max(2000).optional(),
   feeling: z.string().max(2000).optional(),
   pillars: z.array(z.string().max(2000)).max(8).optional(),
-  genre: z.string().max(2000).optional(),
+  genre: genreSchema.optional(),
   starter: z
     .object({
       answered: z.array(z.string().max(200)).max(100),
@@ -149,6 +177,7 @@ export const updateProjectSchema = z.object({
   mindmapSettings: z.record(z.string(), z.unknown()).optional(),
   aiInstructions: z.string().max(20000).nullable().optional(),
   vision: projectVisionSchema.nullable().optional(),
+  sheet: projectSheetSchema.nullable().optional(),
 });
 
 // ── Sections ──────────────────────────────────────────────────────────

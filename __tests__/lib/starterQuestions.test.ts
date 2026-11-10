@@ -71,3 +71,35 @@ describe("starter questions", () => {
     });
   });
 });
+
+/**
+ * The app saved the genre as its translated label ("RPG de ação") while the
+ * questions looked it up by id ("action-rpg"), so picking a genre never changed
+ * the questions. Now the id is stored, and both forms are recognised.
+ */
+describe("genre", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { starterGenreOf, genreLabel } = require("@/lib/onboarding/starterQuestions") as typeof import("@/lib/onboarding/starterQuestions");
+
+  it("is recognised by id or by its label in any language", () => {
+    expect(starterGenreOf("action-rpg")).toBe("action-rpg");
+    expect(starterGenreOf("RPG de ação")).toBe("action-rpg");
+    expect(starterGenreOf(" puzzle ")).toBe("puzzle");
+    expect(starterGenreOf("Simulación")).toBe("simulation");
+    expect(starterGenreOf("Fazendinha")).toBeUndefined();
+    expect(starterGenreOf(undefined)).toBeUndefined();
+  });
+
+  it("changes the questions whether it was saved as id or as label", () => {
+    const ids = (genre: string) => starterQuestionsFor("docs", genre).map((q) => q.id);
+    expect(ids("Puzzle")).toEqual(ids("puzzle"));
+    expect(ids("puzzle")).not.toEqual(ids("other"));
+  });
+
+  it("shows as the label of the screen's language, or as the text it was given", () => {
+    expect(genreLabel("simulation", "pt-BR")).toBe("Simulação");
+    expect(genreLabel("RPG de ação", "en")).toBe("Action RPG");
+    expect(genreLabel("Fazendinha", "pt-BR")).toBe("Fazendinha");
+    expect(genreLabel(undefined, "pt-BR")).toBe("");
+  });
+});

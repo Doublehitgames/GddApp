@@ -15,7 +15,7 @@
  * servers are independent copies — keep both in sync.
  */
 
-import { openStarterQuestions, type StarterState } from "./starterQuestions.js";
+import { STARTER_GENRE_IDS, openStarterQuestions, starterGenreOf, type StarterState } from "./starterQuestions.js";
 
 /** A plain-text tool result, for reference material that is not data. */
 export function text(content: string) {
@@ -180,6 +180,7 @@ export function projectIndex(project: unknown): Rec {
     // still open on a young project — gone once answered, skipped, or the
     // project has grown past them.
     ...(p.vision ? { vision: visionView(p.vision) } : {}),
+    ...sheetView(p),
     ...starterView(p, sections),
     // Just the count — the library itself lives in list_project_images.
     ...(p.imageCount ? { imageCount: p.imageCount } : {}),
@@ -195,8 +196,35 @@ function visionView(vision: unknown): Rec {
   return rest;
 }
 
+/**
+ * The technical sheet ("Ficha técnica"). In the database it sits inside the
+ * mind map settings, next to layout and sharing; agents only ever see and
+ * write the sheet itself, as `sheet`.
+ */
+function sheetView(p: Rec): Rec {
+  const sheet = asRec(asRec(asRec(p.mindmapSettings).documentView).spotlight);
+  return Object.keys(sheet).length ? { sheet } : {};
+}
+
 /** Past this many pages the project is no longer starting; the questions would be noise. */
 const STARTER_MAX_SECTIONS = 15;
+
+/**
+ * The genre is not one of the questions — the app asks it first, in its own
+ * screen, because it decides which questions come next. Without it the agent
+ * never learned the field mattered, so it goes at the head of the list.
+ */
+function genreQuestion(vision: StarterState["vision"]): Rec[] {
+  if (starterGenreOf(vision?.genre)) return [];
+  return [{
+    id: "vision.genre",
+    area: "vision",
+    question: "What kind of game is it?",
+    hint: "Decides which of the remaining questions apply.",
+    answerIn: "update_project vision.genre",
+    options: STARTER_GENRE_IDS,
+  }];
+}
 
 function starterView(p: Rec, sections: unknown[]): Rec {
   const vision = asRec(p.vision) as StarterState["vision"];
@@ -206,21 +234,25 @@ function starterView(p: Rec, sections: unknown[]): Rec {
     .filter((s) => !s.parentId)
     .map((s) => String(s.title ?? ""));
   const open = openStarterQuestions({ vision, rootPageTitles }).filter((q) => q.target.kind !== "vision" || q.target.field !== "title");
-  if (!open.length) return {};
+  const genre = genreQuestion(vision);
+  if (!open.length && !genre.length) return {};
   return {
     // Said here and not in the server instructions: it only costs tokens on the
     // projects that actually have open questions.
     starterHelp:
-      "This project is just starting; these are first questions its author has not answered. If you know the game (its repository, design notes, this conversation), answer them where answerIn says — only what you actually know, in the project's language.",
-    starterQuestions: open.map((q) => ({
-      id: q.id,
-      area: q.area,
-      question: q.question.en,
-      hint: q.hint.en,
-      answerIn: q.target.kind === "vision"
-        ? `update_project vision.${q.target.field}`
-        : { createPage: q.target.title, domainTags: [q.target.domain] },
-    })),
+      "This project is just starting; these are its foundation questions, still unanswered. Everything else in the GDD grows from them, so answer them where answerIn says, from what you know — the user's request, the game's repository, design notes, this conversation — in the project's language. Leave one open only when the user asked you to, or when nothing you know answers it; never invent.",
+    starterQuestions: [
+      ...genre,
+      ...open.map((q) => ({
+        id: q.id,
+        area: q.area,
+        question: q.question.en,
+        hint: q.hint.en,
+        answerIn: q.target.kind === "vision"
+          ? `update_project vision.${q.target.field}`
+          : { createPage: q.target.title, domainTags: [q.target.domain] },
+      })),
+    ],
   };
 }
 
@@ -231,7 +263,16 @@ export function projectReceipt(project: unknown, updated: string[]): Rec {
 
 export function projectCreated(project: unknown): Rec {
   const p = asRec(project);
-  return { ok: true, id: p.id, title: p.title, createdAt: p.createdAt };
+  return {
+    ok: true,
+    id: p.id,
+    title: p.title,
+    createdAt: p.createdAt,
+    // A new GDD is where an agent most often skips the base and goes straight
+    // to pages; the receipt is the one moment it is guaranteed to be reading.
+    next:
+      "Lay the foundation before any page: update_project with vision (genre, logline, playerVerb, feeling, pillars) and sheet, from what the user told you. Then get_project lists the starter questions still open. Leave part of it empty only if the user asked you to.",
+  };
 }
 
 // ── Search ────────────────────────────────────────────────────────

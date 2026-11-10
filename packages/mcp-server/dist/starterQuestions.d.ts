@@ -39,6 +39,16 @@ export declare const STARTER_GENRES: {
     id: StarterGenre;
     label: LocalizedText;
 }[];
+export declare const STARTER_GENRE_IDS: [StarterGenre, ...StarterGenre[]];
+/**
+ * O gênero guardado em `vision.genre`, como id. O valor gravado é o id
+ * ("action-rpg"), mas projetos antigos guardaram o rótulo traduzido ("RPG de
+ * ação"): os dois são reconhecidos, sem diferença de caixa. Texto que não é
+ * gênero nenhum da lista devolve undefined.
+ */
+export declare function starterGenreOf(genre?: string | null): StarterGenre | undefined;
+/** O gênero para mostrar: o rótulo no idioma da tela, ou o texto como veio. */
+export declare function genreLabel(genre: string | null | undefined, locale: string): string;
 export declare const STARTER_QUESTIONS: StarterQuestion[];
 export declare const STARTER_AREAS: StarterArea[];
 /** As perguntas de uma área que valem para o gênero escolhido (sem gênero, as gerais). */

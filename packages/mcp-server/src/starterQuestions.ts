@@ -55,6 +55,29 @@ export const STARTER_GENRES: { id: StarterGenre; label: LocalizedText }[] = [
   { id: "other", label: { "pt-BR": "Outro", en: "Other", es: "Otro" } },
 ];
 
+export const STARTER_GENRE_IDS = STARTER_GENRES.map((g) => g.id) as [StarterGenre, ...StarterGenre[]];
+
+/**
+ * O gênero guardado em `vision.genre`, como id. O valor gravado é o id
+ * ("action-rpg"), mas projetos antigos guardaram o rótulo traduzido ("RPG de
+ * ação"): os dois são reconhecidos, sem diferença de caixa. Texto que não é
+ * gênero nenhum da lista devolve undefined.
+ */
+export function starterGenreOf(genre?: string | null): StarterGenre | undefined {
+  const g = genre?.trim().toLowerCase();
+  if (!g) return undefined;
+  return STARTER_GENRES.find(
+    (s) => s.id === g || Object.values(s.label).some((label) => label.toLowerCase() === g),
+  )?.id;
+}
+
+/** O gênero para mostrar: o rótulo no idioma da tela, ou o texto como veio. */
+export function genreLabel(genre: string | null | undefined, locale: string): string {
+  const id = starterGenreOf(genre);
+  const known = id && STARTER_GENRES.find((s) => s.id === id);
+  return known ? localized(known.label, locale) : (genre ?? "").trim();
+}
+
 const FIGHTS: StarterGenre[] = ["action-rpg", "rpg", "metroidvania", "roguelike", "platformer"];
 
 export const STARTER_QUESTIONS: StarterQuestion[] = [
@@ -236,7 +259,7 @@ export const STARTER_AREAS: StarterArea[] = ["vision", "docs", "library", "syste
 
 /** As perguntas de uma área que valem para o gênero escolhido (sem gênero, as gerais). */
 export function starterQuestionsFor(area: StarterArea, genre?: string): StarterQuestion[] {
-  const g = (genre || "other") as StarterGenre;
+  const g = starterGenreOf(genre) ?? "other";
   return STARTER_QUESTIONS.filter(
     (q) => q.area === area && (!q.onlyFor || q.onlyFor.includes(g)) && !q.notFor?.includes(g),
   );

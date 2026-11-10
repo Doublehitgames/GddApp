@@ -22,6 +22,7 @@ import { IconDoc, IconLibrary, IconSystems, IconVision } from "@/components/proj
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { toPreviewText } from "@/lib/richDoc/previewText";
 import { normalizeProjectDocumentSpotlight, spotlightTags } from "@/lib/projectSpotlight";
+import { genreLabel } from "@/lib/onboarding/starterQuestions";
 
 /** Nome curto do dono para o card: prefere o nome de exibição e, na falta dele,
  *  usa o e-mail cortado no "@" — o domínio não ajuda a identificar ninguém e
@@ -48,9 +49,9 @@ function usePagesUsage(project: Project) {
   return { used, max, left: max - used };
 }
 
-function projectSubtitle(project: Project): string {
+function projectSubtitle(project: Project, locale: string): string {
   const sheet = spotlightTags(normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight));
-  return [project.vision?.genre?.trim(), ...sheet.slice(0, 2)].filter(Boolean).join(" · ");
+  return [genreLabel(project.vision?.genre, locale), ...sheet.slice(0, 2)].filter(Boolean).join(" · ");
 }
 
 function projectLine(project: Project): string {
@@ -59,11 +60,11 @@ function projectLine(project: Project): string {
 
 function ProjectCard({ project, owner = null, shared = false }: { project: Project; owner?: ProjectOwner | null; shared?: boolean }) {
   const showSettings = !shared;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const timeAgo = useTimeAgo();
   const usage = usePagesUsage(project);
   const ownerName = ownerLabel(owner);
-  const subtitle = projectSubtitle(project);
+  const subtitle = projectSubtitle(project, locale);
   const line = projectLine(project);
   const usageTone = usage.left <= 0 ? "text-red-700 dark:text-red-300" : usage.left <= 10 ? "text-amber-700 dark:text-amber-300" : "text-ink";
 
@@ -130,7 +131,7 @@ function ProjectCard({ project, owner = null, shared = false }: { project: Proje
 }
 
 function ProjectRow({ project, owner = null }: { project: Project; owner?: ProjectOwner | null }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const timeAgo = useTimeAgo();
   const usage = usePagesUsage(project);
   const ownerName = ownerLabel(owner);
@@ -140,7 +141,7 @@ function ProjectRow({ project, owner = null }: { project: Project; owner?: Proje
         <ProjectGlyph project={project} className="h-11 w-11 shrink-0 rounded-xl" />
         <span className="min-w-0 flex-1">
           <strong className="block truncate text-sm text-ink">{project.title}</strong>
-          <span className="block truncate text-xs text-muted">{ownerName ? `${t("home.projects.ownerPrefix", "de")} ${ownerName}` : projectLine(project) || projectSubtitle(project)}</span>
+          <span className="block truncate text-xs text-muted">{ownerName ? `${t("home.projects.ownerPrefix", "de")} ${ownerName}` : projectLine(project) || projectSubtitle(project, locale)}</span>
         </span>
         <span className="hidden text-xs tabular-nums text-muted sm:block">
           {t("home.projects.pagesUsage").replace("{used}", String(usage.used)).replace("{max}", String(usage.max))}

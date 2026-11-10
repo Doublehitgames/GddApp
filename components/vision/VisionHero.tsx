@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ProjectCover } from "@/components/project/ProjectCover";
 import { useI18n } from "@/lib/i18n/provider";
 import { normalizeProjectDocumentSpotlight, spotlightTags } from "@/lib/projectSpotlight";
+import { genreLabel } from "@/lib/onboarding/starterQuestions";
 import type { Project } from "@/store/slices/types";
 
 /** A capa abre a Visão: é a primeira coisa que alguém vê do jogo. */
@@ -20,14 +21,14 @@ export function VisionHero({
   coverError?: string | null;
   onEdit: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const v = project.vision ?? {};
 
   // As tags que a pessoa deu ao jogo na ficha técnica; sem elas, o gênero.
   const tags = useMemo(() => {
     const fromSheet = spotlightTags(normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight));
-    return fromSheet.length ? fromSheet : ([v.genre?.trim()].filter(Boolean) as string[]);
-  }, [project.mindMapSettings?.documentView?.spotlight, v.genre]);
+    return fromSheet.length ? fromSheet : ([genreLabel(v.genre, locale)].filter(Boolean) as string[]);
+  }, [project.mindMapSettings?.documentView?.spotlight, v.genre, locale]);
 
   const btn = "rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#1d1a2b] transition-colors hover:bg-white disabled:opacity-60";
 

@@ -228,9 +228,14 @@ describe("project projections", () => {
     expect(projectReceipt(project, ["aiInstructions"])).toEqual({
       ok: true, id: "proj-1", title: "Granjita Alegre", updated: ["aiInstructions"], updatedAt: "2026-08-18T12:00:00Z",
     });
-    expect(projectCreated(project)).toEqual({
+    expect(projectCreated(project)).toMatchObject({
       ok: true, id: "proj-1", title: "Granjita Alegre", createdAt: "2026-01-01T00:00:00Z",
     });
+    // A new GDD: the receipt points at the foundation before any page.
+    const next = String((projectCreated(project) as { next?: string }).next);
+    expect(next).toMatch(/vision/);
+    expect(next).toMatch(/sheet/);
+    expect(next).toMatch(/genre/);
   });
 });
 

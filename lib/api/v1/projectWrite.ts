@@ -7,6 +7,7 @@
  */
 
 import { markdownToBlocks } from "@/lib/richDoc/markdownToBlocks";
+import { normalizeProjectDocumentSpotlight } from "@/lib/projectSpotlight";
 
 export type ProjectUpdate = {
   title?: string;
@@ -16,7 +17,31 @@ export type ProjectUpdate = {
   mindmapSettings?: Record<string, unknown>;
   aiInstructions?: string | null;
   vision?: Record<string, unknown> | null;
+  sheet?: Record<string, unknown> | null;
 };
+
+const asObject = (v: unknown): Record<string, unknown> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * A Ficha técnica mora em `mindmap_settings.documentView.spotlight`, ao lado
+ * do layout do mapa, do tema do documento e do link público. Só a ficha é
+ * reescrita; o resto do objeto volta como estava. `null` tira a ficha.
+ */
+function withSheet(settings: unknown, sheet: Record<string, unknown> | null): Record<string, unknown> {
+  const base = asObject(settings);
+  const documentView = { ...asObject(base.documentView) };
+  if (sheet === null) {
+    delete documentView.spotlight;
+  } else {
+    const merged: Record<string, unknown> = { ...asObject(documentView.spotlight), ...sheet };
+    if (merged.titleIconUrl === null) delete merged.titleIconUrl;
+    const spotlight = normalizeProjectDocumentSpotlight(merged);
+    if (spotlight) documentView.spotlight = spotlight;
+    else delete documentView.spotlight;
+  }
+  return { ...base, documentView };
+}
 
 /**
  * Map the API's camelCase fields onto `projects` column names.
@@ -27,7 +52,11 @@ export type ProjectUpdate = {
  */
 export function buildProjectUpdates(
   fields: ProjectUpdate,
-  ctx: { now: string; currentVision?: Record<string, unknown> | null },
+  ctx: {
+    now: string;
+    currentVision?: Record<string, unknown> | null;
+    currentMindmapSettings?: Record<string, unknown> | null;
+  },
 ): Record<string, unknown> {
   const updates: Record<string, unknown> = { updated_at: ctx.now };
 
@@ -48,6 +77,11 @@ export function buildProjectUpdates(
   if (fields.aiInstructions !== undefined) updates.ai_instructions = fields.aiInstructions;
   if (fields.vision !== undefined) {
     updates.vision = fields.vision === null ? null : { ...(ctx.currentVision || {}), ...fields.vision };
+  }
+  if (fields.sheet !== undefined) {
+    // Sobre o mindmapSettings deste mesmo PATCH, se veio; senão, sobre o atual.
+    const settings = fields.mindmapSettings !== undefined ? fields.mindmapSettings : ctx.currentMindmapSettings;
+    updates.mindmap_settings = withSheet(settings, fields.sheet);
   }
 
   return updates;

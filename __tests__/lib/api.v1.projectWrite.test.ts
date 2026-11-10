@@ -80,3 +80,49 @@ describe("buildProjectUpdates", () => {
     expect("content_blocks" in updates).toBe(false);
   });
 });
+
+/**
+ * The technical sheet lives inside mindmap_settings, beside the mind map's
+ * layout, the document theme and the public share link. Writing the sheet
+ * must not touch any of those.
+ */
+describe("buildProjectUpdates — sheet", () => {
+  const current = {
+    layout: "radial",
+    sharing: { isPublic: true, shareToken: "tok" },
+    documentView: { theme: "paper", spotlight: { features: ["Old"], technicalDetails: ["Engine: Unity"], storeLinks: [] } },
+  };
+
+  it("writes only the sheet, merging key by key", () => {
+    const updates = buildProjectUpdates({ sheet: { features: ["Co-op local"] } }, { ...CTX, currentMindmapSettings: current });
+    expect(updates.mindmap_settings).toEqual({
+      layout: "radial",
+      sharing: { isPublic: true, shareToken: "tok" },
+      documentView: {
+        theme: "paper",
+        spotlight: { features: ["Co-op local"], technicalDetails: ["Engine: Unity"], storeLinks: [], titleIconUrl: undefined },
+      },
+    });
+  });
+
+  it("null clears the sheet and keeps the rest", () => {
+    const updates = buildProjectUpdates({ sheet: null }, { ...CTX, currentMindmapSettings: current });
+    expect(updates.mindmap_settings).toEqual({ layout: "radial", sharing: current.sharing, documentView: { theme: "paper" } });
+  });
+
+  it("starts a sheet on a project that has no settings yet", () => {
+    const updates = buildProjectUpdates({ sheet: { technicalDetails: ["Tags: Casual, 2D"] } }, CTX);
+    expect(updates.mindmap_settings).toMatchObject({ documentView: { spotlight: { technicalDetails: ["Tags: Casual, 2D"] } } });
+  });
+});
+
+describe("vision.genre in the API", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { updateProjectSchema } = require("@/lib/api/v1/schemas") as typeof import("@/lib/api/v1/schemas");
+
+  it("is stored as the genre id, whether the id or a label was sent", () => {
+    expect(updateProjectSchema.parse({ vision: { genre: "simulation" } }).vision?.genre).toBe("simulation");
+    expect(updateProjectSchema.parse({ vision: { genre: "RPG de ação" } }).vision?.genre).toBe("action-rpg");
+    expect(updateProjectSchema.parse({ vision: { genre: "Fazendinha" } }).vision?.genre).toBe("Fazendinha");
+  });
+});

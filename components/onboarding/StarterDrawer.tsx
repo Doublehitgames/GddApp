@@ -7,9 +7,11 @@ import { useI18n } from "@/lib/i18n/provider";
 import {
   STARTER_AREAS,
   STARTER_GENRES,
+  genreLabel,
   isStarterAnswered,
   isStarterClosed,
   localized,
+  starterGenreOf,
   starterQuestionsFor,
   type StarterArea,
   type StarterProgress,
@@ -225,9 +227,9 @@ function DrawerBody({ project, requested, onClose }: { project: Project; request
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => chooseGenre(localized(g.label, locale))}
+                  onClick={() => chooseGenre(g.id)}
                   className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                    v.genre === localized(g.label, locale) ? "border-accent bg-accent-soft font-semibold text-accent" : "border-line text-ink hover:border-line-strong"
+                    starterGenreOf(v.genre) === g.id ? "border-accent bg-accent-soft font-semibold text-accent" : "border-line text-ink hover:border-line-strong"
                   }`}
                 >
                   {localized(g.label, locale)}
@@ -328,7 +330,7 @@ function DrawerBody({ project, requested, onClose }: { project: Project; request
             <p className="mb-1.5 text-xs text-muted">{t("starter.coverSoFar", "Sua capa até agora")}</p>
             <ProjectCover project={project} className="min-h-[130px]">
               <div className="flex flex-col gap-1.5 p-4">
-                {v.genre && <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">{v.genre}</span>}
+                {v.genre && <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300">{genreLabel(v.genre, locale)}</span>}
                 <span className="text-xl font-bold">{liveTitle}</span>
                 <span className={`text-sm ${liveLogline ? "text-white/80" : "italic text-white/50"}`}>
                   {liveLogline || t("projectHome.coverHint", "A frase que resume o jogo aparece aqui.")}

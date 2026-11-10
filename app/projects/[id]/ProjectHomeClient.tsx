@@ -20,7 +20,7 @@ import { useProjectStore } from "@/store/projectStore";
 import type { Project, ProjectVision, Section } from "@/store/slices/types";
 import { extractSectionReferences, findSection, validateReferences } from "@/utils/sectionReferences";
 import { StarterDrawer, areaLabel, areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
-import { STARTER_AREAS, type StarterArea } from "@/lib/onboarding/starterQuestions";
+import { STARTER_AREAS, genreLabel, type StarterArea } from "@/lib/onboarding/starterQuestions";
 
 const visionOf = (project: Project): ProjectVision => project.vision ?? {};
 
@@ -145,7 +145,7 @@ function pageLinks(sections: Section[]) {
 }
 
 function GameHome({ project, slug }: { project: Project; slug: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const base = `/projects/${slug}`;
   const v = visionOf(project);
   const sections = useMemo(() => project.sections ?? [], [project.sections]);
@@ -155,7 +155,7 @@ function GameHome({ project, slug }: { project: Project; slug: string }) {
 
   // Na capa, as tags que a pessoa deu ao jogo na ficha técnica; sem elas, o gênero.
   const sheetTags = spotlightTags(normalizeProjectDocumentSpotlight(project.mindMapSettings?.documentView?.spotlight));
-  const coverTags = sheetTags.length ? sheetTags : ([v.genre?.trim()].filter(Boolean) as string[]);
+  const coverTags = sheetTags.length ? sheetTags : ([genreLabel(v.genre, locale)].filter(Boolean) as string[]);
   const vision = areaProgress(project, "vision");
   const written = sections.filter(hasText).length;
   const docs = documentation(sections);

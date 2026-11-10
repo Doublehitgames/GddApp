@@ -67,6 +67,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
   const updates = buildProjectUpdates(parsed.data, {
     now: new Date().toISOString(),
     currentVision: pResult.project.vision,
+    currentMindmapSettings: pResult.project.mindmap_settings,
   });
 
   const { error } = await auth.supabase

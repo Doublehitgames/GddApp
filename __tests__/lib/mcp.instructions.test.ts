@@ -115,16 +115,19 @@ describe("server instructions", () => {
     // the headings by hand, and one typo there is the phantom table the rule
     // exists to prevent.
     //
-    // Raised from 4100 for THE PROJECT HOME. A user's agent reported it could
-    // not update the overview: the overview is assembled from vision, page
-    // categories and page icons, and nothing told the agent so. How images get
-    // into the library lives in the image tools' own descriptions instead.
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(4400);
+    // Raised from 4100 for THE FOUNDATION. A user's agent created a GDD and
+    // left the vision, genre and technical sheet empty, then reported it could
+    // not update the overview — which is assembled from them, page categories
+    // and page icons, and nothing told the agent so. How images get into the
+    // library lives in the image tools' own descriptions instead.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(4600);
   });
 
-  it("say where the project home's overview comes from", () => {
-    expect(SERVER_INSTRUCTIONS).toMatch(/THE PROJECT HOME/);
+  it("say that the vision and the sheet come first, and feed the project home", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/THE FOUNDATION/);
     expect(SERVER_INSTRUCTIONS).toContain("`vision`");
+    expect(SERVER_INSTRUCTIONS).toContain("`sheet`");
+    expect(SERVER_INSTRUCTIONS).toMatch(/empty only if the user asks/);
     expect(SERVER_INSTRUCTIONS).toContain("`domainTags`");
     expect(SERVER_INSTRUCTIONS).toContain("`thumbImageUrl`");
   });
@@ -243,6 +246,19 @@ describe("first steps in get_project", () => {
     const big = projectIndex({ id: "p1", title: "T", sections: Array.from({ length: 16 }, (_, i) => ({ id: `s${i}`, title: `P${i}`, order: i })) });
     expect(big).not.toHaveProperty("starterQuestions");
   });
+
+  it("asks for the genre first while it is missing, with the accepted values", async () => {
+    const projectIndex = await load();
+    const out = projectIndex({ id: "p1", title: "T", sections: [] }) as { starterQuestions?: { id: string; answerIn: unknown; options?: string[] }[] };
+    const first = out.starterQuestions?.[0];
+    expect(first?.id).toBe("vision.genre");
+    expect(first?.answerIn).toBe("update_project vision.genre");
+    expect(first?.options).toContain("simulation");
+
+    // A label saved by the app before genres were stored as ids still counts.
+    const labelled = projectIndex({ id: "p1", title: "T", vision: { genre: "Simulação" }, sections: [] }) as { starterQuestions?: { id: string }[] };
+    expect((labelled.starterQuestions ?? []).map((q) => q.id)).not.toContain("vision.genre");
+  });
 });
 
 describe("what update_project can set, get_project can read", () => {
@@ -251,9 +267,10 @@ describe("what update_project can set, get_project can read", () => {
     const out = projectIndex({
       id: "p1", title: "T", description: "d", coverImageUrl: "https://x.test/c.png",
       aiInstructions: "conv", vision: { logline: "l" }, sections: [],
+      mindmapSettings: { layout: "radial", documentView: { theme: "x", spotlight: { features: ["f"], technicalDetails: [], storeLinks: [] } } },
     });
-    // update_project accepts title, description, coverImageUrl, aiInstructions, vision
-    for (const field of ["title", "description", "coverImageUrl", "aiInstructions", "vision"]) {
+    // update_project accepts title, description, coverImageUrl, aiInstructions, vision, sheet
+    for (const field of ["title", "description", "coverImageUrl", "aiInstructions", "vision", "sheet"]) {
       expect(out).toHaveProperty(field);
     }
   });

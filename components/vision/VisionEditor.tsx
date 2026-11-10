@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/provider";
-import { STARTER_GENRES, localized } from "@/lib/onboarding/starterQuestions";
+import { STARTER_GENRES, localized, starterGenreOf } from "@/lib/onboarding/starterQuestions";
 import { useProjectStore } from "@/store/projectStore";
 import type { Project, ProjectVision } from "@/store/slices/types";
 import { starterHref } from "@/components/onboarding/StarterDrawer";
@@ -20,7 +20,9 @@ export function VisionEditor({ project, slug }: { project: Project; slug: string
   const updateProjectVision = useProjectStore((s) => s.updateProjectVision);
   const v: ProjectVision = project.vision ?? {};
   const save = (patch: Partial<ProjectVision>) => updateProjectVision(project.id, patch);
-  const genreOptions = STARTER_GENRES.map((g) => localized(g.label, locale));
+  // Grava o id; a tela mostra o rótulo. Rótulo antigo gravado ainda é reconhecido.
+  const genreOptions = STARTER_GENRES.map((g) => ({ id: g.id, label: localized(g.label, locale) }));
+  const genreId = starterGenreOf(v.genre);
 
   const cards: { key: TextField; label: string; hint: string; tone: string; icon: React.ReactNode }[] = [
     {
@@ -52,15 +54,15 @@ export function VisionEditor({ project, slug }: { project: Project; slug: string
         <label className="flex items-center gap-2 text-sm text-muted">
           {t("visionPage.genre", "Gênero")}
           <select
-            value={v.genre ?? ""}
+            value={genreId ?? v.genre ?? ""}
             onChange={(e) => save({ genre: e.target.value || undefined })}
             className="h-9 rounded-lg border border-line bg-canvas px-2 text-sm text-ink"
           >
             <option value="">{t("visionPage.noGenre", "Sem gênero")}</option>
-            {v.genre && !genreOptions.includes(v.genre) && <option value={v.genre}>{v.genre}</option>}
-            {genreOptions.map((label) => (
-              <option key={label} value={label}>
-                {label}
+            {v.genre && !genreId && <option value={v.genre}>{v.genre}</option>}
+            {genreOptions.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
               </option>
             ))}
           </select>

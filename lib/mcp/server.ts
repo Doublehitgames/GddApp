@@ -10,6 +10,7 @@ import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
 import { TABLE_COLUMN_TYPES } from "@/lib/tableRule/tableRule";
 import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
+import { STARTER_GENRE_IDS } from "@/lib/onboarding/starterQuestions";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   activityRows,
@@ -248,7 +249,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("create_project", "Create a new GDD project. Returns a receipt with the new project's id.",
+  server.tool("create_project", "Create a new GDD project. Returns a receipt with the new project's id and what to fill first.",
     { title: z.string().describe("Project title"), description: z.string().optional().describe("Project description"), returning },
     async ({ returning: returnMode, ...params }) => {
       try {
@@ -257,15 +258,21 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
       } catch (e) { return err(e); }
     });
 
-  server.tool("update_project", "Update project metadata: title, description, cover image, aiInstructions or vision. Returns a receipt naming the fields that were written.",
+  server.tool("update_project", "Update project metadata: title, description, cover image, aiInstructions, vision or sheet. Returns a receipt naming the fields that were written.",
     { projectId: z.string().describe("Project UUID"), title: z.string().optional(), description: z.string().optional(), coverImageUrl: z.string().optional(), aiInstructions: z.string().optional().describe("AI instructions for this project"),
       vision: z.object({
-        logline: z.string().optional(),
-        playerVerb: z.string().optional(),
-        feeling: z.string().optional(),
-        pillars: z.array(z.string()).optional(),
-        genre: z.string().optional(),
-      }).optional().describe("The game's vision. Merges into the current one key by key; pillars is replaced whole."),
+        logline: z.string().optional().describe("The game in one sentence (\"Em uma frase\")"),
+        playerVerb: z.string().optional().describe("What the player does most of the time"),
+        feeling: z.string().optional().describe("What the player takes away when they turn the game off"),
+        pillars: z.array(z.string()).optional().describe("3 or 4 design pillars: the rules that settle design arguments"),
+        genre: z.enum(STARTER_GENRE_IDS).optional().describe("Decides which first-steps questions apply"),
+      }).optional().describe("The game's vision — with sheet, the foundation the rest of the GDD grows from. Merges into the current one key by key; pillars is replaced whole."),
+      sheet: z.object({
+        features: z.array(z.string()).optional().describe("Selling points, one short line each"),
+        technicalDetails: z.array(z.string()).optional().describe("\"Label: value\" lines — e.g. \"Engine: Unity\", \"Platforms: PC, Switch\". A \"Tags: Casual, 2D\" line becomes the tags on the project's cover."),
+        storeLinks: z.array(z.object({ label: z.string(), url: z.string() })).optional(),
+        titleIconUrl: z.string().nullable().optional().describe("Icon beside the title — a URL from list_project_images or add_project_images"),
+      }).nullable().optional().describe("The technical sheet (\"Ficha técnica\"), shown beside the vision and in Document mode. Merges key by key; each list is replaced whole. null clears it."),
       returning },
     async ({ projectId, returning: returnMode, ...f }) => {
       try {
