@@ -88,6 +88,10 @@ export class GddApiClient {
     return this.request("GET", `/projects/${id}/images${qs}`);
   }
 
+  async addProjectImages(id: string, params: Record<string, unknown>) {
+    return this.request("POST", `/projects/${id}/images`, params);
+  }
+
   // ── Collaboration ─────────────────────────────────────────────────
 
   async listMembers(projectId: string) {

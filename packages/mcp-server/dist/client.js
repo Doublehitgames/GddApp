@@ -22,7 +22,7 @@ export class GddApiClient {
         if (!key)
             throw new Error("GDD_API_KEY environment variable is required");
         this.apiKey = key;
-        this.baseUrl = (process.env.GDD_API_URL || "https://gdd-app.vercel.app").replace(/\/$/, "");
+        this.baseUrl = (process.env.GDD_API_URL || "https://gdd.ggmid.app").replace(/\/$/, "");
     }
     async request(method, path, body) {
         const url = `${this.baseUrl}/api/v1${path}`;
@@ -66,6 +66,9 @@ export class GddApiClient {
     async listProjectImages(id, match) {
         const qs = match ? `?match=${encodeURIComponent(match)}` : "";
         return this.request("GET", `/projects/${id}/images${qs}`);
+    }
+    async addProjectImages(id, params) {
+        return this.request("POST", `/projects/${id}/images`, params);
     }
     // ── Collaboration ─────────────────────────────────────────────────
     async listMembers(projectId) {

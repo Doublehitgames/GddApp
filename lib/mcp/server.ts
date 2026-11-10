@@ -9,6 +9,7 @@ import { type ApiFetcher, McpApiError } from "./api";
 import { PAGE_STATUSES } from "@/lib/pageStatus/types";
 import { DECK_LAYOUTS } from "@/lib/deck/deck";
 import { TABLE_COLUMN_TYPES } from "@/lib/tableRule/tableRule";
+import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
 import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   activityRows,
@@ -206,7 +207,20 @@ const THUMB_FIELD = z
   .string()
   .nullable()
   .optional()
-  .describe("Page icon URL — get one from list_project_images. null clears it.");
+  .describe(
+    "Page icon URL — get one from list_project_images, or from add_project_images for files you just uploaded to Google Drive. " +
+      "The file must be shared as anyone-with-the-link, or teammates see an empty icon. null clears it.",
+  );
+
+/** The page's category: a closed list, because it decides where the page shows up. */
+const DOMAIN_TAGS_FIELD = z
+  .array(z.enum(GAME_DESIGN_DOMAIN_IDS))
+  .optional()
+  .describe(
+    "The page's categories. The first one decides where it appears on the project home's overview: " +
+      "characters, items, world (places and levels) and narrative have their own cards; combat, progression, crafting, economy, ui and technology fill the core mechanics card. " +
+      "Anything outside the list is refused.",
+  );
 
 function err(e: unknown) {
   if (e instanceof McpApiError) {
@@ -300,7 +314,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     async () => text(CONTENT_BLOCKS_GUIDE));
 
   server.tool("create_section", "Create a new section in a project. Write the description as markdown in `content` — the server derives the formatted blocks from it, which is the simple path and keeps the two in step, and markdown already covers headings, tables, callouts, lists and images. Build `contentBlocks` yourself for what markdown cannot say — an embed, side-by-side columns, a coloured block; see get_content_blocks_guide. Returns a receipt carrying the new section's id — read the page back with get_section if you need its full contents.",
-    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
+    { projectId: z.string(), title: z.string(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: DOMAIN_TAGS_FIELD, dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, returning: returnMode, ...p }) => {
       try {
         const created = await api.createSection(projectId, p);
@@ -309,7 +323,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     });
 
   server.tool("update_section", "Update a section's fields. Write the description as markdown in `content` and the server derives the formatted blocks from it, and markdown already covers headings, tables, callouts, lists and images; pass `contentBlocks` for what markdown cannot say — an embed, side-by-side columns, a coloured block. Returns a receipt — {ok, id, title, updated, updatedAt} — not the section. Call get_section when you actually need to read the result back.",
-    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: z.array(z.string()).optional(), dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
+    { projectId: z.string(), sectionId: z.string(), title: z.string().optional(), content: CONTENT_FIELD, contentBlocks: CONTENT_BLOCKS_FIELD, parentId: z.string().optional(), order: z.number().optional(), color: z.string().optional(), domainTags: DOMAIN_TAGS_FIELD, dataId: z.string().optional(), status: PAGE_STATUS_FIELD, deckLayout: DECK_LAYOUT_FIELD, tableRule: TABLE_RULE_FIELD, thumbImageUrl: THUMB_FIELD, flowchart: FLOWCHART_FIELD, returning },
     async ({ projectId, sectionId, returning: returnMode, ...f }) => {
       try {
         const saved = await api.updateSection(projectId, sectionId, f);
@@ -329,7 +343,7 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
         parentId: z.string().nullable().optional(),
         order: z.number().optional(),
         color: z.string().optional(),
-        domainTags: z.array(z.string()).optional(),
+        domainTags: DOMAIN_TAGS_FIELD,
         dataId: z.string().optional(),
         status: PAGE_STATUS_FIELD,
         deckLayout: DECK_LAYOUT_FIELD,
@@ -347,9 +361,21 @@ export function registerGenericTools(server: McpServer, api: ApiFetcher) {
     { projectId: z.string(), sectionId: z.string() },
     async ({ projectId, sectionId }) => { try { await api.deleteSection(projectId, sectionId); return json(deleted("section", sectionId)); } catch (e) { return err(e); } });
 
-  server.tool("list_project_images", "The project's Google Drive image library: each file's name plus the ready-to-write URL for a page icon (thumbImageUrl on create_section / update_section / batch_update_sections). File names are the handle — match them against a page's dataId or title. Files inside subfolders also carry `path`. Pass `match` to filter by name or subfolder instead of pulling the whole library; responses cap at 200 files and say `truncated` when they do.",
+  server.tool("list_project_images", "The project's Google Drive image library: each file's name plus the ready-to-write URL for a page icon (thumbImageUrl on create_section / update_section / batch_update_sections). File names are the handle — match them against a page's dataId or title. Files inside subfolders also carry `path`. Pass `match` to filter by name or subfolder instead of pulling the whole library; responses cap at 200 files and say `truncated` when they do. The library is an index, not a live view of Drive: a file added to the folder after `syncedAt` is missing until it is registered with add_project_images or the user syncs the folder in the app.",
     { projectId: z.string(), match: z.string().optional().describe("Only files whose name contains this (case-insensitive)") },
     async ({ projectId, match }) => { try { return json(await api.listProjectImages(projectId, match)); } catch (e) { return err(e); } });
+
+  server.tool("add_project_images", "Register Google Drive files in the project's image library by their file id — the way in for images you just uploaded, since the server cannot read Drive. Adds to the library and never removes; the same fileId is not added twice. Returns each added file's ready-to-write thumbImageUrl. Upload into the project's linked folder (`folderUrl` in list_project_images): the user's next sync in the app re-reads that folder and drops files that live elsewhere. Share files as anyone-with-the-link so the team can see them.",
+    {
+      projectId: z.string(),
+      files: z.array(z.object({
+        fileId: z.string().describe("Google Drive file id"),
+        name: z.string().describe("File name with extension — the handle pages are matched by"),
+        path: z.string().optional().describe("Subfolder inside the linked folder, e.g. icons/seeds"),
+      })).describe("Files to register"),
+      folderUrl: z.string().optional().describe("Link to the Drive folder the files are in. Required only when the project has no folder linked yet."),
+    },
+    async ({ projectId, ...body }) => { try { return json(await api.addProjectImages(projectId, body)); } catch (e) { return err(e); } });
 
   server.tool("list_project_members",
     "Who works on this project: the owner first, then everyone it was shared with, each with their access (owner / editor / viewer) and the entry for you flagged `isYou`. Use it when a page's history names someone, or before assuming a document is yours alone.",

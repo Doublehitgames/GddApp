@@ -9,7 +9,7 @@
  *   GDD_API_KEY  — your personal API key (gdd_sk_...)
  *
  * Optional env:
- *   GDD_API_URL  — API base URL (default: https://gdd-app.vercel.app)
+ *   GDD_API_URL  — API base URL (default: https://gdd.ggmid.app)
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -25,7 +25,7 @@ const { version } = createRequire(import.meta.url)("../package.json");
 async function main() {
     if (!process.env.GDD_API_KEY) {
         console.error("Error: GDD_API_KEY environment variable is required.");
-        console.error("Get your API key at: https://gdd-app.vercel.app/settings/api-keys");
+        console.error("Get your API key at: https://gdd.ggmid.app/settings/api-keys");
         process.exit(1);
     }
     const client = new GddApiClient();

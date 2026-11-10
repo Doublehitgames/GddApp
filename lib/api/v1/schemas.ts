@@ -11,6 +11,21 @@ import {
   MAX_FLOWCHART_EDGES,
   MAX_FLOWCHART_NODES,
 } from "@/lib/flowchart/flowchart";
+import { GAME_DESIGN_DOMAIN_IDS } from "@/lib/gameDesignDomains";
+import { IMAGE_LIBRARY_LIMIT } from "@/lib/googleDriveFolder";
+
+/**
+ * Categoria da página. A lista é fechada: é ela que decide em que card da
+ * Visão geral e da Documentação a página aparece. Antes a API aceitava texto
+ * livre, e um agente que escrevia "personagens" tinha a escrita aceita e a
+ * página caindo em "other", sem erro nenhum que dissesse o porquê.
+ * Caixa e espaço são perdoados; valor fora da lista é recusado.
+ */
+export const domainTagSchema = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toLowerCase() : v),
+  z.enum(GAME_DESIGN_DOMAIN_IDS)
+);
+const domainTagsSchema = z.array(domainTagSchema).max(20);
 
 /** Maturidade da página. Enviar null tira o estado e apaga o carimbo. */
 export const pageStatusSchema = z.enum(
@@ -150,7 +165,7 @@ export const createSectionSchema = z.object({
     .nullable()
     .optional()
     .default(null),
-  domainTags: z.array(z.string().max(50)).max(20).optional().default([]),
+  domainTags: domainTagsSchema.optional().default([]),
   dataId: z.string().max(200).nullable().optional().default(null),
   status: pageStatusSchema.nullable().optional().default(null),
   deckLayout: deckLayoutSchema.nullable().optional().default(null),
@@ -170,7 +185,7 @@ export const updateSectionSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullable()
     .optional(),
-  domainTags: z.array(z.string().max(50)).max(20).optional(),
+  domainTags: domainTagsSchema.optional(),
   dataId: z.string().max(200).nullable().optional(),
   status: pageStatusSchema.nullable().optional(),
   deckLayout: deckLayoutSchema.nullable().optional(),
@@ -178,6 +193,25 @@ export const updateSectionSchema = z.object({
   thumbImageUrl: z.string().url().nullable().optional(),
   flowchart: flowchartSchema.nullable().optional(),
 });
+// ── Images ────────────────────────────────────────────────────────────
+
+/** Um arquivo do Drive como o índice da biblioteca guarda: o id é o que vale. */
+const projectImageSchema = z.object({
+  fileId: z.string().regex(/^[a-zA-Z0-9_-]{10,200}$/, "fileId must be a Google Drive file id"),
+  name: z.string().trim().min(1).max(300),
+  path: z.string().trim().max(500).optional(),
+});
+
+/**
+ * POST /projects/:id/images: acrescenta ao índice arquivos que o chamador já
+ * conhece (que acabou de subir, por exemplo). `folderUrl` só é usado quando o
+ * projeto ainda não tem pasta ligada.
+ */
+export const addProjectImagesSchema = z.object({
+  files: z.array(projectImageSchema).min(1).max(IMAGE_LIBRARY_LIMIT),
+  folderUrl: z.string().max(500).optional(),
+});
+
 // ── Search ────────────────────────────────────────────────────────────
 
 

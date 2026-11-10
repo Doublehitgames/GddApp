@@ -114,7 +114,19 @@ describe("server instructions", () => {
     // is the canonical list of its tables; an agent that never reads it types
     // the headings by hand, and one typo there is the phantom table the rule
     // exists to prevent.
-    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(4100);
+    //
+    // Raised from 4100 for THE PROJECT HOME. A user's agent reported it could
+    // not update the overview: the overview is assembled from vision, page
+    // categories and page icons, and nothing told the agent so. How images get
+    // into the library lives in the image tools' own descriptions instead.
+    expect(SERVER_INSTRUCTIONS.length).toBeLessThan(4400);
+  });
+
+  it("say where the project home's overview comes from", () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/THE PROJECT HOME/);
+    expect(SERVER_INSTRUCTIONS).toContain("`vision`");
+    expect(SERVER_INSTRUCTIONS).toContain("`domainTags`");
+    expect(SERVER_INSTRUCTIONS).toContain("`thumbImageUrl`");
   });
 
   it("say that a page can carry a flowchart, and how to read it first", () => {

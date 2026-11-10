@@ -24,6 +24,7 @@ export declare class GddApiClient {
     updateProject(id: string, params: Record<string, unknown>): Promise<unknown>;
     deleteProject(id: string): Promise<unknown>;
     listProjectImages(id: string, match?: string): Promise<unknown>;
+    addProjectImages(id: string, params: Record<string, unknown>): Promise<unknown>;
     listMembers(projectId: string): Promise<unknown>;
     listActivity(projectId: string, opts?: {
         limit?: number;

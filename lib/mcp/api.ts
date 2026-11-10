@@ -66,6 +66,8 @@ export function createApiFetcher(apiKey: string, baseUrl: string) {
 
     listProjectImages: (projectId: string, match?: string) =>
       api("GET", `/projects/${projectId}/images${match ? `?match=${encodeURIComponent(match)}` : ""}`),
+    addProjectImages: (projectId: string, params: Record<string, unknown>) =>
+      api("POST", `/projects/${projectId}/images`, params),
 
     // Collaboration
     listMembers: (projectId: string) => api("GET", `/projects/${projectId}/members`),

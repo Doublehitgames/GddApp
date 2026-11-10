@@ -9,6 +9,6 @@
  *   GDD_API_KEY  — your personal API key (gdd_sk_...)
  *
  * Optional env:
- *   GDD_API_URL  — API base URL (default: https://gdd-app.vercel.app)
+ *   GDD_API_URL  — API base URL (default: https://gdd.ggmid.app)
  */
 export {};
