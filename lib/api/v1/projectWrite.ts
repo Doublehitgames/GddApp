@@ -56,6 +56,8 @@ export function buildProjectUpdates(
     now: string;
     currentVision?: Record<string, unknown> | null;
     currentMindmapSettings?: Record<string, unknown> | null;
+    /** Só o dono mexe no link público. Ausente conta como não-dono. */
+    isOwner?: boolean;
   },
 ): Record<string, unknown> {
   const updates: Record<string, unknown> = { updated_at: ctx.now };
@@ -82,6 +84,13 @@ export function buildProjectUpdates(
     // Sobre o mindmapSettings deste mesmo PATCH, se veio; senão, sobre o atual.
     const settings = fields.mindmapSettings !== undefined ? fields.mindmapSettings : ctx.currentMindmapSettings;
     updates.mindmap_settings = withSheet(settings, fields.sheet);
+  }
+  // `sharing` (o link público) é do dono, como em /api/projects/[id]/settings e
+  // no sync. Sem isto, um editor que mandasse mindmapSettings pela API ligava,
+  // trocava ou revogava o link de um projeto que não é dele.
+  if (updates.mindmap_settings !== undefined && !ctx.isOwner) {
+    const currentSharing = asObject(ctx.currentMindmapSettings).sharing;
+    updates.mindmap_settings = { ...asObject(updates.mindmap_settings), sharing: currentSharing ?? {} };
   }
 
   return updates;

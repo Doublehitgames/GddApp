@@ -126,3 +126,33 @@ describe("vision.genre in the API", () => {
     expect(updateProjectSchema.parse({ vision: { genre: "Fazendinha" } }).vision?.genre).toBe("Fazendinha");
   });
 });
+
+/**
+ * The public share link is the owner's. The app's settings route and the sync
+ * already kept it from editors; the API's PATCH replaced the whole object and
+ * let an editor turn the link on, swap it or revoke it.
+ */
+describe("buildProjectUpdates — sharing belongs to the owner", () => {
+  const current = { layout: "radial", sharing: { isPublic: false } };
+  const attempt = { layout: "tree", sharing: { isPublic: true, shareToken: "mine" } };
+
+  it("an editor's mindmapSettings keep the current sharing", () => {
+    const updates = buildProjectUpdates({ mindmapSettings: attempt }, { ...CTX, currentMindmapSettings: current, isOwner: false });
+    expect(updates.mindmap_settings).toEqual({ layout: "tree", sharing: { isPublic: false } });
+  });
+
+  it("an editor cannot drop sharing by leaving it out", () => {
+    const updates = buildProjectUpdates({ mindmapSettings: { layout: "tree" } }, { ...CTX, currentMindmapSettings: current, isOwner: false });
+    expect(updates.mindmap_settings).toEqual({ layout: "tree", sharing: { isPublic: false } });
+  });
+
+  it("the owner sets it", () => {
+    const updates = buildProjectUpdates({ mindmapSettings: attempt }, { ...CTX, currentMindmapSettings: current, isOwner: true });
+    expect(updates.mindmap_settings).toEqual(attempt);
+  });
+
+  it("a sheet written by an editor leaves sharing as it was", () => {
+    const updates = buildProjectUpdates({ sheet: { features: ["x"] } }, { ...CTX, currentMindmapSettings: current, isOwner: false });
+    expect((updates.mindmap_settings as { sharing?: unknown }).sharing).toEqual({ isPublic: false });
+  });
+});

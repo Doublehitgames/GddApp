@@ -68,6 +68,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     now: new Date().toISOString(),
     currentVision: pResult.project.vision,
     currentMindmapSettings: pResult.project.mindmap_settings,
+    isOwner: pResult.isOwner,
   });
 
   const { error } = await auth.supabase
