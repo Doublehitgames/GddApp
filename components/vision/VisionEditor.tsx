@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { STARTER_GENRES, localized, starterGenreOf } from "@/lib/onboarding/starterQuestions";
 import { useProjectStore } from "@/store/projectStore";
 import type { Project, ProjectVision } from "@/store/slices/types";
-import { starterHref } from "@/components/onboarding/StarterDrawer";
+import { areaProgress, starterHref } from "@/components/onboarding/StarterDrawer";
 
 type TextField = "logline" | "playerVerb" | "feeling";
 
@@ -23,6 +23,8 @@ export function VisionEditor({ project, slug }: { project: Project; slug: string
   // Grava o id; a tela mostra o rótulo. Rótulo antigo gravado ainda é reconhecido.
   const genreOptions = STARTER_GENRES.map((g) => ({ id: g.id, label: localized(g.label, locale) }));
   const genreId = starterGenreOf(v.genre);
+  // Puladas não contam como respondidas: o botão só sai do destaque quando nada ficou em aberto.
+  const progress = areaProgress(project, "vision");
 
   const cards: { key: TextField; label: string; hint: string; tone: string; icon: React.ReactNode }[] = [
     {
@@ -68,9 +70,26 @@ export function VisionEditor({ project, slug }: { project: Project; slug: string
           </select>
         </label>
         <span className="hidden text-sm text-subtle sm:inline">{t("visionPage.genreHint", "Muda as perguntas dos Primeiros passos.")}</span>
-        <Link href={starterHref(slug, "vision")} className="ml-auto inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-on-accent hover:opacity-90">
-          {t("visionPage.answerQuestions", "Responder as perguntas")}
-        </Link>
+        {progress.answered === progress.total ? (
+          <Link href={starterHref(slug, "vision")} className="ml-auto inline-flex h-9 items-center gap-2 rounded-lg border border-line px-3 text-sm text-muted hover:border-line-strong hover:text-ink">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            {t("visionPage.editAnswers", "Editar respostas")}
+          </Link>
+        ) : (
+          <Link
+            href={starterHref(slug, "vision")}
+            className={`ml-auto inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm ${
+              progress.done ? "border border-line text-ink hover:border-line-strong" : "bg-accent font-semibold text-on-accent hover:opacity-90"
+            }`}
+          >
+            {t("visionPage.answerQuestions", "Responder as perguntas")}
+            <span className={`rounded-md px-1.5 py-0.5 text-xs tabular-nums ${progress.done ? "bg-surface-2 text-muted" : "bg-white/20"}`}>
+              {progress.answered}/{progress.total}
+            </span>
+          </Link>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

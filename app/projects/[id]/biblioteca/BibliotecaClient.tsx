@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AreaHeader } from "@/components/project/AreaHeader";
@@ -41,13 +41,15 @@ type Row = { item: Section; cells: CellValue[]; audit: PageAudit<Section> };
  * e cada valor é lido da tabela que está no texto dela. Nada aqui é guardado à
  * parte — apagar esta tela deixa as tabelas onde sempre estiveram.
  */
-export default function BibliotecaClient({ projectId, collection }: { projectId: string; collection?: string }) {
+export default function BibliotecaClient({ projectId, collection, page }: { projectId: string; collection?: string; page?: string }) {
   const { t } = useI18n();
   const project = useShellProject(projectId);
   const sections = useMemo(() => project?.sections ?? [], [project?.sections]);
   const collections = useMemo(() => libraryCollections(sections), [sections]);
-  const current =
-    collections.find((c) => c.section.id === collection || toSlug(c.section.title) === collection) ?? collections[0];
+  // Sem coleção pedida (ou uma que sumiu), a tela abre em "Todos".
+  const current = collection
+    ? collections.find((c) => c.section.id === collection || toSlug(c.section.title) === collection) ?? null
+    : null;
 
   if (!project) return null;
 
@@ -63,18 +65,23 @@ export default function BibliotecaClient({ projectId, collection }: { projectId:
         )}
       />
 
-      {collections.length === 0 || !current ? (
+      {collections.length === 0 ? (
         <EmptyLibrary />
       ) : (
         <>
-          <CollectionTiles projectSlug={projectId} collections={collections} currentId={current.section.id} />
-          <CollectionView
-            key={current.section.id}
-            projectSlug={projectId}
-            projectId={project.id}
-            parent={current.section}
-            sections={sections}
-          />
+          <CollectionTiles projectSlug={projectId} collections={collections} currentId={current?.section.id ?? null} />
+          {current ? (
+            <CollectionView
+              key={`${current.section.id}:${page ?? ""}`}
+              projectSlug={projectId}
+              projectId={project.id}
+              parent={current.section}
+              sections={sections}
+              initialSelectedId={page}
+            />
+          ) : (
+            <AllCollections projectSlug={projectId} collections={collections} sections={sections} />
+          )}
         </>
       )}
     </div>
@@ -98,7 +105,7 @@ function EmptyLibrary() {
 
 // ── Blocos das coleções ───────────────────────────────────────────────
 
-/** O topo do mock: um bloco por coleção, com o ícone da página-mãe e quantas coisas ela tem. */
+/** As abas do topo: "Todos" e uma por coleção, com o ícone da página-mãe e quantas páginas ela tem. */
 function CollectionTiles({
   projectSlug,
   collections,
@@ -106,11 +113,25 @@ function CollectionTiles({
 }: {
   projectSlug: string;
   collections: LibraryCollection<Section>[];
-  currentId: string;
+  currentId: string | null;
 }) {
   const { t } = useI18n();
+  const total = collections.reduce((sum, c) => sum + c.itemCount, 0);
+  const tab = (active: boolean) =>
+    `inline-flex h-10 shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-sm transition-colors ${
+      active ? "border-area-lib bg-area-lib-soft font-semibold text-ink" : "border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink"
+    }`;
+  const count = (active: boolean) =>
+    `rounded-full px-1.5 text-[11px] font-medium tabular-nums ${active ? "bg-surface text-area-lib" : "bg-surface-2 text-muted"}`;
   return (
-    <nav className="mb-5 flex gap-3 overflow-x-auto pb-1 scrollbar-premium" aria-label={t("projectShell.collectionsLabel", "Coleções")}>
+    <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 scrollbar-premium" aria-label={t("projectShell.collectionsLabel", "Coleções")}>
+      <Link href={`/projects/${projectSlug}/biblioteca`} aria-current={currentId === null ? "page" : undefined} className={tab(currentId === null)}>
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-area-lib-soft text-area-lib">
+          <IconGrid />
+        </span>
+        {t("libraryPage.all", "Todos")}
+        <span className={count(currentId === null)}>{total}</span>
+      </Link>
       {collections.map(({ section, itemCount }) => {
         const active = section.id === currentId;
         return (
@@ -118,19 +139,169 @@ function CollectionTiles({
             key={section.id}
             href={`/projects/${projectSlug}/biblioteca?c=${section.id}`}
             aria-current={active ? "page" : undefined}
-            className={`flex min-w-[150px] items-center gap-3 rounded-2xl border p-3 transition-colors ${
-              active ? "border-area-lib bg-area-lib-soft" : "border-line bg-surface hover:bg-surface-2"
-            }`}
+            className={tab(active)}
           >
-            <Thumb section={section} className="h-11 w-11 rounded-xl" />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold text-ink">{section.title}</span>
-              <span className="block text-xs tabular-nums text-muted">{itemCount}</span>
-            </span>
+            <Thumb section={section} className="h-8 w-8 rounded-full" iconClassName="h-4 w-4" />
+            <span className="max-w-[12rem] truncate">{section.title}</span>
+            <span className={count(active)}>{itemCount}</span>
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+// ── Todos: uma prateleira por coleção ────────────────────────────────
+
+/** Quantas coleções entram de cada vez, conforme a pessoa desce. */
+const SHELF_BATCH = 3;
+/** Quantos cards uma prateleira mostra antes do "ver todas". */
+const SHELF_LIMIT = 12;
+
+/**
+ * "Todos": cada coleção com o título e a grade das páginas dela, uma embaixo da
+ * outra. As prateleiras entram em lotes quando o fim da lista chega perto da
+ * tela, e cada uma corta em SHELF_LIMIT cards — um projeto com centenas de
+ * páginas não lê todas as tabelas para desenhar o que ninguém rolou até ver.
+ */
+function AllCollections({
+  projectSlug,
+  collections,
+  sections,
+}: {
+  projectSlug: string;
+  collections: LibraryCollection<Section>[];
+  sections: Section[];
+}) {
+  const { t } = useI18n();
+  const [shown, setShown] = useState(SHELF_BATCH);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const refs = useMemo(() => refIndex(sections), [sections]);
+  const backlinks = useMemo(() => backlinkIndex(sections), [sections]);
+  const more = shown < collections.length;
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !more) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShown((n) => n + SHELF_BATCH);
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [more, shown]);
+
+  return (
+    <div className="flex flex-col gap-8">
+      {collections.slice(0, shown).map((collection) => (
+        <CollectionShelf
+          key={collection.section.id}
+          projectSlug={projectSlug}
+          parent={collection.section}
+          sections={sections}
+          refs={refs}
+          backlinks={backlinks}
+        />
+      ))}
+      {more && (
+        <div ref={sentinel} className="flex justify-center py-4">
+          <button
+            type="button"
+            onClick={() => setShown((n) => n + SHELF_BATCH)}
+            className="rounded-full border border-line bg-surface px-4 py-1.5 text-sm text-muted hover:border-line-strong hover:text-ink"
+          >
+            {t("libraryPage.loadMore", "Carregar mais coleções")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectionShelf({
+  projectSlug,
+  parent,
+  sections,
+  refs,
+  backlinks,
+}: {
+  projectSlug: string;
+  parent: Section;
+  sections: Section[];
+  refs: ReturnType<typeof refIndex>;
+  backlinks: Map<string, Backlink[]>;
+}) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const rule = useMemo(() => parseTableRule(parent.tableRule)!, [parent.tableRule]);
+  const items = useMemo(
+    () => sections.filter((s) => s.parentId === parent.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [sections, parent.id],
+  );
+  // Só os cards que aparecem passam pela conferência.
+  const rows = useMemo<Row[]>(
+    () => items.slice(0, SHELF_LIMIT).map((item) => ({ item, cells: [], audit: auditPage(rule, item, refs) })),
+    [items, rule, refs],
+  );
+  const collectionHref = `/projects/${projectSlug}/biblioteca?c=${parent.id}`;
+  const rest = items.length - rows.length;
+
+  return (
+    <section aria-labelledby={`shelf-${parent.id}`}>
+      <header className="mb-3 flex items-center gap-3">
+        <Thumb section={parent} className="h-10 w-10 rounded-xl" />
+        <div className="min-w-0 flex-1">
+          <h2 id={`shelf-${parent.id}`} className="truncate text-lg font-semibold text-ink">
+            <Link href={collectionHref} className="hover:underline">
+              {parent.title}
+            </Link>
+          </h2>
+          <p className="text-xs text-muted">
+            {t("libraryPage.summary", "{n} páginas · {tables} tabelas")
+              .replace("{n}", String(items.length))
+              .replace("{tables}", String(rule.tables.length))}
+          </p>
+        </div>
+        <Link href={collectionHref} className="shrink-0 text-sm text-muted hover:text-ink">
+          {t("libraryPage.openCollection", "Ver coleção")} →
+        </Link>
+      </header>
+      {rows.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-line-strong p-6 text-center text-sm text-muted">
+          {t("libraryPage.shelfEmpty", "Nenhuma página nesta coleção ainda.")}
+        </p>
+      ) : (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3">
+          {rows.map((row) => (
+            <li key={row.item.id}>
+              <ItemCard
+                row={row}
+                sortedBy={null}
+                sortedCell={null}
+                citedBy={backlinks.get(row.item.id)?.length ?? 0}
+                selected={false}
+                onSelect={() => router.push(`${collectionHref}&p=${row.item.id}`)}
+              />
+            </li>
+          ))}
+          {rest > 0 && (
+            <li>
+              <Link
+                href={collectionHref}
+                className="grid h-full min-h-[10rem] place-items-center rounded-2xl border border-dashed border-line-strong bg-surface text-center text-sm text-muted hover:border-area-lib hover:text-ink"
+              >
+                <span>
+                  <span className="block text-2xl font-semibold tabular-nums text-ink">+{rest}</span>
+                  {t("libraryPage.seeAll", "ver todas")}
+                </span>
+              </Link>
+            </li>
+          )}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -141,11 +312,13 @@ function CollectionView({
   projectId,
   parent,
   sections,
+  initialSelectedId,
 }: {
   projectSlug: string;
   projectId: string;
   parent: Section;
   sections: Section[];
+  initialSelectedId?: string;
 }) {
   const { t } = useI18n();
   // A regra existe: só entra na lista quem tem uma (libraryCollections).
@@ -186,7 +359,7 @@ function CollectionView({
   const [sortKey, setSortKey] = useState<SortKey>("title");
   const [direction, setDirection] = useState<1 | -1>(1);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
 
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
